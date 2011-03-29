@@ -46,7 +46,7 @@ class FemTransaction(Struct):
             self.payloadLen = 0
         else:
             self.payload = tuple(thePayload)
-            self.payloadLen = len(thePayload) * 4 # TODO: remove this hardcoding!!
+            self.payloadLen = len(thePayload) * 4 + 4 # TODO: remove this hardcoding!!
             formatStr = formatStr + str(len(thePayload)) + 'I'
         
         Struct.__init__(self, format=formatStr)
