@@ -8,16 +8,33 @@ import cmd
 import os
 import readline
 import string
+import time
+import code
 
 from femClient.FemClient import FemClient
+from femApi.femTransaction import FemTransaction
 
 class FemShell(cmd.Cmd,object):
     
     connectedFem = None;
     
+    busEncoding = { 'GPIO' : FemTransaction.BUS_GPIO ,
+                    'I2C'  : FemTransaction.BUS_I2C  ,
+                    'RAW'  : FemTransaction.BUS_RAW_REG ,
+                    'REG'  : FemTransaction.BUS_RAW_REG,
+                    'RDMA' : FemTransaction.BUS_RDMA
+                  } 
+    
+    widthEncoding = { 'BYTE' : FemTransaction.WIDTH_BYTE, 
+                      'WORD' : FemTransaction.WIDTH_WORD, 
+                      'LONG' : FemTransaction.WIDTH_LONG
+                    }
+    
     def __init__(self, completekey='tab', stdin=None, stdout=None, cmdqueue=None):
       
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
+        
+        self.pystate = {}
         
         self.loopRecurseDepth = 0
 
@@ -48,10 +65,13 @@ class FemShell(cmd.Cmd,object):
         pass
     
     def do_exit(self, s):
+        '''
+        Exits the shell (Ctrl-D can also be used)
+        '''
         return True;
     
     def help_exit(self):
-        print "Exit the shell (you can also use Ctrl-D)"
+        print self.do_exit.__doc__
         
     do_EOF = do_exit
     help_EOF = help_exit
@@ -67,7 +87,38 @@ class FemShell(cmd.Cmd,object):
         
     def help_shell(self):
         print "Executes system shell command"
+    
+    def do_wait(self, s):
+        '''
+        wait <time>: Waits for the specified time in seconds
+        time can be non-integer value in secs, e.g. 0.1 
+        '''
+        waitParams = s.split()
+        if len(waitParams) != 1:
+            print "*** error: invalid wait syntax (wait <secs>)"
+            return
+        try:
+            waitTime = float(waitParams[0])
+        except:
+            print "*** error: invalid wait syntax (wait <secs>)"
+            return
+        time.sleep(waitTime)
         
+    def help_wait(self):
+        print self.do_wait.__doc__
+
+    def do_py(self, s):
+        self.pystate['self'] = self
+        console = code.InteractiveConsole(locals=self.pystate)
+        try:
+            cprt = 'Type "help", "copyright", "credits" or "license" for more information.'
+            console.interact(banner = "Python %s on %s\n%s\n(%s)" % 
+                             (sys.version, sys.platform, cprt, self.__class__.__name__))
+        except:
+            print "Embedded console terminated"
+            pass
+        
+                    
     def do_for(self, s):
 
         forParams = s.split()
@@ -167,18 +218,72 @@ Example:
     
     def do_write(self, s):
         params = s.split()
-        if len(params) < 3:
-            print "*** Invalid numnber of arguments"
+        if len(params) < 4:
+            print "*** Invalid number of arguments"
             return
+        
+        #  Decode bus parameter string to bus ID
+        busStr = string.upper(params[0])
+        if FemShell.busEncoding.has_key(busStr):
+            bus = FemShell.busEncoding[busStr]
+        else:
+            print "*** bus parameter not recognized"
+            return
+
+        # Decode width parameter string to width ID
+        widthStr = string.upper(params[1])
+        if FemShell.widthEncoding.has_key(widthStr):
+            width = FemShell.widthEncoding[widthStr]
+        else:
+            print "*** width parameter not recognized"
+            return
+        
+        # Get address and values from remaining parameters, allowing hex conversion to int
         try:
-            cmd = int(params[0], 0)
-            addr = int(params[1], 0)
-            values = tuple([int(param, 0) for param in params[2:]])
+            addr = int(params[2], 0)
+            values = tuple([int(param, 0) for param in params[3:]])
+        except ValueError:
+            print "*** address and value parameters must be integer"
+            return
+            
+        # Issue the write command to the FEM
+        self.__class__.connectedFem.write(bus, width, addr, values)
+
+    def do_read(self, s):
+        params = s.split()
+        if len(params) < 4:
+            print "*** Invalid number of arguments"
+            return
+        
+        #  Decode bus parameter string to bus ID
+        busStr = string.upper(params[0])
+        if FemShell.busEncoding.has_key(busStr):
+            bus = FemShell.busEncoding[busStr]
+        else:
+            print "*** bus parameter not recognized"
+            return
+
+        # Decode width parameter string to width ID
+        widthStr = string.upper(params[1])
+        if FemShell.widthEncoding.has_key(widthStr):
+            width = FemShell.widthEncoding[widthStr]
+        else:
+            print "*** width parameter not recognized"
+            return
+
+        # Get address and read length from remaining params, allowing for hex conversion
+        try:
+            addr   = int(params[2], 0)
+            length = int(params[3], 0)
         except ValueError:
             print "*** parameters must be integer"
             return
-            
-        self.__class__.connectedFem.write(cmd, addr, values)
+        
+        # Issue read command to FEM    
+        values = self.__class__.connectedFem.read(bus, width, addr, length)
+        
+        print "Got results:", [hex(result) for result in values]
+
     
     def help_write(self):
         print "Writes data to a FEM"

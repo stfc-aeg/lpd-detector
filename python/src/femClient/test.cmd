@@ -1,9 +1,11 @@
 open 127.0.0.1 5000
-write 1 2 3 4
-write 5 6 7 8
-write 1001 1002 1003 1004
-for i in range(0, 10000)
-  write $i $i $i 1000
+write raw long 0x1000 0x12345
+read raw long 0x1000 1
+write raw long 0x1003 0x67890
+read raw long 0x1000 4
+for i in range(0, 100)
+  write raw long $i $i
 end
+read raw long 0 100
 close
 exit

@@ -5,8 +5,6 @@ Created on 22 Mar 2011
 '''
 
 import socket
-import binascii
-from femApi.femHeader import FemHeader
 from femApi.femTransaction import FemTransaction
 
 class FemClient():
@@ -19,24 +17,29 @@ class FemClient():
         self.femSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.femSocket.connect(hostAddr)
     
-    def send(self, values):
-        print "Sending values", values
-        femHdr = FemHeader(values)
-        data = femHdr.getBinary()
+    def send(self, theCmd, theBus, theWidth, theState, theAddr, thePayload=None, theReadLen=None):
+        #print "Sending cmd: ", theCmd, "bus:", theBus, "width:", theWidth, "addr:", theAddr, "values: ", thePayload
+        theTransaction = FemTransaction(cmd=theCmd, bus=theBus, width=theWidth, state=theState, 
+                                          addr=theAddr, payload=thePayload, readLen=theReadLen)
+        data = theTransaction.encode()
         self.femSocket.send(data)
+  
+    def recv(self):
         data = self.femSocket.recv(1024)
-        femHdr.setBinary(data)
-        values = femHdr.getValues()
-        print "Received raw ", binascii.hexlify(data)
-        print "Received vals", values 
-    
-    def write(self, theCmd, theAddr, theValues):
-        print "Writing cmd: ", theCmd, "addr:", theAddr, "values: ", theValues
-        writeTransaction = FemTransaction(theCmd, theAddr, theValues)
-        data = writeTransaction.getBinary()
-        self.femSocket.send(data)
-        #data = self.femSocket.recv(1024)
-        #print "Received raw ", binascii.hexlify(data)
+        response = FemTransaction(encoded=data)
+        return response.payload
+       
+    def write(self, theBus, theWidth, theAddr, thePayload):
+        self.send(theCmd=FemTransaction.CMD_ACCESS, theBus=theBus, 
+                 theWidth=theWidth, theState=FemTransaction.STATE_WRITE, 
+                 theAddr=theAddr, thePayload=thePayload)
+        
+    def read(self, theBus, theWidth, theAddr, theReadLen):
+        self.send(theCmd=FemTransaction.CMD_ACCESS, theBus=theBus,
+                  theWidth=theWidth, theState=FemTransaction.STATE_READ,
+                  theAddr=theAddr, theReadLen=theReadLen)
+        values = self.recv()
+        return values
           
     def close(self):
         self.femSocket.close()
