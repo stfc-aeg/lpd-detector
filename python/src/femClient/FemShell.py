@@ -83,10 +83,14 @@ class FemShell(cmd.Cmd,object):
         print "Provides help for all commands, or type help <topic> for a specific command"
         
     def do_shell(self, s):
+        '''
+        Executes a system shell command
+        Syntax: shell <cmd>
+        '''
         os.system(s)
         
     def help_shell(self):
-        print "Executes system shell command"
+        print self.do_shell.__doc__
     
     def do_wait(self, s):
         '''
@@ -108,6 +112,9 @@ class FemShell(cmd.Cmd,object):
         print self.do_wait.__doc__
 
     def do_py(self, s):
+        '''
+        Launches an embedded python shell
+        '''
         self.pystate['self'] = self
         console = code.InteractiveConsole(locals=self.pystate)
         try:
@@ -118,8 +125,29 @@ class FemShell(cmd.Cmd,object):
             print "Embedded console terminated"
             pass
         
-                    
+    def help_py(self):
+        print self.do_py.__doc__
+                            
     def do_for(self, s):
+        '''
+Creates for-loop style iteration over a set of commands.
+
+Syntax  : for <var> in <list_expr>
+Where   :     <var>      = variable name to be substituted in iteration
+             <list_expr> = python expression that evaluates to a list, e.g. range(1,10,1) or [1,2,3]
+             
+The loop is closed with the \'end\' command. Nested loops are permitted provided variable
+names are lexicographically unique. Substitution is performed within the block where the 
+expression $<var> is found. Indentation of loops is optional.
+
+Example:
+    for i in range(0,10,1)
+       echo $i
+       for j in range(0,5,1)
+          echo $i $j
+       end
+    end
+        '''
 
         forParams = s.split()
         if len(forParams) < 3 or forParams[1] != 'in':
@@ -170,35 +198,26 @@ class FemShell(cmd.Cmd,object):
             subShell.cmdloop()
   
     def help_for(self):
-        print """
-Creates for-loop style iteration over a set of commands.
-
-Syntax  : for <var> in <list_expr>
-Where   :     <var>      = variable name to be substituted in iteration
-             <list_expr> = python expression that evaluates to a list, e.g. range(1,10,1) or [1,2,3]
-             
-The loop is closed with the \'end\' command. Nested loops are permitted provided variable
-names are lexicographically unique. Substitution is performed within the block where the 
-expression $<var> is found. Indentation of loops is optional.
-
-Example:
-    for i in range(0,10,1)
-       echo $i
-       for j in range(0,5,1)
-          echo $i $j
-       end
-    end
-"""
+        print self.do_for.__doc__
+        
     def help_end(self):
         print "Terminates a for loop"
          
     def do_echo(self, s):
+        '''
+        Echoes any output back to user
+        '''
         print s
                
     def help_echo(self):
-        print "Echoes any output back to user"
+        print self.do_echo.__doc__
            
     def do_open(self, s):
+        '''
+        Opens a new connection to a FEM.
+        Syntax: open <addr> <port>
+        '''
+         
         params = s.split()
         if len(params) != 2:
             print "*** Invalid number of arguments"
@@ -213,10 +232,16 @@ Example:
         self.__class__.connectedFem = FemClient((host, port))
 
     def help_open(self):
-        print "Opens a new connection to a FEM."
-        print "Syntax: open <addr> <port>" 
+        print self.do_open.__doc__
     
     def do_write(self, s):
+        '''
+        Writes data to a FEM using the command protocol.
+        Syntax: write <bus> <width> <addr> <values...> 
+        where bus = GPIO, I2C, RAW, REG, RDMA
+              width = BYTE, WORD, LONG
+        '''
+        
         params = s.split()
         if len(params) < 4:
             print "*** Invalid number of arguments"
@@ -247,9 +272,23 @@ Example:
             return
             
         # Issue the write command to the FEM
+        if self.__class__.connectedFem == None:
+            print "*** Not connected to a FEM"
+            return
+        
         self.__class__.connectedFem.write(bus, width, addr, values)
+        
+            
+    def help_write(self):
+        print self.do_write.__doc__
 
     def do_read(self, s):
+        '''
+        Reads data from a FEM using the command protocol.
+        Syntax: read <bus> <width> <addr> <numReads> 
+        where bus = GPIO, I2C, RAW, REG, RDMA
+              width = BYTE, WORD, LONG
+        '''        
         params = s.split()
         if len(params) < 4:
             print "*** Invalid number of arguments"
@@ -279,22 +318,27 @@ Example:
             print "*** parameters must be integer"
             return
         
-        # Issue read command to FEM    
+        # Issue read command to FEM  
+        if self.__class__.connectedFem == None:
+            print "*** Not connected to a FEM"
+            return  
+
         values = self.__class__.connectedFem.read(bus, width, addr, length)
         
         print "Got results:", [hex(result) for result in values]
-
-    
-    def help_write(self):
-        print "Writes data to a FEM"
-        print "Syntax: write <int1> <int2> <int3> <int4>"
+        
+    def help_read(self):
+        print self.do_read.__doc__
         
     def do_close(self, s):
+        '''
+        Closes a connection to a FEM
+        '''
         self.__class__.connectedFem.close()
         self.__class__.connectedFem = None
             
     def help_close(self):
-        print "Closes connection to a FEM"
+        print self.do_close.__doc__
                               
 if __name__ == "__main__":
     
