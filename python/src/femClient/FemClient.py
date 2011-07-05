@@ -25,8 +25,16 @@ class FemClient():
         self.femSocket.send(data)
   
     def recv(self):
-        data = self.femSocket.recv(1024)
+        initRecvLen = FemTransaction.headerSize()
+        data = self.femSocket.recv(initRecvLen)
+        if not data:
+            return None
         response = FemTransaction(encoded=data)
+        while response.incomplete:
+            payloadRecvLen = response.payloadRemaining
+            data = self.femSocket.recv(payloadRecvLen)
+            response.append(data)
+
         return response.payload
        
     def write(self, theBus, theWidth, theAddr, thePayload):
