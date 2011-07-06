@@ -276,8 +276,8 @@ Example:
             print "*** Not connected to a FEM"
             return
         
-        self.__class__.connectedFem.write(bus, width, addr, values)
-        
+        ack = self.__class__.connectedFem.write(bus, width, addr, values)
+        print "Got ack: ", [hex(result) for result in ack]
             
     def help_write(self):
         print self.do_write.__doc__

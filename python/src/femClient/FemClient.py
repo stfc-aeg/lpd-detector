@@ -6,6 +6,7 @@ Created on 22 Mar 2011
 
 import socket
 from femApi.femTransaction import FemTransaction
+import binascii
 
 class FemClient():
     '''
@@ -41,6 +42,8 @@ class FemClient():
         self.send(theCmd=FemTransaction.CMD_ACCESS, theBus=theBus, 
                  theWidth=theWidth, theState=FemTransaction.STATE_WRITE, 
                  theAddr=theAddr, thePayload=thePayload)
+        ack = self.recv()
+        return ack
         
     def read(self, theBus, theWidth, theAddr, theReadLen):
         self.send(theCmd=FemTransaction.CMD_ACCESS, theBus=theBus,
