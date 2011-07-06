@@ -342,8 +342,9 @@ Example:
         '''
         Closes a connection to a FEM
         '''
-        self.__class__.connectedFem.close()
-        self.__class__.connectedFem = None
+        if self.__class__.connectedFem != None:
+            self.__class__.connectedFem.close()
+            self.__class__.connectedFem = None
             
     def help_close(self):
         print self.do_close.__doc__
