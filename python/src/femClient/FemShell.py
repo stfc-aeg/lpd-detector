@@ -17,6 +17,7 @@ from femApi.femTransaction import FemTransaction
 class FemShell(cmd.Cmd,object):
     
     connectedFem = None;
+    timerEnabled = False;
     
     busEncoding = { 'GPIO' : FemTransaction.BUS_GPIO ,
                     'I2C'  : FemTransaction.BUS_I2C  ,
@@ -275,9 +276,13 @@ Example:
         if self.__class__.connectedFem == None:
             print "*** Not connected to a FEM"
             return
-        
+
+        if self.timerEnabled: t0 = time.time()        
         ack = self.__class__.connectedFem.write(bus, width, addr, values)
+        if self.timerEnabled: deltaT = time.time() - t0
+        
         print "Got ack: ", [hex(result) for result in ack]
+        if self.timerEnabled: print "Transaction took %.3f secs" % deltaT  
             
     def help_write(self):
         print self.do_write.__doc__
@@ -323,9 +328,12 @@ Example:
             print "*** Not connected to a FEM"
             return  
 
+        if self.timerEnabled: t0 = time.time()
         values = self.__class__.connectedFem.read(bus, width, addr, length)
+        if self.timerEnabled: deltaT = time.time() - t0
         
         print "Got results:", [hex(result) for result in values]
+        if self.timerEnabled: print "Transaction took %.3f secs" % deltaT  
         
     def help_read(self):
         print self.do_read.__doc__
@@ -339,6 +347,31 @@ Example:
             
     def help_close(self):
         print self.do_close.__doc__
+        
+    def do_timer(self, s):
+        '''
+        Enables or disables transaction timer
+        Syntax: timer [on|off]
+        '''
+        
+        params=s.split()
+        if len(params) <> 1:
+            print "*** Invalid number of arguments"
+            return
+        
+        argStr = string.lower(params[0])
+        if argStr == 'on':
+            self.timerEnabled = True;
+            print "Transaction timer enabled"
+        elif argStr == 'off':
+            self.timerEnabled = False;
+            print "Transaction timer disabled"
+        else:
+            print "Unrecognised parameter: ", argStr
+            return
+    
+    def help_timer(self):
+         print self.do_timer.__doc__   
                               
 if __name__ == "__main__":
     
