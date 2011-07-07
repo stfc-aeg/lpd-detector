@@ -10,12 +10,18 @@
  *
  * Developed against Xilinx ML507 development board under EDK 12.1 (windows)
  *
- * Version 1.0a - alpha release not for distribution
+ * Version 1.1 - alpha release not for distribution
+ *
+ * -
+ *
+ * CHANGELOG:
+ *
+ * 1.1		06-July-2011
+ * 	- First functional implementation of FEM communications protocol
+ *  - Bug fixes in network select / command processing
  *
  * -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
- *
- * TODO: Complete return packet header formatting, and send to client
- * TODO: Test v2 comms protocol with FemShell
+ * TODO: Clean network select / command processing logic, make robust
  *
  * TODO: Implement configuration structure, store in EEPROM
  * TODO: Read configuration structure, use to configure board
@@ -31,7 +37,6 @@
  * TODO: Reformat code, remove debugging (xil_printf) calls
  * TODO: Doxygen comment all functions
  * TODO: Remove GPIO handles when porting to FEM hardware
- * TODO: Port to EDK 13.1 (?) environment
  *
  * -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
  */
@@ -103,6 +108,7 @@ struct netif server_netif;
 // TODO: Remove this
 XGpio GpioLed8, GpioLed5, GpioDip, GpioSwitches;
 
+// RDMA base addresses for EDK peripherals (provide a way to query these from protocol?)
 u64 rdmaLocations[] =	{
 							XPAR_DIP_SWITCHES_8BIT_BASEADDR,
 							XPAR_LEDS_8BIT_BASEADDR,
@@ -443,7 +449,7 @@ void command_processor_thread()
 									{
 										// TODO: Fix this, drops connection if we receive a header but no payload.  What should we do in that case?
 										// Client closed connection, so drop our side
-										DBGOUT("CmdProc: Client closed connection.\r\n");
+										DBGOUT("CmdProc: Client closed connection (payload processing stage).\r\n");
 										lwip_close(i);
 										FD_CLR(i, &masterSet);
 									}
@@ -720,8 +726,6 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 	pTxHeader->status = status;
 	pTxHeader->payload_sz = response_sz;
 
-	DBGOUT("CmdDisp: Response payload is %d bytes, hater.\r\n", pTxHeader->payload_sz);
-
 }
 
 // This method only being used while testing, will remove soon
@@ -825,7 +829,7 @@ void test_thread()
 // Reads the specified number of bytes from the given socket within the timeout period or returns an error code
 int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs)
 {
-	// TODO: Use timeoutMs
+	// TODO: Use timeoutMs, remove maxloops
 	int totalBytes = 0;
 	int read = 0;
 
@@ -834,8 +838,12 @@ int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeo
 
 	while (totalBytes < numBytes)
 	{
-		read = lwip_read(sock, (void*)(pBuffer+totalBytes), numBytes-read);
-		if (read!=-1)
+		read = lwip_read(sock, (void*)pBuffer, numBytes-read);
+		if (read==0) {
+			// Client closed connection
+			return 0;
+		}
+		else if (read!=-1)
 		{
 			totalBytes += read;
 		}
@@ -848,6 +856,6 @@ int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeo
 
 	}
 
-	DBGOUT("better_read: Took %d loops to get %d bytes!\r\n", tempNumLoops, numBytes);
+	//DBGOUT("better_read: Took %d loops to get %d bytes!\r\n", tempNumLoops, numBytes);
 	return totalBytes;
 }
