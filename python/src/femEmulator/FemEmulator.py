@@ -54,6 +54,10 @@ class FemEmulator(SocketServer.BaseRequestHandler):
                 for offset in range(len(theTransaction.payload)):
                     self.accessCache[theTransaction.address + offset] = theTransaction.payload[offset]
                     print offset, theTransaction.address + offset, theTransaction.payload[offset], self.accessCache[theTransaction.address + offset]
+                
+                response = FemTransaction(cmd = theTransaction.command, bus = theTransaction.bus,
+                                          width = theTransaction.width, state=FemTransaction.STATE_ACKNOWLEDGE,
+                                          addr = theTransaction.address, payload=tuple([1]))
                     
             if theTransaction.state == FemTransaction.STATE_READ:
                 (payloadWidth, payloadFormat) = FemTransaction.widthEncoding[theTransaction.width]
@@ -67,8 +71,9 @@ class FemEmulator(SocketServer.BaseRequestHandler):
                 response = FemTransaction(cmd=FemTransaction.CMD_ACCESS, bus = theTransaction.bus,
                                           width=theTransaction.width, state=FemTransaction.STATE_ACKNOWLEDGE,
                                           addr = theTransaction.address, payload=tuple(result))
-                data = response.encode()
-                self.request.send(data)
+
+            data = response.encode()
+            self.request.send(data)
                  
 if __name__ == '__main__':
     server = SocketServer.ThreadingTCPServer(('0.0.0.0', 5000), FemEmulator)
