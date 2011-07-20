@@ -1,9 +1,15 @@
 import sys
 import os
 import time
+import optparse
 
 from femClient.FemClient import  FemClient
 from femApi.femTransaction import FemTransaction
+
+# Parse command line arguments
+parser = optparse.OptionParser()
+parser.add_option("-n", "--numloops", dest="numLoops", type="int", default=1000)
+(options, args) = parser.parse_args()
 
 # Make stdout unbuffered
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
@@ -12,7 +18,7 @@ sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 #addr = 0x81440000  # LEDs
 addr = 0x8b900000  # SRAM
 lengthArr = [1, 4, 8, 16, 32, 64, 128, 256]
-numLoops = 100
+numLoops = options.numLoops
 bus = FemTransaction.BUS_RAW_REG
 width = FemTransaction.WIDTH_LONG
 
@@ -74,12 +80,12 @@ print " done."
 
 # Print results
 print ""
-print "                    Write                          Read"
-print "Length    Time      Rate        Thru     Time      Rate        Thru"
-print "--------------------------------------------------------------------"
+print "                 Write                          Read"
+print "Length   Time     Rate       Thru      Time     Rate       Thru"
+print "----------------------------------------------------------------"
 
 for i in range(0, len(lengthArr)): 
-    print "%5d     %5.3f     %5.1f     %7.1f    %5.3f     %5.1f     %7.1f" % \
+    print "%5d  %6.3f  %7.1f  %10.1f   %6.3f  %7.1f  %10.1f" % \
         (lengthArr[i], writeDeltaT[i], numLoops / writeDeltaT[i], writeBytes[i] / writeDeltaT[i],
          readDeltaT[i], numLoops / readDeltaT[i], readBytes[i] / readDeltaT[i]) 
 
