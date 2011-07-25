@@ -713,7 +713,53 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 
 		// --------------------------------------------------------------------
 		case BUS_RDMA:
-			// TODO: Complete BUS_RDMA when we have spec of downstream config block
+
+			// Verify request parameters are sane
+			// We don't support anything other than 32-bit operations for RAW_REG as all RDMA registers are 32bit.
+			if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
+			{
+				DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+				SBIT(status, STATE_NACK);
+				// TODO: Set error bits
+				break;
+			}
+
+			data_width = sizeof(u32);
+			pTxPayload_32 = (u32*)(pTxPayload+response_sz);
+
+			if (CMPBIT(status, STATE_READ)) // READ OPERATION
+			{
+
+				pRxPayload_32 = (u32*)pRxPayload;
+				for (i=0; i<*pRxPayload_32; i++)
+				{
+					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*data_width));
+					*(pTxPayload_32+i) = readRdma(RDMA_RS232_BASEADDR, pRxHeader->address + (i*data_width));
+					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*data_width)));
+					response_sz += data_width;
+				}
+				SBIT(status, STATE_ACK);
+
+			}
+			else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
+			{
+				for (i=0; i<((pRxHeader->payload_sz)/data_width); i++)
+				{
+					pRxPayload_32 = (u32*)pRxPayload;
+					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + (i*data_width), *(pRxPayload_32+i));
+					writeRdma(RDMA_RS232_BASEADDR, pRxHeader->address + (i*data_width), *(pRxPayload_32+i));
+				}
+				SBIT(status, STATE_ACK);
+			}
+			else
+			{
+				// Neither R or W bits set, can't process request
+				DBGOUT("CmdDisp: Error, can't determine BUS_RDMA operation mode, status was 0x%x\r\n", status);
+
+				SBIT(status, STATE_NACK);
+				// TODO: Set error bits
+			}
+
 			break; // BUS_RAW_REG
 
 		case BUS_UNSUPPORTED:

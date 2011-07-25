@@ -4,8 +4,6 @@
  * Provides access to ESDG group FPGA blocks via
  * RS232-RDMA link
  *
- * NOTE: Make sure RDMA_RS232_BASEADDR is valid!
- *
  */
 
 #include "xil_types.h"
