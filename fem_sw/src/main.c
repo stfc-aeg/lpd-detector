@@ -103,6 +103,7 @@ void command_processor_thread();		// Waits for FEM comms packets, spawned by net
 void command_dispatcher(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
 void test_thread();						// Any testing routines go here
 int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs);
+void create_default_config(struct fem_config* pConfig);
 
 // TODO: Determine what scope this needs and fix it if possible
 struct netif server_netif;
@@ -229,19 +230,17 @@ void network_manager_thread(void *p)
     struct ip_addr ipaddr, netmask, gw;
 
     // Get config struct
-    /*
     struct fem_config femConfig;
-    if (!readConfigFromEEPROM(0, &femConfig))
+    if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
-    	xil_printf("NetMan: Can't get config from EEPROM\r\n");
-    	// TODO: Config failsafes
+    	xil_printf("NetMan: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
+    	create_default_config(&femConfig);
     }
     else
     {
-    	xil_printf("NetMan: Got config from EEPROM OK!\r\n");
+    	xil_printf("NetMan: Got configuration from EEPROM OK!\r\n");
     	// TODO: Config from struct
     }
-    */
 
     // MAC address
     unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x01, 0x02 };
@@ -251,7 +250,6 @@ void network_manager_thread(void *p)
     xil_printf("NetMan: Starting up...\r\n");
 
     // IP addresses
-    // TODO: Set ethernet IP / netmask / gateway from EEPROM
     IP4_ADDR(&ipaddr,  192, 168,   1, 10);
     IP4_ADDR(&netmask, 255, 255, 255,  0);
     IP4_ADDR(&gw,      192, 168,   1,  1);
@@ -1022,6 +1020,7 @@ void test_thread()
 }
 
 // Reads the specified number of bytes from the given socket within the timeout period or returns an error code
+// TODO: Move to FEM support library
 int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs)
 {
 	// TODO: Use timeoutMs, remove maxloops
@@ -1053,4 +1052,58 @@ int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeo
 
 	//DBGOUT("better_read: Took %d loops to get %d bytes!\r\n", tempNumLoops, numBytes);
 	return totalBytes;
+}
+
+// Creates failsafe default config object, used in case EEPROM config is not valid or missing
+// TODO: Move to FEM support library
+void create_default_config(struct fem_config* pConfig)
+{
+	pConfig->header				= EEPROM_MAGIC_WORD;
+
+	// MAC address
+	pConfig->mac_address[0]		= 0x00;
+	pConfig->mac_address[1]		= 0x0A;
+	pConfig->mac_address[2]		= 0x35;
+	pConfig->mac_address[3]		= 0x00;
+	pConfig->mac_address[4]		= 0x01;
+	pConfig->mac_address[5]		= 0x02;
+
+	// IP address
+	pConfig->ip[0]				= 192;
+	pConfig->ip[1]				= 168;
+	pConfig->ip[2]				= 1;
+	pConfig->ip[3]				= 10;
+
+	// Netmask
+	pConfig->netmask[0]			= 255;
+	pConfig->netmask[1]			= 255;
+	pConfig->netmask[2]			= 255;
+	pConfig->netmask[3]			= 0;
+
+	// Default gateway
+	pConfig->gateway[0]			= 192;
+	pConfig->gateway[1]			= 168;
+	pConfig->gateway[2]			= 1;
+	pConfig->gateway[3]			= 1;
+
+	// LM82 setpoints
+	pConfig->temp_high_setpoint	= 40;
+	pConfig->temp_crit_setpoint	= 75;
+
+	// Software revision
+	pConfig->sw_major_version	= 1;
+	pConfig->sw_minor_version	= 2;
+
+	// Firmware revision
+	pConfig->fw_major_version	= 1;
+	pConfig->fw_minor_version	= 0;
+
+	// Hardware revision
+	pConfig->hw_major_version	= 1;
+	pConfig->hw_minor_version	= 0;
+
+	// Board ID
+	pConfig->board_id			= 1;
+	pConfig->board_type			= 1;
+
 }
