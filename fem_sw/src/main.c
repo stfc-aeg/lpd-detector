@@ -248,7 +248,7 @@ void network_manager_thread(void *p)
     }
 
     // Launch application thread
-    //t = sys_thread_new("cmd", command_processor_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("cmd", command_processor_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 
@@ -258,7 +258,7 @@ void network_manager_thread(void *p)
     // - OR -
 
     // Launch testing thread
-    t = sys_thread_new("test", test_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    //t = sys_thread_new("test", test_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     if (t==NULL)
     {
@@ -854,78 +854,7 @@ void test_thread()
 	// ------------------------------------------------------------------------
 	// Rob RDMA / RS232 link test
 
-	/*
-	int n=0;
-	u32 uartBaseAddr = XPAR_RS232_UART_2_BASEADDR;
-
-	xil_printf("Test: Running RDMA readback test (using UART 0x%x @ %d)\r\n", uartBaseAddr, XPAR_RS232_UART_2_BAUDRATE);
-
-	// Build test packets
-	// Format is:  Command (1 byte)  |  Address (4 bytes LSB first)  |  Value (4 bytes LSB first)
-	u8 rdmaReadCommand[] =		{
-									RDMA_CMD_READ,
-									0x1, 0x0, 0x0, 0x0
-								};
-
-	u8 rdmaWriteCommand[] =		{
-									RDMA_CMD_WRITE,
-									0x1, 0x0, 0x0, 0x0,
-									0xDE, 0xAD, 0xBE, 0xEF
-								};
-
-
-	u8 rdmaReadbackCommand[] =	{
-									RDMA_CMD_READ,
-									0x4, 0x0, 0x0, 0x0
-								};
-
-	u8 rdmaInboundPacket[4];
-
-	// No point tracking number of bytes sent with xuartlite_l as it doesn't tell us...
-
-	// Read register
-	for (n=0; n<sizeof(rdmaReadCommand); n++)
-	{
-		// Send read
-		xil_printf("Test: Sending byte %d...\r\n", n);
-		XUartLite_SendByte(uartBaseAddr, rdmaReadCommand[n]);
-	}
-	for (n=0; n<4; n++)
-	{
-		// Get response
-		xil_printf("Test: Reading byte %d...\r\n", n);
-		rdmaInboundPacket[n] = XUartLite_RecvByte(uartBaseAddr);
-	}
-	xil_printf("Test: Read RDMA register: 0x%x, 0x%x, 0x%x, 0x%x\r\n", rdmaInboundPacket[0], rdmaInboundPacket[1], rdmaInboundPacket[2], rdmaInboundPacket[3]);
-
-	// -=-
-
-	// Write register
-	for (n=0; n<sizeof(rdmaWriteCommand); n++)
-	{
-		XUartLite_SendByte(uartBaseAddr, rdmaWriteCommand[n]);
-	}
-	xil_printf("Test: Wrote RDMA register.\r\n");
-
-	// -=-
-
-	// Readback register 0x0
-	for (n=0; n<sizeof(rdmaReadbackCommand); n++)
-	{
-		// Send read
-		XUartLite_SendByte(uartBaseAddr, rdmaReadbackCommand[n]);
-	}
-	xil_printf("Test: Wrote RDMA register.\r\n");
-	for (n=0; n<4; n++)
-	{
-		// Get response
-		rdmaInboundPacket[n] = XUartLite_RecvByte(uartBaseAddr);
-	}
-	xil_printf("Test: Readback RDMA register: 0x%x, 0x%x, 0x%x, 0x%x\r\n", rdmaInboundPacket[0], rdmaInboundPacket[1], rdmaInboundPacket[2], rdmaInboundPacket[3]);
-	*/
-
-	// New RS232_RDMA test
-	xil_printf("Test: Running RDMA test v2...\r\n");
+	xil_printf("Test: Running RDMA test ...\r\n");
 	u32 addr;
 	u32 regVal = 0;
 
