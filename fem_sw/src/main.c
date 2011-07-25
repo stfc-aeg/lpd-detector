@@ -75,7 +75,7 @@
 
 // Xilinx memory testing
 // TODO: Get John's PPC running memory check!
-#include "xil_testmem.h"
+//#include "xil_testmem.h"
 
 // iperf
 #include "iperf.h"
@@ -83,15 +83,18 @@
 // FEM includes
 #include "protocol.h"
 #include "rdma.h"
+#include "rs232_rdma.h"
 #include "gpio.h"
 #include "i2c_lm82.h"
 #include "i2c_24c08.h"
 
 // TODO: Tune these
-#define THREAD_STACKSIZE 	4096
-#define MAX_CONNECTIONS		4
+#define THREAD_STACKSIZE 		4096
+#define MAX_CONNECTIONS			4
 
-#define CMD_PORT			6969
+#define CMD_PORT				6969
+
+#define RDMA_RS232_BASEADDR		XPAR_RS232_UART_2_BASEADDR
 
 // Function prototypes
 void* master_thread(void *);			// Main thread launched by xilkernel
@@ -245,7 +248,7 @@ void network_manager_thread(void *p)
     }
 
     // Launch application thread
-    t = sys_thread_new("cmd", command_processor_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    //t = sys_thread_new("cmd", command_processor_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 
@@ -255,7 +258,7 @@ void network_manager_thread(void *p)
     // - OR -
 
     // Launch testing thread
-    //t = sys_thread_new("test", test_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("test", test_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     if (t==NULL)
     {
@@ -589,7 +592,6 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 	}
 
 	response_sz += sizeof(u32);
-	DBGOUT("CmdDisp: payload[0] = 0x%x\r\n", *pTxPayload_32);
 
 	// Process packet based on target
 	switch(pRxHeader->bus_target)
@@ -778,6 +780,7 @@ void test_thread()
 	// ------------------------------------------------------------------------
 	// EEPROM tester
 
+	/*
 	sleep(2000);
 
 	// Blank out first 8 pages for testing
@@ -800,10 +803,109 @@ void test_thread()
 			(i*16)*16, readBuffer[(i*16)+0], readBuffer[(i*16)+1], readBuffer[(i*16)+2], readBuffer[(i*16)+3], readBuffer[(i*16)+4], readBuffer[(i*16)+5], readBuffer[(i*16)+6], readBuffer[(i*16)+7],
 			readBuffer[(i*16)+8], readBuffer[(i*16)+9], readBuffer[(i*16)+10], readBuffer[(i*16)+11], readBuffer[(i*16)+12], readBuffer[(i*16)+13], readBuffer[(i*16)+14], readBuffer[(i*16)+15] );
 	}
+	*/
 
 	// ------------------------------------------------------------------------
-	// END tests
+	// Rob RDMA / RS232 link test
 
+	/*
+	int n=0;
+	u32 uartBaseAddr = XPAR_RS232_UART_2_BASEADDR;
+
+	xil_printf("Test: Running RDMA readback test (using UART 0x%x @ %d)\r\n", uartBaseAddr, XPAR_RS232_UART_2_BAUDRATE);
+
+	// Build test packets
+	// Format is:  Command (1 byte)  |  Address (4 bytes LSB first)  |  Value (4 bytes LSB first)
+	u8 rdmaReadCommand[] =		{
+									RDMA_CMD_READ,
+									0x1, 0x0, 0x0, 0x0
+								};
+
+	u8 rdmaWriteCommand[] =		{
+									RDMA_CMD_WRITE,
+									0x1, 0x0, 0x0, 0x0,
+									0xDE, 0xAD, 0xBE, 0xEF
+								};
+
+
+	u8 rdmaReadbackCommand[] =	{
+									RDMA_CMD_READ,
+									0x4, 0x0, 0x0, 0x0
+								};
+
+	u8 rdmaInboundPacket[4];
+
+	// No point tracking number of bytes sent with xuartlite_l as it doesn't tell us...
+
+	// Read register
+	for (n=0; n<sizeof(rdmaReadCommand); n++)
+	{
+		// Send read
+		xil_printf("Test: Sending byte %d...\r\n", n);
+		XUartLite_SendByte(uartBaseAddr, rdmaReadCommand[n]);
+	}
+	for (n=0; n<4; n++)
+	{
+		// Get response
+		xil_printf("Test: Reading byte %d...\r\n", n);
+		rdmaInboundPacket[n] = XUartLite_RecvByte(uartBaseAddr);
+	}
+	xil_printf("Test: Read RDMA register: 0x%x, 0x%x, 0x%x, 0x%x\r\n", rdmaInboundPacket[0], rdmaInboundPacket[1], rdmaInboundPacket[2], rdmaInboundPacket[3]);
+
+	// -=-
+
+	// Write register
+	for (n=0; n<sizeof(rdmaWriteCommand); n++)
+	{
+		XUartLite_SendByte(uartBaseAddr, rdmaWriteCommand[n]);
+	}
+	xil_printf("Test: Wrote RDMA register.\r\n");
+
+	// -=-
+
+	// Readback register 0x0
+	for (n=0; n<sizeof(rdmaReadbackCommand); n++)
+	{
+		// Send read
+		XUartLite_SendByte(uartBaseAddr, rdmaReadbackCommand[n]);
+	}
+	xil_printf("Test: Wrote RDMA register.\r\n");
+	for (n=0; n<4; n++)
+	{
+		// Get response
+		rdmaInboundPacket[n] = XUartLite_RecvByte(uartBaseAddr);
+	}
+	xil_printf("Test: Readback RDMA register: 0x%x, 0x%x, 0x%x, 0x%x\r\n", rdmaInboundPacket[0], rdmaInboundPacket[1], rdmaInboundPacket[2], rdmaInboundPacket[3]);
+	*/
+
+	// New RS232_RDMA test
+	xil_printf("Test: Running RDMA test v2...\r\n");
+	u32 addr;
+	u32 regVal = 0;
+
+	// Read read-only register
+	addr = 4;
+	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
+	xil_printf("Test: RO:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
+
+	// Read read-write register
+	addr = 1;
+	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
+	xil_printf("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
+
+	// Write read-write register
+	u32 testValue = 0xDEADBEEF;
+	writeRdma(RDMA_RS232_BASEADDR, addr, testValue);
+	xil_printf("Test: Wrote 0x%x to 0x%x\r\n", addr, testValue);
+
+	// Read read-write register
+	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
+	xil_printf("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
+
+	// Don't let EEPROM tests run!
+	return;
+
+	// ------------------------------------------------------------------------
 	// FEM configuration struct test
 	// TODO: Complete
 	cfg.mac_address[0]       = 0x00;
