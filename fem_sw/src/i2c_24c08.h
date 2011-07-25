@@ -36,4 +36,7 @@
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len);
 int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len);
 
+int readConfigFromEEPROM(unsigned int addr, struct fem_config* pConfig);
+int writeConfigToEEPROM(unsigned int addr, struct fem_config* pConfig);
+
 #endif /* I2C_24C08_H_ */

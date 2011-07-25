@@ -40,17 +40,27 @@
 // Overrides the value in EEPROM if it is higher
 #define CRIT_TEMP_MAX				90
 
+// Header for EEPROM struct, this is verified before
+// the struct data is used for FEM init.
+#define EEPROM_MAGIC_WORD			0xFACE
+
 // Struct for storage of FEM parameters in EEPROM
 struct fem_config
 {
-	// For MAC
-	u8 mac_address[6];
+	// Header (4 bytes)
+	u16 header;
 
-	// For hardware monitoring
+	// Networking (18 bytes)
+	u8 mac_address[6];
+	u8 ip[4];
+	u8 netmask[4];
+	u8 gateway[4];
+
+	// For hardware monitoring (2 bytes)
 	u8 temp_high_setpoint;
 	u8 temp_crit_setpoint;
 
-	// Versioning information
+	// Versioning information (8 bytes)
 	u8 sw_major_version;
 	u8 sw_minor_version;
 	u8 fw_major_version;
@@ -59,6 +69,9 @@ struct fem_config
 	u8 hw_minor_version;
 	u8 board_id;
 	u8 board_type;
+
+	// TOTAL SIZE = 32 bytes
+
 };
 
 #endif /* FEM_H_ */

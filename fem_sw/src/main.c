@@ -10,7 +10,7 @@
  *
  * Developed against Xilinx ML507 development board under EDK 12.1 (windows)
  *
- * Version 1.1 - alpha release not for distribution
+ * Version 1.2 - alpha release not for distribution
  *
  * -
  *
@@ -19,15 +19,15 @@
  * 1.1		06-July-2011
  * 	- First functional implementation of FEM communications protocol
  *  - Bug fixes in network select / command processing
+ * 1.2		25-July-2011
+ *  - RDMA protocol handling implemented
+ *  - EEPROM store / retrieve config implemented
  *
  * -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
  * TODO: Clean network select / command processing logic, make robust
  *
- * TODO: Implement configuration structure, store in EEPROM
  * TODO: Read configuration structure, use to configure board
  * TODO: Configure xintc interrupt controller, enable interrupts (will be needed for LM82)
- *
- * TODO: Implement memory self-test (use xil_testmem.h, use caution this is a destructive test!)
  *
  * TODO: Tune thread stacksize
  * TODO: Profile memory usage
@@ -180,6 +180,25 @@ void* master_thread(void *arg)
     xil_printf("XilMaster: Main thread active, scheduler type is SCHED_RR\r\n");
 #endif
 
+    // Show serial port info
+    if (XPAR_RS232_UART_1_BAUDRATE != XPAR_UARTLITE_0_BAUDRATE)
+    {
+    	xil_printf("XilMaster: UART1 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_1_BAUDRATE, XPAR_UARTLITE_0_BAUDRATE);
+    }
+    else
+    {
+    	xil_printf("XilMaster: UART1 (Debug out) @ %d\r\n", XPAR_RS232_UART_1_BAUDRATE);
+    }
+
+    if (XPAR_RS232_UART_2_BAUDRATE != XPAR_UARTLITE_1_BAUDRATE)
+    {
+    	xil_printf("XilMaster: UART2 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_2_BAUDRATE, XPAR_UARTLITE_1_BAUDRATE);
+    }
+    else
+    {
+    	xil_printf("XilMaster: UART2 (RDMA) @ %d\r\n", XPAR_RS232_UART_2_BAUDRATE);
+    }
+
     // Init LWIP API
     xil_printf("XilMaster: Initialising LWIP \r\n");
     lwip_init();
@@ -209,8 +228,22 @@ void network_manager_thread(void *p)
     struct netif *netif;
     struct ip_addr ipaddr, netmask, gw;
 
+    // Get config struct
+    /*
+    struct fem_config femConfig;
+    if (!readConfigFromEEPROM(0, &femConfig))
+    {
+    	xil_printf("NetMan: Can't get config from EEPROM\r\n");
+    	// TODO: Config failsafes
+    }
+    else
+    {
+    	xil_printf("NetMan: Got config from EEPROM OK!\r\n");
+    	// TODO: Config from struct
+    }
+    */
+
     // MAC address
-    // TODO: Set ethernet MAC address from EEPROM
     unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x01, 0x02 };
 
     netif = &server_netif;
@@ -734,8 +767,8 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 				for (i=0; i<*pRxPayload_32; i++)
 				{
 					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*data_width));
-					*(pTxPayload_32+i) = readRdma(RDMA_RS232_BASEADDR, pRxHeader->address + (i*data_width));
-					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*data_width)));
+					*(pTxPayload_32+i) = readRdma(RDMA_RS232_BASEADDR, pRxHeader->address + i);
+					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + i));
 					response_sz += data_width;
 				}
 				SBIT(status, STATE_ACK);
@@ -746,8 +779,8 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 				for (i=0; i<((pRxHeader->payload_sz)/data_width); i++)
 				{
 					pRxPayload_32 = (u32*)pRxPayload;
-					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + (i*data_width), *(pRxPayload_32+i));
-					writeRdma(RDMA_RS232_BASEADDR, pRxHeader->address + (i*data_width), *(pRxPayload_32+i));
+					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
+					writeRdma(RDMA_RS232_BASEADDR, pRxHeader->address + i, *(pRxPayload_32+i));
 				}
 				SBIT(status, STATE_ACK);
 			}
@@ -780,6 +813,9 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 // PUT ALL TESTING CODE IN THIS METHOD!
 void test_thread()
 {
+
+	xil_printf("TEST: Entered test function!\r\n");
+
 	/*
 	// *** For LM82 tests ***
 	int localTemp = 0;
@@ -789,6 +825,7 @@ void test_thread()
 	*/
 
 	// *** For EEPROM tests ***
+	/*
 	int i;
 	u8 readBuffer[8192];
 	u8 dummyData[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,
@@ -800,12 +837,12 @@ void test_thread()
 	u8 blankData[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 	//u8 blankData[] = {0xA5,0x5A,0xA5,0x5A,0xA5,0x5A,0xA5,0x5A,0xA5,0x5A,0xA5,0x5A,0xA5,0x5A,0xA5,0x5A};
 	//u8 blankData[] = {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F};
-
-	// *** For FEM config struct tests ***
-	struct fem_config cfg;
+*/
 
 	// Initalise LM82 device with setpoints we can easily trigger
+	xil_printf("TEST: Configuring LM82 device... ");
 	initLM82(29,32);		// (warn temp, crit temp)
+	xil_printf("OK!\r\n");
 
 	// ------------------------------------------------------------------------
 	// LM82 tester
@@ -854,6 +891,7 @@ void test_thread()
 	// ------------------------------------------------------------------------
 	// Rob RDMA / RS232 link test
 
+	/*
 	xil_printf("Test: Running RDMA test ...\r\n");
 	u32 addr;
 	u32 regVal = 0;
@@ -879,18 +917,47 @@ void test_thread()
 
 	// Don't let EEPROM tests run!
 	return;
+	*/
 
 	// ------------------------------------------------------------------------
 	// FEM configuration struct test
-	// TODO: Complete
+	xil_printf("TEST: Running EEPROM struct test...\r\n");
+	struct fem_config cfg;		// Used to write to EEPROM
+	struct fem_config test;		// Read back from EEPROM
+
+	// Define a valid struct --------------------------------------------------
+	// Header
+	cfg.header				 = EEPROM_MAGIC_WORD;
+
+	// Networking
 	cfg.mac_address[0]       = 0x00;
 	cfg.mac_address[1]       = 0x0A;
 	cfg.mac_address[2]       = 0x35;
 	cfg.mac_address[3]       = 0x00;
 	cfg.mac_address[4]       = 0x01;
 	cfg.mac_address[5]       = 0x02;
+
+	cfg.ip[0]				 = 192;
+	cfg.ip[1]				 = 168;
+	cfg.ip[2]				 = 1;
+	cfg.ip[3]				 = 10;
+
+	cfg.netmask[0]			 = 255;
+	cfg.netmask[1]			 = 255;
+	cfg.netmask[2]			 = 255;
+	cfg.netmask[3]			 = 0;
+
+	cfg.gateway[0]			 = 192;
+	cfg.gateway[1]			 = 168;
+	cfg.gateway[2]			 = 1;
+	cfg.gateway[3]			 = 1;
+
+
+	// Monitoring
 	cfg.temp_high_setpoint   = 29;
 	cfg.temp_crit_setpoint   = 32;
+
+	// Versioning
 	cfg.sw_major_version     = 1;
 	cfg.sw_minor_version     = 0;
 	cfg.fw_major_version     = 1;
@@ -899,6 +966,57 @@ void test_thread()
 	cfg.hw_minor_version     = 0;
 	cfg.board_id             = 0xA5;
 	cfg.board_type           = 0xCE;
+	// ------------------------------------------------------------------------
+
+	// Write to EEPROM
+	xil_printf("TEST: Writing EEPROM struct...\r\n");
+	writeToEEPROM(0, (u8*)&cfg, sizeof(struct fem_config));
+
+	// Read back
+	xil_printf("TEST: Reading EEPROM struct...\r\n");
+	readFromEEPROM(0, (u8*) &test, sizeof(struct fem_config));
+
+	// Test values
+	// NOTE: THIS DOES NOT TEST ALL PARAMS!
+	int numErrors = 0;
+	if (test.mac_address[0] != cfg.mac_address[0]) { xil_printf("EEPROM: mac_address[0] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[0], test.mac_address[0]); numErrors++; }
+	if (test.mac_address[1] != cfg.mac_address[1]) { xil_printf("EEPROM: mac_address[1] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[1], test.mac_address[1]); numErrors++; }
+	if (test.mac_address[2] != cfg.mac_address[2]) { xil_printf("EEPROM: mac_address[2] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[2], test.mac_address[2]); numErrors++; }
+	if (test.mac_address[3] != cfg.mac_address[3]) { xil_printf("EEPROM: mac_address[3] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[3], test.mac_address[3]); numErrors++; }
+	if (test.mac_address[4] != cfg.mac_address[4]) { xil_printf("EEPROM: mac_address[4] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[4], test.mac_address[4]); numErrors++; }
+	if (test.mac_address[5] != cfg.mac_address[5]) { xil_printf("EEPROM: mac_address[5] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[5], test.mac_address[5]); numErrors++; }
+	if (test.temp_high_setpoint != cfg.temp_high_setpoint) { xil_printf("EEPROM: temp_high_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_high_setpoint, test.temp_high_setpoint); numErrors++; }
+	if (test.temp_crit_setpoint != cfg.temp_crit_setpoint) { xil_printf("EEPROM: temp_crit_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_crit_setpoint, test.temp_crit_setpoint); numErrors++; }
+	if (test.sw_major_version != cfg.sw_major_version) { xil_printf("EEPROM: sw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.sw_major_version, test.sw_major_version); numErrors++; }
+	if (test.sw_minor_version != cfg.sw_minor_version) { xil_printf("EEPROM: sw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.sw_minor_version, test.sw_minor_version); numErrors++; }
+	if (test.fw_major_version != cfg.fw_major_version) { xil_printf("EEPROM: fw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.fw_major_version, test.fw_major_version); numErrors++; }
+	if (test.fw_minor_version != cfg.fw_minor_version) { xil_printf("EEPROM: fw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.fw_minor_version, test.fw_minor_version); numErrors++; }
+	if (test.hw_major_version != cfg.hw_major_version) { xil_printf("EEPROM: hw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.hw_major_version, test.hw_major_version); numErrors++; }
+	if (test.hw_minor_version != cfg.hw_minor_version) { xil_printf("EEPROM: hw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.hw_minor_version, test.hw_minor_version); numErrors++; }
+	if (test.board_id != cfg.board_id) { xil_printf("EEPROM: board_id differs! (Should be 0x%x, got 0x%x)\r\n", cfg.board_id, test.board_id); numErrors++; }
+	if (test.board_type != cfg.board_type) { xil_printf("EEPROM: board_id differs! (Should be 0x%x, got 0x%x)\r\n", cfg.board_type, test.board_type); numErrors++; }
+	if (numErrors >0 )
+	{
+		xil_printf("TEST: EEPROM struct readback encountered %d error(s)\r\n", numErrors);
+	}
+	else
+	{
+		xil_printf("TEST: EEPROM struct readback test OK!\r\n");
+	}
+
+	// Do readback to check data
+	u8 readBuffer[sizeof(struct fem_config)];
+	int i;
+	readFromEEPROM(0, readBuffer, sizeof(struct fem_config));
+	xil_printf("----------------------\r\n");
+	for (i=0; i<16; i++)
+	{
+		// sooo ugly :(
+		if (i==0) { xil_printf("00"); }
+		xil_printf("%x: %x %x %x %x %x %x %x %x   %x %x %x %x %x %x %x %x \r\n",
+			(i*16)*16, readBuffer[(i*16)+0], readBuffer[(i*16)+1], readBuffer[(i*16)+2], readBuffer[(i*16)+3], readBuffer[(i*16)+4], readBuffer[(i*16)+5], readBuffer[(i*16)+6], readBuffer[(i*16)+7],
+			readBuffer[(i*16)+8], readBuffer[(i*16)+9], readBuffer[(i*16)+10], readBuffer[(i*16)+11], readBuffer[(i*16)+12], readBuffer[(i*16)+13], readBuffer[(i*16)+14], readBuffer[(i*16)+15] );
+	}
 
 	xil_printf("Test: Thread exiting.\r\n");
 }

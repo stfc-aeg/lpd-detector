@@ -78,3 +78,40 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		return writeI2C(IIC_ADDRESS_EEPROM, buffer, len + 1);
 	}
 }
+
+// Reads fem config struct from EEPROM starting at addr
+// Returns 0 on success, -1 on error
+int readConfigFromEEPROM(unsigned int addr, struct fem_config* pConfig)
+{
+	int retVal = 0;
+	retVal = readFromEEPROM(addr, (u8*)pConfig, sizeof(struct fem_config));
+	if ( (retVal == sizeof(struct fem_config)) && (pConfig->header == EEPROM_MAGIC_WORD) )
+	{
+		// OK
+		return 0;
+	}
+	else
+	{
+		// Error
+		return -1;
+	}
+}
+
+
+// Writes config struct to EEPROM starting at addr
+// Returns 0 on success, -1 on error
+int writeConfigToEEPROM(unsigned int addr, struct fem_config* pConfig)
+{
+	int retVal = 0;
+	retVal = writeToEEPROM(0, (u8*)pConfig, sizeof(struct fem_config));
+	if ( (retVal == sizeof(struct fem_config)) && (pConfig->header == EEPROM_MAGIC_WORD) )
+	{
+		// OK
+		return 0;
+	}
+	else
+	{
+		// Error
+		return -1;
+	}
+}
