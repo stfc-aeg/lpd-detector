@@ -227,7 +227,7 @@ void network_manager_thread(void *p)
 
 	//struct netif server_netif;	// LWIP doesn't work if this is declared here, only in body of main!  Guess scope needs to be wider...
     struct netif *netif;
-    struct ip_addr ipaddr, netmask, gw;
+    struct ip_addr ipaddr, netmask, gateway;
 
     // Get config struct
     struct fem_config femConfig;
@@ -243,25 +243,25 @@ void network_manager_thread(void *p)
     }
 
     // MAC address
-    unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x01, 0x02 };
+    //unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x01, 0x02 };
 
     netif = &server_netif;
 
     xil_printf("NetMan: Starting up...\r\n");
 
-    // IP addresses
-    IP4_ADDR(&ipaddr,  192, 168,   1, 10);
-    IP4_ADDR(&netmask, 255, 255, 255,  0);
-    IP4_ADDR(&gw,      192, 168,   1,  1);
+    // Setup network
+    IP4_ADDR(&ipaddr,  femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
+    IP4_ADDR(&netmask, femConfig.net_nm[0], femConfig.net_nm[1], femConfig.net_nm[2], femConfig.net_nm[3]);
+    IP4_ADDR(&gateway, femConfig.net_gw[0], femConfig.net_gw[1], femConfig.net_gw[2], femConfig.net_gw[3]);
     xil_printf("NetMan: Activating network interface:\r\n");
-    print_ip_settings(&ipaddr, &netmask, &gw);
-    xil_printf("NetMan: MAC is %02x:%02x:%02x:%02x:%02x\r\n", mac_ethernet_address[0], mac_ethernet_address[1], mac_ethernet_address[2], mac_ethernet_address[3], mac_ethernet_address[4]);
+    print_ip_settings(&ipaddr, &netmask, &gateway);
 
     // Add network interface to the netif_list, and set it as default
     // NOTE: This can (and WILL) hang forever if the base address for the MAC is incorrect, or not assigned by EDK... (e.g. 0xFFFF0000 etc is invalid).
     // Use 'Generate Addresses' if this is the case...
-    xil_printf("NetMan: Base address = %x\r\n", BADDR_MAC);
-    if (!xemac_add(netif, &ipaddr, &netmask, &gw, mac_ethernet_address, BADDR_MAC)) {
+    xil_printf("NetMan: MAC is %02x:%02x:%02x:%02x:%02x:%02x\r\n", femConfig.net_mac[0], femConfig.net_mac[1], femConfig.net_mac[2], femConfig.net_mac[3], femConfig.net_mac[4], femConfig.net_mac[5]);
+    //xil_printf("NetMan: Base address = %x\r\n", BADDR_MAC);
+    if (!xemac_add(netif, &ipaddr, &netmask, &gateway, (unsigned char*)femConfig.net_mac, BADDR_MAC)) {
         xil_printf("NetMan: Error adding N/W interface to netif, aborting...\r\n");
         return;
     }
@@ -923,48 +923,8 @@ void test_thread()
 	struct fem_config cfg;		// Used to write to EEPROM
 	struct fem_config test;		// Read back from EEPROM
 
-	// Define a valid struct --------------------------------------------------
-	// Header
-	cfg.header				 = EEPROM_MAGIC_WORD;
-
-	// Networking
-	cfg.mac_address[0]       = 0x00;
-	cfg.mac_address[1]       = 0x0A;
-	cfg.mac_address[2]       = 0x35;
-	cfg.mac_address[3]       = 0x00;
-	cfg.mac_address[4]       = 0x01;
-	cfg.mac_address[5]       = 0x02;
-
-	cfg.ip[0]				 = 192;
-	cfg.ip[1]				 = 168;
-	cfg.ip[2]				 = 1;
-	cfg.ip[3]				 = 10;
-
-	cfg.netmask[0]			 = 255;
-	cfg.netmask[1]			 = 255;
-	cfg.netmask[2]			 = 255;
-	cfg.netmask[3]			 = 0;
-
-	cfg.gateway[0]			 = 192;
-	cfg.gateway[1]			 = 168;
-	cfg.gateway[2]			 = 1;
-	cfg.gateway[3]			 = 1;
-
-
-	// Monitoring
-	cfg.temp_high_setpoint   = 29;
-	cfg.temp_crit_setpoint   = 32;
-
-	// Versioning
-	cfg.sw_major_version     = 1;
-	cfg.sw_minor_version     = 0;
-	cfg.fw_major_version     = 1;
-	cfg.fw_minor_version     = 0;
-	cfg.hw_major_version     = 1;
-	cfg.hw_minor_version     = 0;
-	cfg.board_id             = 0xA5;
-	cfg.board_type           = 0xCE;
-	// ------------------------------------------------------------------------
+	// Make a dummy struct
+	create_default_config(&cfg);
 
 	// Write to EEPROM
 	xil_printf("TEST: Writing EEPROM struct...\r\n");
@@ -977,12 +937,12 @@ void test_thread()
 	// Test values
 	// NOTE: THIS DOES NOT TEST ALL PARAMS!
 	int numErrors = 0;
-	if (test.mac_address[0] != cfg.mac_address[0]) { xil_printf("EEPROM: mac_address[0] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[0], test.mac_address[0]); numErrors++; }
-	if (test.mac_address[1] != cfg.mac_address[1]) { xil_printf("EEPROM: mac_address[1] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[1], test.mac_address[1]); numErrors++; }
-	if (test.mac_address[2] != cfg.mac_address[2]) { xil_printf("EEPROM: mac_address[2] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[2], test.mac_address[2]); numErrors++; }
-	if (test.mac_address[3] != cfg.mac_address[3]) { xil_printf("EEPROM: mac_address[3] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[3], test.mac_address[3]); numErrors++; }
-	if (test.mac_address[4] != cfg.mac_address[4]) { xil_printf("EEPROM: mac_address[4] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[4], test.mac_address[4]); numErrors++; }
-	if (test.mac_address[5] != cfg.mac_address[5]) { xil_printf("EEPROM: mac_address[5] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.mac_address[5], test.mac_address[5]); numErrors++; }
+	if (test.net_mac[0] != cfg.net_mac[0]) { xil_printf("EEPROM: mac_address[0] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[0], test.net_mac[0]); numErrors++; }
+	if (test.net_mac[1] != cfg.net_mac[1]) { xil_printf("EEPROM: mac_address[1] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[1], test.net_mac[1]); numErrors++; }
+	if (test.net_mac[2] != cfg.net_mac[2]) { xil_printf("EEPROM: mac_address[2] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[2], test.net_mac[2]); numErrors++; }
+	if (test.net_mac[3] != cfg.net_mac[3]) { xil_printf("EEPROM: mac_address[3] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[3], test.net_mac[3]); numErrors++; }
+	if (test.net_mac[4] != cfg.net_mac[4]) { xil_printf("EEPROM: mac_address[4] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[4], test.net_mac[4]); numErrors++; }
+	if (test.net_mac[5] != cfg.net_mac[5]) { xil_printf("EEPROM: mac_address[5] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[5], test.net_mac[5]); numErrors++; }
 	if (test.temp_high_setpoint != cfg.temp_high_setpoint) { xil_printf("EEPROM: temp_high_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_high_setpoint, test.temp_high_setpoint); numErrors++; }
 	if (test.temp_crit_setpoint != cfg.temp_crit_setpoint) { xil_printf("EEPROM: temp_crit_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_crit_setpoint, test.temp_crit_setpoint); numErrors++; }
 	if (test.sw_major_version != cfg.sw_major_version) { xil_printf("EEPROM: sw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.sw_major_version, test.sw_major_version); numErrors++; }
@@ -1061,30 +1021,30 @@ void create_default_config(struct fem_config* pConfig)
 	pConfig->header				= EEPROM_MAGIC_WORD;
 
 	// MAC address
-	pConfig->mac_address[0]		= 0x00;
-	pConfig->mac_address[1]		= 0x0A;
-	pConfig->mac_address[2]		= 0x35;
-	pConfig->mac_address[3]		= 0x00;
-	pConfig->mac_address[4]		= 0x01;
-	pConfig->mac_address[5]		= 0x02;
+	pConfig->net_mac[0]		= 0x00;
+	pConfig->net_mac[1]		= 0x0A;
+	pConfig->net_mac[2]		= 0x35;
+	pConfig->net_mac[3]		= 0x00;
+	pConfig->net_mac[4]		= 0x01;
+	pConfig->net_mac[5]		= 0x02;
 
 	// IP address
-	pConfig->ip[0]				= 192;
-	pConfig->ip[1]				= 168;
-	pConfig->ip[2]				= 1;
-	pConfig->ip[3]				= 10;
+	pConfig->net_ip[0]				= 192;
+	pConfig->net_ip[1]				= 168;
+	pConfig->net_ip[2]				= 1;
+	pConfig->net_ip[3]				= 10;
 
 	// Netmask
-	pConfig->netmask[0]			= 255;
-	pConfig->netmask[1]			= 255;
-	pConfig->netmask[2]			= 255;
-	pConfig->netmask[3]			= 0;
+	pConfig->net_nm[0]			= 255;
+	pConfig->net_nm[1]			= 255;
+	pConfig->net_nm[2]			= 255;
+	pConfig->net_nm[3]			= 0;
 
 	// Default gateway
-	pConfig->gateway[0]			= 192;
-	pConfig->gateway[1]			= 168;
-	pConfig->gateway[2]			= 1;
-	pConfig->gateway[3]			= 1;
+	pConfig->net_gw[0]			= 192;
+	pConfig->net_gw[1]			= 168;
+	pConfig->net_gw[2]			= 1;
+	pConfig->net_gw[3]			= 1;
 
 	// LM82 setpoints
 	pConfig->temp_high_setpoint	= 40;

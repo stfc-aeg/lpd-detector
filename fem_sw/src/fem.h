@@ -51,10 +51,10 @@ struct fem_config
 	u16 header;
 
 	// Networking (18 bytes)
-	u8 mac_address[6];
-	u8 ip[4];
-	u8 netmask[4];
-	u8 gateway[4];
+	u8 net_mac[6];
+	u8 net_ip[4];
+	u8 net_nm[4];
+	u8 net_gw[4];
 
 	// For hardware monitoring (2 bytes)
 	u8 temp_high_setpoint;
