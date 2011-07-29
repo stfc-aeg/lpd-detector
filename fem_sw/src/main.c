@@ -31,12 +31,12 @@
  *  - EEPROM store / retrieve config implemented
  * 1.3		??-Aug-2011
  *  - Refactoring / tidying
+ *  - Replaced all xil_printf for DBGOUT macro
  *
  * ----------------------------------------------------------------------------
  *
  * TO DO LIST:
  *
- * TODO: Move all xil_printf calls to DBGOUT macro
  * TODO: Complete refactoring for AED coding standards adherance
  *
  * TODO: Track down I2C timing issue! (disable DBGOUT?)
@@ -59,7 +59,6 @@
  * TODO: Check for memory leaks
  * TODO: Determine why LWIP hangs on init using priority based scheduler
  *
- * TODO: Reformat code, remove debugging (xil_printf) calls (use DBGOUT macro instead)
  * TODO: Doxygen comment all functions
  *
  * TODO: Remove GPIO handles when porting to FEM hardware
@@ -113,8 +112,9 @@
 // iperf
 #include "iperf.h"
 
-// GPIO include
+// EDK hardware includes
 #include "xgpio.h"				// TODO: Remove for FEM implementation
+#include "xintc.h"
 
 // Timer (for profiling)
 #include "xtmrctr.h"
@@ -144,7 +144,7 @@ void* masterThread(void *);			// Main thread launched by xilkernel
 void networkManagerThread(void *);	// Sets up LWIP, spawned by master thread
 void commandProcessorThread();		// Waits for FEM comms packets, spawned by network manager thread
 void commandDispatcher(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
-void testThread();						// Any testing routines go here
+void testThread();					// Any testing routines go here
 
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs);
 void createFailsafeConfig(struct fem_config* pConfig);
@@ -161,7 +161,9 @@ struct netif server_netif;
 
 // Define our GPIOs on the ML507 dev board (remove for FEM implementation)
 // TODO: Remove this for FEM implemtation
-XGpio GpioLed8, GpioLed5, GpioDip, GpioSwitches;
+XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
+
+XIntc intc;
 
 // TODO: Move to ifdef?
 XTmrCtr timer;
@@ -191,13 +193,17 @@ int main()
     return 0;
 }
 
+
+
 // Prints IP address - From XAPP1026
 // TODO: Remove
 void print_ip(char *msg, struct ip_addr *ip)
 {
     print(msg);
-    xil_printf("%d.%d.%d.%d\n\r", ip4_addr1(ip), ip4_addr2(ip), ip4_addr3(ip), ip4_addr4(ip));
+    DBGOUT("%d.%d.%d.%d\n\r", ip4_addr1(ip), ip4_addr2(ip), ip4_addr3(ip), ip4_addr4(ip));
 }
+
+
 
 // Prints network settings - From XAPP1026
 // TODO: Remove
@@ -208,38 +214,41 @@ void print_ip_settings(struct ip_addr *ip, struct ip_addr *mask, struct ip_addr 
     print_ip("    Gateway : ", gw);
 }
 
+
+
 // Master thread
 void* masterThread(void *arg)
 {
 
 	sys_thread_t t;
 
-	xil_printf("\r\n\r\n----------------------------------------------------------------------\r\n");
+	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
 
 	// TODO: Why doesn't LWIP initialise if we use SCHED_PRIO?  Is it because we haven't set a thread priority yet?
 
 #if SCHED_TYPE == SCHED_PRIO
     struct sched_param spar;
-    xil_printf("XilMaster: Main thread active, scheduler type is SCHED_PRIO\r\n");
+    DBGOUT("XilMaster: Main thread active, scheduler type is SCHED_PRIO\r\n");
 #else
-    xil_printf("XilMaster: Main thread active, scheduler type is SCHED_RR\r\n");
+    DBGOUT("XilMaster: Main thread active, scheduler type is SCHED_RR\r\n");
 #endif
 
     // Init LWIP API
-    xil_printf("XilMaster: Initialising LWIP \r\n");
+    DBGOUT("XilMaster: Initialising LWIP \r\n");
     lwip_init();
 
     // Spawn LWIP manager thread
-    xil_printf("XilMaster: Spawning network manager thread\r\n");
+    DBGOUT("XilMaster: Spawning network manager thread\r\n");
     t = sys_thread_new("netman", networkManagerThread, NULL, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
     if (t==NULL) {
-    	xil_printf("XilMaster: sys_thread_new failed!\r\n");
+    	DBGOUT("XilMaster: sys_thread_new failed!\r\n");
     	return (void*)-1;
     }
 
     // Nothing to do...
     return (void*)0;
 }
+
 
 
 // Network manager thread
@@ -262,32 +271,32 @@ void networkManagerThread(void *p)
     struct fem_config femConfig;
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
-    	xil_printf("NetMan: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
+    	DBGOUT("NetMan: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
     	createFailsafeConfig(&femConfig);
     }
     else
     {
-    	xil_printf("NetMan: Got configuration from EEPROM OK!\r\n");
+    	DBGOUT("NetMan: Got configuration from EEPROM OK!\r\n");
     }
 
     // Show LM82 setpoints
-    xil_printf("NetMan: LM82 high temp @ %dc\r\n", femConfig.temp_high_setpoint);
-    xil_printf("NetMan: LM82 crit temp @ %dc\r\n", femConfig.temp_crit_setpoint);
+    DBGOUT("NetMan: LM82 high temp @ %dc\r\n", femConfig.temp_high_setpoint);
+    DBGOUT("NetMan: LM82 crit temp @ %dc\r\n", femConfig.temp_crit_setpoint);
     // ----------------------------------------------------------------------------------------------------------------
 
     // Setup network
     IP4_ADDR(&ipaddr,  femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
     IP4_ADDR(&netmask, femConfig.net_nm[0], femConfig.net_nm[1], femConfig.net_nm[2], femConfig.net_nm[3]);
     IP4_ADDR(&gateway, femConfig.net_gw[0], femConfig.net_gw[1], femConfig.net_gw[2], femConfig.net_gw[3]);
-    xil_printf("NetMan: Activating network interface...\r\n");
+    DBGOUT("NetMan: Activating network interface...\r\n");
     print_ip_settings(&ipaddr, &netmask, &gateway);
 
     // Add network interface to the netif_list, and set it as default
     // NOTE: This can (and WILL) hang forever if the base address for the MAC is incorrect, or not assigned by EDK...
     // (e.g. 0xFFFF0000 etc is invalid).  Use 'Generate Addresses' if this is the case...
-    xil_printf("NetMan: MAC is %02x:%02x:%02x:%02x:%02x:%02x\r\n", femConfig.net_mac[0], femConfig.net_mac[1], femConfig.net_mac[2], femConfig.net_mac[3], femConfig.net_mac[4], femConfig.net_mac[5]);
+    DBGOUT("NetMan: MAC is %02x:%02x:%02x:%02x:%02x:%02x\r\n", femConfig.net_mac[0], femConfig.net_mac[1], femConfig.net_mac[2], femConfig.net_mac[3], femConfig.net_mac[4], femConfig.net_mac[5]);
     if (!xemac_add(netif, &ipaddr, &netmask, &gateway, (unsigned char*)femConfig.net_mac, BADDR_MAC)) {
-        xil_printf("NetMan: Error adding N/W interface to netif, aborting...\r\n");
+    	DBGOUT("NetMan: Error adding N/W interface to netif, aborting...\r\n");
         return;
     }
     netif_set_default(netif);
@@ -299,7 +308,7 @@ void networkManagerThread(void *p)
     t = sys_thread_new("xemacif_input_thread", (void(*)(void*))xemacif_input_thread, netif, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
     if (t==NULL)
     {
-    	xil_printf("NetMan: Can't spawn xemacif thread, aborting...\r\n");
+    	DBGOUT("NetMan: Can't spawn xemacif thread, aborting...\r\n");
     	return;
     }
 
@@ -318,10 +327,10 @@ void networkManagerThread(void *p)
 
     if (t==NULL)
     {
-    	xil_printf("NetMan: Can't spawn thread, aborting...\r\n");
+    	DBGOUT("NetMan: Can't spawn thread, aborting...\r\n");
     }
 
-    //xil_printf("NetMan: Thread exiting\r\n");
+    //DBGOUT("NetMan: Thread exiting\r\n");
 }
 
 
@@ -356,12 +365,12 @@ void commandProcessorThread()
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 
-	xil_printf("CmdProc: Thread starting...\r\n");
+	DBGOUT("CmdProc: Thread starting...\r\n");
 
 	// Open server socket, stream mode
 	if ((listenerSocket = lwip_socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
-		xil_printf("CmdProc: Can't open socket, aborting...\r\n");
+		DBGOUT("CmdProc: Can't open socket, aborting...\r\n");
 		return;
 	}
 
@@ -377,14 +386,14 @@ void commandProcessorThread()
 	// Bind to address
 	if (lwip_bind(listenerSocket, (struct sockaddr *)&serverAddress, sizeof (serverAddress)) < 0)
 	{
-		xil_printf("CmdProc: Can't bind to socket %d, aborting...\r\n", CMD_PORT);
+		DBGOUT("CmdProc: Can't bind to socket %d, aborting...\r\n", CMD_PORT);
 		return;
 	}
 
 	// Begin listening, register listener as FD of interest to read
 	if (lwip_listen(listenerSocket, 5) < 0)
 	{
-		xil_printf("CmdProc: Can't listen on socket %d, aborting...\r\n", CMD_PORT);
+		DBGOUT("CmdProc: Can't listen on socket %d, aborting...\r\n", CMD_PORT);
 		return;
 	}
 	FD_SET(listenerSocket, &masterSet);
@@ -575,7 +584,7 @@ void commandProcessorThread()
 	// *********************** END MAIN SERVER LOOP *****************************
 
 	// Code below here will never run...  but just in case output debug message
-	xil_printf("CmdProc: Exiting thread! [SHOULD NEVER EXECUTE!]\r\n");
+	DBGOUT("CmdProc: Exiting thread! [SHOULD NEVER EXECUTE!]\r\n");
 
 }
 
@@ -815,7 +824,7 @@ void commandDispatcher(struct protocol_header* pRxHeader,
 
 			// TODO: Remove or move to ifdef
 			// Display profiling information
-			//xil_printf("CmdDisp: Operation took %d ticks (first byte send took %d)\r\n", prf.data2, prf.data1);
+			//DBGOUT("CmdDisp: Operation took %d ticks (first byte send took %d)\r\n", prf.data2, prf.data1);
 
 
 			break; // BUS_RAW_REG
@@ -834,12 +843,14 @@ void commandDispatcher(struct protocol_header* pRxHeader,
 
 }
 
+
+
 // This method only being used while testing, will remove soon
 // PUT ALL TESTING CODE IN THIS METHOD!
 void testThread()
 {
 
-	xil_printf("TEST: Entered test function!\r\n");
+	DBGOUT("TEST: Entered test function!\r\n");
 
 	/*
 	// *** For LM82 tests ***
@@ -865,9 +876,9 @@ void testThread()
 */
 
 	// Initalise LM82 device with setpoints we can easily trigger
-	xil_printf("TEST: Configuring LM82 device... ");
+	DBGOUT("TEST: Configuring LM82 device... ");
 	initLM82(29,32);		// (warn temp, crit temp)
-	xil_printf("OK!\r\n");
+	DBGOUT("OK!\r\n");
 
 	// ------------------------------------------------------------------------
 	// LM82 tester
@@ -879,9 +890,9 @@ void testThread()
 		localTemp = readLocalTemp();
 		writeI2C(IIC_ADDRESS_TEMP, &cmd, 1);
 		readI2C(IIC_ADDRESS_TEMP, &stat, 1);
-		xil_printf("Test:  Local LM82 temp: %dc\r\n", localTemp);
-		xil_printf("Test: Remote LM82 temp: %dc\r\n", remoteTemp);
-		xil_printf("Test:  Status register: 0x%x\r\n", stat);
+		DBGOUT("Test:  Local LM82 temp: %dc\r\n", localTemp);
+		DBGOUT("Test: Remote LM82 temp: %dc\r\n", remoteTemp);
+		DBGOUT("Test:  Status register: 0x%x\r\n", stat);
 	}
 	*/
 
@@ -901,13 +912,13 @@ void testThread()
 	writeToEEPROM(7, dummyData, 34);
 
 	// Do readback to check data
-	xil_printf("----------------------\r\n");
+	DBGOUT("----------------------\r\n");
 	readFromEEPROM(0, readBuffer, 8192);
 	for (i=0; i<16; i++)
 	{
 		// sooo ugly :(
-		if (i==0) { xil_printf("00"); }
-		xil_printf("%x: %x %x %x %x %x %x %x %x   %x %x %x %x %x %x %x %x \r\n",
+		if (i==0) { DBGOUT("00"); }
+		DBGOUT("%x: %x %x %x %x %x %x %x %x   %x %x %x %x %x %x %x %x \r\n",
 			(i*16)*16, readBuffer[(i*16)+0], readBuffer[(i*16)+1], readBuffer[(i*16)+2], readBuffer[(i*16)+3], readBuffer[(i*16)+4], readBuffer[(i*16)+5], readBuffer[(i*16)+6], readBuffer[(i*16)+7],
 			readBuffer[(i*16)+8], readBuffer[(i*16)+9], readBuffer[(i*16)+10], readBuffer[(i*16)+11], readBuffer[(i*16)+12], readBuffer[(i*16)+13], readBuffer[(i*16)+14], readBuffer[(i*16)+15] );
 	}
@@ -917,28 +928,28 @@ void testThread()
 	// Rob RDMA / RS232 link test
 
 	/*
-	xil_printf("Test: Running RDMA test ...\r\n");
+	DBGOUT("Test: Running RDMA test ...\r\n");
 	u32 addr;
 	u32 regVal = 0;
 
 	// Read read-only register
 	addr = 4;
 	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
-	xil_printf("Test: RO:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
+	DBGOUT("Test: RO:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
 
 	// Read read-write register
 	addr = 1;
 	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
-	xil_printf("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
+	DBGOUT("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
 
 	// Write read-write register
 	u32 testValue = 0xDEADBEEF;
 	writeRdma(RDMA_RS232_BASEADDR, addr, testValue);
-	xil_printf("Test: Wrote 0x%x to 0x%x\r\n", addr, testValue);
+	DBGOUT("Test: Wrote 0x%x to 0x%x\r\n", addr, testValue);
 
 	// Read read-write register
 	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
-	xil_printf("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
+	DBGOUT("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
 
 	// Don't let EEPROM tests run!
 	return;
@@ -946,7 +957,7 @@ void testThread()
 
 	// ------------------------------------------------------------------------
 	// FEM configuration struct test
-	xil_printf("TEST: Running EEPROM struct test...\r\n");
+	DBGOUT("TEST: Running EEPROM struct test...\r\n");
 	struct fem_config cfg;		// Used to write to EEPROM
 	struct fem_config test;		// Read back from EEPROM
 
@@ -954,57 +965,59 @@ void testThread()
 	createFailsafeConfig(&cfg);
 
 	// Write to EEPROM
-	xil_printf("TEST: Writing EEPROM struct...\r\n");
+	DBGOUT("TEST: Writing EEPROM struct...\r\n");
 	writeToEEPROM(0, (u8*)&cfg, sizeof(struct fem_config));
 
 	// Read back
-	xil_printf("TEST: Reading EEPROM struct...\r\n");
+	DBGOUT("TEST: Reading EEPROM struct...\r\n");
 	readFromEEPROM(0, (u8*) &test, sizeof(struct fem_config));
 
 	// Test values
 	// NOTE: THIS DOES NOT TEST ALL PARAMS!
 	int numErrors = 0;
-	if (test.net_mac[0] != cfg.net_mac[0]) { xil_printf("EEPROM: mac_address[0] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[0], test.net_mac[0]); numErrors++; }
-	if (test.net_mac[1] != cfg.net_mac[1]) { xil_printf("EEPROM: mac_address[1] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[1], test.net_mac[1]); numErrors++; }
-	if (test.net_mac[2] != cfg.net_mac[2]) { xil_printf("EEPROM: mac_address[2] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[2], test.net_mac[2]); numErrors++; }
-	if (test.net_mac[3] != cfg.net_mac[3]) { xil_printf("EEPROM: mac_address[3] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[3], test.net_mac[3]); numErrors++; }
-	if (test.net_mac[4] != cfg.net_mac[4]) { xil_printf("EEPROM: mac_address[4] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[4], test.net_mac[4]); numErrors++; }
-	if (test.net_mac[5] != cfg.net_mac[5]) { xil_printf("EEPROM: mac_address[5] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[5], test.net_mac[5]); numErrors++; }
-	if (test.temp_high_setpoint != cfg.temp_high_setpoint) { xil_printf("EEPROM: temp_high_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_high_setpoint, test.temp_high_setpoint); numErrors++; }
-	if (test.temp_crit_setpoint != cfg.temp_crit_setpoint) { xil_printf("EEPROM: temp_crit_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_crit_setpoint, test.temp_crit_setpoint); numErrors++; }
-	if (test.sw_major_version != cfg.sw_major_version) { xil_printf("EEPROM: sw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.sw_major_version, test.sw_major_version); numErrors++; }
-	if (test.sw_minor_version != cfg.sw_minor_version) { xil_printf("EEPROM: sw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.sw_minor_version, test.sw_minor_version); numErrors++; }
-	if (test.fw_major_version != cfg.fw_major_version) { xil_printf("EEPROM: fw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.fw_major_version, test.fw_major_version); numErrors++; }
-	if (test.fw_minor_version != cfg.fw_minor_version) { xil_printf("EEPROM: fw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.fw_minor_version, test.fw_minor_version); numErrors++; }
-	if (test.hw_major_version != cfg.hw_major_version) { xil_printf("EEPROM: hw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.hw_major_version, test.hw_major_version); numErrors++; }
-	if (test.hw_minor_version != cfg.hw_minor_version) { xil_printf("EEPROM: hw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.hw_minor_version, test.hw_minor_version); numErrors++; }
-	if (test.board_id != cfg.board_id) { xil_printf("EEPROM: board_id differs! (Should be 0x%x, got 0x%x)\r\n", cfg.board_id, test.board_id); numErrors++; }
-	if (test.board_type != cfg.board_type) { xil_printf("EEPROM: board_id differs! (Should be 0x%x, got 0x%x)\r\n", cfg.board_type, test.board_type); numErrors++; }
+	if (test.net_mac[0] != cfg.net_mac[0]) { DBGOUT("EEPROM: mac_address[0] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[0], test.net_mac[0]); numErrors++; }
+	if (test.net_mac[1] != cfg.net_mac[1]) { DBGOUT("EEPROM: mac_address[1] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[1], test.net_mac[1]); numErrors++; }
+	if (test.net_mac[2] != cfg.net_mac[2]) { DBGOUT("EEPROM: mac_address[2] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[2], test.net_mac[2]); numErrors++; }
+	if (test.net_mac[3] != cfg.net_mac[3]) { DBGOUT("EEPROM: mac_address[3] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[3], test.net_mac[3]); numErrors++; }
+	if (test.net_mac[4] != cfg.net_mac[4]) { DBGOUT("EEPROM: mac_address[4] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[4], test.net_mac[4]); numErrors++; }
+	if (test.net_mac[5] != cfg.net_mac[5]) { DBGOUT("EEPROM: mac_address[5] differs! (Should be 0x%x, got 0x%x)\r\n", cfg.net_mac[5], test.net_mac[5]); numErrors++; }
+	if (test.temp_high_setpoint != cfg.temp_high_setpoint) { DBGOUT("EEPROM: temp_high_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_high_setpoint, test.temp_high_setpoint); numErrors++; }
+	if (test.temp_crit_setpoint != cfg.temp_crit_setpoint) { DBGOUT("EEPROM: temp_crit_setpoint differs! (Should be 0x%x, got 0x%x)\r\n", cfg.temp_crit_setpoint, test.temp_crit_setpoint); numErrors++; }
+	if (test.sw_major_version != cfg.sw_major_version) { DBGOUT("EEPROM: sw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.sw_major_version, test.sw_major_version); numErrors++; }
+	if (test.sw_minor_version != cfg.sw_minor_version) { DBGOUT("EEPROM: sw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.sw_minor_version, test.sw_minor_version); numErrors++; }
+	if (test.fw_major_version != cfg.fw_major_version) { DBGOUT("EEPROM: fw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.fw_major_version, test.fw_major_version); numErrors++; }
+	if (test.fw_minor_version != cfg.fw_minor_version) { DBGOUT("EEPROM: fw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.fw_minor_version, test.fw_minor_version); numErrors++; }
+	if (test.hw_major_version != cfg.hw_major_version) { DBGOUT("EEPROM: hw_major_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.hw_major_version, test.hw_major_version); numErrors++; }
+	if (test.hw_minor_version != cfg.hw_minor_version) { DBGOUT("EEPROM: hw_minor_version differs! (Should be 0x%x, got 0x%x)\r\n", cfg.hw_minor_version, test.hw_minor_version); numErrors++; }
+	if (test.board_id != cfg.board_id) { DBGOUT("EEPROM: board_id differs! (Should be 0x%x, got 0x%x)\r\n", cfg.board_id, test.board_id); numErrors++; }
+	if (test.board_type != cfg.board_type) { DBGOUT("EEPROM: board_id differs! (Should be 0x%x, got 0x%x)\r\n", cfg.board_type, test.board_type); numErrors++; }
 	if (numErrors >0 )
 	{
-		xil_printf("TEST: EEPROM struct readback encountered %d error(s)\r\n", numErrors);
+		DBGOUT("TEST: EEPROM struct readback encountered %d error(s)\r\n", numErrors);
 	}
 	else
 	{
-		xil_printf("TEST: EEPROM struct readback test OK!\r\n");
+		DBGOUT("TEST: EEPROM struct readback test OK!\r\n");
 	}
 
 	// Do readback to check data
 	u8 readBuffer[sizeof(struct fem_config)];
 	int i;
 	readFromEEPROM(0, readBuffer, sizeof(struct fem_config));
-	xil_printf("----------------------\r\n");
+	DBGOUT("----------------------\r\n");
 	for (i=0; i<16; i++)
 	{
 		// sooo ugly :(
-		if (i==0) { xil_printf("00"); }
-		xil_printf("%x: %x %x %x %x %x %x %x %x   %x %x %x %x %x %x %x %x \r\n",
+		if (i==0) { DBGOUT("00"); }
+		DBGOUT("%x: %x %x %x %x %x %x %x %x   %x %x %x %x %x %x %x %x \r\n",
 			(i*16)*16, readBuffer[(i*16)+0], readBuffer[(i*16)+1], readBuffer[(i*16)+2], readBuffer[(i*16)+3], readBuffer[(i*16)+4], readBuffer[(i*16)+5], readBuffer[(i*16)+6], readBuffer[(i*16)+7],
 			readBuffer[(i*16)+8], readBuffer[(i*16)+9], readBuffer[(i*16)+10], readBuffer[(i*16)+11], readBuffer[(i*16)+12], readBuffer[(i*16)+13], readBuffer[(i*16)+14], readBuffer[(i*16)+15] );
 	}
 
-	xil_printf("Test: Thread exiting.\r\n");
+	DBGOUT("Test: Thread exiting.\r\n");
 }
+
+
 
 // Reads the specified number of bytes from the given socket within the timeout period or returns an error code
 // TODO: Move to FEM support library
@@ -1031,7 +1044,7 @@ int socketRead(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeou
 		if (tempNumLoops++ == tempMaxLoops)
 		{
 			// Break out
-			DBGOUT("better_read: Hit maximum retries, bailing out...\r\n");
+			DBGOUT("socketRead: Hit maximum retries, bailing out...\r\n");
 			return -1;
 		}
 
@@ -1041,8 +1054,10 @@ int socketRead(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeou
 	return totalBytes;
 }
 
+
+
 // Creates failsafe default config object, used in case EEPROM config is not valid or missing
-// TODO: Move to FEM support library
+// TODO: Move to FEM support library?
 void createFailsafeConfig(struct fem_config* pConfig)
 {
 	pConfig->header				= EEPROM_MAGIC_WORD;
@@ -1095,49 +1110,70 @@ void createFailsafeConfig(struct fem_config* pConfig)
 
 }
 
-// Initalises xilinx EDK hardware
+// Initialises xilinx EDK hardware
+// TODO: How should we return if something didn't initialise properly?  Status code + error string?
 void initHardware(void)
 {
 
 	int status;
 
 	// ------------------------------------------------------------------------
-    // Init GPIO devices
+    // Initialise GPIO devices
     // TODO: Remove once code is moved to FEM board
-    if (initGpioDevices(&GpioLed8, &GpioLed5, &GpioDip, &GpioSwitches) == -1)
+    if (initGpioDevices(&gpioLed8, &gpioLed5, &gpioDip, &gpioSwitches) == -1)
     {
-    	xil_printf("Main: Error during gpio init!\r\n");
+    	DBGOUT("initHardware: Failed to initialise GPIOs.\r\n");
     }
     // ------------------------------------------------------------------------
 
+
+
     // ------------------------------------------------------------------------
-    // Init timer
+    // Initialise timer
     // Timer will give results in CPU ticks, so use XPAR_CPU_PPC440_CORE_CLOCK_FREQ_HZ :)
     status = XTmrCtr_Initialize(&timer, XPAR_XPS_TIMER_0_DEVICE_ID);
     if (status != XST_SUCCESS)
     {
-    	xil_printf("Main: Failed to initialise timer!\r\n");
+    	DBGOUT("initHardware: Failed to initialise timer.\r\n");
     }
     // ------------------------------------------------------------------------
+
+
+
+    // ------------------------------------------------------------------------
+    // Initialise and configure interrupt controller
+    status = XIntc_Initialize(&intc, XPAR_XPS_INTC_0_DEVICE_ID);
+    if (status != XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
+    }
+    status = XIntc_Start(&intc, XIN_REAL_MODE);
+    if (status != XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
+    }
+    // ------------------------------------------------------------------------
+
+
 
     // ------------------------------------------------------------------------
     // Show serial port info
     if (XPAR_RS232_UART_1_BAUDRATE != XPAR_UARTLITE_0_BAUDRATE)
     {
-    	xil_printf("XilMaster: UART1 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_1_BAUDRATE, XPAR_UARTLITE_0_BAUDRATE);
+    	DBGOUT("XilMaster: UART1 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_1_BAUDRATE, XPAR_UARTLITE_0_BAUDRATE);
     }
     else
     {
-    	xil_printf("XilMaster: UART1 (Debug) @ %d\r\n", XPAR_RS232_UART_1_BAUDRATE);
+    	DBGOUT("XilMaster: UART1 (Debug) @ %d\r\n", XPAR_RS232_UART_1_BAUDRATE);
     }
 
     if (XPAR_RS232_UART_2_BAUDRATE != XPAR_UARTLITE_1_BAUDRATE)
     {
-    	xil_printf("XilMaster: UART2 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_2_BAUDRATE, XPAR_UARTLITE_1_BAUDRATE);
+    	DBGOUT("XilMaster: UART2 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_2_BAUDRATE, XPAR_UARTLITE_1_BAUDRATE);
     }
     else
     {
-    	xil_printf("XilMaster: UART2 (RDMA)  @ %d\r\n", XPAR_RS232_UART_2_BAUDRATE);
+    	DBGOUT("XilMaster: UART2 (RDMA)  @ %d\r\n", XPAR_RS232_UART_2_BAUDRATE);
     }
     // ------------------------------------------------------------------------
 
