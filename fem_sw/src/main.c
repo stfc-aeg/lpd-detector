@@ -1,18 +1,25 @@
 /**
+ * ----------------------------------------------------------------------------
  * XCAL / LPD FEM prototype embedded platform
  *
  * Matt Thorpe (matt.thorpe@stfc.ac.uk)
  * Application Engineering Department, STFC RAL
  *
+ * ----------------------------------------------------------------------------
+ *
+ * OVERVIEW:
+ *
  * Provides Lightweight IP stack on xilkernel platform, supporting a basic
  * remote register read / write functionality and full support for I2C
  * devices (M24C08 8k EEPROM, LM82 monitoring chip) using a simple socket interface.
  *
- * Developed against Xilinx ML507 development board under EDK 12.1 (windows)
+ * Developed against Xilinx ML507 development board under EDK 13 (Linux)
+ *
+ * ----------------------------------------------------------------------------
  *
  * Version 1.2 - alpha release not for distribution
  *
- * -
+ * ----------------------------------------------------------------------------
  *
  * CHANGELOG:
  *
@@ -22,24 +29,49 @@
  * 1.2		25-July-2011
  *  - RDMA protocol handling implemented
  *  - EEPROM store / retrieve config implemented
+ * 1.3		??-Aug-2011
+ *  - Refactoring / tidying
  *
- * -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+ * ----------------------------------------------------------------------------
+ *
+ * TO DO LIST:
+ *
+ * TODO: Move all xil_printf calls to DBGOUT macro
+ * TODO: Complete refactoring for AED coding standards adherance
+ *
+ * TODO: Track down I2C timing issue! (disable DBGOUT?)
+ * TODO: Test I2C access via protocol
+ *
+ * TODO: Replace uartlite_h with full library, implement read timeouts
+ *
  * TODO: Clean network select / command processing logic, make robust
+ * TODO: Fix pTxPayload fudge in command processing
+ * TODO: Make sure return packets <= MAX_PAYLOAD_SIZE
+ * TODO: Ensure connection handler observes MAX_CONNECTIONS
  *
- * TODO: Read configuration structure, use to configure board
  * TODO: Configure xintc interrupt controller, enable interrupts (will be needed for LM82)
+ * TODO: Move all (xilinx) hardware init to new function
  *
- * TODO: Tune thread stacksize
+ * TODO: Implement / remove iperf server
+ *
  * TODO: Profile memory usage
+ * TODO: Tune thread stacksize
  * TODO: Check for memory leaks
  * TODO: Determine why LWIP hangs on init using priority based scheduler
  *
- * TODO: Reformat code, remove debugging (xil_printf) calls
+ * TODO: Reformat code, remove debugging (xil_printf) calls (use DBGOUT macro instead)
  * TODO: Doxygen comment all functions
+ *
  * TODO: Remove GPIO handles when porting to FEM hardware
  *
- * -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+ * ----------------------------------------------------------------------------
  */
+
+
+
+// ----------------------------------------------------------------------------
+// Includes
+// ----------------------------------------------------------------------------
 
 // Make sure xmk is included first, always!  [XilKernel]
 #include "xmk.h"
@@ -70,16 +102,6 @@
 #include "lwipopts.h"
 #include "netif/xadapter.h"
 
-// GPIO include
-#include "xgpio.h"
-
-// Xilinx memory testing
-// TODO: Get John's PPC running memory check!
-//#include "xil_testmem.h"
-
-// iperf
-#include "iperf.h"
-
 // FEM includes
 #include "protocol.h"
 #include "rdma.h"
@@ -87,6 +109,22 @@
 #include "gpio.h"
 #include "i2c_lm82.h"
 #include "i2c_24c08.h"
+
+// iperf
+#include "iperf.h"
+
+// GPIO include
+#include "xgpio.h"				// TODO: Remove for FEM implementation
+
+// Timer (for profiling)
+#include "xtmrctr.h"
+#include "profile.h"
+
+
+
+// ----------------------------------------------------------------------------
+// Defines
+// ----------------------------------------------------------------------------
 
 // TODO: Tune these
 #define THREAD_STACKSIZE 		4096
@@ -96,48 +134,54 @@
 
 #define RDMA_RS232_BASEADDR		XPAR_RS232_UART_2_BASEADDR
 
-// Function prototypes
-void* master_thread(void *);			// Main thread launched by xilkernel
-void network_manager_thread(void *);	// Sets up LWIP, spawned by master thread
-void command_processor_thread();		// Waits for FEM comms packets, spawned by network manager thread
-void command_dispatcher(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
-void test_thread();						// Any testing routines go here
-int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs);
-void create_default_config(struct fem_config* pConfig);
+
+
+// ----------------------------------------------------------------------------
+// Function Prototypes
+// ----------------------------------------------------------------------------
+
+void* masterThread(void *);			// Main thread launched by xilkernel
+void networkManagerThread(void *);	// Sets up LWIP, spawned by master thread
+void commandProcessorThread();		// Waits for FEM comms packets, spawned by network manager thread
+void commandDispatcher(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
+void testThread();						// Any testing routines go here
+
+int socketRead(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs);
+void createFailsafeConfig(struct fem_config* pConfig);
+void initHardware(void);
+
+
+
+// ----------------------------------------------------------------------------
+// Global Variable Definitions
+// ----------------------------------------------------------------------------
 
 // TODO: Determine what scope this needs and fix it if possible
 struct netif server_netif;
 
 // Define our GPIOs on the ML507 dev board (remove for FEM implementation)
-// TODO: Remove this
+// TODO: Remove this for FEM implemtation
 XGpio GpioLed8, GpioLed5, GpioDip, GpioSwitches;
 
-// RDMA base addresses for EDK peripherals (provide a way to query these from protocol?)
-u64 rdmaLocations[] =	{
-							XPAR_DIP_SWITCHES_8BIT_BASEADDR,
-							XPAR_LEDS_8BIT_BASEADDR,
-							XPAR_LEDS_POSITIONS_BASEADDR,
-							XPAR_PUSH_BUTTONS_5BIT_BASEADDR,
-							//XPAR_HARD_ETHERNET_MAC_CHAN_0_BASEADDR,   // Bad idea!
-							XPAR_IIC_EEPROM_BASEADDR,
-							//XPAR_RS232_UART_1_BASEADDR				// Bad idea!
-						};
+// TODO: Move to ifdef?
+XTmrCtr timer;
+struct profiling_results prf;
 
+
+
+// ----------------------------------------------------------------------------
 // Functions
+// ----------------------------------------------------------------------------
+
 int main()
 {
     init_platform();
 
-    // Init GPIO devices
-    // TODO: Remove once code is moved to FEM board
-    if (initGpioDevices(&GpioLed8, &GpioLed5, &GpioDip, &GpioSwitches) == -1)
-    {
-    	xil_printf("ERROR during gpio init!\r\n");
-    }
+    initHardware();
 
     xilkernel_init();
 
-    xmk_add_static_thread(master_thread, 0);		// Create the master thread
+    xmk_add_static_thread(masterThread, 0);		// Create the master thread
 
     xilkernel_start();
 
@@ -165,7 +209,7 @@ void print_ip_settings(struct ip_addr *ip, struct ip_addr *mask, struct ip_addr 
 }
 
 // Master thread
-void* master_thread(void *arg)
+void* masterThread(void *arg)
 {
 
 	sys_thread_t t;
@@ -181,32 +225,13 @@ void* master_thread(void *arg)
     xil_printf("XilMaster: Main thread active, scheduler type is SCHED_RR\r\n");
 #endif
 
-    // Show serial port info
-    if (XPAR_RS232_UART_1_BAUDRATE != XPAR_UARTLITE_0_BAUDRATE)
-    {
-    	xil_printf("XilMaster: UART1 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_1_BAUDRATE, XPAR_UARTLITE_0_BAUDRATE);
-    }
-    else
-    {
-    	xil_printf("XilMaster: UART1 (Debug out) @ %d\r\n", XPAR_RS232_UART_1_BAUDRATE);
-    }
-
-    if (XPAR_RS232_UART_2_BAUDRATE != XPAR_UARTLITE_1_BAUDRATE)
-    {
-    	xil_printf("XilMaster: UART2 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_2_BAUDRATE, XPAR_UARTLITE_1_BAUDRATE);
-    }
-    else
-    {
-    	xil_printf("XilMaster: UART2 (RDMA) @ %d\r\n", XPAR_RS232_UART_2_BAUDRATE);
-    }
-
     // Init LWIP API
     xil_printf("XilMaster: Initialising LWIP \r\n");
     lwip_init();
 
     // Spawn LWIP manager thread
     xil_printf("XilMaster: Spawning network manager thread\r\n");
-    t = sys_thread_new("netman", network_manager_thread, NULL, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("netman", networkManagerThread, NULL, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
     if (t==NULL) {
     	xil_printf("XilMaster: sys_thread_new failed!\r\n");
     	return (void*)-1;
@@ -220,7 +245,7 @@ void* master_thread(void *arg)
 // Network manager thread
 //
 // Configures LWIP and spawns thread to receive packets
-void network_manager_thread(void *p)
+void networkManagerThread(void *p)
 {
 
 	sys_thread_t t;
@@ -229,38 +254,38 @@ void network_manager_thread(void *p)
     struct netif *netif;
     struct ip_addr ipaddr, netmask, gateway;
 
+    netif = &server_netif;
+
     // Get config struct
+    // TODO: Move config struct reading to higher level function
+    // ----------------------------------------------------------------------------------------------------------------
     struct fem_config femConfig;
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
     	xil_printf("NetMan: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
-    	create_default_config(&femConfig);
+    	createFailsafeConfig(&femConfig);
     }
     else
     {
     	xil_printf("NetMan: Got configuration from EEPROM OK!\r\n");
-    	// TODO: Config from struct
     }
 
-    // MAC address
-    //unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x01, 0x02 };
-
-    netif = &server_netif;
-
-    xil_printf("NetMan: Starting up...\r\n");
+    // Show LM82 setpoints
+    xil_printf("NetMan: LM82 high temp @ %dc\r\n", femConfig.temp_high_setpoint);
+    xil_printf("NetMan: LM82 crit temp @ %dc\r\n", femConfig.temp_crit_setpoint);
+    // ----------------------------------------------------------------------------------------------------------------
 
     // Setup network
     IP4_ADDR(&ipaddr,  femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
     IP4_ADDR(&netmask, femConfig.net_nm[0], femConfig.net_nm[1], femConfig.net_nm[2], femConfig.net_nm[3]);
     IP4_ADDR(&gateway, femConfig.net_gw[0], femConfig.net_gw[1], femConfig.net_gw[2], femConfig.net_gw[3]);
-    xil_printf("NetMan: Activating network interface:\r\n");
+    xil_printf("NetMan: Activating network interface...\r\n");
     print_ip_settings(&ipaddr, &netmask, &gateway);
 
     // Add network interface to the netif_list, and set it as default
-    // NOTE: This can (and WILL) hang forever if the base address for the MAC is incorrect, or not assigned by EDK... (e.g. 0xFFFF0000 etc is invalid).
-    // Use 'Generate Addresses' if this is the case...
+    // NOTE: This can (and WILL) hang forever if the base address for the MAC is incorrect, or not assigned by EDK...
+    // (e.g. 0xFFFF0000 etc is invalid).  Use 'Generate Addresses' if this is the case...
     xil_printf("NetMan: MAC is %02x:%02x:%02x:%02x:%02x:%02x\r\n", femConfig.net_mac[0], femConfig.net_mac[1], femConfig.net_mac[2], femConfig.net_mac[3], femConfig.net_mac[4], femConfig.net_mac[5]);
-    //xil_printf("NetMan: Base address = %x\r\n", BADDR_MAC);
     if (!xemac_add(netif, &ipaddr, &netmask, &gateway, (unsigned char*)femConfig.net_mac, BADDR_MAC)) {
         xil_printf("NetMan: Error adding N/W interface to netif, aborting...\r\n");
         return;
@@ -279,7 +304,7 @@ void network_manager_thread(void *p)
     }
 
     // Launch application thread
-    t = sys_thread_new("cmd", command_processor_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("cmd", commandProcessorThread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 
@@ -306,7 +331,7 @@ void network_manager_thread(void *p)
 //
 // TODO: Adhere to MAX_CONNECTIONS
 // TODO: Replace return statements, make sure to close any open FDs too
-void command_processor_thread()
+void commandProcessorThread()
 {
 	// Socket stuff
 	int listenerSocket, clientSocket, newFd, addrSize, numFds, numBytesRead, isValid, i;
@@ -421,7 +446,7 @@ void command_processor_thread()
 
 					// Read header if we can
 					//numBytesRead = lwip_read(i, pRxBuffer, sizeof(struct protocol_header));
-					numBytesRead = better_read(i, pRxBuffer, sizeof(struct protocol_header), 0);
+					numBytesRead = socketRead(i, pRxBuffer, sizeof(struct protocol_header), 0);
 
 					if (numBytesRead < sizeof(struct protocol_header))
 					{
@@ -473,7 +498,7 @@ void command_processor_thread()
 							if (pRxHeader->payload_sz>0 && pRxHeader->payload_sz <= MAX_PAYLOAD_SIZE)
 							{
 								//numBytesRead = lwip_read(i, pRxBuffer+sizeof(struct protocol_header), pRxHeader->payload_sz);
-								numBytesRead = better_read(i, pRxBuffer+sizeof(struct protocol_header), pRxHeader->payload_sz, 0);
+								numBytesRead = socketRead(i, pRxBuffer+sizeof(struct protocol_header), pRxHeader->payload_sz, 0);
 								if (numBytesRead < pRxHeader->payload_sz)
 								{
 									// Prevent further processing because payload is smaller than expected
@@ -531,7 +556,7 @@ void command_processor_thread()
 
 						// Kludge new vars into old prototype!
 						// TODO: Update command_dispatcher function prototype
-						command_dispatcher(pRxHeader, pTxHeader, pRxBuffer+sizeof(struct protocol_header), pTxBuffer+sizeof(struct protocol_header));
+						commandDispatcher(pRxHeader, pTxHeader, pRxBuffer+sizeof(struct protocol_header), pTxBuffer+sizeof(struct protocol_header));
 
 						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
 						{
@@ -559,10 +584,7 @@ void command_processor_thread()
 // New protocol command dispatcher
 // Note: it is assumed that the packet is well formed before by it being passed to this function
 // Also command processor thread means that command == CMD_ACCESS, the only currently supported command ;)
-//
-// TODO: Ensure read methods do not exceed MAX_PAYLOAD_SIZE
-// TODO: Remove invalid operation clauses from switch bank
-void command_dispatcher(struct protocol_header* pRxHeader,
+void commandDispatcher(struct protocol_header* pRxHeader,
                         struct protocol_header* pTxHeader,
                         u8* pRxPayload,
                         u8* pTxPayload)
@@ -765,7 +787,7 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 				for (i=0; i<*pRxPayload_32; i++)
 				{
 					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*data_width));
-					*(pTxPayload_32+i) = readRdma(RDMA_RS232_BASEADDR, pRxHeader->address + i);
+					*(pTxPayload_32+i) = readRdma(RDMA_RS232_BASEADDR, pRxHeader->address + i, &timer, &prf);
 					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + i));
 					response_sz += data_width;
 				}
@@ -778,7 +800,7 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 				{
 					pRxPayload_32 = (u32*)pRxPayload;
 					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
-					writeRdma(RDMA_RS232_BASEADDR, pRxHeader->address + i, *(pRxPayload_32+i));
+					writeRdma(RDMA_RS232_BASEADDR, pRxHeader->address + i, *(pRxPayload_32+i), &timer, &prf);
 				}
 				SBIT(status, STATE_ACK);
 			}
@@ -790,6 +812,11 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 				SBIT(status, STATE_NACK);
 				// TODO: Set error bits
 			}
+
+			// TODO: Remove or move to ifdef
+			// Display profiling information
+			//xil_printf("CmdDisp: Operation took %d ticks (first byte send took %d)\r\n", prf.data2, prf.data1);
+
 
 			break; // BUS_RAW_REG
 
@@ -809,7 +836,7 @@ void command_dispatcher(struct protocol_header* pRxHeader,
 
 // This method only being used while testing, will remove soon
 // PUT ALL TESTING CODE IN THIS METHOD!
-void test_thread()
+void testThread()
 {
 
 	xil_printf("TEST: Entered test function!\r\n");
@@ -924,7 +951,7 @@ void test_thread()
 	struct fem_config test;		// Read back from EEPROM
 
 	// Make a dummy struct
-	create_default_config(&cfg);
+	createFailsafeConfig(&cfg);
 
 	// Write to EEPROM
 	xil_printf("TEST: Writing EEPROM struct...\r\n");
@@ -981,7 +1008,7 @@ void test_thread()
 
 // Reads the specified number of bytes from the given socket within the timeout period or returns an error code
 // TODO: Move to FEM support library
-int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs)
+int socketRead(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs)
 {
 	// TODO: Use timeoutMs, remove maxloops
 	int totalBytes = 0;
@@ -1016,23 +1043,23 @@ int better_read(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeo
 
 // Creates failsafe default config object, used in case EEPROM config is not valid or missing
 // TODO: Move to FEM support library
-void create_default_config(struct fem_config* pConfig)
+void createFailsafeConfig(struct fem_config* pConfig)
 {
 	pConfig->header				= EEPROM_MAGIC_WORD;
 
 	// MAC address
-	pConfig->net_mac[0]		= 0x00;
-	pConfig->net_mac[1]		= 0x0A;
-	pConfig->net_mac[2]		= 0x35;
-	pConfig->net_mac[3]		= 0x00;
-	pConfig->net_mac[4]		= 0x01;
-	pConfig->net_mac[5]		= 0x02;
+	pConfig->net_mac[0]			= 0x00;
+	pConfig->net_mac[1]			= 0x0A;
+	pConfig->net_mac[2]			= 0x35;
+	pConfig->net_mac[3]			= 0x00;
+	pConfig->net_mac[4]			= 0xBE;
+	pConfig->net_mac[5]			= 0xEF;
 
 	// IP address
-	pConfig->net_ip[0]				= 192;
-	pConfig->net_ip[1]				= 168;
-	pConfig->net_ip[2]				= 1;
-	pConfig->net_ip[3]				= 10;
+	pConfig->net_ip[0]			= 192;
+	pConfig->net_ip[1]			= 168;
+	pConfig->net_ip[2]			= 1;
+	pConfig->net_ip[3]			= 10;
 
 	// Netmask
 	pConfig->net_nm[0]			= 255;
@@ -1067,3 +1094,52 @@ void create_default_config(struct fem_config* pConfig)
 	pConfig->board_type			= 1;
 
 }
+
+// Initalises xilinx EDK hardware
+void initHardware(void)
+{
+
+	int status;
+
+	// ------------------------------------------------------------------------
+    // Init GPIO devices
+    // TODO: Remove once code is moved to FEM board
+    if (initGpioDevices(&GpioLed8, &GpioLed5, &GpioDip, &GpioSwitches) == -1)
+    {
+    	xil_printf("Main: Error during gpio init!\r\n");
+    }
+    // ------------------------------------------------------------------------
+
+    // ------------------------------------------------------------------------
+    // Init timer
+    // Timer will give results in CPU ticks, so use XPAR_CPU_PPC440_CORE_CLOCK_FREQ_HZ :)
+    status = XTmrCtr_Initialize(&timer, XPAR_XPS_TIMER_0_DEVICE_ID);
+    if (status != XST_SUCCESS)
+    {
+    	xil_printf("Main: Failed to initialise timer!\r\n");
+    }
+    // ------------------------------------------------------------------------
+
+    // ------------------------------------------------------------------------
+    // Show serial port info
+    if (XPAR_RS232_UART_1_BAUDRATE != XPAR_UARTLITE_0_BAUDRATE)
+    {
+    	xil_printf("XilMaster: UART1 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_1_BAUDRATE, XPAR_UARTLITE_0_BAUDRATE);
+    }
+    else
+    {
+    	xil_printf("XilMaster: UART1 (Debug) @ %d\r\n", XPAR_RS232_UART_1_BAUDRATE);
+    }
+
+    if (XPAR_RS232_UART_2_BAUDRATE != XPAR_UARTLITE_1_BAUDRATE)
+    {
+    	xil_printf("XilMaster: UART2 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_2_BAUDRATE, XPAR_UARTLITE_1_BAUDRATE);
+    }
+    else
+    {
+    	xil_printf("XilMaster: UART2 (RDMA)  @ %d\r\n", XPAR_RS232_UART_2_BAUDRATE);
+    }
+    // ------------------------------------------------------------------------
+
+}
+
