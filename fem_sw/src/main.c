@@ -41,27 +41,33 @@
  *
  * TODO: Track down I2C timing issue! (disable DBGOUT?)
  * TODO: Test I2C access via protocol
+ * TODO: Replace EEPROM write delay with polling
+ *
+ * TODO: Support generic EEPROM write access via protocol
  *
  * TODO: Replace uartlite_h with full library, implement read timeouts
  *
  * TODO: Clean network select / command processing logic, make robust
+ * TODO: Test with malformed packets, try to break processing loop
  * TODO: Fix pTxPayload fudge in command processing
  * TODO: Make sure return packets <= MAX_PAYLOAD_SIZE
  * TODO: Ensure connection handler observes MAX_CONNECTIONS
  *
- * TODO: Configure xintc interrupt controller, enable interrupts (will be needed for LM82)
- * TODO: Move all (xilinx) hardware init to new function
+ * TODO: Support for concurrent large payload writes
+ *
+ * TODO: Configure xintc interrupt controller, enable interrupts (will be needed for LM82 ?)
  *
  * TODO: Implement / remove iperf server
  *
  * TODO: Profile memory usage
  * TODO: Tune thread stacksize
+ * TODO: Move code to SRAM (REQUIRES FEM!)
  * TODO: Check for memory leaks
  * TODO: Determine why LWIP hangs on init using priority based scheduler
  *
  * TODO: Doxygen comment all functions
  *
- * TODO: Remove GPIO handles when porting to FEM hardware
+ * TODO: Move ML507 specific hardware (GPIO etc) to define block
  *
  * ----------------------------------------------------------------------------
  */
@@ -115,9 +121,9 @@
 // EDK hardware includes
 #include "xgpio.h"				// TODO: Remove for FEM implementation
 #include "xintc.h"
-
-// Timer (for profiling)
 #include "xtmrctr.h"
+
+// Profiling
 #include "profile.h"
 
 
