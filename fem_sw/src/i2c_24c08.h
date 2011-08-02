@@ -18,7 +18,11 @@
 #include "xparameters.h"
 #include "fem.h"
 #include "i2c.h"
+#ifdef __PPC__
 #include "sleep.h"
+#else
+#include "calib_sleep.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 

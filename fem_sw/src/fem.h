@@ -28,7 +28,7 @@
 #define BADDR_INTC					XPAR_XPS_INTC_0_BASEADDR
 
 // Enable / disable serial debugging output (comment to disable)
-//#define GLOBAL_DEBUG
+#define GLOBAL_DEBUG
 
 #ifdef  GLOBAL_DEBUG
 	#define DBGOUT(...)		xil_printf(__VA_ARGS__)

@@ -126,6 +126,8 @@
 // Profiling
 #include "profile.h"
 
+// Calibrated sleep for MicroBlaze
+#include "calib_sleep.h"
 
 
 // ----------------------------------------------------------------------------
@@ -329,7 +331,7 @@ void networkManagerThread(void *p)
     // - OR -
 
     // Launch testing thread
-    //t = sys_thread_new("test", test_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("test", testThread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     if (t==NULL)
     {
@@ -867,7 +869,7 @@ void testThread()
 	*/
 
 	// *** For EEPROM tests ***
-	/*
+/*
 	int i;
 	u8 readBuffer[8192];
 	u8 dummyData[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,
@@ -882,9 +884,9 @@ void testThread()
 */
 
 	// Initalise LM82 device with setpoints we can easily trigger
-	DBGOUT("TEST: Configuring LM82 device... ");
-	initLM82(29,32);		// (warn temp, crit temp)
-	DBGOUT("OK!\r\n");
+	//DBGOUT("TEST: Configuring LM82 device... ");
+	//initLM82(29,32);		// (warn temp, crit temp)
+	//DBGOUT("OK!\r\n");
 
 	// ------------------------------------------------------------------------
 	// LM82 tester
@@ -906,7 +908,7 @@ void testThread()
 	// EEPROM tester
 
 	/*
-	sleep(2000);
+	usleep(2000);
 
 	// Blank out first 8 pages for testing
 	for (i=0; i<8; i++)
@@ -1144,7 +1146,16 @@ void initHardware(void)
     }
     // ------------------------------------------------------------------------
 
-
+    // ------------------------------------------------------------------------
+    // Calibrate usleep
+    // On PPC usleep is implemented using the CPU time base register but on
+    // MicroBlaze we need to do this ourselves using the timer.
+    status = calibrateSleep(&timer);
+    if (status != XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Failed to calibrate sleep.\r\n");
+    }
+    // ------------------------------------------------------------------------
 
     // ------------------------------------------------------------------------
     // Initialise and configure interrupt controller
@@ -1159,8 +1170,6 @@ void initHardware(void)
     	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
     }
     // ------------------------------------------------------------------------
-
-
 
     // ------------------------------------------------------------------------
     // Show serial port info
