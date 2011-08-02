@@ -667,11 +667,57 @@ void commandDispatcher(struct protocol_header* pRxHeader,
 	switch(pRxHeader->bus_target)
 	{
 
-		// TODO: Remove BUS_GPIO target
 		// --------------------------------------------------------------------
-		case BUS_GPIO:
-			SBIT(status, STATE_NACK);	// Not going to implement.
-			break; // BUS_GPIO
+		case BUS_EEPROM:
+
+			// Verify request parameters are sane
+			if ( (pRxHeader->data_width != WIDTH_BYTE) || (pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
+			{
+				DBGOUT("CmdDisp: Invalid EEPROM request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+				SBIT(status, STATE_NACK);
+				// TODO: set error bits
+				break;
+			}
+
+			data_width = sizeof(u8); // All EEPROM operations are byte level
+
+			if (CMPBIT(status, STATE_READ))
+			{
+
+				i = readFromEEPROM(pRxHeader->address, pTxPayload + 4, *pRxPayload_32);
+				if (i != *pRxPayload_32)
+				{
+					// EEPROM read failed, set NACK
+					SBIT(status, STATE_NACK);
+					// TODO: set error bits?
+				}
+				else
+				{
+					SBIT(status, STATE_ACK);
+					response_sz += i;
+				}
+			}
+			else if (CMPBIT(status, STATE_WRITE))
+			{
+
+				i = writeToEEPROM(pRxHeader->address, pRxPayload, pRxHeader->payload_sz);
+				if (i != pRxHeader->payload_sz)
+				{
+					SBIT(status, STATE_NACK);
+					// TODO: Set error bits?
+				} else
+				{
+					SBIT(status, STATE_ACK);
+				}
+
+			}
+			else
+			{
+				// Neither R or W bits set, can't process request
+				DBGOUT("CmdDisp: Error, can't determine BUS_EEPROM operation mode, status was 0x%x\r\n", status);
+				// TODO: Set error bits
+			}
+			break; // BUS_EEPROM
 
 		// --------------------------------------------------------------------
 		case BUS_I2C:
@@ -963,8 +1009,10 @@ void testThread()
 	return;
 	*/
 
+
 	// ------------------------------------------------------------------------
 	// FEM configuration struct test
+	/*
 	DBGOUT("TEST: Running EEPROM struct test...\r\n");
 	struct fem_config cfg;		// Used to write to EEPROM
 	struct fem_config test;		// Read back from EEPROM
@@ -1007,9 +1055,10 @@ void testThread()
 	{
 		DBGOUT("TEST: EEPROM struct readback test OK!\r\n");
 	}
-
+	*/
 	// Do readback to check data
-	u8 readBuffer[sizeof(struct fem_config)];
+	/*
+	 u8 readBuffer[sizeof(struct fem_config)];
 	int i;
 	readFromEEPROM(0, readBuffer, sizeof(struct fem_config));
 	DBGOUT("----------------------\r\n");
@@ -1021,7 +1070,7 @@ void testThread()
 			(i*16)*16, readBuffer[(i*16)+0], readBuffer[(i*16)+1], readBuffer[(i*16)+2], readBuffer[(i*16)+3], readBuffer[(i*16)+4], readBuffer[(i*16)+5], readBuffer[(i*16)+6], readBuffer[(i*16)+7],
 			readBuffer[(i*16)+8], readBuffer[(i*16)+9], readBuffer[(i*16)+10], readBuffer[(i*16)+11], readBuffer[(i*16)+12], readBuffer[(i*16)+13], readBuffer[(i*16)+14], readBuffer[(i*16)+15] );
 	}
-
+	 */
 	DBGOUT("Test: Thread exiting.\r\n");
 }
 

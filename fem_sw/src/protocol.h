@@ -70,7 +70,7 @@ enum protocol_commands
 enum protocol_bus_type
 {
 	BUS_UNSUPPORTED = 0,
-	BUS_GPIO        = 1,	// TODO: Remove
+	BUS_EEPROM      = 1,
 	BUS_I2C         = 2,
 	BUS_RAW_REG     = 3,	// V5P memory-mapped peripherals
 	BUS_RDMA        = 4		// Downstream configuration
