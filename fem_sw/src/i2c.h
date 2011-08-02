@@ -12,7 +12,7 @@
 
 #include "xparameters.h"
 #include "fem.h"
-#include "xiic.h"
+#include "xiic_l.h"
 #include <stdio.h>
 
 //#define IIC_FAKE_COMMANDS		// Uncomment to fake I2C operations
