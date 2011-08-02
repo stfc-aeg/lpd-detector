@@ -19,11 +19,11 @@ class FemShell(cmd.Cmd,object):
     connectedFem = None;
     timerEnabled = False;
     
-    busEncoding = { 'GPIO' : FemTransaction.BUS_GPIO ,
-                    'I2C'  : FemTransaction.BUS_I2C  ,
-                    'RAW'  : FemTransaction.BUS_RAW_REG ,
-                    'REG'  : FemTransaction.BUS_RAW_REG,
-                    'RDMA' : FemTransaction.BUS_RDMA
+    busEncoding = { 'EEPROM' : FemTransaction.BUS_EEPROM ,
+                    'I2C'    : FemTransaction.BUS_I2C  ,
+                    'RAW'    : FemTransaction.BUS_RAW_REG ,
+                    'REG'    : FemTransaction.BUS_RAW_REG,
+                    'RDMA'   : FemTransaction.BUS_RDMA
                   } 
     
     widthEncoding = { 'BYTE' : FemTransaction.WIDTH_BYTE, 
@@ -331,8 +331,12 @@ Example:
         if self.timerEnabled: t0 = time.time()
         values = self.__class__.connectedFem.read(bus, width, addr, length)
         if self.timerEnabled: deltaT = time.time() - t0
-        
-        print "Got results:", [hex(result) for result in values]
+       
+        try: 
+            print "Got results:", [hex(result) for result in values]
+        except TypeError:
+            print "Can't decode results", values
+            
         if self.timerEnabled: print "Transaction took %.3f secs" % deltaT  
         
     def help_read(self):

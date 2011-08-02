@@ -19,7 +19,7 @@ class FemTransaction(Struct):
     CMD_ACCESS           = 1
     
     BUS_UNSUPPORTED      = 0
-    BUS_GPIO             = 1
+    BUS_EEPROM           = 1
     BUS_I2C              = 2
     BUS_RAW_REG          = 3
     BUS_RDMA             = 4
@@ -36,7 +36,7 @@ class FemTransaction(Struct):
     STATE_NO_ACKNOWLEDGE = 128
     
     widthEncoding =  { WIDTH_UNSUPPORTED : (0, 'x'),
-                       WIDTH_BYTE        : (1, 'c'),
+                       WIDTH_BYTE        : (1, 'B'),
                        WIDTH_WORD        : (2, 'H'),
                        WIDTH_LONG        : (4, 'I')}
   
