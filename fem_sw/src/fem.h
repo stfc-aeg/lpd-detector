@@ -12,20 +12,25 @@
 #include "xparameters.h"
 #include "xil_types.h"
 
+// This define controls whether we are running on an ML507 dev. board, or a real FEM.
+// For use on FEM, comment this line out!
+#define HW_PLATFORM_DEVBOARD
+
 // Hardware base addresses, redefine xparameters.h
 
-// ----------------------------------------
-// TODO: THIS SECTION ONLY FOR ML507 - REMOVE!
+// ML507 specific base address mappings
+#ifdef HW_PLATFORM_ML507
 #define BADDR_GP_LED8				XPAR_LEDS_8BIT_BASEADDR
 #define BADDR_GP_LED5				XPAR_LEDS_POSITIONS_BASEADDR
 #define BADDR_GP_DIP				XPAR_DIP_SWITCHES_8BIT_BASEADDR
 #define BADDR_GP_SWITCH				XPAR_PUSH_BUTTONS_5BIT_BASEADDR
-// ----------------- END -------------------
+#endif
 
-// FEM Hardware base address mappings (from xparameters.h)
+// FEM Hardware base address mappings
 #define BADDR_MAC					XPAR_LLTEMAC_0_BASEADDR
 #define BADDR_I2C					XPAR_IIC_0_BASEADDR
 #define BADDR_INTC					XPAR_XPS_INTC_0_BASEADDR
+#define BADDR_RDMA					XPAR_RS232_UART_2_BASEADDR
 
 // Enable / disable serial debugging output (comment to disable)
 #define GLOBAL_DEBUG
@@ -37,41 +42,10 @@
 #endif
 
 // Define an absolute maximum temperature threshold for the LM82.
-// Overrides the value in EEPROM if it is higher
+// Overrides the value in EEPROM if (EEPROM_CRIT_TEMP > CRIT_TEMP_MAX)
 #define CRIT_TEMP_MAX				90
 
-// Header for EEPROM struct, this is verified before
-// the struct data is used for FEM init.
-#define EEPROM_MAGIC_WORD			0xFACE
-
-// Struct for storage of FEM parameters in EEPROM
-struct fem_config
-{
-	// Header (4 bytes)
-	u16 header;
-
-	// Networking (18 bytes)
-	u8 net_mac[6];
-	u8 net_ip[4];
-	u8 net_nm[4];
-	u8 net_gw[4];
-
-	// For hardware monitoring (2 bytes)
-	u8 temp_high_setpoint;
-	u8 temp_crit_setpoint;
-
-	// Versioning information (8 bytes)
-	u8 sw_major_version;
-	u8 sw_minor_version;
-	u8 fw_major_version;
-	u8 fw_minor_version;
-	u8 hw_major_version;
-	u8 hw_minor_version;
-	u8 board_id;
-	u8 board_type;
-
-	// TOTAL SIZE = 32 bytes
-
-};
+// TODO: Tune this
+#define THREAD_STACKSIZE 			4096
 
 #endif /* FEM_H_ */

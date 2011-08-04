@@ -16,7 +16,7 @@
 #define I2C_24C08_H_
 
 #include "xparameters.h"
-#include "fem.h"
+#include "femConfig.h"
 #include "i2c.h"
 #ifdef __PPC__
 #include "sleep.h"
@@ -37,10 +37,8 @@
 // (We could poll ACK to see when writes are completed but we just wait the maximum possible write time instead!)
 #define EEPROM_WRITE_DELAY_MS	5
 
+int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned dataLen);
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len);
 int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len);
-
-int readConfigFromEEPROM(unsigned int addr, struct fem_config* pConfig);
-int writeConfigToEEPROM(unsigned int addr, struct fem_config* pConfig);
 
 #endif /* I2C_24C08_H_ */

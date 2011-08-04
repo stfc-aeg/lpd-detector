@@ -1,25 +1,22 @@
 /*
  * rdma.h
  *
- * Abstraction layer for Xilinx register operations
- * Provides RDMA-like access to memory mapped peripheral address space
+ * Provides access to ESDG group FPGA blocks via
+ * RS232-RDMA link
  *
  */
+
+#include "xil_types.h"
+#include "xuartlite_l.h"
+#include "xtmrctr.h"
 
 #ifndef RDMA_H_
 #define RDMA_H_
 
-#include "xil_io.h"
+#define RDMA_CMD_READ			0
+#define RDMA_CMD_WRITE			1
 
-// Wrapper methods for memory access
-u32 readRegister_32(u32 addr);
-void writeRegister_32(u32 addr, u32 value);
-
-u16 readRegister_16(u32 addr);
-void writeRegister_16(u32 addr, u16 value);
-
-u8 readRegister_8(u32 addr);
-void writeRegister_8(u32 addr, u8 value);
-
+u32 readRdma(u32 base, u32 addr);
+void writeRdma(u32 base, u32 addr, u32 value);
 
 #endif /* RDMA_H_ */

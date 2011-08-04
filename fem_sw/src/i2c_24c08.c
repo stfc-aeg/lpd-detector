@@ -7,6 +7,33 @@
 
 #include "i2c_24c08.h"
 
+// For EEPROM random access read
+// Returns number of bytes sent
+int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned dataLen)
+{
+	// According to datasheet, proper way to do a random access read at
+	// given memory address is:
+	// * Send device select as write
+	// * Write addr byte
+	// * Send repeated start
+	// * Send device select as read
+	// * Read byte (x1) - NOACK
+	// * Then normal read, len-1 (as you already got the first byte)
+
+	/*
+	numBytes  = XIic_Send(BADDR_I2C, slaveAddr, &addr, 1, XIIC_REPEATED_START);
+	numBytes  = XIic_Recv(BADDR_I2C, slaveAddr, pData, 1, XIIC_STOP);
+	numBytes += XIic_Recv(BADDR_I2C, slaveAddr, pData+1, dataLen-1, XIIC_STOP);
+	*/
+
+	// Great in theory but doesn't work (don't appear to issue stop after 1 byte read)
+
+	// Xilinx simply write the address to it then read, verified working on ML507 with Saleae logic
+	XIic_Send(BADDR_I2C, slaveAddr, &addr, 1, XIIC_STOP);
+	return XIic_Recv(BADDR_I2C, slaveAddr, pData, dataLen, XIIC_STOP);
+
+}
+
 // Reads data from EEPROM
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len)
 {
@@ -76,42 +103,5 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		// DELAY
 		usleep(EEPROM_WRITE_DELAY_MS*1000);
 		return writeI2C(IIC_ADDRESS_EEPROM, buffer, len + 1);
-	}
-}
-
-// Reads fem config struct from EEPROM starting at addr
-// Returns 0 on success, -1 on error
-int readConfigFromEEPROM(unsigned int addr, struct fem_config* pConfig)
-{
-	int retVal = 0;
-	retVal = readFromEEPROM(addr, (u8*)pConfig, sizeof(struct fem_config));
-	if ( (retVal == sizeof(struct fem_config)) && (pConfig->header == EEPROM_MAGIC_WORD) )
-	{
-		// OK
-		return 0;
-	}
-	else
-	{
-		// Error
-		return -1;
-	}
-}
-
-
-// Writes config struct to EEPROM starting at addr
-// Returns 0 on success, -1 on error
-int writeConfigToEEPROM(unsigned int addr, struct fem_config* pConfig)
-{
-	int retVal = 0;
-	retVal = writeToEEPROM(0, (u8*)pConfig, sizeof(struct fem_config));
-	if ( (retVal == sizeof(struct fem_config)) && (pConfig->header == EEPROM_MAGIC_WORD) )
-	{
-		// OK
-		return 0;
-	}
-	else
-	{
-		// Error
-		return -1;
 	}
 }

@@ -1,45 +1,66 @@
 /*
  * rdma.c
  *
- * Abstraction layer for Xilinx register operations
- * Provides RDMA-like access to memory mapped peripheral address space
+ *  Created on: Jul 25, 2011
+ *      Author: mt47
+ */
+
+/*
+ * RDMA protocol format:
+ * Command (1 byte)
+ * Address (4 bytes LSB first)
+ * Value (4 bytes LSB first) (WRITES ONLY!)
  *
  */
 
 #include "rdma.h"
 
 // Returns 32bit register value at addr
-u32 readRegister_32(u32 addr)
+u32 readRdma(u32 base, u32 addr)
 {
-	return Xil_In32(addr);
+	int i;
+	u8 thisByte = 0;
+	u32 readVal = 0;
+
+	XUartLite_SendByte(base, RDMA_CMD_READ);
+
+	// Send address (4 bytes)
+	for (i=0; i<4; i++)
+	{
+		thisByte = 0xFF & (addr>>(8*i));
+		XUartLite_SendByte(base, thisByte);
+	}
+
+	// Read value (4 bytes)
+	for (i=0; i<4; i++)
+	{
+		thisByte = XUartLite_RecvByte(base);
+		readVal |= (thisByte<<(8*i));
+	}
+
+	return readVal;
 }
 
 // Writes 32bit value to addr
-void writeRegister_32(u32 addr, u32 value)
+void writeRdma(u32 base, u32 addr, u32 value)
 {
-	Xil_Out32(addr, value);
-}
+	int i;
+	u8 thisByte = 0;
 
-// Returns 16bit register value at addr
-u16 readRegister_16(u32 addr)
-{
-	return Xil_In16(addr);
-}
+	XUartLite_SendByte(base, RDMA_CMD_WRITE);
 
-// Writes 16bit value to addr
-void writeRegister_16(u32 addr, u16 value)
-{
-	Xil_Out16(addr, value);
-}
+	// Send address (4 bytes)
+	for (i=0; i<4; i++)
+	{
+		thisByte = 0xFF & (addr>>(8*i));
+		XUartLite_SendByte(base, thisByte);
+	}
 
-// Returns 8bit register value at addr
-u8 readRegister_8(u32 addr)
-{
-	return Xil_In8(addr);
-}
+	// Send value (4 bytes)
+	for (i=0; i<4; i++)
+	{
+		thisByte = 0xFF & (value>>(8*i));
+		XUartLite_SendByte(base, thisByte);
+	}
 
-// Writes 8bit value to addr
-void writeRegister_8(u32 addr, u8 value)
-{
-	Xil_Out8(addr, value);
 }
