@@ -17,7 +17,7 @@
 // Struct for storage of FEM parameters (normally kept in EEPROM)
 struct fem_config
 {
-	// Header (4 bytes)
+	// Header (2 bytes)
 	u16 header;
 
 	// Networking (18 bytes)
@@ -40,7 +40,7 @@ struct fem_config
 	u8 board_id;
 	u8 board_type;
 
-	// TOTAL SIZE = 32 bytes
+	u8 xor_checksum;
 
 };
 
