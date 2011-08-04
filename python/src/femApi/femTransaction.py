@@ -50,8 +50,9 @@ class FemTransaction(Struct):
         formatStr = FemTransaction.headerFormat
         self.payloadFormatStr = ''
         
-        # Initialise remaining payload counter to zero
+        # Initialise remaining payload counter to zero and incomplete flag
         self.payloadRemaining = 0
+        self.incomplete = True
         
         # If we are receving a byte encoded transaction, decode accordingly
         if encoded:
@@ -86,6 +87,7 @@ class FemTransaction(Struct):
             else:
                 payloadStruct = Struct(format = '!' + self.payloadFormatStr)
                 self.payload = payloadStruct.unpack(self.encoded[headerStructLen:])
+                self.incomplete = False
             
          
         # Otherwise, build the transaction from the other fields, ready for encoding              

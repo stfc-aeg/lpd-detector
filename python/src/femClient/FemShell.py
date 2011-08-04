@@ -376,7 +376,175 @@ Example:
             return
     
     def help_timer(self):
-         print self.do_timer.__doc__   
+        print self.do_timer.__doc__   
+                              
+    def do_config(self, s):
+        '''
+        Read or write FEM configuration block from EEPROM
+        Syntax: config [read|write <key=value>, <key=value>]...
+        where key value pairs for write can be:
+            mac=XX:XX:XX:XX:XX:XX  : update MAC address
+            ip=XXX.XXX.XXX.XXX     : update IP address
+            mask=XXX.XXX.XXX.XXX   : update netmask
+            gw=XXX.XXX.XXX.XXX     : update gateway
+            hightemp=X             : update high temperature setpoint
+            crittemp=X             : update critical temperature setpoint
+            sw=X.Y                 : update software revision number
+            hw=X.Y                 : update hardware revision number
+            fw=X.Y                 : update firmware revision number
+            boardid=X              : upate board ID
+            boardtype=X            : update board type
+        '''
+        params = s.split()
+        
+        direction = string.lower(params[0])
+        
+        if direction == 'read':
+            
+            # Do an EEPROM read
+            try:
+                femConfig = self.__class__.connectedFem.configRead()
+                print "    FEM EEPROM Configuration"
+                print "---------------------------------"
+                print femConfig
+            except:
+                print "Can't read EEPROM configuration from FEM"
+
+        elif direction == 'write':
+            
+            # Do an EEPROM read and load into a config object
+            theConfig = self.__class__.connectedFem.configRead()
+            
+            # Parse argument list and udpdate recognised parameters
+            for param in params[1:]:
+                
+                # Convert to lower case and split on key=value syntax
+                param = string.lower(param)
+                try:
+                    (key, value) = param.split('=')
+                except ValueError:
+                    print "*** Parameter", param, "not in key=value format"
+                    continue
+                
+                # Parse for recognised keys and update fields in current configuration
+                
+                if key == 'mac':  #  MAC address
+                    try:
+                        mac_addr = value.split(':')
+                    except ValueError:
+                        print '*** MAC address', value, 'has incorrect format'
+                        continue
+                    if len(mac_addr) != 6:
+                        print '*** MAC address', value, 'has incorrect number of octets'
+                        continue                    
+                    try:
+                        theConfig.net_mac = [int(octet, 16) for octet in mac_addr]
+                    except ValueError:  
+                        print "*** MAC address", value, 'has illegal octet', octet
+                         
+                elif key == 'ip': # IP address
+                    try:
+                        net_ip = value.split('.')
+                    except ValueError:
+                        print "*** IP address", value, 'has incorrect format'
+                        continue
+                    if len(net_ip) != 4:
+                        print "*** IP address", value, "has incorrect number of octets"
+                        continue
+                    try:
+                        theConfig.net_ip = [int(octet) for octet in net_ip]
+                    except ValueError:
+                        print "*** IP address", value, "has illegal octet", octet
+
+                elif key == 'mask': # Netmask
+                    try:
+                        net_mask = value.split('.')
+                    except ValueError:
+                        print "*** Netmask", value, 'has incorrect format'
+                        continue
+                    if len(net_mask) != 4:
+                        print "*** Netmask", value, "has incorrect number of octets"
+                        continue
+                    try:
+                        theConfig.net_mask = [int(octet) for octet in net_mask]
+                    except ValueError:
+                        print "*** Netmask", value, "has illegal octet", octet
+                        
+                elif key == 'gw': # Gateway
+                    try:
+                        net_gw = value.split('.')
+                    except ValueError:
+                        print "*** Gateway", value, 'has incorrect format'
+                        continue
+                    if len(net_gw) != 4:
+                        print "*** Gateway", value, "has incorrect number of octets"
+                        continue
+                    try:
+                        theConfig.net_gw = [int(octet) for octet in net_gw]
+                    except ValueError:
+                        print "*** Gateway", value, "has illegal octet", octet
+
+                elif key == 'hightemp': # High temperature setpoint
+                    try:
+                        theConfig.temp_high = int(value)
+                    except ValueError:
+                        print "*** High temperature value specified is not integer"
+
+                elif key == 'crittemp': # Critical temperature setpoint
+                    try:
+                        theConfig.temp_crit = int(value)
+                    except ValueError:
+                        print "*** Critical temperature value specified is not integer"                        
+                        
+                elif key == 'sw': # Software revision
+                    try:
+                        (major, minor) = value.split('.')
+                        theConfig.sw_major_version = int(major)
+                        theConfig.sw_minor_version = int(minor)
+                    except ValueError:
+                        print '*** S/W version', value, 'not recognised'
+                        
+                elif key == 'fw': # Firmware revision
+                    try:
+                        (major, minor) = value.split('.')
+                        theConfig.fw_major_version = int(major)
+                        theConfig.fw_minor_version = int(minor)
+                    except ValueError:
+                        print '*** F/W version', value, 'not recognised'
+                        
+                elif key == 'hw': # Hardware revision
+                    try:
+                        (major, minor) = value.split('.')
+                        theConfig.hw_major_version = int(major)
+                        theConfig.hw_minor_version = int(minor)
+                    except ValueError:
+                        print '*** H/W version', value, 'not recognised'
+                                                  
+                elif key == 'boardid': # Board ID
+                    try:
+                        theConfig.board_id = int(value)
+                    except ValueError:
+                        print "*** Board ID value specified is not integer"
+                        
+                elif key == 'boardtype': # Board type
+                    try:
+                        theConfig.board_type = int(value)
+                    except ValueError:
+                        print "*** Board type value specified is not integer"
+                        
+                else: # Unrecognised key
+                    print "Key", key, "not recognised"
+
+            # Write config back to FEM            
+            ack = self.__class__.connectedFem.configWrite(theConfig)
+            print "Got ack: ", [hex(result) for result in ack]
+            
+        else:
+            print "Unrecognised"
+    
+    
+    def help_config(self):
+        print self.do_config.__doc__                          
                               
 if __name__ == "__main__":
     
