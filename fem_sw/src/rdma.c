@@ -15,7 +15,14 @@
 
 #include "rdma.h"
 
-// Returns 32bit register value at addr
+/*
+ * Reads 32bit RDMA register
+ * @param base base address of UART to read from
+ * @param addr register address to read
+ *
+ * @return register value
+ *
+ */
 u32 readRdma(u32 base, u32 addr)
 {
 	int i;
@@ -41,7 +48,13 @@ u32 readRdma(u32 base, u32 addr)
 	return readVal;
 }
 
-// Writes 32bit value to addr
+/*
+ * Writes 32bit RDMA register
+ * @param base base address of UART to write to
+ * @param addr register address to write to
+ * @param value value to write
+ *
+ */
 void writeRdma(u32 base, u32 addr, u32 value)
 {
 	int i;

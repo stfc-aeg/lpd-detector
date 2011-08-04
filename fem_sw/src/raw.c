@@ -8,37 +8,70 @@
 
 #include "raw.h"
 
-// Returns 32bit register value at addr
+/*
+ * Reads raw 32bit register
+ * @param addr register address
+ *
+ * @return register value
+ *
+ */
 u32 readRegister_32(u32 addr)
 {
 	return Xil_In32(addr);
 }
 
-// Writes 32bit value to addr
+/*
+ * Writes raw 32bit register
+ * @param addr register address
+ * @param value value to write
+ *
+ */
 void writeRegister_32(u32 addr, u32 value)
 {
 	Xil_Out32(addr, value);
 }
 
-// Returns 16bit register value at addr
+/*
+ * Reads raw 16bit register
+ * @param addr register address
+ *
+ * @return register value
+ *
+ */
 u16 readRegister_16(u32 addr)
 {
 	return Xil_In16(addr);
 }
 
-// Writes 16bit value to addr
+/*
+ * Writes raw 16bit register
+ * @param addr register address
+ * @param value value to write
+ *
+ */
 void writeRegister_16(u32 addr, u16 value)
 {
 	Xil_Out16(addr, value);
 }
 
-// Returns 8bit register value at addr
+/*
+ * Reads raw 8bit register
+ * @param addr register address
+ *
+ * @return register value
+ *
+ */
 u8 readRegister_8(u32 addr)
 {
 	return Xil_In8(addr);
 }
 
-// Writes 8bit value to addr
+/*
+ * Writes raw 32bit register
+ * @param addr register address
+ * @param value value to write
+ *
+ */
 void writeRegister_8(u32 addr, u8 value)
 {
 	Xil_Out8(addr, value);

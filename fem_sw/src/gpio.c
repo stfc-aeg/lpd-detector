@@ -7,7 +7,13 @@
 
 #include "gpio.h"
 
-// Gets all LED and DIP/switch banks initialised
+/*
+ * Initialises GPIO devices on devboard
+ * @param pLed8 pointer to GPIO object connected to 8 LED bank
+ * @param pLed5 pointer to GPIO object connected to 5 direction LEDs
+ * @param pDip pointer to GPIO object connected to 8-way DIP switch bank
+ * @param pSwitch pointer to GPIO object connected to 5 way direction buttons
+ */
 int initGpioDevices(XGpio* pLed8, XGpio* pLed5, XGpio* pDip, XGpio* pSwitch)
 {
 	Xuint32 status;

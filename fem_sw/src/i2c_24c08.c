@@ -7,9 +7,16 @@
 
 #include "i2c_24c08.h"
 
-// For EEPROM random access read
-// Returns number of bytes sent
-int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned dataLen)
+/*
+ * Reads a number of bytes from a generic 24cXX EEPROM device
+ * @param slaveAddr I2C address of slave EEPROM
+ * @param addr address offset of EEPROM
+ * @param pData pointer to data buffer to fill
+ * @param len number of bytes to read
+ *
+ * @return number of bytes read
+ */
+int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len)
 {
 	// According to datasheet, proper way to do a random access read at
 	// given memory address is:
@@ -30,18 +37,32 @@ int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned dataLen)
 
 	// Xilinx simply write the address to it then read, verified working on ML507 with Saleae logic
 	XIic_Send(BADDR_I2C, slaveAddr, &addr, 1, XIIC_STOP);
-	return XIic_Recv(BADDR_I2C, slaveAddr, pData, dataLen, XIIC_STOP);
+	return XIic_Recv(BADDR_I2C, slaveAddr, pData, len, XIIC_STOP);
 
 }
 
-// Reads data from EEPROM
+/*
+ * Reads data from the M24C08 8K EEPROM on the FEM / development board
+ * @param addr address offset of EEPROM
+ * @param pData pointer to data buffer to fill
+ * @param len number of bytes to read
+ *
+ * @return number of bytes read
+ */
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len)
 {
 
 	return readEEPROM(IIC_ADDRESS_EEPROM, addr, pData, len);
 }
 
-// Writes data to EEPROM
+/*
+ * Writes data to the M24C08 8K EEPROM on the FEM / development board
+ * @param addr address offset of EEPROM
+ * @param pData pointer to data buffer to write from
+ * @param len number of bytes to write
+ *
+ * @return number of bytes written
+ */
 int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 {
 	int firstPage, lastPage, page, firstWriteSize, lastWriteSize, totalBytes, currentAddr;

@@ -37,7 +37,7 @@
 // (We could poll ACK to see when writes are completed but we just wait the maximum possible write time instead!)
 #define EEPROM_WRITE_DELAY_MS	5
 
-int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned dataLen);
+int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len);
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len);
 int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len);
 
