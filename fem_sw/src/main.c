@@ -15,9 +15,11 @@
  *
  * Developed against Xilinx ML507 development board under EDK 13.1 (Linux)
  *
+ * Tested and deployed to FEM v1 board successfully
+ *
  * ----------------------------------------------------------------------------
  *
- * Version 1.2 - alpha release not for distribution
+ * Version 1.4 - not for distribution
  *
  * ----------------------------------------------------------------------------
  *
@@ -26,34 +28,39 @@
  * 1.1		06-July-2011
  * 	- First functional implementation of FEM communications protocol
  *  - Bug fixes in network select / command processing
+ *
  * 1.2		25-July-2011
  *  - RDMA protocol handling implemented
  *  - EEPROM store / retrieve config implemented
+ *
  * 1.3		04-Aug-2011
  *  - Refactoring / tidying
  *  - Replaced all xil_printf for DBGOUT macro
+ *
+ * 1.4		24-Aug-2011
+ *  - Reimplemented I2C code to be able to address multiple busses
+ *  - Fixed number of operations in response packet as first u32
+ *  - Made comms code adhere to MAX_PAYLOAD_SIZE for response packets
+ *  - Created hooks for commandProcessorThread to drop connections when already at connection limit,
+ *  	but this isn't yet fully implemented...
  *
  * ----------------------------------------------------------------------------
  *
  * TO DO LIST:
  *
+ * TODO: Determine why execution halts sometimes after LWIP auto-negotiation
+ *
  * TODO: Clean network select / command processing logic, make robust
  * TODO: Test with malformed packets, try to break processing loop
- * TODO: Fix pTxPayload fudge in command processing
- * TODO: Make sure return packets <= MAX_PAYLOAD_SIZE
- * TODO: Ensure connection handler observes MAX_CONNECTIONS
  *
- * TODO: Support for concurrent large payload writes
+ * TODO: Support for concurrent large payload writes (????)
  *
- * TODO: Implement / remove iperf server
+ * TODO: Implement iperf server and some way to activate / deactivate it without rebooting or rebuilding
  *
  * TODO: Profile memory usage
  * TODO: Tune thread stacksize
- * TODO: Move code to SRAM (REQUIRES FEM!)
  * TODO: Check for memory leaks
  * TODO: Determine why LWIP hangs on init using priority based scheduler
- *
- * TODO: Doxygen comment all functions
  *
  * ----------------------------------------------------------------------------
  */
@@ -167,8 +174,6 @@ void* masterThread(void *arg)
 
 	sys_thread_t t;
 
-	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
-
 	// Why doesn't LWIP initialise if we use SCHED_PRIO?  Is it because we haven't set a thread priority yet?
 
 #if SCHED_TYPE == SCHED_PRIO
@@ -268,6 +273,9 @@ void initHardware(void)
 
 	int status;
 
+	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
+	DBGOUT("initHardware: System alive!  Starting initialisation...\r\n");
+
 #ifdef HW_PLATFORM_DEVBOARD
     // Initialise GPIO devices (only for ML507)
     if (initGpioDevices(&gpioLed8, &gpioLed5, &gpioDip, &gpioSwitches) == -1)
@@ -312,7 +320,7 @@ void initHardware(void)
     }
     else
     {
-    	DBGOUT("initHardware: UART1 (Debug) @ %d\r\n", XPAR_RS232_UART_1_BAUDRATE);
+    	DBGOUT("initHardware: UART1 (Debug) @ %d baud\r\n", XPAR_RS232_UART_1_BAUDRATE);
     }
 
     if (XPAR_RS232_UART_2_BAUDRATE != XPAR_UARTLITE_1_BAUDRATE)
@@ -321,7 +329,7 @@ void initHardware(void)
     }
     else
     {
-    	DBGOUT("initHardware: UART2 (RDMA)  @ %d\r\n", XPAR_RS232_UART_2_BAUDRATE);
+    	DBGOUT("initHardware: UART2 (RDMA)  @ %d baud\r\n", XPAR_RS232_UART_2_BAUDRATE);
     }
 
     // Get config structure from EEPROM or use failsafe

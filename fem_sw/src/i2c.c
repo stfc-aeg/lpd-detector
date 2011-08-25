@@ -12,12 +12,13 @@
  * @param slaveAddr I2C slave address
  * @param pData pointer to data buffer to write from
  * @param dataLen length of data (in bytes) to write
+ * @param bAddr hardware base address of I2C controller to use
  *
  * @return number of bytes written
  */
-int writeI2C(u8 slaveAddr, u8* pData, unsigned dataLen)
+int writeI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
-	return XIic_Send(BADDR_I2C, slaveAddr, pData, dataLen, XIIC_STOP);
+	return XIic_Send(bAddr, slaveAddr, pData, dataLen, XIIC_STOP);
 }
 
 /*
@@ -25,10 +26,11 @@ int writeI2C(u8 slaveAddr, u8* pData, unsigned dataLen)
  * @param slaveAddr I2C slave address
  * @param pData pointer to data buffer to read to
  * @param dataLen length of data (in bytes) to read
+ * @param bAddr hardware base address of I2C controller to use
  *
  * @return number of bytes read
  */
-int readI2C(u8 slaveAddr, u8* pData, unsigned dataLen)
+int readI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
-	return XIic_Recv(BADDR_I2C, slaveAddr, pData, dataLen, XIIC_STOP);
+	return XIic_Recv(bAddr, slaveAddr, pData, dataLen, XIIC_STOP);
 }

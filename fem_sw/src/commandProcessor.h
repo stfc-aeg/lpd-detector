@@ -19,7 +19,7 @@
 
 #include "lwip/sockets.h"
 
-#define MAX_CONNECTIONS			4
+#define MAX_CONNECTIONS			2
 #define CMD_PORT				6969
 
 void commandProcessorThread();

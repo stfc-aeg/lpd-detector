@@ -36,8 +36,8 @@ int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len)
 	// Great in theory but doesn't work (don't appear to issue stop after 1 byte read)
 
 	// Xilinx simply write the address to it then read, verified working on ML507 with Saleae logic
-	XIic_Send(BADDR_I2C, slaveAddr, &addr, 1, XIIC_STOP);
-	return XIic_Recv(BADDR_I2C, slaveAddr, pData, len, XIIC_STOP);
+	XIic_Send(BADDR_I2C_EEPROM, slaveAddr, &addr, 1, XIIC_STOP);
+	return XIic_Recv(BADDR_I2C_EEPROM, slaveAddr, pData, len, XIIC_STOP);
 
 }
 
@@ -94,7 +94,7 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 
 		// First page
 		memcpy( &buffer[1], pData, firstWriteSize );
-		totalBytes += writeI2C( IIC_ADDRESS_EEPROM, buffer, firstWriteSize+1 );
+		totalBytes += writeI2C( BADDR_I2C_EEPROM, IIC_ADDRESS_EEPROM, buffer, firstWriteSize+1 );
 		currentAddr += firstWriteSize;
 		buffer[0] = currentAddr;
 
@@ -104,7 +104,7 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 			// DELAY
 			usleep(EEPROM_WRITE_DELAY_MS*1000);
 			memcpy( &buffer[1], pData+(currentAddr-addr), EEPROM_PAGE_SIZE );
-			totalBytes += writeI2C( IIC_ADDRESS_EEPROM, buffer, EEPROM_PAGE_SIZE+1 );
+			totalBytes += writeI2C( BADDR_I2C_EEPROM, IIC_ADDRESS_EEPROM, buffer, EEPROM_PAGE_SIZE+1 );
 			currentAddr += EEPROM_PAGE_SIZE;
 			buffer[0] = currentAddr;
 		}
@@ -113,7 +113,7 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		// DELAY
 		usleep(EEPROM_WRITE_DELAY_MS*1000);
 		memcpy( &buffer[1], pData+(currentAddr-addr), lastWriteSize );
-		totalBytes += writeI2C( IIC_ADDRESS_EEPROM, buffer, lastWriteSize+1 );
+		totalBytes += writeI2C( BADDR_I2C_EEPROM, IIC_ADDRESS_EEPROM, buffer, lastWriteSize+1 );
 
 		return totalBytes;
 
@@ -123,6 +123,6 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		memcpy( &buffer[1], pData, len);
 		// DELAY
 		usleep(EEPROM_WRITE_DELAY_MS*1000);
-		return writeI2C(IIC_ADDRESS_EEPROM, buffer, len + 1);
+		return writeI2C(BADDR_I2C_EEPROM, IIC_ADDRESS_EEPROM, buffer, len + 1);
 	}
 }

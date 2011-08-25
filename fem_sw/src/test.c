@@ -7,9 +7,13 @@
 
 #include "test.h"
 
-// This method only being used while testing, will remove soon
-// PUT ALL TESTING CODE IN THIS METHOD!
-void testThread()
+/*
+ * Test routine for various hardware components
+ * @param bitmask an 8-bit bitmask that controls which tests are run
+ *
+ * @return 0 on pass, -1 on fail
+ */
+int testThread(u8 bitmask)
 {
 
 	DBGOUT("TEST: Entered test function!\r\n");
@@ -180,4 +184,6 @@ void testThread()
 	}
 	 */
 	DBGOUT("Test: Thread exiting.\r\n");
+
+	return 0;
 }

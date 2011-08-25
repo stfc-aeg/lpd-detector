@@ -27,8 +27,11 @@
 #endif
 
 // FEM Hardware base address mappings
+#define BADDR_I2C_LM82				XPAR_IIC_0_BASEADDR			// LM82
+#define BADDR_I2C_EEPROM			XPAR_IIC_0_BASEADDR			// EEPROM
+#define BADDR_I2C_SP3_TOP			XPAR_IIC_0_BASEADDR			// Spartan 3AN - Top
+#define BADDR_I2C_SP3_BOT			XPAR_IIC_0_BASEADDR			// Spartan 3AN - Bottom
 #define BADDR_MAC					XPAR_LLTEMAC_0_BASEADDR
-#define BADDR_I2C					XPAR_IIC_0_BASEADDR
 #define BADDR_INTC					XPAR_XPS_INTC_0_BASEADDR
 #define BADDR_RDMA					XPAR_RS232_UART_2_BASEADDR
 
@@ -45,7 +48,9 @@
 // Overrides the value in EEPROM if (EEPROM_CRIT_TEMP > CRIT_TEMP_MAX)
 #define CRIT_TEMP_MAX				90
 
-// TODO: Tune this
+// TODO: Tune these!
+// ----------------------------------------------------------
 #define THREAD_STACKSIZE 			4096
+#define SOCK_BACKLOG				1
 
 #endif /* FEM_H_ */

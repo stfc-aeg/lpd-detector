@@ -16,7 +16,7 @@
 #include "xiic_l.h"
 #include <stdio.h>
 
-int writeI2C(u8 slaveAddr, u8* pData, unsigned dataLen);
-int readI2C(u8 slaveAddr, u8* pData, unsigned dataLen);
+int writeI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen);
+int readI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen);
 
 #endif /* I2C_H_ */

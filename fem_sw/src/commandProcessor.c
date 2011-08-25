@@ -10,7 +10,7 @@
 // Communicates with PC via TCP/IP socket (SOCK_STREAM) to receive packets
 // and display them to stdout (RS232)
 //
-// TODO: Adhere to MAX_CONNECTIONS
+// TODO: Adhere to MAX_CONNECTIONS, MAX_PAYLOAD_SIZE
 // TODO: Replace return statements, make sure to close any open FDs too
 void commandProcessorThread()
 {
@@ -26,7 +26,8 @@ void commandProcessorThread()
 	struct protocol_header* pRxHeader = (struct protocol_header*)pRxBuffer;
 	struct protocol_header* pTxHeader = (struct protocol_header*)pTxBuffer;
 
-	//int sockRecvTimeoutMs = 1000;
+	// Client count
+	u8 numConnectedClients = 0;
 
 	// Prepare file descriptor sets
 	FD_ZERO(&readSet);
@@ -60,7 +61,8 @@ void commandProcessorThread()
 	}
 
 	// Begin listening, register listener as FD of interest to read
-	if (lwip_listen(listenerSocket, 5) < 0)
+	// Second parameter (backlog) is number of queued connection requests to handle, NOT the maximum permitted socket connections :(
+	if (lwip_listen(listenerSocket, SOCK_BACKLOG) < 0)
 	{
 		DBGOUT("CmdProc: Can't listen on socket %d, aborting...\r\n", CMD_PORT);
 		return;
@@ -69,7 +71,6 @@ void commandProcessorThread()
 	numFds = listenerSocket;
 
 	// ************************* MAIN SERVER LOOP *******************************
-	// TODO: Move this somewhere else / split into more functions?  Some deeply-nested logic here!
 	while (1) {
 
 		// Copy master set over as readSet will be modified
@@ -92,27 +93,41 @@ void commandProcessorThread()
 			{
 
 				// ----------------------------------------------------------------------------------------------------
-				// This is a new connection!
+				// This is a new connection
 				if (i==listenerSocket)
 				{
-					DBGOUT("CmdProc: Received new connection!\r\n");
 
-					// Accept connection
-					addrSize = sizeof(clientAddress);
-					newFd = lwip_accept(listenerSocket, (struct sockaddr*)&clientAddress, (socklen_t*)&addrSize);
-					if (newFd == -1)
-					{
-						// Unrecoverable error
-						DBGOUT("CmdProc: Accept error\r\n");
-						return;
-					}
+					//if (numConnectedClients < MAX_CONNECTIONS) {
 
-					// Add to master list of FDs, update count
-					FD_SET(newFd, &masterSet);
-					if (newFd > numFds)
-					{
-						numFds = newFd;
+						DBGOUT("CmdProc: Received new connection! (Client %d of a possible %d)\r\n", numConnectedClients+1, MAX_CONNECTIONS);
+						numConnectedClients++;
+
+						// Accept connection
+						addrSize = sizeof(clientAddress);
+						newFd = lwip_accept(listenerSocket, (struct sockaddr*)&clientAddress, (socklen_t*)&addrSize);
+						if (newFd == -1)
+						{
+							// Unrecoverable error
+							DBGOUT("CmdProc: Accept error\r\n");
+							return;
+						}
+
+						// Add to master list of FDs, update count
+						FD_SET(newFd, &masterSet);
+						if (newFd > numFds)
+						{
+							numFds = newFd;
+						}
+
+					/*
 					}
+					else		// Reached client limit, so don't accept connection
+					{
+						DBGOUT("CmdProc: Received new connection request, but rejecting due to connection limit.\r\n");
+						lwip_close(i);
+						FD_CLR(i, &masterSet);
+					}
+					*/
 
 				}
 				else
@@ -135,6 +150,7 @@ void commandProcessorThread()
 							DBGOUT("CmdProc: Client closed connection.\r\n");
 							lwip_close(i);
 							FD_CLR(i, &masterSet);
+							numConnectedClients--;
 						}
 						else if (numBytesRead == -1)
 						{
@@ -143,6 +159,7 @@ void commandProcessorThread()
 							DBGOUT("CmdProc: Error encountered during lwip_read(), closing connection.\r\n");
 							lwip_close(i);
 							FD_CLR(i, &masterSet);
+							numConnectedClients--;
 						}
 						else
 						{
@@ -161,10 +178,12 @@ void commandProcessorThread()
 					if (isValid==1) {
 
 						// DEBUG - dump out header
+						/*
 						DBGOUT("------------------------\r\n");
 						DBGOUT("HEADER:\r\n");
 						DUMPHDR(pRxHeader);
 						DBGOUT("------------------------\r\n");
+						*/
 
 						// --------------------- BEGIN READING VALID PACKET ----------------------
 
@@ -174,7 +193,6 @@ void commandProcessorThread()
 
 							if (pRxHeader->payload_sz>0 && pRxHeader->payload_sz <= MAX_PAYLOAD_SIZE)
 							{
-								//numBytesRead = lwip_read(i, pRxBuffer+sizeof(struct protocol_header), pRxHeader->payload_sz);
 								numBytesRead = socketRead(i, pRxBuffer+sizeof(struct protocol_header), pRxHeader->payload_sz, 0);
 								if (numBytesRead < pRxHeader->payload_sz)
 								{
@@ -188,6 +206,7 @@ void commandProcessorThread()
 										DBGOUT("CmdProc: Client closed connection (payload processing stage).\r\n");
 										lwip_close(i);
 										FD_CLR(i, &masterSet);
+										numConnectedClients--;
 									}
 									else if (numBytesRead == -1)
 									{
@@ -196,6 +215,7 @@ void commandProcessorThread()
 										DBGOUT("CmdProc: Error encountered during lwip_read(), closing connection.\r\n");
 										lwip_close(i);
 										FD_CLR(i, &masterSet);
+										numConnectedClients--;
 									}
 									else
 									{
@@ -206,6 +226,7 @@ void commandProcessorThread()
 								} else {
 
 									// Received payload OK, correct size
+									/*
 									DBGOUT("PAYLOAD:\r\n");
 									DBGOUT("[sz=%d] = ", pRxHeader->payload_sz);
 									for(i=0; i<pRxHeader->payload_sz; i++)
@@ -214,6 +235,7 @@ void commandProcessorThread()
 									}
 									DBGOUT("\r\n");
 									DBGOUT("------------------------\r\n");
+									*/
 								}
 							}
 							else
@@ -248,7 +270,7 @@ void commandProcessorThread()
 
 		}	// END for (fd)
 
-	}	// END infinite while
+	}	// END while(1)
 	// *********************** END MAIN SERVER LOOP *****************************
 
 	// Code below here will never run...  but just in case output debug message
@@ -273,13 +295,12 @@ void commandHandler(struct protocol_header* pRxHeader,
 {
 
 	int i;					// General use variable
-	int data_width = 0;
-	int response_sz = 0;	// Payload size for response packet (IN BYTES)
+	int dataWidth = 0;		// Width of data type for operation in bytes
+	int responseSize = 0;	// Payload size for response packet in bytes
+	u32 numOps = 0;			// Number of requested operations performed
 	u8 status = 0;			// Status byte
 
 	// Native size pointers for various data widths
-	//u8*  pTxPayload_8	= NULL;
-	//u16* pTxPayload_16	= NULL;
 	u32* pTxPayload_32  = NULL;
 	u32* pRxPayload_32  = NULL;
 
@@ -287,35 +308,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 	memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
 	status = pRxHeader->status;
 
-	// Set first 32bit int in payload to be number of operations performed
-	pRxPayload_32 = (u32*)pRxPayload;
-	pTxPayload_32 = (u32*)pTxPayload;
-	if (CMPBIT(status, STATE_READ))
-	{
-		// First (only) 32bit int of payload is # ops, copy it to response packet
-		*pTxPayload_32 = *pRxPayload_32;
-	}
-	else if (CMPBIT(status, STATE_WRITE))
-	{
-		// Calculate # ops
-		// TODO: STOP CHEATING
-		*pTxPayload_32 = 1;
-		/*
-		switch(pRxHeader->data_width)
-		{
-		case WIDTH_BYTE:
-			*pTxPayload_32 =
-			break;
-		case WIDTH_WORD:
-			*pTxPayload_32 =
-			break;
-		case WIDTH_LONG:
-			*pTxPayload_32 =
-			break;
-		}
-		*/
-	}
-	else
+	// Verify operation mode is sane, exit if not
+	if (!CMPBIT(status, STATE_READ) && !CMPBIT(status, STATE_WRITE))
 	{
 		// Neither write nor read requested, can't process so just return error response
 		DBGOUT("CmdDisp: Invalid operation\r\n");
@@ -326,7 +320,15 @@ void commandHandler(struct protocol_header* pRxHeader,
 		return;
 	}
 
-	response_sz += sizeof(u32);
+	// Pointers to received and outgoing packet payloads
+	pRxPayload_32 = (u32*)pRxPayload;
+	pTxPayload_32 = (u32*)pTxPayload;
+	pTxPayload_32 += 1;		// Nudge outgoing packet payload pointer by 1 so as to skip first u32 which will be populated with #ops
+
+	u32 numRequestedReads = *pRxPayload_32;		// Number of REQUESTED ops (only valid for read operations)
+
+	// Increment response size to include #ops as first entry
+	responseSize += sizeof(u32);
 
 	// Process packet based on target
 	switch(pRxHeader->bus_target)
@@ -344,7 +346,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 				break;
 			}
 
-			data_width = sizeof(u8); // All EEPROM operations are byte level
+			dataWidth = sizeof(u8); // All EEPROM operations are byte level
 
 			if (CMPBIT(status, STATE_READ))
 			{
@@ -359,7 +361,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 				else
 				{
 					SBIT(status, STATE_ACK);
-					response_sz += i;
+					responseSize += i;
+					numOps++;
 				}
 			}
 			else if (CMPBIT(status, STATE_WRITE))
@@ -373,6 +376,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 				} else
 				{
 					SBIT(status, STATE_ACK);
+					numOps++;
 				}
 
 			}
@@ -395,11 +399,41 @@ void commandHandler(struct protocol_header* pRxHeader,
 				// TODO: Set error bits
 				break;
 			}
-			data_width = sizeof(u8);	// All I2C operations are byte level
+			dataWidth = sizeof(u8);	// All I2C operations are byte level
+
+			/*
+			 * Decode address field
+			 * Least significant word (lower byte) = I2C slave address
+			 * Most significant word (lower byte)  = Bus index (0=LM82, 1=EEPROM, 2=SP3_TOP, 3=SP3_BOT)
+			 */
+			u8 slaveAddress = (pRxHeader->address & 0xF);
+			u8 busIndex = (pRxHeader->address & 0xF00) >> 16;
+			u32 baseAddr = 0;
+
+			// Map of I2C bus base addresses
+			u32 i2cAddr[] =			{
+										BADDR_I2C_LM82,
+										BADDR_I2C_EEPROM,
+										BADDR_I2C_SP3_TOP,
+										BADDR_I2C_SP3_BOT
+									};
+			u8 i2cMaxAddr = ((sizeof(i2cAddr)/sizeof(u32)) +1);
+
+			// Verify bus index is valid, if so lookup associated base address
+			if (busIndex >= i2cMaxAddr )
+			{
+				DBGOUT("CmdDisp: Invalid I2C bus index %d (maximum index is %d)\r\n", busIndex, i2cMaxAddr);
+				SBIT(status, STATE_NACK);
+				// TODO: Set error bits
+			}
+			else
+			{
+				baseAddr = i2cAddr[busIndex];
+			}
 
 			if (CMPBIT(status, STATE_READ))
 			{
-				i = readI2C(pRxHeader->address, pTxPayload + 1, (u32)pRxPayload[0]);
+				i = readI2C(baseAddr, slaveAddress, pTxPayload + 1, (u32)pRxPayload[0]);
 				if (i != (u32)pRxPayload[0])
 				{
 					// I2C operation failed, set NACK
@@ -410,13 +444,14 @@ void commandHandler(struct protocol_header* pRxHeader,
 				{
 					// Set ACK, payload size
 					SBIT(status, STATE_ACK);
-					response_sz += i;
+					responseSize += i;
+					numOps++;
 				}
 
 			}
 			else if (CMPBIT(status, STATE_WRITE))
 			{
-				i = writeI2C(pRxHeader->address, pRxPayload, pRxHeader->payload_sz);
+				i = writeI2C(baseAddr, slaveAddress, pRxPayload, pRxHeader->payload_sz);
 				if (i != pRxHeader->payload_sz)
 				{
 					// I2C operation failed, set NACK
@@ -427,6 +462,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 				{
 					// Set ACK
 					SBIT(status, STATE_ACK);
+					numOps++;
 				}
 			}
 			else
@@ -445,39 +481,46 @@ void commandHandler(struct protocol_header* pRxHeader,
 			// We don't support anything other than 32-bit operations for RAW_REG as all Xilinx registers are 32bit.
 			if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
 			{
-				DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+				DBGOUT("CmdDisp: Invalid raw reg request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
 				SBIT(status, STATE_NACK);
 				// TODO: Set error bits
 				break;
 			}
 
-			data_width = sizeof(u32);
-			pTxPayload_32 = (u32*)(pTxPayload+response_sz);
+			dataWidth = sizeof(u32);
+
+			// Make sure return packet will not violate MAX_PAYLOAD_SIZE (write operations should never be too long if MAX_PAYLOAD_SIZE => 4!)
+			if (CMPBIT(status, STATE_READ)) {
+				if ( (sizeof(u32) + (dataWidth * numRequestedReads)) > MAX_PAYLOAD_SIZE )
+				{
+					DBGOUT("CmdDisp: Response would be too large! (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+					SBIT(status, STATE_NACK);
+					// TODO: set error bits
+					break;
+				}
+			}
 
 			if (CMPBIT(status, STATE_READ)) // READ OPERATION
 			{
-
-				// DEBUG - Prove to myself that register reads are 32bit (truncated in the case of GPIO_LED as unused signals discarded by synthesis)
-				//DBGOUT("DEBUG: 0x%x\r\n", readRegister_32(BADDR_MAC+0x2C));		// TEMAC RDY0 register, non zero on reset!
-
-				pRxPayload_32 = (u32*)pRxPayload;
 				for (i=0; i<*pRxPayload_32; i++)
 				{
-					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*data_width));
-					*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*data_width));
-					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*data_width)));
-					response_sz += data_width;
+					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
+					*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*dataWidth));
+					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*dataWidth)));
+					responseSize += dataWidth;
+					numOps++;
 				}
 				SBIT(status, STATE_ACK);
 
 			}
 			else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
 			{
-				for (i=0; i<((pRxHeader->payload_sz)/data_width); i++)
+				for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
 				{
 					pRxPayload_32 = (u32*)pRxPayload;
-					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + (i*data_width), *(pRxPayload_32+i));
-					writeRegister_32( pRxHeader->address + (i*data_width), *(pRxPayload_32+i) );
+					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i));
+					writeRegister_32( pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i) );
+					numOps++;
 				}
 				SBIT(status, STATE_ACK);
 			}
@@ -505,8 +548,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 				break;
 			}
 
-			data_width = sizeof(u32);
-			pTxPayload_32 = (u32*)(pTxPayload+response_sz);
+			dataWidth = sizeof(u32);
+			pTxPayload_32 = (u32*)(pTxPayload+responseSize);
 
 			if (CMPBIT(status, STATE_READ)) // READ OPERATION
 			{
@@ -514,21 +557,24 @@ void commandHandler(struct protocol_header* pRxHeader,
 				pRxPayload_32 = (u32*)pRxPayload;
 				for (i=0; i<*pRxPayload_32; i++)
 				{
-					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*data_width));
+					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
 					*(pTxPayload_32+i) = readRdma(BADDR_RDMA, pRxHeader->address + i);
-					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + i));
-					response_sz += data_width;
+					//DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + i));
+					DBGOUT(" VALUE 0x%x\r\n", readRdma(BADDR_RDMA, pRxHeader->address + i));
+					responseSize += dataWidth;
+					numOps++;
 				}
 				SBIT(status, STATE_ACK);
 
 			}
 			else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
 			{
-				for (i=0; i<((pRxHeader->payload_sz)/data_width); i++)
+				for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
 				{
 					pRxPayload_32 = (u32*)pRxPayload;
 					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
 					writeRdma(BADDR_RDMA, pRxHeader->address + i, *(pRxPayload_32+i));
+					numOps++;
 				}
 				SBIT(status, STATE_ACK);
 			}
@@ -553,7 +599,11 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	// Build response header (all fields other status byte stay same as received packet)
 	pTxHeader->status = status;
-	pTxHeader->payload_sz = response_sz;
+	pTxHeader->payload_sz = responseSize;
+
+	// Update number of operations in payload
+	pTxPayload_32 = (u32*)pTxPayload;
+	*pTxPayload_32 = numOps;
 
 }
 

@@ -10,7 +10,8 @@
 
 #include "xil_types.h"
 
-#define MAX_PAYLOAD_SIZE          1024
+// TODO: Change this once finished debugging
+#define MAX_PAYLOAD_SIZE          64
 
 #define PROTOCOL_MAGIC_WORD       0xDEADBEEF
 
