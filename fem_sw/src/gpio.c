@@ -7,6 +7,8 @@
 
 #include "gpio.h"
 
+#ifdef HW_PLATFORM_DEVBOARD
+
 /*
  * Initialises GPIO devices on devboard
  * @param pLed8 pointer to GPIO object connected to 8 LED bank
@@ -56,3 +58,4 @@ int initGpioDevices(XGpio* pLed8, XGpio* pLed5, XGpio* pDip, XGpio* pSwitch)
 
 	return 0;
 }
+#endif

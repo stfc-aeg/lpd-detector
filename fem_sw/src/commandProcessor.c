@@ -559,7 +559,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 				{
 					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
 					*(pTxPayload_32+i) = readRdma(BADDR_RDMA, pRxHeader->address + i);
-					//DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + i));
 					DBGOUT(" VALUE 0x%x\r\n", readRdma(BADDR_RDMA, pRxHeader->address + i));
 					responseSize += dataWidth;
 					numOps++;

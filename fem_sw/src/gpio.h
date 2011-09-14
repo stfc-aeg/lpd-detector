@@ -9,8 +9,12 @@
 #define GPIO_H_
 
 #include "xparameters.h"
+#include "fem.h"
+
+#ifdef HW_PLATFORM_DEVBOARD
 #include "xgpio.h"
 
 int initGpioDevices(XGpio* pLed8, XGpio* pLed5, XGpio* pDip, XGpio* pSwitch);
+#endif
 
 #endif /* GPIO_H_ */

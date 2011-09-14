@@ -274,6 +274,13 @@ void initHardware(void)
 	int status;
 
 	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
+
+#ifdef HW_PLATFORM_DEVBOARD
+	DBGOUT("initHardware: Platform is defined as XILINX DEVELOPMENT BOARD\r\n");
+#else
+	DBGOUT("initHardware: Platform is defined as FEM HARDWARE\r\n");
+#endif
+
 	DBGOUT("initHardware: System alive!  Starting initialisation...\r\n");
 
 #ifdef HW_PLATFORM_DEVBOARD
@@ -302,7 +309,7 @@ void initHardware(void)
     }
 
     // Initialise and configure interrupt controller
-    status = XIntc_Initialize(&intc, XPAR_XPS_INTC_0_DEVICE_ID);
+    status = XIntc_Initialize(&intc, XINTC_ID);
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
@@ -311,25 +318,6 @@ void initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
-    }
-
-    // Show serial port info
-    if (XPAR_RS232_UART_1_BAUDRATE != XPAR_UARTLITE_0_BAUDRATE)
-    {
-    	DBGOUT("initHardware: UART1 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_1_BAUDRATE, XPAR_UARTLITE_0_BAUDRATE);
-    }
-    else
-    {
-    	DBGOUT("initHardware: UART1 (Debug) @ %d baud\r\n", XPAR_RS232_UART_1_BAUDRATE);
-    }
-
-    if (XPAR_RS232_UART_2_BAUDRATE != XPAR_UARTLITE_1_BAUDRATE)
-    {
-    	DBGOUT("initHardware: UART2 baud discrepancy (%d, %d)\r\n", XPAR_RS232_UART_2_BAUDRATE, XPAR_UARTLITE_1_BAUDRATE);
-    }
-    else
-    {
-    	DBGOUT("initHardware: UART2 (RDMA)  @ %d baud\r\n", XPAR_RS232_UART_2_BAUDRATE);
     }
 
     // Get config structure from EEPROM or use failsafe

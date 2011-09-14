@@ -7,7 +7,17 @@
  */
 
 #include "xil_types.h"
+#include "fem.h"
+
+#ifdef HW_PLATFORM_DEVBOARD
 #include "xuartlite_l.h"
+#define UART_SEND(baddr,byte)	XUartLite_SendByte(baddr,byte)
+#define UART_RECV(baddr)		XUartLite_RecvByte(baddr)
+#else
+#include "xuartns550_l.h"
+#define UART_SEND(baddr,byte)	XUartNs550_SendByte(baddr,byte)
+#define UART_RECV(baddr)		XUartNs550_RecvByte(baddr)
+#endif
 #include "xtmrctr.h"
 
 #ifndef RDMA_H_

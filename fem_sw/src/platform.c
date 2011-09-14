@@ -51,7 +51,7 @@ disable_caches()
 void
 init_platform()
 {
-    enable_caches();
+    //enable_caches();
 
     /* if we have a uart 16550, then that needs to be initialized */
 #ifdef STDOUT_IS_16550
