@@ -332,9 +332,9 @@ void initHardware(void)
     }
 
     // Show IP address
-    DBGOUT("InitHardware: Network IP: %d.%d.%d.%d\r\n", femConfig.net_ip[0],femConfig.net_ip[1],femConfig.net_ip[2],femConfig.net_ip[3]);
-    DBGOUT("InitHardware: Network NM: %d.%d.%d.%d\r\n", femConfig.net_nm[0],femConfig.net_nm[1],femConfig.net_nm[2],femConfig.net_nm[3]);
-    DBGOUT("InitHardware: Network GW: %d.%d.%d.%d\r\n", femConfig.net_gw[0],femConfig.net_gw[1],femConfig.net_gw[2],femConfig.net_gw[3]);
+    DBGOUT("InitHardware: Network IP: %3d.%3d.%3d.%3d\r\n", femConfig.net_ip[0],femConfig.net_ip[1],femConfig.net_ip[2],femConfig.net_ip[3]);
+    DBGOUT("InitHardware: Network NM: %3d.%3d.%3d.%3d\r\n", femConfig.net_nm[0],femConfig.net_nm[1],femConfig.net_nm[2],femConfig.net_nm[3]);
+    DBGOUT("InitHardware: Network GW: %3d.%3d.%3d.%3d\r\n", femConfig.net_gw[0],femConfig.net_gw[1],femConfig.net_gw[2],femConfig.net_gw[3]);
 
     // Show LM82 setpoints
     DBGOUT("InitHardware: LM82 high temp @ %dc\r\n", femConfig.temp_high_setpoint);
