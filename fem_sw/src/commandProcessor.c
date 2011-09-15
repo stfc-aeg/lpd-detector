@@ -99,7 +99,7 @@ void commandProcessorThread()
 
 					//if (numConnectedClients < MAX_CONNECTIONS) {
 
-						DBGOUT("CmdProc: Received new connection! (Client %d of a possible %d)\r\n", numConnectedClients+1, MAX_CONNECTIONS);
+						DBGOUT("CmdProc: Received new connection! (Client %d)\r\n", numConnectedClients+1);
 						numConnectedClients++;
 
 						// Accept connection
@@ -118,17 +118,6 @@ void commandProcessorThread()
 						{
 							numFds = newFd;
 						}
-
-					/*
-					}
-					else		// Reached client limit, so don't accept connection
-					{
-						DBGOUT("CmdProc: Received new connection request, but rejecting due to connection limit.\r\n");
-						lwip_close(i);
-						FD_CLR(i, &masterSet);
-					}
-					*/
-
 				}
 				else
 				// ----------------------------------------------------------------------------------------------------
