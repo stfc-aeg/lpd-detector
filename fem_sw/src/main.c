@@ -276,18 +276,18 @@ void initHardware(void)
 	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
 
 #ifdef HW_PLATFORM_DEVBOARD
-	DBGOUT("initHardware: Platform is defined as XILINX DEVELOPMENT BOARD\r\n");
+	DBGOUT("InitHardware: Platform is defined as XILINX DEVELOPMENT BOARD\r\n");
 #else
-	DBGOUT("initHardware: Platform is defined as FEM HARDWARE\r\n");
+	DBGOUT("InitHardware: Platform is defined as FEM HARDWARE\r\n");
 #endif
 
-	DBGOUT("initHardware: System alive!  Starting initialisation...\r\n");
+	DBGOUT("InitHardware: System alive!  Starting initialisation...\r\n");
 
 #ifdef HW_PLATFORM_DEVBOARD
     // Initialise GPIO devices (only for ML507)
     if (initGpioDevices(&gpioLed8, &gpioLed5, &gpioDip, &gpioSwitches) == -1)
     {
-    	DBGOUT("initHardware: Failed to initialise GPIOs.\r\n");
+    	DBGOUT("InitHardware: Failed to initialise GPIOs.\r\n");
     }
 #endif
 
@@ -296,7 +296,7 @@ void initHardware(void)
     status = XTmrCtr_Initialize(&timer, XPAR_XPS_TIMER_0_DEVICE_ID);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Failed to initialise timer.\r\n");
+    	DBGOUT("InitHardware: Failed to initialise timer.\r\n");
     }
 
     // Calibrate usleep
@@ -305,35 +305,40 @@ void initHardware(void)
     status = calibrateSleep(&timer);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Failed to calibrate sleep.\r\n");
+    	DBGOUT("InitHardware: Failed to calibrate sleep.\r\n");
     }
 
     // Initialise and configure interrupt controller
     status = XIntc_Initialize(&intc, XINTC_ID);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
+    	DBGOUT("InitHardware: Failed to initialise interrupt controller.\r\n");
     }
     status = XIntc_Start(&intc, XIN_REAL_MODE);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
+    	DBGOUT("InitHardware: Failed to start interrupt controller.\r\n");
     }
 
     // Get config structure from EEPROM or use failsafe
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
-    	DBGOUT("initHardware: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
+    	DBGOUT("InitHardware: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
     	createFailsafeConfig(&femConfig);
     }
     else
     {
-    	DBGOUT("initHardware: Got configuration from EEPROM OK!\r\n");
+    	DBGOUT("InitHardware: Got configuration from EEPROM OK!\r\n");
     }
 
+    // Show IP address
+    DBGOUT("InitHardware: Network IP: %d.%d.%d.%d\r\n", femConfig.net_ip[0],femConfig.net_ip[1],femConfig.net_ip[2],femConfig.net_ip[3]);
+    DBGOUT("InitHardware: Network NM: %d.%d.%d.%d\r\n", femConfig.net_nm[0],femConfig.net_nm[1],femConfig.net_nm[2],femConfig.net_nm[3]);
+    DBGOUT("InitHardware: Network GW: %d.%d.%d.%d\r\n", femConfig.net_gw[0],femConfig.net_gw[1],femConfig.net_gw[2],femConfig.net_gw[3]);
+
     // Show LM82 setpoints
-    DBGOUT("initHardware: LM82 high temp @ %dc\r\n", femConfig.temp_high_setpoint);
-    DBGOUT("initHardware: LM82 crit temp @ %dc\r\n", femConfig.temp_crit_setpoint);
+    DBGOUT("InitHardware: LM82 high temp @ %dc\r\n", femConfig.temp_high_setpoint);
+    DBGOUT("InitHardware: LM82 crit temp @ %dc\r\n", femConfig.temp_crit_setpoint);
 
 }
 
