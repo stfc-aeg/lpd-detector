@@ -4,10 +4,10 @@ Created on Aug 2, 2011
 @author: tcn45
 '''
 
-from struct import Struct, calcsize
+import struct
 from operator import xor
 
-class FemConfig(Struct):
+class FemConfig():
     
     configFormat = '!H6B4B4B4B2B6B2BB'
     
@@ -17,15 +17,13 @@ class FemConfig(Struct):
 
     @classmethod
     def configSize(cls):
-        return calcsize(FemConfig.configFormat)
+        return struct.calcsize(FemConfig.configFormat)
     
     def __init__(self, net_mac=None, net_ip=None, net_mask=None, 
                         net_gw=None, temp_high=None, temp_crit=None, 
                         sw_major=None, sw_minor=None, fw_major=None, fw_minor=None,
                         hw_major=None, hw_minor=None, board_id=None, board_type=None, encoded=None):
 
-        Struct.__init__(self, format=FemConfig.configFormat)
-        
         self.magicWord        = None
         self.net_mac          = [None] * 6
         self.net_ip           = [None] * 4
@@ -47,7 +45,6 @@ class FemConfig(Struct):
         if encoded:
         
             self.encoded = encoded    
-            configStruct = Struct(format=FemConfig.configFormat)
         
             (self.magicWord,
              self.net_mac[0], self.net_mac[1], self.net_mac[2], 
@@ -59,7 +56,7 @@ class FemConfig(Struct):
              self.sw_major_version, self.sw_minor_version, 
              self.fw_major_version, self.fw_minor_version, 
              self.hw_major_version, self.hw_minor_version,
-             self.board_id, self.board_type, self.checksum ) = configStruct.unpack(encoded)
+             self.board_id, self.board_type, self.checksum ) = struct.unpack(FemConfig.configFormat, encoded)
              
         # Otherwise fill the fields out from the arguments list, then encode to get packed
         # version with checksum     
@@ -89,14 +86,14 @@ class FemConfig(Struct):
         self.checksum = self.calculateChecksum()
         
         # Pack config into struct and update encoded version       
-        self.encoded = self.pack(*(self.getConfig()))
+        self.encoded = struct.pack(FemConfig.configFormat, *(self.getConfig()))
  
         return self.encoded
 
     def calculateChecksum(self):
         
         # Pack config into struct and get encoded version
-        encoded = self.pack(*(self.getConfig()))
+        encoded = struct.pack(FemConfig.configFormat, *(self.getConfig()))
         
         # Calculate checksum disregarding last byte, which is current checksum
         checksum = reduce(xor, map(ord, encoded[:-1]))
@@ -120,7 +117,7 @@ class FemConfig(Struct):
         return config 
            
     def decode(self):
-        return self.unpack(self.encoded)
+        return struct.unpack(FemConfig.configFormat, self.encoded)
         
     def __str__(self):
 

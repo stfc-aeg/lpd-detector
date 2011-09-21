@@ -4,9 +4,9 @@ Created on 28 Mar 2011
 @author: tcn
 '''
 
-from struct import Struct, calcsize
+import struct  
 
-class FemTransaction(Struct):
+class FemTransaction():
     '''
     FEM communication protocol transaction
     '''
@@ -42,12 +42,12 @@ class FemTransaction(Struct):
   
     @classmethod
     def headerSize(cls):
-        return calcsize(FemTransaction.headerFormat)
+        return struct.calcsize(FemTransaction.headerFormat)
        
     def __init__(self, cmd=None, bus=None, width=None, state=None, addr=None, payload=None, readLen=None, encoded=None):
  
         # Initialise format string to header format and create empty payload format string       
-        formatStr = FemTransaction.headerFormat
+        self.formatStr = FemTransaction.headerFormat
         self.payloadFormatStr = ''
         
         # Initialise remaining payload counter to zero and incomplete flag
@@ -60,11 +60,10 @@ class FemTransaction(Struct):
             self.encoded = encoded
             
             # Decode the headerStruct first
-            headerStruct = Struct(format=FemTransaction.headerFormat)
-            headerStructLen = headerStruct.size
+            headerStructLen = FemTransaction.headerSize()  
             
             (self.magicWord, self.command, self.bus, self.width, 
-             self.state, self.address, self.payloadLen) =  headerStruct.unpack(encoded[0:headerStructLen])
+             self.state, self.address, self.payloadLen) =  struct.unpack(self.formatStr, encoded[0:headerStructLen])
             
             #TODO: sanity check decoded headerStruct
             
@@ -85,8 +84,8 @@ class FemTransaction(Struct):
             if self.payloadRemaining > 0:
                 self.incomplete = True
             else:
-                payloadStruct = Struct(format = '!' + self.payloadFormatStr)
-                self.payload = payloadStruct.unpack(self.encoded[headerStructLen:])
+                payloadFormat = '!' + self.payloadFormatStr
+                self.payload = struct.unpack(payloadFormat, self.encoded[headerStructLen:])
                 self.incomplete = False
             
          
@@ -118,8 +117,7 @@ class FemTransaction(Struct):
                     self.payloadFormatStr = str(len(payload)) + payloadFormat
                     self.payload = tuple(payload)
          
-        formatStr = formatStr + self.payloadFormatStr       
-        Struct.__init__(self, format=formatStr)
+        self.formatStr = self.formatStr + self.payloadFormatStr       
 
     def append(self, data=None):
 
@@ -133,9 +131,9 @@ class FemTransaction(Struct):
                 self.encoded = self.encoded + data
                 self.payloadRemaining = self.payloadRemaining - dataLen
                 if self.payloadRemaining == 0:
-                    payloadStruct = Struct(format = '!' + self.payloadFormatStr)
+                    payloadFormat = '!' + self.payloadFormatStr
                     headerStructLen = FemTransaction.headerSize()
-                    self.payload = payloadStruct.unpack(self.encoded[headerStructLen:])
+                    self.payload = struct.unpack(payloadFormat, self.encoded[headerStructLen:])
                     self.incomplete = False
                 
         else:
@@ -145,10 +143,10 @@ class FemTransaction(Struct):
                 
     def encode(self):
         transaction = (self.magicWord, self.command, self.bus, self.width, self.state, self.address, self.payloadLen) + self.payload
-        return self.pack(*(transaction))
+        return struct.pack(self.formatStr, *(transaction))
 
     def decode(self):
-        return self.unpack(self.encoded)
+        return struct.unpack(self.formatStr, self.encoded)
 
 if __name__ == '__main__':
     
