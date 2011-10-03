@@ -236,7 +236,8 @@ void networkInitThread(void *p)
     // Add network interface to the netif_list, and set it as default
     // NOTE: This can (and WILL) hang forever if the base address for the MAC is incorrect, or not assigned by EDK...
     // (e.g. 0xFFFF0000 etc is invalid).  Use 'Generate Addresses' if this is the case...
-    DBGOUT("NetMan: MAC is %02x:%02x:%02x:%02x:%02x:%02x\r\n", femConfig.net_mac[0], femConfig.net_mac[1], femConfig.net_mac[2], femConfig.net_mac[3], femConfig.net_mac[4], femConfig.net_mac[5]);
+    //DBGOUT("NetMan: MAC is %02x:%02x:%02x:%02x:%02x:%02x\r\n", femConfig.net_mac[0], femConfig.net_mac[1], femConfig.net_mac[2], femConfig.net_mac[3], femConfig.net_mac[4], femConfig.net_mac[5]);
+    DBGOUT("NetMan: Device IP is %03d.%03d.%03d.%03d\r\n", femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
     if (!xemac_add(netif, &ipaddr, &netmask, &gateway, (unsigned char*)femConfig.net_mac, BADDR_MAC)) {
     	DBGOUT("NetMan: Error adding N/W interface to netif, aborting...\r\n");
         return;
