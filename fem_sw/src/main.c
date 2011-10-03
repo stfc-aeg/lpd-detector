@@ -19,7 +19,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Version 1.4 - not for distribution
+ * Version 1.5 - not for distribution
  *
  * ----------------------------------------------------------------------------
  *
@@ -44,11 +44,17 @@
  *  - Created hooks for commandProcessorThread to drop connections when already at connection limit,
  *  	but this isn't yet fully implemented...
  *
+ * 1.5		23-Sep-2011
+ *  - Revised RDMA library to properly support 16550 UART
+ *  - Implemented RDMA self-test routine
+ *  - Introduced 1 second delay before LWIP init to try to improve stability
+ *
  * ----------------------------------------------------------------------------
  *
  * TO DO LIST:
  *
  * TODO: Determine why execution halts sometimes after LWIP auto-negotiation
+ * TODO: Determine why UART loopback test occasionally fails
  *
  * TODO: Clean network select / command processing logic, make robust
  * TODO: Test with malformed packets, try to break processing loop
@@ -56,10 +62,12 @@
  * TODO: Support for concurrent large payload writes (????)
  *
  * TODO: Implement iperf server and some way to activate / deactivate it without rebooting or rebuilding
+ * TODO: Investigate ICMP support
  *
  * TODO: Profile memory usage
  * TODO: Tune thread stacksize
  * TODO: Check for memory leaks
+ *
  * TODO: Determine why LWIP hangs on init using priority based scheduler
  *
  * ----------------------------------------------------------------------------
@@ -129,7 +137,7 @@
 
 void* masterThread(void *);			// Main thread launched by xilkernel
 void networkInitThread(void *);	// Sets up LWIP, spawned by master thread
-void initHardware(void);
+int initHardware(void);
 
 
 
@@ -157,9 +165,14 @@ XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 int main()
 {
     init_platform();
+    usleep(1000000);		// 1 second delay - does this make temac init more stable?
+    //DBGOUT("main: init_platform() complete.\r\n");
     initHardware();
+    //DBGOUT("main: initHardware() complete.\r\n");
     xilkernel_init();
+    //DBGOUT("main: xilkernel_init() complete.\r\n");
     xmk_add_static_thread(masterThread, 0);			// Create the master thread
+    //DBGOUT("main: xmk_add_static complete.\r\n");
     xilkernel_start();
     cleanup_platform();								// Never reached
 
@@ -268,26 +281,26 @@ void networkInitThread(void *p)
  * Initialises FEM hardware
  *
  */
-void initHardware(void)
+int initHardware(void)
 {
 
 	int status;
+	int fpgaTemp,lmTemp = 0;
 
 	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
+	DBGOUT("initHardware: System alive!\r\n");
 
 #ifdef HW_PLATFORM_DEVBOARD
-	DBGOUT("InitHardware: Platform is defined as XILINX DEVELOPMENT BOARD\r\n");
+	DBGOUT("initHardware: Platform is defined as XILINX DEVELOPMENT BOARD\r\n");
 #else
-	DBGOUT("InitHardware: Platform is defined as FEM HARDWARE\r\n");
+	DBGOUT("initHardware: Platform is defined as FEM HARDWARE\r\n");
 #endif
-
-	DBGOUT("InitHardware: System alive!  Starting initialisation...\r\n");
 
 #ifdef HW_PLATFORM_DEVBOARD
     // Initialise GPIO devices (only for ML507)
     if (initGpioDevices(&gpioLed8, &gpioLed5, &gpioDip, &gpioSwitches) == -1)
     {
-    	DBGOUT("InitHardware: Failed to initialise GPIOs.\r\n");
+    	DBGOUT("initHardware: Failed to initialise GPIOs.\r\n");
     }
 #endif
 
@@ -296,7 +309,7 @@ void initHardware(void)
     status = XTmrCtr_Initialize(&timer, XPAR_XPS_TIMER_0_DEVICE_ID);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("InitHardware: Failed to initialise timer.\r\n");
+    	DBGOUT("initHardware: Failed to initialise timer.\r\n");
     }
 
     // Calibrate usleep
@@ -305,40 +318,59 @@ void initHardware(void)
     status = calibrateSleep(&timer);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("InitHardware: Failed to calibrate sleep.\r\n");
+    	DBGOUT("initHardware: Failed to calibrate sleep.\r\n");
     }
 
     // Initialise and configure interrupt controller
     status = XIntc_Initialize(&intc, XINTC_ID);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("InitHardware: Failed to initialise interrupt controller.\r\n");
+    	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
     }
     status = XIntc_Start(&intc, XIN_REAL_MODE);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("InitHardware: Failed to start interrupt controller.\r\n");
+    	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
     }
 
     // Get config structure from EEPROM or use failsafe
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
-    	DBGOUT("InitHardware: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
+    	DBGOUT("initHardware: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
     	createFailsafeConfig(&femConfig);
     }
     else
     {
-    	DBGOUT("InitHardware: Got configuration from EEPROM OK!\r\n");
+    	DBGOUT("initHardware: Got EEPROM configuration OK.\r\n");
     }
 
-    // Show IP address
-    DBGOUT("InitHardware: Network IP: %3d.%3d.%3d.%3d\r\n", femConfig.net_ip[0],femConfig.net_ip[1],femConfig.net_ip[2],femConfig.net_ip[3]);
-    DBGOUT("InitHardware: Network NM: %3d.%3d.%3d.%3d\r\n", femConfig.net_nm[0],femConfig.net_nm[1],femConfig.net_nm[2],femConfig.net_nm[3]);
-    DBGOUT("InitHardware: Network GW: %3d.%3d.%3d.%3d\r\n", femConfig.net_gw[0],femConfig.net_gw[1],femConfig.net_gw[2],femConfig.net_gw[3]);
-
     // Show LM82 setpoints
-    DBGOUT("InitHardware: LM82 high temp @ %dc\r\n", femConfig.temp_high_setpoint);
-    DBGOUT("InitHardware: LM82 crit temp @ %dc\r\n", femConfig.temp_crit_setpoint);
+    DBGOUT("initHardware: LM82 overheat limit %dc, shutdown limit %dc\r\n", femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint);
+
+    // Read FPGA temp
+    fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
+    lmTemp = readTemp(LM82_REG_READ_LOCAL_TEMP);
+    DBGOUT("initHardware: FPGA temp %dc, LM82 temp %dc\r\n", fpgaTemp, lmTemp);
+
+    // Initialise RDMA block(s) and run selftest
+    initRdma();
+    DBGOUT("initHardware: Running RDMA self-test... ");
+    status = rdmaSelftest();
+    if (status == XST_UART_TEST_FAIL)
+    {
+    	DBGOUT("FAILED - UART loopback test failed.\r\n");
+    	return status;
+    }
+    else if (status == XST_LOOPBACK_ERROR)
+    {
+    	DBGOUT("FAILED - RDMA readback test failed.\r\n");
+    	return status;
+    }
+    else
+    {
+    	DBGOUT("OK.\r\n");
+    }
+
+    return XST_SUCCESS;
 
 }
-

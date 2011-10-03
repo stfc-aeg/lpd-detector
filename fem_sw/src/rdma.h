@@ -2,31 +2,47 @@
  * rdma.h
  *
  * Provides access to ESDG group FPGA blocks via
- * RS232-RDMA link
+ * RS232-RDMA link register set
+ *
+ * THIS LIBRARY ONLY COMPATIBLE WITH 16550 UART AT PRESENT!
  *
  */
 
 #include "xil_types.h"
+#include "xparameters.h"
 #include "fem.h"
-
 #ifdef HW_PLATFORM_DEVBOARD
 #include "xuartlite_l.h"
-#define UART_SEND(baddr,byte)	XUartLite_SendByte(baddr,byte)
-#define UART_RECV(baddr)		XUartLite_RecvByte(baddr)
+#include "xstatus.h"
 #else
-#include "xuartns550_l.h"
-#define UART_SEND(baddr,byte)	XUartNs550_SendByte(baddr,byte)
-#define UART_RECV(baddr)		XUartNs550_RecvByte(baddr)
+#include "xuartns550.h"
 #endif
-#include "xtmrctr.h"
 
-#ifndef RDMA_H_
-#define RDMA_H_
+#ifndef RDMA2_H_
+#define RDMA2_H_
 
+// Commands for RDMA block
 #define RDMA_CMD_READ			0
 #define RDMA_CMD_WRITE			1
 
-u32 readRdma(u32 base, u32 addr);
-void writeRdma(u32 base, u32 addr, u32 value);
+// Hardware settings for RDMA block
+// TODO: Should these be moved to fem.h?
+#define RDMA_DEVICEID			XPAR_RS232_UART_PPC2_RDMA_DEVICE_ID
+#define RDMA_CLK				XPAR_RS232_UART_PPC2_CLOCK_FREQ_HZ
 
-#endif /* RDMA_H_ */
+// Serial settings for RDMA block
+#define RDMA_DEF_BAUDRATE		9600						// Probably not needed!
+#define RDMA_BAUDRATE			256000
+#define RDMA_DATABITS			XUN_FORMAT_8_BITS
+#define RDMA_PARITY				XUN_FORMAT_NO_PARITY
+#define RDMA_STOPBITS			XUN_FORMAT_1_STOP_BIT
+
+// Register to use for readback self test
+#define RDMA_SELFTEST_REG		1
+
+int initRdma(void);
+int rdmaSelftest(void);
+u32 readRdma(u32 addr);
+void writeRdma(u32 addr, u32 value);
+
+#endif /* RDMA2_H_ */

@@ -10,8 +10,8 @@
 // Communicates with PC via TCP/IP socket (SOCK_STREAM) to receive packets
 // and display them to stdout (RS232)
 //
-// TODO: Adhere to MAX_CONNECTIONS, MAX_PAYLOAD_SIZE
-// TODO: Replace return statements, make sure to close any open FDs too
+// TODO: Adhere to MAX_PAYLOAD_SIZE
+// TODO: Replace return statements, make sure to close any open FDs too!
 void commandProcessorThread()
 {
 	// Socket stuff
@@ -97,27 +97,28 @@ void commandProcessorThread()
 				if (i==listenerSocket)
 				{
 
-					//if (numConnectedClients < MAX_CONNECTIONS) {
+					DBGOUT("CmdProc: Received new connection! (Client %d)\r\n", numConnectedClients+1);
+					numConnectedClients++;
 
-						DBGOUT("CmdProc: Received new connection! (Client %d)\r\n", numConnectedClients+1);
-						numConnectedClients++;
-
-						// Accept connection
-						addrSize = sizeof(clientAddress);
-						newFd = lwip_accept(listenerSocket, (struct sockaddr*)&clientAddress, (socklen_t*)&addrSize);
-						if (newFd == -1)
-						{
-							// Unrecoverable error
-							DBGOUT("CmdProc: Accept error\r\n");
-							return;
-						}
-
+					// Accept connection
+					addrSize = sizeof(clientAddress);
+					newFd = lwip_accept(listenerSocket, (struct sockaddr*)&clientAddress, (socklen_t*)&addrSize);
+					if (newFd == -1)
+					{
+						// Unrecoverable error
+						DBGOUT("CmdProc: Accept error\r\n");
+						//return;
+					}
+					else
+					{
 						// Add to master list of FDs, update count
 						FD_SET(newFd, &masterSet);
 						if (newFd > numFds)
 						{
 							numFds = newFd;
 						}
+					}
+
 				}
 				else
 				// ----------------------------------------------------------------------------------------------------
@@ -522,10 +523,12 @@ void commandHandler(struct protocol_header* pRxHeader,
 				// TODO: Set error bits
 			}
 
-			break; // BUS_RDMA
+			break; // BUS_RAW_REG
 
 		// --------------------------------------------------------------------
 		case BUS_RDMA:
+
+			/*
 
 			// Verify request parameters are sane
 			// We don't support anything other than 32-bit operations for RAW_REG as all RDMA registers are 32bit.
@@ -575,7 +578,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 				// TODO: Set error bits
 			}
 
-			break; // BUS_RAW_REG
+			*/
+			break; // BUS_RDMA
 
 		case BUS_UNSUPPORTED:
 		default:

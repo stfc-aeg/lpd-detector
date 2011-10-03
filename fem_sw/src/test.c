@@ -6,6 +6,7 @@
  */
 
 #include "test.h"
+#include "rdma.h"
 
 /*
  * Test routine for various hardware components
@@ -16,7 +17,7 @@
 int testThread(u8 bitmask)
 {
 
-	DBGOUT("TEST: Entered test function!\r\n");
+	DBGOUT("Test: Entered test function!\r\n");
 
 	/*
 	// *** For LM82 tests ***
@@ -93,34 +94,36 @@ int testThread(u8 bitmask)
 	// ------------------------------------------------------------------------
 	// Rob RDMA / RS232 link test
 
-	/*
-	DBGOUT("Test: Running RDMA test ...\r\n");
+	// ***********************
+	// Only for RDMA2 library!
+	// ***********************
+	int status;
+
+	DBGOUT("Test: Running old RDMA tests...\r\n");
 	u32 addr;
 	u32 regVal = 0;
 
 	// Read read-only register
 	addr = 4;
-	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
+	regVal = readRdma(addr);
 	DBGOUT("Test: RO:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
 
 	// Read read-write register
 	addr = 1;
-	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
+	regVal = readRdma(addr);
 	DBGOUT("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
 
 	// Write read-write register
 	u32 testValue = 0xDEADBEEF;
-	writeRdma(RDMA_RS232_BASEADDR, addr, testValue);
-	DBGOUT("Test: Wrote 0x%x to 0x%x\r\n", addr, testValue);
+	writeRdma(addr, testValue);
+	DBGOUT("Test: Wrote 0x%x to 0x%x\r\n", testValue, addr);
 
 	// Read read-write register
-	regVal = readRdma(RDMA_RS232_BASEADDR, addr);
+	regVal = readRdma(addr);
 	DBGOUT("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
 
 	// Don't let EEPROM tests run!
-	return;
-	*/
-
+	return 0;
 
 	// ------------------------------------------------------------------------
 	// FEM configuration struct test

@@ -46,8 +46,8 @@
 #define BADDR_I2C_SP3_BOT			XPAR_IIC_POWER_LHS_BASEADDR
 #define BADDR_MAC					XPAR_LLTEMAC_0_BASEADDR
 #define BADDR_INTC					XPAR_XPS_INTC_2_BASEADDR
-#define BADDR_RDMA					XPAR_RS232_UART_PPC2_BASEADDR
-#define XINTC_ID					XPAR_XPS_INTC_2_BASEADDR
+#define BADDR_RDMA					XPAR_RS232_UART_PPC2_RDMA_BASEADDR
+#define XINTC_ID					XPAR_XPS_INTC_2_DEVICE_ID
 #endif
 
 // Enable / disable serial debugging output (comment to disable)
