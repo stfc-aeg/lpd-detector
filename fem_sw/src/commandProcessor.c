@@ -320,274 +320,290 @@ void commandHandler(struct protocol_header* pRxHeader,
 	// Increment response size to include #ops as first entry
 	responseSize += sizeof(u32);
 
-	// Process packet based on target
-	switch(pRxHeader->bus_target)
+	// Determine operation type
+	switch(pRxHeader->command)
 	{
 
-		// --------------------------------------------------------------------
-		case BUS_EEPROM:
-
-			// Verify request parameters are sane
-			if ( (pRxHeader->data_width != WIDTH_BYTE) || (pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-			{
-				DBGOUT("CmdDisp: Invalid EEPROM request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-				SBIT(status, STATE_NACK);
-				// TODO: set error bits
-				break;
-			}
-
-			dataWidth = sizeof(u8); // All EEPROM operations are byte level
-
-			if (CMPBIT(status, STATE_READ))
-			{
-
-				i = readFromEEPROM(pRxHeader->address, pTxPayload + 4, *pRxPayload_32);
-				if (i != *pRxPayload_32)
-				{
-					// EEPROM read failed, set NACK
-					SBIT(status, STATE_NACK);
-					// TODO: set error bits?
-				}
-				else
-				{
-					SBIT(status, STATE_ACK);
-					responseSize += i;
-					numOps++;
-				}
-			}
-			else if (CMPBIT(status, STATE_WRITE))
-			{
-
-				i = writeToEEPROM(pRxHeader->address, pRxPayload, pRxHeader->payload_sz);
-				if (i != pRxHeader->payload_sz)
-				{
-					SBIT(status, STATE_NACK);
-					// TODO: Set error bits?
-				} else
-				{
-					SBIT(status, STATE_ACK);
-					numOps++;
-				}
-
-			}
-			else
-			{
-				// Neither R or W bits set, can't process request
-				DBGOUT("CmdDisp: Error, can't determine BUS_EEPROM operation mode, status was 0x%x\r\n", status);
-				// TODO: Set error bits
-			}
-			break; // BUS_EEPROM
-
-		// --------------------------------------------------------------------
-		case BUS_I2C:
-
-			// Verify request parameters are sane
-			if ( (pRxHeader->data_width != WIDTH_BYTE) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-			{
-				DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-				SBIT(status, STATE_NACK);
-				// TODO: Set error bits
-				break;
-			}
-			dataWidth = sizeof(u8);	// All I2C operations are byte level
-
+		case CMD_INTERNAL:
+			// TODO: Process internal state request here!
 			/*
-			 * Decode address field
-			 * Least significant word (lower byte) = I2C slave address
-			 * Most significant word (lower byte)  = Bus index (0=LM82, 1=EEPROM, 2=SP3_TOP, 3=SP3_BOT)
+			 * What will we support eventually?
+			 * - Remote reset command (w/payload, bitmask for components to reset?)
+			 * - Get # connected clients (+ IPs?) - no payload?
+			 * - Current software build (remove from EEPROM?) - no payload?
+			 * - Current firmware build (remove from EEPROM?) - no payload?
+			 *
 			 */
-			u8 slaveAddress = (pRxHeader->address & 0xF);
-			u8 busIndex = (pRxHeader->address & 0xF00) >> 16;
-			u32 baseAddr = 0;
-
-			// Map of I2C bus base addresses
-			u32 i2cAddr[] =			{
-										BADDR_I2C_LM82,
-										BADDR_I2C_EEPROM,
-										BADDR_I2C_SP3_TOP,
-										BADDR_I2C_SP3_BOT
-									};
-			u8 i2cMaxAddr = ((sizeof(i2cAddr)/sizeof(u32)) +1);
-
-			// Verify bus index is valid, if so lookup associated base address
-			if (busIndex >= i2cMaxAddr )
-			{
-				DBGOUT("CmdDisp: Invalid I2C bus index %d (maximum index is %d)\r\n", busIndex, i2cMaxAddr);
-				SBIT(status, STATE_NACK);
-				// TODO: Set error bits
-			}
-			else
-			{
-				baseAddr = i2cAddr[busIndex];
-			}
-
-			if (CMPBIT(status, STATE_READ))
-			{
-				i = readI2C(baseAddr, slaveAddress, pTxPayload + 1, (u32)pRxPayload[0]);
-				if (i != (u32)pRxPayload[0])
-				{
-					// I2C operation failed, set NACK
-					SBIT(status, STATE_NACK);
-					// TODO: Set error bits?
-				}
-				else
-				{
-					// Set ACK, payload size
-					SBIT(status, STATE_ACK);
-					responseSize += i;
-					numOps++;
-				}
-
-			}
-			else if (CMPBIT(status, STATE_WRITE))
-			{
-				i = writeI2C(baseAddr, slaveAddress, pRxPayload, pRxHeader->payload_sz);
-				if (i != pRxHeader->payload_sz)
-				{
-					// I2C operation failed, set NACK
-					SBIT(status, STATE_NACK);
-					// TODO: Set error bits?
-				}
-				else
-				{
-					// Set ACK
-					SBIT(status, STATE_ACK);
-					numOps++;
-				}
-			}
-			else
-			{
-				// Neither R or W bits set, can't process request
-				DBGOUT("CmdDisp: Error, can't determine BUS_I2C operation mode, status was 0x%x\r\n", status);
-				// TODO: Set error bits
-			}
-
-			break; // BUS_I2C
-
-		// --------------------------------------------------------------------
-		case BUS_RAW_REG:
-
-			// Verify request parameters are sane
-			// We don't support anything other than 32-bit operations for RAW_REG as all Xilinx registers are 32bit.
-			if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-			{
-				DBGOUT("CmdDisp: Invalid raw reg request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-				SBIT(status, STATE_NACK);
-				// TODO: Set error bits
-				break;
-			}
-
-			dataWidth = sizeof(u32);
-
-			// Make sure return packet will not violate MAX_PAYLOAD_SIZE (write operations should never be too long if MAX_PAYLOAD_SIZE => 4!)
-			if (CMPBIT(status, STATE_READ)) {
-				if ( (sizeof(u32) + (dataWidth * numRequestedReads)) > MAX_PAYLOAD_SIZE )
-				{
-					DBGOUT("CmdDisp: Response would be too large! (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-					SBIT(status, STATE_NACK);
-					// TODO: set error bits
-					break;
-				}
-			}
-
-			if (CMPBIT(status, STATE_READ)) // READ OPERATION
-			{
-				for (i=0; i<*pRxPayload_32; i++)
-				{
-					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
-					*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*dataWidth));
-					DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*dataWidth)));
-					responseSize += dataWidth;
-					numOps++;
-				}
-				SBIT(status, STATE_ACK);
-
-			}
-			else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
-			{
-				for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
-				{
-					pRxPayload_32 = (u32*)pRxPayload;
-					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i));
-					writeRegister_32( pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i) );
-					numOps++;
-				}
-				SBIT(status, STATE_ACK);
-			}
-			else
-			{
-				// Neither R or W bits set, can't process request
-				DBGOUT("CmdDisp: Error, can't determine BUS_RAW_REG operation mode, status was 0x%x\r\n", status);
-
-				SBIT(status, STATE_NACK);
-				// TODO: Set error bits
-			}
-
-			break; // BUS_RAW_REG
-
-		// --------------------------------------------------------------------
-		case BUS_RDMA:
-
-			/*
-
-			// Verify request parameters are sane
-			// We don't support anything other than 32-bit operations for RAW_REG as all RDMA registers are 32bit.
-			if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-			{
-				DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-				SBIT(status, STATE_NACK);
-				// TODO: Set error bits
-				break;
-			}
-
-			dataWidth = sizeof(u32);
-			pTxPayload_32 = (u32*)(pTxPayload+responseSize);
-
-			if (CMPBIT(status, STATE_READ)) // READ OPERATION
-			{
-
-				pRxPayload_32 = (u32*)pRxPayload;
-				for (i=0; i<*pRxPayload_32; i++)
-				{
-					DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
-					*(pTxPayload_32+i) = readRdma(BADDR_RDMA, pRxHeader->address + i);
-					DBGOUT(" VALUE 0x%x\r\n", readRdma(BADDR_RDMA, pRxHeader->address + i));
-					responseSize += dataWidth;
-					numOps++;
-				}
-				SBIT(status, STATE_ACK);
-
-			}
-			else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
-			{
-				for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
-				{
-					pRxPayload_32 = (u32*)pRxPayload;
-					DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
-					writeRdma(BADDR_RDMA, pRxHeader->address + i, *(pRxPayload_32+i));
-					numOps++;
-				}
-				SBIT(status, STATE_ACK);
-			}
-			else
-			{
-				// Neither R or W bits set, can't process request
-				DBGOUT("CmdDisp: Error, can't determine BUS_RDMA operation mode, status was 0x%x\r\n", status);
-
-				SBIT(status, STATE_NACK);
-				// TODO: Set error bits
-			}
-
-			*/
-			break; // BUS_RDMA
-
-		case BUS_UNSUPPORTED:
-		default:
-			SBIT(status, STATE_NACK);
-			// TODO: Set error bits
+			DBGOUT("CmdDisp: Internal state requests not yet implemented!  Nag Matt...\r\n");
 			break;
 
-	}
+		case CMD_ACCESS:
+
+			switch(pRxHeader->bus_target)
+			{
+
+				// --------------------------------------------------------------------
+				case BUS_EEPROM:
+
+					// Verify request parameters are sane
+					if ( (pRxHeader->data_width != WIDTH_BYTE) || (pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
+					{
+						DBGOUT("CmdDisp: Invalid EEPROM request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+						SBIT(status, STATE_NACK);
+						// TODO: set error bits
+						break;
+					}
+
+					dataWidth = sizeof(u8); // All EEPROM operations are byte level
+
+					if (CMPBIT(status, STATE_READ))
+					{
+
+						i = readFromEEPROM(pRxHeader->address, pTxPayload + 4, *pRxPayload_32);
+						if (i != *pRxPayload_32)
+						{
+							// EEPROM read failed, set NACK
+							SBIT(status, STATE_NACK);
+							// TODO: set error bits?
+						}
+						else
+						{
+							SBIT(status, STATE_ACK);
+							responseSize += i;
+							numOps++;
+						}
+					}
+					else if (CMPBIT(status, STATE_WRITE))
+					{
+
+						i = writeToEEPROM(pRxHeader->address, pRxPayload, pRxHeader->payload_sz);
+						if (i != pRxHeader->payload_sz)
+						{
+							SBIT(status, STATE_NACK);
+							// TODO: Set error bits?
+						} else
+						{
+							SBIT(status, STATE_ACK);
+							numOps++;
+						}
+
+					}
+					else
+					{
+						// Neither R or W bits set, can't process request
+						DBGOUT("CmdDisp: Error, can't determine BUS_EEPROM operation mode, status was 0x%x\r\n", status);
+						// TODO: Set error bits
+					}
+					break; // BUS_EEPROM
+
+				// --------------------------------------------------------------------
+				case BUS_I2C:
+
+					// Verify request parameters are sane
+					if ( (pRxHeader->data_width != WIDTH_BYTE) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
+					{
+						DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+						SBIT(status, STATE_NACK);
+						// TODO: Set error bits
+						break;
+					}
+					dataWidth = sizeof(u8);	// All I2C operations are byte level
+
+					/*
+					 * Decode address field
+					 * Least significant word (lower byte) = I2C slave address
+					 * Most significant word (lower byte)  = Bus index (0=LM82, 1=EEPROM, 2=SP3_TOP, 3=SP3_BOT)
+					 */
+					u8 slaveAddress = (pRxHeader->address & 0xF);
+					u8 busIndex = (pRxHeader->address & 0xF00) >> 16;
+					u32 baseAddr = 0;
+
+					// Map of I2C bus base addresses
+					u32 i2cAddr[] =			{
+												BADDR_I2C_LM82,
+												BADDR_I2C_EEPROM,
+												BADDR_I2C_SP3_TOP,
+												BADDR_I2C_SP3_BOT
+											};
+					u8 i2cMaxAddr = ((sizeof(i2cAddr)/sizeof(u32)) +1);
+
+					// Verify bus index is valid, if so lookup associated base address
+					if (busIndex >= i2cMaxAddr )
+					{
+						DBGOUT("CmdDisp: Invalid I2C bus index %d (maximum index is %d)\r\n", busIndex, i2cMaxAddr);
+						SBIT(status, STATE_NACK);
+						// TODO: Set error bits
+					}
+					else
+					{
+						baseAddr = i2cAddr[busIndex];
+					}
+
+					if (CMPBIT(status, STATE_READ))
+					{
+						i = readI2C(baseAddr, slaveAddress, pTxPayload + 1, (u32)pRxPayload[0]);
+						if (i != (u32)pRxPayload[0])
+						{
+							// I2C operation failed, set NACK
+							SBIT(status, STATE_NACK);
+							// TODO: Set error bits?
+						}
+						else
+						{
+							// Set ACK, payload size
+							SBIT(status, STATE_ACK);
+							responseSize += i;
+							numOps++;
+						}
+
+					}
+					else if (CMPBIT(status, STATE_WRITE))
+					{
+						i = writeI2C(baseAddr, slaveAddress, pRxPayload, pRxHeader->payload_sz);
+						if (i != pRxHeader->payload_sz)
+						{
+							// I2C operation failed, set NACK
+							SBIT(status, STATE_NACK);
+							// TODO: Set error bits?
+						}
+						else
+						{
+							// Set ACK
+							SBIT(status, STATE_ACK);
+							numOps++;
+						}
+					}
+					else
+					{
+						// Neither R or W bits set, can't process request
+						DBGOUT("CmdDisp: Error, can't determine BUS_I2C operation mode, status was 0x%x\r\n", status);
+						// TODO: Set error bits
+					}
+
+					break; // BUS_I2C
+
+				// --------------------------------------------------------------------
+				case BUS_RAW_REG:
+
+					// Verify request parameters are sane
+					// We don't support anything other than 32-bit operations for RAW_REG as all Xilinx registers are 32bit.
+					if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
+					{
+						DBGOUT("CmdDisp: Invalid raw reg request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+						SBIT(status, STATE_NACK);
+						// TODO: Set error bits
+						break;
+					}
+
+					dataWidth = sizeof(u32);
+
+					// Make sure return packet will not violate MAX_PAYLOAD_SIZE (write operations should never be too long if MAX_PAYLOAD_SIZE => 4!)
+					if (CMPBIT(status, STATE_READ)) {
+						if ( (sizeof(u32) + (dataWidth * numRequestedReads)) > MAX_PAYLOAD_SIZE )
+						{
+							DBGOUT("CmdDisp: Response would be too large! (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+							SBIT(status, STATE_NACK);
+							// TODO: set error bits
+							break;
+						}
+					}
+
+					if (CMPBIT(status, STATE_READ)) // READ OPERATION
+					{
+						for (i=0; i<*pRxPayload_32; i++)
+						{
+							DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
+							*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*dataWidth));
+							DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*dataWidth)));
+							responseSize += dataWidth;
+							numOps++;
+						}
+						SBIT(status, STATE_ACK);
+
+					}
+					else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
+					{
+						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+						{
+							pRxPayload_32 = (u32*)pRxPayload;
+							DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i));
+							writeRegister_32( pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i) );
+							numOps++;
+						}
+						SBIT(status, STATE_ACK);
+					}
+					else
+					{
+						// Neither R or W bits set, can't process request
+						DBGOUT("CmdDisp: Error, can't determine BUS_RAW_REG operation mode, status was 0x%x\r\n", status);
+
+						SBIT(status, STATE_NACK);
+						// TODO: Set error bits
+					}
+
+					break; // BUS_RAW_REG
+
+				// --------------------------------------------------------------------
+				case BUS_RDMA:
+
+					// Verify request parameters are sane
+					// We don't support anything other than 32-bit operations for RAW_REG as all RDMA registers are 32bit.
+					if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
+					{
+						DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
+						SBIT(status, STATE_NACK);
+						// TODO: Set error bits
+						break;
+					}
+
+					dataWidth = sizeof(u32);
+					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
+
+					if (CMPBIT(status, STATE_READ)) // READ OPERATION
+					{
+
+						pRxPayload_32 = (u32*)pRxPayload;
+						for (i=0; i<*pRxPayload_32; i++)
+						{
+							DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
+							*(pTxPayload_32+i) = readRdma(pRxHeader->address + i);
+							DBGOUT(" VALUE 0x%x\r\n", readRdma(pRxHeader->address + i));
+							responseSize += dataWidth;
+							numOps++;
+						}
+						SBIT(status, STATE_ACK);
+
+					}
+					else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
+					{
+						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+						{
+							pRxPayload_32 = (u32*)pRxPayload;
+							DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
+							writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
+							numOps++;
+						}
+						SBIT(status, STATE_ACK);
+					}
+					else
+					{
+						// Neither R or W bits set, can't process request
+						DBGOUT("CmdDisp: Error, can't determine BUS_RDMA operation mode, status was 0x%x\r\n", status);
+
+						SBIT(status, STATE_NACK);
+						// TODO: Set error bits
+					}
+					break; // BUS_RDMA
+
+				case BUS_UNSUPPORTED:
+				default:
+					SBIT(status, STATE_NACK);
+					// TODO: Set error bits
+					break;
+
+			} // END switch(bus)
+
+	} // END switch(command)
 
 	// Build response header (all fields other status byte stay same as received packet)
 	pTxHeader->status = status;

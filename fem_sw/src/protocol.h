@@ -64,7 +64,8 @@ struct protocol_header
 enum protocol_commands
 {
 	CMD_UNSUPPORTED = 0,
-	CMD_ACCESS      = 1
+	CMD_ACCESS      = 1,
+	CMD_INTERNAL	= 2
 };
 
 // Target bus for commands

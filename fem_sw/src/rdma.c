@@ -44,11 +44,13 @@ int rdmaSelftest(void)
 
 u32 readRdma(u32 addr)
 {
+	// Use BADDR_RDMA !
 	return 0;
 }
 
 void writeRdma(u32 addr, u32 value)
 {
+	// Use BADDR_RDMA !
 	return;
 }
 
