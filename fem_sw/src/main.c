@@ -113,7 +113,7 @@
 
 // SystemACE
 #ifndef HW_PLATFORM_DEVBOARD
-//#include "xsysace.h"
+#include "xsysace.h"
 #endif
 
 // ML507 specific hardware
