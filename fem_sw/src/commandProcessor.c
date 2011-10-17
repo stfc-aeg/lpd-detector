@@ -1,33 +1,34 @@
 /*
  * commandProcessor.c
  *
+ * Manages the decoding of received packets and generation
+ * of response packets using LwIP library
+ *
  *  Created on: Aug 4, 2011
  *      Author: mt47
  */
 
 #include "commandProcessor.h"
 
-// Communicates with PC via TCP/IP socket (SOCK_STREAM) to receive packets
-// and display them to stdout (RS232)
-//
-// TODO: Adhere to MAX_PAYLOAD_SIZE
-// TODO: Replace return statements, make sure to close any open FDs too!
+/* Manages the connection of clients to the FEM and
+ * the reception / validation / response generation of
+ * packets.
+ */
 void commandProcessorThread()
 {
-	// Socket stuff
 	int listenerSocket, clientSocket, newFd, addrSize, numFds, numBytesRead, isValid, i;
 	struct sockaddr_in serverAddress, clientAddress;
 	fd_set readSet, masterSet;
 	struct timeval tv;
+	u8 numConnectedClients = 0;
+	int numBytesToRead = 0;
+	int readSize = 0;
 
 	// RX and TX packet buffers
 	u8* pRxBuffer = (u8*)malloc(sizeof(struct protocol_header)+MAX_PAYLOAD_SIZE);
 	u8* pTxBuffer = (u8*)malloc(sizeof(struct protocol_header)+MAX_PAYLOAD_SIZE);
 	struct protocol_header* pRxHeader = (struct protocol_header*)pRxBuffer;
 	struct protocol_header* pTxHeader = (struct protocol_header*)pTxBuffer;
-
-	// Client count
-	u8 numConnectedClients = 0;
 
 	// Prepare file descriptor sets
 	FD_ZERO(&readSet);
@@ -61,7 +62,6 @@ void commandProcessorThread()
 	}
 
 	// Begin listening, register listener as FD of interest to read
-	// Second parameter (backlog) is number of queued connection requests to handle, NOT the maximum permitted socket connections :(
 	if (lwip_listen(listenerSocket, SOCK_BACKLOG) < 0)
 	{
 		DBGOUT("CmdProc: Can't listen on socket %d, aborting...\r\n", CMD_PORT);
@@ -76,14 +76,13 @@ void commandProcessorThread()
 		// Copy master set over as readSet will be modified
 		memcpy(&readSet, &masterSet, (size_t)sizeof(fd_set));
 
+		// Flags to control packet processing
 		isValid = 1;
 
-		// TODO: Use timeval?  (using NULL here means the thread will wait forever without timing out)
 		if (lwip_select(numFds + 1, &readSet, NULL, NULL, NULL) == -1)
 		{
-			// Unrecoverable error
-			DBGOUT("CmdProc: Select failed, aborting...\r\n");
-			return;
+			DBGOUT("CmdProc: Select failed...\r\n");
+			//return;
 		}
 
 		// Check file descriptors, see which one needs servicing
@@ -97,8 +96,7 @@ void commandProcessorThread()
 				if (i==listenerSocket)
 				{
 
-					DBGOUT("CmdProc: Received new connection! (Client %d)\r\n", numConnectedClients+1);
-					numConnectedClients++;
+					DBGOUT("CmdProc: Received new connection! (Client #%d)\r\n", ++numConnectedClients);
 
 					// Accept connection
 					addrSize = sizeof(clientAddress);
@@ -107,7 +105,6 @@ void commandProcessorThread()
 					{
 						// Unrecoverable error
 						DBGOUT("CmdProc: Accept error\r\n");
-						//return;
 					}
 					else
 					{
@@ -127,12 +124,13 @@ void commandProcessorThread()
 
 					clientSocket = i;
 
-					// Read header if we can
+					// Try to read in protocol header
 					numBytesRead = socketRead(i, pRxBuffer, sizeof(struct protocol_header), 0);
 
 					if (numBytesRead < sizeof(struct protocol_header))
 					{
-						isValid = 0;	// Prevent any further reading of this socket
+						// Did not receive full header
+						isValid = 0;
 
 						if (numBytesRead == 0)
 						{
@@ -154,104 +152,129 @@ void commandProcessorThread()
 						else
 						{
 							DBGOUT("CmdProc: Header is smaller than expected (expected %d, got %d)\r\n", sizeof(struct protocol_header), numBytesRead);
+
+							// Generate BADPKT response to client
+							generateBadPacketResponse(pTxHeader, clientSocket);
+
 						}
 					} // END if (numBytesRead < sizeof(struct protocol_header))
 
-					// Everything OK so far, validate magic...
+					// Check magic word if we received a full sized header
 					if ((pRxHeader->magic != PROTOCOL_MAGIC_WORD) && (isValid==1))
 					{
-						DBGOUT("CmdProc: Got bad packet, ignoring... (magic=%x)\r\n", pRxHeader->magic);
+						DBGOUT("CmdProc: Received header but magic word invalid, ignoring... (magic=%x)\r\n", pRxHeader->magic);
 						isValid = 0;
+
+						// Generate BADPKT response to client
+						generateBadPacketResponse(pTxHeader, clientSocket);
+
 					}
 
-					// If header looks to be well formed, process it's contents
+					// If header is OK then try to receive payload
 					if (isValid==1) {
 
-						// DEBUG - dump out header
-						/*
-						DBGOUT("------------------------\r\n");
-						DBGOUT("HEADER:\r\n");
-						DUMPHDR(pRxHeader);
-						DBGOUT("------------------------\r\n");
-						*/
-
-						// --------------------- BEGIN READING VALID PACKET ----------------------
-
-						if (pRxHeader->command == CMD_ACCESS) {
-
-							// TODO: Verify payload_sz%data_width == 0!
-
-							if (pRxHeader->payload_sz>0 && pRxHeader->payload_sz <= MAX_PAYLOAD_SIZE)
+						if (pRxHeader->payload_sz>0 && pRxHeader->payload_sz <= MAX_PAYLOAD_SIZE)
+						{
+							// Receive payload
+							numBytesRead = socketRead(i, pRxBuffer+sizeof(struct protocol_header), pRxHeader->payload_sz, 0);
+							if (numBytesRead < pRxHeader->payload_sz)
 							{
-								numBytesRead = socketRead(i, pRxBuffer+sizeof(struct protocol_header), pRxHeader->payload_sz, 0);
-								if (numBytesRead < pRxHeader->payload_sz)
+								// Didn't receive full payload, clear flag to inhibit further processing
+								isValid = 0;
+
+								if (numBytesRead == 0)
 								{
-									// Prevent further processing because payload is smaller than expected
-									isValid = 0;
-
-									if (numBytesRead == 0)
-									{
-										// TODO: Fix this, drops connection if we receive a header but no payload.  What should we do in that case?
-										// Client closed connection, so drop our side
-										DBGOUT("CmdProc: Client closed connection (payload processing stage).\r\n");
-										lwip_close(i);
-										FD_CLR(i, &masterSet);
-										numConnectedClients--;
-									}
-									else if (numBytesRead == -1)
-									{
-										// Error occurred
-										// TODO: get errno?
-										DBGOUT("CmdProc: Error encountered during lwip_read(), closing connection.\r\n");
-										lwip_close(i);
-										FD_CLR(i, &masterSet);
-										numConnectedClients--;
-									}
-									else
-									{
-										// Got less data than expected
-										DBGOUT("CmdProc: Payload is smaller than expected (expected %d, got %d)\r\n", pRxHeader->payload_sz, numBytesRead);
-									}
-
-								} else {
-
-									// Received payload OK, correct size
-									/*
-									DBGOUT("PAYLOAD:\r\n");
-									DBGOUT("[sz=%d] = ", pRxHeader->payload_sz);
-									for(i=0; i<pRxHeader->payload_sz; i++)
-									{
-										DBGOUT("%x ",pRxBuffer[i+sizeof(struct protocol_header)]);
-									}
-									DBGOUT("\r\n");
-									DBGOUT("------------------------\r\n");
-									*/
+									// **************************************************************************************************************************
+									// TODO: !! Fix this, drops connection if we receive a header but no payload !!  How do we differentiate the two situations?!
+									// **************************************************************************************************************************
+									// Client closed connection, so drop our side
+									DBGOUT("CmdProc: Client closed connection (payload processing stage).\r\n");
+									lwip_close(i);
+									FD_CLR(i, &masterSet);
+									numConnectedClients--;
 								}
-							}
-							else
+								else if (numBytesRead == -1)
+								{
+									// Error occurred
+									// TODO: get errno?
+									DBGOUT("CmdProc: Error encountered during lwip_read(), closing connection.\r\n");
+									lwip_close(i);
+									FD_CLR(i, &masterSet);
+									numConnectedClients--;
+								}
+								else
+								{
+									// Got less data than expected
+									DBGOUT("CmdProc: Payload is smaller than expected (expected %d, got %d)\r\n", pRxHeader->payload_sz, numBytesRead);
+
+									// Generate BADPKT response to client
+									generateBadPacketResponse(pTxHeader, clientSocket);
+
+								}
+
+							} // END if (numBytesRead < pRxHeader->payload_sz)
+						}
+						else
+						{
+							if (pRxHeader->payload_sz > MAX_PAYLOAD_SIZE)
 							{
+								DBGOUT("CmdProc: Payload exceeds MAX_PAYLOAD_SIZE (%d).\r\n", MAX_PAYLOAD_SIZE);
+
+								// Flush payload
+								numBytesToRead = pRxHeader->payload_sz;
+								DBGOUT("CmdProc: Flushing %d bytes of payload...\r\n", pRxHeader->payload_sz);
+								while (numBytesToRead>0)
+								{
+									if (numBytesToRead < MAX_PAYLOAD_SIZE)
+									{
+										readSize = numBytesRead;
+									} else {
+										readSize = MAX_PAYLOAD_SIZE;
+									}
+									numBytesToRead -= socketRead(i, pRxBuffer+sizeof(struct protocol_header), readSize, 0);
+								}
+
+								// ******************************************
+								// TODO: Generate ETOOBIG response to client!
+								// ******************************************
+							} else {
+
 								DBGOUT("CmdProc: No payload to recover...\r\n");
-							} // END if (header.payloadSize>0))
 
-						} // END if (rx_header.command == CMD_ACCESS)
+								// Generate BADPKT response to client
+								generateBadPacketResponse(pTxHeader, clientSocket);
+							}
 
-						// ------------------- END READING VALID PACKET ----------------------
+						} // END if (header.payloadSize>0))
 
 					} // END if isValid==1)
 
-					// Process command if we encountered no errors
+
+
+					// Process command if we didn't find any problems with it's structure or contents
 					if (isValid==1)
 					{
 
-						// Kludge new vars into old prototype!
-						// TODO: Update command_dispatcher function prototype
-						commandHandler(pRxHeader, pTxHeader, pRxBuffer+sizeof(struct protocol_header), pTxBuffer+sizeof(struct protocol_header));
-
-						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
+						if (validateHeaderContents(pRxHeader)==0)
 						{
-							DBGOUT("CmdProc: Error sending response packet!\r\n");
-						}
 
+							// Build response packet
+							commandHandler(pRxHeader, pTxHeader, pRxBuffer+sizeof(struct protocol_header), pTxBuffer+sizeof(struct protocol_header));
+
+						} else {
+
+							// Header logically incorrect so build a NACK response packet
+							memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
+							pTxHeader->status |= (1 << (STATE_NACK-1));
+							pTxHeader->payload_sz = 0;
+
+						} // END if (validateHeaderContents()==0)
+
+					} // END if (isValid==1)
+
+					if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
+					{
+						DBGOUT("CmdProc: Error sending response packet!\r\n");
 					}
 
 				}	// END else clause
@@ -345,15 +368,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 				// --------------------------------------------------------------------
 				case BUS_EEPROM:
 
-					// Verify request parameters are sane
-					if ( (pRxHeader->data_width != WIDTH_BYTE) || (pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-					{
-						DBGOUT("CmdDisp: Invalid EEPROM request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-						SBIT(status, STATE_NACK);
-						// TODO: set error bits
-						break;
-					}
-
 					dataWidth = sizeof(u8); // All EEPROM operations are byte level
 
 					if (CMPBIT(status, STATE_READ))
@@ -399,14 +413,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 				// --------------------------------------------------------------------
 				case BUS_I2C:
 
-					// Verify request parameters are sane
-					if ( (pRxHeader->data_width != WIDTH_BYTE) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-					{
-						DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-						SBIT(status, STATE_NACK);
-						// TODO: Set error bits
-						break;
-					}
 					dataWidth = sizeof(u8);	// All I2C operations are byte level
 
 					/*
@@ -485,16 +491,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 				// --------------------------------------------------------------------
 				case BUS_RAW_REG:
 
-					// Verify request parameters are sane
-					// We don't support anything other than 32-bit operations for RAW_REG as all Xilinx registers are 32bit.
-					if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-					{
-						DBGOUT("CmdDisp: Invalid raw reg request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-						SBIT(status, STATE_NACK);
-						// TODO: Set error bits
-						break;
-					}
-
 					dataWidth = sizeof(u32);
 
 					// Make sure return packet will not violate MAX_PAYLOAD_SIZE (write operations should never be too long if MAX_PAYLOAD_SIZE => 4!)
@@ -545,16 +541,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 				// --------------------------------------------------------------------
 				case BUS_RDMA:
-
-					// Verify request parameters are sane
-					// We don't support anything other than 32-bit operations for RAW_REG as all RDMA registers are 32bit.
-					if ( (pRxHeader->data_width != WIDTH_LONG) || ( pRxHeader->status == STATE_READ && (pRxHeader->payload_sz != sizeof(u32)) ) )
-					{
-						DBGOUT("CmdDisp: Invalid request (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-						SBIT(status, STATE_NACK);
-						// TODO: Set error bits
-						break;
-					}
 
 					dataWidth = sizeof(u32);
 					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
@@ -654,4 +640,110 @@ int socketRead(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeou
 	}
 
 	return totalBytes;
+}
+
+/*
+ * Validates the fields of a header for consistency
+ * It is assumed that the header magic word has been verified and the fields are trusted to contain valid data.
+ * @param pHeader pointer to header
+ *
+ * @return 0 if header logically correct, -1 if not
+ */
+int validateHeaderContents(struct protocol_header *pHeader)
+{
+
+	switch(pHeader->command)
+	{
+		case CMD_ACCESS:
+			// A normal command, so make sure the options are valid
+			switch(pHeader->bus_target)
+			{
+
+				// CMD_ACCESS must always specify an operation type, read/write...
+				if ( (pHeader->status!=STATE_READ) && (pHeader->status=STATE_WRITE) )
+				{
+					return -1;
+				}
+
+				// CMD_ACCESS + STATE_READ must always have a payload_sz of sizeof(u32)
+				if ( (pHeader->status == STATE_READ) && (pHeader->payload_sz!=sizeof(u32)) )
+				{
+					return -1;
+				}
+
+				case BUS_EEPROM:
+					// Data width must always be 8bit
+					if (pHeader->data_width!=sizeof(u8))
+					{
+						return -1;
+					}
+					break;
+
+				case BUS_I2C:
+					// Data width must always be 8bit
+					if (pHeader->data_width!=sizeof(u8))
+					{
+						return -1;
+					}
+					// Address most significant byte must be 0-4 only
+					if ( (((pHeader->address & 0xF00) >> 16)<0) && (((pHeader->address & 0xF00) >> 16)>4) )
+					{
+						return -1;
+					}
+					break;
+
+				case BUS_RAW_REG:
+				case BUS_RDMA:
+					// Data width must always be 32bit
+					if (pHeader->data_width!=sizeof(u32))
+					{
+						return -1;
+					}
+					break;
+
+				case BUS_UNSUPPORTED:
+					// Never valid!
+					return -1;
+					break;
+			}
+
+			break;
+
+		case CMD_INTERNAL:
+			// TODO!
+			return -1;
+			break;
+
+		case CMD_UNSUPPORTED:
+			// Always invalid!
+			return -1;
+			break;
+	}
+
+
+	// ...otherwise, header is valid!
+	return 0;
+}
+
+/* Generates and sends a BADPKT response packet which signals
+ * to a client that the last packet received was not
+ * well formed or it was not possible to decode it correctly.
+ *
+ * @param pHeader pointer to header object
+ * @param clientSocket socket identifier for client
+ */
+void generateBadPacketResponse(struct protocol_header *pHeader, int clientSocket)
+{
+	pHeader->address = 0;
+	pHeader->bus_target = 0;
+	pHeader->command = 0;
+	pHeader->data_width = 0;
+	pHeader->magic = PROTOCOL_MAGIC_WORD;
+	pHeader->payload_sz = 0;
+	pHeader->status = 0xF8;
+
+	if (lwip_send(clientSocket, pHeader, sizeof(struct protocol_header), 0) == -1)
+	{
+		DBGOUT("gBPR: Error sending BADPKT response packet!\r\n");
+	}
 }

@@ -37,6 +37,7 @@
 #define BADDR_INTC					XPAR_XPS_INTC_0_BASEADDR
 #define BADDR_RDMA					XPAR_RS232_UART_2_BASEADDR
 #define XINTC_ID					XPAR_XPS_INTC_0_DEVICE_ID
+#define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
 
 #else
 // FEM devices
@@ -48,6 +49,7 @@
 #define BADDR_INTC					XPAR_XPS_INTC_2_BASEADDR
 #define BADDR_RDMA					XPAR_RS232_UART_PPC2_RDMA_BASEADDR
 #define XINTC_ID					XPAR_XPS_INTC_2_DEVICE_ID
+#define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
 #endif
 
 // Enable / disable serial debugging output (comment to disable)
@@ -62,6 +64,9 @@
 // Define an absolute maximum temperature threshold for the LM82.
 // Overrides the value in EEPROM if (EEPROM_CRIT_TEMP > CRIT_TEMP_MAX)
 #define CRIT_TEMP_MAX				90
+
+// Port for FEM comms
+#define CMD_PORT				6969
 
 // TODO: Tune these!
 // ----------------------------------------------------------

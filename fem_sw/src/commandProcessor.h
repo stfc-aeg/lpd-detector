@@ -1,6 +1,9 @@
 /*
  * commandProcessor.h
  *
+ * Manages the decoding of received packets and generation
+ * of response packets using LwIP library
+ *
  *  Created on: Aug 4, 2011
  *      Author: mt47
  */
@@ -19,10 +22,10 @@
 
 #include "lwip/sockets.h"
 
-#define CMD_PORT				6969
-
 void commandProcessorThread();
 void commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes, unsigned int timeoutMs);
+int validateHeaderContents(struct protocol_header *pHeader);
+void generateBadPacketResponse(struct protocol_header *pHeader, int clientSocket);
 
 #endif /* COMMANDPROCESSOR_H_ */

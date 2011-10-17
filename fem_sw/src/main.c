@@ -19,7 +19,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Version 1.5 - not for distribution
+ * Version 1.6 - not for distribution
  *
  * ----------------------------------------------------------------------------
  *
@@ -41,13 +41,15 @@
  *  - Reimplemented I2C code to be able to address multiple busses
  *  - Fixed number of operations in response packet as first u32
  *  - Made comms code adhere to MAX_PAYLOAD_SIZE for response packets
- *  - Created hooks for commandProcessorThread to drop connections when already at connection limit,
- *  	but this isn't yet fully implemented...
  *
  * 1.5		23-Sep-2011
  *  - Revised RDMA library to properly support 16550 UART
  *  - Implemented RDMA self-test routine
  *  - Introduced 1 second delay before LWIP init to try to improve stability
+ *
+ * 1.6		03-Oct-2011
+ *  - Added stub for internal state queries / CMD_INTERNAL
+ *  - Added preliminary support for SystemACE / writing to CF via xilfatfs library
  *
  * ----------------------------------------------------------------------------
  *
@@ -109,6 +111,11 @@
 #include "lwipopts.h"
 #include "netif/xadapter.h"
 
+// SystemACE
+#ifndef HW_PLATFORM_DEVBOARD
+//#include "xsysace.h"
+#endif
+
 // ML507 specific hardware
 #ifdef HW_PLATFORM_DEVBOARD
 #include "gpio.h"
@@ -139,7 +146,9 @@ void* masterThread(void *);			// Main thread launched by xilkernel
 void networkInitThread(void *);	// Sets up LWIP, spawned by master thread
 int initHardware(void);
 
-
+#ifndef HW_PLATFORM_DEVBOARD
+int hurfDurf(XSysAce *pPoo);
+#endif
 
 // ----------------------------------------------------------------------------
 // Global Variable Definitions
@@ -150,6 +159,9 @@ struct netif		server_netif;
 struct fem_config	femConfig;
 XIntc				intc;
 XTmrCtr				timer;
+#ifndef HW_PLATFORM_DEVBOARD
+XSysAce				sysace;
+#endif
 
 // Define our GPIOs if we are using ML507
 #ifdef HW_PLATFORM_DEVBOARD
@@ -372,6 +384,83 @@ int initHardware(void)
     	DBGOUT("OK.\r\n");
     }
 
+    // SystemACE disabled until I know how the SA/SP3N/V5 interact....
+    /*
+     * Things I need to know:
+     * 		How can I instruct the management spartan to allow the V5 to aquire MPU lock to SystemACE?
+     *
+     */
+
+    /*
+    // Initialise SystemACE
+    status = XSysAce_Initialize(&sysace, XSYSACE_ID);
+    if (status!=XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: SystemACE failed initialisation.\r\n");
+    	return status;
+    }
+
+    // Selftest SystemACE
+    status =hurfDurf(&sysace);		// Returns XST_SUCCESS or XST_FAILURE
+    if (status!=XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: SystemACE failed self-test.\r\n");
+    	return status;
+    }
+    */
+
     return XST_SUCCESS;
 
 }
+
+// Copy of XSysAce_SelfTest but with added DBGOUT statements
+// TODO: Remove this!
+#ifndef HW_PLATFORM_DEVBOARD
+int hurfDurf(XSysAce *InstancePtr)
+{
+	int Result;
+
+	Xil_AssertNonvoid(InstancePtr != NULL);
+	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
+
+	/*
+	 * Grab a lock (expect immediate success)
+	 */
+	Result = XSysAce_Lock(InstancePtr, TRUE);
+	if (Result != XST_SUCCESS) {
+		DBGOUT("hurfDurf: failed at lock\r\n");
+		return Result;
+	}
+
+	/*
+	 * Verify the lock was retrieved
+	 */
+	if (!XSysAce_IsMpuLocked(InstancePtr->BaseAddress)) {
+		DBGOUT("hurfDurf: failed at lock verify\r\n");
+		return XST_FAILURE;
+	}
+
+	/*
+	 * Release the lock
+	 */
+	XSysAce_Unlock(InstancePtr);
+
+	/*
+	 * Verify the lock was released
+	 */
+	if (XSysAce_IsMpuLocked(InstancePtr->BaseAddress)) {
+		DBGOUT("hurfDurf: failed at lock release\r\n");
+		return XST_FAILURE;
+	}
+
+	/*
+	 * If there are currently any errors on the device, fail self-test
+	 */
+	if (XSysAce_GetErrorReg(InstancePtr->BaseAddress) != 0) {
+		DBGOUT("hurfDurf: ErrorReg: 0x%x\r\n", XSysAce_GetErrorReg(InstancePtr->BaseAddress));
+		return XST_FAILURE;
+	}
+
+	return XST_SUCCESS;
+}
+#endif
