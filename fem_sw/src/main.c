@@ -9,13 +9,13 @@
  *
  * OVERVIEW:
  *
- * Provides Lightweight IP stack on xilkernel platform, supporting a basic
+ * Provides Lightweight IP stack on xilkernel platform, supporting basic
  * remote register read / write functionality and full support for I2C
  * devices (M24C08 8k EEPROM, LM82 monitoring chip) using a simple socket interface.
  *
  * Developed against Xilinx ML507 development board under EDK 13.1 (Linux)
  *
- * Tested and deployed to FEM v1 board successfully
+ * Ported to FEM production hardware
  *
  * ----------------------------------------------------------------------------
  *
@@ -51,20 +51,23 @@
  *  - Added stub for internal state queries / CMD_INTERNAL
  *  - Added preliminary support for SystemACE / writing to CF via xilfatfs library
  *
+ * 1.7		31-Oct-2011		- IN PROGRESS!
+ *  - Restructured network receive loop
+ *  - Added support for large payloads (pixel memory configs, sysace images)
+ *
  * ----------------------------------------------------------------------------
  *
  * TO DO LIST:
  *
- * TODO: Determine why execution halts sometimes after LWIP auto-negotiation
+ * TODO: Determine why execution halts sometimes after LWIP auto-negotiation - xlltemacif_hw.c -> Line 78?
  * TODO: Determine why UART loopback test occasionally fails
  *
  * TODO: Clean network select / command processing logic, make robust
  * TODO: Test with malformed packets, try to break processing loop
  *
- * TODO: Support for concurrent large payload writes (????)
+ * TODO: Support for large payloads (process in chunks, i.e. for SystemACE images or pixel memories...)
  *
  * TODO: Implement iperf server and some way to activate / deactivate it without rebooting or rebuilding
- * TODO: Investigate ICMP support
  *
  * TODO: Profile memory usage
  * TODO: Tune thread stacksize
@@ -73,6 +76,14 @@
  * TODO: Determine why LWIP hangs on init using priority based scheduler
  *
  * ----------------------------------------------------------------------------
+ */
+
+
+
+/*
+ * CMD_INTERNAL - Possible future variables
+ * - Error register (selftest) - bitmask of tests passed / failed
+ * - # connected clients, IP address?
  */
 
 
@@ -113,7 +124,7 @@
 
 // SystemACE
 #ifndef HW_PLATFORM_DEVBOARD
-#include "xsysace.h"
+#include "sysace.h"
 #endif
 
 // ML507 specific hardware
@@ -146,10 +157,6 @@ void* masterThread(void *);			// Main thread launched by xilkernel
 void networkInitThread(void *);	// Sets up LWIP, spawned by master thread
 int initHardware(void);
 
-#ifndef HW_PLATFORM_DEVBOARD
-int hurfDurf(XSysAce *pPoo);
-#endif
-
 // ----------------------------------------------------------------------------
 // Global Variable Definitions
 // ----------------------------------------------------------------------------
@@ -159,16 +166,18 @@ struct netif		server_netif;
 struct fem_config	femConfig;
 XIntc				intc;
 XTmrCtr				timer;
-#ifndef HW_PLATFORM_DEVBOARD
+
+// Board specific objects
+#ifdef HW_PLATFORM_DEVBOARD
+// Define our GPIOs if we are using ML507
+XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
+#else
+// Enable SystemACE controller if using FEM (was not present in original ML507 BSP)
 XSysAce				sysace;
 #endif
 
-// Define our GPIOs if we are using ML507
-#ifdef HW_PLATFORM_DEVBOARD
-XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
-#endif
 
-
+u32 femErrorState;
 
 // ----------------------------------------------------------------------------
 // Functions
@@ -177,7 +186,8 @@ XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 int main()
 {
     init_platform();
-    usleep(1000000);		// 1 second delay - does this make temac init more stable?
+    usleep(1000000);		// 1 second delay - TEMAC has still hung using this delay :(
+
     //DBGOUT("main: init_platform() complete.\r\n");
     initHardware();
     //DBGOUT("main: initHardware() complete.\r\n");
@@ -209,12 +219,13 @@ void* masterThread(void *arg)
 #endif
 
     // Init LWIP API
-    DBGOUT("XilMaster: Initialising LWIP \r\n");
+    DBGOUT("XilMaster: Initialising LWIP... ");
     lwip_init();
+    DBGOUT("OK.\r\n");
 
     // Spawn LWIP manager thread
     DBGOUT("XilMaster: Spawning network manager thread\r\n");
-    t = sys_thread_new("netman", networkInitThread, NULL, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("netman", networkInitThread, NULL, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
     if (t==NULL) {
     	DBGOUT("XilMaster: sys_thread_new failed!\r\n");
     	return (void*)-1;
@@ -248,7 +259,6 @@ void networkInitThread(void *p)
     // Add network interface to the netif_list, and set it as default
     // NOTE: This can (and WILL) hang forever if the base address for the MAC is incorrect, or not assigned by EDK...
     // (e.g. 0xFFFF0000 etc is invalid).  Use 'Generate Addresses' if this is the case...
-    //DBGOUT("NetMan: MAC is %02x:%02x:%02x:%02x:%02x:%02x\r\n", femConfig.net_mac[0], femConfig.net_mac[1], femConfig.net_mac[2], femConfig.net_mac[3], femConfig.net_mac[4], femConfig.net_mac[5]);
     DBGOUT("NetMan: Device IP is %03d.%03d.%03d.%03d\r\n", femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
     if (!xemac_add(netif, &ipaddr, &netmask, &gateway, (unsigned char*)femConfig.net_mac, BADDR_MAC)) {
     	DBGOUT("NetMan: Error adding N/W interface to netif, aborting...\r\n");
@@ -260,7 +270,7 @@ void networkInitThread(void *p)
     netif_set_up(netif);
 
     // Start packet receive thread - required for lwIP operation
-    t = sys_thread_new("xemacif_input_thread", (void(*)(void*))xemacif_input_thread, netif, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("xemacif_input_thread", (void(*)(void*))xemacif_input_thread, netif, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
     if (t==NULL)
     {
     	DBGOUT("NetMan: Can't spawn xemacif thread, aborting...\r\n");
@@ -268,17 +278,17 @@ void networkInitThread(void *p)
     }
 
     // Launch application thread
-    t = sys_thread_new("cmd", commandProcessorThread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("cmd", commandProcessorThread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 
     // Launch iperf thread
-    //t = sys_thread_new("iperf", iperf_rx_application_thread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    //t = sys_thread_new("iperf", iperf_rx_application_thread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 
     // Launch testing thread
-    //t = sys_thread_new("test", testThread, 0, THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    //t = sys_thread_new("test", testThread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     if (t==NULL)
     {
@@ -293,12 +303,22 @@ void networkInitThread(void *p)
 /*
  * Initialises FEM hardware
  *
+ * @return XST_SUCCESS if all hardware initialised OK, otherwise error code
+ *
  */
 int initHardware(void)
 {
 
-	int status;
+	int status = 0;
 	int fpgaTemp,lmTemp = 0;
+	femErrorState = 0;
+
+	// Clear serial console by spamming CR/LF
+	int foo;
+	for (foo=0; foo<100; foo++)
+	{
+		DBGOUT("\r\n");
+	}
 
 	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
 	DBGOUT("initHardware: System alive!\r\n");
@@ -323,6 +343,7 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise timer.\r\n");
+    	femErrorState |= TEST_XPSTIMER_INIT;
     }
 
     // Calibrate usleep
@@ -332,6 +353,7 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to calibrate sleep.\r\n");
+    	femErrorState |= TEST_TIMER_CALIB;
     }
 
     // Initialise and configure interrupt controller
@@ -339,11 +361,13 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
+    	femErrorState |= TEST_XINTC_INIT;
     }
     status = XIntc_Start(&intc, XIN_REAL_MODE);
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
+    	femErrorState |= TEST_XINTC_START;
     }
 
     // Get config structure from EEPROM or use failsafe
@@ -372,11 +396,13 @@ int initHardware(void)
     if (status == XST_UART_TEST_FAIL)
     {
     	DBGOUT("FAILED - UART loopback test failed.\r\n");
+    	femErrorState |= TEST_RDMA_UART_OK;
     	return status;
     }
     else if (status == XST_LOOPBACK_ERROR)
     {
     	DBGOUT("FAILED - RDMA readback test failed.\r\n");
+    	femErrorState |= TEST_RDMA_READBACK;
     	return status;
     }
     else
@@ -391,76 +417,32 @@ int initHardware(void)
      *
      */
 
-    /*
     // Initialise SystemACE
     status = XSysAce_Initialize(&sysace, XSYSACE_ID);
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: SystemACE failed initialisation.\r\n");
+    	femErrorState |= TEST_SYSACE_INIT;
     	return status;
+    }
+    else
+    {
+    	DBGOUT("initHardware: SystemACE initialised.\r\n");
     }
 
     // Selftest SystemACE
-    status =hurfDurf(&sysace);		// Returns XST_SUCCESS or XST_FAILURE
+    status = mySelfTest(&sysace);		// Returns XST_SUCCESS or XST_FAILURE
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: SystemACE failed self-test.\r\n");
-    	return status;
+    	DBGOUT("initHardware: Ignoring SystemACE failed self-test...\r\n");
+    	//return status;
     }
-    */
 
+    // Test file write
+    //testCF();
+
+    // All is well, hooray!
     return XST_SUCCESS;
 
 }
-
-// Copy of XSysAce_SelfTest but with added DBGOUT statements
-// TODO: Remove this!
-#ifndef HW_PLATFORM_DEVBOARD
-int hurfDurf(XSysAce *InstancePtr)
-{
-	int Result;
-
-	Xil_AssertNonvoid(InstancePtr != NULL);
-	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
-
-	/*
-	 * Grab a lock (expect immediate success)
-	 */
-	Result = XSysAce_Lock(InstancePtr, TRUE);
-	if (Result != XST_SUCCESS) {
-		DBGOUT("hurfDurf: failed at lock\r\n");
-		return Result;
-	}
-
-	/*
-	 * Verify the lock was retrieved
-	 */
-	if (!XSysAce_IsMpuLocked(InstancePtr->BaseAddress)) {
-		DBGOUT("hurfDurf: failed at lock verify\r\n");
-		return XST_FAILURE;
-	}
-
-	/*
-	 * Release the lock
-	 */
-	XSysAce_Unlock(InstancePtr);
-
-	/*
-	 * Verify the lock was released
-	 */
-	if (XSysAce_IsMpuLocked(InstancePtr->BaseAddress)) {
-		DBGOUT("hurfDurf: failed at lock release\r\n");
-		return XST_FAILURE;
-	}
-
-	/*
-	 * If there are currently any errors on the device, fail self-test
-	 */
-	if (XSysAce_GetErrorReg(InstancePtr->BaseAddress) != 0) {
-		DBGOUT("hurfDurf: ErrorReg: 0x%x\r\n", XSysAce_GetErrorReg(InstancePtr->BaseAddress));
-		return XST_FAILURE;
-	}
-
-	return XST_SUCCESS;
-}
-#endif

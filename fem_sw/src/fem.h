@@ -16,7 +16,7 @@
 // This define controls whether we are running on an ML507 dev. board, or a real FEM.
 // For use on FEM, comment this line out!
 // ****************************************************************************
-#define HW_PLATFORM_DEVBOARD
+//#define HW_PLATFORM_DEVBOARD
 // ****************************************************************************
 
 // Hardware base addresses, redefine xparameters.h
@@ -65,12 +65,27 @@
 // Overrides the value in EEPROM if (EEPROM_CRIT_TEMP > CRIT_TEMP_MAX)
 #define CRIT_TEMP_MAX				90
 
-// Port for FEM comms
-#define CMD_PORT				6969
+// FEM Networking parameters
+// TODO: Tune these as required!
+#define NET_CMD_PORT				6969
+#define NET_MAX_CLIENTS				8
+#define NET_THREAD_STACKSIZE 		1024
+#define NET_SOCK_BACKLOG			1					// Accept queue size for LWIP
+#define NET_NOMINAL_RX_BUFFER_SZ	2048				// Normal payload receive buffer size
+#define NET_LRG_PKT_INCREMENT_SZ	65536				// Large payload receive chunk size
+#define NET_MAX_PAYLOAD_SZ			1048576				// Maximum payload size permitted
+#define NET_DEFAULT_TICK_SEC		2
+#define NET_DEFAULT_TICK_USEC		0
+#define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
 
-// TODO: Tune these!
-// ----------------------------------------------------------
-#define THREAD_STACKSIZE 			4096
-#define SOCK_BACKLOG				1
+// Self-test bits - if set these represent a failure during hardware init!
+#define TEST_XPSTIMER_INIT			0x0001
+#define TEST_TIMER_CALIB			0x0002
+#define TEST_XINTC_INIT				0x0004
+#define TEST_XINTC_START			0x0008
+#define TEST_RDMA_UART_OK			0x0010
+#define TEST_RDMA_READBACK			0x0020
+#define TEST_SYSACE_INIT			0x0040
 
 #endif /* FEM_H_ */
+
