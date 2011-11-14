@@ -11,7 +11,7 @@ import string
 import time
 import code
 
-from FemClient.FemClient import FemClient
+from FemClient.FemClient import FemClient, FemClientError
 from FemApi.FemTransaction import FemTransaction
 
 class FemShell(cmd.Cmd,object):
@@ -230,8 +230,12 @@ Example:
             print "***: parameter 2 (port) must be a number"
             return
         
-        self.__class__.connectedFem = FemClient((host, port))
-
+        try:
+            self.__class__.connectedFem = FemClient((host, port))
+        except FemClientError as (strerror):
+            print "FEM connection error:", strerror
+            self.__class__.connectedFem = None
+             
     def help_open(self):
         print self.do_open.__doc__
     
