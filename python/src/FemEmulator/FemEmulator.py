@@ -87,17 +87,22 @@ class FemEmulator(SocketServer.BaseRequestHandler):
         if theTransaction.command == FemTransaction.CMD_ACCESS:
             
             if theTransaction.state == FemTransaction.STATE_WRITE:
+                
+                print "Got write transaction to address", hex(theTransaction.address)
                 for offset in range(len(theTransaction.payload)):
                     self.accessCache[theTransaction.address + offset] = theTransaction.payload[offset]
                     print offset, theTransaction.address + offset, theTransaction.payload[offset], self.accessCache[theTransaction.address + offset]
                 
                 response = FemTransaction(cmd = theTransaction.command, bus = theTransaction.bus,
-                                          width = theTransaction.width, state=FemTransaction.STATE_ACKNOWLEDGE,
-                                          addr = theTransaction.address, payload=tuple([1]))
+                                          width = theTransaction.width, state=(FemTransaction.STATE_ACKNOWLEDGE | FemTransaction.STATE_WRITE),
+                                          addr = theTransaction.address, payload=tuple([len(theTransaction.payload)]))
                     
             if theTransaction.state == FemTransaction.STATE_READ:
+                
+                print "Got read transaction to address", hex(theTransaction.address), "length", theTransaction.payload[0] 
                 (payloadWidth, payloadFormat) = FemTransaction.widthEncoding[theTransaction.width]
                 result = []
+                result.append(theTransaction.payload[0])
                 for offset in range(theTransaction.payload[0]):
                     if self.accessCache.has_key(theTransaction.address + offset):
                         result.append(self.accessCache[theTransaction.address + offset])
@@ -105,9 +110,10 @@ class FemEmulator(SocketServer.BaseRequestHandler):
                         result.append(0)
                 print result, len(tuple(result))
                 response = FemTransaction(cmd=FemTransaction.CMD_ACCESS, bus = theTransaction.bus,
-                                          width=theTransaction.width, state=FemTransaction.STATE_ACKNOWLEDGE,
+                                          width=theTransaction.width, state=(FemTransaction.STATE_ACKNOWLEDGE | FemTransaction.STATE_READ),
                                           addr = theTransaction.address, payload=tuple(result))
-
+                #print response
+                
         elif theTransaction.command == FemTransaction.CMD_INTERNAL:
        
             print 'Got internal command', hex(theTransaction.address)
@@ -117,8 +123,11 @@ class FemEmulator(SocketServer.BaseRequestHandler):
             
         if response:
             data = response.encode()
+            #print binascii.hexlify(data)
             self.request.send(data)
                  
 if __name__ == '__main__':
+    port = 5000
+    print 'FemEmulator startup: listening on port', port
     server = SocketServer.TCPServer(('0.0.0.0', 5000), FemEmulator)
     server.serve_forever()

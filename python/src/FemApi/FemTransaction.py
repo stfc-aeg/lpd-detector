@@ -33,8 +33,8 @@ class FemTransaction():
     STATE_UNSUPPORTED    = 0
     STATE_READ           = 1
     STATE_WRITE          = 2
-    STATE_ACKNOWLEDGE    = 64
-    STATE_NO_ACKNOWLEDGE = 128
+    STATE_ACKNOWLEDGE    = 32
+    STATE_NO_ACKNOWLEDGE = 64
     
     widthEncoding =  { WIDTH_UNSUPPORTED : (0, 'x'),
                        WIDTH_BYTE        : (1, 'B'),
@@ -84,7 +84,7 @@ class FemTransaction():
             # Calculate how much of the payload is not yet received
             self.payloadRemaining = self.payloadLen - (len(self.encoded) - headerStructLen)
             if self.payloadRemaining > 0:
-                print "Payload remaining =", self.payloadRemaining
+                #print "Payload remaining =", self.payloadRemaining
                 self.incomplete = True
             else:
                 if (self.payloadLen > 0):
@@ -118,6 +118,16 @@ class FemTransaction():
                 (self.payloadLen, self.payloadFormatStr) = FemTransaction.widthEncoding[FemTransaction.WIDTH_LONG]
                 self.payload = (readLen,)
 
+            # If this is an ack of a read or write transaction then the first word of the payload is the read length, which
+            # should be encoded as a long followed by the rest of the payload at the appropriate width
+            elif (self.command == FemTransaction.CMD_ACCESS) and (self.state & FemTransaction.STATE_ACKNOWLEDGE):
+                
+                (self.payloadLen, self.payloadFormatStr) = FemTransaction.widthEncoding[FemTransaction.WIDTH_LONG]
+                (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
+                self.payloadLen = self.payloadLen + ((len(payload)-1) * payloadMult)
+                self.payloadFormatStr = self.payloadFormatStr + str(len(payload) - 1) + payloadFormat
+                self.payload = tuple(payload)
+            
             else:          
                 if not payload:
                     #TODO: How can a write have no payload - exception?
@@ -128,6 +138,7 @@ class FemTransaction():
                     self.payloadLen = len(payload) * payloadMult
                     self.payloadFormatStr = str(len(payload)) + payloadFormat
                     self.payload = tuple(payload)
+                    #print self.width, payloadMult, payloadFormat, self.payloadLen, self.payloadFormatStr, self.payload
          
         self.formatStr = self.formatStr + self.payloadFormatStr       
 
