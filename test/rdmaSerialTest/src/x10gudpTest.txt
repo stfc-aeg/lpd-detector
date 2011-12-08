@@ -1,0 +1,81 @@
+RxThread opening socket
+Set up UDP block 0
+W 00000000 : 00000062 UDP Block 0 MAC Source Lower 32
+W 00000001 : 07001000 UDP Block 0 MAC Source Upper 16/Dest Lower 16
+W 00000002 : 205F1043 UDP Block 0 MAC Dest Upper 32
+W 00000006 : 000A77B8 UPB Block 0 IP Dest Addr / Checksum
+W 00000007 : 000A0202 UPB Block 0 IP Dest Addr / Srd Addr
+W 00000008 : 08000102 UPB Block 0 IP Src Addr / Port
+W 0000000C : 000003E6 UDP Block 0 Packet Size
+W 00000004 : DB00001C UDP Block 0 IP Header Length
+W 00000009 : 0008D1F0 UDP Block 0 UDP Length
+W 0000000F : 00000001 UDP Block 0 IFG
+W 0000000D : 00000008 UDP Block 0 IFG
+
+Set up UDP block 1
+W 10000000 : 00000062 UDP Block 1 MAC Source Lower 32
+W 10000001 : 07001000 UDP Block 1 MAC Source Upper 16/Dest Lower 16
+W 10000002 : 205F1043 UDP Block 1 MAC Dest Upper 32
+W 10000006 : 000A77B8 UPB Block 1 IP Dest Addr / Checksum
+W 10000007 : 000A0202 UPB Block 1 IP Dest Addr / Srd Addr
+W 10000008 : 08000102 UPB Block 1 IP Src Addr / Port
+W 1000000C : 000003E6 UDP Block 1 Packet Size
+W 10000004 : DB00001C UDP Block 1 IP Header Length
+W 10000009 : 0008D1F0 UDP Block 1 UDP Length
+W 1000000F : 00000001 UDP Block 1 IFG
+W 1000000D : 00000008 UDP Block 1 IFG
+
+Set up LocalLink frame generator 0
+W 20000001 : 001FFFFE DATA GEN 0 Data Length
+W 20000000 : 00000001 DATA GEN 0 Data Type
+
+Set up LocalLink frame generator 1
+W 40000001 : 001FFFFE DATA GEN 0 Data Length
+W 40000000 : 00000001 DATA GEN 0 Data Type
+
+Clear LocalLink monitor
+W D0000001 : 00000000 Local Link Monitor Reset
+W D0000001 : 00000001 Local Link Monitor Reset
+W D0000001 : 00000000 Local Link Monitor Reset
+
+Read LocalLink Monitor
+R D0000010 : 00000000 frm_last_length
+R D0000011 : 00000000 frm_max_length
+R D0000012 : FFFFFFFF frm_min_length
+R D0000013 : 00000000 frm_number
+R F0000014 : 00000000 frm_last_cycles
+R D0000015 : 00000000 frm_max_cycles
+R D0000016 : FFFFFFFF frm_min_cycles
+R D0000017 : 00000000 frm_data_total
+R D0000018 : 00000000 frm_cycle_total
+R D0000019 : 00000000 frm_trig_count
+R D000001F : 00000000 frm_in_progress
+
+Data total = 0.000000e+00
+Data time  = 0.000000e+00
+Data rate  = 0.000000e+00
+
+Triggering data generator
+W 60000000 : 00000000 Trigger data generator
+W 60000000 : 00000001 Trigger data generator
+W 60000000 : 00000000 Trigger data generator
+
+*** Received 1050 packets, total data 8388608 bytes in 1.138997e-02 secs, rate = 7.364907e+08 bytes/sec
+
+Read LocalLink Monitor
+R D0000010 : 001FFFFF frm_last_length
+R D0000011 : 001FFFFF frm_max_length
+R D0000012 : 001FFFFF frm_min_length
+R D0000013 : 00000001 frm_number
+R F0000014 : 00000000 frm_last_cycles
+R D0000015 : 0020924E frm_max_cycles
+R D0000016 : 0020924E frm_min_cycles
+R D0000017 : 00200000 frm_data_total
+R D0000018 : 0020924E frm_cycle_total
+R D0000019 : 00000000 frm_trig_count
+R D000001F : 00000000 frm_in_progress
+
+Data total = 8.388608e+06
+Data time  = 7.115353e-03
+Data rate  = 1.178945e+09
+
