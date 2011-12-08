@@ -2,6 +2,7 @@ import sys
 import os
 import time
 import optparse
+import random
 
 from FemClient.FemClient import  *
 from FemApi.FemTransaction import FemTransaction
@@ -60,8 +61,8 @@ readBytes  = []
 
 # Open FEM connection
 
-host = '192.168.1.10'
-port = 6969
+host = '127.0.0.1'
+port = 6996
 timeout = 1.0
 
 try:
@@ -80,6 +81,7 @@ for length in lengthArr:
     start = time.time()
     for i in range(0, numLoops):
         values = tuple(range(0, length))
+#        values = tuple([ int(random.uniform(0,4096)) for i in range(0, length)])
         ack = theFem.write(bus, width, addr, values)
     end = time.time()
     deltaT = end - start
