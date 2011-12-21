@@ -57,7 +57,8 @@ class FemEmulator(SocketServer.BaseRequestHandler):
                             if len(data) == 0:
                                 return
                         
-                            print self.client_address, 'sent payload', binascii.hexlify(data), 'size', len(data)
+                            #print self.client_address, 'sent payload', binascii.hexlify(data), 'size', len(data)
+                            print self.client_address, 'sent payload with size', len(data)
                             # TODO deal with data != payloadRecvLen
                             theTrans.append(data)
                             
@@ -80,7 +81,7 @@ class FemEmulator(SocketServer.BaseRequestHandler):
         
     def decodeTransaction(self, theTransaction):
         
-        print [hex(field) for field in theTransaction.decode()]
+        #print [hex(field) for field in theTransaction.decode()]
         response = None
     
         # Handle FEM access commands
@@ -91,11 +92,19 @@ class FemEmulator(SocketServer.BaseRequestHandler):
                 print "Got write transaction to address", hex(theTransaction.address)
                 for offset in range(len(theTransaction.payload)):
                     self.accessCache[theTransaction.address + offset] = theTransaction.payload[offset]
-                    print offset, theTransaction.address + offset, theTransaction.payload[offset], self.accessCache[theTransaction.address + offset]
-                
+                    if offset < 16:
+                        print offset, theTransaction.address + offset, theTransaction.payload[offset], self.accessCache[theTransaction.address + offset]
+                    if offset == 16:
+                        print "..."
+                    if (offset > 16) and (offset >= (len(theTransaction.payload) - 2)):
+                        print offset, theTransaction.address + offset, theTransaction.payload[offset], self.accessCache[theTransaction.address + offset]
+                        
+                            
                 response = FemTransaction(cmd = theTransaction.command, bus = theTransaction.bus,
                                           width = theTransaction.width, state=(FemTransaction.STATE_ACKNOWLEDGE | FemTransaction.STATE_WRITE),
                                           addr = theTransaction.address, payload=tuple([len(theTransaction.payload)]))
+                
+                #print "Sending write response with payload", tuple([len(theTransaction.payload)])
                     
             if theTransaction.state == FemTransaction.STATE_READ:
                 
