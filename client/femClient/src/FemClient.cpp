@@ -17,7 +17,7 @@
  * @param aTimeoutInMsecs transaction timeout in milliseconds (defaults to zero, i.e. no timeout)
  * @return FemClient instance, connected to FEM
  */
-FemClient::FemClient(char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs) :
+FemClient::FemClient(const char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs) :
 	mEndpoint(boost::asio::ip::address::from_string(aHostString), aPortNum),
 	mSocket(mIoService),
 	mDeadline(mIoService),

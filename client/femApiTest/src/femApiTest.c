@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "femApi.h"
 
@@ -14,12 +15,15 @@
 int testGetSetInt(void* femHandle);
 int testGetSetShort(void* femHandle);
 int testCommand(void* femHandle);
+int testAcquisitionLoop(void* femHandle);
 
 // Forward declaration of callback functions to simulate WP5 callbacks
 static CtlFrame* allocateCallback(void* ctlHandle);
 static void      freeCallback(void* ctlHandle, CtlFrame* buffer);
 static void      receiveCallback(void* ctlHandle, CtlFrame* buffer);
 static void      signalCallback(void* ctlHandle, int id);
+
+int acquiring = 0;
 
 int main(int argc, char* argv[]) {
 
@@ -59,6 +63,7 @@ int main(int argc, char* argv[]) {
 	numPassed += testGetSetInt(femHandle);
 	numPassed += testGetSetShort(femHandle);
 	numPassed += testCommand(femHandle);
+	numPassed += testAcquisitionLoop(femHandle);
 
 	printf("Hit return to quit ... ");
 	getchar();
@@ -145,7 +150,7 @@ int testCommand(void* femHandle)
 
 	printf("Sending command to FEM ... ");
 
-	rc = femCmd(femHandle, 1, FEM_OP_ACQUIRE);
+	rc = femCmd(femHandle, 0, FEM_OP_LOADPIXELCONFIG);
 	if (rc != FEM_RTN_OK)
 	{
 		printf("Got error on calling femCmd(): %d\n", rc);
@@ -156,23 +161,131 @@ int testCommand(void* femHandle)
 	return passed;
 }
 
+int testAcquisitionLoop(void* femHandle)
+{
+
+	int rc;
+	int passed = 1;
+
+	acquiring = 1;
+
+	printf("Sending num frames to FEM...");
+	unsigned int numFrames = 100;
+	rc = femSetInt(femHandle, 0, FEM_OP_NUMFRAMESTOACQUIRE, sizeof(numFrames), (int*)&numFrames);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on setting number of frames: %d'n", rc);
+		passed = 0;
+	}
+
+	printf("done.\nSending acq period to FEM...");
+	unsigned int acqPeriodMs = 10;
+	rc = femSetInt(femHandle, 0, FEM_OP_ACQUISITIONPERIOD, sizeof(acqPeriodMs), (int*)&acqPeriodMs);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on setting acq period: %d'n", rc);
+		passed = 0;
+	}
+
+	printf("done.\nSending acq time frames to FEM...");
+	unsigned int acqTimeMs = 10;
+	rc = femSetInt(femHandle, 0, FEM_OP_ACQUISITIONTIME, sizeof(acqTimeMs), (int*)&acqTimeMs);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on setting acq time: %d'n", rc);
+		passed = 0;
+	}
+
+
+	printf("done.\nSending start acquisition to FEM... ");
+	rc = femCmd(femHandle, 0, FEM_OP_STARTACQUISITION);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on calling femCmd(): %d'n", rc);
+		passed = 0;
+	}
+
+	printf("Waiting for acquisition to complete ...");
+	do
+	{
+		usleep(10000);
+	}
+	while (acquiring);
+
+
+//	printf("done.\nPress return to stop acquisition...");
+//	getchar();
+
+	printf("Sending stop acquisition to FEM... ");
+	rc = femCmd(femHandle, 0, FEM_OP_STOPACQUISITION);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on calling femCmd(FEM_OP_STOPACQUISITION): %d'n", rc);
+		passed = 0;
+	}
+	printf("done.\n");
+
+	return passed;
+
+}
+
 CtlFrame* allocateCallback(void* ctlHandle)
 {
 	printf("In allocateCallback\n");
-	return (CtlFrame*)0;
+	CtlFrame* allocFrame = malloc(sizeof(CtlFrame));
+	if (allocFrame != 0) {
+		allocFrame->sizeX = 512;
+		allocFrame->sizeY = 512;
+		allocFrame->sizeZ = 1;
+		allocFrame->bitsPerPixel = 16;
+		allocFrame->bufferLength = allocFrame->sizeX * allocFrame->sizeY * allocFrame->sizeZ * (allocFrame->bitsPerPixel / 8);
+		allocFrame->buffer = (char *)malloc(allocFrame->bufferLength);
+	}
+	printf("In allocateCallback, allocated frame is at 0x%lx buffer at 0x%lx\n", (unsigned long)allocFrame, (unsigned long)allocFrame->buffer);
+	return allocFrame;
 }
 
 void freeCallback(void* ctlHandle, CtlFrame* buffer)
 {
-	printf("In freeCallback\n");
+	printf("In freeCallback, freeing frame at 0x%lx\n", (unsigned long)buffer);
+	if (buffer != 0) {
+		if (buffer->buffer != 0) {
+			free(buffer->buffer);
+		}
+		free(buffer);
+	}
 }
 
 void receiveCallback(void* ctlHandle, CtlFrame* buffer)
 {
-	printf("In receive callback now\n");
+	int i;
+	printf("In receive callback, start of data in buffer: ");
+
+	// Do something with the frame
+	// ...
+
+	char* bufPtr = (char *)(buffer->buffer);
+	for (i = 0; i < 10; i++) {
+		printf("%x ", *(bufPtr + i));
+	}
+	printf("\n");
+
+	// Free the frame up
+	freeCallback(ctlHandle, buffer);
 }
 
 void signalCallback(void* ctlHandle, int id)
 {
 	printf("In signal callback: %d\n", id);
+
+	switch (id)
+	{
+	case FEM_OP_ACQUISITIONCOMPLETE:
+		printf("Acquisition complete!\n");
+		acquiring = 0;
+		break;
+
+	default:
+		break;
+	}
 }

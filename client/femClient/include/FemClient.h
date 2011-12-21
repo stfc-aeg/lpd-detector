@@ -47,7 +47,7 @@ class FemClient
 
 public:
 
-	FemClient(char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs=0);
+	FemClient(const char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs=0);
 	virtual ~FemClient();
 
 	void setTimeout(unsigned int aTimeoutInMsecs);
@@ -57,7 +57,7 @@ public:
 			             unsigned int aLength);
 	u32 write(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
 					  std::vector<u8>& aPayload);
-	void command(unsigned int command);
+	virtual void command(unsigned int command);
 
 	std::size_t send(FemTransaction aTrans);
 	FemTransaction receive(void);

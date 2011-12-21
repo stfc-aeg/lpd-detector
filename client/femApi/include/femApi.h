@@ -17,35 +17,77 @@
 extern "C" {
 #endif
 
+/*
+ * Image dimension constants
+ */
+#define FEM_PIXELS_PER_CHIP_X 256
+#define FEM_PIXELS_PER_CHIP_Y 256
+#define FEM_CHIPS_PER_BLOCK_X 4
+#define FEM_BLOCKS_PER_STRIPE_X 2
+#define FEM_CHIPS_PER_STRIPE_X 8
+#define FEM_CHIPS_PER_STRIPE_Y 1
+#define FEM_STRIPES_PER_MODULE 2
+#define FEM_STRIPES_PER_IMAGE 6
+#define FEM_CHIP_GAP_PIXELS_X 3
+#define FEM_CHIP_GAP_PIXELS_Y_LARGE 125
+#define FEM_CHIP_GAP_PIXELS_Y_SMALL 3
+#define FEM_PIXELS_PER_STRIPE_X ((FEM_PIXELS_PER_CHIP_X+FEM_CHIP_GAP_PIXELS_X)*FEM_CHIPS_PER_STRIPE_X-FEM_CHIP_GAP_PIXELS_X)
+#define FEM_TOTAL_PIXELS_Y (FEM_PIXELS_PER_CHIP_Y*FEM_CHIPS_PER_STRIPE_Y*FEM_STRIPES_PER_IMAGE +\
+		(FEM_STRIPES_PER_IMAGE/2-1)*FEM_CHIP_GAP_PIXELS_Y_LARGE +\
+		(FEM_STRIPES_PER_IMAGE/2)*FEM_CHIP_GAP_PIXELS_Y_SMALL)
+#define FEM_TOTAL_PIXELS_X FEM_PIXELS_PER_STRIPE_X
+
+/*
+ * Edge pixel ratio (Note: don't put parentheses around this so that integer arithmetic works).
+ */
+#define FEM_EDGE_PIXEL_RATIO_NUM 2
+#define FEM_EDGE_PIXEL_RATIO_DEN 5
+#define FEM_EDGE_PIXEL_RATIO 2/5
+
+/*
+ * Bits per pixel constants
+ */
+#define FEM_BITS_PER_PIXEL_1 0
+#define FEM_BITS_PER_PIXEL_4 1
+#define FEM_BITS_PER_PIXEL_12 2
+#define FEM_BITS_PER_PIXEL_24 3
+
 /* The frame buffer structure.  These are used to carry frame pixels and their
  * associated metadata.
  */
-typedef struct CtlFrame_t
+typedef struct CtlFrame
 {
-    char* buffer;
+    void* buffer;
     size_t bufferLength;
     unsigned int sizeX;
     unsigned int sizeY;
     unsigned int sizeZ;
-    unsigned int bitsPerPixel;
+    int bitsPerPixel;
     time_t timeStamp;
+    void* internalArray;
+    struct CtlFrame* internalNext;
+    int referenceCount;
 } CtlFrame;
 
 /* A structure used to pass the call back functions to the library by
  * the femInitialise function.
  */
-typedef struct CtlCallbacks_t
+typedef struct CtlCallbacks
 {
     CtlFrame* (*ctlAllocate)(void* ctlHandle);
     void (*ctlFree)(void* ctlHandle, CtlFrame* buffer);
     void (*ctlReceive)(void* ctlHandle, CtlFrame* buffer);
     void (*ctlSignal)(void* ctlHandle, int id);
+    void (*ctlReserve)(void* ctlHandle, CtlFrame* buffer);
 } CtlCallbacks;
 
-typedef struct CtlConfig_t
+/* A structure that contains fem configuration data.
+ */
+typedef struct CtlConfig
 {
-	char* femAddress;
-	int   femPort;
+    int femNumber;
+    const char* femAddress;
+    int femPort;
 } CtlConfig;
 
 /* The functions provided by the library.
@@ -72,9 +114,10 @@ void femClose(void* femHandle);
 /* The operation identifiers for the get, set, cmd and signal functions.
  */
 /* Commands */
-#define FEM_OP_ACQUIRE 1
+#define FEM_OP_STARTACQUISITION 1
 #define FEM_OP_STOPACQUISITION 2
 #define FEM_OP_LOADPIXELCONFIG 3
+#define FEM_OP_FREEALLFRAMES 4
 /* Medipix III global registers */
 #define FEM_OP_MPXIII_COLOURMODE 1000
 #define FEM_OP_MPXIII_COUNTERDEPTH 1001
@@ -113,6 +156,11 @@ void femClose(void* femHandle);
 #define FEM_OP_MPXIII_PIXELGAINMODE 3003
 #define FEM_OP_MPXIII_PIXELTEST 3004
 /* Ids 4000..4999 are FEM registers */
+#define FEM_OP_NUMFRAMESTOACQUIRE 4000
+#define FEM_OP_ACQUISITIONTIME 4001
+#define FEM_OP_ACQUISITIONPERIOD 4002
+/* Ids 5000..5999 are signals */
+#define FEM_OP_ACQUISITIONCOMPLETE 5000
 
 #ifdef __cplusplus
 }  /* Closing brace for extern "C" */

@@ -34,12 +34,11 @@ void* femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlCon
 	lCallbacks = callbacks;
 
 	return (void*) theFem;
-
 }
 
 void femClose(void* femHandle)
 {
-	FemClient* theFem = reinterpret_cast<FemClient*>(femHandle);
+	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
 	delete theFem;
 }
@@ -47,27 +46,52 @@ void femClose(void* femHandle)
 int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 {
 	int rc = FEM_RTN_OK;
-	FemClient* theFem = reinterpret_cast<FemClient*>(femHandle);
+	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
-	// TODO: remove this temporary hack of the address from chip ID and config ID
-	unsigned int address = 8000*chipId + id;
-
-	// Build a payload array from the parameters passed
-	std::vector<u32> payload(size);
-	for (unsigned int i = 0; i < (unsigned int)size; i++) {
-		payload[i] = *(value + i);
-	}
-	std::vector<u8>* payloadPtr = (std::vector<u8>*)&payload;
-
-	// Issue the write transaction
-	try {
-		std::size_t writeLen = theFem->write(BUS_RAW_REG, WIDTH_LONG, address, *payloadPtr);
-	}
-	catch (FemClientException& e)
+	unsigned int address;
+	switch (id)
 	{
-		std::cerr << "Exception caught during femSetInt: " << e.what() << std::endl;
-		rc = translateFemErrorCode(e.which());
+
+	case FEM_OP_NUMFRAMESTOACQUIRE:
+
+		theFem->setNumFrames((unsigned int)*value);
+		break;
+
+	case FEM_OP_ACQUISITIONTIME:
+
+		theFem->setAcquisitionTime((unsigned int)*value);
+		break;
+
+	case FEM_OP_ACQUISITIONPERIOD:
+
+		theFem->setAcquisitionPeriod((unsigned int)*value);
+		break;
+
+	default:
+		{
+			// TODO: remove this temporary hack of the address from chip ID and config ID
+			unsigned int address = 8000*chipId + id;
+
+			// Build a payload array from the parameters passed
+			std::vector<u32> payload(size);
+			for (unsigned int i = 0; i < (unsigned int)size; i++) {
+				payload[i] = *(value + i);
+			}
+			std::vector<u8>* payloadPtr = (std::vector<u8>*)&payload;
+
+			// Issue the write transaction
+			try {
+				theFem->write(BUS_RAW_REG, WIDTH_LONG, address, *payloadPtr);
+			}
+			catch (FemClientException& e)
+			{
+				std::cerr << "Exception caught during femSetInt: " << e.what() << std::endl;
+				rc = translateFemErrorCode(e.which());
+			}
+		}
+		break;
 	}
+
 
 	return rc;
 }
@@ -75,7 +99,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 int femSetShort(void* femHandle, int chipId, int id, std::size_t size, short* value)
 {
 	int rc = FEM_RTN_OK;
-	FemClient* theFem = reinterpret_cast<FemClient*>(femHandle);
+	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
 	// TODO: remove this temporary hack of the address from chip ID and config ID
 	unsigned int address = 8000*chipId + id;
@@ -103,7 +127,7 @@ int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
 {
 	int rc = FEM_RTN_OK;
 
-	FemClient* theFem = reinterpret_cast<FemClient*>(femHandle);
+	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
 	// TODO: remove this temporary hack of the address from chip ID and config ID
 	unsigned int address = 8000*chipId + id;
@@ -132,7 +156,7 @@ int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value)
 {
 	int rc = FEM_RTN_OK;
 
-	FemClient* theFem = reinterpret_cast<FemClient*>(femHandle);
+	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
 	// TODO: remove this temporary hack of the address from chip ID and config ID
 	unsigned int address = 8000*chipId + id;
@@ -161,7 +185,7 @@ int femCmd(void* femHandle, int chipId, int id)
 {
 	int rc = FEM_RTN_OK;
 
-	FemClient* theFem = reinterpret_cast<FemClient*>(femHandle);
+	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
 	// TODO: remove this temporary hack of the command and chip ID
 	unsigned int command = (10000 * chipId) + id;
