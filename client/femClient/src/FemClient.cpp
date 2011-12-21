@@ -183,7 +183,7 @@ u32 FemClient::write(unsigned int aBus, unsigned int aWidth, unsigned int aAddre
 	// 32bit word indicating the number of write access completed. This should
 	// match the number specified in the request.
 	std::vector<u8>respPayload = response.getPayload();
-	u32 responseWriteLen = (u32)(respPayload[0]);
+	u32 responseWriteLen = (u32)*(u32*)&(respPayload[0]);
 
 	u32 numWrites = aPayload.size() / FemTransaction::widthToSize(aWidth);
 	if (responseWriteLen  != numWrites)
@@ -280,7 +280,7 @@ std::size_t FemClient::send(FemTransaction aTrans)
 
 	// Start the asynchronous operation. The asyncCompletionHandler function is specified as a callback
 	// to update the error and length variables
-	mSocket.async_write_some(boost::asio::buffer(encoded),
+	boost::asio::async_write(mSocket, boost::asio::buffer(encoded),
 			boost::bind(&FemClient::asyncCompletionHandler, _1, _2, &error, &sendLen));
 
 	// Block until the asynchronous operation has completed
