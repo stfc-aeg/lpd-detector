@@ -1,7 +1,7 @@
 /*
  * protocol.h
  *
- *  Basic protocol for FEM control and configuration over ethernet
+ *  Basic protocol for FEM control and configuration over Ethernet
  *
  */
 
@@ -10,8 +10,8 @@
 
 #include "xil_types.h"
 
-// TODO: Change this once finished debugging
-#define MAX_PAYLOAD_SIZE          64
+// TODO: Fix this for large payload/multi-packet data reception....
+#define MAX_PAYLOAD_SIZE          1024
 
 #define PROTOCOL_MAGIC_WORD       0xDEADBEEF
 
@@ -55,7 +55,7 @@ struct protocol_header
 	u8  command;
 	u8  bus_target;
 	u8  data_width;
-	u8  status;
+	u8  state;
 	u32 address;
 	u32 payload_sz;
 };
@@ -65,7 +65,8 @@ enum protocol_commands
 {
 	CMD_UNSUPPORTED = 0,
 	CMD_ACCESS      = 1,
-	CMD_INTERNAL	= 2
+	CMD_INTERNAL	= 2,
+	CMD_PERSONALITY	= 3
 };
 
 // Target bus for commands

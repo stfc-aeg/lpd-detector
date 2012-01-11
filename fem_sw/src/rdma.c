@@ -7,7 +7,7 @@
 
 // TODO: Reformat 4x1 byte sends as single 4 byte transmission
 // TODO: Add sleeps into polling loops
-// TODO: Complete support for uartlite
+// TODO: Complete support for uartlite, or respin devboard build to use UART16550
 
 /*
  * RDMA protocol format:

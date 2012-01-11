@@ -42,7 +42,7 @@ void createFailsafeConfig(struct fem_config* pConfig)
 	// Default gateway
 	pConfig->net_gw[0]			= 192;
 	pConfig->net_gw[1]			= 168;
-	pConfig->net_gw[2]			= 1;
+	pConfig->net_gw[2]			= 0;
 	pConfig->net_gw[3]			= 1;
 
 	// LM82 setpoints

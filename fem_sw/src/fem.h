@@ -48,8 +48,13 @@
 #define BADDR_MAC					XPAR_LLTEMAC_0_BASEADDR
 #define BADDR_INTC					XPAR_XPS_INTC_2_BASEADDR
 #define BADDR_RDMA					XPAR_RS232_UART_PPC2_RDMA_BASEADDR
+#define BADDR_MBOX					XPAR_MAILBOX_0_IF_1_BASEADDR
 #define XINTC_ID					XPAR_XPS_INTC_2_DEVICE_ID
 #define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
+#define MBOX_ID						XPAR_MAILBOX_0_IF_1_DEVICE_ID
+#define MBOX_RECV_ID				XPAR_MAILBOX_0_IF_1_RECV_FSL
+#define MBOX_SEND_ID				XPAR_MAILBOX_0_IF_1_SEND_FSL
+#define MBOX_USE_FSL				XPAR_MAILBOX_0_IF_1_USE_FSL
 #endif
 
 // Enable / disable serial debugging output (comment to disable)
@@ -66,9 +71,8 @@
 #define CRIT_TEMP_MAX				90
 
 // FEM Networking parameters
-// TODO: Tune these as required!
 #define NET_CMD_PORT				6969
-#define NET_MAX_CLIENTS				8
+#define NET_MAX_CLIENTS				1
 #define NET_THREAD_STACKSIZE 		1024
 #define NET_SOCK_BACKLOG			1					// Accept queue size for LWIP
 #define NET_NOMINAL_RX_BUFFER_SZ	2048				// Normal payload receive buffer size
@@ -86,6 +90,9 @@
 #define TEST_RDMA_UART_OK			0x0010
 #define TEST_RDMA_READBACK			0x0020
 #define TEST_SYSACE_INIT			0x0040
+#define TEST_SYSACE_BIST			0x0080
+
+#define TEST_EEPROM_CFG_READ		0x8000
 
 #endif /* FEM_H_ */
 

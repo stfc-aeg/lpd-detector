@@ -19,6 +19,8 @@
 
 #include "lwip/sockets.h"
 
+#include "personality.h"
+
 enum packetStatus {
 	STATE_START = 0,
 	STATE_GOT_HEADER = 1,
@@ -37,6 +39,7 @@ struct clientStatus {
 };
 
 void commandProcessorThread();
+void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients);
 void commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes);
 int validateHeaderContents(struct protocol_header *pHeader);

@@ -13,13 +13,16 @@
  * remote register read / write functionality and full support for I2C
  * devices (M24C08 8k EEPROM, LM82 monitoring chip) using a simple socket interface.
  *
+ * Provides support for FPM (FEM Personality Modules), providing application specific
+ * functionality through special commands.
+ *
  * Developed against Xilinx ML507 development board under EDK 13.1 (Linux)
  *
  * Ported to FEM production hardware
  *
  * ----------------------------------------------------------------------------
  *
- * Version 1.6 - not for distribution
+ * Version 1.7 - not for distribution
  *
  * ----------------------------------------------------------------------------
  *
@@ -43,47 +46,50 @@
  *  - Made comms code adhere to MAX_PAYLOAD_SIZE for response packets
  *
  * 1.5		23-Sep-2011
- *  - Revised RDMA library to properly support 16550 UART
+ *  - Revised RDMA library to support 16550 UART
  *  - Implemented RDMA self-test routine
- *  - Introduced 1 second delay before LWIP init to try to improve stability
  *
  * 1.6		03-Oct-2011
  *  - Added stub for internal state queries / CMD_INTERNAL
  *  - Added preliminary support for SystemACE / writing to CF via xilfatfs library
  *
- * 1.7		31-Oct-2011		- IN PROGRESS!
+ * 1.7		16-Nov-2011
  *  - Restructured network receive loop
  *  - Added support for large payloads (pixel memory configs, sysace images)
+ *  - Introduced FEM personality modules
+ *  - Added CMD_PERSONALITY for application-specific commands (passed to FEM personality module)
  *
  * ----------------------------------------------------------------------------
  *
- * TO DO LIST:
+ * TO DO LIST: (in order of descending importance)
  *
+ * HARDWARE:
  * TODO: Determine why execution halts sometimes after LWIP auto-negotiation - xlltemacif_hw.c -> Line 78?
  * TODO: Determine why UART loopback test occasionally fails
+ * TODO: Determine xsysace failure modes
  *
- * TODO: Clean network select / command processing logic, make robust
- * TODO: Test with malformed packets, try to break processing loop
- *
- * TODO: Support for large payloads (process in chunks, i.e. for SystemACE images or pixel memories...)
- *
+ * FUNCTIONALITY:
+ * TODO: Confirm new disconnectClient() works properly
+ * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
+ * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
+ * TODO: How to let personality module run validateHeaderContents equivalent?
+ * TODO: Re-enable BADPKT response sending (generateBadPacketResponse())
+ * TODO: Provide access to femErrorState via CMD_INTERNAL
+ * TODO: Clean up RDMA wrapper (was kludged into place and never fixed!)
  * TODO: Implement iperf server and some way to activate / deactivate it without rebooting or rebuilding
  *
+ * GENERAL:
  * TODO: Profile memory usage
  * TODO: Tune thread stacksize
  * TODO: Check for memory leaks
- *
  * TODO: Determine why LWIP hangs on init using priority based scheduler
  *
+ * CODING STANDARDS:
+ * TODO: Make const-correct! (urgh)
+ * TODO: Replace pass-by-pointer to pass-by-reference where possible
+ * TODO: Make method names consistent across all files
+ *
  * ----------------------------------------------------------------------------
- */
-
-
-
-/*
- * CMD_INTERNAL - Possible future variables
- * - Error register (selftest) - bitmask of tests passed / failed
- * - # connected clients, IP address?
  */
 
 
@@ -141,11 +147,19 @@
 #include "xintc.h"
 #include "xtmrctr.h"
 
+// Xilinx mailbox
+#ifndef HW_PLATFORM_DEVBOARD
+#include "xmbox.h"
+#endif
+
 // Calibrated sleep for MicroBlaze
 #include "calib_sleep.h"
 
 // Protocol command processor
 #include "commandProcessor.h"
+
+// FEM Personality module template
+#include "personality.h"
 
 
 
@@ -174,6 +188,8 @@ XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 #else
 // Enable SystemACE controller if using FEM (was not present in original ML507 BSP)
 XSysAce				sysace;
+// Enable IPC Mailbox
+XMbox				mbox;
 #endif
 
 
@@ -374,6 +390,7 @@ int initHardware(void)
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
     	DBGOUT("initHardware: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
+    	femErrorState |= TEST_EEPROM_CFG_READ;		// Not really an error but client might like to know...
     	createFailsafeConfig(&femConfig);
     }
     else
@@ -387,7 +404,15 @@ int initHardware(void)
     // Read FPGA temp
     fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
     lmTemp = readTemp(LM82_REG_READ_LOCAL_TEMP);
-    DBGOUT("initHardware: FPGA temp %dc, LM82 temp %dc\r\n", fpgaTemp, lmTemp);
+    if (fpgaTemp!=0 && lmTemp!=0)
+    {
+    	DBGOUT("initHardware: FPGA temp %dc, LM82 temp %dc\r\n", fpgaTemp, lmTemp);
+    }
+    else
+    {
+    	DBGOUT("initHardware: WARNING - I2C accesses don't seem to be working, can't read system temperature!\r\n");
+    	// TODO: Set error?
+    }
 
     // Initialise RDMA block(s) and run selftest
     initRdma();
@@ -423,26 +448,95 @@ int initHardware(void)
     {
     	DBGOUT("initHardware: SystemACE failed initialisation.\r\n");
     	femErrorState |= TEST_SYSACE_INIT;
-    	return status;
+    	//return status;
     }
     else
     {
     	DBGOUT("initHardware: SystemACE initialised.\r\n");
     }
 
-    // Selftest SystemACE
+    // Self-test on SystemACE
     status = mySelfTest(&sysace);		// Returns XST_SUCCESS or XST_FAILURE
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: SystemACE failed self-test.\r\n");
     	DBGOUT("initHardware: Ignoring SystemACE failed self-test...\r\n");
+    	femErrorState |= TEST_SYSACE_BIST;
     	//return status;
     }
+    else
+    {
+        // Test file write
+        //testCF();
+    }
 
-    // Test file write
-    //testCF();
+    // Call FEM personality module hardware init
+    status = fpmInitHardware();
+    if (status!=XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Personality module hardware initialisation failed...\r\n");
+    }
+    else
+    {
+    	DBGOUT("initHardware: Personality module hardware initialisation OK!\r\n");
+    }
 
-    // All is well, hooray!
+    // PPC1 communications tests - comment if not using PPC1 or PPC2 will hang on blocking read!
+    // -----------------------------------------------------------------------------------------
+    // TODO: Tidy / move
+    /*
+     *
+#ifndef HW_PLATFORM_DEVBOARD
+    // Generate Config
+    XMbox_Config mboxCfg;
+    mboxCfg.BaseAddress =	BADDR_MBOX;
+    mboxCfg.DeviceId =		MBOX_ID;
+    mboxCfg.RecvID =		MBOX_RECV_ID;
+    mboxCfg.SendID =		MBOX_SEND_ID;
+    mboxCfg.UseFSL =		MBOX_USE_FSL;
+#endif
+
+    status = XMbox_CfgInitialize(&mbox, &mboxCfg, BADDR_MBOX);
+    if (status!=XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Failed to configure mailbox...\r\n");
+    }
+
+    u32 ipcMessage = 0x22BEEF44;
+    u32 reply = 0;
+    u32 mboxSentBytes = 0;
+
+    u32 sharedBramTest = 0xA52354BB;
+    u32 *pBram = (u32*)XPAR_BRAM_0_BASEADDR;
+    *pBram = sharedBramTest;
+
+    status = XMbox_Write(&mbox, &ipcMessage, 4, &mboxSentBytes);
+    if (status != XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Failed to sent mailbox msg to PPC1 :(\r\n");
+    }
+    else
+    {
+    	DBGOUT("initHardware: Sent mailbox msg (%d bytes) to PPC1!\r\n", mboxSentBytes);
+
+    	// Get a reply - WARNING, BLOCKING CALL!
+    	XMbox_ReadBlocking(&mbox, &reply, 4);
+    	//if (status!=XST_SUCCESS) {
+    	//	DBGOUT("initHardware: Failed to get response from PPC1...\r\n");
+    	//} else {
+    		if (reply==0xBEEF6969) {
+    			DBGOUT("initHardware: Response is GOOD, Matt are great!\r\n");
+    		} else {
+    			DBGOUT("initHardware: Got response from PPC1 but it's incorrect :(\r\n");
+    		}
+    	//}
+
+    }
+    */
+    // -----------------------------------------------------------------------------------------
+
+    // All is well
+    // TODO: Remove XST_SUCCESS, replace with status!
     return XST_SUCCESS;
 
 }

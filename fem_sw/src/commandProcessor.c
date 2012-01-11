@@ -11,6 +11,7 @@
 /* Manages the connection of clients to the FEM and
  * the reception / validation / response generation of
  * packets.
+ *
  */
 void commandProcessorThread()
 {
@@ -29,9 +30,7 @@ void commandProcessorThread()
 
 	// RX and TX packet buffers
 	// TODO: Tidy these and change signature of commandHandler()!
-	//u8* pRxBuffer = (u8*)malloc(sizeof(struct protocol_header)+MAX_PAYLOAD_SIZE);
 	u8* pTxBuffer = (u8*)malloc(sizeof(struct protocol_header)+MAX_PAYLOAD_SIZE);
-	//struct protocol_header* pRxHeader = (struct protocol_header*)pRxBuffer;
 	struct protocol_header* pTxHeader = (struct protocol_header*)pTxBuffer;
 
 	// Prepare file descriptor sets
@@ -77,7 +76,7 @@ void commandProcessorThread()
 	FD_SET(listenerSocket, &masterSet);
 	numFds = listenerSocket;
 
-	DBGOUT("CmdProc: Socket on port %d ready, awaiting clients.\r\n", NET_CMD_PORT);
+	DBGOUT("CmdProc: Socket on port %d ready, awaiting clients (max. clients = %d).\r\n", NET_CMD_PORT, NET_MAX_CLIENTS);
 
 	// ************************************************** MAIN SERVER LOOP ********************************************************
 	while (1) {
@@ -105,7 +104,13 @@ void commandProcessorThread()
 				if (i==listenerSocket)
 				{
 
-					// TODO: Check for and reject any clients > MAX_CLIENTS!
+					// Check if we can accept more client connections
+					if (numConnectedClients == NET_MAX_CLIENTS)
+					{
+						DBGOUT("CmdProc: Client attempted to connect but can't accept any more connections!\r\n");
+						lwip_close(listenerSocket);
+						break;	// Tidier than wrapping rest of code in else clause!
+					}
 
 					DBGOUT("CmdProc: Received new connection! (Client #%d), fd is %d\r\n", ++numConnectedClients, newFd);
 
@@ -145,7 +150,6 @@ void commandProcessorThread()
 						}
 
 						state[newFd].state = STATE_COMPLETE;		// This causes reset at beginning of receive from existing client loop!
-
 					}
 
 				}
@@ -156,30 +160,29 @@ void commandProcessorThread()
 
 					clientSocket = i;
 
-					// TODO: Abstract common functions or make macros?
-					/*
-					 * - Malloc NULL pointer check on pPayload
-					 * - Client disconnection routine -> Move to macro?
-					 *
-					 */
-
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 					// Determine if the last packet was received from client, if so reset client status
 					if (state[i].state == STATE_COMPLETE)
 					{
 
+						DBGOUT("***** STATE_COMPLETE ****\r\n");
+
 						// Check if previous transaction had an increased payload buffer size and free it if necessary
 						if (state[i].payloadBufferSz > NET_NOMINAL_RX_BUFFER_SZ)
 						{
 							free(state[i].pPayload);
-							state[i].pPayload = malloc(sizeof(struct protocol_header));
+							state[i].pPayload = malloc(NET_NOMINAL_RX_BUFFER_SZ);
 							if (state[i].pPayload == NULL)
 							{
 								// Can't allocate payload space
 								DBGOUT("CmdProc: Can't re-malloc payload buffer for client after large packet!\r\n");
 								DBGOUT("Terminating thread...\r\n");
 								return;
+							}
+							else
+							{
+								DBGOUT("CmdProc: Resized payload buffer to %d\r\n", NET_NOMINAL_RX_BUFFER_SZ);
 							}
 						}
 
@@ -200,15 +203,19 @@ void commandProcessorThread()
 
 						DBGOUT("CmdProc: Trying to get %d bytes of header...\r\n", numBytesToRead);
 
-						numBytesRead = socketRead(i, (u8*)(state[i].pHdr) + state[i].size, numBytesToRead);
+						//numBytesRead = socketRead(i, (u8*)(state[i].pHdr) + state[i].size, numBytesToRead);
+						numBytesRead = lwip_read(i, state[i].pHdr + state[i].size, numBytesToRead);
 						if (numBytesRead == 0)
 						{
 							// Client disconnected
+							/*
 							DBGOUT("CmdProc: Client #%d disconnected.\r\n", i);
 							lwip_close(i);
 							FD_CLR(i, &masterSet);
 							numConnectedClients--;
 							state[i].state = STATE_COMPLETE;
+							*/
+							disconnectClient(&state[i], &i, &masterSet, &numConnectedClients);
 						}
 						else if (numBytesRead < numBytesToRead)
 						{
@@ -315,16 +322,20 @@ void commandProcessorThread()
 							}
 
 							//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, state[i].pHdr->payload_sz);
-							numBytesRead = socketRead(i, state[i].pPayload + (state[i].size - sizeof(struct protocol_header)), numBytesToRead);
+							//numBytesRead = socketRead(i, state[i].pPayload + (state[i].size - sizeof(struct protocol_header)), numBytesToRead);
+							numBytesRead = lwip_read(i, state[i].pPayload + (state[i].size - sizeof(struct protocol_header)), numBytesToRead);
 
 							if (numBytesRead == 0)
 							{
 								// Client disconnected
+								/*
 								DBGOUT("CmdProc: Client #%d disconnected.\r\n", i);
 								lwip_close(i);
 								FD_CLR(i, &masterSet);
 								numConnectedClients--;
 								state[i].state = STATE_COMPLETE;
+								*/
+								disconnectClient(&state[i], &i, &masterSet, &numConnectedClients);
 							}
 							else
 							{
@@ -357,7 +368,16 @@ void commandProcessorThread()
 						DBGOUT("CmdProc: Received entire packet, sending response...\r\n");
 
 						// Generate response
-						commandHandler(state[i].pHdr, pTxHeader, state[i].pPayload, pTxBuffer+sizeof(struct protocol_header));
+						if (state[i].pHdr->command == CMD_PERSONALITY)
+						{
+							handlePersonalityCommand(state[i].pHdr, pTxHeader, state[i].pPayload, pTxBuffer+sizeof(struct protocol_header));
+						}
+						else
+						{
+							commandHandler(state[i].pHdr, pTxHeader, state[i].pPayload, pTxBuffer+sizeof(struct protocol_header));
+						}
+
+
 						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
 						{
 							DBGOUT("CmdProc: Error sending response packet! (has client disconnected?)\r\n");
@@ -410,8 +430,47 @@ void commandProcessorThread()
 
 
 /*
+ * Cleanly disconnects a client and frees any payload buffers > NET_NOMINAL_RX_BUFFER_SZ
+ *
+ * @param pState pointer to client state struct of client that has disconnected
+ * @param pIndex pointer to fd of client that is disconnecting
+ * @param pFdSet pointer to fd_set of read file descriptors
+ * @param pNumConnectedClients pointer to number of connected clients
+ */
+void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients)
+{
+
+	DBGOUT("DiscClient: Client #%d disconnected.\r\n", *pIndex);
+	lwip_close(*pIndex);
+	FD_CLR(*pIndex, pFdSet);
+	(*pNumConnectedClients)--;
+
+	// If payload buffer exceeds nominal size, reduce it
+	// TODO: Move this to a new method?
+	if (pState->payloadBufferSz > NET_NOMINAL_RX_BUFFER_SZ)
+	{
+		// TODO: Should I use a realloc instead of free/malloc?  Does it matter at all?
+		free(pState->pPayload);
+		pState->pPayload = malloc(NET_NOMINAL_RX_BUFFER_SZ);
+		if (pState->pPayload == NULL)
+		{
+			// Can't allocate payload space
+			DBGOUT("DiscClient: Can't re-malloc payload buffer for client after large packet!\r\n");
+		}
+		else
+		{
+			DBGOUT("DiscClient: Resized payload buffer to %d\r\n", NET_NOMINAL_RX_BUFFER_SZ);
+		}
+	}
+
+	pState->state = STATE_COMPLETE;
+}
+
+
+/*
  * Processes received commands over LWIP.  It is assumed that packets are well formed
  * and have been checked before passing to this function.
+ *
  * @param pRxHeader pointer to protocol_header for received packet
  * @param pTxHeader pointer to protocol_header for outbound packet
  * @param pRxPayload pointer to payload buffer of received packet
@@ -427,7 +486,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 	int dataWidth = 0;		// Width of data type for operation in bytes
 	int responseSize = 0;	// Payload size for response packet in bytes
 	u32 numOps = 0;			// Number of requested operations performed
-	u8 status = 0;			// Status byte
+	u8 state = 0;			// Status byte
 
 	// Native size pointers for various data widths
 	u32* pTxPayload_32  = NULL;
@@ -435,16 +494,16 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	// Copy original header to response packet, take a local copy of the status byte to update
 	memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
-	status = pRxHeader->status;
+	state = pRxHeader->state;
 
 	// Verify operation mode is sane, exit if not
-	if (!CMPBIT(status, STATE_READ) && !CMPBIT(status, STATE_WRITE))
+	if (!CMPBIT(state, STATE_READ) && !CMPBIT(state, STATE_WRITE))
 	{
 		// Neither write nor read requested, can't process so just return error response
 		DBGOUT("CmdDisp: Invalid operation\r\n");
-		SBIT(status, STATE_NACK);
+		SBIT(state, STATE_NACK);
 		// TODO: Set error bits
-		pTxHeader->status = status;
+		pTxHeader->state = state;
 		pTxHeader->payload_sz = 0;
 		return;
 	}
@@ -486,34 +545,34 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 					dataWidth = sizeof(u8); // All EEPROM operations are byte level
 
-					if (CMPBIT(status, STATE_READ))
+					if (CMPBIT(state, STATE_READ))
 					{
 
 						i = readFromEEPROM(pRxHeader->address, pTxPayload + 4, *pRxPayload_32);
 						if (i != *pRxPayload_32)
 						{
 							// EEPROM read failed, set NACK
-							SBIT(status, STATE_NACK);
+							SBIT(state, STATE_NACK);
 							// TODO: set error bits?
 						}
 						else
 						{
-							SBIT(status, STATE_ACK);
+							SBIT(state, STATE_ACK);
 							responseSize += i;
 							numOps++;
 						}
 					}
-					else if (CMPBIT(status, STATE_WRITE))
+					else if (CMPBIT(state, STATE_WRITE))
 					{
 
 						i = writeToEEPROM(pRxHeader->address, pRxPayload, pRxHeader->payload_sz);
 						if (i != pRxHeader->payload_sz)
 						{
-							SBIT(status, STATE_NACK);
+							SBIT(state, STATE_NACK);
 							// TODO: Set error bits?
 						} else
 						{
-							SBIT(status, STATE_ACK);
+							SBIT(state, STATE_ACK);
 							numOps++;
 						}
 
@@ -521,7 +580,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					else
 					{
 						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_EEPROM operation mode, status was 0x%x\r\n", status);
+						DBGOUT("CmdDisp: Error, can't determine BUS_EEPROM operation mode, status was 0x%x\r\n", state);
 						// TODO: Set error bits
 					}
 					break; // BUS_EEPROM
@@ -553,7 +612,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					if (busIndex >= i2cMaxAddr )
 					{
 						DBGOUT("CmdDisp: Invalid I2C bus index %d (maximum index is %d)\r\n", busIndex, i2cMaxAddr);
-						SBIT(status, STATE_NACK);
+						SBIT(state, STATE_NACK);
 						// TODO: Set error bits
 					}
 					else
@@ -561,44 +620,44 @@ void commandHandler(struct protocol_header* pRxHeader,
 						baseAddr = i2cAddr[busIndex];
 					}
 
-					if (CMPBIT(status, STATE_READ))
+					if (CMPBIT(state, STATE_READ))
 					{
 						i = readI2C(baseAddr, slaveAddress, pTxPayload + 1, (u32)pRxPayload[0]);
 						if (i != (u32)pRxPayload[0])
 						{
 							// I2C operation failed, set NACK
-							SBIT(status, STATE_NACK);
+							SBIT(state, STATE_NACK);
 							// TODO: Set error bits?
 						}
 						else
 						{
 							// Set ACK, payload size
-							SBIT(status, STATE_ACK);
+							SBIT(state, STATE_ACK);
 							responseSize += i;
 							numOps++;
 						}
 
 					}
-					else if (CMPBIT(status, STATE_WRITE))
+					else if (CMPBIT(state, STATE_WRITE))
 					{
 						i = writeI2C(baseAddr, slaveAddress, pRxPayload, pRxHeader->payload_sz);
 						if (i != pRxHeader->payload_sz)
 						{
 							// I2C operation failed, set NACK
-							SBIT(status, STATE_NACK);
+							SBIT(state, STATE_NACK);
 							// TODO: Set error bits?
 						}
 						else
 						{
 							// Set ACK
-							SBIT(status, STATE_ACK);
+							SBIT(state, STATE_ACK);
 							numOps++;
 						}
 					}
 					else
 					{
 						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_I2C operation mode, status was 0x%x\r\n", status);
+						DBGOUT("CmdDisp: Error, can't determine BUS_I2C operation mode, status was 0x%x\r\n", state);
 						// TODO: Set error bits
 					}
 
@@ -610,17 +669,17 @@ void commandHandler(struct protocol_header* pRxHeader,
 					dataWidth = sizeof(u32);
 
 					// Make sure return packet will not violate MAX_PAYLOAD_SIZE (write operations should never be too long if MAX_PAYLOAD_SIZE => 4!)
-					if (CMPBIT(status, STATE_READ)) {
+					if (CMPBIT(state, STATE_READ)) {
 						if ( (sizeof(u32) + (dataWidth * numRequestedReads)) > MAX_PAYLOAD_SIZE )
 						{
-							DBGOUT("CmdDisp: Response would be too large! (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->status, pRxHeader->payload_sz);
-							SBIT(status, STATE_NACK);
+							DBGOUT("CmdDisp: Response would be too large! (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->state, pRxHeader->payload_sz);
+							SBIT(state, STATE_NACK);
 							// TODO: set error bits
 							break;
 						}
 					}
 
-					if (CMPBIT(status, STATE_READ)) // READ OPERATION
+					if (CMPBIT(state, STATE_READ)) // READ OPERATION
 					{
 						for (i=0; i<*pRxPayload_32; i++)
 						{
@@ -630,10 +689,10 @@ void commandHandler(struct protocol_header* pRxHeader,
 							responseSize += dataWidth;
 							numOps++;
 						}
-						SBIT(status, STATE_ACK);
+						SBIT(state, STATE_ACK);
 
 					}
-					else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
+					else if (CMPBIT(state, STATE_WRITE)) // WRITE OPERATION
 					{
 						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
 						{
@@ -642,14 +701,14 @@ void commandHandler(struct protocol_header* pRxHeader,
 							writeRegister_32( pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i) );
 							numOps++;
 						}
-						SBIT(status, STATE_ACK);
+						SBIT(state, STATE_ACK);
 					}
 					else
 					{
 						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_RAW_REG operation mode, status was 0x%x\r\n", status);
+						DBGOUT("CmdDisp: Error, can't determine BUS_RAW_REG operation mode, status was 0x%x\r\n", state);
 
-						SBIT(status, STATE_NACK);
+						SBIT(state, STATE_NACK);
 						// TODO: Set error bits
 					}
 
@@ -661,7 +720,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					dataWidth = sizeof(u32);
 					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
 
-					if (CMPBIT(status, STATE_READ)) // READ OPERATION
+					if (CMPBIT(state, STATE_READ)) // READ OPERATION
 					{
 
 						pRxPayload_32 = (u32*)pRxPayload;
@@ -673,10 +732,10 @@ void commandHandler(struct protocol_header* pRxHeader,
 							responseSize += dataWidth;
 							numOps++;
 						}
-						SBIT(status, STATE_ACK);
+						SBIT(state, STATE_ACK);
 
 					}
-					else if (CMPBIT(status, STATE_WRITE)) // WRITE OPERATION
+					else if (CMPBIT(state, STATE_WRITE)) // WRITE OPERATION
 					{
 						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
 						{
@@ -685,21 +744,21 @@ void commandHandler(struct protocol_header* pRxHeader,
 							writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
 							numOps++;
 						}
-						SBIT(status, STATE_ACK);
+						SBIT(state, STATE_ACK);
 					}
 					else
 					{
 						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_RDMA operation mode, status was 0x%x\r\n", status);
+						DBGOUT("CmdDisp: Error, can't determine BUS_RDMA operation mode, status was 0x%x\r\n", state);
 
-						SBIT(status, STATE_NACK);
+						SBIT(state, STATE_NACK);
 						// TODO: Set error bits
 					}
 					break; // BUS_RDMA
 
 				case BUS_UNSUPPORTED:
 				default:
-					SBIT(status, STATE_NACK);
+					SBIT(state, STATE_NACK);
 					// TODO: Set error bits
 					break;
 
@@ -708,7 +767,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 	} // END switch(command)
 
 	// Build response header (all fields other status byte stay same as received packet)
-	pTxHeader->status = status;
+	pTxHeader->state = state;
 	pTxHeader->payload_sz = responseSize;
 
 	// Update number of operations in payload
@@ -717,13 +776,13 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 }
 
+// TODO: Remove socketRead once tested
 /*
- * UPDATE / REMOVE THIS!
- */
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes)
 {
 	return lwip_read(sock, (void*)pBuffer, numBytes);
 }
+*/
 
 /*
  * Validates the fields of a header for consistency
@@ -743,14 +802,14 @@ int validateHeaderContents(struct protocol_header *pHeader)
 			{
 
 				// CMD_ACCESS must always specify an operation type, read/write...
-				if ( (pHeader->status!=STATE_READ) && (pHeader->status=STATE_WRITE) )
+				if ( (pHeader->state!=STATE_READ) && (pHeader->state=STATE_WRITE) )
 				{
 					DBGOUT("validateHeader: No R/W operation specified for CMD_ACCESS!\r\n");
 					return -1;
 				}
 
 				// CMD_ACCESS + STATE_READ must always have a payload_sz of sizeof(u32)
-				if ( (pHeader->status == STATE_READ) && (pHeader->payload_sz!=sizeof(u32)) )
+				if ( (pHeader->state == STATE_READ) && (pHeader->payload_sz!=sizeof(u32)) )
 				{
 					DBGOUT("validateHeader: payload_sz always equal to 4 on CMD_ACCESS READ operation!\r\n");
 					return -1;
@@ -805,6 +864,11 @@ int validateHeaderContents(struct protocol_header *pHeader)
 			return -1;
 			break;
 
+		case CMD_PERSONALITY:
+			// TODO - Implement CMD_PERSONALITY checks!
+			return 0;		// For the meantime, pass any old packets to the personality modules...
+			break;
+
 		case CMD_UNSUPPORTED:
 			DBGOUT("validateHeader: Unsupported command!\r\n");
 			return -1;
@@ -831,7 +895,7 @@ void generateBadPacketResponse(struct protocol_header *pHeader, int clientSocket
 	pHeader->data_width = 0;
 	pHeader->magic = PROTOCOL_MAGIC_WORD;
 	pHeader->payload_sz = 0;
-	pHeader->status = 0xF8;
+	pHeader->state = 0xF8;
 
 	if (lwip_send(clientSocket, pHeader, sizeof(struct protocol_header), 0) == -1)
 	{
