@@ -70,6 +70,7 @@
  *
  * FUNCTIONALITY:
  * TODO: Confirm new disconnectClient() works properly
+ * TODO: Implement NET_MAX_CLIENTS - removed previous implementation as it would cause FEM to reject all future connections if it had hit max connections, even if clients then disconnected...
  * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
  * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
  * TODO: How to let personality module run validateHeaderContents equivalent?
@@ -202,7 +203,7 @@ u32 femErrorState;
 int main()
 {
     init_platform();
-    usleep(1000000);		// 1 second delay - TEMAC has still hung using this delay :(
+    //usleep(1000000);		// 1 second delay - TEMAC has still hung using this delay :(
 
     //DBGOUT("main: init_platform() complete.\r\n");
     initHardware();
