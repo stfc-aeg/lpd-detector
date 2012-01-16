@@ -104,52 +104,61 @@ void commandProcessorThread()
 				if (i==listenerSocket)
 				{
 
-					// Check if we can accept more client connections
-					if (numConnectedClients == NET_MAX_CLIENTS)
-					{
-						DBGOUT("CmdProc: Client attempted to connect but can't accept any more connections!\r\n");
-						lwip_close(listenerSocket);
-						break;	// Tidier than wrapping rest of code in else clause!
-					}
-
-					DBGOUT("CmdProc: Received new connection! (Client #%d), fd is %d\r\n", ++numConnectedClients, newFd);
-
 					// Accept connection
 					addrSize = sizeof(clientAddress);
 					newFd = lwip_accept(listenerSocket, (struct sockaddr*)&clientAddress, (socklen_t*)&addrSize);
 					if (newFd == -1)
 					{
-						// Unrecoverable error
-						DBGOUT("CmdProc: Accept error\r\n");
+						DBGOUT("CmdProc: Error accepting connection!");
+						// TODO: What to do here?!
 					}
 					else
 					{
-						// Add to master list of FDs, update count
-						FD_SET(newFd, &masterSet);
-						if (newFd > numFds)
-						{
-							numFds = newFd;
-						}
 
-						// Add to client status list, malloc header and payload buffers (keep separate, simplifies pointer handling!)
-						state[newFd].pHdr = malloc(sizeof(struct protocol_header));
-						if (state[newFd].pHdr == NULL)
-						{
-							// Can't allocate payload space
-							DBGOUT("CmdProc: Can't malloc header buffer for client %d!\r\n", newFd);
-							DBGOUT("Terminating thread...\r\n");
-							return;
-						}
-						state[newFd].pPayload = malloc(NET_NOMINAL_RX_BUFFER_SZ);
-						if (state[newFd].pPayload == NULL)
-						{
-							// Can't allocate payload space
-							DBGOUT("CmdProc: Can't malloc payload buffer for client %d!\r\n", newFd);
-							DBGOUT("Terminating thread...\r\n");
-							return;
-						}
+						DBGOUT("CmdProc: Received new connection! (Client #%d), fd is %d\r\n", numConnectedClients+1, newFd);
 
-						state[newFd].state = STATE_COMPLETE;		// This causes reset at beginning of receive from existing client loop!
+						// Check if we can accept more client connections
+						if (numConnectedClients == NET_MAX_CLIENTS)
+						{
+							// Refuse to accept connection
+							DBGOUT("CmdProc: Client attempted to connect but can't accept any more connections!\r\n");
+							lwip_close(newFd);
+						}
+						else
+						{
+
+							// Add to master list of FDs, update count
+							FD_SET(newFd, &masterSet);
+							if (newFd > numFds)
+							{
+								numFds = newFd;
+							}
+
+							// Add to client status list, malloc header and payload buffers (keep separate, simplifies pointer handling!)
+							state[newFd].pHdr = malloc(sizeof(struct protocol_header));
+							if (state[newFd].pHdr == NULL)
+							{
+								// Can't allocate payload space
+								DBGOUT("CmdProc: Can't malloc header buffer for client %d!\r\n", newFd);
+								DBGOUT("Terminating thread...\r\n");
+								// TODO: Don't return, handle gracefully (NACK + disconnect?)
+								return;
+							}
+							state[newFd].pPayload = malloc(NET_NOMINAL_RX_BUFFER_SZ);
+							if (state[newFd].pPayload == NULL)
+							{
+								// Can't allocate payload space
+								DBGOUT("CmdProc: Can't malloc payload buffer for client %d!\r\n", newFd);
+								DBGOUT("Terminating thread...\r\n");
+								// TODO: Don't return, handle gracefully (NACK + disconnect?)
+								return;
+							}
+
+							numConnectedClients++;
+
+							state[newFd].state = STATE_COMPLETE;		// This causes reset at beginning of receive from existing client loop!
+
+						}
 					}
 
 				}
