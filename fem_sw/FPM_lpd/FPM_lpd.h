@@ -10,10 +10,4 @@
 
 #include "personality.h"
 
-// TODO: Move these to personality.h!
-#include "xmk.h"
-#include "stdio.h"
-#include "xstatus.h"
-#include <fem.h>
-
 #endif /* FPM_LPD_H_ */

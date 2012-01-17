@@ -12,6 +12,10 @@
 
 #include "protocol.h"
 #include "xil_types.h"
+#include "xmk.h"
+#include "stdio.h"
+#include "xstatus.h"
+#include <fem.h>
 
 // Template header for FEM personality modules.  These methods must be implemented in the FPMs!
 int fpmInitHardware(void);
