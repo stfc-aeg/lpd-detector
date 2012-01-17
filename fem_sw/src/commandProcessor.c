@@ -110,7 +110,7 @@ void commandProcessorThread()
 					if (newFd == -1)
 					{
 						DBGOUT("CmdProc: Error accepting connection!");
-						// TODO: What to do here?!
+						// TODO: Do we need further error handling here?
 					}
 					else
 					{
@@ -120,9 +120,11 @@ void commandProcessorThread()
 						// Check if we can accept more client connections
 						if (numConnectedClients == NET_MAX_CLIENTS)
 						{
-							// Refuse to accept connection
+
+							// Close connection
 							DBGOUT("CmdProc: Client attempted to connect but can't accept any more connections!\r\n");
 							lwip_close(newFd);
+
 						}
 						else
 						{
@@ -212,18 +214,10 @@ void commandProcessorThread()
 
 						DBGOUT("CmdProc: Trying to get %d bytes of header...\r\n", numBytesToRead);
 
-						//numBytesRead = socketRead(i, (u8*)(state[i].pHdr) + state[i].size, numBytesToRead);
 						numBytesRead = lwip_read(i, state[i].pHdr + state[i].size, numBytesToRead);
 						if (numBytesRead == 0)
 						{
-							// Client disconnected
-							/*
-							DBGOUT("CmdProc: Client #%d disconnected.\r\n", i);
-							lwip_close(i);
-							FD_CLR(i, &masterSet);
-							numConnectedClients--;
-							state[i].state = STATE_COMPLETE;
-							*/
+							// Client has disconnected
 							disconnectClient(&state[i], &i, &masterSet, &numConnectedClients);
 						}
 						else if (numBytesRead < numBytesToRead)
@@ -331,19 +325,11 @@ void commandProcessorThread()
 							}
 
 							//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, state[i].pHdr->payload_sz);
-							//numBytesRead = socketRead(i, state[i].pPayload + (state[i].size - sizeof(struct protocol_header)), numBytesToRead);
 							numBytesRead = lwip_read(i, state[i].pPayload + (state[i].size - sizeof(struct protocol_header)), numBytesToRead);
 
 							if (numBytesRead == 0)
 							{
-								// Client disconnected
-								/*
-								DBGOUT("CmdProc: Client #%d disconnected.\r\n", i);
-								lwip_close(i);
-								FD_CLR(i, &masterSet);
-								numConnectedClients--;
-								state[i].state = STATE_COMPLETE;
-								*/
+								// Client has disconnected
 								disconnectClient(&state[i], &i, &masterSet, &numConnectedClients);
 							}
 							else
