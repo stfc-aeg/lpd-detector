@@ -49,6 +49,7 @@ void commandProcessorThread()
 	{
 		DBGOUT("CmdProc: Can't open socket, aborting...\r\n");
 		DBGOUT("Terminating thread...\r\n");
+		// TODO: Failing to open a socket is a critical failure!  Should we exit?
 		return;
 	}
 
@@ -63,6 +64,7 @@ void commandProcessorThread()
 	{
 		DBGOUT("CmdProc: Can't bind to socket %d!\r\n", NET_CMD_PORT);
 		DBGOUT("Terminating thread...\r\n");
+		// TODO: Failing to bind to a socket is a critical failure!  Should we exit?
 		return;
 	}
 
@@ -71,6 +73,7 @@ void commandProcessorThread()
 	{
 		DBGOUT("CmdProc: Can't listen on socket %d!\r\n", NET_CMD_PORT);
 		DBGOUT("Terminating thread...\r\n");
+		// TODO: Failing to listen on a socket is a critical failure!  Should we exit?
 		return;
 	}
 	FD_SET(listenerSocket, &masterSet);
@@ -89,7 +92,7 @@ void commandProcessorThread()
 
 		if (lwip_select(numFds + 1, &readSet, NULL, NULL, &tv) == -1)
 		{
-			DBGOUT("CmdProc: FATAL ERROR - Select failed!\r\n");
+			DBGOUT("CmdProc: ERROR - Select failed!\r\n");
 			// TODO: What to do here?
 		}
 
@@ -197,13 +200,38 @@ void commandProcessorThread()
 							}
 						}
 
-						// Initialise client state
+						// Re-initialise client state
 						state[i].state = STATE_START;
 						state[i].payloadBufferSz = NET_NOMINAL_RX_BUFFER_SZ;
 						state[i].size = 0;
 						state[i].timeoutCount = 0;
 						DBGOUT("CmdProc: Receiving from client #%d.\r\n", i);
 					} // END if state == STATE_COMPLETE
+
+
+
+					/* ------------------------------------------------------------------------------------------------
+					 *
+					 * Packet processing is achieved using a state machine with 5 states:
+					 *
+					 * 		STATE_START			A client is connected and we are ready to receive a request from it
+					 * 			-> Client sends us a header
+					 *
+					 * 		STATE_GOT_HEADER	A client has begun communicating with us and we have received a header from it
+					 * 			-> Header is validated
+					 *
+					 * 		STATE_HDR_VALID		A client send us a header, which we received, and we have verified it is valid
+					 * 			-> Payload of size specified in header is sent
+					 *
+					 * 		STATE_GOT_PAYLD		A client has sent us a payload for the header we already received
+					 * 			-> Command is processed either by commandProcessor, or handed off to the FPM for handling
+					 *
+					 * 		STATE_COMPLETE		We have finished receiving header + payload from the client, so become idle
+					 *
+					 * 		If errors are encountered during any state, it is handled and the client put into STATE_COMPLETE.
+					 *
+					 * ------------------------------------------------------------------------------------------------
+					 */
 
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -365,21 +393,25 @@ void commandProcessorThread()
 						// Generate response
 						if (state[i].pHdr->command == CMD_PERSONALITY)
 						{
+							// Hand off to personality module
 							handlePersonalityCommand(state[i].pHdr, pTxHeader, state[i].pPayload, pTxBuffer+sizeof(struct protocol_header));
 						}
 						else
 						{
+							// Process request ourselves
 							commandHandler(state[i].pHdr, pTxHeader, state[i].pPayload, pTxBuffer+sizeof(struct protocol_header));
 						}
 
 
 						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
 						{
+							// Error occured during response
 							DBGOUT("CmdProc: Error sending response packet! (has client disconnected?)\r\n");
-							// TODO: Error state
+							// TODO: Set FEM error state
 						}
 						else
 						{
+							// Everything OK!
 							DBGOUT("CmdProc: Sent response OK.\r\n");
 							state[i].state = STATE_COMPLETE;
 						}
