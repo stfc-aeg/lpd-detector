@@ -273,9 +273,10 @@ void commandProcessorThread()
 					{
 						//DBGOUT("CmdProc: Got header.\r\n");
 
+						// Validate
 						if(validateHeaderContents(state[i].pHdr)==0)
 						{
-							// Header valid!
+							// Header is valid!
 							state[i].state = STATE_HDR_VALID;
 							DBGOUT("CmdProc: Header is valid.\r\n");
 						}
@@ -299,9 +300,9 @@ void commandProcessorThread()
 
 						if (state[i].pHdr->payload_sz > NET_MAX_PAYLOAD_SZ)
 						{
-							DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d).\r\n", state[i].pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
-							DBGOUT("Terminating thread...\r\n");
-							return;
+							DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", state[i].pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
+							// TODO: We should send a client a NACK or BADPKT here
+							state[i].state = STATE_COMPLETE;
 						}
 						else
 						{
@@ -318,6 +319,7 @@ void commandProcessorThread()
 									{
 										DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
 										DBGOUT("Terminating thread...\r\n");
+										// TODO: Send NACK here?  Don't exit!
 										return;
 									}
 								}
@@ -329,6 +331,7 @@ void commandProcessorThread()
 									{
 										DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
 										DBGOUT("Terminating thread...\r\n");
+										// TODO: Send NACK here?  Don't exit!
 										return;
 									}
 								}
@@ -401,7 +404,6 @@ void commandProcessorThread()
 							// Process request ourselves
 							commandHandler(state[i].pHdr, pTxHeader, state[i].pPayload, pTxBuffer+sizeof(struct protocol_header));
 						}
-
 
 						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
 						{
