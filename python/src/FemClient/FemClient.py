@@ -109,6 +109,35 @@ class FemClient():
         self.send(cmd, bus, width, state, addr)
         response = self.recv()
         return response
+    
+    def rdmaWrite(self, theAddr, thePayload):
+                
+        bus   = FemTransaction.BUS_RDMA
+        width = FemTransaction.WIDTH_LONG
+        ack = self.write(bus, width, theAddr, thePayload)
+        #TODO: check if response is OK
+        return ack
+    
+    def rdmaRead(self, theAddr, theReadLen):
+        
+        bus = FemTransaction.BUS_RDMA
+        width = FemTransaction.WIDTH_LONG
+        values = self.read(bus, width, theAddr, theReadLen)
+        return values
+    
+    def i2cWrite(self, theAddr, thePayload):
+        
+        bus   = FemTransaction.BUS_I2C
+        width = FemTransaction.WIDTH_BYTE
+        ack = self.write(bus, width, theAddr, thePayload)
+        return ack
+    
+    def i2cRead(self, theAddr, theReadLen):
+        
+        bus   = FemTransaction.BUS_I2C
+        width = FemTransaction.WIDTH_BYTE
+        values = self.read(bus, width, theAddr, theReadLen)
+        return values
           
     def close(self):
         self.femSocket.close()
