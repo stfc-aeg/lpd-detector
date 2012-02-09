@@ -121,7 +121,7 @@ class FemConfig():
         
     def __str__(self):
 
-        showStr = 'Magic word  : ' + hex(self.magicWord)    + '\n' + \
+        showStr = 'Magic word  : ' + '0x{:04X}'.format(self.magicWord) + '\n' + \
                   'MAC Address : ' + self.net_mac_str()     + '\n' + \
                   'IP Address  : ' + self.net_ip_addr_str() + '\n' + \
                   'Netmask     : ' + self.net_ip_mask_str() + '\n' + \
@@ -133,7 +133,7 @@ class FemConfig():
                   'H/W version : ' + str(self.hw_major_version)  + '.' + str(self.hw_minor_version) + '\n' + \
                   'Board ID    : ' + str(self.board_id)          + '\n' + \
                   'Board Type  : ' + str(self.board_type)        + '\n' + \
-                  'Checksum    : ' + hex(self.checksum)          + '\n'
+                  'Checksum    : ' + '0x{:02X}'.format(self.checksum) + '\n'
         return showStr
 
     def net_mac_str(self):

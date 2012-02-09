@@ -13,6 +13,7 @@ import code
 
 from FemClient.FemClient import FemClient, FemClientError
 from FemApi.FemTransaction import FemTransaction
+from FemApi.FemConfig import FemConfig
 
 class FemShell(cmd.Cmd,object):
     
@@ -243,7 +244,7 @@ Example:
         '''
         Writes data to a FEM using the command protocol.
         Syntax: write <bus> <width> <addr> <values...> 
-        where bus = GPIO, I2C, RAW, REG, RDMA
+        where bus = GPIO, I2C, RAW, REG, RDMA, EEPROM
               width = BYTE, WORD, LONG
         '''
         
@@ -285,7 +286,7 @@ Example:
         ack = self.__class__.connectedFem.write(bus, width, addr, values)
         if self.timerEnabled: deltaT = time.time() - t0
         
-        print "Got ack: ", [hex(result) for result in ack]
+        print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
         if self.timerEnabled: print "Transaction took %.3f secs" % deltaT  
             
     def help_write(self):
@@ -337,7 +338,7 @@ Example:
         if self.timerEnabled: deltaT = time.time() - t0
        
         try: 
-            print "Got results:", [hex(result) for result in values]
+            print "Got results:", ['0x{:X}'.format(result) for result in values]
         except TypeError:
             print "Can't decode results", values
             
@@ -539,9 +540,14 @@ Example:
                 else: # Unrecognised key
                     print "Key", key, "not recognised"
 
+            # Reset magic word to correct value if necessary
+            if theConfig.magicWord != FemConfig.CONFIG_MAGIC_WORD:
+                print "WARNING: resetting config magic word to correct value (was 0x%04X, now 0x%04X)" % (theConfig.magicWord, FemConfig.CONFIG_MAGIC_WORD) 
+                theConfig.magicWord = FemConfig.CONFIG_MAGIC_WORD
+                
             # Write config back to FEM            
             ack = self.__class__.connectedFem.configWrite(theConfig)
-            print "Got ack: ", [hex(result) for result in ack]
+            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
             
         else:
             print "Unrecognised"

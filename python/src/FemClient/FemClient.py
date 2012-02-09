@@ -97,7 +97,7 @@ class FemClient():
         address = FemConfig.configAddress
         payload = bytearray(theConfig.encode())
         response = self.write(bus, width, address, payload) 
-        return response.payload
+        return response
   
     def commandSend(self, theCmd):
         
