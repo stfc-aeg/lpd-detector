@@ -5,7 +5,7 @@ Created on Feb 6, 2012
 '''
 import sys
 
-from ExcaliburFemTests.defaults import *
+import ExcaliburFemTests.defaults as defaults
 from FemClient.FemClient import  *
 
 def setDac(aVal):
@@ -35,14 +35,18 @@ def readAdc(aDevice, aChan):
     
     return adcVal
 
-try:
-    theFem = FemClient((femHost, femPort), femTimeout)
-except FemClientError as errString:
-    #print "Error: FEM connection failed:", errString
-    sys.exit(1)
+if __name__ == '__main__':
     
-for dacVal in range(0,500,25):
-    setDac(dacVal)
-    adcVal = readAdc(0, 1)
-    print "DAC: %4d ADC: %4d" %  (dacVal, adcVal)
-
+    defaults.parseArgs()
+    
+    try:
+        theFem = FemClient((defaults.femHost, defaults.femPort), defaults.femTimeout)
+    except FemClientError as errString:
+        print "Error: FEM connection failed:", errString
+        sys.exit(1)
+        
+    for dacVal in range(0,500,25):
+        setDac(dacVal)
+        adcVal = readAdc(0, 1)
+        print "DAC: %4d ADC: %4d" %  (dacVal, adcVal)
+    
