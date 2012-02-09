@@ -112,6 +112,7 @@ class FemClient():
     
     def rdmaWrite(self, theAddr, thePayload):
                 
+        print type(thePayload), thePayload
         bus   = FemTransaction.BUS_RDMA
         width = FemTransaction.WIDTH_LONG
         ack = self.write(bus, width, theAddr, thePayload)

@@ -129,15 +129,19 @@ class FemTransaction():
                 self.payload = tuple(payload)
             
             else:          
-                if not payload:
+                if payload == None:
                     #TODO: How can a write have no payload - exception?
                     self.payloadLen = 0
                     self.payload = ()
                 else:
                     (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
-                    self.payloadLen = len(payload) * payloadMult
-                    self.payloadFormatStr = str(len(payload)) + payloadFormat
+                    if type(payload) == int:
+                        payload = (payload,)
+                    
                     self.payload = tuple(payload)
+                    self.payloadLen = len(self.payload) * payloadMult
+                    self.payloadFormatStr = str(len(self.payload)) + payloadFormat
+
                     #print self.width, payloadMult, payloadFormat, self.payloadLen, self.payloadFormatStr, self.payload
          
         self.formatStr = self.formatStr + self.payloadFormatStr       
