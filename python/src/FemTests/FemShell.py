@@ -282,12 +282,18 @@ Example:
             print "*** Not connected to a FEM"
             return
 
-        if self.timerEnabled: t0 = time.time()        
-        ack = self.__class__.connectedFem.write(bus, width, addr, values)
-        if self.timerEnabled: deltaT = time.time() - t0
-        
-        print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
-        if self.timerEnabled: print "Transaction took %.3f secs" % deltaT  
+        try:
+            if self.timerEnabled: t0 = time.time()        
+            ack = self.__class__.connectedFem.write(bus, width, addr, values)
+            if self.timerEnabled: deltaT = time.time() - t0
+            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
+            if self.timerEnabled: print "Transaction took %.3f secs" % deltaT 
+        except FemClientError as e:
+            if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
+                print "Error, FEM has closed the client connection"
+                self.do_close(None)
+            else:
+                print "FEM Exception:", e, "errno=", e.errno
             
     def help_write(self):
         print self.do_write.__doc__
@@ -333,16 +339,24 @@ Example:
             print "*** Not connected to a FEM"
             return  
 
-        if self.timerEnabled: t0 = time.time()
-        values = self.__class__.connectedFem.read(bus, width, addr, length)
-        if self.timerEnabled: deltaT = time.time() - t0
-       
-        try: 
-            print "Got results:", ['0x{:X}'.format(result) for result in values]
-        except TypeError:
-            print "Can't decode results", values
+        try:
+            if self.timerEnabled: t0 = time.time()
+            values = self.__class__.connectedFem.read(bus, width, addr, length)
+            if self.timerEnabled: deltaT = time.time() - t0
+           
+            try: 
+                print "Got results:", ['0x{:X}'.format(result) for result in values]
+            except TypeError:
+                print "Can't decode results", values
+                
+            if self.timerEnabled: print "Transaction took %.3f secs" % deltaT
             
-        if self.timerEnabled: print "Transaction took %.3f secs" % deltaT  
+        except FemClientError as e:
+            if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
+                print "Error, FEM has closed the client connection"
+                self.do_close(None)
+            else:
+                print "FEM Exception:", e, "errno=", e.errno           
         
     def help_read(self):
         print self.do_read.__doc__
@@ -545,17 +559,58 @@ Example:
                 print "WARNING: resetting config magic word to correct value (was 0x%04X, now 0x%04X)" % (theConfig.magicWord, FemConfig.CONFIG_MAGIC_WORD) 
                 theConfig.magicWord = FemConfig.CONFIG_MAGIC_WORD
                 
-            # Write config back to FEM            
-            ack = self.__class__.connectedFem.configWrite(theConfig)
-            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
-            
+            # Write config back to FEM
+            try:            
+                ack = self.__class__.connectedFem.configWrite(theConfig)
+                print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
+            except FemClientError as e:
+                if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
+                    print "Error, FEM has closed the client connection"
+                    self.do_close(None)
+                else:
+                    print "FEM Exception:", e, "errno=", e.errno            
+        
         else:
-            print "Unrecognised"
+            print "Unrecognised config direction"
     
     
     def help_config(self):
         print self.do_config.__doc__                          
-                              
+ 
+    def do_cmd(self, s):
+        '''
+        Sends command transaction to FEM
+        '''
+        params = s.split()
+        if len(params) < 1:
+            print "*** Invalid number of arguments"
+            return
+        
+        #theCmd = string.upper(params[0])
+        try:
+            theCmd = int(params[0])
+        except ValueError:
+            print "*** Cmmand parameter must be integer (for now!)"
+            return
+        
+        try:
+            if self.timerEnabled: t0 = time.time()
+            ack = self.__class__.connectedFem.commandSend(theCmd)
+            if self.timerEnabled: deltaT = time.time() - t0
+            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]  
+           
+            if self.timerEnabled: print "Transaction took %.3f secs" % deltaT
+            
+        except FemClientError as e:
+            if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
+                print "Error, Fem has closed the client connection"
+                self.do_close(None)
+            else:
+                print "FEM Exception:", e, "errno=", e.errno
+                               
+    def help_cmd(self):
+        print self.do_cmd.__doc__
+        
 if __name__ == "__main__":
     
     import sys

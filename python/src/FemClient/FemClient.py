@@ -12,8 +12,12 @@ import binascii
 
 class FemClientError(Exception):
     
-    def __init__(self, msg):
+    ERRNO_NO_ERROR    = 0
+    ERRNO_SOCK_CLOSED = 1
+    
+    def __init__(self, msg, errno=ERRNO_NO_ERROR):
         self.msg = msg
+        self.errno = errno
         
     def __str__(self):
         return repr(self.msg)
@@ -55,7 +59,8 @@ class FemClient():
         initRecvLen = FemTransaction.headerSize()
         data = self.femSocket.recv(initRecvLen)
         if not data:
-            return None
+            raise FemClientError("FEM has closed socket connection", FemClientError.ERRNO_SOCK_CLOSED)
+        
         response = FemTransaction(encoded=data)
         while response.incomplete:
             payloadRecvLen = response.payloadRemaining
@@ -112,7 +117,6 @@ class FemClient():
     
     def rdmaWrite(self, theAddr, thePayload):
                 
-        print type(thePayload), thePayload
         bus   = FemTransaction.BUS_RDMA
         width = FemTransaction.WIDTH_LONG
         ack = self.write(bus, width, theAddr, thePayload)
