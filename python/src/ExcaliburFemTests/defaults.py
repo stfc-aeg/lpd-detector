@@ -33,3 +33,4 @@ def parseArgs():
     if options.timeout != None:
         femTimeout = options.timeout
 
+    return args
