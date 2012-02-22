@@ -158,7 +158,7 @@ u32 FemClient::write(unsigned int aBus, unsigned int aWidth, unsigned int aAddre
 
 	// Create a write transaction based on the specified bus, width, address and payload
 	// parameters.
-	u8 state;
+	u8 state = 0;
 	SBIT(state, STATE_WRITE);
 	FemTransaction request(CMD_ACCESS, aBus, aWidth, state, aAddress);
 
