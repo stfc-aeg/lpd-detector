@@ -188,7 +188,6 @@ XTmrCtr				timer;
 XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 #else
 XSysAce				sysace;
-XMbox				mbox;
 #endif
 
 
@@ -411,7 +410,7 @@ int initHardware(void)
     else
     {
     	DBGOUT("initHardware: WARNING - I2C accesses don't seem to be working, can't read system temperature!\r\n");
-    	// TODO: Set error?
+    	// TODO: Set error
     }
 
     // Initialise RDMA block(s) and run selftest
@@ -470,16 +469,6 @@ int initHardware(void)
         //testCF();
     }
 
-    // Initialise mailbox
-    /*
-    XMbox_Config mboxCfg;
-    mboxCfg.BaseAddress =	BADDR_MBOX;
-    mboxCfg.DeviceId =		MBOX_ID;
-    mboxCfg.RecvID =		MBOX_RECV_ID;
-    mboxCfg.SendID =		MBOX_SEND_ID;
-    mboxCfg.UseFSL =		MBOX_USE_FSL;
-    status = XMbox_CfgInitialize(&mbox, &mboxCfg, BADDR_MBOX);
-    */
     status = initMailbox();
     if (status!=XST_SUCCESS)
     {

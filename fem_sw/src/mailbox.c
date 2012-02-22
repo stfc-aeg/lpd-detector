@@ -9,6 +9,9 @@
 
 XMbox mbox;
 
+/* Initialises intra-PPC mailbox
+ * @return XST_SUCCESS on success, else XST_? on failure
+ */
 int initMailbox()
 {
 	int status;
@@ -25,6 +28,10 @@ int initMailbox()
     return status;
 }
 
+/* Debug routine, sends a single 32-bit word to PPC1
+ * @param cmd data to send
+ * @return number of sent bytes (should always be 4)
+ */
 int dummySend(int cmd)
 {
 

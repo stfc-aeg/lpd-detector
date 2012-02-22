@@ -31,12 +31,12 @@ enum packetStatus {
 };
 
 struct clientStatus {
-	int state;						// State machine status, of packetStatus
-	int size;						// Total number of bytes received on current packet
-	struct protocol_header *pHdr;	// Pointer to protocol header buffer
-	u8 *pPayload;					// Pointer to payload buffer
-	int payloadBufferSz;			// Currently allocated size for pPayload
-	int timeoutCount;				// Counter for timeouts
+	int state;						//! State machine status, of packetStatus
+	int size;						//! Total number of bytes received on current packet
+	struct protocol_header *pHdr;	//! Pointer to protocol header buffer
+	u8 *pPayload;					//! Pointer to payload buffer
+	int payloadBufferSz;			//! Currently allocated size for pPayload
+	int timeoutCount;				//! Counter for timeouts
 };
 
 void commandProcessorThread();
