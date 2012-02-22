@@ -87,6 +87,7 @@
  * TODO: Make const-correct! (urgh)
  * TODO: Replace pass-by-pointer to pass-by-reference where possible
  * TODO: Make method names consistent across all files
+ * TODO: Javadoc comments on all functions and structures
  *
  * ----------------------------------------------------------------------------
  */
@@ -185,9 +186,7 @@ XTmrCtr				timer;
 // Define our GPIOs if we are using ML507
 XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 #else
-// Enable SystemACE controller if using FEM (was not present in original ML507 BSP)
 XSysAce				sysace;
-// Enable IPC Mailbox
 XMbox				mbox;
 #endif
 
@@ -470,6 +469,23 @@ int initHardware(void)
         //testCF();
     }
 
+    // Initialise mailbox
+    XMbox_Config mboxCfg;
+    mboxCfg.BaseAddress =	BADDR_MBOX;
+    mboxCfg.DeviceId =		MBOX_ID;
+    mboxCfg.RecvID =		MBOX_RECV_ID;
+    mboxCfg.SendID =		MBOX_SEND_ID;
+    mboxCfg.UseFSL =		MBOX_USE_FSL;
+    status = XMbox_CfgInitialize(&mbox, &mboxCfg, BADDR_MBOX);
+    if (status!=XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Failed to configure mailbox...\r\n");
+    }
+    else
+    {
+    	DBGOUT("initHardware: Configured mailbox\r\n");
+    }
+
     // Call FEM personality module hardware init
     status = fpmInitHardware();
     if (status!=XST_SUCCESS)
@@ -534,23 +550,6 @@ int initHardware(void)
     }
     */
     // -----------------------------------------------------------------------------------------
-
-    // Initialise mailbox
-    XMbox_Config mboxCfg;
-    mboxCfg.BaseAddress =	BADDR_MBOX;
-    mboxCfg.DeviceId =		MBOX_ID;
-    mboxCfg.RecvID =		MBOX_RECV_ID;
-    mboxCfg.SendID =		MBOX_SEND_ID;
-    mboxCfg.UseFSL =		MBOX_USE_FSL;
-    status = XMbox_CfgInitialize(&mbox, &mboxCfg, BADDR_MBOX);
-    if (status!=XST_SUCCESS)
-    {
-    	DBGOUT("initHardware: Failed to configure mailbox...\r\n");
-    }
-    else
-    {
-    	DBGOUT("InitHardware: Configured mailbox");
-    }
 
     // All is well
     // TODO: Remove XST_SUCCESS, replace with status!
