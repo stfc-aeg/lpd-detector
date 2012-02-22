@@ -18,7 +18,8 @@
 
 #define LL_DMA_ALIGNMENT			XLLDMA_BD_MINIMUM_ALIGNMENT
 
-#define LL_BD_BADDR					0x00000000	// Base address at which to store BDs
+//#define LL_BD_BADDR					0x00000000	// Base address for BDs (Start of DDR2)
+#define LL_BD_BADDR					0x8D300000	// Bass address for BDs (Top quarter of SRAM)
 #define LL_TOP_ASIC_OFFSET			0x00002000	// Offset at which top ASIC BDs start, from LL_BD_BADDR (space for 128 BDs)
 #define LL_BOT_ASIC_OFFSET			0x00004000	// Offset at which bottom ASIC BDs start, from LL_BD_BADDR (space for 128 BDs)
 #define LL_TENGIG_OFFSET			0x00006000	// Offset at which 10G BDs start, from LL_BD_BADDR (space for 128 BDs)
@@ -321,6 +322,7 @@ int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int l
 	XLlDma_Bd *pTenGigBd;
 
 	// Configure BDs for transmit
+	// TODO: Test this!!!!
 	int i;
 	u32 addr;
 	for (i=0; i<2; i++)
