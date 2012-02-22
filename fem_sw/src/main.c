@@ -414,7 +414,11 @@ int initHardware(void)
     }
 
     // Initialise RDMA block(s) and run selftest
-    initRdma();
+    status = initRdma();
+    {
+    	DBGOUT("initHardware: Failed to start RDMA controller.\r\n");
+    	// TODO: FEM error state
+    }
     DBGOUT("initHardware: Running RDMA self-test... ");
     status = rdmaSelftest();
     if (status == XST_UART_TEST_FAIL)
