@@ -571,6 +571,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 	// Increment response size to include #ops as first entry
 	responseSize += sizeof(u32);
 
+	u32 mboxBytesSent = 0;
+
 	// Determine operation type
 	switch(pRxHeader->command)
 	{
@@ -590,6 +592,10 @@ void commandHandler(struct protocol_header* pRxHeader,
 			DBGOUT("CmdDisp: CMD_INTERNAL addr=0x%08x\r\n", (pRxHeader->address));
 			numOps = 0;
 			SBIT(state, STATE_ACK);
+
+			// send
+			mboxBytesSent = dummySend(pRxHeader->address);
+
 			break;
 
 		case CMD_ACCESS:

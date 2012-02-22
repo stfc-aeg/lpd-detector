@@ -149,7 +149,8 @@
 
 // Xilinx mailbox
 #ifndef HW_PLATFORM_DEVBOARD
-#include "xmbox.h"
+//#include "xmbox.h"
+#include "mailbox.h"
 #endif
 
 // Calibrated sleep for MicroBlaze
@@ -470,6 +471,7 @@ int initHardware(void)
     }
 
     // Initialise mailbox
+    /*
     XMbox_Config mboxCfg;
     mboxCfg.BaseAddress =	BADDR_MBOX;
     mboxCfg.DeviceId =		MBOX_ID;
@@ -477,6 +479,8 @@ int initHardware(void)
     mboxCfg.SendID =		MBOX_SEND_ID;
     mboxCfg.UseFSL =		MBOX_USE_FSL;
     status = XMbox_CfgInitialize(&mbox, &mboxCfg, BADDR_MBOX);
+    */
+    status = initMailbox();
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to configure mailbox...\r\n");

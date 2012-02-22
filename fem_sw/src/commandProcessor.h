@@ -16,6 +16,7 @@
 #include "rdma.h"
 #include "i2c_lm82.h"
 #include "i2c_24c08.h"
+#include "mailbox.h"
 
 #include "lwip/sockets.h"
 
