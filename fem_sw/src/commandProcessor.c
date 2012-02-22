@@ -249,6 +249,7 @@ void commandProcessorThread()
 						PRTDBG("CmdProc: Trying to get %d bytes of header...\r\n", numBytesToRead);
 
 						numBytesRead = lwip_read(i, state[i-1].pHdr + state[i-1].size, numBytesToRead);
+						//PRTDBG("Read %d bytes\r\n", numBytesRead);
 						if (numBytesRead == 0)
 						{
 							// Client has disconnected
@@ -267,7 +268,10 @@ void commandProcessorThread()
 							state[i-1].state = STATE_GOT_HEADER;
 							// We don't want to allow this loop to continue trying to read data as there might not be any left!
 							// Drop out and let select re-enter if there is payload to read...
-							break;
+							//PRTDBG("Got header OK\r\n");
+							if (state[i-1].pHdr->payload_sz != 0) {
+								break;
+							}
 						}
 
 					} // END if state == STATE_START
@@ -278,6 +282,7 @@ void commandProcessorThread()
 					if (state[i-1].state == STATE_GOT_HEADER)
 					{
 
+						//PRTDBG("IN STATE_GOT_HEADER\r\n");
 						// Validate
 						if(validateHeaderContents(state[i-1].pHdr)==0)
 						{
@@ -359,20 +364,23 @@ void commandProcessorThread()
 								numBytesToRead = state[i-1].pHdr->payload_sz;
 							}
 
-							//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, state[i-1].pHdr->payload_sz);
-							numBytesRead = lwip_read(i, state[i-1].pPayload + (state[i-1].size - sizeof(struct protocol_header)), numBytesToRead);
-
-							if (numBytesRead == 0)
+							if (numBytesToRead != 0)
 							{
-								// Client has disconnected
-								disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
-							}
-							else
-							{
-								PRTDBG("CmdProc: Read %d bytes of %d as payload.\r\n", numBytesRead, numBytesToRead);
-							}
+								//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, state[i-1].pHdr->payload_sz);
+								numBytesRead = lwip_read(i, state[i-1].pPayload + (state[i-1].size - sizeof(struct protocol_header)), numBytesToRead);
 
-							state[i-1].size += numBytesRead;
+								if (numBytesRead == 0)
+								{
+									// Client has disconnected
+									disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
+								}
+								else
+								{
+									PRTDBG("CmdProc: Read %d bytes of %d as payload.\r\n", numBytesRead, numBytesToRead);
+								}
+
+								state[i-1].size += numBytesRead;
+							}
 
 							// Check if this is the entire payload received
 							if (state[i-1].size == state[i-1].pHdr->payload_sz + sizeof(struct protocol_header))
@@ -579,16 +587,9 @@ void commandHandler(struct protocol_header* pRxHeader,
 			 */
 			//DBGOUT("CmdDisp: Internal state requests not yet implemented!  Nag Matt...\r\n");
 
-			// Use this to send a dummy mailbox message to PPC1 to trigger the acquire mode
-			/*
-			u32 mboxPayload[3];
-			mboxPayload[0] = 1;			// Word 0: Mode [1=ACQUIRE, 2=UPLOAD]
-			mboxPayload[1] = 0;			// Word 1: Frames [0=RUN INDEFINATELY]
-			mboxPayload[2] = 0x18000;	// Word 2: Frame size (bytes)
-			*/
-
 			DBGOUT("CmdDisp: CMD_INTERNAL addr=0x%08x\r\n", (pRxHeader->address));
-
+			numOps = 0;
+			SBIT(state, STATE_ACK);
 			break;
 
 		case CMD_ACCESS:
@@ -921,8 +922,8 @@ int validateHeaderContents(struct protocol_header *pHeader)
 			break;
 
 		case CMD_INTERNAL:
-			DBGOUT("validateHeader: CMD_INTERNAL not yet supported!\r\n");
-			return -1;
+			//DBGOUT("validateHeader: CMD_INTERNAL not yet supported!\r\n");
+			return 0;
 			break;
 
 		case CMD_PERSONALITY:
