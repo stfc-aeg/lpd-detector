@@ -577,7 +577,18 @@ void commandHandler(struct protocol_header* pRxHeader,
 			 * - Current firmware build (remove from EEPROM?) - no payload?
 			 *
 			 */
-			DBGOUT("CmdDisp: Internal state requests not yet implemented!  Nag Matt...\r\n");
+			//DBGOUT("CmdDisp: Internal state requests not yet implemented!  Nag Matt...\r\n");
+
+			// Use this to send a dummy mailbox message to PPC1 to trigger the acquire mode
+			/*
+			u32 mboxPayload[3];
+			mboxPayload[0] = 1;			// Word 0: Mode [1=ACQUIRE, 2=UPLOAD]
+			mboxPayload[1] = 0;			// Word 1: Frames [0=RUN INDEFINATELY]
+			mboxPayload[2] = 0x18000;	// Word 2: Frame size (bytes)
+			*/
+
+			DBGOUT("CmdDisp: CMD_INTERNAL addr=0x%08x\r\n", (pRxHeader->address));
+
 			break;
 
 		case CMD_ACCESS:
