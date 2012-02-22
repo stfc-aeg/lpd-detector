@@ -66,13 +66,21 @@
 	#define DBGOUT(...)
 #endif
 
+// Network protocol debugging
+#define PROTOCOL_DEBUG
+#ifdef	PROTOCOL_DEBUG
+	#define	PRTDBG(...)		xil_printf(__VA_ARGS__)
+#else
+	#define PRTDBG(...)
+#endif
+
 // Define an absolute maximum temperature threshold for the LM82.
 // Overrides the value in EEPROM if (EEPROM_CRIT_TEMP > CRIT_TEMP_MAX)
 #define CRIT_TEMP_MAX				90
 
 // FEM Networking parameters
 #define NET_CMD_PORT				6969
-#define NET_MAX_CLIENTS				1
+#define NET_MAX_CLIENTS				2
 #define NET_THREAD_STACKSIZE 		1024
 #define NET_SOCK_BACKLOG			1					// Accept queue size for LWIP
 #define NET_NOMINAL_RX_BUFFER_SZ	2048				// Normal payload receive buffer size

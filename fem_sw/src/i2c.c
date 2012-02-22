@@ -18,6 +18,7 @@
  */
 int writeI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
+	if (dataLen == 0) return 0;
 	return XIic_Send(bAddr, slaveAddr, pData, dataLen, XIIC_STOP);
 }
 
@@ -32,5 +33,6 @@ int writeI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen)
  */
 int readI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
+	if (dataLen == 0) return 0;
 	return XIic_Recv(bAddr, slaveAddr, pData, dataLen, XIIC_STOP);
 }

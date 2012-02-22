@@ -62,10 +62,10 @@
 #define LM82_STATUS_REMOTE_HIGH			(1<<4)
 #define LM82_STATUS_REMOTE_DISCONNECT	(1<<2)
 
-// Overheat temperature (interrupt generated to FPGA)
+// Overheat temperature (interrupt generated to Spartan config FPGA)
 #define LM82_HIGH_TEMP					70
 
-// Critical temperature (at which point FPGA power disabled)
+// Critical temperature (hard power shutdown)
 #define LM82_CRIT_TEMP					80
 
 // ----------------------------------------------------------------------------

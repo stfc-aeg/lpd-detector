@@ -114,6 +114,7 @@ int rdmaSelftest(void)
 		return status;
 	}
 
+	/*
 	// RDMA writeback test
 	int testVal  = 0xA5FACE5A;
 	int readVal  = 0;
@@ -122,6 +123,7 @@ int rdmaSelftest(void)
 	if (readVal != testVal) {
 		return XST_LOOPBACK_ERROR;
 	}
+	*/
 
 	return XST_SUCCESS;
 

@@ -26,7 +26,7 @@
 							xil_printf("Cmd:   0x%x\r\n",hdr->command); \
 							xil_printf("Bus:   0x%x\r\n",hdr->bus_target); \
 							xil_printf("Width: 0x%x\r\n",hdr->data_width); \
-							xil_printf("Stat:  0x%x\r\n",hdr->status); \
+							xil_printf("Stat:  0x%x\r\n",hdr->state); \
 							xil_printf("Addr:  0x%x\r\n",hdr->address); \
 							xil_printf("Payld: %d\r\n", hdr->payload_sz)
 #else
