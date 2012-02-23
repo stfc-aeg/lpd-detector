@@ -97,6 +97,7 @@ int testThread(u8 bitmask)
 	// ***********************
 	// Only for RDMA2 library!
 	// ***********************
+	/*
 	int status;
 
 	DBGOUT("Test: Running old RDMA tests...\r\n");
@@ -121,7 +122,7 @@ int testThread(u8 bitmask)
 	// Read read-write register
 	regVal = readRdma(addr);
 	DBGOUT("Test: RW:RDMA register 0x%x = 0x%x\r\n", addr, regVal);
-
+*/
 	// Don't let EEPROM tests run!
 	return 0;
 

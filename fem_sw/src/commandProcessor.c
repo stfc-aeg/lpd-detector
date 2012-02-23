@@ -573,6 +573,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	u32 mboxBytesSent = 0;
 
+	int status;
+
 	// Determine operation type
 	switch(pRxHeader->command)
 	{
@@ -796,7 +798,13 @@ void commandHandler(struct protocol_header* pRxHeader,
 						for (i=0; i<*pRxPayload_32; i++)
 						{
 							//DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
-							*(pTxPayload_32+i) = readRdma(pRxHeader->address + i);
+							//*(pTxPayload_32+i) = readRdma(pRxHeader->address + i);
+							status = readRdma( (pRxHeader->address+i) , (pTxPayload_32+i) );
+							if (status==XST_FAILURE)
+							{
+								// TODO: Proper error handling!
+								DBGOUT("CmdDisp: Error reading RDMA, aborting!\r\n");
+							}
 							//DBGOUT(" VALUE 0x%x\r\n", readRdma(pRxHeader->address + i));
 							responseSize += dataWidth;
 							numOps++;
@@ -810,7 +818,13 @@ void commandHandler(struct protocol_header* pRxHeader,
 						{
 							pRxPayload_32 = (u32*)pRxPayload;
 							//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
-							writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
+							//writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
+							status = writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
+							if (status==XST_FAILURE)
+							{
+								// TODO: Proper error handling!
+								DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
+							}
 							numOps++;
 						}
 						SBIT(state, STATE_ACK);

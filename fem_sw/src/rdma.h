@@ -40,9 +40,15 @@
 // Register to use for readback self test
 #define RDMA_SELFTEST_REG		1
 
+// Maximum number of retries before UART gives up
+#define RDMA_MAX_RETRIES		1000
+
+// Timeout check macro used in read/write functions
+#define RDMA_CHECK_TIMEOUT(n)	if (n==RDMA_MAX_RETRIES) { return XST_FAILURE; }
+
 int initRdma(void);
 int rdmaSelftest(void);
-u32 readRdma(u32 addr);
-void writeRdma(u32 addr, u32 value);
+int readRdma(u32 addr, u32 *pVal);
+int writeRdma(u32 addr, u32 value);
 
 #endif /* RDMA2_H_ */

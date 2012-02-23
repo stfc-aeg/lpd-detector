@@ -114,67 +114,55 @@ int rdmaSelftest(void)
 		return status;
 	}
 
-	/*
-	// RDMA writeback test
-	int testVal  = 0xA5FACE5A;
-	int readVal  = 0;
-	writeRdma(RDMA_SELFTEST_REG, testVal);
-	readVal = readRdma(RDMA_SELFTEST_REG);
-	if (readVal != testVal) {
-		return XST_LOOPBACK_ERROR;
-	}
-	*/
-
 	return XST_SUCCESS;
 
 }
 
 /*
  * Reads 32bit RDMA register
- * @param pUart pointer to UART object
- * @param base base address of UART to write to
  * @param addr register address to read
+ * @param pVal pointer to u32 to store RDMA read value in
  *
- * @return register value
+ * @return operation status, XST_SUCCESS or XST_FAILURE
  *
  */
-u32 readRdma(u32 addr)
+int readRdma(u32 addr, u32 *pVal)
 {
 	int i;
 	int numBytes = 0;
 	int numLoops = 0;
-	int maxLoops = 5000;
 	u8 thisByte = 0;
 	u32 readVal = 0;
 
 	thisByte = RDMA_CMD_READ;
 	numLoops = 0;
-	while ((numBytes==0) & (numLoops<maxLoops))
+	while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 	{
 		numBytes = XUartNs550_Send(&uart, &thisByte, 1);
 		numLoops++;
 	}
+	RDMA_CHECK_TIMEOUT(numLoops);
 	numBytes=0;
-
 
 	// Send address (4 bytes)
 	for (i=0; i<4; i++)
 	{
 		thisByte = 0xFF & (addr>>(8*i));
 		numLoops = 0;
-		while ((numBytes==0) & (numLoops<maxLoops))
+		while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 		{
 			numBytes = XUartNs550_Send(&uart, &thisByte, 1);
 			numLoops++;
 		}
 		numBytes=0;
 	}
+	RDMA_CHECK_TIMEOUT(numLoops);
 
 	// Read value (4 bytes)
 	for (i=0; i<4; i++)
 	{
 		numLoops = 0;
-		while ((numBytes==0) & (numLoops<maxLoops))
+		while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 		{
 			numBytes = XUartNs550_Recv(&uart, &thisByte, 1);
 			numLoops++;
@@ -182,33 +170,36 @@ u32 readRdma(u32 addr)
 		numBytes = 0;
 		readVal |= (thisByte<<(8*i));
 	}
+	RDMA_CHECK_TIMEOUT(numLoops);
 
-	return readVal;
+	// All OK
+	*pVal = readVal;
+	return XST_SUCCESS;
 }
 
 /*
  * Writes 32bit RDMA register
- * @param pUart pointer to UART object
- * @param base base address of UART to write to
  * @param addr register address to write to
  * @param value value to write
  *
+ * @return operation status, XST_SUCCESS or XST_FAILURE
+ *
  */
-void writeRdma(u32 addr, u32 value)
+int writeRdma(u32 addr, u32 value)
 {
 	int i;
 	u8 thisByte = 0;
 
 	int numBytes = 0;
 	int numLoops = 0;
-	int maxLoops = 5000;
 
 	thisByte = RDMA_CMD_WRITE;
-	while ((numBytes==0) & (numLoops<maxLoops))
+	while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 	{
 		numBytes = XUartNs550_Send(&uart, &thisByte, 1);
 		numLoops++;
 	}
+	RDMA_CHECK_TIMEOUT(numLoops);
 	numBytes = 0;
 	numLoops = 0;
 
@@ -216,7 +207,7 @@ void writeRdma(u32 addr, u32 value)
 	for (i=0; i<4; i++)
 	{
 		thisByte = 0xFF & (addr>>(8*i));
-		while ((numBytes==0) & (numLoops<maxLoops))
+		while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 		{
 			numBytes = XUartNs550_Send(&uart, &thisByte, 1);
 			numLoops++;
@@ -224,12 +215,13 @@ void writeRdma(u32 addr, u32 value)
 		numBytes = 0;
 		numLoops = 0;
 	}
+	RDMA_CHECK_TIMEOUT(numLoops);
 
 	// Send value (4 bytes)
 	for (i=0; i<4; i++)
 	{
 		thisByte = 0xFF & (value>>(8*i));
-		while ((numBytes==0) & (numLoops<maxLoops))
+		while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 		{
 			numBytes = XUartNs550_Send(&uart, &thisByte, 1);
 			numLoops++;
@@ -237,6 +229,10 @@ void writeRdma(u32 addr, u32 value)
 		numBytes = 0;
 		numLoops = 0;
 	}
+	RDMA_CHECK_TIMEOUT(numLoops);
+
+	// All OK
+	return XST_SUCCESS;
 
 }
 
