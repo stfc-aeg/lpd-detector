@@ -179,20 +179,22 @@ void commandProcessorThread()
 
 					clientSocket = i;
 
+					struct clientStatus *pState = &(state[i-1]);
+
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 					// Determine if the last packet was received from client, if so reset client status
-					if (state[i-1].state == STATE_COMPLETE)
+					if (pState->state == STATE_COMPLETE)
 					{
 
 						//DBGOUT("***** STATE_COMPLETE ****\r\n");
 
 						// Check if previous transaction had an increased payload buffer size and free it if necessary
-						if (state[i-1].payloadBufferSz > NET_NOMINAL_RX_BUFFER_SZ)
+						if (pState->payloadBufferSz > NET_NOMINAL_RX_BUFFER_SZ)
 						{
-							free(state[i-1].pPayload);
-							state[i-1].pPayload = malloc(NET_NOMINAL_RX_BUFFER_SZ);
-							if (state[i-1].pPayload == NULL)
+							free(pState->pPayload);
+							pState->pPayload = malloc(NET_NOMINAL_RX_BUFFER_SZ);
+							if (pState->pPayload == NULL)
 							{
 								// Can't allocate payload space
 								DBGOUT("CmdProc: Can't re-malloc payload buffer for client after large packet!\r\n");
@@ -206,10 +208,10 @@ void commandProcessorThread()
 						}
 
 						// Re-initialise client state
-						state[i-1].state = STATE_START;
-						state[i-1].payloadBufferSz = NET_NOMINAL_RX_BUFFER_SZ;
-						state[i-1].size = 0;
-						state[i-1].timeoutCount = 0;
+						pState->state = STATE_START;
+						pState->payloadBufferSz = NET_NOMINAL_RX_BUFFER_SZ;
+						pState->size = 0;
+						pState->timeoutCount = 0;
 						//DBGOUT("CmdProc: Receiving from client #%d.\r\n", i);
 					} // END if state == STATE_COMPLETE
 
@@ -242,13 +244,13 @@ void commandProcessorThread()
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 					// Manage reception of header
-					if (state[i-1].state == STATE_START)
+					if (pState->state == STATE_START)
 					{
-						numBytesToRead = sizeof(struct protocol_header) - state[i-1].size;
+						numBytesToRead = sizeof(struct protocol_header) - pState->size;
 
 						PRTDBG("CmdProc: Trying to get %d bytes of header...\r\n", numBytesToRead);
 
-						numBytesRead = lwip_read(i, state[i-1].pHdr + state[i-1].size, numBytesToRead);
+						numBytesRead = lwip_read(i, pState->pHdr + pState->size, numBytesToRead);
 						//PRTDBG("Read %d bytes\r\n", numBytesRead);
 						if (numBytesRead == 0)
 						{
@@ -257,19 +259,19 @@ void commandProcessorThread()
 						}
 						else if (numBytesRead < numBytesToRead)
 						{
-							state[i-1].timeoutCount++;
+							pState->timeoutCount++;
 						}
 
-						state[i-1].size += numBytesRead;
+						pState->size += numBytesRead;
 
 						// If we have full header move to next state
-						if (state[i-1].size == sizeof(struct protocol_header))
+						if (pState->size == sizeof(struct protocol_header))
 						{
-							state[i-1].state = STATE_GOT_HEADER;
+							pState->state = STATE_GOT_HEADER;
 							// We don't want to allow this loop to continue trying to read data as there might not be any left!
 							// Drop out and let select re-enter if there is payload to read...
 							//PRTDBG("Got header OK\r\n");
-							if (state[i-1].pHdr->payload_sz != 0) {
+							if (pState->pHdr->payload_sz != 0) {
 								break;
 							}
 						}
@@ -279,22 +281,22 @@ void commandProcessorThread()
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 					// Validate header
-					if (state[i-1].state == STATE_GOT_HEADER)
+					if (pState->state == STATE_GOT_HEADER)
 					{
 
 						//PRTDBG("IN STATE_GOT_HEADER\r\n");
 						// Validate
-						if(validateHeaderContents(state[i-1].pHdr)==0)
+						if(validateHeaderContents(pState->pHdr)==0)
 						{
 							// Header is valid!
-							state[i-1].state = STATE_HDR_VALID;
+							pState->state = STATE_HDR_VALID;
 							PRTDBG("CmdProc: Header is valid.\r\n");
 						}
 						else
 						{
 							// Header NOT valid
 							DBGOUT("CmdProc: Header received but is invalid.\r\n");
-							state[i-1].state = STATE_COMPLETE;
+							pState->state = STATE_COMPLETE;
 						}
 
 					} // END if state == STATE_GOT_HEADER
@@ -302,62 +304,62 @@ void commandProcessorThread()
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 					// Header is OK so try to get payload for packet
-					if (state[i-1].state == STATE_HDR_VALID)
+					if (pState->state == STATE_HDR_VALID)
 					{
 
-						//DUMPHDR(state[i-1].pHdr);
+						//DUMPHDR(pState->pHdr);
 
 						// TODO: Check address is in valid range FEM_DDR2_START => addr => (FEM_DDR2_END-payload_sz)
 						// TODO: We also need to reject an address of 0 as lwip sees this as a NULL pointer and doesn't do the rxbuf->appbuff copy!
 
 						// Check if this is a direct memory receive, if so handle it
-						if (	(state[i-1].pHdr->bus_target==BUS_DIRECT) &&
-								(state[i-1].pHdr->command==CMD_ACCESS) &&
-								(state[i-1].pHdr->state==STATE_WRITE)
+						if (	(pState->pHdr->bus_target==BUS_DIRECT) &&
+								(pState->pHdr->command==CMD_ACCESS) &&
+								(pState->pHdr->state==STATE_WRITE)
 							)
 						{
 							DBGOUT("CmdProc: Got a BUS_DIRECT, CMD_ACCESS STATE_WRITE!\r\n");
 
 
-							DBGOUT("CmdProc: Trying to read %d bytes to 0x%08x...\r\n", state[i-1].pHdr->payload_sz, state[i-1].pHdr->address);
+							DBGOUT("CmdProc: Trying to read %d bytes to 0x%08x...\r\n", pState->pHdr->payload_sz, pState->pHdr->address);
 							// Read payload directly to DDR at specified address
-							numBytesRead = lwip_read(i, (void*)(state[i-1].pHdr->address), state[i-1].pHdr->payload_sz);
+							numBytesRead = lwip_read(i, (void*)(pState->pHdr->address), pState->pHdr->payload_sz);
 
 							DBGOUT("CmdProc: Read %d bytes...\r\n", numBytesRead);
-							if (numBytesRead!=state[i-1].pHdr->payload_sz)
+							if (numBytesRead!=pState->pHdr->payload_sz)
 							{
-								DBGOUT("CmdProc: Only managed to read %d of %d bytes :(\r\n", numBytesRead, state[i-1].pHdr->payload_sz);
-								state[i-1].state = STATE_COMPLETE;
+								DBGOUT("CmdProc: Only managed to read %d of %d bytes :(\r\n", numBytesRead, pState->pHdr->payload_sz);
+								pState->state = STATE_COMPLETE;
 								break;
 							}
 							else
 							{
 								// Bypass normal reception of payload as we already have it
-								state[i-1].state = STATE_GOT_PYLD;
+								pState->state = STATE_GOT_PYLD;
 							}
 
 						}
 						else
 						{
 
-							if (state[i-1].pHdr->payload_sz > NET_MAX_PAYLOAD_SZ)
+							if (pState->pHdr->payload_sz > NET_MAX_PAYLOAD_SZ)
 							{
-								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", state[i-1].pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
+								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", pState->pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
 								// TODO: Send NACK here!
-								state[i-1].state = STATE_COMPLETE;
+								pState->state = STATE_COMPLETE;
 							}
 							else
 							{
 
-								if (state[i-1].pHdr->payload_sz > state[i-1].payloadBufferSz)
+								if (pState->pHdr->payload_sz > pState->payloadBufferSz)
 								{
 									// Payload exceeds buffer, increase it by one chunk
-									if (state[i-1].payloadBufferSz == NET_NOMINAL_RX_BUFFER_SZ)
+									if (pState->payloadBufferSz == NET_NOMINAL_RX_BUFFER_SZ)
 									{
 										// If we only have nominal buffer, resize to single chunk (saves having n*chunk + nominal at end...)
-										state[i-1].pPayload = realloc(state[i-1].pPayload, NET_LRG_PKT_INCREMENT_SZ);
-										state[i-1].payloadBufferSz = NET_LRG_PKT_INCREMENT_SZ;
-										if (state[i-1].pPayload == NULL)
+										pState->pPayload = realloc(pState->pPayload, NET_LRG_PKT_INCREMENT_SZ);
+										pState->payloadBufferSz = NET_LRG_PKT_INCREMENT_SZ;
+										if (pState->pPayload == NULL)
 										{
 											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
 											DBGOUT("Terminating thread...\r\n");
@@ -367,9 +369,9 @@ void commandProcessorThread()
 									}
 									else
 									{
-										state[i-1].pPayload = realloc(state[i-1].pPayload, state[i-1].payloadBufferSz + NET_LRG_PKT_INCREMENT_SZ);
-										state[i-1].payloadBufferSz += NET_LRG_PKT_INCREMENT_SZ;
-										if (state[i-1].pPayload == NULL)
+										pState->pPayload = realloc(pState->pPayload, pState->payloadBufferSz + NET_LRG_PKT_INCREMENT_SZ);
+										pState->payloadBufferSz += NET_LRG_PKT_INCREMENT_SZ;
+										if (pState->pPayload == NULL)
 										{
 											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
 											DBGOUT("Terminating thread...\r\n");
@@ -379,28 +381,28 @@ void commandProcessorThread()
 									}
 
 									// Make sure to not read off the end of this packet - this might not be required as all comms will be synchronous...
-									if ( state[i-1].pHdr->payload_sz - (state[i-1].size - sizeof(struct protocol_header)) < NET_LRG_PKT_INCREMENT_SZ )
+									if ( pState->pHdr->payload_sz - (pState->size - sizeof(struct protocol_header)) < NET_LRG_PKT_INCREMENT_SZ )
 									{
-										numBytesToRead = state[i-1].pHdr->payload_sz - (state[i-1].size - sizeof(struct protocol_header));
+										numBytesToRead = pState->pHdr->payload_sz - (pState->size - sizeof(struct protocol_header));
 									}
 									else
 									{
 										numBytesToRead = NET_LRG_PKT_INCREMENT_SZ;
 									}
 
-									DBGOUT("CmdProc: Resized payload buffer to %d\r\n", state[i-1].payloadBufferSz);
+									DBGOUT("CmdProc: Resized payload buffer to %d\r\n", pState->payloadBufferSz);
 
 								}
 								else
 								{
 									// Payload will fit in existing buffer
-									numBytesToRead = state[i-1].pHdr->payload_sz;
+									numBytesToRead = pState->pHdr->payload_sz;
 								}
 
 								if (numBytesToRead != 0)
 								{
-									//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, state[i-1].pHdr->payload_sz);
-									numBytesRead = lwip_read(i, state[i-1].pPayload + (state[i-1].size - sizeof(struct protocol_header)), numBytesToRead);
+									//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, pState->pHdr->payload_sz);
+									numBytesRead = lwip_read(i, pState->pPayload + (pState->size - sizeof(struct protocol_header)), numBytesToRead);
 
 									if (numBytesRead == 0)
 									{
@@ -412,13 +414,13 @@ void commandProcessorThread()
 										PRTDBG("CmdProc: Read %d bytes of %d as payload.\r\n", numBytesRead, numBytesToRead);
 									}
 
-									state[i-1].size += numBytesRead;
+									pState->size += numBytesRead;
 								}
 
 								// Check if this is the entire payload received
-								if (state[i-1].size == state[i-1].pHdr->payload_sz + sizeof(struct protocol_header))
+								if (pState->size == pState->pHdr->payload_sz + sizeof(struct protocol_header))
 								{
-									state[i-1].state = STATE_GOT_PYLD;
+									pState->state = STATE_GOT_PYLD;
 									PRTDBG("CmdProc: Finished receiving payload!\r\n");
 								}
 								else
@@ -435,21 +437,21 @@ void commandProcessorThread()
 
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-					if (state[i-1].state == STATE_GOT_PYLD)
+					if (pState->state == STATE_GOT_PYLD)
 					{
 
 						PRTDBG("CmdProc: Received entire packet...\r\n");
 
 						// Generate response
-						if (state[i-1].pHdr->command == CMD_PERSONALITY)
+						if (pState->pHdr->command == CMD_PERSONALITY)
 						{
 							// Hand off to personality module
-							handlePersonalityCommand(state[i-1].pHdr, pTxHeader, state[i-1].pPayload, pTxBuffer+sizeof(struct protocol_header));
+							handlePersonalityCommand(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header));
 						}
 						else
 						{
 							// Process request ourselves
-							commandHandler(state[i-1].pHdr, pTxHeader, state[i-1].pPayload, pTxBuffer+sizeof(struct protocol_header));
+							commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header));
 						}
 
 						PRTDBG("CmdProc: Packet decoded, sending response...\r\n");
@@ -464,7 +466,7 @@ void commandProcessorThread()
 						{
 							// Everything OK!
 							PRTDBG("CmdProc: Sent response OK.\r\n");
-							state[i-1].state = STATE_COMPLETE;
+							pState->state = STATE_COMPLETE;
 						}
 
 					} // END if state == STATE_GOT_PYLD
