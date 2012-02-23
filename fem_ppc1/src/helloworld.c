@@ -140,6 +140,8 @@ int main()
     // **************** END Mailbox event loop **************************************************************************************************************
 	*/
 
+    u32 topAddr, botAddr;
+
     // Enter mailbox-driven outer loop
     while(1)
     {
@@ -207,6 +209,9 @@ int main()
     	    			{
     	    				printf("[ERROR] Failed to free RXed BD from top ASIC, error code %d\r\n.", status);
     	    			}
+    	    			//Debug
+    	    			topAddr = XLlDma_BdGetBufAddr(pTopAsicBd);
+    	    			printf("[DEBUG] RX from top addr 0x%08x\r\n", (unsigned)topAddr);
     	    			totalRx++;
     	    		}
 
@@ -224,6 +229,9 @@ int main()
     	    			{
     	    			    printf("[ERROR] Failed to free RXed BD from bottom ASIC, error code %d\r\n.", status);
     	    			}
+    	    			//Debug
+    	    			botAddr = XLlDma_BdGetBufAddr(pBotAsicBd);
+    	    			printf("[DEBUG] RX from bottom addr 0x%08x\r\n", (unsigned)botAddr);
     	    			totalRx++;
     	    		}
 
@@ -231,7 +239,8 @@ int main()
     	    			print("[INFO ] All ASICs data received OK.\r\n");
     	    	    	// Arm TX for 10GBE
     	    	    	print("[INFO ] Arming 10GBE TX...\r\n");
-    	    	    	status = armTenGigTX(pTxTenGigRing, topAsicAddr, botAsicAddr, 0x18000);
+    	    	    	//status = armTenGigTX(pTxTenGigRing, topAsicAddr, botAsicAddr, 0x18000);
+    	    	    	status = armTenGigTX(pTxTenGigRing, topAddr, botAddr, 0x18000);
     	    	    	if (status!=XST_SUCCESS)
     	    	    	{
     	    	    		printf("[ERROR] Failed to arm DMA engine for 10GBE send!  Error code %d\r\n", status);
@@ -308,16 +317,18 @@ int armAsicRX(XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 topA
 
 	int status;
 
+	int numBD = 2;
+
 	// Get BDs and configure for a read
 	XLlDma_Bd *pTopAsicBd;
-	status = XLlDma_BdRingAlloc(pRingAsicTop, 1, &pTopAsicBd);
+	status = XLlDma_BdRingAlloc(pRingAsicTop, numBD, &pTopAsicBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate top ASIC RX BD!\r\n");
 		return status;
 	}
 
 	XLlDma_Bd *pBotAsicBd;
-	status = XLlDma_BdRingAlloc(pRingAsicBot, 1, &pBotAsicBd);
+	status = XLlDma_BdRingAlloc(pRingAsicBot, numBD, &pBotAsicBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate bottom ASIC RX BD!\r\n");
 		return status;
@@ -332,14 +343,26 @@ int armAsicRX(XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 topA
 	XLlDma_BdSetStsCtrl(*pTopAsicBd, sts);
 	XLlDma_BdSetStsCtrl(*pBotAsicBd, sts);
 
-	// Commit BD to DMA engines
-	status = XLlDma_BdRingToHw(pRingAsicTop, 1, pTopAsicBd);
+	// Setup a second BD for a sequential read
+	XLlDma_Bd *pSecondTopAsicBd, *pSecondBotAsicBd;
+	pSecondTopAsicBd = XLlDma_BdRingNext(pRingAsicTop, pTopAsicBd);
+	pSecondBotAsicBd = XLlDma_BdRingNext(pRingAsicBot, pBotAsicBd);
+	XLlDma_BdSetBufAddr(*pSecondTopAsicBd, topAddr+len);
+	XLlDma_BdSetBufAddr(*pSecondBotAsicBd, botAddr+len);
+	XLlDma_BdSetLength(*pSecondTopAsicBd, len);
+	XLlDma_BdSetLength(*pSecondBotAsicBd, len);
+	XLlDma_BdSetStsCtrl(*pSecondTopAsicBd, sts);
+	XLlDma_BdSetStsCtrl(*pSecondBotAsicBd, sts);
+
+
+	// Commit BD(s) to DMA engines
+	status = XLlDma_BdRingToHw(pRingAsicTop, numBD, pTopAsicBd);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Failed to send top ASIC RX to HW, error code %d!\r\n", status);
 		return status;
 	}
-	status = XLlDma_BdRingToHw(pRingAsicBot, 1, pBotAsicBd);
+	status = XLlDma_BdRingToHw(pRingAsicBot, numBD, pBotAsicBd);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Failed to send bottom ASIC RX to HW, error code %d!\r\n", status);
