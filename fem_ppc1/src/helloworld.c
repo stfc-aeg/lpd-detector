@@ -383,7 +383,6 @@ int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int l
 	XLlDma_Bd *pTenGigBd;
 
 	// Configure BDs for transmit
-	// TODO: Test this!!!!
 	int i;
 	u32 addr;
 	for (i=0; i<2; i++)
