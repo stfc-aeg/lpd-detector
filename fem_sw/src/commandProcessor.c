@@ -307,91 +307,126 @@ void commandProcessorThread()
 
 						//DUMPHDR(state[i-1].pHdr);
 
-						if (state[i-1].pHdr->payload_sz > NET_MAX_PAYLOAD_SZ)
+						// TODO: Check address is in valid range FEM_DDR2_START => addr => (FEM_DDR2_END-payload_sz)
+						// TODO: We also need to reject an address of 0 as lwip sees this as a NULL pointer and doesn't do the rxbuf->appbuff copy!
+
+						// Check if this is a direct memory receive, if so handle it
+						if (	(state[i-1].pHdr->bus_target==BUS_DIRECT) &&
+								(state[i-1].pHdr->command==CMD_ACCESS) &&
+								(state[i-1].pHdr->state==STATE_WRITE)
+							)
 						{
-							DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", state[i-1].pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
-							// TODO: Send NACK here!
-							state[i-1].state = STATE_COMPLETE;
+							DBGOUT("CmdProc: Got a BUS_DIRECT, CMD_ACCESS STATE_WRITE!\r\n");
+
+
+							DBGOUT("CmdProc: Trying to read %d bytes to 0x%08x...\r\n", state[i-1].pHdr->payload_sz, state[i-1].pHdr->address);
+							// Read payload directly to DDR at specified address
+							numBytesRead = lwip_read(i, (void*)(state[i-1].pHdr->address), state[i-1].pHdr->payload_sz);
+
+							DBGOUT("CmdProc: Read %d bytes...\r\n", numBytesRead);
+							if (numBytesRead!=state[i-1].pHdr->payload_sz)
+							{
+								DBGOUT("CmdProc: Only managed to read %d of %d bytes :(\r\n", numBytesRead, state[i-1].pHdr->payload_sz);
+								state[i-1].state = STATE_COMPLETE;
+								break;
+							}
+							else
+							{
+								// Bypass normal reception of payload as we already have it
+								state[i-1].state = STATE_GOT_PYLD;
+							}
+
 						}
 						else
 						{
 
-							if (state[i-1].pHdr->payload_sz > state[i-1].payloadBufferSz)
+							if (state[i-1].pHdr->payload_sz > NET_MAX_PAYLOAD_SZ)
 							{
-								// Payload exceeds buffer, increase it by one chunk
-								if (state[i-1].payloadBufferSz == NET_NOMINAL_RX_BUFFER_SZ)
-								{
-									// If we only have nominal buffer, resize to single chunk (saves having n*chunk + nominal at end...)
-									state[i-1].pPayload = realloc(state[i-1].pPayload, NET_LRG_PKT_INCREMENT_SZ);
-									state[i-1].payloadBufferSz = NET_LRG_PKT_INCREMENT_SZ;
-									if (state[i-1].pPayload == NULL)
-									{
-										DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
-										DBGOUT("Terminating thread...\r\n");
-										// TODO: Send NACK here!
-										return;
-									}
-								}
-								else
-								{
-									state[i-1].pPayload = realloc(state[i-1].pPayload, state[i-1].payloadBufferSz + NET_LRG_PKT_INCREMENT_SZ);
-									state[i-1].payloadBufferSz += NET_LRG_PKT_INCREMENT_SZ;
-									if (state[i-1].pPayload == NULL)
-									{
-										DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
-										DBGOUT("Terminating thread...\r\n");
-										// TODO: Send NACK here!
-										return;
-									}
-								}
-
-								// Make sure to not read off the end of this packet - this might not be required as all comms will be synchronous...
-								if ( state[i-1].pHdr->payload_sz - (state[i-1].size - sizeof(struct protocol_header)) < NET_LRG_PKT_INCREMENT_SZ )
-								{
-									numBytesToRead = state[i-1].pHdr->payload_sz - (state[i-1].size - sizeof(struct protocol_header));
-								}
-								else
-								{
-									numBytesToRead = NET_LRG_PKT_INCREMENT_SZ;
-								}
-
-								DBGOUT("CmdProc: Resized payload buffer to %d\r\n", state[i-1].payloadBufferSz);
-
+								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", state[i-1].pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
+								// TODO: Send NACK here!
+								state[i-1].state = STATE_COMPLETE;
 							}
 							else
 							{
-								// Payload will fit in existing buffer
-								numBytesToRead = state[i-1].pHdr->payload_sz;
-							}
 
-							if (numBytesToRead != 0)
-							{
-								//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, state[i-1].pHdr->payload_sz);
-								numBytesRead = lwip_read(i, state[i-1].pPayload + (state[i-1].size - sizeof(struct protocol_header)), numBytesToRead);
-
-								if (numBytesRead == 0)
+								if (state[i-1].pHdr->payload_sz > state[i-1].payloadBufferSz)
 								{
-									// Client has disconnected
-									disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
+									// Payload exceeds buffer, increase it by one chunk
+									if (state[i-1].payloadBufferSz == NET_NOMINAL_RX_BUFFER_SZ)
+									{
+										// If we only have nominal buffer, resize to single chunk (saves having n*chunk + nominal at end...)
+										state[i-1].pPayload = realloc(state[i-1].pPayload, NET_LRG_PKT_INCREMENT_SZ);
+										state[i-1].payloadBufferSz = NET_LRG_PKT_INCREMENT_SZ;
+										if (state[i-1].pPayload == NULL)
+										{
+											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
+											DBGOUT("Terminating thread...\r\n");
+											// TODO: Send NACK here!
+											return;
+										}
+									}
+									else
+									{
+										state[i-1].pPayload = realloc(state[i-1].pPayload, state[i-1].payloadBufferSz + NET_LRG_PKT_INCREMENT_SZ);
+										state[i-1].payloadBufferSz += NET_LRG_PKT_INCREMENT_SZ;
+										if (state[i-1].pPayload == NULL)
+										{
+											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
+											DBGOUT("Terminating thread...\r\n");
+											// TODO: Send NACK here!
+											return;
+										}
+									}
+
+									// Make sure to not read off the end of this packet - this might not be required as all comms will be synchronous...
+									if ( state[i-1].pHdr->payload_sz - (state[i-1].size - sizeof(struct protocol_header)) < NET_LRG_PKT_INCREMENT_SZ )
+									{
+										numBytesToRead = state[i-1].pHdr->payload_sz - (state[i-1].size - sizeof(struct protocol_header));
+									}
+									else
+									{
+										numBytesToRead = NET_LRG_PKT_INCREMENT_SZ;
+									}
+
+									DBGOUT("CmdProc: Resized payload buffer to %d\r\n", state[i-1].payloadBufferSz);
+
 								}
 								else
 								{
-									PRTDBG("CmdProc: Read %d bytes of %d as payload.\r\n", numBytesRead, numBytesToRead);
+									// Payload will fit in existing buffer
+									numBytesToRead = state[i-1].pHdr->payload_sz;
 								}
 
-								state[i-1].size += numBytesRead;
-							}
+								if (numBytesToRead != 0)
+								{
+									//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, state[i-1].pHdr->payload_sz);
+									numBytesRead = lwip_read(i, state[i-1].pPayload + (state[i-1].size - sizeof(struct protocol_header)), numBytesToRead);
 
-							// Check if this is the entire payload received
-							if (state[i-1].size == state[i-1].pHdr->payload_sz + sizeof(struct protocol_header))
-							{
-								state[i-1].state = STATE_GOT_PYLD;
-								PRTDBG("CmdProc: Finished receiving payload!\r\n");
-							}
-							else
-							{
-								// Still more data to receive so re-enter select call
-								break;
+									if (numBytesRead == 0)
+									{
+										// Client has disconnected
+										disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
+									}
+									else
+									{
+										PRTDBG("CmdProc: Read %d bytes of %d as payload.\r\n", numBytesRead, numBytesToRead);
+									}
+
+									state[i-1].size += numBytesRead;
+								}
+
+								// Check if this is the entire payload received
+								if (state[i-1].size == state[i-1].pHdr->payload_sz + sizeof(struct protocol_header))
+								{
+									state[i-1].state = STATE_GOT_PYLD;
+									PRTDBG("CmdProc: Finished receiving payload!\r\n");
+								}
+								else
+								{
+									// Still more data to receive so re-enter select call
+									break;
+								}
+
 							}
 
 						}
@@ -838,6 +873,12 @@ void commandHandler(struct protocol_header* pRxHeader,
 						// TODO: Set FEM error state
 					}
 					break; // BUS_RDMA
+
+				// --------------------------------------------------------------------
+				case BUS_DIRECT:
+					numOps = pRxHeader->payload_sz;
+					SBIT(state, STATE_ACK);
+					break;
 
 				case BUS_UNSUPPORTED:
 				default:

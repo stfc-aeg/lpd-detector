@@ -57,6 +57,10 @@
 #define MBOX_USE_FSL				XPAR_MAILBOX_0_IF_1_USE_FSL
 #endif
 
+// DDR2 memory size
+#define FEM_DDR2_START				0x00000000
+#define FEM_DDR2_END				0x3FFFFFFF
+
 // Enable / disable serial debugging output (comment to disable)
 #define GLOBAL_DEBUG
 
