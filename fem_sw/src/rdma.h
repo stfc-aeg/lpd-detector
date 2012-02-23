@@ -32,7 +32,7 @@
 
 // Serial settings for RDMA block
 #define RDMA_DEF_BAUDRATE		9600						// Probably not needed!
-#define RDMA_BAUDRATE			256000
+#define RDMA_BAUDRATE			9600
 #define RDMA_DATABITS			XUN_FORMAT_8_BITS
 #define RDMA_PARITY				XUN_FORMAT_NO_PARITY
 #define RDMA_STOPBITS			XUN_FORMAT_1_STOP_BIT

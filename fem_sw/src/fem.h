@@ -67,7 +67,7 @@
 #endif
 
 // Network protocol debugging
-#define PROTOCOL_DEBUG
+//#define PROTOCOL_DEBUG
 #ifdef	PROTOCOL_DEBUG
 	#define	PRTDBG(...)		xil_printf(__VA_ARGS__)
 #else
