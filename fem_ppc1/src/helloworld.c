@@ -143,6 +143,7 @@ int main()
     // Enter mailbox-driven outer loop
     while(1)
     {
+    	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
 
     	// Blocking read of 1x 32bit word
@@ -154,7 +155,8 @@ int main()
 
     	case 1:  // START_ACQUIRE
     		printf("[INFO ] Entering acquire DMA event loop\r\n");
-    	    while (1)
+    		acquireRunning = 1;
+    	    while (acquireRunning)
     	    {
 
     	    	print ("\r\n");
@@ -227,24 +229,39 @@ int main()
 
     	    		if (totalRx==2) {
     	    			print("[INFO ] All ASICs data received OK.\r\n");
+    	    	    	// Arm TX for 10GBE
+    	    	    	print("[INFO ] Arming 10GBE TX...\r\n");
+    	    	    	status = armTenGigTX(pTxTenGigRing, topAsicAddr, botAsicAddr, 0x18000);
+    	    	    	if (status!=XST_SUCCESS)
+    	    	    	{
+    	    	    		printf("[ERROR] Failed to arm DMA engine for 10GBE send!  Error code %d\r\n", status);
+    	    	    		print("[ERROR] Fatal error, terminating.\r\n");
+    	    	    		return 0;
+    	    	    	}
     	    			done=1;
     	    		}
 
+    	    		// Check if there are any pending mailbox messages
+    	    		u32 bytesRecvd = 0;
+    	    		XMbox_Read(&mbox, &mailboxBuffer[0], 4, &bytesRecvd);
+    	    		if (bytesRecvd == 4) {
+    	    			printf("[INFO ] Got message!  cmd=%d (0x%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0]);
+    	    			switch (mailboxBuffer[0])
+    	    			{
+    	    			case 2: // STOP ACQUIRE
+    	    				print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
+    	    				done = 1;
+    	    				acquireRunning = 0;
+    	    				break;
+
+    	    			default:
+    	    				print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
+    	    				break;
+    	    			}
+    	    		}
     	    	} // END while(done==0)
 
-    	    	// -=-
-
-    	    	// Arm TX for 10GBE
-    	    	print("[INFO ] Arming 10GBE TX...\r\n");
-    	    	status = armTenGigTX(pTxTenGigRing, topAsicAddr, botAsicAddr, 0x18000);
-    	    	if (status!=XST_SUCCESS)
-    	    	{
-    	    		printf("[ERROR] Failed to arm DMA engine for 10GBE send!  Error code %d\r\n", status);
-    	    		print("[ERROR] Fatal error, terminating.\r\n");
-    	    		return 0;
-    	    	}
-
-    	    }
+    	    } // END while(acquireRunning)
 
     		break;
 
