@@ -84,7 +84,7 @@
 
 // FEM Networking parameters
 #define NET_CMD_PORT				6969
-#define NET_MAX_CLIENTS				2
+#define NET_MAX_CLIENTS				8
 #define NET_THREAD_STACKSIZE 		1024
 #define NET_SOCK_BACKLOG			1					// Accept queue size for LWIP
 #define NET_NOMINAL_RX_BUFFER_SZ	2048				// Normal payload receive buffer size

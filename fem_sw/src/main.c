@@ -128,6 +128,9 @@
 #include "lwipopts.h"
 #include "netif/xadapter.h"
 
+// Memory test
+#include "xil_testmem.h"
+
 // SystemACE
 #ifndef HW_PLATFORM_DEVBOARD
 #include "sysace.h"
@@ -410,11 +413,12 @@ int initHardware(void)
     else
     {
     	DBGOUT("initHardware: WARNING - I2C accesses don't seem to be working, can't read system temperature!\r\n");
-    	// TODO: Set error
+    	// TODO: FEM error state
     }
 
     // Initialise RDMA block(s) and run selftest
     status = initRdma();
+    if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to start RDMA controller.\r\n");
     	// TODO: FEM error state
@@ -494,62 +498,23 @@ int initHardware(void)
     	DBGOUT("initHardware: Personality module hardware initialisation OK!\r\n");
     }
 
-    // PPC1 communications tests - comment if not using PPC1 or PPC2 will hang on blocking read!
-    // -----------------------------------------------------------------------------------------
-    // TODO: Tidy / move
+    // Test DDR2
     /*
-     *
-#ifndef HW_PLATFORM_DEVBOARD
-    // Generate Config
-    XMbox_Config mboxCfg;
-    mboxCfg.BaseAddress =	BADDR_MBOX;
-    mboxCfg.DeviceId =		MBOX_ID;
-    mboxCfg.RecvID =		MBOX_RECV_ID;
-    mboxCfg.SendID =		MBOX_SEND_ID;
-    mboxCfg.UseFSL =		MBOX_USE_FSL;
-#endif
-
-    status = XMbox_CfgInitialize(&mbox, &mboxCfg, BADDR_MBOX);
-    if (status!=XST_SUCCESS)
+    DBGOUT("initHardware: Testing DDR2....");
+    status = Xil_TestMem32((u32*)FEM_DDR2_START, (256*1024*1024), 0, XIL_TESTMEM_ALLMEMTESTS);
+    if (status==0)
     {
-    	DBGOUT("initHardware: Failed to configure mailbox...\r\n");
-    }
-
-    u32 ipcMessage = 0x22BEEF44;
-    u32 reply = 0;
-    u32 mboxSentBytes = 0;
-
-    u32 sharedBramTest = 0xA52354BB;
-    u32 *pBram = (u32*)XPAR_BRAM_0_BASEADDR;
-    *pBram = sharedBramTest;
-
-    status = XMbox_Write(&mbox, &ipcMessage, 4, &mboxSentBytes);
-    if (status != XST_SUCCESS)
-    {
-    	DBGOUT("initHardware: Failed to sent mailbox msg to PPC1 :(\r\n");
+    	DBGOUT("OK.\r\n");
     }
     else
     {
-    	DBGOUT("initHardware: Sent mailbox msg (%d bytes) to PPC1!\r\n", mboxSentBytes);
-
-    	// Get a reply - WARNING, BLOCKING CALL!
-    	XMbox_ReadBlocking(&mbox, &reply, 4);
-    	//if (status!=XST_SUCCESS) {
-    	//	DBGOUT("initHardware: Failed to get response from PPC1...\r\n");
-    	//} else {
-    		if (reply==0xBEEF6969) {
-    			DBGOUT("initHardware: Response is GOOD, Matt are great!\r\n");
-    		} else {
-    			DBGOUT("initHardware: Got response from PPC1 but it's incorrect :(\r\n");
-    		}
-    	//}
-
+    	DBGOUT("!!!FAILED!!!\r\n");
+    	// TODO: FEM error state
     }
     */
-    // -----------------------------------------------------------------------------------------
 
     // All is well
-    // TODO: Remove XST_SUCCESS, replace with status!
+    // TODO: Remove XST_SUCCESS, replace with a meaningful return code!
     return XST_SUCCESS;
 
 }
