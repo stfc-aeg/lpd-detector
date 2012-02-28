@@ -17,6 +17,7 @@
 #include "xparameters.h"
 #include "platform.h"
 #include "xlldma.h"
+#include "xil_testmem.h"
 
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
 #define LL_DMA_BASE_ASIC_BOT		0x80	// dma0:rx <- Bottom ASIC
@@ -63,6 +64,17 @@ int main()
     u32 mailboxSentBytes = 	0;
     u32 topAsicAddr =		0x08000000;
     u32 botAsicAddr =		0x04000000;
+
+    // DEBUGGING
+    // Fill memory locations with known test pattern data to verify DMA engine transfers
+    if(Xil_TestMem32((u32*)topAsicAddr,0x18000, 0, XIL_TESTMEM_FIXEDPATTERN)==-1)
+    {
+    	printf("[DEBUG] Failed to memtest region 0x%08x, len=0x%08x!\r\n", (unsigned)topAsicAddr, (unsigned)0x18000);
+    }
+    if(Xil_TestMem32((u32*)botAsicAddr,0x18000, 0, XIL_TESTMEM_FIXEDPATTERN)==-1)
+    {
+    	printf("[DEBUG] Failed to memtest region 0x%08x, len=0x%08x!\r\n", (unsigned)botAsicAddr, (unsigned)0x18000);
+    }
 
     // Initialise DMA engines
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
@@ -185,6 +197,7 @@ int main()
     	    	unsigned totalRx = 0;
     	    	unsigned short done=0;
     	    	u32 sts;
+    	    	u32 data;
 
     	    	print("[INFO ] Waiting for ASIC RX...\r\n");
 
@@ -239,7 +252,6 @@ int main()
     	    			print("[INFO ] All ASICs data received OK.\r\n");
     	    	    	// Arm TX for 10GBE
     	    	    	print("[INFO ] Arming 10GBE TX...\r\n");
-    	    	    	//status = armTenGigTX(pTxTenGigRing, topAsicAddr, botAsicAddr, 0x18000);
     	    	    	status = armTenGigTX(pTxTenGigRing, topAddr, botAddr, 0x18000);
     	    	    	if (status!=XST_SUCCESS)
     	    	    	{
