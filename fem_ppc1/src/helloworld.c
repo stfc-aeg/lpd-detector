@@ -56,7 +56,8 @@
 #define LL_TENGIG_OFFSET			0x00006000	// Offset at which 10G BDs start, from LL_BD_BADDR (space for 128 BDs)
 #define LL_PIXMEM_OFFSET			0x00008000	// Offset at which pixel configuration memory BDs start, from LL_BD_BADDR (space for 128 BDs)
 
-#define LL_STSCTRL_RX_OK			0x1D000000	// STS/CTRL field in BD should be 0x1D------ when successfully RX (COMPLETE | SOP | EOP)
+#define LL_STSCTRL_RX_OK			0x1D000000	// STS/CTRL field in BD should be 0x1D when successfully RX (COMPLETE | SOP | EOP)
+#define LL_STSCTRL_TX_OK			0x1000000	// STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
 
 // FUNCTION PROTOTYPES
 // TODO: Move to header
@@ -277,7 +278,14 @@ int main()
 							numTx = XLlDma_BdRingFromHw(pTxTenGigRing, 1, &pTenGigBd);
 						}
 						sts = (unsigned)XLlDma_BdGetStsCtrl(pTenGigBd);
-						printf("[DEBUG] Got TX BD back, status=0x%08x\r\n", (unsigned)sts);
+						if (!(sts&0xFF000000)&LL_STSCTRL_TX_OK)
+						{
+							printf("[DEBUG] Got TX BD, but looks incorrect:  Status=0x%08x\r\n", (unsigned)sts);
+						}
+						else
+						{
+							printf("[DEBUG] Got TX BD, looks OK!  Status=0x%08x\r\n", (unsigned)sts);
+						}
 
 						// Free BD
 						status = XLlDma_BdRingFree(pTxTenGigRing, 1, pTenGigBd);
