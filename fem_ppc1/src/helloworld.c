@@ -6,11 +6,32 @@
  */
 
 // Todo list, in order of priority
-// TODO: Implement mailbox messaging
-// TODO: Implement RX/10GBE TX BdRings
 // TODO: Complete event loop with mailbox/DMA
+// TODO: Abstract armAsicRX, armTenGigTX to a more generic function
 // TODO: Implement shared bram status flags
 // TODO: Implement pixmem upload (base on armTenGigTx)
+
+/*
+ * MEMORY ORGANISATION
+ * ---------------------------------------
+ * I/O Spartan RX size	= 0x18000 (x2)
+ * Frame size			=
+ * DDR2 size			= 0x3FFFFFFF
+ *
+ *
+ */
+
+/*
+ * SHARED BRAM FLAGS / STATUS
+ *
+ * What to track?
+ * 	- Num BD slots for RX (ASIC)
+ *	- Num BD slots for TX (TenGig)
+ *	- Num used BDs for RX (ASIC)
+ *	- Num used BDs for TX (TenGig)
+ *		- Can then calculate DDR2 occupancy
+ *
+ */
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -42,9 +63,7 @@
 int armAsicRX(XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 topAddr, u32 botAddr, unsigned int len, u32 sts);
 int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len);
 
-
-// Pixel read data should be
-
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 int main()
 {
@@ -61,7 +80,7 @@ int main()
 
     int status;
     u32 mailboxBuffer[2] =	{0,0};		// RX buffer for mailbox
-    u32 mailboxSentBytes = 	0;
+    //u32 mailboxSentBytes = 	0;
     u32 topAsicAddr =		0x08000000;
     u32 botAsicAddr =		0x04000000;
 
@@ -167,143 +186,168 @@ int main()
     	switch (mailboxBuffer[0])
     	{
 
-    	case 1:  // START_ACQUIRE
-    		printf("[INFO ] Entering acquire DMA event loop\r\n");
-    		acquireRunning = 1;
-    	    while (acquireRunning)
-    	    {
+			case 1:  // START_ACQUIRE
+				printf("[INFO ] Entering acquire DMA event loop\r\n");
+				acquireRunning = 1;
+				while (acquireRunning)
+				{
 
-    	    	print ("\r\n");
+					print ("\r\n");
 
-    	    	// Arm RX engines for ASICs
-    	    	// NOTE: if these addresses are changed the DMA goes a bit mental, why should the address matter?!
-    	    	// Also, changing John's code to use other than 0x0400 0000, 0x0800 0000 (e.g. to 0x0040 0000, 0x0080 0000) has same effect!!!!
-    	    	status = armAsicRX(pRxTopAsicRing, pRxBotAsicRing, topAsicAddr, botAsicAddr, 0x18000, 0x0);
-    	    	if (status!=XST_SUCCESS)
-    	    	{
-    	    		printf("[ERROR] Failed to arm DMA engine for ASIC receive!  Error code %d\r\n", status);
-    	    		print("[ERROR] Fatal error, terminating.\r\n");
-    	    		return 0;
-    	    	}
-    	    	else
-    	    	{
-    	    		print("[INFO ] DMA engines armed for ASIC RX.\r\n");
-    	    	}
+					// Arm RX engines for ASICs
+					// TODO: Determine why certain addresses cause issues with DMA engine!?
+					// NOTE: if these addresses are changed the DMA goes a bit mental, why should the address matter?!
+					// Also, changing John's code to use other than 0x0400 0000, 0x0800 0000 (e.g. to 0x0040 0000, 0x0080 0000) has same effect!!!!
+					status = armAsicRX(pRxTopAsicRing, pRxBotAsicRing, topAsicAddr, botAsicAddr, 0x18000, 0x0);
+					if (status!=XST_SUCCESS)
+					{
+						printf("[ERROR] Failed to arm DMA engine for ASIC receive!  Error code %d\r\n", status);
+						print("[ERROR] Fatal error, terminating.\r\n");
+						return 0;
+					}
+					else
+					{
+						print("[INFO ] DMA engines armed for ASIC RX.\r\n");
+					}
 
-    	    	// Wait for data to be received
-    	    	XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
-    	    	unsigned numRxTop = 0;
-    	    	unsigned numRxBot = 0;
-    	    	unsigned totalRx = 0;
-    	    	unsigned short done=0;
-    	    	u32 sts;
-    	    	u32 data;
+					// Wait for data to be received
+					XLlDma_Bd *pTopAsicBd, *pBotAsicBd, *pTenGigBd;
+					unsigned numRxTop = 0;
+					unsigned numRxBot = 0;
+					unsigned numTx = 0;
+					unsigned totalRx = 0;
+					unsigned short done=0;
+					u32 sts;
+					//u32 data;
+					u32 addr;
 
-    	    	print("[INFO ] Waiting for ASIC RX...\r\n");
+					print("[INFO ] Waiting for ASIC RX...\r\n");
 
-    	    	// This is a very quick and dirty hacked up event loop
-    	    	while(done==0)
-    	    	{
+					// This is a very quick and dirty hacked up event loop
+					while(done==0)
+					{
 
-    	    		numRxTop = XLlDma_BdRingFromHw(pRxTopAsicRing, 1, &pTopAsicBd);
-    	    		numRxBot = XLlDma_BdRingFromHw(pRxBotAsicRing, 1, &pBotAsicBd);
+						numRxTop = XLlDma_BdRingFromHw(pRxTopAsicRing, 1, &pTopAsicBd);
+						numRxBot = XLlDma_BdRingFromHw(pRxBotAsicRing, 1, &pBotAsicBd);
 
-    	    		if (numRxTop !=0 )
-    	    		{
-    	    			sts = (unsigned)XLlDma_BdGetStsCtrl(pTopAsicBd);
-    	    			printf("[INFO ] Got data from top ASIC.    (%d BD(s), STS/CTRL=0x%08x)\r\n", numRxTop, (unsigned)sts);
-    	    			if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
-    	    			{
-    	    				// NOTE: Even if code passes this check there can be no DMA transfer received :(
-    	    				print("[ERROR] STS/CTRL field for top ASIC RX did not show successful completion!\r\n");
-    	    			}
-    	    			status = XLlDma_BdRingFree(pRxTopAsicRing, 1, pTopAsicBd);
-    	    			if (status!=XST_SUCCESS)
-    	    			{
-    	    				printf("[ERROR] Failed to free RXed BD from top ASIC, error code %d\r\n.", status);
-    	    			}
-    	    			//Debug
-    	    			topAddr = XLlDma_BdGetBufAddr(pTopAsicBd);
-    	    			printf("[DEBUG] RX from top addr 0x%08x\r\n", (unsigned)topAddr);
-    	    			totalRx++;
-    	    		}
+						if (numRxTop !=0 )
+						{
+							sts = (unsigned)XLlDma_BdGetStsCtrl(pTopAsicBd);
+							addr = (unsigned)XLlDma_BdGetBufAddr(pTopAsicBd);
+							printf("[INFO ] Got data from top ASIC.    (%d BD(s), STS/CTRL=0x%08x, ADDR=0x%08x)\r\n", numRxTop, (unsigned)sts, (unsigned)addr);
+							if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
+							{
+								// NOTE: Even if code passes this check there can be no DMA transfer received :(
+								print("[ERROR] STS/CTRL field for top ASIC RX did not show successful completion!\r\n");
+							}
+							status = XLlDma_BdRingFree(pRxTopAsicRing, 1, pTopAsicBd);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Failed to free RXed BD from top ASIC, error code %d\r\n.", status);
+							}
+							//Debug
+							topAddr = XLlDma_BdGetBufAddr(pTopAsicBd);
+							printf("[DEBUG] RX from top addr 0x%08x\r\n", (unsigned)topAddr);
+							totalRx++;
+						}
 
-    	    		if (numRxBot != 0 )
-    	    		{
-    	    			sts = (unsigned)XLlDma_BdGetStsCtrl(pBotAsicBd);
-    	    			printf("[INFO ] Got data from bottom ASIC. (%d BD(s), STS/CTRL=0x%08x)\r\n", numRxBot, (unsigned)sts);
-    	    			status = XLlDma_BdRingFree(pRxBotAsicRing, 1, pBotAsicBd);
-    	    			if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
-    	    			{
-    	    				// NOTE: Even if code passes this check there can be no DMA transfer received :(
-    	    				print("[ERROR] STS/CTRL field for bottom ASIC RX did not show successful completion!\r\n");
-    	    			}
-    	    			if (status!=XST_SUCCESS)
-    	    			{
-    	    			    printf("[ERROR] Failed to free RXed BD from bottom ASIC, error code %d\r\n.", status);
-    	    			}
-    	    			//Debug
-    	    			botAddr = XLlDma_BdGetBufAddr(pBotAsicBd);
-    	    			printf("[DEBUG] RX from bottom addr 0x%08x\r\n", (unsigned)botAddr);
-    	    			totalRx++;
-    	    		}
+						if (numRxBot != 0 )
+						{
+							sts = (unsigned)XLlDma_BdGetStsCtrl(pBotAsicBd);
+							addr = (unsigned)XLlDma_BdGetBufAddr(pBotAsicBd);
+							printf("[INFO ] Got data from bottom ASIC. (%d BD(s), STS/CTRL=0x%08x, ADDR=0x%08x)\r\n", numRxBot, (unsigned)sts, (unsigned)addr);
+							status = XLlDma_BdRingFree(pRxBotAsicRing, 1, pBotAsicBd);
+							if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
+							{
+								// NOTE: Even if code passes this check there can be no DMA transfer received :(
+								print("[ERROR] STS/CTRL field for bottom ASIC RX did not show successful completion!\r\n");
+							}
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Failed to free RXed BD from bottom ASIC, error code %d\r\n.", status);
+							}
+							//Debug
+							botAddr = XLlDma_BdGetBufAddr(pBotAsicBd);
+							printf("[DEBUG] RX from bottom addr 0x%08x\r\n", (unsigned)botAddr);
+							totalRx++;
+						}
 
-    	    		if (totalRx==2) {
-    	    			print("[INFO ] All ASICs data received OK.\r\n");
-    	    	    	// Arm TX for 10GBE
-    	    	    	print("[INFO ] Arming 10GBE TX...\r\n");
-    	    	    	status = armTenGigTX(pTxTenGigRing, topAddr, botAddr, 0x18000);
-    	    	    	if (status!=XST_SUCCESS)
-    	    	    	{
-    	    	    		printf("[ERROR] Failed to arm DMA engine for 10GBE send!  Error code %d\r\n", status);
-    	    	    		print("[ERROR] Fatal error, terminating.\r\n");
-    	    	    		return 0;
-    	    	    	}
-    	    			done=1;
-    	    		}
+						if (totalRx==2) {
+							print("[INFO ] All ASICs data received OK.\r\n");
+							// Arm TX for 10GBE
+							print("[INFO ] Arming 10GBE TX...\r\n");
+							status = armTenGigTX(pTxTenGigRing, topAddr, botAddr, 0x18000);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Failed to arm DMA engine for 10GBE send!  Error code %d\r\n", status);
+								print("[ERROR] Fatal error, terminating.\r\n");
+								return 0;
+							}
+							done=1;
+						}
 
-    	    		// Check if there are any pending mailbox messages
-    	    		u32 bytesRecvd = 0;
-    	    		XMbox_Read(&mbox, &mailboxBuffer[0], 4, &bytesRecvd);
-    	    		if (bytesRecvd == 4) {
-    	    			printf("[INFO ] Got message!  cmd=%d (0x%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0]);
-    	    			switch (mailboxBuffer[0])
-    	    			{
-    	    			case 2: // STOP ACQUIRE
-    	    				print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
-    	    				done = 1;
-    	    				acquireRunning = 0;
-    	    				break;
+						// -=-=-=-=-=- START UNTESTED -=-=-=-=-=-
 
-    	    			default:
-    	    				print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
-    	    				break;
-    	    			}
-    	    		}
-    	    	} // END while(done==0)
+						// Verify completion of TX packet
+						print("[DEBUG] Waiting for TX send completion...\r\n");
+						while(numTx==0)		// TODO: Remove infinite wait loop!
+						{
+							numTx = XLlDma_BdRingFromHw(pTxTenGigRing, 1, &pTenGigBd);
+						}
+						sts = (unsigned)XLlDma_BdGetStsCtrl(pTenGigBd);
+						printf("[DEBUG] Got TX BD back, status=0x%08x\r\n", (unsigned)sts);
 
-    	    } // END while(acquireRunning)
+						// Free BD
+						status = XLlDma_BdRingFree(pTxTenGigRing, 1, pTenGigBd);
+						if (status!=XST_SUCCESS)
+						{
+							printf("[ERROR] TX sent but could not free BD!  Error code %d\r\n", status);
+						}
+						else
+						{
+							print("[ INFO] TX sent, BD freed OK\r\n");
+						}
 
-    		break;
+						// -=-=-=-=-=- END UNTESTED -=-=-=-=-=-
 
-    	case 2:  // STOP_ACQUIRE
-    		printf("[INFO ] No doing anything with stop acquire cmd\r\n");
-    		break;
+						// Check if there are any pending mailbox messages
+						u32 bytesRecvd = 0;
+						XMbox_Read(&mbox, &mailboxBuffer[0], 4, &bytesRecvd);
+						if (bytesRecvd == 4) {
+							printf("[INFO ] Got message!  cmd=%d (0x%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0]);
+							switch (mailboxBuffer[0])
+							{
+							case 2: // STOP ACQUIRE
+								print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
+								done = 1;
+								acquireRunning = 0;
+								break;
 
-    	case 3: // DO_UPLOAD
-    		printf("[INFO ] Upload command not yet implemented\r\n");
-    		break;
+							default:
+								print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
+								break;
+							}
+						}
+					} // END while(done==0)
 
-    	default:
-    		printf("[ERROR] Unrecognised mailbox command %ld\r\n", mailboxBuffer[0]);
-    		break;
-    	}
+				} // END while(acquireRunning)
+
+				break;
+
+			case 2:  // STOP_ACQUIRE
+				printf("[INFO ] No doing anything with stop acquire cmd\r\n");
+				break;
+
+			case 3: // DO_UPLOAD
+				printf("[INFO ] Upload command not yet implemented\r\n");
+				break;
+
+			default:
+				printf("[ERROR] Unrecognised mailbox command %ld\r\n", mailboxBuffer[0]);
+				break;
+    	} // END switch(mailboxBuffer[0])
 
     }
-
-    // **************** START DMA event loop **************************************************************************************************************
-    print("[INFO ] Entering PPC1 DMA event loop...\r\n");
-    // **************** END DMA event loop **************************************************************************************************************
 
     // Should never execute!
     print("[INFO ] Process terminating...\r\n");
@@ -424,11 +468,11 @@ int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int l
 	{
 		if (i==0)
 		{
-			addr = addr1;
+			addr = addr2;
 		}
 		else if (i==1)
 		{
-			addr = addr2;
+			addr = addr1;
 		}
 
 		status = XLlDma_BdRingAlloc(pRingTenGig, 1, &pTenGigBd);
