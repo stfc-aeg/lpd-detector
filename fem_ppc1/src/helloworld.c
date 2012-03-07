@@ -153,24 +153,6 @@ int main()
     }
     print("[INFO ] Mailbox initialised.\r\n");
 
-    /*
-    // **************** START Mailbox event loop **************************************************************************************************************
-    print("[INFO ] Entering PPC1 mailbox event loop...\r\n");
-    while(1)
-    {
-
-    	print("[INFO ] Waiting for mailbox message...\r\n");
-
-    	// Blocking read of 2x 32bit words
-    	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 4);
-    	printf("[INFO ] Got message!  numFrames=%d (0x%08x), frame size=%d (%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[1]);
-
-
-
-    } // END while
-    // **************** END Mailbox event loop **************************************************************************************************************
-	*/
-
     u32 topAddr, botAddr;
 
     // Enter mailbox-driven outer loop
