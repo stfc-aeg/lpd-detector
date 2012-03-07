@@ -30,6 +30,8 @@
  *	- Num used BDs for RX (ASIC)
  *	- Num used BDs for TX (TenGig)
  *		- Can then calculate DDR2 occupancy
+ *	- Error count / engine
+ *		- What do we consider an error?  Any BD that has DMA_ERROR set!
  *
  */
 
@@ -57,7 +59,7 @@
 #define LL_PIXMEM_OFFSET			0x00008000	// Offset at which pixel configuration memory BDs start, from LL_BD_BADDR (space for 128 BDs)
 
 #define LL_STSCTRL_RX_OK			0x1D000000	// STS/CTRL field in BD should be 0x1D when successfully RX (COMPLETE | SOP | EOP)
-#define LL_STSCTRL_TX_OK			0x1000000	// STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
+#define LL_STSCTRL_TX_OK			0x10000000	// STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
 
 // FUNCTION PROTOTYPES
 // TODO: Move to header
