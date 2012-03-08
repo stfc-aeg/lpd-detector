@@ -44,3 +44,22 @@ int dummySend(int cmd)
 	return sentBytes;
 
 }
+
+/* Sends a configuration message to PPC1 to set up it's DMA rings
+ * @param segment_sz size of segment to receive from *EACH I/O SPARTAN*
+ * @param segment_cnt number of segments in capture
+ * @return number of sent bytes (should always be 12)
+ */
+int bufferConfigMsgSend(u32 cmd, u32 segment_sz, u32 segment_cnt)
+{
+	u32 buf[3];
+	u32 sentBytes = 0;
+
+	buf[0] = cmd;			// CMD
+	buf[1] = segment_sz;	// Segment size
+	buf[2] = segment_cnt;	// Segment count
+
+	XMbox_Write(&mbox, buf, 12, &sentBytes);
+
+	return sentBytes;
+}

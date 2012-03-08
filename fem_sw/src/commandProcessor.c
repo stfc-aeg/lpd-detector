@@ -610,6 +610,10 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	u32 mboxBytesSent = 0;
 
+	// TODO: Parameterise these
+	u32 bufferSegmentSize = 0x18000;
+	u32 bufferDepth = 8;
+
 	int status;
 
 	// Determine operation type
@@ -626,14 +630,20 @@ void commandHandler(struct protocol_header* pRxHeader,
 			 * - Current firmware build (remove from EEPROM?) - no payload?
 			 *
 			 */
-			//DBGOUT("CmdDisp: Internal state requests not yet implemented!  Nag Matt...\r\n");
 
-			DBGOUT("CmdDisp: CMD_INTERNAL addr=0x%08x\r\n", (pRxHeader->address));
+			// This is common between old and new methods...
 			numOps = 0;
 			SBIT(state, STATE_ACK);
 
-			// send
+			// send (old)
+			/*
+			DBGOUT("CmdDisp: [OLD] CMD_INTERNAL cmd=0x%08x\r\n", (pRxHeader->address));
 			mboxBytesSent = dummySend(pRxHeader->address);
+			*/
+
+			// send (new!)
+			DBGOUT("CmdDisp: [NEW] CMD_INTERNAL cmd=0x%08x, bufferSz=0x%08x, bufferCnt=0x%08x\r\n", pRxHeader->address, bufferSegmentSize, bufferDepth);
+			mboxBytesSent = bufferConfigMsgSend(pRxHeader->address, bufferSegmentSize, bufferDepth);
 
 			break;
 

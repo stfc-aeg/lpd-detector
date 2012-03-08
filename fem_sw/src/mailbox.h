@@ -13,5 +13,6 @@
 
 int initMailbox(void);
 int dummySend(int cmd);
+int bufferConfigMsgSend(u32 cmd, u32 segment_sz, u32 segment_cnt);
 
 #endif /* MAILBOX_H_ */
