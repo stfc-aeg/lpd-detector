@@ -24,6 +24,7 @@ class FemTransaction():
     BUS_I2C              = 2
     BUS_RAW_REG          = 3
     BUS_RDMA             = 4
+    BUS_DIRECT           = 5
     
     WIDTH_UNSUPPORTED    = 0
     WIDTH_BYTE           = 1

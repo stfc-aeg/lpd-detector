@@ -51,7 +51,7 @@ class FemClient():
         
             theTransaction = FemTransaction(cmd=theCmd, bus=theBus, width=theWidth, state=theState, 
                                            addr=theAddr, payload=thePayload, readLen=theReadLen)
-            
+
         data = theTransaction.encode()
         self.femSocket.send(data)
   
@@ -107,8 +107,8 @@ class FemClient():
     def commandSend(self, theCmd):
         
         cmd   = FemTransaction.CMD_INTERNAL
-        bus   = FemTransaction.BUS_UNSUPPORTED
-        width = FemTransaction.WIDTH_UNSUPPORTED
+        bus   = FemTransaction.BUS_RAW_REG
+        width = FemTransaction.WIDTH_LONG
         state = FemTransaction.STATE_WRITE
         addr  = theCmd
         self.send(cmd, bus, width, state, addr)

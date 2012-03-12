@@ -24,7 +24,8 @@ class FemShell(cmd.Cmd,object):
                     'I2C'    : FemTransaction.BUS_I2C  ,
                     'RAW'    : FemTransaction.BUS_RAW_REG ,
                     'REG'    : FemTransaction.BUS_RAW_REG,
-                    'RDMA'   : FemTransaction.BUS_RDMA
+                    'RDMA'   : FemTransaction.BUS_RDMA,
+                    'DIRECT' : FemTransaction.BUS_DIRECT
                   } 
     
     widthEncoding = { 'BYTE' : FemTransaction.WIDTH_BYTE, 
@@ -244,7 +245,7 @@ Example:
         '''
         Writes data to a FEM using the command protocol.
         Syntax: write <bus> <width> <addr> <values...> 
-        where bus = GPIO, I2C, RAW, REG, RDMA, EEPROM
+        where bus = GPIO, I2C, RAW, REG, RDMA, EEPROM, DIRECT
               width = BYTE, WORD, LONG
         '''
         
@@ -597,7 +598,7 @@ Example:
             if self.timerEnabled: t0 = time.time()
             ack = self.__class__.connectedFem.commandSend(theCmd)
             if self.timerEnabled: deltaT = time.time() - t0
-            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]  
+            #print "Got ack: ", ['0x{:X}'.format(result) for result in ack]  
            
             if self.timerEnabled: print "Transaction took %.3f secs" % deltaT
             
