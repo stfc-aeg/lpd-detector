@@ -129,50 +129,15 @@ int main()
     */
 
     // Initialise DMA engines
-    //XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig;
 
     XLlDma_BdRing *pRxTopAsicRing = &XLlDma_GetRxRing(&dmaAsicTop);
     XLlDma_BdRing *pRxBotAsicRing = &XLlDma_GetRxRing(&dmaAsicBot);
     XLlDma_BdRing *pTxTenGigRing = &XLlDma_GetTxRing(&dmaTenGig);
-    //XLlDma_BdRing *pTxPixMemRing = &XLlDma_GetTxRing(&dmaPixMem);
 
     XLlDma_Initialize(&dmaAsicTop, LL_DMA_BASE_ASIC_TOP);
     XLlDma_Initialize(&dmaAsicBot, LL_DMA_BASE_ASIC_BOT);
     XLlDma_Initialize(&dmaTenGig, LL_DMA_BASE_TENGIG);
-    //XLlDma_Initialize(&dmaPixMem, LL_DMA_BASE_PIXMEM);
-
-    // This now done in new configureBds()
-    /*
-	status = XLlDma_BdRingCreate(pRxTopAsicRing, LL_BD_BADDR+LL_TOP_ASIC_OFFSET, LL_BD_BADDR+LL_TOP_ASIC_OFFSET, LL_DMA_ALIGNMENT, 128);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Can't create top ASIC RX BD ring!  Error code %d\r\n", status);
-		return 0;
-	}
-
-	status = XLlDma_BdRingCreate(pRxBotAsicRing, LL_BD_BADDR+LL_BOT_ASIC_OFFSET, LL_BD_BADDR+LL_BOT_ASIC_OFFSET, LL_DMA_ALIGNMENT, 128);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Can't create bottom ASIC RX BD ring!  Error code %d\r\n", status);
-		return 0;
-	}
-
-	status = XLlDma_BdRingCreate(pTxTenGigRing, LL_BD_BADDR+LL_TENGIG_OFFSET, LL_BD_BADDR+LL_TENGIG_OFFSET, LL_DMA_ALIGNMENT, 128);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Can't create 10GBE TX BD ring!  Error code %d\r\n", status);
-		return 0;
-	}
-
-	status = XLlDma_BdRingCreate(pTxPixMemRing, LL_BD_BADDR+LL_PIXMEM_OFFSET, LL_BD_BADDR+LL_PIXMEM_OFFSET, LL_DMA_ALIGNMENT, 128);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Can't create pixel config TX BD ring!  Error code %d\r\n", status);
-		return 0;
-	}
-	print("[INFO ] DMA engines initialised.\r\n");
-	*/
 
     // Initialise mailbox
     XMbox mbox;
@@ -214,24 +179,6 @@ int main()
 				{
 
 					print ("\r\n");
-
-					// Arm RX engines for ASICs
-					// TODO: Determine why certain addresses cause issues with DMA engine!?
-					// NOTE: if these addresses are changed the DMA goes a bit mental, why should the address matter?!
-					// Also, changing John's code to use other than 0x0400 0000, 0x0800 0000 (e.g. to 0x0040 0000, 0x0080 0000) has same effect!!!!
-					/*
-					status = armAsicRX(pRxTopAsicRing, pRxBotAsicRing, topAsicAddr, botAsicAddr, 0x18000, 0x0);
-					if (status!=XST_SUCCESS)
-					{
-						printf("[ERROR] Failed to arm DMA engine for ASIC receive!  Error code %d\r\n", status);
-						print("[ERROR] Fatal error, terminating.\r\n");
-						return 0;
-					}
-					else
-					{
-						print("[INFO ] DMA engines armed for ASIC RX.\r\n");
-					}
-					*/
 
 					// Wait for data to be received
 					XLlDma_Bd *pTopAsicBd, *pBotAsicBd, *pTenGigBd;
@@ -322,6 +269,10 @@ int main()
 							{
 								printf("[ERROR] Can't re-alloc bottom ASIC BD!  Error code %d\r\n", status);
 							}
+
+							// Not sure if we need to but best to reset STS/CTRL fields on BDs!
+							XLlDma_BdSetStsCtrl(*pBotAsicBd, LL_STSCTRL_RX_BD);
+							XLlDma_BdSetStsCtrl(*pTopAsicBd, LL_STSCTRL_RX_BD);
 
 							// Return RX BDs to hardware control
 							status = XLlDma_BdRingToHw(pRxTopAsicRing, 1, pTopAsicBd);
