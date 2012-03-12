@@ -6,23 +6,11 @@
  */
 
 // Todo list, in order of priority
-// TODO: Complete event loop with mailbox/DMA
+// TODO: Store BDRings in array to remove duplicated code
 // TODO: Abstract armAsicRX, armTenGigTX to a more generic function
+// TODO: Complete event loop with mailbox/DMA
 // TODO: Implement shared bram status flags
-// TODO: Implement pixmem upload (base on armTenGigTx)
-
-/*
- * MEMORY ORGANISATION
- * ---------------------------------------
- * ASIC readout size	= 0x18000 - bytes in 12-bit mode
- *
- * Total read / Spartan	= 0x18000 x 8
- *
- * Frame size			=
- * DDR2 size			= 0x3FFFFFFF
- *
- *
- */
+// TODO: Implement pixmem upload
 
 /*
  * SHARED BRAM FLAGS / STATUS
@@ -64,35 +52,30 @@
 #include "xlldma.h"
 #include "xil_testmem.h"
 
+// TODO: Move defines, function prototypes to header!
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
-#define LL_DMA_BASE_ASIC_BOT		0x80							// dma0:rx <- Bottom ASIC
-#define LL_DMA_BASE_PIXMEM			0x98							// dma1:tx -> pixel configuration memory
-#define LL_DMA_BASE_ASIC_TOP		0xB0							// dma2:rx <- Top ASIC
-#define LL_DMA_BASE_TENGIG			0xC8							// dma3:tx -> 10GBE
+#define LL_DMA_BASE_ASIC_BOT		0x80							//! DCR offset for DMA0 (RX from bottom ASIC)
+#define LL_DMA_BASE_PIXMEM			0x98							//! DCR offset for DMA1 (TX to pixel configuration memory)
+#define LL_DMA_BASE_ASIC_TOP		0xB0							//! DCR offset for DMA2 (RX from top ASIC)
+#define LL_DMA_BASE_TENGIG			0xC8							//! DCR offset for DMA3 (TX to 10GBE)
 
-#define LL_DMA_ALIGNMENT			XLLDMA_BD_MINIMUM_ALIGNMENT		// BD Alignment, set to minimum
-#define LL_BD_BADDR					0x8D300000						// Bass address for BDs (Top quarter of SRAM)
-#define LL_TOP_ASIC_OFFSET			0x00002000						// Offset at which top ASIC BDs start, from LL_BD_BADDR (space for 128 BDs)
-#define LL_BOT_ASIC_OFFSET			0x00004000						// Offset at which bottom ASIC BDs start, from LL_BD_BADDR (space for 128 BDs)
-#define LL_TENGIG_OFFSET			0x00006000						// Offset at which 10G BDs start, from LL_BD_BADDR (space for 128 BDs)
-#define LL_PIXMEM_OFFSET			0x00008000						// Offset at which pixel configuration memory BDs start, from LL_BD_BADDR (space for 128 BDs)
+// DMA engine info
+#define LL_DMA_ALIGNMENT			XLLDMA_BD_MINIMUM_ALIGNMENT		//! BD Alignment, set to minimum
+#define LL_BD_BADDR					0x8D300000						//! Bass address for BDs (Top quarter of SRAM)
+#define LL_BD_SZ					0x00100000						//! Size of BD memory region (1MB) (so total LL_BD_SZ / LL_DMA_ALIGNMENT BDs possible), in our case 16384
+#define LL_STSCTRL_RX_OK			0x1D000000						//! STS/CTRL field in BD should be 0x1D when successfully RX (COMPLETE | SOP | EOP)
+#define LL_STSCTRL_TX_OK			0x10000000						//! STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
+#define LL_STSCTRL_RX_BD			0x0															//! STS/CTRL field for a RX BD
+#define LL_STSCTRL_TX_BD			XLLDMA_BD_STSCTRL_SOP_MASK | XLLDMA_BD_STSCTRL_EOP_MASK		//! STS/CTRL field for a TX BD
 
-#define LL_STSCTRL_RX_OK			0x1D000000						// STS/CTRL field in BD should be 0x1D when successfully RX (COMPLETE | SOP | EOP)
-#define LL_STSCTRL_TX_OK			0x10000000						// STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
+// Buffer management
+#define DDR2_BADDR					0x00000000						//! DDR2 base address
+#define DDR2_SZ						0x40000000						//! DDR2 size (1GB)
 
-// New memory management stuff
-#define DDR2_BADDR					0x00000000						// DDR2 base address
-#define DDR2_SZ						0x40000000						// DDR2 size (1GB)
-#define LL_BD_SZ					0x00100000						// Size of BD memory region (1MB) (so total LL_BD_SZ / LL_DMA_ALIGNMENT BDs possible), in our case 16384
 
-#define LL_STSCTRL_RX_BD			0x0
-#define LL_STSCTRL_TX_BD			XLLDMA_BD_STSCTRL_SOP_MASK | XLLDMA_BD_STSCTRL_EOP_MASK
 
 // FUNCTION PROTOTYPES
-// TODO: Move to header
-int armAsicRX(XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 topAddr, u32 botAddr, unsigned int len, u32 sts);
 int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len);
-
 int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 segmentSz, u32 segmentCnt);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -112,21 +95,6 @@ int main()
 
     int status;
     u32 mailboxBuffer[3] =	{0,0,0};
-    u32 topAsicAddr =		0x08000000;
-    u32 botAsicAddr =		0x04000000;
-
-    // DEBUGGING
-    // Fill memory locations with known test pattern data to verify DMA engine transfers
-    /*
-    if(Xil_TestMem32((u32*)topAsicAddr,0x18000, 0, XIL_TESTMEM_FIXEDPATTERN)==-1)
-    {
-    	printf("[DEBUG] Failed to memtest region 0x%08x, len=0x%08x!\r\n", (unsigned)topAsicAddr, (unsigned)0x18000);
-    }
-    if(Xil_TestMem32((u32*)botAsicAddr,0x18000, 0, XIL_TESTMEM_FIXEDPATTERN)==-1)
-    {
-    	printf("[DEBUG] Failed to memtest region 0x%08x, len=0x%08x!\r\n", (unsigned)botAsicAddr, (unsigned)0x18000);
-    }
-    */
 
     // Initialise DMA engines
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig;
@@ -214,6 +182,7 @@ int main()
 							{
 								// NOTE: Even if code passes this check there can be no DMA transfer received :(
 								printf("[ERROR] STS/CTRL field for top ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
+								// TODO: Handle error
 							}
 							totalRx++;
 						}
@@ -232,10 +201,12 @@ int main()
 							{
 								// NOTE: Even if code passes this check there can be no DMA transfer received :(
 								printf("[ERROR] STS/CTRL field for bottom ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
+								// TODO: Handle error
 							}
 							totalRx++;
 						}
 
+						// Original code, sends data to 10GBe but doesn't free RX BDs...
 						/*
 						if (totalRx==2) {
 							print("[INFO ] All ASICs data received OK.\r\n");
@@ -252,13 +223,13 @@ int main()
 						}
 						*/
 
-						// Bypass TX while we test RX
+						// New code, use this for developing RX
 						if (totalRx==2)
 						{
 							// Pretend here that we sent to TX!
 							print("[DEBUG] Not sending to TX, but pretending we did...\r\n");
 
-							// Re-alloc into ring
+							// Re-alloc RX BDs into ring
 							status = XLlDma_BdRingAlloc(pRxTopAsicRing, 1, &pTopAsicBd);
 							if (status!=XST_SUCCESS)
 							{
@@ -286,13 +257,12 @@ int main()
 								printf("[ERROR] Can't re-assign bottom ASIC BD!  Error code %d\r\n", status);
 							}
 
+							// All finished, flag complete
 							done=1;
 						}
 
-
-						// -=-=-=-=-=- START UNTESTED -=-=-=-=-=-
-
-						// TODO: Needs guard condition!
+						// This code is the template for checking TX status and then freeing it's BD.
+						// Note it will need sts/ctrl resetting and then ToHw() as for RXes...
 						/*
 						// Verify completion of TX packet
 						print("[DEBUG] Waiting for DMA engine response for TX...\r\n");
@@ -322,9 +292,6 @@ int main()
 							print("[ INFO] TX sent, BD freed OK\r\n");
 						}
 						*/
-						// -=-=-=-=-=- END UNTESTED -=-=-=-=-=-
-
-
 
 						// Check if there are any pending mailbox messages
 						u32 bytesRecvd = 0;
@@ -369,94 +336,6 @@ int main()
     print("[INFO ] Process terminating...\r\n");
     cleanup_platform();
     return 0;
-
-}
-
-
-
-/* Arms the 2 ASIC RX DMA channels to receive data
- * @param pRingAsicTop pointer to BdRing for top ASIC
- * @param pRingAsicBot pointer to BdRing for bottom ASIC
- * @param topAddr memory address that DMA transfer for top ASIC should be written to
- * @param botAddr memory address that DMA transfer for bottom ASIC should be written to
- * @param len length of payload to receive, in bytes (must always be 32bit word-aligned)
- * @param sts status word, most significant byte is status/control for DMA engine, other bytes application specific data
- *
- * @return XST_SUCCESS on success, or XST_? error code on failure
- */
-int armAsicRX(XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 topAddr, u32 botAddr, unsigned int len, u32 sts)
-{
-
-	int status;
-
-	int numBD = 2;
-
-	// Get BDs and configure for a read
-	XLlDma_Bd *pTopAsicBd;
-	status = XLlDma_BdRingAlloc(pRingAsicTop, numBD, &pTopAsicBd);
-	if (status!=XST_SUCCESS) {
-		print ("[ERROR] Failed to allocate top ASIC RX BD!\r\n");
-		return status;
-	}
-
-	XLlDma_Bd *pBotAsicBd;
-	status = XLlDma_BdRingAlloc(pRingAsicBot, numBD, &pBotAsicBd);
-	if (status!=XST_SUCCESS) {
-		print ("[ERROR] Failed to allocate bottom ASIC RX BD!\r\n");
-		return status;
-	}
-
-	// Configure BD for reads
-	print("[INFO ] Configuring RX BDs for ASICs...\r\n");
-	XLlDma_BdSetBufAddr(*pTopAsicBd, topAddr);
-	XLlDma_BdSetBufAddr(*pBotAsicBd, botAddr);
-	XLlDma_BdSetLength(*pTopAsicBd, len);
-	XLlDma_BdSetLength(*pBotAsicBd, len);
-	XLlDma_BdSetStsCtrl(*pTopAsicBd, sts);
-	XLlDma_BdSetStsCtrl(*pBotAsicBd, sts);
-
-	// Setup a second BD for a sequential read
-	XLlDma_Bd *pSecondTopAsicBd, *pSecondBotAsicBd;
-	pSecondTopAsicBd = XLlDma_BdRingNext(pRingAsicTop, pTopAsicBd);
-	pSecondBotAsicBd = XLlDma_BdRingNext(pRingAsicBot, pBotAsicBd);
-	XLlDma_BdSetBufAddr(*pSecondTopAsicBd, topAddr+len);
-	XLlDma_BdSetBufAddr(*pSecondBotAsicBd, botAddr+len);
-	XLlDma_BdSetLength(*pSecondTopAsicBd, len);
-	XLlDma_BdSetLength(*pSecondBotAsicBd, len);
-	XLlDma_BdSetStsCtrl(*pSecondTopAsicBd, sts);
-	XLlDma_BdSetStsCtrl(*pSecondBotAsicBd, sts);
-
-
-	// Commit BD(s) to DMA engines
-	status = XLlDma_BdRingToHw(pRingAsicTop, numBD, pTopAsicBd);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Failed to send top ASIC RX to HW, error code %d!\r\n", status);
-		return status;
-	}
-	status = XLlDma_BdRingToHw(pRingAsicBot, numBD, pBotAsicBd);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Failed to send bottom ASIC RX to HW, error code %d!\r\n", status);
-		return status;
-	}
-
-	// Start engines!
-	status = XLlDma_BdRingStart(pRingAsicTop);
-	if (status!=XST_SUCCESS)
-	{
-		print("[ERROR] Can't start top ASIC RX engine, no initialised BDs!\r\n");
-		return status;
-	}
-	status = XLlDma_BdRingStart(pRingAsicBot);
-	if (status!=XST_SUCCESS)
-	{
-		print("[ERROR] Can't start top ASIC RX engine, no initialised BDs!\r\n");
-		return status;
-	}
-
-	// Everything OK!
-	return XST_SUCCESS;
 
 }
 
