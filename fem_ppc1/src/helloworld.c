@@ -258,17 +258,16 @@ int main()
 							sts = (unsigned)XLlDma_BdGetStsCtrl(pTopAsicBd);
 							addr = (unsigned)XLlDma_BdGetBufAddr(pTopAsicBd);
 							printf("[INFO ] Got data from top ASIC.    (%d BD(s), STS/CTRL=0x%08x, ADDR=0x%08x)\r\n", numRxTop, (unsigned)sts, (unsigned)addr);
-							if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
-							{
-								// NOTE: Even if code passes this check there can be no DMA transfer received :(
-								printf("[ERROR] STS/CTRL field for top ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
-							}
 							status = XLlDma_BdRingFree(pRxTopAsicRing, 1, pTopAsicBd);
 							if (status!=XST_SUCCESS)
 							{
 								printf("[ERROR] Failed to free RXed BD from top ASIC, error code %d\r\n.", status);
 							}
-;
+							if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
+							{
+								// NOTE: Even if code passes this check there can be no DMA transfer received :(
+								printf("[ERROR] STS/CTRL field for top ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
+							}
 							totalRx++;
 						}
 
@@ -278,16 +277,15 @@ int main()
 							addr = (unsigned)XLlDma_BdGetBufAddr(pBotAsicBd);
 							printf("[INFO ] Got data from bottom ASIC. (%d BD(s), STS/CTRL=0x%08x, ADDR=0x%08x)\r\n", numRxBot, (unsigned)sts, (unsigned)addr);
 							status = XLlDma_BdRingFree(pRxBotAsicRing, 1, pBotAsicBd);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Failed to free RXed BD from bottom ASIC, error code %d\r\n.", status);
+							}
 							if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
 							{
 								// NOTE: Even if code passes this check there can be no DMA transfer received :(
 								printf("[ERROR] STS/CTRL field for bottom ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
 							}
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Failed to free RXed BD from bottom ASIC, error code %d\r\n.", status);
-							}
-
 							totalRx++;
 						}
 
@@ -308,7 +306,37 @@ int main()
 						*/
 
 						// Bypass TX while we test RX
-						if (totalRx==2) { done=1; }
+						if (totalRx==2)
+						{
+							// Pretend here that we sent to TX!
+							print("[DEBUG] Not sending to TX, but pretending we did...\r\n");
+
+							// Re-alloc into ring
+							status = XLlDma_BdRingAlloc(pRxTopAsicRing, 1, &pTopAsicBd);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Can't re-alloc top ASIC BD!  Error code %d\r\n", status);
+							}
+							status = XLlDma_BdRingAlloc(pRxBotAsicRing, 1, &pBotAsicBd);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Can't re-alloc bottom ASIC BD!  Error code %d\r\n", status);
+							}
+
+							// Return RX BDs to hardware control
+							status = XLlDma_BdRingToHw(pRxTopAsicRing, 1, pTopAsicBd);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Can't re-assign top ASIC BD!  Error code %d\r\n", status);
+							}
+							status = XLlDma_BdRingToHw(pRxBotAsicRing, 1, pBotAsicBd);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Can't re-assign bottom ASIC BD!  Error code %d\r\n", status);
+							}
+
+							done=1;
+						}
 
 
 						// -=-=-=-=-=- START UNTESTED -=-=-=-=-=-
@@ -654,7 +682,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		print ("[ERROR] Failed to allocate top ASIC RX BD!\r\n");
 		return status;
 	}
-	printf("[DEBUG] Top ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
+	//printf("[DEBUG] Top ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
 	XLlDma_BdSetLength(*pTopRXBd, segmentSz);
 	XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
 
@@ -663,7 +691,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		print ("[ERROR] Failed to allocate bottom ASIC RX BD!\r\n");
 		return status;
 	}
-	printf("[DEBUG] Bottom ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
+	//printf("[DEBUG] Bottom ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
 	XLlDma_BdSetLength(*pBotRXBd, segmentSz);
 	XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
 
@@ -672,7 +700,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		print ("[ERROR] Failed to allocate tengig TX BD!\r\n");
 		return status;
 	}
-	printf("[DEBUG] TenGig TX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_TX_BD, (unsigned)segmentSz);
+	//printf("[DEBUG] TenGig TX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_TX_BD, (unsigned)segmentSz);
 	XLlDma_BdSetLength(*pTXBd, segmentSz);
 	XLlDma_BdSetStsCtrl(*pTXBd, LL_STSCTRL_TX_BD);
 
@@ -704,21 +732,37 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 
 	// Update address field in every BD
 	int i=0;
-	u32 currentAddr = 0;
+	//u32 currentAddr = DDR2_BADDR;
 	// Snapshot pointer to first BDs
 	XLlDma_Bd *pTopFirstBd = pTopRXBd;
 	XLlDma_Bd *pBotFirstBd = pBotRXBd;
 	XLlDma_Bd *pTenGigFirstBd = pTXBd;
 
 	// TODO: Fix this dirty hack!
+	// Again these addresses can cause the DMA engine to misbehave!  e.g.:
+	// 0x8000000, 0x4000000 = OK! (as is 0)
+	// 0x800000,  0x400000  = FAIL (first RX only gets bottomASIC, second topASIC, then repeats :( )
+	u32 currentAddr = 0;
 	u32 topAsicBufferAddress = 0x4000000;
 	u32 botAsicBufferAddress = 0x8000000;
 
 	// RX rings
 	for (i=0; i<totalNumSegments; i++)
 	{
+
+		// Dummy (testing) buffer allocation (each ASIC gets a memory chunk)
+
 		XLlDma_BdSetBufAddr(*pTopRXBd, topAsicBufferAddress + currentAddr);
 		XLlDma_BdSetBufAddr(*pBotRXBd, botAsicBufferAddress + currentAddr);
+		currentAddr += segmentSz;
+
+		// Proper buffer allocation
+		/*
+		XLlDma_BdSetBufAddr(*pTopRXBd, currentAddr);
+		currentAddr+=segmentSz;
+		XLlDma_BdSetBufAddr(*pBotRXBd, currentAddr);
+		currentAddr += segmentSz;
+		*/
 
 		// Because clone doesn't seem to work?
 		XLlDma_BdSetLength(*pTopRXBd, segmentSz);
@@ -726,9 +770,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
 		XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
 
-		printf("[INFO ] TopASIC BD %d: addr=0x%08x, len=0x%08x, sts=0x%08x\r\n", i, (unsigned)(topAsicBufferAddress + currentAddr), (unsigned)segmentSz, (unsigned)LL_STSCTRL_RX_BD);
-
-		currentAddr += segmentSz;
+		//printf("[INFO ] TopASIC BD %d: addr=0x%08x, len=0x%08x, sts=0x%08x\r\n", i, (unsigned)(topAsicBufferAddress + currentAddr), (unsigned)segmentSz, (unsigned)LL_STSCTRL_RX_BD);
 
 		pTopRXBd = XLlDma_BdRingNext(pRingAsicTop, pTopRXBd);
 		pBotRXBd = XLlDma_BdRingNext(pRingAsicBot, pBotRXBd);
