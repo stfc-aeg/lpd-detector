@@ -197,13 +197,7 @@ int main()
     	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
 
-    	// [OLD] Blocking read of 1x 32bit word
-    	/*
-    	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 4);
-    	printf("[INFO ] Got message!  cmd=%d (0x%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0]);
-    	*/
-
-    	// [NEW] Blocking read of 3x 32bit word
+    	// Blocking read of 3x 32bit word
     	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 12);
     	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2]);
 
@@ -225,6 +219,7 @@ int main()
 					// TODO: Determine why certain addresses cause issues with DMA engine!?
 					// NOTE: if these addresses are changed the DMA goes a bit mental, why should the address matter?!
 					// Also, changing John's code to use other than 0x0400 0000, 0x0800 0000 (e.g. to 0x0040 0000, 0x0080 0000) has same effect!!!!
+					/*
 					status = armAsicRX(pRxTopAsicRing, pRxBotAsicRing, topAsicAddr, botAsicAddr, 0x18000, 0x0);
 					if (status!=XST_SUCCESS)
 					{
@@ -236,6 +231,7 @@ int main()
 					{
 						print("[INFO ] DMA engines armed for ASIC RX.\r\n");
 					}
+					*/
 
 					// Wait for data to be received
 					XLlDma_Bd *pTopAsicBd, *pBotAsicBd, *pTenGigBd;
@@ -243,7 +239,7 @@ int main()
 					unsigned numRxBot = 0;
 					unsigned numTx = 0;
 					unsigned totalRx = 0;
-					unsigned short done=0;
+					unsigned short done = 0;
 					u32 sts;
 					u32 addr;
 
@@ -272,9 +268,7 @@ int main()
 							{
 								printf("[ERROR] Failed to free RXed BD from top ASIC, error code %d\r\n.", status);
 							}
-							//Debug
-							topAddr = XLlDma_BdGetBufAddr(pTopAsicBd);
-							printf("[DEBUG] RX from top addr 0x%08x\r\n", (unsigned)topAddr);
+;
 							totalRx++;
 						}
 
@@ -293,12 +287,11 @@ int main()
 							{
 								printf("[ERROR] Failed to free RXed BD from bottom ASIC, error code %d\r\n.", status);
 							}
-							//Debug
-							botAddr = XLlDma_BdGetBufAddr(pBotAsicBd);
-							printf("[DEBUG] RX from bottom addr 0x%08x\r\n", (unsigned)botAddr);
+
 							totalRx++;
 						}
 
+						/*
 						if (totalRx==2) {
 							print("[INFO ] All ASICs data received OK.\r\n");
 							// Arm TX for 10GBE
@@ -312,11 +305,16 @@ int main()
 							}
 							done = 1;
 						}
+						*/
 
+						// Bypass TX while we test RX
+						if (totalRx==2) { done=1; }
 
 
 						// -=-=-=-=-=- START UNTESTED -=-=-=-=-=-
 
+						// TODO: Needs guard condition!
+						/*
 						// Verify completion of TX packet
 						print("[DEBUG] Waiting for DMA engine response for TX...\r\n");
 						numTx = 0;
@@ -344,7 +342,7 @@ int main()
 						{
 							print("[ INFO] TX sent, BD freed OK\r\n");
 						}
-
+						*/
 						// -=-=-=-=-=- END UNTESTED -=-=-=-=-=-
 
 
@@ -378,7 +376,7 @@ int main()
 				break;
 
 			case 3: // DO_UPLOAD
-				printf("[INFO ] Upload command not yet implemented.\r\n");
+				printf("[ERROR] Upload command not yet implemented.\r\n");
 				break;
 
 			default:
@@ -595,11 +593,11 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	// Check there is enough space for BDs for requested number/size of segments
 	if ( (totalNumSegments * segmentMultiplier * XLLDMA_BD_MINIMUM_ALIGNMENT) > LL_BD_SZ)
 	{
-		printf("[ERROR] Cannot allocate %d x x %d x 0x%08x segments, exceeds BD storage capacity!\r\n", (int)segmentCnt, (int)segmentMultiplier, (unsigned)totalSegmentSz);
+		printf("[ERROR] Cannot allocate %d x x %d x 0x%08x buffers, exceeds BD storage capacity!\r\n", (int)segmentCnt, (int)segmentMultiplier, (unsigned)totalSegmentSz);
 		return XST_FAILURE;
 	}
 
-	printf("[DEBUG] Processing %d segments of 2*0x%08x bytes...\r\n", (unsigned)totalNumSegments, (unsigned)segmentSz);
+	printf("[DEBUG] Requested %d buffers of 2 x 0x%08x bytes...\r\n", (unsigned)totalNumSegments, (unsigned)segmentSz);
 
 
 
@@ -612,9 +610,12 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	// TODO: Give these better names... (hell give ALL the bd stuff better names...)
 	u32 bdChunkSize =			XLLDMA_BD_MINIMUM_ALIGNMENT * totalNumSegments;
 	u32 topAsicRXBdOffset =		LL_BD_BADDR;
-	u32 botAsicRXBdOffset =		LL_BD_BADDR + bdChunkSize;
-	u32 tenGigTXBdOffset =		LL_BD_BADDR + botAsicRXBdOffset + bdChunkSize;
-	printf("[INFO ] BDs: TopASIC @ 0x%08x, Bottom ASIC @ 0x%08x, TenGig @ 0x%08x\r\n", (unsigned)topAsicRXBdOffset, (unsigned)botAsicRXBdOffset, (unsigned)tenGigTXBdOffset);
+	u32 botAsicRXBdOffset =		topAsicRXBdOffset + bdChunkSize;
+	u32 tenGigTXBdOffset =		botAsicRXBdOffset + bdChunkSize;
+	printf("[INFO ] BDs: \r\n");
+	printf("[INFO ] TopASIC      0x%08x\r\n", (unsigned)topAsicRXBdOffset);
+	printf("[INFO ] Bottom ASIC  0x%08x\r\n", (unsigned)botAsicRXBdOffset);
+	printf("[INFO ] TenGig       0x%08x\r\n", (unsigned)tenGigTXBdOffset);
 
 	status = XLlDma_BdRingCreate(pRingAsicTop, topAsicRXBdOffset, topAsicRXBdOffset, LL_DMA_ALIGNMENT, totalNumSegments);
 	if (status!=XST_SUCCESS)
@@ -638,7 +639,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 
-	printf("[INFO ] Created %d BD rings OK!\r\n", (int)totalNumSegments);
+	printf("[INFO ] Created BD rings w/%d buffers each.\r\n", (int)totalNumSegments);
 
 
 
@@ -675,25 +676,29 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_BdSetLength(*pTXBd, segmentSz);
 	XLlDma_BdSetStsCtrl(*pTXBd, LL_STSCTRL_TX_BD);
 
+	// TODO: Why do the Clone commands fail with XST_DMA_SG_LIST_ERROR?
+	// 'if some of the BDs in this channel are under hardware or application control.' - but are not under hw/app control??
+	/*
 	// Clone the master BD to all BDs in ring
 	status = XLlDma_BdRingClone(pRingAsicTop, pTopRXBd);
 	if (status!=XST_SUCCESS)
 	{
-		print("[ERROR] Failed to clone master BD (Top ASIC ring)\r\n");
+		printf("[ERROR] Failed to clone master BD (Top ASIC ring), error code %d\r\n", (unsigned)status);
 		return status;
 	}
 	status = XLlDma_BdRingClone(pRingAsicBot, pBotRXBd);
 	if (status!=XST_SUCCESS)
 	{
-		print("[ERROR] Failed to clone master BD (Bottom ASIC ring)\r\n");
+		printf("[ERROR] Failed to clone master BD (Bottom ASIC ring), error code %d\r\n", (unsigned)status);
 		return status;
 	}
 	status = XLlDma_BdRingClone(pRingTenGig, pTXBd);
 	if (status!=XST_SUCCESS)
 	{
-		print("[ERROR] Failed to clone master BD (TenGig ring)\r\n");
+		printf("[ERROR] Failed to clone master BD (TenGig ring), error code %d\r\n", (unsigned)status);
 		return status;
 	}
+	*/
 
 
 
@@ -705,11 +710,23 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_Bd *pBotFirstBd = pBotRXBd;
 	XLlDma_Bd *pTenGigFirstBd = pTXBd;
 
+	// TODO: Fix this dirty hack!
+	u32 topAsicBufferAddress = 0x4000000;
+	u32 botAsicBufferAddress = 0x8000000;
+
 	// RX rings
 	for (i=0; i<totalNumSegments; i++)
 	{
-		XLlDma_BdSetBufAddr(*pTopRXBd, topAsicRXBdOffset + currentAddr);
-		XLlDma_BdSetBufAddr(*pBotRXBd, botAsicRXBdOffset + currentAddr);
+		XLlDma_BdSetBufAddr(*pTopRXBd, topAsicBufferAddress + currentAddr);
+		XLlDma_BdSetBufAddr(*pBotRXBd, botAsicBufferAddress + currentAddr);
+
+		// Because clone doesn't seem to work?
+		XLlDma_BdSetLength(*pTopRXBd, segmentSz);
+		XLlDma_BdSetLength(*pBotRXBd, segmentSz);
+		XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
+		XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
+
+		printf("[INFO ] TopASIC BD %d: addr=0x%08x, len=0x%08x, sts=0x%08x\r\n", i, (unsigned)(topAsicBufferAddress + currentAddr), (unsigned)segmentSz, (unsigned)LL_STSCTRL_RX_BD);
 
 		currentAddr += segmentSz;
 
@@ -732,7 +749,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 
 
 
-	// Commit BD(s) to DMA engines
+	// Commit RX BDs to DMA engines
 	status = XLlDma_BdRingToHw(pRingAsicTop, totalNumSegments, pTopFirstBd);
 	if (status!=XST_SUCCESS)
 	{
@@ -743,12 +760,6 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Failed to send bottom ASIC RX to HW, error code %d!\r\n", status);
-		return status;
-	}
-	status = XLlDma_BdRingToHw(pRingTenGig, totalNumSegments, pTenGigFirstBd);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Failed to send TenGig TX to HW, error code %d!\r\n", status);
 		return status;
 	}
 
@@ -767,7 +778,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 
-
+	print("[INFO ] Committed BDs to HW and started DMA RX engines!\r\n");
 
 	// Everything OK!
 	return XST_SUCCESS;
