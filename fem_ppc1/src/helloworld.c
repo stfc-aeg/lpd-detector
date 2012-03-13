@@ -12,39 +12,6 @@
 // TODO: Implement shared bram status flags
 // TODO: Implement pixmem upload
 
-/*
- * SHARED BRAM FLAGS / STATUS
- *
- * What to track?
- * 	- Total BD slots for RX (ASIC)
- *	- Total BD slots for TX (TenGig)
- *	- Num used BDs for RX (ASIC) (i.e. read pointer)
- *	- Num used BDs for TX (TenGig) (i.e. write pointer)
- *		- Can then calculate DDR2 occupancy
- *	- Number received frames
- *	- Number sent frames
- *		- Calculate total processed frames
- *	- Error count / engine
- *		- What do we consider an error?  Any BD that has DMA_ERROR set!
- *
- */
-
-/*
- * Initialisation from PPC2 (mailbox message?)
- *	- Number frames expected (optional?)
- *	- Read segment size (per Spartan, not per ASIC)
- *
- * Use this information to:
- *
- * 	- Configure RX/TX BD rings (ddr2size / segment size / 2 = numBDs)
- *
- * MAILBOX MESSAGE
- * ---------------
- * u32 segment_sz
- * u32 num_segments
- *
- */
-
 #include <stdio.h>
 #include "xmbox.h"
 #include "xparameters.h"
@@ -72,11 +39,36 @@
 #define DDR2_BADDR					0x00000000						//! DDR2 base address
 #define DDR2_SZ						0x40000000						//! DDR2 size (1GB)
 
+// Shared BRAM area
+#define BRAM_BADDR					XPAR_SHARED_BRAM_IF_CNTLR_PPC_1_BASEADDR
+
+// Ring indexes
+#define BD_RING_TOP_ASIC			0
+#define BD_RING_BOT_ASIC			1
+#define BD_RING_TENGIG				2
+#define BD_RING_PIXMEM				3
+
+//! Data structure to store in shared BRAM for status information
+struct sharedStatusBlock
+{
+	u32 bufferCnt;		//! Number of buffers allocated
+	u32 bufferSize;		//! Size of buffers
+	u32 readPtr;		//! 'read pointer'
+	u32 writePtr;		//! 'write pointer'
+	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
+	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
+	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
+};
+
 
 
 // FUNCTION PROTOTYPES
+// TODO: Remove armTenGigTX
 int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len);
+// TODO: Change function footprint once BdRing array is in use!
 int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 segmentSz, u32 segmentCnt);
+int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts);
+int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -95,17 +87,24 @@ int main()
 
     int status;
     u32 mailboxBuffer[3] =	{0,0,0};
-
-    // Initialise DMA engines
-    XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig;
-
+    XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
     XLlDma_BdRing *pRxTopAsicRing = &XLlDma_GetRxRing(&dmaAsicTop);
     XLlDma_BdRing *pRxBotAsicRing = &XLlDma_GetRxRing(&dmaAsicBot);
     XLlDma_BdRing *pTxTenGigRing = &XLlDma_GetTxRing(&dmaTenGig);
 
+    // New BD ring array, replace old pRx
+    XLlDma_BdRing *pBdRings[4];
+    pBdRings[BD_RING_TOP_ASIC]	= &XLlDma_GetRxRing(&dmaAsicTop);
+    pBdRings[BD_RING_BOT_ASIC]	= &XLlDma_GetRxRing(&dmaAsicBot);
+    pBdRings[BD_RING_TENGIG]	= &XLlDma_GetRxRing(&dmaTenGig);
+    pBdRings[BD_RING_PIXMEM]	= &XLlDma_GetRxRing(&dmaPixMem);
+    struct sharedStatusBlock *pStatusBlock = BRAM_BADDR;
+
+    // Initialise DMA engines
     XLlDma_Initialize(&dmaAsicTop, LL_DMA_BASE_ASIC_TOP);
     XLlDma_Initialize(&dmaAsicBot, LL_DMA_BASE_ASIC_BOT);
     XLlDma_Initialize(&dmaTenGig, LL_DMA_BASE_TENGIG);
+    XLlDma_Initialize(&dmaPixMem, LL_DMA_BASE_PIXMEM);
 
     // Initialise mailbox
     XMbox mbox;
@@ -152,11 +151,8 @@ int main()
 					XLlDma_Bd *pTopAsicBd, *pBotAsicBd, *pTenGigBd;
 					unsigned numRxTop = 0;
 					unsigned numRxBot = 0;
-					unsigned numTx = 0;
 					unsigned totalRx = 0;
 					unsigned short done = 0;
-					u32 sts;
-					u32 addr;
 
 					print("[INFO ] Waiting for ASIC RX...\r\n");
 
@@ -170,40 +166,26 @@ int main()
 
 						if (numRxTop !=0 )
 						{
-							sts = (unsigned)XLlDma_BdGetStsCtrl(pTopAsicBd);
-							addr = (unsigned)XLlDma_BdGetBufAddr(pTopAsicBd);
-							printf("[INFO ] Got data from top ASIC.    (%d BD(s), STS/CTRL=0x%08x, ADDR=0x%08x)\r\n", numRxTop, (unsigned)sts, (unsigned)addr);
-							status = XLlDma_BdRingFree(pRxTopAsicRing, 1, pTopAsicBd);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Failed to free RXed BD from top ASIC, error code %d\r\n.", status);
+							status = validateBuffer(pRxTopAsicRing, pTopAsicBd, LL_STSCTRL_RX_OK);
+							if (status==XST_SUCCESS) {
+								totalRx++;
 							}
-							if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
+							else
 							{
-								// NOTE: Even if code passes this check there can be no DMA transfer received :(
-								printf("[ERROR] STS/CTRL field for top ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
-								// TODO: Handle error
+								print("[ERROR] validateBuffer failed on top ASIC BD!\r\n");
 							}
-							totalRx++;
 						}
 
 						if (numRxBot != 0 )
 						{
-							sts = (unsigned)XLlDma_BdGetStsCtrl(pBotAsicBd);
-							addr = (unsigned)XLlDma_BdGetBufAddr(pBotAsicBd);
-							printf("[INFO ] Got data from bottom ASIC. (%d BD(s), STS/CTRL=0x%08x, ADDR=0x%08x)\r\n", numRxBot, (unsigned)sts, (unsigned)addr);
-							status = XLlDma_BdRingFree(pRxBotAsicRing, 1, pBotAsicBd);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Failed to free RXed BD from bottom ASIC, error code %d\r\n.", status);
+							status = validateBuffer(pRxBotAsicRing, pBotAsicBd, LL_STSCTRL_RX_OK);
+							if (status==XST_SUCCESS) {
+								totalRx++;
 							}
-							if (!(sts&0xFF000000)&LL_STSCTRL_RX_OK)
+							else
 							{
-								// NOTE: Even if code passes this check there can be no DMA transfer received :(
-								printf("[ERROR] STS/CTRL field for bottom ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
-								// TODO: Handle error
+								print("[ERROR] validateBuffer failed on bottom ASIC BD!\r\n");
 							}
-							totalRx++;
 						}
 
 						// Original code, sends data to 10GBe but doesn't free RX BDs...
@@ -229,33 +211,9 @@ int main()
 							// Pretend here that we sent to TX!
 							print("[DEBUG] Not sending to TX, but pretending we did...\r\n");
 
-							// Re-alloc RX BDs into ring
-							status = XLlDma_BdRingAlloc(pRxTopAsicRing, 1, &pTopAsicBd);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Can't re-alloc top ASIC BD!  Error code %d\r\n", status);
-							}
-							status = XLlDma_BdRingAlloc(pRxBotAsicRing, 1, &pBotAsicBd);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Can't re-alloc bottom ASIC BD!  Error code %d\r\n", status);
-							}
-
-							// Not sure if we need to but best to reset STS/CTRL fields on BDs!
-							XLlDma_BdSetStsCtrl(*pBotAsicBd, LL_STSCTRL_RX_BD);
-							XLlDma_BdSetStsCtrl(*pTopAsicBd, LL_STSCTRL_RX_BD);
-
-							// Return RX BDs to hardware control
-							status = XLlDma_BdRingToHw(pRxTopAsicRing, 1, pTopAsicBd);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Can't re-assign top ASIC BD!  Error code %d\r\n", status);
-							}
-							status = XLlDma_BdRingToHw(pRxBotAsicRing, 1, pBotAsicBd);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Can't re-assign bottom ASIC BD!  Error code %d\r\n", status);
-							}
+							// TODO: Check return codes!
+							status = recycleBuffer(pRxTopAsicRing, pTopAsicBd);
+							status = recycleBuffer(pRxBotAsicRing, pBotAsicBd);
 
 							// All finished, flag complete
 							done=1;
@@ -271,25 +229,11 @@ int main()
 						{
 							numTx = XLlDma_BdRingFromHw(pTxTenGigRing, 1, &pTenGigBd);
 						}
-						sts = (unsigned)XLlDma_BdGetStsCtrl(pTenGigBd);
-						if (!(sts&0xFF000000)&LL_STSCTRL_TX_OK)
-						{
-							printf("[DEBUG] Got TX BD, but looks incorrect:  Status=0x%08x\r\n", (unsigned)sts);
-						}
-						else
-						{
-							printf("[DEBUG] Got TX BD, looks OK!  Status=0x%08x\r\n", (unsigned)sts);
-						}
 
-						// Free BD
-						status = XLlDma_BdRingFree(pTxTenGigRing, 1, pTenGigBd);
+						status = verifyBuffer(pTxTenGigRing, pTenGigBd, LL_STSCTRL_TX_OK);
 						if (status!=XST_SUCCESS)
 						{
-							printf("[ERROR] TX sent but could not free BD!  Error code %d\r\n", status);
-						}
-						else
-						{
-							print("[ INFO] TX sent, BD freed OK\r\n");
+							print("[ERROR] validateBuffer failed on tengig BD!\r\n");
 						}
 						*/
 
@@ -402,6 +346,8 @@ int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int l
 	return XST_SUCCESS;
 }
 
+
+
 /*
  * New generic DMA setup function (to replace armAsicRX, armTenGigTX)
  * Also accepts segment size (size of data to RX from I/O Spartan), and
@@ -419,12 +365,8 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 {
 
 	unsigned status;
-
 	u32 totalSegmentSz = segmentSz*2;		// Each DDR segment is actually segmentSz*2 (because we have 2 I/O spartans)
-	u32 segmentMultiplier = 4;				// How many BDs form a 'complete' segment?  4! - 2x RX (1/ring), then 2x TX (2/ring)
 	u32 totalNumSegments = 0;
-
-
 
 	// Check DDR2 is large enough for requested number/size of segments
 	if (segmentCnt==0)
@@ -449,9 +391,9 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 
 
 	// Check there is enough space for BDs for requested number/size of segments
-	if ( (totalNumSegments * segmentMultiplier * XLLDMA_BD_MINIMUM_ALIGNMENT) > LL_BD_SZ)
+	if ( (totalNumSegments * 4 * XLLDMA_BD_MINIMUM_ALIGNMENT) > LL_BD_SZ)		// 4 because we need 2x RX and 2x TX BDs per 'read'
 	{
-		printf("[ERROR] Cannot allocate %d x x %d x 0x%08x buffers, exceeds BD storage capacity!\r\n", (int)segmentCnt, (int)segmentMultiplier, (unsigned)totalSegmentSz);
+		printf("[ERROR] Cannot allocate %d x x 4 x 0x%08x buffers, exceeds BD storage capacity!\r\n", (int)segmentCnt, (unsigned)totalSegmentSz);
 		return XST_FAILURE;
 	}
 
@@ -466,7 +408,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	 * TXBd
 	 */
 	// TODO: Give these better names... (hell give ALL the bd stuff better names...)
-	u32 bdChunkSize =			XLLDMA_BD_MINIMUM_ALIGNMENT * totalNumSegments;
+	u32 bdChunkSize =			XLLDMA_BD_MINIMUM_ALIGNMENT * totalNumSegments;			// Total space required for all BDs for a given channel
 	u32 topAsicRXBdOffset =		LL_BD_BADDR;
 	u32 botAsicRXBdOffset =		topAsicRXBdOffset + bdChunkSize;
 	u32 tenGigTXBdOffset =		botAsicRXBdOffset + bdChunkSize;
@@ -534,31 +476,6 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_BdSetLength(*pTXBd, segmentSz);
 	XLlDma_BdSetStsCtrl(*pTXBd, LL_STSCTRL_TX_BD);
 
-	// TODO: Why do the Clone commands fail with XST_DMA_SG_LIST_ERROR?
-	// 'if some of the BDs in this channel are under hardware or application control.' - but are not under hw/app control??
-	/*
-	// Clone the master BD to all BDs in ring
-	status = XLlDma_BdRingClone(pRingAsicTop, pTopRXBd);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Failed to clone master BD (Top ASIC ring), error code %d\r\n", (unsigned)status);
-		return status;
-	}
-	status = XLlDma_BdRingClone(pRingAsicBot, pBotRXBd);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Failed to clone master BD (Bottom ASIC ring), error code %d\r\n", (unsigned)status);
-		return status;
-	}
-	status = XLlDma_BdRingClone(pRingTenGig, pTXBd);
-	if (status!=XST_SUCCESS)
-	{
-		printf("[ERROR] Failed to clone master BD (TenGig ring), error code %d\r\n", (unsigned)status);
-		return status;
-	}
-	*/
-
-
 
 	// Update address field in every BD
 	int i=0;
@@ -581,7 +498,6 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	{
 
 		// Dummy (testing) buffer allocation (each ASIC gets a memory chunk)
-
 		XLlDma_BdSetBufAddr(*pTopRXBd, topAsicBufferAddress + currentAddr);
 		XLlDma_BdSetBufAddr(*pBotRXBd, botAsicBufferAddress + currentAddr);
 		currentAddr += segmentSz;
@@ -653,5 +569,70 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	print("[INFO ] Committed BDs to HW and started DMA RX engines!\r\n");
 
 	// Everything OK!
+	return XST_SUCCESS;
+}
+
+/* Verifies a buffer by checking the STS/CTRL field of the BD matches the value expected.
+ * Frees BD ready for processing
+ * @param pRing pointer to BD ring
+ * @param pBd pointer to BD
+ * @param validSts value of STS/CTRL to verify
+ * @return XST_SUCCESS, or error code
+ */
+int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts)
+{
+	u32 sts;
+	//u32 addr;
+	int status;
+
+	sts = XLlDma_BdGetStsCtrl(pBd);
+	//addr = XLlDma_BdGetBufAddr(pBd);
+
+	status = XLlDma_BdRingFree(pRing, 1, pBd);
+	if (status!=XST_SUCCESS)
+	{
+		return status;
+	}
+
+	// TODO: Check and report if DMA_ERROR bit set! (What return code to use?)
+
+	if (!(sts&0xFF000000)&validSts)
+	{
+		// NOTE: Even if code passes this check there can be no DMA transfer received :(
+		printf("[ERROR] STS/CTRL field for bottom ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
+		return XST_FAILURE;
+	}
+
+	return XST_SUCCESS;
+}
+
+
+
+/* Resets and re-allocates a buffer into the current ring
+ * @param pRing pointer to BD ring
+ * @param pBd pointer to BD
+ * @return XST_SUCCESS, or error code
+ */
+int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd)
+{
+	int status;
+
+	// Re-alloc RX BDs into ring
+	status = XLlDma_BdRingAlloc(pRing, 1, &pBd);
+	if (status!=XST_SUCCESS)
+	{
+		return status;
+	}
+
+	// Not sure if we need to but best to reset STS/CTRL fields on the BD
+	XLlDma_BdSetStsCtrl(*pBd, LL_STSCTRL_RX_BD);
+
+	// Return RX BDs to hardware control
+	status = XLlDma_BdRingToHw(pRing, 1, pBd);
+	if (status!=XST_SUCCESS)
+	{
+		return status;
+	}
+
 	return XST_SUCCESS;
 }
