@@ -5,6 +5,8 @@
  *      Author: Tim Nicholls, STFC Application Engineering Group
  */
 
+#include "FemClient.h"
+
 /** i2cRead - perform an I2C read transaction from the FEM
  *
  * This function performs a I2C read transaction from the FEM, at an address
@@ -33,7 +35,7 @@ std::vector<u8> FemClient::i2cRead(unsigned int aAddress, unsigned int aLength)
  *
  * @param aAdddress I2C address to read (including upper byte as FEM bus select)
  * @param aValues reference to u8 byte vector containing values to write
- * @return number of bytes written ss
+ * @return number of bytes written
  */
 u32 FemClient::i2cWrite(unsigned int aAddress, std::vector<u8>&aValues)
 {
