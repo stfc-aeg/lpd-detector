@@ -24,6 +24,17 @@ typedef struct bufferInfo_t
 	unsigned int length;
 } BufferInfo;
 
+typedef struct packetHeader_t
+{
+	u32			frameNumber;
+	u32			packetNumberFlags;
+} PacketHeader;
+
+typedef enum
+{
+	headerAtStart,
+	headerAtEnd
+} FemDataReceiverHeaderPosition;
 
 typedef boost::function<BufferInfo(void)> allocateCallback_t;
 typedef boost::function<void(int)> freeCallback_t;
@@ -56,6 +67,10 @@ public:
 	void registerCallbacks(CallbackBundle* aBundle);
 
 	void setNumFrames(unsigned int aNumFrames);
+	void setFrameLength(unsigned int mFrameLength);
+	void setFrameHeaderLength(unsigned int aHeaderLength);
+	void setFrameHeaderPosition(FemDataReceiverHeaderPosition aPosition);
+
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
 
@@ -75,8 +90,17 @@ private:
 	unsigned int                      mCurrentFrame;
 
 	unsigned int                      mNumFrames;
+	unsigned int                      mFrameLength;
+	unsigned int                      mFrameHeaderLength;
+	FemDataReceiverHeaderPosition     mHeaderPosition;
 	unsigned int                      mAcquisitionPeriod;
 	unsigned int                      mAcquisitionTime;
+
+	PacketHeader                      mPacketHeader;
+	BufferInfo                        mCurrentBuffer;
+
+	unsigned int                      mFrameTotalBytesReceived;
+	unsigned int                      mFramePayloadBytesReceived;
 
 
 	void checkDeadline(BufferInfo aFramePtr);

@@ -15,6 +15,8 @@
 int testGetSetInt(void* femHandle);
 int testGetSetShort(void* femHandle);
 int testCommand(void* femHandle);
+int testSetLargeShortArray(void* femHandle);
+int testSlowControl(void* femHandle);
 int testAcquisitionLoop(void* femHandle);
 
 // Forward declaration of callback functions to simulate WP5 callbacks
@@ -24,6 +26,9 @@ static void      receiveCallback(void* ctlHandle, CtlFrame* buffer);
 static void      signalCallback(void* ctlHandle, int id);
 
 int acquiring = 0;
+int framesReceived = 0;
+
+FILE* outputFile = 0;
 
 int main(int argc, char* argv[]) {
 
@@ -60,10 +65,12 @@ int main(int argc, char* argv[]) {
 	printf("done\n");
 
 	// Run the tests
-	numPassed += testGetSetInt(femHandle);
-	numPassed += testGetSetShort(femHandle);
-	numPassed += testCommand(femHandle);
-	numPassed += testAcquisitionLoop(femHandle);
+//	numPassed += testGetSetInt(femHandle);
+//	numPassed += testGetSetShort(femHandle);
+//	numPassed += testCommand(femHandle);
+//	numPassed += testSetLargeShortArray(femHandle);
+	numPassed += testSlowControl(femHandle);
+	//	numPassed += testAcquisitionLoop(femHandle);
 
 	printf("Hit return to quit ... ");
 	getchar();
@@ -161,6 +168,170 @@ int testCommand(void* femHandle)
 	return passed;
 }
 
+int testSetLargeShortArray(void* femHandle)
+{
+	int rc;
+	int passed = 1;
+
+	const size_t arrayLen = 65536;
+	short* shortVals;
+	int loop;
+
+	printf("Writing array of length %d of short values to FEM ... ", (int)arrayLen);
+
+	shortVals = (short*)calloc(arrayLen, sizeof(short));
+	for (loop = 0; loop < arrayLen; loop++) {
+		shortVals[loop] = loop;
+	}
+
+	rc = femSetShort(femHandle, 1, 1, arrayLen, shortVals);
+	if (rc != FEM_RTN_OK) {
+		printf("Gor error on calling femSetShort(): %d\n", rc);
+		passed = 0;
+	}
+
+	printf("%s\n", passed ? "passed" : "failed");
+
+	return passed;
+}
+
+int testSlowControl(void* femHandle)
+{
+
+	int rc;
+	int passed = 1;
+	int chip;
+	int pwrStatusId[] = { FEM_OP_P1V5_AVDD_1_POK,
+			              FEM_OP_P1V5_AVDD_2_POK,
+			              FEM_OP_P1V5_AVDD_3_POK,
+			              FEM_OP_P1V5_AVDD_4_POK,
+			              FEM_OP_P1V5_VDD_1_POK,
+			              FEM_OP_P2V5_DVDD_1_POK,
+			              -1
+	};
+	char *pwrStatusName[] = { "P1V5_AVDD_1",
+                              "P1V5_AVDD_2",
+                              "P1V5_AVDD_3",
+                              "P1V5_AVDD_4",
+                              "P1V5_VDD_1",
+                              "P2V5_DVDD_1",
+                             "END"
+	};
+
+	int id, pwrStatus;;
+
+	double remoteTemp, localTemp, molyTemp, molyHumidity, dacValue = -100.0;
+
+	printf("Reading FPGA (remote) diode temperature from FEM ... ");
+	rc = femGetFloat(femHandle, 1, FEM_OP_REMOTE_DIODE_TEMP, 1, &remoteTemp);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on call: %d\n", rc);
+		passed = 0;
+	}
+	else
+	{
+		printf("OK (%.0fC)\n", remoteTemp);
+	}
+
+	printf("Reading board (local) diode temperature from FEM ... ");
+	rc = femGetFloat(femHandle, 1, FEM_OP_LOCAL_TEMP, 1, &localTemp);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on call: %d\n", rc);
+		passed = 0;
+	}
+	else
+	{
+		printf("OK (%.0fC)\n", localTemp);
+	}
+
+	printf("Reading front-end moly temperature from FEM      ... ");
+	rc = femGetFloat(femHandle, 1, FEM_OP_MOLY_TEMPERATURE, 1,&molyTemp);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on call: %d\n", rc);
+		passed = 0;
+	}
+	else
+	{
+		printf("OK (%.1fC)\n", molyTemp);
+	}
+
+	printf("Reading front-end moly humidity from FEM         ... ");
+	rc = femGetFloat(femHandle, 1, FEM_OP_MOLY_HUMIDITY, 1,&molyHumidity);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error on call: %d\n", rc);
+		passed = 0;
+	}
+	else
+	{
+		printf("OK (%.1f%%)\n", molyHumidity);
+	}
+
+	printf("Reading front-end DAC channels from FEM          ... ");
+	for (chip = 0; chip < 8; chip++)
+	{
+		rc = femGetFloat(femHandle, chip, FEM_OP_DAC_OUT_FROM_MEDIPIX, 1, &dacValue);
+		if (rc != FEM_RTN_OK)
+		{
+			printf("\nGot error on call for chip ID %d: %d ", chip, rc);
+			passed = 0;
+		}
+		else
+		{
+			printf("%d : OK (%.3f) ", chip, dacValue);
+			if (chip == 3) {
+				printf("\n                                                     ");
+			}
+		}
+	}
+	printf("\n");
+
+	printf("Reading front-end power status from FEM          ... ");
+	id = 0;
+	while (pwrStatusId[id] != -1)
+	{
+		rc = femGetInt(femHandle, 0, pwrStatusId[id], 1, &pwrStatus);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on call for pwr status id %d: %d ", pwrStatusId[id], rc);
+			passed = 0;
+		}
+		else
+		{
+			printf("%-11s : OK (%d) ", pwrStatusName[id], pwrStatus);
+			if (id == 3) {
+				printf("\n                                                     ");
+			}
+		}
+
+		id++;
+	}
+	printf("\n");
+
+	printf("Testing write to MPX DAC inputs                  ... ");
+	for (chip = 0; chip < 8; chip++)
+	{
+		int value = chip * 100;
+		rc = femSetInt(femHandle, chip, FEM_OP_DAC_IN_TO_MEDIPIX, 1, &value);
+		if (rc != FEM_RTN_OK)
+		{
+			printf("\nGot error on call for chip ID %d: %d", chip, rc);
+			passed = 0;
+		}
+		else
+		{
+			printf("%d: OK ", chip);
+		}
+	}
+	printf("\n");
+
+	printf("Slow control tests %s\n", passed ? "passed" : "failed");
+
+	return passed;
+}
+
 int testAcquisitionLoop(void* femHandle)
 {
 
@@ -169,8 +340,16 @@ int testAcquisitionLoop(void* femHandle)
 
 	acquiring = 1;
 
-	printf("Sending num frames to FEM...");
-	unsigned int numFrames = 100;
+	printf("Opening output file...");
+	outputFile = fopen("test.dat", "w+b");
+	if (outputFile == 0)
+	{
+		perror("Failed to open output file");
+		passed = 0;
+	}
+
+	printf("done.\nSending num frames to FEM...");
+	unsigned int numFrames = 8;
 	rc = femSetInt(femHandle, 0, FEM_OP_NUMFRAMESTOACQUIRE, sizeof(numFrames), (int*)&numFrames);
 	if (rc != FEM_RTN_OK)
 	{
@@ -205,7 +384,7 @@ int testAcquisitionLoop(void* femHandle)
 		passed = 0;
 	}
 
-	printf("Waiting for acquisition to complete ...");
+	printf("Waiting for acquisition to complete ...\n");
 	do
 	{
 		usleep(10000);
@@ -225,29 +404,36 @@ int testAcquisitionLoop(void* femHandle)
 	}
 	printf("done.\n");
 
+	printf("Acquisition completed, received %d frames.\n", framesReceived);
+
+	fclose(outputFile);
+	outputFile = 0;
+
 	return passed;
 
 }
 
 CtlFrame* allocateCallback(void* ctlHandle)
 {
-	printf("In allocateCallback\n");
+	//printf("In allocateCallback\n");
 	CtlFrame* allocFrame = malloc(sizeof(CtlFrame));
 	if (allocFrame != 0) {
 		allocFrame->sizeX = 512;
 		allocFrame->sizeY = 512;
 		allocFrame->sizeZ = 1;
 		allocFrame->bitsPerPixel = 16;
-		allocFrame->bufferLength = allocFrame->sizeX * allocFrame->sizeY * allocFrame->sizeZ * (allocFrame->bitsPerPixel / 8);
+//		allocFrame->bufferLength = allocFrame->sizeX * allocFrame->sizeY * allocFrame->sizeZ * (allocFrame->bitsPerPixel / 8);
+		allocFrame->bufferLength = 98304 * 2;
 		allocFrame->buffer = (char *)malloc(allocFrame->bufferLength);
 	}
-	printf("In allocateCallback, allocated frame is at 0x%lx buffer at 0x%lx\n", (unsigned long)allocFrame, (unsigned long)allocFrame->buffer);
+	printf("In allocateCallback, allocated frame is at 0x%lx buffer at 0x%lx size %ld\n", (unsigned long)allocFrame,
+			(unsigned long)allocFrame->buffer, allocFrame->bufferLength);
 	return allocFrame;
 }
 
 void freeCallback(void* ctlHandle, CtlFrame* buffer)
 {
-	printf("In freeCallback, freeing frame at 0x%lx\n", (unsigned long)buffer);
+	//printf("In freeCallback, freeing frame at 0x%lx\n", (unsigned long)buffer);
 	if (buffer != 0) {
 		if (buffer->buffer != 0) {
 			free(buffer->buffer);
@@ -261,15 +447,30 @@ void receiveCallback(void* ctlHandle, CtlFrame* buffer)
 	int i;
 	printf("In receive callback, start of data in buffer: ");
 
-	// Do something with the frame
-	// ...
+	 //Do something with the frame
+	 //...
 
 	char* bufPtr = (char *)(buffer->buffer);
-	for (i = 0; i < 10; i++) {
-		printf("%x ", *(bufPtr + i));
+	for (i = 0; i < 16; i++) {
+		printf("%x ", (unsigned char)*(bufPtr + i));
 	}
 	printf("\n");
 
+	unsigned int* u32Ptr = (unsigned int *)(buffer->buffer);
+	printf("Data at start of buffer: %x %x\n", *u32Ptr, *(u32Ptr+1));
+
+	// Write data to output file
+	if (outputFile != 0)
+	{
+		fwrite(buffer->buffer, sizeof(char), buffer->bufferLength, outputFile);
+	}
+
+	framesReceived++;
+
+	if ((framesReceived % 100) == 0)
+	{
+		printf("Recieved %d frames\n", framesReceived);
+	}
 	// Free the frame up
 	freeCallback(ctlHandle, buffer);
 }

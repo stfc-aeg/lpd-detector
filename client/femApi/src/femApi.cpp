@@ -46,53 +46,70 @@ void femClose(void* femHandle)
 int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 {
 	int rc = FEM_RTN_OK;
-	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
-	unsigned int address;
-	switch (id)
+	if ((chipId < 0) || (chipId >= (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
+	{
+		rc = FEM_RTN_ILLEGALCHIP;
+	}
+	else
 	{
 
-	case FEM_OP_NUMFRAMESTOACQUIRE:
+		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
-		theFem->setNumFrames((unsigned int)*value);
-		break;
+		try {
 
-	case FEM_OP_ACQUISITIONTIME:
-
-		theFem->setAcquisitionTime((unsigned int)*value);
-		break;
-
-	case FEM_OP_ACQUISITIONPERIOD:
-
-		theFem->setAcquisitionPeriod((unsigned int)*value);
-		break;
-
-	default:
-		{
-			// TODO: remove this temporary hack of the address from chip ID and config ID
-			unsigned int address = 8000*chipId + id;
-
-			// Build a payload array from the parameters passed
-			std::vector<u32> payload(size);
-			for (unsigned int i = 0; i < (unsigned int)size; i++) {
-				payload[i] = *(value + i);
-			}
-			std::vector<u8>* payloadPtr = (std::vector<u8>*)&payload;
-
-			// Issue the write transaction
-			try {
-				theFem->write(BUS_RAW_REG, WIDTH_LONG, address, *payloadPtr);
-			}
-			catch (FemClientException& e)
+			switch (id)
 			{
-				std::cerr << "Exception caught during femSetInt: " << e.what() << std::endl;
-				rc = translateFemErrorCode(e.which());
+
+			case FEM_OP_NUMFRAMESTOACQUIRE:
+
+				theFem->setNumFrames((unsigned int)*value);
+				break;
+
+			case FEM_OP_ACQUISITIONTIME:
+
+				theFem->setAcquisitionTime((unsigned int)*value);
+				break;
+
+			case FEM_OP_ACQUISITIONPERIOD:
+
+				theFem->setAcquisitionPeriod((unsigned int)*value);
+				break;
+
+			case FEM_OP_VDD_ON_OFF:
+
+				theFem->setFrontEndEnable((unsigned int)*value);
+				break;
+
+			case FEM_OP_DAC_IN_TO_MEDIPIX:
+
+				theFem->frontEndDacInWrite(chipId, (unsigned int)*value);
+				break;
+
+			default:
+				{
+					// TODO: remove this temporary hack of the address from chip ID and config ID
+					unsigned int address = 8000*chipId + id;
+
+					// Build a payload array from the parameters passed
+					std::vector<u32> payload(size);
+					for (unsigned int i = 0; i < (unsigned int)size; i++) {
+						payload[i] = *(value + i);
+					}
+					std::vector<u8>* payloadPtr = (std::vector<u8>*)&payload;
+
+					// Issue the write transaction
+					theFem->write(BUS_RAW_REG, WIDTH_LONG, address, *payloadPtr);
+				}
+				break;
 			}
 		}
-		break;
+		catch (FemClientException& e)
+		{
+			std::cerr << "Exception caught during femSetInt: " << e.what() << std::endl;
+			rc = translateFemErrorCode(e.which());
+		}
 	}
-
-
 	return rc;
 }
 
@@ -123,30 +140,66 @@ int femSetShort(void* femHandle, int chipId, int id, std::size_t size, short* va
 	return rc;
 }
 
+int femSetFloat(void* femHandle, int chipId, int id, std::size_t size, float* value)
+{
+	int rc = FEM_RTN_OK;
+
+	return rc;
+}
+
 int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
 {
 	int rc = FEM_RTN_OK;
 
-	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
-	// TODO: remove this temporary hack of the address from chip ID and config ID
-	unsigned int address = 8000*chipId + id;
-
-	// Perform the read operation, trapping any exceptions that occur
-	try
+	if ((chipId < 0) || (chipId >= (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
-		std::vector<u8> readResult = theFem->read(BUS_RAW_REG, WIDTH_LONG, address, size);
-
-		// Convert read byte vector into u32 and unpack into result array
-		std::vector<u32>* longResult = (std::vector<u32>*)&readResult;
-		for (unsigned int i = 0; i < size; i++) {
-			*(value + i) = (*longResult)[i];
-		}
+		rc = FEM_RTN_ILLEGALCHIP;
 	}
-	catch (FemClientException& e)
+	else
 	{
-		std::cerr << "Exception caught during femGetInt: " << e.what() << std::endl;
-		rc = translateFemErrorCode(e.which());
+		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+
+		try
+		{
+			switch (id)
+			{
+
+			case FEM_OP_P1V5_AVDD_1_POK:
+				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD1);
+				break;
+
+			case FEM_OP_P1V5_AVDD_2_POK:
+				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD2);
+				break;
+
+			case FEM_OP_P1V5_AVDD_3_POK:
+				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD3);
+				break;
+
+			case FEM_OP_P1V5_AVDD_4_POK:
+				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD4);
+				break;
+
+			case FEM_OP_P1V5_VDD_1_POK:
+				*value = theFem->frontEndSupplyStatusRead(frontEndVDD);
+				break;
+
+			case FEM_OP_P2V5_DVDD_1_POK:
+				*value = theFem->frontEndSupplyStatusRead(frontEndDVDD);
+				break;
+
+			default:
+				rc = FEM_RTN_UNKNOWNOPID;
+				break;
+
+			}
+		}
+		catch (FemClientException& e)
+		{
+			std::cerr << "Exception caught during femGetShort: " << e.what() << std::endl;
+			rc = translateFemErrorCode(e.which());
+		}
+
 	}
 
 	return rc;
@@ -156,28 +209,143 @@ int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value)
 {
 	int rc = FEM_RTN_OK;
 
-	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
-	// TODO: remove this temporary hack of the address from chip ID and config ID
-	unsigned int address = 8000*chipId + id;
-
-	// Perform the read operation, trapping any exceptions that occur
-	try
+	if ((chipId < 0) || (chipId >= (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
-		std::vector<u8> readResult = theFem->read(BUS_RAW_REG, WIDTH_WORD, address, size);
+		rc = FEM_RTN_ILLEGALCHIP;
+	}
+	else
+	{
+		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
-		// Convert read byte vector into u16 and unpack into result array
-		std::vector<u16>* shortResult = (std::vector<u16>*)&readResult;
-		for (unsigned int i = 0; i < size; i++) {
-			*(value + i) = (*shortResult)[i];
+		try
+		{
+			switch (id)
+			{
+
+				*value = (short) id & 0x1;
+				break;
+
+			default:
+				rc = FEM_RTN_UNKNOWNOPID;
+				break;
+
+			}
 		}
-	}
-	catch (FemClientException& e)
-	{
-		std::cerr << "Exception caught during femGetShort: " << e.what() << std::endl;
-		rc = translateFemErrorCode(e.which());
+		catch (FemClientException& e)
+		{
+			std::cerr << "Exception caught during femGetShort: " << e.what() << std::endl;
+			rc = translateFemErrorCode(e.which());
+		}
+
 	}
 
+//	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+//
+//	// TODO: remove this temporary hack of the address from chip ID and config ID
+//	unsigned int address = 8000*chipId + id;
+//
+//	// Perform the read operation, trapping any exceptions that occur
+//	try
+//	{
+//		std::vector<u8> readResult = theFem->read(BUS_RAW_REG, WIDTH_WORD, address, size);
+//
+//		// Convert read byte vector into u16 and unpack into result array
+//		std::vector<u16>* shortResult = (std::vector<u16>*)&readResult;
+//		for (unsigned int i = 0; i < size; i++) {
+//			*(value + i) = (*shortResult)[i];
+//		}
+//	}
+//	catch (FemClientException& e)
+//	{
+//		std::cerr << "Exception caught during femGetShort: " << e.what() << std::endl;
+//		rc = translateFemErrorCode(e.which());
+//	}
+
+	return rc;
+}
+
+int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
+{
+
+	int rc = FEM_RTN_OK;
+
+	if ((chipId < 0) || (chipId >= (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
+	{
+		rc = FEM_RTN_ILLEGALCHIP;
+	}
+	else
+	{
+		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+
+		try
+		{
+			switch(id)
+			{
+
+			case FEM_OP_REMOTE_DIODE_TEMP:
+
+				if (size == 1)
+				{
+					*value = theFem->tempSensorRead(femFpgaTemp);
+				}
+				else {
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
+			case FEM_OP_LOCAL_TEMP:
+				if (size == 1)
+				{
+					*value = theFem->tempSensorRead(femBoardTemp);
+				}
+				else {
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
+			case FEM_OP_MOLY_TEMPERATURE:
+				if (size == 1)
+				{
+					*value = theFem->frontEndTemperatureRead();
+				}
+				else {
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
+			case FEM_OP_MOLY_HUMIDITY:
+				if (size == 1)
+				{
+					*value = theFem->frontEndHumidityRead();
+				}
+				else {
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
+			case FEM_OP_DAC_OUT_FROM_MEDIPIX:
+				if (size == 1)
+				{
+					*value = theFem->frontEndDacOutRead(chipId);
+				}
+				else
+				{
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
+			default:
+				rc = FEM_RTN_UNKNOWNOPID;
+				break;
+			}
+		}
+		catch (FemClientException& e)
+		{
+			std::cerr << "Exception caught during femGetFloat: " << e.what() << std::endl;
+			rc = translateFemErrorCode(e.which());
+		}
+
+	}
 	return rc;
 }
 

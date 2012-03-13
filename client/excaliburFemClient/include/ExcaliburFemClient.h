@@ -13,6 +13,16 @@
 #include <FemDataReceiver.h>
 #include <list>
 
+typedef enum {
+	frontEndEnable = 0,
+	frontEndAVDD1  = 2,
+	frontEndAVDD2  = 3,
+	frontEndAVDD3  = 4,
+	frontEndAVDD4  = 5,
+	frontEndVDD    = 6,
+	frontEndDVDD   = 7
+} excaliburFrontEndSupply;
+
 class ExcaliburFemClient: public FemClient {
 public:
 	ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCallbacks,
@@ -30,13 +40,29 @@ public:
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
 
+	void setFrontEndEnable(unsigned int aVal);
+
+	double frontEndTemperatureRead(void);
+	double frontEndHumidityRead(void);
+	double frontEndDacOutRead(unsigned int aChipId);
+	int    frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply);
+	void   frontEndDacInWrite(unsigned int aChipId, unsigned int aDacValue);
+
 private:
+
+	u16 frontEndSht21Read(u8 cmdByte);
+	u16 frontEndAD7994Read(unsigned int device, unsigned int aChan);
+	u8 frontEndPCF8574Read(void);
+	void frontEndPCF8574Write(unsigned int aVal);
+	void frontEndAD5625Write(unsigned int aDevice, unsigned int aChan, unsigned int aVal);
+
 	FemDataReceiver       mFemDataReceiver;
 	void*                 mCtlHandle;
 	const CtlCallbacks*   mCallbacks;
 	const CtlConfig*      mConfig;
 
 	std::list<CtlFrame*> mFrameQueue;
+
 };
 
 #endif /* EXCALIBURFEMCLIENT_H_ */

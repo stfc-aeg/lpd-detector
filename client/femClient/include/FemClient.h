@@ -31,8 +31,15 @@ typedef enum
 	femClientMissingAck,                ///< Transaction command was not acknowledged in reponse
 	femClientSendMismatch,              ///< Mismatch in length of send operation
 	femClientReadMismatch,              ///< Mismatch in requested versus received access in read transaction
-	femClientWriteMismatch              ///< Mismatch in requested versus acknowledged access in write transaction
+	femClientWriteMismatch,             ///< Mismatch in requested versus acknowledged access in write transaction
+	femClientIllegalSensor,             ///< Illegal sensor specified in tempSensorRead call
 } FemClientErrorCode;
+
+typedef enum
+{
+	femBoardTemp = 0,
+	femFpgaTemp
+} FemTemperatureSensor;
 
 class FemClientException: public FemException
 {
@@ -61,6 +68,12 @@ public:
 
 	std::size_t send(FemTransaction aTrans);
 	FemTransaction receive(void);
+
+	std::vector<u8> i2cRead(unsigned int aAddress, unsigned int aLength);
+	u32 i2cWrite(unsigned int aAddress, std::vector<u8>&aValues);
+
+	// High-level FEM client functions, implemente int femClientHighLevel.cpp
+	double tempSensorRead(FemTemperatureSensor aSensor);
 
 	void runIoService(void); // test function
 

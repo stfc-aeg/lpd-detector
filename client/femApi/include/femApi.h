@@ -95,8 +95,10 @@ typedef struct CtlConfig
 void* femInitialise(void* ctlHandle, const CtlCallbacks* callBacks, const CtlConfig* config);
 int femSetInt(void* femHandle, int chipId, int id, size_t size, int* value);
 int femSetShort(void* femHandle, int chipId, int id, size_t size, short* value);
+int femSetFloat(void* femHandle, int chipId, int id, size_t size, double* value);
 int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value);
 int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value);
+int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value);
 int femCmd(void* femHandle, int chipId, int id);
 void femClose(void* femHandle);
 
@@ -159,6 +161,52 @@ void femClose(void* femHandle);
 #define FEM_OP_NUMFRAMESTOACQUIRE 4000
 #define FEM_OP_ACQUISITIONTIME 4001
 #define FEM_OP_ACQUISITIONPERIOD 4002
+#define FEM_OP_P5V_A_VMON 4003
+#define FEM_OP_P5V_B_VMON 4004
+#define FEM_OP_P5V_FEMO0_IMON 4005
+#define FEM_OP_P5V_FEMO1_IMON 4006
+#define FEM_OP_P5V_FEMO2_IMON 4007
+#define FEM_OP_P5V_FEMO3_IMON 4008
+#define FEM_OP_P5V_FEMO4_IMON 4009
+#define FEM_OP_P5V_FEMO5_IMON 4010
+#define FEM_OP_P48V_VMON 4011
+#define FEM_OP_P48V_IMON 4012
+#define FEM_OP_P5VSUP_VMON 4013
+#define FEM_OP_P5VSUP_IMON 4014
+#define FEM_OP_HUMIDITY_MON 4015
+#define FEM_OP_AIR_TEMP_MON 4016
+#define FEM_OP_COOLANT_TEMP_MON 4017
+#define FEM_OP_COOLANT_FLOW_MON 4018
+#define FEM_OP_P3V3_IMON 4019
+#define FEM_OP_P1V8_IMON_A 4020
+#define FEM_OP_BIAS_IMON 4021
+#define FEM_OP_P3V3_VMON 4022
+#define FEM_OP_P1V8_VMON_A 4023
+#define FEM_OP_BIAS_VMON 4024
+#define FEM_OP_P1V8_IMON_B 4025
+#define FEM_OP_P1V8_VMON_B 4026
+#define FEM_OP_COOLANT_TEMP_STATUS 4027
+#define FEM_OP_HUMIDITY_STATUS 4028
+#define FEM_OP_COOLANT_FLOW_STATUS 4029
+#define FEM_OP_AIR_TEMP_STATUS 4030
+#define FEM_OP_BIAS_ON_OFF 4031
+#define FEM_OP_LV_ON_OFF 4032
+#define FEM_OP_FAN_FAULT 4033
+#define FEM_OP_BIAS_LEVEL 4034
+#define FEM_OP_VDD_ON_OFF 4035
+#define FEM_OP_P1V5_AVDD_1_POK 4036
+#define FEM_OP_P1V5_AVDD_2_POK 4037
+#define FEM_OP_P1V5_AVDD_3_POK 4038
+#define FEM_OP_P1V5_AVDD_4_POK 4039
+#define FEM_OP_P1V5_VDD_1_POK 4040
+#define FEM_OP_P2V5_DVDD_1_POK 4041
+#define FEM_OP_DAC_IN_TO_MEDIPIX 4042
+#define FEM_OP_DAC_OUT_FROM_MEDIPIX 4043
+#define FEM_OP_MOLY_TEMPERATURE 4044
+#define FEM_OP_LOCAL_TEMP 4045
+#define FEM_OP_REMOTE_DIODE_TEMP 4046
+#define FEM_OP_MOLY_HUMIDITY 4047
+
 /* Ids 5000..5999 are signals */
 #define FEM_OP_ACQUISITIONCOMPLETE 5000
 

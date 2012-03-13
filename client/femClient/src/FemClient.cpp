@@ -126,6 +126,7 @@ std::vector<u8> FemClient::read(unsigned int aBus, unsigned int aWidth, unsigned
 	u32 responseReadLen = (u32)(readPayload[0]);
 	if (responseReadLen != aLength)
 	{
+		std::cout << response << std::endl;
 		std::ostringstream msg;
 		msg << "Length mismatch when reading: requested " << aLength << " got " << responseReadLen;
 		throw FemClientException(femClientReadMismatch, msg.str());
@@ -490,3 +491,5 @@ void FemClient::runIoService(void)
 {
 	mIoService.run();
 }
+
+
