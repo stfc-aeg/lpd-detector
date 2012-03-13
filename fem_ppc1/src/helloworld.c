@@ -166,25 +166,27 @@ int main()
 
 						if (numRxTop !=0 )
 						{
+							print("[INFO ] Got top ASIC RX, ");
 							status = validateBuffer(pRxTopAsicRing, pTopAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
 							else
 							{
-								print("[ERROR] validateBuffer failed on top ASIC BD!\r\n");
+								print("but validateBuffer failed!\r\n");
 							}
 						}
 
 						if (numRxBot != 0 )
 						{
+							print("[INFO ] Got bot ASIC RX, ");
 							status = validateBuffer(pRxBotAsicRing, pBotAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
 							else
 							{
-								print("[ERROR] validateBuffer failed on bottom ASIC BD!\r\n");
+								print("but validateBuffer failed!\r\n");
 							}
 						}
 
@@ -582,11 +584,11 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts)
 {
 	u32 sts;
-	//u32 addr;
+	u32 addr;
 	int status;
 
 	sts = XLlDma_BdGetStsCtrl(pBd);
-	//addr = XLlDma_BdGetBufAddr(pBd);
+	addr = XLlDma_BdGetBufAddr(pBd);
 
 	status = XLlDma_BdRingFree(pRing, 1, pBd);
 	if (status!=XST_SUCCESS)
@@ -602,6 +604,9 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts)
 		printf("[ERROR] STS/CTRL field for bottom ASIC RX did not show successful completion!  STS/CTRL=0x%08x\r\n", (unsigned)sts);
 		return XST_FAILURE;
 	}
+
+	// DEBUGGING
+	printf("OK!  Addr=0x%08x, sts/ctrl=0x%08x\r\n", (unsigned)addr, (unsigned)sts);
 
 	return XST_SUCCESS;
 }
