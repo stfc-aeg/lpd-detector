@@ -86,8 +86,11 @@ int main()
     print("[INFO ] FEM PPC1 is alive!\r\n");
 
     int status;
+
     u32 mailboxBuffer[3] =	{0,0,0};
+
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
+
     XLlDma_BdRing *pRxTopAsicRing = &XLlDma_GetRxRing(&dmaAsicTop);
     XLlDma_BdRing *pRxBotAsicRing = &XLlDma_GetRxRing(&dmaAsicBot);
     XLlDma_BdRing *pTxTenGigRing = &XLlDma_GetTxRing(&dmaTenGig);
@@ -134,7 +137,19 @@ int main()
     	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2]);
 
     	// TODO: Move this outside this loop, only here as a dirty hack to get the thing tested...
-        configureBds(pTxTenGigRing, pRxTopAsicRing, pRxBotAsicRing, mailboxBuffer[1], mailboxBuffer[2]);
+        status = configureBds(pTxTenGigRing, pRxTopAsicRing, pRxBotAsicRing, mailboxBuffer[1], mailboxBuffer[2]);
+        if (status==XST_SUCCESS)
+        {
+        	// All OK, update status struct with buffer details
+        	pStatusBlock->bufferCnt = mailboxBuffer[2];
+        	pStatusBlock->bufferSize = mailboxBuffer[1];
+        }
+        else
+        {
+        	printf("[ERROR] An error occured configuring BDs!  Error code %d\r\n", status);
+        	// Fatal error :(
+        	return 0;
+        }
 
     	switch (mailboxBuffer[0])
     	{
@@ -210,19 +225,21 @@ int main()
 						// New code, use this for developing RX
 						if (totalRx==2)
 						{
+							pStatusBlock->totalRecv++;
+
 							// Pretend here that we sent to TX!
 							print("[DEBUG] Not sending to TX, but pretending we did...\r\n");
+							pStatusBlock->totalSent++;
 
-							// TODO: Check return codes!
 							status = recycleBuffer(pRxTopAsicRing, pTopAsicBd);
+							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for top ASIC!  Error code = %d\r\n", status); }
 							status = recycleBuffer(pRxBotAsicRing, pBotAsicBd);
+							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for bottom ASIC!  Error code = %d\r\n", status); }
 
 							// All finished, flag complete
 							done=1;
 						}
 
-						// This code is the template for checking TX status and then freeing it's BD.
-						// Note it will need sts/ctrl resetting and then ToHw() as for RXes...
 						/*
 						// Verify completion of TX packet
 						print("[DEBUG] Waiting for DMA engine response for TX...\r\n");
@@ -237,6 +254,7 @@ int main()
 						{
 							print("[ERROR] validateBuffer failed on tengig BD!\r\n");
 						}
+						// Do recycleBuffer here
 						*/
 
 						// Check if there are any pending mailbox messages
@@ -399,7 +417,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return XST_FAILURE;
 	}
 
-	printf("[DEBUG] Requested %d buffers of 2 x 0x%08x bytes...\r\n", (unsigned)totalNumSegments, (unsigned)segmentSz);
+	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)totalNumSegments, (unsigned)segmentSz);
 
 
 
@@ -487,13 +505,40 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_Bd *pBotFirstBd = pBotRXBd;
 	XLlDma_Bd *pTenGigFirstBd = pTXBd;
 
+	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-=-=-=-
 	// TODO: Fix this dirty hack!
 	// Again these addresses can cause the DMA engine to misbehave!  e.g.:
 	// 0x8000000, 0x4000000 = OK! (as is 0)
 	// 0x800000,  0x400000  = FAIL (first RX only gets bottomASIC, second topASIC, then repeats :( )
+
+	// Update 13-Mar-12, MT47
+	/*
+	 * Seems to be dependent on *both* addresses, e.g. 0x0040 0000 & 0x0080 0000 = error, but 0x1000 0000 & 0x0080 0000 = OK!
+	 *
+	 * More importantly, it seems that just one *good* address will stop a *bad* address from buggering things up.....
+	 *
+	 * Also, is it just the first BD that affects the DMA engine?  As once it starts OK there is no problem at n+0x18000....
+	 */
+
+	// DDR2 address range:  0x0000 0000 to 0x3FFF FFFF
+
+	/* GOOD ADDRESSES:
+	 * 0x0000 0000
+	 * 0x0400 0000
+	 * 0x0800 0000
+	 * 0x1000 0000 (w/ anything?)
+	 * 0x2000 0000
+	 */
+
+	/* BAD ADDRESSES:
+	 * 0x0040 0000 / 0x0080 0000
+	 */
+	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-=-=-=-
+
 	u32 currentAddr = 0;
-	u32 topAsicBufferAddress = 0x4000000;
-	u32 botAsicBufferAddress = 0x8000000;
+	//                         0xHHHHHHHH
+	u32 topAsicBufferAddress = 0x0000FACE;
+	u32 botAsicBufferAddress = 0x20000000;
 
 	// RX rings
 	for (i=0; i<totalNumSegments; i++)
