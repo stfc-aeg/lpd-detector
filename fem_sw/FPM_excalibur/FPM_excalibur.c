@@ -17,7 +17,21 @@ int fpmInitHardware()
 	DBGOUT("Personality Module: EXCALIBUR\r\n");
 	DBGOUT("************************************\r\n\r\n");
 
-	return XST_SUCCESS;
+	int status;
+
+	// Reset ASIC block (bit 22) and ASICs (bit 23), then clear those bits
+	DBGOUT("fpmInitHardware: Resetting ASIC control block / ASICs\r\n");
+	status = writeRdma(0x48000001, 0xC00000);
+	if (status!=XST_SUCCESS)
+	{
+		//return status;
+		// Don't skip reset as if the command DID work we leave ASICs held in reset
+		// which draws a lot of current...
+	}
+
+	status = writeRdma(0x48000001, 0x0);
+
+	return status;
 }
 
 /*

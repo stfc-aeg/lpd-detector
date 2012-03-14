@@ -9,5 +9,6 @@
 #define FPM_EXCALIBUR_H_
 
 #include "personality.h"
+#include "rdma.h"
 
 #endif /* FPM_EXCALIBUR_H_ */
