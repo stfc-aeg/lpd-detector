@@ -77,7 +77,8 @@ enum protocol_bus_type
 	BUS_I2C         = 2,
 	BUS_RAW_REG     = 3,	//! V5P memory-mapped peripherals
 	BUS_RDMA        = 4,	//! Downstream configuration
-	BUS_DIRECT		= 5		//! Direct memory write
+	BUS_SPI			= 5,	//! SPI bus
+	BUS_DIRECT		= 6		//! Direct memory write
 };
 
 // Size of data
