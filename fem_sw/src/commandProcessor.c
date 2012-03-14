@@ -612,7 +612,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	// TODO: Parameterise these
 	u32 bufferSegmentSize = 0x18000;
-	u32 bufferDepth = 8;
+	u32 bufferDepth = 0;
 
 	int status;
 

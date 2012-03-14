@@ -66,7 +66,7 @@ typedef struct
 // TODO: Remove armTenGigTX
 int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len);
 // TODO: Change function footprint once BdRing array is in use!
-int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 segmentSz, u32 segmentCnt);
+int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 bufferSz, u32 bufferCnt);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts);
 int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd);
 
@@ -377,45 +377,50 @@ int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int l
  *
  */
 // TODO: Remove pointers to BdRings, pass array or struct of all BDRings instead?
-int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 segmentSz, u32 segmentCnt)
+int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 bufferSz, u32 bufferCnt)
 {
 
 	unsigned status;
-	u32 totalNumBuffers = 0;
+	u32 totalNumBuffers = 0;				// Maximum number of buffers we can allocate
 	u32 bankSize = DDR2_SZ / 2;				// We have 2 DDR2 'banks', one for each I/O Spartan
 
+	u32 maxPossibleBds = (LL_BD_SZ / XLLDMA_BD_MINIMUM_ALIGNMENT) / 4;
+
 	// Check DDR2 is large enough for requested number/size of segments
-	if (segmentCnt==0)
+	if (bufferCnt==0)
 	{
 		// If segmentCnt==0 we allocate as many segments as will fit in a bank
-		totalNumBuffers = bankSize / segmentSz;
+		totalNumBuffers = bankSize / bufferSz;
 	}
 	else
 	{
 		// Otherwise allocate the requested number of segments
-		if ((segmentSz * segmentCnt) <= bankSize) {
-			totalNumBuffers = segmentCnt;
+		if ((bufferSz * bufferCnt) <= bankSize) {
+			totalNumBuffers = bufferCnt;
 		}
 		else
 		{
 			// Not enough space to allocate that many segments
-			printf("[ERROR] Cannot allocate %d x 0x%08x segments, exceeds DDR2 capacity!\r\n", (int)segmentCnt, (unsigned)segmentSz);
+			printf("[ERROR] Cannot allocate %d x 0x%08x segments, exceeds DDR2 capacity!\r\n", (int)totalNumBuffers, (unsigned)bufferSz);
 			return XST_FAILURE;
 		}
 	}
 
-
-	// Check there is enough space for BDs for requested number/size of segments
+	// Now check there is enough space to store the BDs for that amount of buffers
 	if ( (totalNumBuffers * 4 * XLLDMA_BD_MINIMUM_ALIGNMENT) > LL_BD_SZ)		// 4 because we need 2x RX and 2x TX BDs per 'read'
 	{
-		printf("[ERROR] Cannot allocate %d x x 4 x 0x%08x buffers, exceeds BD storage capacity!\r\n", (int)segmentCnt, (unsigned)segmentSz);
-		return XST_FAILURE;
+		printf("[INFO ] Cannot allocate %d x 4 x 0x%08x buffers, exceeds BD storage capacity...\r\n", (int)bufferCnt, (unsigned)bufferSz);
+
+		// Reduce buffer allocation to fit BD storage space
+		printf("[INFO ] Reducing buffer depth to %d to fit BDs!\r\n", (int)maxPossibleBds);
+		totalNumBuffers = maxPossibleBds;
 	}
 
-	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)totalNumBuffers, (unsigned)segmentSz);
+	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)totalNumBuffers, (unsigned)bufferSz);
 
 
 	// Create BD rings of appropriate size
+	// TODO: Should we have an assert to make sure we don't exceed our allocated space (doing so will overwrite PPC2 code!)
 	u32 bdChunkSize =			XLLDMA_BD_MINIMUM_ALIGNMENT * totalNumBuffers;			// Total space required for all BDs for a given channel, we'll call that a chunk
 	u32 topAsicRXBdOffset =		LL_BD_BADDR;
 	u32 botAsicRXBdOffset =		topAsicRXBdOffset + bdChunkSize;
@@ -462,7 +467,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 	//printf("[DEBUG] Top ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
-	XLlDma_BdSetLength(*pTopRXBd, segmentSz);
+	XLlDma_BdSetLength(*pTopRXBd, bufferSz);
 	XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
 
 	status = XLlDma_BdRingAlloc(pRingAsicBot, totalNumBuffers, &pBotRXBd);
@@ -471,7 +476,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 	//printf("[DEBUG] Bottom ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
-	XLlDma_BdSetLength(*pBotRXBd, segmentSz);
+	XLlDma_BdSetLength(*pBotRXBd, bufferSz);
 	XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
 
 	status = XLlDma_BdRingAlloc(pRingTenGig, totalNumBuffers, &pTXBd);
@@ -480,7 +485,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 	//printf("[DEBUG] TenGig TX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_TX_BD, (unsigned)segmentSz);
-	XLlDma_BdSetLength(*pTXBd, segmentSz);
+	XLlDma_BdSetLength(*pTXBd, bufferSz);
 	XLlDma_BdSetStsCtrl(*pTXBd, LL_STSCTRL_TX_BD);
 
 
@@ -502,12 +507,12 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		// Configure DMA addresses
 		XLlDma_BdSetBufAddr(*pTopRXBd, topAsicBufferAddress + currentOffset);
 		XLlDma_BdSetBufAddr(*pBotRXBd, botAsicBufferAddress + currentOffset);
-		currentOffset += segmentSz;
+		currentOffset += bufferSz;
 
 		// Set length / STS/CTRL fields
 		// TODO: Store BD index in STS/CTRL field, application data (at present this is overwritten by ASIC/Spartan??)
-		XLlDma_BdSetLength(*pTopRXBd, segmentSz);
-		XLlDma_BdSetLength(*pBotRXBd, segmentSz);
+		XLlDma_BdSetLength(*pTopRXBd, bufferSz);
+		XLlDma_BdSetLength(*pBotRXBd, bufferSz);
 		XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
 		XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
 
@@ -527,7 +532,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		XLlDma_BdSetBufAddr(*pTenGigFirstBd, botAsicBufferAddress + currentOffset);
 		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
-		currentOffset += segmentSz;
+		currentOffset += bufferSz;
 	}
 
 
