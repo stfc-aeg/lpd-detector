@@ -123,7 +123,7 @@ void commandProcessorThread()
 					else
 					{
 
-						DBGOUT("CmdProc: Received new connection! (Client #%d), fd is %d\r\n", numConnectedClients+1, newFd);
+						//DBGOUT("CmdProc: Received new connection! (Client #%d), fd is %d\r\n", numConnectedClients+1, newFd);
 
 						// Check if we can accept more client connections
 						if (numConnectedClients == NET_MAX_CLIENTS)
@@ -531,7 +531,7 @@ void commandProcessorThread()
 void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients)
 {
 
-	DBGOUT("DiscClient: Client #%d disconnected.\r\n", *pIndex);
+	//DBGOUT("DiscClient: Client #%d disconnected.\r\n", *pIndex);
 	lwip_close(*pIndex);
 	FD_CLR(*pIndex, pFdSet);
 	(*pNumConnectedClients)--;

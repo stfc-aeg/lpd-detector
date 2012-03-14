@@ -177,7 +177,7 @@ int main()
 
 						if (numRxTop !=0 )
 						{
-							print("[INFO ] Got top ASIC RX, ");
+							//print("[INFO ] Got top ASIC RX, ");
 							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
@@ -190,7 +190,7 @@ int main()
 
 						if (numRxBot != 0 )
 						{
-							print("[INFO ] Got bot ASIC RX, ");
+							//print("[INFO ] Got bot ASIC RX, ");
 							status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
@@ -604,7 +604,7 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts)
 	}
 
 	// DEBUGGING
-	printf("OK!  Addr=0x%08x, sts/ctrl=0x%08x\r\n", (unsigned)addr, (unsigned)sts);
+	//printf("OK!  Addr=0x%08x, sts/ctrl=0x%08x\r\n", (unsigned)addr, (unsigned)sts);
 
 	return XST_SUCCESS;
 }
