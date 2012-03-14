@@ -6,11 +6,11 @@
  */
 
 // Todo list, in order of priority
-// TODO: Store BDRings in array to remove duplicated code
 // TODO: Abstract armAsicRX, armTenGigTX to a more generic function
 // TODO: Complete event loop with mailbox/DMA
 // TODO: Implement shared bram status flags
 // TODO: Implement pixmem upload
+// TODO: Rename pixmem to something more generic?
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -43,13 +43,13 @@
 #define BRAM_BADDR					XPAR_SHARED_BRAM_IF_CNTLR_PPC_1_BASEADDR
 
 // Ring indexes
-#define BD_RING_TOP_ASIC			0
-#define BD_RING_BOT_ASIC			1
-#define BD_RING_TENGIG				2
-#define BD_RING_PIXMEM				3
+#define BD_RING_TOP_ASIC			0								//! Top I/O Spartan / ASIC connection
+#define BD_RING_BOT_ASIC			1								//! Bottom I/O Spartan / ASIC connection
+#define BD_RING_TENGIG				2								//! 10GBe
+#define BD_RING_PIXMEM				3								//!
 
 //! Data structure to store in shared BRAM for status information
-struct sharedStatusBlock
+typedef struct
 {
 	u32 bufferCnt;		//! Number of buffers allocated
 	u32 bufferSize;		//! Size of buffers
@@ -58,7 +58,7 @@ struct sharedStatusBlock
 	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
 	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
-};
+} sharedStatusBlock;
 
 
 
@@ -91,17 +91,13 @@ int main()
 
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
 
-    XLlDma_BdRing *pRxTopAsicRing = &XLlDma_GetRxRing(&dmaAsicTop);
-    XLlDma_BdRing *pRxBotAsicRing = &XLlDma_GetRxRing(&dmaAsicBot);
-    XLlDma_BdRing *pTxTenGigRing = &XLlDma_GetTxRing(&dmaTenGig);
-
     // New BD ring array, replace old pRx
     XLlDma_BdRing *pBdRings[4];
     pBdRings[BD_RING_TOP_ASIC]	= &XLlDma_GetRxRing(&dmaAsicTop);
     pBdRings[BD_RING_BOT_ASIC]	= &XLlDma_GetRxRing(&dmaAsicBot);
     pBdRings[BD_RING_TENGIG]	= &XLlDma_GetRxRing(&dmaTenGig);
     pBdRings[BD_RING_PIXMEM]	= &XLlDma_GetRxRing(&dmaPixMem);
-    struct sharedStatusBlock *pStatusBlock = BRAM_BADDR;
+    sharedStatusBlock* pStatusBlock = (sharedStatusBlock*)BRAM_BADDR;
 
     // Initialise DMA engines
     XLlDma_Initialize(&dmaAsicTop, LL_DMA_BASE_ASIC_TOP);
@@ -124,7 +120,6 @@ int main()
     }
     print("[INFO ] Mailbox initialised.\r\n");
 
-    u32 topAddr, botAddr;
 
     // Enter mailbox-driven outer loop
     while(1)
@@ -137,7 +132,8 @@ int main()
     	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2]);
 
     	// TODO: Move this outside this loop, only here as a dirty hack to get the thing tested...
-        status = configureBds(pTxTenGigRing, pRxTopAsicRing, pRxBotAsicRing, mailboxBuffer[1], mailboxBuffer[2]);
+        status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], mailboxBuffer[1], mailboxBuffer[2]);
+
         if (status==XST_SUCCESS)
         {
         	// All OK, update status struct with buffer details
@@ -176,13 +172,13 @@ int main()
 					{
 
 						// See if DMA engine has completed receive from either Spartan
-						numRxTop = XLlDma_BdRingFromHw(pRxTopAsicRing, 1, &pTopAsicBd);
-						numRxBot = XLlDma_BdRingFromHw(pRxBotAsicRing, 1, &pBotAsicBd);
+						numRxTop = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
+						numRxBot = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
 
 						if (numRxTop !=0 )
 						{
 							print("[INFO ] Got top ASIC RX, ");
-							status = validateBuffer(pRxTopAsicRing, pTopAsicBd, LL_STSCTRL_RX_OK);
+							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
@@ -195,7 +191,7 @@ int main()
 						if (numRxBot != 0 )
 						{
 							print("[INFO ] Got bot ASIC RX, ");
-							status = validateBuffer(pRxBotAsicRing, pBotAsicBd, LL_STSCTRL_RX_OK);
+							status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
@@ -231,9 +227,9 @@ int main()
 							print("[DEBUG] Not sending to TX, but pretending we did...\r\n");
 							pStatusBlock->totalSent++;
 
-							status = recycleBuffer(pRxTopAsicRing, pTopAsicBd);
+							status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd);
 							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for top ASIC!  Error code = %d\r\n", status); }
-							status = recycleBuffer(pRxBotAsicRing, pBotAsicBd);
+							status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd);
 							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for bottom ASIC!  Error code = %d\r\n", status); }
 
 							// All finished, flag complete
@@ -385,50 +381,42 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 {
 
 	unsigned status;
-	u32 totalSegmentSz = segmentSz*2;		// Each DDR segment is actually segmentSz*2 (because we have 2 I/O spartans)
-	u32 totalNumSegments = 0;
+	u32 totalNumBuffers = 0;
+	u32 bankSize = DDR2_SZ / 2;				// We have 2 DDR2 'banks', one for each I/O Spartan
 
 	// Check DDR2 is large enough for requested number/size of segments
 	if (segmentCnt==0)
 	{
-		// If segmentCnt==0 we allocate as many segments as possible
-		totalNumSegments = DDR2_SZ / totalSegmentSz;
+		// If segmentCnt==0 we allocate as many segments as will fit in a bank
+		totalNumBuffers = bankSize / segmentSz;
 	}
 	else
 	{
 		// Otherwise allocate the requested number of segments
-		if ((totalSegmentSz * segmentCnt) <= DDR2_SZ) {
-			totalNumSegments = segmentCnt;
+		if ((segmentSz * segmentCnt) <= bankSize) {
+			totalNumBuffers = segmentCnt;
 		}
 		else
 		{
 			// Not enough space to allocate that many segments
-			printf("[ERROR] Cannot allocate %d x 0x%08x segments, exceeds DDR2 capacity!\r\n", (int)segmentCnt, (unsigned)totalSegmentSz);
+			printf("[ERROR] Cannot allocate %d x 0x%08x segments, exceeds DDR2 capacity!\r\n", (int)segmentCnt, (unsigned)segmentSz);
 			return XST_FAILURE;
 		}
 	}
 
 
-
 	// Check there is enough space for BDs for requested number/size of segments
-	if ( (totalNumSegments * 4 * XLLDMA_BD_MINIMUM_ALIGNMENT) > LL_BD_SZ)		// 4 because we need 2x RX and 2x TX BDs per 'read'
+	if ( (totalNumBuffers * 4 * XLLDMA_BD_MINIMUM_ALIGNMENT) > LL_BD_SZ)		// 4 because we need 2x RX and 2x TX BDs per 'read'
 	{
-		printf("[ERROR] Cannot allocate %d x x 4 x 0x%08x buffers, exceeds BD storage capacity!\r\n", (int)segmentCnt, (unsigned)totalSegmentSz);
+		printf("[ERROR] Cannot allocate %d x x 4 x 0x%08x buffers, exceeds BD storage capacity!\r\n", (int)segmentCnt, (unsigned)segmentSz);
 		return XST_FAILURE;
 	}
 
-	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)totalNumSegments, (unsigned)segmentSz);
-
+	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)totalNumBuffers, (unsigned)segmentSz);
 
 
 	// Create BD rings of appropriate size
-	/*
-	 * topAsicRXBd
-	 * botAsicRXBd
-	 * TXBd
-	 */
-	// TODO: Give these better names... (hell give ALL the bd stuff better names...)
-	u32 bdChunkSize =			XLLDMA_BD_MINIMUM_ALIGNMENT * totalNumSegments;			// Total space required for all BDs for a given channel
+	u32 bdChunkSize =			XLLDMA_BD_MINIMUM_ALIGNMENT * totalNumBuffers;			// Total space required for all BDs for a given channel, we'll call that a chunk
 	u32 topAsicRXBdOffset =		LL_BD_BADDR;
 	u32 botAsicRXBdOffset =		topAsicRXBdOffset + bdChunkSize;
 	u32 tenGigTXBdOffset =		botAsicRXBdOffset + bdChunkSize;
@@ -437,14 +425,14 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	printf("[INFO ] Bottom ASIC  0x%08x\r\n", (unsigned)botAsicRXBdOffset);
 	printf("[INFO ] TenGig       0x%08x\r\n", (unsigned)tenGigTXBdOffset);
 
-	status = XLlDma_BdRingCreate(pRingAsicTop, topAsicRXBdOffset, topAsicRXBdOffset, LL_DMA_ALIGNMENT, totalNumSegments);
+	status = XLlDma_BdRingCreate(pRingAsicTop, topAsicRXBdOffset, topAsicRXBdOffset, LL_DMA_ALIGNMENT, totalNumBuffers);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Can't create top ASIC RX BD ring!  Error code %d\r\n", status);
 		return status;
 	}
 
-	status = XLlDma_BdRingCreate(pRingAsicBot, botAsicRXBdOffset, botAsicRXBdOffset, LL_DMA_ALIGNMENT, totalNumSegments);
+	status = XLlDma_BdRingCreate(pRingAsicBot, botAsicRXBdOffset, botAsicRXBdOffset, LL_DMA_ALIGNMENT, totalNumBuffers);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Can't create bottom ASIC RX BD ring!  Error code %d\r\n", status);
@@ -452,15 +440,14 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	}
 
 	// Note the TX ring is double the length of the RX rings!
-	status = XLlDma_BdRingCreate(pRingTenGig, tenGigTXBdOffset, tenGigTXBdOffset, LL_DMA_ALIGNMENT, totalNumSegments*2);
+	status = XLlDma_BdRingCreate(pRingTenGig, tenGigTXBdOffset, tenGigTXBdOffset, LL_DMA_ALIGNMENT, totalNumBuffers*2);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Can't create 10GBE TX BD ring!  Error code %d\r\n", status);
 		return status;
 	}
 
-	printf("[INFO ] Created BD rings w/%d buffers each.\r\n", (int)totalNumSegments);
-
+	printf("[INFO ] Created BD rings w/%d buffers each.\r\n", (int)totalNumBuffers);
 
 
 	// Configure BDs in rings
@@ -469,7 +456,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_Bd *pTXBd;
 
 	// First configure a master BD for each ring
-	status = XLlDma_BdRingAlloc(pRingAsicTop, totalNumSegments, &pTopRXBd);
+	status = XLlDma_BdRingAlloc(pRingAsicTop, totalNumBuffers, &pTopRXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate top ASIC RX BD!\r\n");
 		return status;
@@ -478,7 +465,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_BdSetLength(*pTopRXBd, segmentSz);
 	XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
 
-	status = XLlDma_BdRingAlloc(pRingAsicBot, totalNumSegments, &pBotRXBd);
+	status = XLlDma_BdRingAlloc(pRingAsicBot, totalNumBuffers, &pBotRXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate bottom ASIC RX BD!\r\n");
 		return status;
@@ -487,7 +474,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_BdSetLength(*pBotRXBd, segmentSz);
 	XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
 
-	status = XLlDma_BdRingAlloc(pRingTenGig, totalNumSegments, &pTXBd);
+	status = XLlDma_BdRingAlloc(pRingTenGig, totalNumBuffers, &pTXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate tengig TX BD!\r\n");
 		return status;
@@ -497,67 +484,28 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_BdSetStsCtrl(*pTXBd, LL_STSCTRL_TX_BD);
 
 
-	// Update address field in every BD
-	int i=0;
-	//u32 currentAddr = DDR2_BADDR;
 	// Snapshot pointer to first BDs
 	XLlDma_Bd *pTopFirstBd = pTopRXBd;
 	XLlDma_Bd *pBotFirstBd = pBotRXBd;
 	XLlDma_Bd *pTenGigFirstBd = pTXBd;
 
-	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-=-=-=-
-	// TODO: Fix this dirty hack!
-	// Again these addresses can cause the DMA engine to misbehave!  e.g.:
-	// 0x8000000, 0x4000000 = OK! (as is 0)
-	// 0x800000,  0x400000  = FAIL (first RX only gets bottomASIC, second topASIC, then repeats :( )
-
-	// Update 13-Mar-12, MT47
-	/*
-	 * Seems to be dependent on *both* addresses, e.g. 0x0040 0000 & 0x0080 0000 = error, but 0x1000 0000 & 0x0080 0000 = OK!
-	 *
-	 * More importantly, it seems that just one *good* address will stop a *bad* address from buggering things up.....
-	 *
-	 * Also, is it just the first BD that affects the DMA engine?  As once it starts OK there is no problem at n+0x18000....
-	 */
-
-	// DDR2 address range:  0x0000 0000 to 0x3FFF FFFF
-
-	/* GOOD ADDRESSES:
-	 * 0x0000 0000
-	 * 0x0400 0000
-	 * 0x0800 0000
-	 * 0x1000 0000 (w/ anything?)
-	 * 0x2000 0000
-	 */
-
-	/* BAD ADDRESSES:
-	 * 0x0040 0000 / 0x0080 0000
-	 */
-	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-=-=-=-
-
-	u32 currentAddr = 0;
-	//                         0xHHHHHHHH
-	u32 topAsicBufferAddress = 0x0000FACE;
-	u32 botAsicBufferAddress = 0x20000000;
+	// Update address field in every BD
+	int i=0;
+	u32 currentOffset = 0;
+	u32 topAsicBufferAddress = DDR2_BADDR;
+	u32 botAsicBufferAddress = bankSize;
 
 	// RX rings
-	for (i=0; i<totalNumSegments; i++)
+	for (i=0; i<totalNumBuffers; i++)
 	{
 
-		// Dummy (testing) buffer allocation (each ASIC gets a memory chunk)
-		XLlDma_BdSetBufAddr(*pTopRXBd, topAsicBufferAddress + currentAddr);
-		XLlDma_BdSetBufAddr(*pBotRXBd, botAsicBufferAddress + currentAddr);
-		currentAddr += segmentSz;
+		// Configure DMA addresses
+		XLlDma_BdSetBufAddr(*pTopRXBd, topAsicBufferAddress + currentOffset);
+		XLlDma_BdSetBufAddr(*pBotRXBd, botAsicBufferAddress + currentOffset);
+		currentOffset += segmentSz;
 
-		// Proper buffer allocation
-		/*
-		XLlDma_BdSetBufAddr(*pTopRXBd, currentAddr);
-		currentAddr+=segmentSz;
-		XLlDma_BdSetBufAddr(*pBotRXBd, currentAddr);
-		currentAddr += segmentSz;
-		*/
-
-		// Because clone doesn't seem to work?
+		// Set length / STS/CTRL fields
+		// TODO: Store BD index in STS/CTRL field, application data (at present this is overwritten by ASIC/Spartan??)
 		XLlDma_BdSetLength(*pTopRXBd, segmentSz);
 		XLlDma_BdSetLength(*pBotRXBd, segmentSz);
 		XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
@@ -570,28 +518,28 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	}
 
 	// TX ring
-	currentAddr = 0;
-	for (i=0; i<(totalNumSegments*2); i++)
+	currentOffset = 0;
+	for (i=0; i<(totalNumBuffers*2); i++)
 	{
-		XLlDma_BdSetBufAddr(*pTenGigFirstBd, topAsicRXBdOffset + currentAddr);
+		XLlDma_BdSetBufAddr(*pTenGigFirstBd, topAsicBufferAddress + currentOffset);
 		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
-		XLlDma_BdSetBufAddr(*pTenGigFirstBd, botAsicRXBdOffset + currentAddr);
+		XLlDma_BdSetBufAddr(*pTenGigFirstBd, botAsicBufferAddress + currentOffset);
 		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
-		currentAddr += segmentSz;
+		currentOffset += segmentSz;
 	}
 
 
 
 	// Commit RX BDs to DMA engines
-	status = XLlDma_BdRingToHw(pRingAsicTop, totalNumSegments, pTopFirstBd);
+	status = XLlDma_BdRingToHw(pRingAsicTop, totalNumBuffers, pTopFirstBd);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Failed to send top ASIC RX to HW, error code %d!\r\n", status);
 		return status;
 	}
-	status = XLlDma_BdRingToHw(pRingAsicBot, totalNumSegments, pBotFirstBd);
+	status = XLlDma_BdRingToHw(pRingAsicBot, totalNumBuffers, pBotFirstBd);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Failed to send bottom ASIC RX to HW, error code %d!\r\n", status);
