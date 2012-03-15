@@ -75,7 +75,8 @@ enum protocol_bus_type
 	BUS_EEPROM      = 1,
 	BUS_I2C         = 2,
 	BUS_RAW_REG     = 3,	// V5P memory-mapped peripherals
-	BUS_RDMA        = 4		// Downstream configuration
+	BUS_RDMA        = 4,	// Downstream configuration
+	BUS_SPI         = 5
 };
 
 // Size of data

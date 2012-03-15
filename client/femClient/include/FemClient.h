@@ -69,10 +69,16 @@ public:
 	std::size_t send(FemTransaction aTrans);
 	FemTransaction receive(void);
 
+	// Bus-level transactions, implemented in femClientBusses.cpp
 	std::vector<u8> i2cRead(unsigned int aAddress, unsigned int aLength);
 	u32 i2cWrite(unsigned int aAddress, std::vector<u8>&aValues);
+	std::vector<u8> rdmaRead(unsigned int aAddress, unsigned int aLength);
+	u32 rdmaWrite(unsigned int aAddress, std::vector<u8>& aPayload);
+	void rdmaWrite(u32 address, u32 value);
+	u32 spiWrite(unsigned int aAddress, std::vector<u8>& aPayload);
+	std::vector<u8> spiRead(unsigned int aAddress, unsigned int aLength);
 
-	// High-level FEM client functions, implemente int femClientHighLevel.cpp
+	// High-level FEM client functions, implemented in femClientHighLevel.cpp
 	double tempSensorRead(FemTemperatureSensor aSensor);
 
 	void runIoService(void); // test function
