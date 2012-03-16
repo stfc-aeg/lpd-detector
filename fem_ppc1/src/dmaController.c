@@ -53,8 +53,13 @@
 #define ACQ_MODE_RX_ONLY			2
 #define ACQ_MODE_TX_ONLY			3
 #define ACQ_MODE_UPLOAD				4
+#define CMD_ACQ_CONFIG				1
+#define CMD_ACQ_START				2
+#define CMD_ACQ_STOP				3
+#define CMD_ACQ_STATUS				4
 
 //! Data structure to store in shared BRAM for status information
+// TODO: Store this in common header file!
 typedef struct
 {
 	u32 state;			//! Current mode?
@@ -137,53 +142,56 @@ int main()
     	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
 
-    	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     	// Blocking read of 5x 32bit word
     	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 20);
     	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, numAcq=%d, mode=%d\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2], (unsigned)mailboxBuffer[3], (unsigned)mailboxBuffer[4]);
 
-    	switch(mailboxBuffer[4])
-    	{
-    		case ACQ_MODE_NORMAL:
-    			status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], mailboxBuffer[1], mailboxBuffer[2]);
-    			break;
-    		case ACQ_MODE_RX_ONLY:
-    			print("[ERROR] ACQ mode unsupported!\r\n");
-    			status = XST_FAILURE;
-    			break;
-    		case ACQ_MODE_TX_ONLY:
-    			print("[ERROR] ACQ mode unsupported!\r\n");
-    			status = XST_FAILURE;
-    			break;
-    		case ACQ_MODE_UPLOAD:
-    			print("[ERROR] ACQ mode unsupported!\r\n");
-    			status = XST_FAILURE;
-    			break;
-    		default:
-    			printf("[ERROR] Unknown ACQ mode %d!\r\n", (int)mailboxBuffer[4]);
-    			break;
-    	}
-
-        if (status==XST_SUCCESS)
-        {
-        	// All OK, update status struct with buffer details
-        	pStatusBlock->bufferSize = mailboxBuffer[1];
-        	pStatusBlock->bufferCnt = mailboxBuffer[2];
-        	pStatusBlock->numAcq = mailboxBuffer[3];
-        	pStatusBlock->state = mailboxBuffer[4];
-        }
-        else
-        {
-        	printf("[ERROR] An error occured configuring BDs!  Error code %d\r\n", status);
-        	print("[ERROR] Terminating process...\r\n");
-        	return 0;
-        }
-        // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
     	switch (mailboxBuffer[0])
     	{
 
-			case 1:  // START_ACQUIRE
+			case CMD_ACQ_CONFIG:
+		    	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+		    	switch(mailboxBuffer[4])
+		    	{
+		    		case ACQ_MODE_NORMAL:
+		    			status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], mailboxBuffer[1], mailboxBuffer[2]);
+		    			break;
+		    		case ACQ_MODE_RX_ONLY:
+		    			print("[ERROR] ACQ mode unsupported!\r\n");
+		    			status = XST_FAILURE;
+		    			break;
+		    		case ACQ_MODE_TX_ONLY:
+		    			print("[ERROR] ACQ mode unsupported!\r\n");
+		    			status = XST_FAILURE;
+		    			break;
+		    		case ACQ_MODE_UPLOAD:
+		    			print("[ERROR] ACQ mode unsupported!\r\n");
+		    			status = XST_FAILURE;
+		    			break;
+		    		default:
+		    			printf("[ERROR] Unknown ACQ mode %d!\r\n", (int)mailboxBuffer[4]);
+		    			break;
+		    	}
+
+		        if (status==XST_SUCCESS)
+		        {
+		        	// All OK, update status struct with buffer details
+		        	pStatusBlock->bufferSize = mailboxBuffer[1];
+		        	pStatusBlock->bufferCnt = mailboxBuffer[2];
+		        	pStatusBlock->numAcq = mailboxBuffer[3];
+		        	pStatusBlock->state = mailboxBuffer[4];
+		        }
+		        else
+		        {
+		        	printf("[ERROR] An error occured configuring BDs!  Error code %d\r\n", status);
+		        	print("[ERROR] Terminating process...\r\n");
+		        	return 0;
+		        }
+		        // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+		        break;
+
+		    case CMD_ACQ_START:
+		    	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				printf("[INFO ] Entering acquire DMA event loop\r\n");
 				acquireRunning = 1;
 				while (acquireRunning)
@@ -288,12 +296,12 @@ int main()
 
 						// Check if there are any pending mailbox messages
 						u32 bytesRecvd = 0;
-						XMbox_Read(&mbox, &mailboxBuffer[0], 4, &bytesRecvd);
-						if (bytesRecvd == 4) {
+						XMbox_Read(&mbox, &mailboxBuffer[0], 20, &bytesRecvd);
+						if (bytesRecvd == 20) {
 							printf("[INFO ] Got message!  cmd=%d (0x%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0]);
 							switch (mailboxBuffer[0])
 							{
-							case 2: // STOP ACQUIRE
+							case CMD_ACQ_STOP: // STOP ACQUIRE
 								print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
 								done = 1;
 								acquireRunning = 0;
@@ -307,20 +315,21 @@ int main()
 					} // END while(done==0)
 
 				} // END while(acquireRunning)
-
+				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				break;
 
-			case 2:  // STOP_ACQUIRE
+			case CMD_ACQ_STOP:
+				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				printf("[INFO ] Not doing anything with stop acquire command.\r\n");
-				break;
-
-			case 3: // DO_UPLOAD
-				printf("[ERROR] Upload command not yet implemented.\r\n");
+				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				break;
 
 			default:
+				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				printf("[ERROR] Unrecognised mailbox command %ld\r\n", mailboxBuffer[0]);
+				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				break;
+
     	} // END switch(mailboxBuffer[0])
 
     }
