@@ -296,6 +296,7 @@ void commandProcessorThread()
 						{
 							// Header NOT valid
 							DBGOUT("CmdProc: Header received but is invalid.\r\n");
+							DUMPHDR(pState->pHdr);
 							pState->state = STATE_COMPLETE;
 						}
 
