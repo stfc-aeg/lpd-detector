@@ -12,7 +12,6 @@
 #define MAILBOX_H_
 
 int initMailbox(void);
-int dummySend(int cmd);
-int bufferConfigMsgSend(u32 cmd, u32 segment_sz, u32 segment_cnt);
+int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode);
 
 #endif /* MAILBOX_H_ */

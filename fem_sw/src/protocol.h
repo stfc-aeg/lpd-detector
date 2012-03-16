@@ -101,6 +101,7 @@ enum protocol_status
 	STATE_NACK        = 7
 };
 
+// TODO: Make common
 enum protocol_acq_command
 {
 	CMD_ACQ_UNSUPPORTED		= 0,
@@ -110,6 +111,7 @@ enum protocol_acq_command
 	CMD_ACQ_STATUS			= 4
 };
 
+// TODO: Make common
 enum protocol_acq_mode
 {
 	ACQ_MODE_UNSUPPORTED	= 0,
@@ -127,7 +129,7 @@ typedef struct
 	u32 numAcq;						//! Number of acquisitions expected
 } protocol_acq_config;
 
-// TODO: Move to common include for PPC1/PPC2!
+// TODO: Make common
 typedef struct
 {
 	u32 state;			//! Current mode?

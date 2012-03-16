@@ -48,17 +48,25 @@
 #define BD_RING_TENGIG				2								//! 10GBe
 #define BD_RING_PIXMEM				3								//!
 
+// TODO: Remove these once common protocol.h
+#define ACQ_MODE_NORMAL				1
+#define ACQ_MODE_RX_ONLY			2
+#define ACQ_MODE_TX_ONLY			3
+#define ACQ_MODE_UPLOAD				4
+
 //! Data structure to store in shared BRAM for status information
 typedef struct
 {
+	u32 state;			//! Current mode?
 	u32 bufferCnt;		//! Number of buffers allocated
 	u32 bufferSize;		//! Size of buffers
+	u32 numAcq;			//! Number of acquisitions in this run
 	u32 readPtr;		//! 'read pointer'
 	u32 writePtr;		//! 'write pointer'
 	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
 	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
-} sharedStatusBlock;
+} acqStatusBlock;
 
 
 
@@ -87,17 +95,17 @@ int main()
 
     int status;
 
-    u32 mailboxBuffer[3] =	{0,0,0};
+    u32 mailboxBuffer[5] =	{0,0,0,0,0};
 
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
 
-    // New BD ring array, replace old pRx
+    // Array of BD rings
     XLlDma_BdRing *pBdRings[4];
     pBdRings[BD_RING_TOP_ASIC]	= &XLlDma_GetRxRing(&dmaAsicTop);
     pBdRings[BD_RING_BOT_ASIC]	= &XLlDma_GetRxRing(&dmaAsicBot);
     pBdRings[BD_RING_TENGIG]	= &XLlDma_GetRxRing(&dmaTenGig);
     pBdRings[BD_RING_PIXMEM]	= &XLlDma_GetRxRing(&dmaPixMem);
-    sharedStatusBlock* pStatusBlock = (sharedStatusBlock*)BRAM_BADDR;
+    acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
 
     // Initialise DMA engines
     XLlDma_Initialize(&dmaAsicTop, LL_DMA_BASE_ASIC_TOP);
@@ -120,32 +128,57 @@ int main()
     }
     print("[INFO ] Mailbox initialised.\r\n");
 
+    // TODO: We need variables to track state of mode (e.g. useTX, useRX)
 
     // Enter mailbox-driven outer loop
     while(1)
     {
+
     	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
 
-    	// Blocking read of 3x 32bit word
-    	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 12);
-    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2]);
+    	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    	// Blocking read of 5x 32bit word
+    	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 20);
+    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, numAcq=%d, mode=%d\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2], (unsigned)mailboxBuffer[3], (unsigned)mailboxBuffer[4]);
 
-    	// TODO: Move this outside this loop, only here as a dirty hack to get the thing tested...
-        status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], mailboxBuffer[1], mailboxBuffer[2]);
+    	switch(mailboxBuffer[4])
+    	{
+    		case ACQ_MODE_NORMAL:
+    			status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], mailboxBuffer[1], mailboxBuffer[2]);
+    			break;
+    		case ACQ_MODE_RX_ONLY:
+    			print("[ERROR] ACQ mode unsupported!\r\n");
+    			status = XST_FAILURE;
+    			break;
+    		case ACQ_MODE_TX_ONLY:
+    			print("[ERROR] ACQ mode unsupported!\r\n");
+    			status = XST_FAILURE;
+    			break;
+    		case ACQ_MODE_UPLOAD:
+    			print("[ERROR] ACQ mode unsupported!\r\n");
+    			status = XST_FAILURE;
+    			break;
+    		default:
+    			printf("[ERROR] Unknown ACQ mode %d!\r\n", (int)mailboxBuffer[4]);
+    			break;
+    	}
 
         if (status==XST_SUCCESS)
         {
         	// All OK, update status struct with buffer details
-        	pStatusBlock->bufferCnt = mailboxBuffer[2];
         	pStatusBlock->bufferSize = mailboxBuffer[1];
+        	pStatusBlock->bufferCnt = mailboxBuffer[2];
+        	pStatusBlock->numAcq = mailboxBuffer[3];
+        	pStatusBlock->state = mailboxBuffer[4];
         }
         else
         {
         	printf("[ERROR] An error occured configuring BDs!  Error code %d\r\n", status);
-        	// Fatal error :(
+        	print("[ERROR] Terminating process...\r\n");
         	return 0;
         }
+        // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
     	switch (mailboxBuffer[0])
     	{

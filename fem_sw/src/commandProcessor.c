@@ -611,10 +611,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	u32 mboxBytesSent = 0;
 
-	// TODO: Parameterise these
-	u32 bufferSegmentSize = 0x18000;
-	u32 bufferDepth = 0;
-
 	int status;
 
 	// Determine operation type
@@ -622,29 +618,53 @@ void commandHandler(struct protocol_header* pRxHeader,
 	{
 
 		case CMD_INTERNAL:
-			// TODO: Process internal state request here!
-			/*
-			 * What will we support eventually?
-			 * - Remote reset command (w/payload, bitmask for components to reset?)
-			 * - Get # connected clients (+ IPs?) - no payload?
-			 * - Current software build (remove from EEPROM?) - no payload?
-			 * - Current firmware build (remove from EEPROM?) - no payload?
-			 *
-			 */
 
-			// This is common between old and new methods...
 			numOps = 0;
 			SBIT(state, STATE_ACK);
 
-			// send (old)
-			/*
-			DBGOUT("CmdDisp: [OLD] CMD_INTERNAL cmd=0x%08x\r\n", (pRxHeader->address));
-			mboxBytesSent = dummySend(pRxHeader->address);
-			*/
+			// TODO: Implement CMD_INTERNAL
+			DBGOUT("CmdDisp: CMD_INTERNAL is not currently supported!\r\n");
+			break;
 
-			// send (new!)
-			DBGOUT("CmdDisp: [NEW] CMD_INTERNAL cmd=0x%08x, bufferSz=0x%08x, bufferCnt=0x%08x\r\n", pRxHeader->address, bufferSegmentSize, bufferDepth);
-			mboxBytesSent = bufferConfigMsgSend(pRxHeader->address, bufferSegmentSize, bufferDepth);
+		case CMD_ACQUIRE:
+
+			numOps = 0;
+			SBIT(state, STATE_ACK);
+
+			/*
+			 * Packet structure:
+			 *
+			 * magic = 0xDEADBEEF
+			 * command = CMD_ACQUIRE
+			 * bus_target = 0 (ignored)
+			 * data_width = WIDTH_LONG
+			 * state = 0 (ignored)
+			 * address = protocol_acq_command [enum: config/start/stop/status]
+			 * payload = struct protocol_acq_config [acqMode, bufferSz, bufferCnt, numAcq]
+			 *
+			 */
+
+			// TODO: Check mboxBytesSert == 20
+			switch(pRxHeader->address)
+			{
+				// Cast payload to struct
+				protocol_acq_config* pAcqConfig =(protocol_acq_config*)pRxPayload;
+
+				case CMD_ACQ_CONFIG:
+					mboxBytesSent = acquireConfigMsgSend(pAcqConfig->acqMode, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pRxHeader->address);
+					break;
+
+				case CMD_ACQ_START:
+				case CMD_ACQ_STOP:
+				case CMD_ACQ_STATUS:
+					mboxBytesSent = acquireConfigMsgSend(pAcqConfig->acqMode, 0, 0, 0, 0);
+					break;
+
+				default:
+					DBGOUT("CmdDisp: Unrecognised CMD_ACQUIRE! (%d)\r\n", pRxHeader->address);
+					break;
+
+			} // END switch(pRxHeader->address)
 
 			break;
 

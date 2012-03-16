@@ -28,38 +28,26 @@ int initMailbox()
     return status;
 }
 
-/* Debug routine, sends a single 32-bit word to PPC1
- * @param cmd data to send
- * @return number of sent bytes (should always be 4)
+/* Sends a configuration message to PPC1 to configure it for acquisition
+ * @param bufferSz size of segment to receive from *EACH I/O SPARTAN*
+ * @param bufferCnt number of segments in capture
+ * @param numAcq number of acquisitions
+ * @param mode
+ * @return number of sent bytes (should always be 20)
  */
-int dummySend(int cmd)
+// TODO: Merge cmd/mode fields into single u32?
+int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode)
 {
-
-	u32 data;
-	u32 sentBytes = 0;
-	data = (u32)cmd;
-
-	XMbox_Write(&mbox, &data, 4, &sentBytes);
-
-	return sentBytes;
-
-}
-
-/* Sends a configuration message to PPC1 to set up it's DMA rings
- * @param segment_sz size of segment to receive from *EACH I/O SPARTAN*
- * @param segment_cnt number of segments in capture
- * @return number of sent bytes (should always be 12)
- */
-int bufferConfigMsgSend(u32 cmd, u32 segment_sz, u32 segment_cnt)
-{
-	u32 buf[3];
+	u32 buf[5];
 	u32 sentBytes = 0;
 
-	buf[0] = cmd;			// CMD
-	buf[1] = segment_sz;	// Segment size
-	buf[2] = segment_cnt;	// Segment count
+	buf[0] = cmd;
+	buf[1] = bufferSz;
+	buf[2] = bufferCnt;
+	buf[3] = numAcq;
+	buf[4] = mode;
 
-	XMbox_Write(&mbox, buf, 12, &sentBytes);
+	XMbox_Write(&mbox, buf, 20, &sentBytes);
 
 	return sentBytes;
 }
