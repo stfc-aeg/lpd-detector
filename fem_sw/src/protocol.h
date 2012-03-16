@@ -66,7 +66,8 @@ enum protocol_commands
 	CMD_UNSUPPORTED = 0,
 	CMD_ACCESS      = 1,
 	CMD_INTERNAL	= 2,
-	CMD_PERSONALITY	= 3
+	CMD_ACQUIRE		= 3,
+	CMD_PERSONALITY	= 4
 };
 
 // Target bus for commands
@@ -99,6 +100,46 @@ enum protocol_status
 	STATE_ACK         = 6,
 	STATE_NACK        = 7
 };
+
+enum protocol_acq_command
+{
+	CMD_ACQ_UNSUPPORTED		= 0,
+	CMD_ACQ_CONFIG			= 1,
+	CMD_ACQ_START			= 2,
+	CMD_ACQ_STOP			= 3,
+	CMD_ACQ_STATUS			= 4
+};
+
+enum protocol_acq_mode
+{
+	ACQ_MODE_UNSUPPORTED	= 0,
+	ACQ_MODE_NORMAL			= 1,	//! Arm RX and TX, for normal acquisition
+	ACQ_MODE_RX_ONLY		= 2,	//! Arm RX only
+	ACQ_MODE_TX_ONLY		= 3,	//! Arm TX only
+	ACQ_MODE_UPLOAD			= 4		//! Upload config
+};
+
+typedef struct
+{
+	u32 acqMode;					//! protocol_acq_mode
+	u32 bufferSz;					//! Buffer size in bytes
+	u32 bufferCnt;					//! Buffer count
+	u32 numAcq;						//! Number of acquisitions expected
+} protocol_acq_config;
+
+// TODO: Move to common include for PPC1/PPC2!
+typedef struct
+{
+	u32 state;			//! Current mode?
+	u32 bufferCnt;		//! Number of buffers allocated
+	u32 bufferSize;		//! Size of buffers
+	u32 readPtr;		//! 'read pointer'
+	u32 writePtr;		//! 'write pointer'
+	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
+	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
+	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
+} acqStatusBlock;
+
 /* NEW FORMAT - WAIT FOR PYTHON TO BE UPDATED!
  * ALSO: UPDATE CBI/SBI MACROS!
 {
