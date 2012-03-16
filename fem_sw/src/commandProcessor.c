@@ -644,20 +644,21 @@ void commandHandler(struct protocol_header* pRxHeader,
 			 *
 			 */
 
-			// TODO: Check mboxBytesSert == 20
+			// Cast payload to struct
+			protocol_acq_config* pAcqConfig =(protocol_acq_config*)pRxPayload_32;
+
+			// TODO: Check mboxBytesSent == 20
 			switch(pRxHeader->address)
 			{
-				// Cast payload to struct
-				protocol_acq_config* pAcqConfig =(protocol_acq_config*)pRxPayload;
 
 				case CMD_ACQ_CONFIG:
-					mboxBytesSent = acquireConfigMsgSend(pAcqConfig->acqMode, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pRxHeader->address);
+					mboxBytesSent = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode);
 					break;
 
 				case CMD_ACQ_START:
 				case CMD_ACQ_STOP:
 				case CMD_ACQ_STATUS:
-					mboxBytesSent = acquireConfigMsgSend(pAcqConfig->acqMode, 0, 0, 0, 0);
+					mboxBytesSent = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0);
 					break;
 
 				default:
