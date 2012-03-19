@@ -82,8 +82,6 @@ typedef enum
 
 
 // FUNCTION PROTOTYPES
-// TODO: Remove armTenGigTX
-int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len, XLlDma_Bd **p);
 // TODO: Change function footprint once BdRing array is in use!
 int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts);
@@ -346,23 +344,6 @@ int main()
 							done=1;
 						}
 
-						/*
-						// Verify completion of TX packet
-						print("[DEBUG] Waiting for DMA engine response for TX...\r\n");
-						numTx = 0;
-						while(numTx==0)		// TODO: Remove infinite wait loop!
-						{
-							numTx = XLlDma_BdRingFromHw(pTxTenGigRing, 1, &pTenGigBd);
-						}
-
-						status = verifyBuffer(pTxTenGigRing, pTenGigBd, LL_STSCTRL_TX_OK);
-						if (status!=XST_SUCCESS)
-						{
-							print("[ERROR] validateBuffer failed on tengig BD!\r\n");
-						}
-						// Do recycleBuffer here
-						*/
-
 						// Check if there are any pending mailbox messages
 						u32 bytesRecvd = 0;
 						XMbox_Read(&mbox, &mailboxBuffer[0], 20, &bytesRecvd);
@@ -408,70 +389,6 @@ int main()
     cleanup_platform();
     return 0;
 
-}
-
-
-
-/* Arms the 10GBE TX DMA channel to send data
- * @param pRingTenGig pointer to BdRing for 10GBE
- * @param addr1 memory address of start of data to be sent
- * @param addr2 memory address of start of data to be sent
- * @param len length of payload to send, in bytes (must always be 32bit word-aligned)
- *
- * @return XST_SUCCESS on success, or XST_? error code on failure
- */
-int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len, XLlDma_Bd **pPoop)
-{
-
-	int status;
-
-	XLlDma_Bd *pTenGigBd;
-
-	// Configure BDs for transmit
-	int i;
-	u32 addr;
-	for (i=0; i<2; i++)
-	{
-		if (i==0)
-		{
-			addr = addr2;
-		}
-		else if (i==1)
-		{
-			addr = addr1;
-		}
-
-		status = XLlDma_BdRingAlloc(pRingTenGig, 1, &pTenGigBd);
-		if (status!=XST_SUCCESS) {
-			printf("[ERROR] Failed to allocate 10GBE TX BD, index %d!\r\n", i);
-			return status;
-		}
-
-		XLlDma_BdSetBufAddr(*pTenGigBd, addr);
-		XLlDma_BdSetLength(*pTenGigBd, len);
-		XLlDma_BdSetStsCtrl(*pTenGigBd, XLLDMA_BD_STSCTRL_SOP_MASK | XLLDMA_BD_STSCTRL_EOP_MASK);
-
-		// Commit BD to DMA engine
-		status = XLlDma_BdRingToHw(pRingTenGig, 1, pTenGigBd);
-		if (status!=XST_SUCCESS)
-		{
-			printf("[ERROR] Failed to send 10GBE TX to HW, error code %d, index %d!\r\n", status, i);
-			return status;
-		}
-
-	}
-
-	// Send it!
-	status = XLlDma_BdRingStart(pRingTenGig);
-	if (status!=XST_SUCCESS)
-	{
-		print("[ERROR] Can't start 10GBE TX engine, no initialised BDs!\r\n");
-		return status;
-	}
-
-	// Everything OK!
-	*pPoop = pTenGigBd;
-	return XST_SUCCESS;
 }
 
 
@@ -785,7 +702,6 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType bType)
 	XLlDma_BdSetStsCtrl(*pBd, sts);
 
 	// Return BDs to hardware control, if RX
-	//printf("2 PreCnt: %d PreHead: 0x%x\r\n", pRing->PreCnt, pRing->PreHead);
 	if (bType==BD_RX)
 	{
 		status = XLlDma_BdRingToHw(pRing, 1, pBd);
