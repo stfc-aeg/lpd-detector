@@ -73,15 +73,21 @@ typedef struct
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
 
+typedef enum
+{
+	BD_RX,
+	BD_TX
+} bufferType;
+
 
 
 // FUNCTION PROTOTYPES
 // TODO: Remove armTenGigTX
-int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len);
+int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len, XLlDma_Bd **p);
 // TODO: Change function footprint once BdRing array is in use!
-int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 bufferSz, u32 bufferCnt);
+int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts);
-int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd);
+int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType bType);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -108,8 +114,8 @@ int main()
     XLlDma_BdRing *pBdRings[4];
     pBdRings[BD_RING_TOP_ASIC]	= &XLlDma_GetRxRing(&dmaAsicTop);
     pBdRings[BD_RING_BOT_ASIC]	= &XLlDma_GetRxRing(&dmaAsicBot);
-    pBdRings[BD_RING_TENGIG]	= &XLlDma_GetRxRing(&dmaTenGig);
-    pBdRings[BD_RING_PIXMEM]	= &XLlDma_GetRxRing(&dmaPixMem);
+    pBdRings[BD_RING_TENGIG]	= &XLlDma_GetTxRing(&dmaTenGig);
+    pBdRings[BD_RING_PIXMEM]	= &XLlDma_GetTxRing(&dmaPixMem);
     acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
 
     // Initialise DMA engines
@@ -139,6 +145,13 @@ int main()
     while(1)
     {
 
+    	XLlDma_Bd *pTenGigBd;
+
+    	// Debugging stuffs
+    	unsigned bdAddr = 0;
+    	unsigned bdLen = 0;
+    	unsigned bdSts = 0;
+
     	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
 
@@ -154,18 +167,18 @@ int main()
 		    	switch(mailboxBuffer[4])
 		    	{
 		    		case ACQ_MODE_NORMAL:
-		    			status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], mailboxBuffer[1], mailboxBuffer[2]);
+		    			status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2]);
 		    			break;
 		    		case ACQ_MODE_RX_ONLY:
-		    			print("[ERROR] ACQ mode unsupported!\r\n");
+		    			print("[ERROR] ACQ_MODE_RX_ONLY unsupported!\r\n");
 		    			status = XST_FAILURE;
 		    			break;
 		    		case ACQ_MODE_TX_ONLY:
-		    			print("[ERROR] ACQ mode unsupported!\r\n");
+		    			print("[ERROR] ACQ_MODE_TX_ONLY unsupported!\r\n");
 		    			status = XST_FAILURE;
 		    			break;
 		    		case ACQ_MODE_UPLOAD:
-		    			print("[ERROR] ACQ mode unsupported!\r\n");
+		    			print("[ERROR] ACQ_MODE_UPLOAD unsupported!\r\n");
 		    			status = XST_FAILURE;
 		    			break;
 		    		default:
@@ -200,15 +213,15 @@ int main()
 					print ("\r\n");
 
 					// Wait for data to be received
-					XLlDma_Bd *pTopAsicBd, *pBotAsicBd, *pTenGigBd;
+					XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
 					unsigned numRxTop = 0;
 					unsigned numRxBot = 0;
+					unsigned numTx = 0;
 					unsigned totalRx = 0;
 					unsigned short done = 0;
 
 					print("[INFO ] Waiting for ASIC RX...\r\n");
 
-					// This is a very quick and dirty hacked up event loop
 					while(done==0)
 					{
 
@@ -218,59 +231,115 @@ int main()
 
 						if (numRxTop !=0 )
 						{
-							//print("[INFO ] Got top ASIC RX, ");
 							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
 							else
 							{
-								print("but validateBuffer failed!\r\n");
+								printf("[ERROR] RX from top ASIC failed validation, error code %d\r\n", status);
+								return 0;
 							}
 						}
 
 						if (numRxBot != 0 )
 						{
-							//print("[INFO ] Got bot ASIC RX, ");
 							status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, LL_STSCTRL_RX_OK);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
 							else
 							{
-								print("but validateBuffer failed!\r\n");
-							}
-						}
-
-						// Original code, sends data to 10GBe but doesn't free RX BDs...
-						/*
-						if (totalRx==2) {
-							print("[INFO ] All ASICs data received OK.\r\n");
-							// Arm TX for 10GBE
-							print("[INFO ] Arming 10GBE TX...\r\n");
-							status = armTenGigTX(pTxTenGigRing, topAddr, botAddr, 0x18000);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Failed to arm DMA engine for 10GBE send!  Error code %d\r\n", status);
-								print("[ERROR] Fatal error, terminating.\r\n");
+								printf("[ERROR] RX from bottom ASIC failed validation, error code %d\r\n", status);
 								return 0;
 							}
-							done = 1;
 						}
-						*/
 
-						// New code, use this for developing RX
+						// TODO: Check we got 1 top / 1 bottom!
+
+						// Once we have both RX, we can arm the TX engine
 						if (totalRx==2)
 						{
+							print("[INFO ] Got RX from ASICs!\r\n");
+
 							pStatusBlock->totalRecv++;
 
-							// Pretend here that we sent to TX!
-							print("[DEBUG] Not sending to TX, but pretending we did...\r\n");
-							pStatusBlock->totalSent++;
+							// Do a proper TX
+							// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-							status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd);
+							// Commit next 2 BDs in TX ring to hardware control
+							bdAddr = XLlDma_BdGetBufAddr(pTenGigBd);
+							bdLen = XLlDma_BdGetLength(pTenGigBd);
+							bdSts = XLlDma_BdGetStsCtrl(pTenGigBd);
+							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], 2, pTenGigBd);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Could not commit TX BDs!  Error code %d\r\n", status);
+								return 0;
+							}/*
+							else
+							{
+								printf("[INFO ] Sent TX-> HW (addr=0x%08x, len=0x%08x, sts=0x%08x)\r\n", bdAddr, bdLen, bdSts);
+							}
+							*/
+
+							status = XLlDma_BdRingStart(pBdRings[BD_RING_TENGIG]);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Can't start 10GBe TX engine, error code %d\r\n", status);
+								return 0;
+							}
+
+							// Confirm TX was OK
+							// TODO: This will keep RX/TX in lock step which we don't want to do!  Fix.
+							print("[INFO ] Waiting for TX BDs to return...\r\n");
+							numTx = 0;
+							while (numTx!=2)
+							{
+								numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], 2, &pTenGigBd);
+							}
+
+							// -------------------- TX1 --------------------
+							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, LL_STSCTRL_TX_OK);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error validating TX BD 1, error code %d\r\n", status);
+								return 0;
+							}
+							status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error on recycleBuffer for TX, error code %d\r\n", status);
+								return 0;
+							}
+
+							pTenGigBd = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigBd);
+
+							// -------------------- TX2 --------------------
+							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, LL_STSCTRL_TX_OK);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error validating TX BD 2, error code %d\r\n", status);
+								return 0;
+							}
+							status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error on recycleBuffer for TX, error code %d\r\n", status);
+								return 0;
+							}
+
+							print("[INFO ] Validated TX BDs OK!\r\n");
+
+							pTenGigBd = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigBd);
+
+							pStatusBlock->totalSent++;
+							// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+							// Recycle RX BDs
+							status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for top ASIC!  Error code = %d\r\n", status); }
-							status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd);
+							status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
 							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for bottom ASIC!  Error code = %d\r\n", status); }
 
 							// All finished, flag complete
@@ -351,7 +420,7 @@ int main()
  *
  * @return XST_SUCCESS on success, or XST_? error code on failure
  */
-int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len)
+int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int len, XLlDma_Bd **pPoop)
 {
 
 	int status;
@@ -401,6 +470,7 @@ int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int l
 	}
 
 	// Everything OK!
+	*pPoop = pTenGigBd;
 	return XST_SUCCESS;
 }
 
@@ -413,13 +483,14 @@ int armTenGigTX(XLlDma_BdRing *pRingTenGig, u32 addr1, u32 addr2, unsigned int l
  * @param pRingTenGig
  * @param pRingAsicTop
  * @param pRingAsicBot
+ * @param pTxBd set by function to be first BD in TX ring
  * @param segmentSz Size of data to RX from I/O Spartan
  * @param segmentCnt Number of segments to allocate, set to 0 for allocation of maximum BDs
  * @return XST_SUCCESS if OK, otherwise an XST_xxx error code
  *
  */
 // TODO: Remove pointers to BdRings, pass array or struct of all BDRings instead?
-int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, u32 bufferSz, u32 bufferCnt)
+int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt)
 {
 
 	unsigned status;
@@ -508,27 +579,42 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		print ("[ERROR] Failed to allocate top ASIC RX BD!\r\n");
 		return status;
 	}
+	/*
 	//printf("[DEBUG] Top ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
 	XLlDma_BdSetLength(*pTopRXBd, bufferSz);
 	XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
+	*/
 
 	status = XLlDma_BdRingAlloc(pRingAsicBot, totalNumBuffers, &pBotRXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate bottom ASIC RX BD!\r\n");
 		return status;
 	}
+	/*
 	//printf("[DEBUG] Bottom ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
 	XLlDma_BdSetLength(*pBotRXBd, bufferSz);
 	XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
+	*/
 
-	status = XLlDma_BdRingAlloc(pRingTenGig, totalNumBuffers, &pTXBd);
+	status = XLlDma_BdRingAlloc(pRingTenGig, totalNumBuffers*2, &pTXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate tengig TX BD!\r\n");
 		return status;
 	}
+
+	// ****************************************************
+	//
+	*pFirstTxBd = pTXBd;
+	//
+	// ****************************************************
+
+
+
+	/*
 	//printf("[DEBUG] TenGig TX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_TX_BD, (unsigned)segmentSz);
 	XLlDma_BdSetLength(*pTXBd, bufferSz);
 	XLlDma_BdSetStsCtrl(*pTXBd, LL_STSCTRL_TX_BD);
+	*/
 
 
 	// Snapshot pointer to first BDs
@@ -566,20 +652,23 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 
 	// TX ring
 	currentOffset = 0;
-	for (i=0; i<(totalNumBuffers*2); i++)
+	for (i=0; i<totalNumBuffers; i++)
 	{
 		XLlDma_BdSetBufAddr(*pTenGigFirstBd, topAsicBufferAddress + currentOffset);
+		XLlDma_BdSetLength(*pTenGigFirstBd, bufferSz);
+		XLlDma_BdSetStsCtrl(*pTenGigFirstBd, LL_STSCTRL_TX_BD);
 		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
 		XLlDma_BdSetBufAddr(*pTenGigFirstBd, botAsicBufferAddress + currentOffset);
+		XLlDma_BdSetLength(*pTenGigFirstBd, bufferSz);
+		XLlDma_BdSetStsCtrl(*pTenGigFirstBd, LL_STSCTRL_TX_BD);
 		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
 		currentOffset += bufferSz;
 	}
 
 
-
-	// Commit RX BDs to DMA engines
+	// Commit all RX BDs to DMA engines
 	status = XLlDma_BdRingToHw(pRingAsicTop, totalNumBuffers, pTopFirstBd);
 	if (status!=XST_SUCCESS)
 	{
@@ -593,8 +682,7 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 
-	// Start RX engines, but not TX engine...
-	// TODO: Do we want to do this here or leave to main event ring?
+	// Start RX engines
 	status = XLlDma_BdRingStart(pRingAsicTop);
 	if (status!=XST_SUCCESS)
 	{
@@ -608,7 +696,18 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 
-	print("[INFO ] Committed BDs to HW and started DMA RX engines!\r\n");
+	// Start TX engine
+	/*
+	status = XLlDma_BdRingStart(pRingTenGig);
+	if (status!=XST_SUCCESS)
+	{
+		print("[ERROR] Can't start 10GBe TX engine, no initialised BDs!\r\n");
+		return status;
+	}
+	*/
+
+	//print("[INFO ] Committed BDs to HW and started DMA RX engines!\r\n");
+	print("[INFO ] Committed BDs to HW and started DMA engines!\r\n");
 
 	// Everything OK!
 	return XST_SUCCESS;
@@ -658,25 +757,42 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts)
  * @param pBd pointer to BD
  * @return XST_SUCCESS, or error code
  */
-int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd)
+int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType bType)
 {
 	int status;
+	u32 sts;
 
-	// Re-alloc RX BDs into ring
+	// Re-alloc BDs into ring
 	status = XLlDma_BdRingAlloc(pRing, 1, &pBd);
 	if (status!=XST_SUCCESS)
 	{
 		return status;
 	}
 
-	// Not sure if we need to but best to reset STS/CTRL fields on the BD
-	XLlDma_BdSetStsCtrl(*pBd, LL_STSCTRL_RX_BD);
-
-	// Return RX BDs to hardware control
-	status = XLlDma_BdRingToHw(pRing, 1, pBd);
-	if (status!=XST_SUCCESS)
+	// Reset STS/CTRL field on BDs
+	switch(bType)
 	{
-		return status;
+		case BD_RX:
+			sts = LL_STSCTRL_RX_BD;
+			break;
+		case BD_TX:
+			sts = LL_STSCTRL_TX_BD;
+			break;
+		default:
+			return XST_FAILURE;
+			break;
+	}
+	XLlDma_BdSetStsCtrl(*pBd, sts);
+
+	// Return BDs to hardware control, if RX
+	//printf("2 PreCnt: %d PreHead: 0x%x\r\n", pRing->PreCnt, pRing->PreHead);
+	if (bType==BD_RX)
+	{
+		status = XLlDma_BdRingToHw(pRing, 1, pBd);
+		if (status!=XST_SUCCESS)
+		{
+			return status;
+		}
 	}
 
 	return XST_SUCCESS;
