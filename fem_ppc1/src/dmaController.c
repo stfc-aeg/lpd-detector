@@ -194,7 +194,7 @@ int main()
 		        }
 		        else
 		        {
-		        	printf("[ERROR] An error occured configuring BDs!  Error code %d\r\n", status);
+		        	printf("[ERROR] An error occurred configuring BDs!  Error code %d\r\n", status);
 		        	print("[ERROR] Terminating process...\r\n");
 		        	return 0;
 		        }
