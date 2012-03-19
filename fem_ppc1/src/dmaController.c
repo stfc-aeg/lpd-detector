@@ -490,28 +490,18 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	XLlDma_Bd *pBotRXBd;
 	XLlDma_Bd *pTXBd;
 
-	// First configure a master BD for each ring
+	// First allocate a BD for each ring
 	status = XLlDma_BdRingAlloc(pRingAsicTop, totalNumBuffers, &pTopRXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate top ASIC RX BD!\r\n");
 		return status;
 	}
-	/*
-	//printf("[DEBUG] Top ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
-	XLlDma_BdSetLength(*pTopRXBd, bufferSz);
-	XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
-	*/
 
 	status = XLlDma_BdRingAlloc(pRingAsicBot, totalNumBuffers, &pBotRXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate bottom ASIC RX BD!\r\n");
 		return status;
 	}
-	/*
-	//printf("[DEBUG] Bottom ASIC RX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_RX_BD, (unsigned)segmentSz);
-	XLlDma_BdSetLength(*pBotRXBd, bufferSz);
-	XLlDma_BdSetStsCtrl(*pBotRXBd, LL_STSCTRL_RX_BD);
-	*/
 
 	status = XLlDma_BdRingAlloc(pRingTenGig, totalNumBuffers*2, &pTXBd);
 	if (status!=XST_SUCCESS) {
@@ -519,20 +509,8 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 		return status;
 	}
 
-	// ****************************************************
-	//
+	// Pass back a pointer to the first TX BD
 	*pFirstTxBd = pTXBd;
-	//
-	// ****************************************************
-
-
-
-	/*
-	//printf("[DEBUG] TenGig TX BD template: STS/CTRL=0x%08x, len=0x%08x\r\n", (unsigned)LL_STSCTRL_TX_BD, (unsigned)segmentSz);
-	XLlDma_BdSetLength(*pTXBd, bufferSz);
-	XLlDma_BdSetStsCtrl(*pTXBd, LL_STSCTRL_TX_BD);
-	*/
-
 
 	// Snapshot pointer to first BDs
 	XLlDma_Bd *pTopFirstBd = pTopRXBd;
