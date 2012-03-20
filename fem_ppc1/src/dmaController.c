@@ -1,15 +1,20 @@
 /*
- * Test PPC1 application
+ * dmaController.c
+ * ---------------
  *
- * Developed to test Xilinx mailbox and LLDMA engine functionality
+ * FEM PPC1 main application (for use with standalone BSP)
+ *
+ * Responsible for allocating memory buffers and controlling the PPC DMA engines to arbitrate
+ * transfers from ASIC(s) -> DDR2 -> 10GBe, as well as uploading configuration data from DDR2 -> ASIC(s).
+ *
+ * Controlled by PPC2 via Xilinx Mailbox commands.
  *
  */
 
 // Todo list, in order of priority
+// TODO: Implement pixmem upload (+rename to generic upload)
 // TODO: Complete event loop with mailbox/DMA
 // TODO: Implement shared bram status flags
-// TODO: Implement pixmem upload
-// TODO: Rename pixmem to something more generic?
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -28,7 +33,8 @@
 // DMA engine info
 #define LL_DMA_ALIGNMENT			XLLDMA_BD_MINIMUM_ALIGNMENT		//! BD Alignment, set to minimum
 #define LL_BD_BADDR					0x8D300000						//! Bass address for BDs (Top quarter of SRAM)
-#define LL_BD_SZ					0x00100000						//! Size of BD memory region (1MB) (so total LL_BD_SZ / LL_DMA_ALIGNMENT BDs possible), in our case 16384
+//#define LL_BD_SZ					0x00100000						//! Size of BD memory region (1MB) (so total LL_BD_SZ / LL_DMA_ALIGNMENT BDs possible), in our case 16384
+#define LL_BD_SZ					0x00200000						//! Size of BD memory region (2MB) (so total LL_BD_SZ / LL_DMA_ALIGNMENT BDs possible), in our case 32768
 #define LL_STSCTRL_RX_OK			0x1D000000						//! STS/CTRL field in BD should be 0x1D when successfully RX (COMPLETE | SOP | EOP)
 #define LL_STSCTRL_TX_OK			0x10000000						//! STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
 #define LL_STSCTRL_RX_BD			0x0															//! STS/CTRL field for a RX BD
