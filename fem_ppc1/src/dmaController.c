@@ -6,7 +6,6 @@
  */
 
 // Todo list, in order of priority
-// TODO: Abstract armAsicRX, armTenGigTX to a more generic function
 // TODO: Complete event loop with mailbox/DMA
 // TODO: Implement shared bram status flags
 // TODO: Implement pixmem upload
@@ -58,6 +57,12 @@
 #define CMD_ACQ_STOP				3
 #define CMD_ACQ_STATUS				4
 
+typedef enum
+{
+	BD_RX,
+	BD_TX
+} bufferType;
+
 //! Data structure to store in shared BRAM for status information
 // TODO: Store this in common header file!
 typedef struct
@@ -73,19 +78,12 @@ typedef struct
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
 
-typedef enum
-{
-	BD_RX,
-	BD_TX
-} bufferType;
-
 
 
 // FUNCTION PROTOTYPES
-// TODO: Change function footprint once BdRing array is in use!
-int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt);
+int configureBds(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts);
-int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType bType);
+int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -108,12 +106,13 @@ int main()
 
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
 
-    // Array of BD rings
     XLlDma_BdRing *pBdRings[4];
+
     pBdRings[BD_RING_TOP_ASIC]	= &XLlDma_GetRxRing(&dmaAsicTop);
     pBdRings[BD_RING_BOT_ASIC]	= &XLlDma_GetRxRing(&dmaAsicBot);
     pBdRings[BD_RING_TENGIG]	= &XLlDma_GetTxRing(&dmaTenGig);
     pBdRings[BD_RING_PIXMEM]	= &XLlDma_GetTxRing(&dmaPixMem);
+
     acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
 
     // Initialise DMA engines
@@ -137,18 +136,11 @@ int main()
     }
     print("[INFO ] Mailbox initialised.\r\n");
 
-    // TODO: We need variables to track state of mode (e.g. useTX, useRX)
-
     // Enter mailbox-driven outer loop
     while(1)
     {
 
     	XLlDma_Bd *pTenGigBd;
-
-    	// Debugging stuffs
-    	unsigned bdAddr = 0;
-    	unsigned bdLen = 0;
-    	unsigned bdSts = 0;
 
     	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
@@ -165,7 +157,7 @@ int main()
 		    	switch(mailboxBuffer[4])
 		    	{
 		    		case ACQ_MODE_NORMAL:
-		    			status = configureBds(pBdRings[BD_RING_TENGIG], pBdRings[BD_RING_TOP_ASIC], pBdRings[BD_RING_BOT_ASIC], &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2]);
+		    			status = configureBds(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2]);
 		    			break;
 		    		case ACQ_MODE_RX_ONLY:
 		    			print("[ERROR] ACQ_MODE_RX_ONLY unsupported!\r\n");
@@ -266,27 +258,21 @@ int main()
 							// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 							// Commit next 2 BDs in TX ring to hardware control
-							bdAddr = XLlDma_BdGetBufAddr(pTenGigBd);
-							bdLen = XLlDma_BdGetLength(pTenGigBd);
-							bdSts = XLlDma_BdGetStsCtrl(pTenGigBd);
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], 2, pTenGigBd);
 							if (status!=XST_SUCCESS)
 							{
 								printf("[ERROR] Could not commit TX BDs!  Error code %d\r\n", status);
 								return 0;
-							}/*
-							else
-							{
-								printf("[INFO ] Sent TX-> HW (addr=0x%08x, len=0x%08x, sts=0x%08x)\r\n", bdAddr, bdLen, bdSts);
 							}
-							*/
 
+							/*
 							status = XLlDma_BdRingStart(pBdRings[BD_RING_TENGIG]);
 							if (status!=XST_SUCCESS)
 							{
 								printf("[ERROR] Can't start 10GBe TX engine, error code %d\r\n", status);
 								return 0;
 							}
+							*/
 
 							// Confirm TX was OK
 							// TODO: This will keep RX/TX in lock step which we don't want to do!  Fix.
@@ -394,21 +380,21 @@ int main()
 
 
 /*
- * New generic DMA setup function (to replace armAsicRX, armTenGigTX)
- * Also accepts segment size (size of data to RX from I/O Spartan), and
- * segment count (to limit the number of BDs created for debugging / #-frame mode)
- * @param pRingTenGig
- * @param pRingAsicTop
- * @param pRingAsicBot
+ * Generic DMA setup function, accepts segment size (size of data to RX from I/O Spartan),
+ * and segment count (to limit the number of BDs created for debugging / #-frame mode)
+ * @param pBdRings pointer to array of BD rings
  * @param pTxBd set by function to be first BD in TX ring
  * @param segmentSz Size of data to RX from I/O Spartan
  * @param segmentCnt Number of segments to allocate, set to 0 for allocation of maximum BDs
  * @return XST_SUCCESS if OK, otherwise an XST_xxx error code
  *
  */
-// TODO: Remove pointers to BdRings, pass array or struct of all BDRings instead?
-int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma_BdRing *pRingAsicBot, XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt)
+int configureBds(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt)
 {
+
+	XLlDma_BdRing *pRingTenGig = pBdRings[BD_RING_TENGIG];
+	XLlDma_BdRing *pRingAsicTop = pBdRings[BD_RING_TOP_ASIC];
+	XLlDma_BdRing *pRingAsicBot = pBdRings[BD_RING_BOT_ASIC];
 
 	unsigned status;
 	u32 totalNumBuffers = 0;				// Maximum number of buffers we can allocate
@@ -592,16 +578,13 @@ int configureBds(XLlDma_BdRing *pRingTenGig, XLlDma_BdRing *pRingAsicTop, XLlDma
 	}
 
 	// Start TX engine
-	/*
 	status = XLlDma_BdRingStart(pRingTenGig);
 	if (status!=XST_SUCCESS)
 	{
 		print("[ERROR] Can't start 10GBe TX engine, no initialised BDs!\r\n");
 		return status;
 	}
-	*/
 
-	//print("[INFO ] Committed BDs to HW and started DMA RX engines!\r\n");
 	print("[INFO ] Committed BDs to HW and started DMA engines!\r\n");
 
 	// Everything OK!
