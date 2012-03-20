@@ -82,7 +82,7 @@ typedef struct
 
 // FUNCTION PROTOTYPES
 int configureBds(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt);
-int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts);
+int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -221,7 +221,7 @@ int main()
 
 						if (numRxTop !=0 )
 						{
-							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, LL_STSCTRL_RX_OK);
+							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
@@ -234,7 +234,7 @@ int main()
 
 						if (numRxBot != 0 )
 						{
-							status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, LL_STSCTRL_RX_OK);
+							status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
 							if (status==XST_SUCCESS) {
 								totalRx++;
 							}
@@ -284,7 +284,7 @@ int main()
 							}
 
 							// -------------------- TX1 --------------------
-							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, LL_STSCTRL_TX_OK);
+							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
 							if (status!=XST_SUCCESS)
 							{
 								printf("[ERROR] Error validating TX BD 1, error code %d\r\n", status);
@@ -300,7 +300,7 @@ int main()
 							pTenGigBd = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigBd);
 
 							// -------------------- TX2 --------------------
-							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, LL_STSCTRL_TX_OK);
+							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
 							if (status!=XST_SUCCESS)
 							{
 								printf("[ERROR] Error validating TX BD 2, error code %d\r\n", status);
@@ -595,17 +595,29 @@ int configureBds(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz
  * Frees BD ready for processing
  * @param pRing pointer to BD ring
  * @param pBd pointer to BD
- * @param validSts value of STS/CTRL to verify
+ * @param buffType buffer type, either BD_RX or BD_TX
  * @return XST_SUCCESS, or error code
  */
-int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts)
+int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 {
-	u32 sts;
-	u32 addr;
 	int status;
+	u32 sts, validSts;
+
+	switch(buffType)
+	{
+		case BD_RX:
+			validSts = LL_STSCTRL_RX_OK;
+			break;
+		case BD_TX:
+			validSts = LL_STSCTRL_TX_OK;
+			break;
+		default:
+			// Invalid buffType
+			return XST_FAILURE;
+			break;
+	}
 
 	sts = XLlDma_BdGetStsCtrl(pBd);
-	addr = XLlDma_BdGetBufAddr(pBd);
 
 	status = XLlDma_BdRingFree(pRing, 1, pBd);
 	if (status!=XST_SUCCESS)
@@ -622,20 +634,18 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, u32 validSts)
 		return XST_FAILURE;
 	}
 
-	// DEBUGGING
-	//printf("OK!  Addr=0x%08x, sts/ctrl=0x%08x\r\n", (unsigned)addr, (unsigned)sts);
-
 	return XST_SUCCESS;
 }
 
 
 
-/* Resets and re-allocates a buffer into the current ring
+/* Resets and re-allocates a buffer into the current BD ring
  * @param pRing pointer to BD ring
  * @param pBd pointer to BD
+ * @param buffType buffer type, either BD_RX or BD_TX
  * @return XST_SUCCESS, or error code
  */
-int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType bType)
+int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 {
 	int status;
 	u32 sts;
@@ -648,7 +658,7 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType bType)
 	}
 
 	// Reset STS/CTRL field on BDs
-	switch(bType)
+	switch(buffType)
 	{
 		case BD_RX:
 			sts = LL_STSCTRL_RX_BD;
@@ -657,13 +667,14 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType bType)
 			sts = LL_STSCTRL_TX_BD;
 			break;
 		default:
+			// Invalid buffType
 			return XST_FAILURE;
 			break;
 	}
 	XLlDma_BdSetStsCtrl(*pBd, sts);
 
 	// Return BDs to hardware control, if RX
-	if (bType==BD_RX)
+	if (buffType==BD_RX)
 	{
 		status = XLlDma_BdRingToHw(pRing, 1, pBd);
 		if (status!=XST_SUCCESS)
