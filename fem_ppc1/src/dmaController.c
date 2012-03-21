@@ -12,7 +12,8 @@
  */
 
 // Todo list, in order of priority
-// TODO: Implement pixmem upload (+rename to generic upload)
+// TODO: Implement configuration upload
+// TODO: Fix configure for acquire, respect config BD storage area
 // TODO: Complete event loop with mailbox/DMA
 // TODO: Implement shared bram status flags
 
@@ -26,19 +27,19 @@
 // TODO: Move defines, function prototypes to header!
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
 #define LL_DMA_BASE_ASIC_BOT		0x80							//! DCR offset for DMA0 (RX from bottom ASIC)
-#define LL_DMA_BASE_PIXMEM			0x98							//! DCR offset for DMA1 (TX to pixel configuration memory)
+#define LL_DMA_BASE_UPLOAD			0x98							//! DCR offset for DMA1 (TX to ASIC configuration)
 #define LL_DMA_BASE_ASIC_TOP		0xB0							//! DCR offset for DMA2 (RX from top ASIC)
 #define LL_DMA_BASE_TENGIG			0xC8							//! DCR offset for DMA3 (TX to 10GBE)
 
 // DMA engine info
 #define LL_DMA_ALIGNMENT			XLLDMA_BD_MINIMUM_ALIGNMENT		//! BD Alignment, set to minimum
-#define LL_BD_BADDR					0x8D300000						//! Bass address for BDs (Top quarter of SRAM)
-//#define LL_BD_SZ					0x00100000						//! Size of BD memory region (1MB) (so total LL_BD_SZ / LL_DMA_ALIGNMENT BDs possible), in our case 16384
-#define LL_BD_SZ					0x00200000						//! Size of BD memory region (2MB) (so total LL_BD_SZ / LL_DMA_ALIGNMENT BDs possible), in our case 32768
+#define LL_BD_BADDR					0x8D280000						//! Bass address for BDs
+#define LL_BD_SZ					0x00180000						//! Size of BD memory region
 #define LL_STSCTRL_RX_OK			0x1D000000						//! STS/CTRL field in BD should be 0x1D when successfully RX (COMPLETE | SOP | EOP)
 #define LL_STSCTRL_TX_OK			0x10000000						//! STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
 #define LL_STSCTRL_RX_BD			0x0															//! STS/CTRL field for a RX BD
 #define LL_STSCTRL_TX_BD			XLLDMA_BD_STSCTRL_SOP_MASK | XLLDMA_BD_STSCTRL_EOP_MASK		//! STS/CTRL field for a TX BD
+#define LL_MAX_CONFIG_BD			64								//! Maximum number of config upload BDs
 
 // Buffer management
 #define DDR2_BADDR					0x00000000						//! DDR2 base address
@@ -51,13 +52,15 @@
 #define BD_RING_TOP_ASIC			0								//! Top I/O Spartan / ASIC connection
 #define BD_RING_BOT_ASIC			1								//! Bottom I/O Spartan / ASIC connection
 #define BD_RING_TENGIG				2								//! 10GBe
-#define BD_RING_PIXMEM				3								//!
+#define BD_RING_UPLOAD				3								//! Configuration upload
 
 // TODO: Remove these once common protocol.h
+// TODO: Change to enum
 #define ACQ_MODE_NORMAL				1
 #define ACQ_MODE_RX_ONLY			2
 #define ACQ_MODE_TX_ONLY			3
 #define ACQ_MODE_UPLOAD				4
+
 #define CMD_ACQ_CONFIG				1
 #define CMD_ACQ_START				2
 #define CMD_ACQ_STOP				3
@@ -87,7 +90,8 @@ typedef struct
 
 
 // FUNCTION PROTOTYPES
-int configureBds(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt);
+int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
+int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
 
@@ -97,18 +101,24 @@ int main()
 {
     init_platform();
 
-	// Clear serial console by spamming CR/LF
+	// Clear serial console
 	int foo;
-	for (foo=0; foo<100; foo++)
-	{
-		print("\r\n");
-	}
+	for (foo=0; foo<100; foo++) { print("\r\n"); }
 
-    print("[INFO ] FEM PPC1 is alive!\r\n");
+	// Dump a little diagnostic info
+    print("[INFO ] FEM PPC1 DMA Controller starting up...\r\n");
+    print("[INFO ] ------------------------------------------------\r\n");
+    printf("[INFO ] Total DDR2 space for buffers:         0x%08x\r\n", DDR2_SZ);
+    printf("[INFO ] Total SRAM space for BDs:             0x%08x\r\n", LL_BD_SZ);
+    printf("[INFO ] Maximum number of readout BDs:        %d\r\n", ((LL_BD_SZ/LL_DMA_ALIGNMENT)/4)-LL_MAX_CONFIG_BD);
+    printf("[INFO ] Maximum number of config upload BDs:  %d\r\n", LL_MAX_CONFIG_BD);
+    print("[INFO ] ------------------------------------------------\r\n");
 
     int status;
 
     u32 mailboxBuffer[5] =	{0,0,0,0,0};
+
+    acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
 
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
 
@@ -117,15 +127,13 @@ int main()
     pBdRings[BD_RING_TOP_ASIC]	= &XLlDma_GetRxRing(&dmaAsicTop);
     pBdRings[BD_RING_BOT_ASIC]	= &XLlDma_GetRxRing(&dmaAsicBot);
     pBdRings[BD_RING_TENGIG]	= &XLlDma_GetTxRing(&dmaTenGig);
-    pBdRings[BD_RING_PIXMEM]	= &XLlDma_GetTxRing(&dmaPixMem);
-
-    acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
+    pBdRings[BD_RING_UPLOAD]	= &XLlDma_GetTxRing(&dmaPixMem);
 
     // Initialise DMA engines
     XLlDma_Initialize(&dmaAsicTop, LL_DMA_BASE_ASIC_TOP);
     XLlDma_Initialize(&dmaAsicBot, LL_DMA_BASE_ASIC_BOT);
     XLlDma_Initialize(&dmaTenGig, LL_DMA_BASE_TENGIG);
-    XLlDma_Initialize(&dmaPixMem, LL_DMA_BASE_PIXMEM);
+    XLlDma_Initialize(&dmaPixMem, LL_DMA_BASE_UPLOAD);
 
     // Initialise mailbox
     XMbox mbox;
@@ -137,16 +145,19 @@ int main()
     mboxCfg.UseFSL =		XPAR_MAILBOX_0_IF_0_USE_FSL;
     status = XMbox_CfgInitialize(&mbox, &mboxCfg, XPAR_MAILBOX_0_IF_0_BASEADDR);
     if (status!=XST_SUCCESS) {
-    	print("[FATAL] Mailbox initialise failed, terminating...\r\n");
+    	print("[ERROR] Mailbox initialise failed, terminating...\r\n");
     	return 0;
     }
     print("[INFO ] Mailbox initialised.\r\n");
+
+
 
     // Enter mailbox-driven outer loop
     while(1)
     {
 
     	XLlDma_Bd *pTenGigBd;
+    	XLlDma_Bd *pConfigBd;
 
     	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
@@ -163,7 +174,7 @@ int main()
 		    	switch(mailboxBuffer[4])
 		    	{
 		    		case ACQ_MODE_NORMAL:
-		    			status = configureBds(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2]);
+		    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
 		    			break;
 		    		case ACQ_MODE_RX_ONLY:
 		    			print("[ERROR] ACQ_MODE_RX_ONLY unsupported!\r\n");
@@ -174,21 +185,25 @@ int main()
 		    			status = XST_FAILURE;
 		    			break;
 		    		case ACQ_MODE_UPLOAD:
-		    			print("[ERROR] ACQ_MODE_UPLOAD unsupported!\r\n");
-		    			status = XST_FAILURE;
+		    			// TODO: Refactor numAcq to something more generic (ACQ_MODE_NORMAL->numAcq, ACQ_MODE_UPLOAD->configStartAddr)
+		    			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, mailboxBuffer[3], mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+		    			// TODO: We need to send TX BDs to hardware control!
 		    			break;
 		    		default:
-		    			printf("[ERROR] Unknown ACQ mode %d!\r\n", (int)mailboxBuffer[4]);
+		    			printf("[ERROR] Unknown ACQ mode %d - Ignoring.\r\n", (int)mailboxBuffer[4]);
 		    			break;
 		    	}
 
 		        if (status==XST_SUCCESS)
 		        {
 		        	// All OK, update status struct with buffer details
-		        	pStatusBlock->bufferSize = mailboxBuffer[1];
-		        	pStatusBlock->bufferCnt = mailboxBuffer[2];
-		        	pStatusBlock->numAcq = mailboxBuffer[3];
-		        	pStatusBlock->state = mailboxBuffer[4];
+		        	if (mailboxBuffer[4] != ACQ_MODE_UPLOAD)
+		        	{
+						pStatusBlock->bufferSize = mailboxBuffer[1];
+						pStatusBlock->bufferCnt = mailboxBuffer[2];
+						pStatusBlock->numAcq = mailboxBuffer[3];
+						pStatusBlock->state = mailboxBuffer[4];
+		        	}
 		        }
 		        else
 		        {
@@ -389,14 +404,18 @@ int main()
  * Generic DMA setup function, accepts segment size (size of data to RX from I/O Spartan),
  * and segment count (to limit the number of BDs created for debugging / #-frame mode)
  * @param pBdRings pointer to array of BD rings
- * @param pTxBd set by function to be first BD in TX ring
+ * @param pFirstTxBd set by function to be first BD in TX ring
  * @param segmentSz Size of data to RX from I/O Spartan
  * @param segmentCnt Number of segments to allocate, set to 0 for allocation of maximum BDs
  * @return XST_SUCCESS if OK, otherwise an XST_xxx error code
  *
  */
-int configureBds(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt)
+int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock)
 {
+
+	// TODO: Check what the last configuration was for and if it matches the request, don't reconfigure BDs!
+
+	// TODO: Take into account the reserved BD config area!
 
 	XLlDma_BdRing *pRingTenGig = pBdRings[BD_RING_TENGIG];
 	XLlDma_BdRing *pRingAsicTop = pBdRings[BD_RING_TOP_ASIC];
@@ -596,6 +615,63 @@ int configureBds(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz
 	// Everything OK!
 	return XST_SUCCESS;
 }
+
+
+
+/* Configures DMA engine for upstream configuration upload
+ * @param pUploadBdRing pointer to BD ring for upload channel
+ * @param pFirstConfigBd set by function to be first BD in TX ring
+ * @param bufferAddr address at which configuration data is stored
+ * @param bufferSz size of configuration data
+ * @param bufferCnt number of configuration datas
+ * @return XST_SUCCESS, or error code
+ */
+int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock)
+{
+	int status;
+
+	// Check we won't exceed BD storage allocation
+	if (bufferCnt > LL_MAX_CONFIG_BD)
+	{
+		printf("[ERROR] Configuration buffer count exceeds maximum BD storage! (%d>%d)\r\n", (int)bufferCnt, LL_MAX_CONFIG_BD);
+		return XST_FAILURE;
+	}
+
+	u32 bdStartAddr = LL_BD_BADDR + LL_BD_SZ - (LL_MAX_CONFIG_BD * LL_DMA_ALIGNMENT);
+	printf("[INFO ] Creating config BDs at 0x%08x (%d max.)\r\n", (unsigned)bdStartAddr, LL_MAX_CONFIG_BD);
+
+	// Create BD ring & BD
+	status = XLlDma_BdRingCreate(pUploadBdRing, bdStartAddr, bdStartAddr, LL_DMA_ALIGNMENT, bufferCnt);
+	if (status!=XST_SUCCESS)
+	{
+		printf("[ERROR] Error creating config BDs!  Error code %d\r\n", status);
+		return status;
+	}
+
+	XLlDma_Bd *pUploadBd;
+	*pFirstConfigBd = pUploadBd;
+	status = XLlDma_BdRingAlloc(pUploadBdRing, bufferCnt, &pUploadBd);
+	if (status!=XST_SUCCESS) {
+		printf("[ERROR] Failed to allocate config BD!  Error code %d\r\n", status);
+		return status;
+	}
+
+	// Configure BDs (We assume configurations are contiguous starting at bufferAddr)
+	int i=0;
+	u32 currentOffset = 0;
+	for (i=0; i<bufferCnt; i++)
+	{
+		XLlDma_BdSetBufAddr(*pUploadBd, bufferAddr + currentOffset);
+		XLlDma_BdSetLength(*pUploadBd, bufferSz);
+		XLlDma_BdSetStsCtrl(*pUploadBd, LL_STSCTRL_TX_BD);
+		currentOffset += bufferSz;
+		pUploadBd = XLlDma_BdRingNext(pUploadBdRing, pUploadBd);
+	}
+
+	return XST_SUCCESS;
+}
+
+
 
 /* Verifies a buffer by checking the STS/CTRL field of the BD matches the value expected.
  * Frees BD ready for processing
