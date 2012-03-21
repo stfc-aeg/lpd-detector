@@ -14,8 +14,10 @@
 // Todo list, in order of priority
 // TODO: Implement configuration upload
 // TODO: Fix configure for acquire, respect config BD storage area
+// TODO: Respect doTx / doRx flags
+// TODO: Move BD Free into recycleBuffer (not in validateBuffer)
 // TODO: Complete event loop with mailbox/DMA
-// TODO: Implement shared bram status flags
+// TODO: Complete shared bram status flags
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -80,6 +82,7 @@ typedef struct
 	u32 bufferCnt;		//! Number of buffers allocated
 	u32 bufferSize;		//! Size of buffers
 	u32 numAcq;			//! Number of acquisitions in this run
+	u32 numConfigBds;	//! Number of configuration BDs set
 	u32 readPtr;		//! 'read pointer'
 	u32 writePtr;		//! 'write pointer'
 	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
@@ -114,11 +117,27 @@ int main()
     printf("[INFO ] Maximum number of config upload BDs:  %d\r\n", LL_MAX_CONFIG_BD);
     print("[INFO ] ------------------------------------------------\r\n");
 
+    // Flags and main loop variables
     int status;
+    int i;
+    short doRx = 0;			// RX control flag for main loop
+    short doTx = 0;			// TX control flag for main loop
+    unsigned numTx = 0;
+
+    // Initialise BRAM status
+    acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
+    pStatusBlock->state =			0;
+    pStatusBlock->bufferCnt =		0;
+    pStatusBlock->bufferSize =		0;
+    pStatusBlock->numAcq =			0;
+    pStatusBlock->numConfigBds =	0;
+    pStatusBlock->readPtr =			0;
+    pStatusBlock->writePtr =		0;
+    pStatusBlock->totalRecv =		0;
+    pStatusBlock->totalSent =		0;
+    pStatusBlock->totalErrors =		0;
 
     u32 mailboxBuffer[5] =	{0,0,0,0,0};
-
-    acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
 
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
 
@@ -164,7 +183,7 @@ int main()
 
     	// Blocking read of 5x 32bit word
     	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 20);
-    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, numAcq=%d, mode=%d\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2], (unsigned)mailboxBuffer[3], (unsigned)mailboxBuffer[4]);
+    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2], (unsigned)mailboxBuffer[3], (unsigned)mailboxBuffer[4]);
 
     	switch (mailboxBuffer[0])
     	{
@@ -174,20 +193,23 @@ int main()
 		    	switch(mailboxBuffer[4])
 		    	{
 		    		case ACQ_MODE_NORMAL:
+		    			doTx = 1;
+		    			doRx = 1;
 		    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
 		    			break;
 		    		case ACQ_MODE_RX_ONLY:
-		    			print("[ERROR] ACQ_MODE_RX_ONLY unsupported!\r\n");
-		    			status = XST_FAILURE;
+		    			doTx = 0;
+		    			doRx = 1;
+		    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
 		    			break;
 		    		case ACQ_MODE_TX_ONLY:
-		    			print("[ERROR] ACQ_MODE_TX_ONLY unsupported!\r\n");
-		    			status = XST_FAILURE;
+		    			doTx = 1;
+		    			doRx = 0;
+		    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
 		    			break;
 		    		case ACQ_MODE_UPLOAD:
-		    			// TODO: Refactor numAcq to something more generic (ACQ_MODE_NORMAL->numAcq, ACQ_MODE_UPLOAD->configStartAddr)
+		    			// TODO: Refactor numAcq to something more generic (ACQ_MODE_NORMAL->numAcq, ACQ_MODE_UPLOAD->configStartAddr) --> modeParam?
 		    			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, mailboxBuffer[3], mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
-		    			// TODO: We need to send TX BDs to hardware control!
 		    			break;
 		    		default:
 		    			printf("[ERROR] Unknown ACQ mode %d - Ignoring.\r\n", (int)mailboxBuffer[4]);
@@ -215,165 +237,207 @@ int main()
 		        break;
 
 		    case CMD_ACQ_START:
-		    	// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-				printf("[INFO ] Entering acquire DMA event loop\r\n");
-				acquireRunning = 1;
-				while (acquireRunning)
-				{
-
-					print ("\r\n");
-
-					// Wait for data to be received
-					XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
-					unsigned numRxTop = 0;
-					unsigned numRxBot = 0;
-					unsigned numTx = 0;
-					unsigned totalRx = 0;
-					unsigned short done = 0;
-
-					print("[INFO ] Waiting for ASIC RX...\r\n");
-
-					while(done==0)
+		    	switch(mailboxBuffer[4])
+		    		case ACQ_MODE_NORMAL:
+		    		case ACQ_MODE_RX_ONLY:
+		    		case ACQ_MODE_TX_ONLY:
+					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+					printf("[INFO ] Entering acquire DMA event loop\r\n");
+					acquireRunning = 1;
+					while (acquireRunning)
 					{
 
-						// See if DMA engine has completed receive from either Spartan
-						numRxTop = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
-						numRxBot = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
+						print ("\r\n");
 
-						if (numRxTop !=0 )
+						// Wait for data to be received
+						XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
+						unsigned numRxTop = 0;
+						unsigned numRxBot = 0;
+						unsigned totalRx = 0;
+						unsigned short done = 0;
+
+						print("[INFO ] Waiting for ASIC RX...\r\n");
+
+						while(done==0)
 						{
-							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
-							if (status==XST_SUCCESS) {
-								totalRx++;
-							}
-							else
-							{
-								printf("[ERROR] RX from top ASIC failed validation, error code %d\r\n", status);
-								return 0;
-							}
-						}
 
-						if (numRxBot != 0 )
+							// See if DMA engine has completed receive from either Spartan
+							numRxTop = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
+							numRxBot = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
+
+							if (numRxTop !=0 )
+							{
+								status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
+								if (status==XST_SUCCESS) {
+									totalRx++;
+								}
+								else
+								{
+									printf("[ERROR] RX from top ASIC failed validation, error code %d\r\n", status);
+									return 0;
+								}
+							}
+
+							if (numRxBot != 0 )
+							{
+								status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
+								if (status==XST_SUCCESS) {
+									totalRx++;
+								}
+								else
+								{
+									printf("[ERROR] RX from bottom ASIC failed validation, error code %d\r\n", status);
+									return 0;
+								}
+							}
+
+							// TODO: Check we got 1 top / 1 bottom!
+
+							// Once we have both RX, we can arm the TX engine
+							if (totalRx==2)
+							{
+								print("[INFO ] Got RX from ASICs!\r\n");
+
+								pStatusBlock->totalRecv++;
+
+								// Do a proper TX
+								// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+								// Commit next 2 BDs in TX ring to hardware control
+								status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], 2, pTenGigBd);
+								if (status!=XST_SUCCESS)
+								{
+									printf("[ERROR] Could not commit TX BDs!  Error code %d\r\n", status);
+									return 0;
+								}
+
+								/*
+								status = XLlDma_BdRingStart(pBdRings[BD_RING_TENGIG]);
+								if (status!=XST_SUCCESS)
+								{
+									printf("[ERROR] Can't start 10GBe TX engine, error code %d\r\n", status);
+									return 0;
+								}
+								*/
+
+								// Confirm TX was OK
+								// TODO: This will keep RX/TX in lock step which we don't want to do!  Fix.
+								print("[INFO ] Waiting for TX BDs to return...\r\n");
+								numTx = 0;
+								while (numTx!=2)
+								{
+									numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], 2, &pTenGigBd);
+								}
+
+								// -------------------- TX1 --------------------
+								status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
+								if (status!=XST_SUCCESS)
+								{
+									printf("[ERROR] Error validating TX BD 1, error code %d\r\n", status);
+									return 0;
+								}
+								status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
+								if (status!=XST_SUCCESS)
+								{
+									printf("[ERROR] Error on recycleBuffer for TX, error code %d\r\n", status);
+									return 0;
+								}
+
+								pTenGigBd = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigBd);
+
+								// -------------------- TX2 --------------------
+								status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
+								if (status!=XST_SUCCESS)
+								{
+									printf("[ERROR] Error validating TX BD 2, error code %d\r\n", status);
+									return 0;
+								}
+								status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
+								if (status!=XST_SUCCESS)
+								{
+									printf("[ERROR] Error on recycleBuffer for TX, error code %d\r\n", status);
+									return 0;
+								}
+
+								print("[INFO ] Validated TX BDs OK!\r\n");
+
+								pTenGigBd = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigBd);
+
+								pStatusBlock->totalSent++;
+								// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+								// Recycle RX BDs
+								status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
+								if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for top ASIC!  Error code = %d\r\n", status); }
+								status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
+								if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for bottom ASIC!  Error code = %d\r\n", status); }
+
+								// All finished, flag complete
+								done=1;
+							}
+
+							// Check if there are any pending mailbox messages
+							u32 bytesRecvd = 0;
+							XMbox_Read(&mbox, &mailboxBuffer[0], 20, &bytesRecvd);
+							if (bytesRecvd == 20) {
+								printf("[INFO ] Got message!  cmd=%d (0x%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0]);
+								switch (mailboxBuffer[0])
+								{
+								case CMD_ACQ_STOP: // STOP ACQUIRE
+									print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
+									done = 1;
+									acquireRunning = 0;
+									break;
+
+								default:
+									print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
+									break;
+								}
+							}
+						} // END while(done==0)
+
+					} // END while(acquireRunning)
+					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+					break;
+		    	break;
+
+		    	// -------------------------------------------------------------------------------------
+
+		    	case ACQ_MODE_UPLOAD:
+
+		    		printf("[INFO ] Sending %d configuration upload TXes...\r\n", (int)pStatusBlock->numConfigBds);
+
+	    			// Send TX BDs to hardware control
+	    			status = XLlDma_BdRingToHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, pConfigBd);
+	    			if (status!=XST_SUCCESS)
+	    			{
+	    				printf("[ERROR] Could not commit %d upload BD(s) to hardware control!  Error code %d\r\n", (unsigned)mailboxBuffer[2], status);
+	    			}
+
+	    			// Retrieve TX BDs
+					numTx = 0;
+					print("[INFO ] Waiting for upload TX...\r\n");
+					while (numTx!=pStatusBlock->numConfigBds)
+					{
+						numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
+					}
+
+					// Verify / free BDs
+					for(i=0; i<pStatusBlock->numConfigBds; i++)
+					{
+						status = validateBuffer(pBdRings[BD_RING_UPLOAD], pConfigBd, BD_TX);
+						if (status!=XST_SUCCESS)
 						{
-							status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
-							if (status==XST_SUCCESS) {
-								totalRx++;
-							}
-							else
-							{
-								printf("[ERROR] RX from bottom ASIC failed validation, error code %d\r\n", status);
-								return 0;
-							}
+							printf("[ERROR] Error validating upload TX BD %d, error code %d\r\n", i, status);
 						}
-
-						// TODO: Check we got 1 top / 1 bottom!
-
-						// Once we have both RX, we can arm the TX engine
-						if (totalRx==2)
+						status = recycleBuffer(pBdRings[BD_RING_UPLOAD], pTenGigBd, BD_TX);
+						if (status!=XST_SUCCESS)
 						{
-							print("[INFO ] Got RX from ASICs!\r\n");
-
-							pStatusBlock->totalRecv++;
-
-							// Do a proper TX
-							// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-							// Commit next 2 BDs in TX ring to hardware control
-							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], 2, pTenGigBd);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Could not commit TX BDs!  Error code %d\r\n", status);
-								return 0;
-							}
-
-							/*
-							status = XLlDma_BdRingStart(pBdRings[BD_RING_TENGIG]);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Can't start 10GBe TX engine, error code %d\r\n", status);
-								return 0;
-							}
-							*/
-
-							// Confirm TX was OK
-							// TODO: This will keep RX/TX in lock step which we don't want to do!  Fix.
-							print("[INFO ] Waiting for TX BDs to return...\r\n");
-							numTx = 0;
-							while (numTx!=2)
-							{
-								numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], 2, &pTenGigBd);
-							}
-
-							// -------------------- TX1 --------------------
-							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Error validating TX BD 1, error code %d\r\n", status);
-								return 0;
-							}
-							status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Error on recycleBuffer for TX, error code %d\r\n", status);
-								return 0;
-							}
-
-							pTenGigBd = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigBd);
-
-							// -------------------- TX2 --------------------
-							status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Error validating TX BD 2, error code %d\r\n", status);
-								return 0;
-							}
-							status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigBd, BD_TX);
-							if (status!=XST_SUCCESS)
-							{
-								printf("[ERROR] Error on recycleBuffer for TX, error code %d\r\n", status);
-								return 0;
-							}
-
-							print("[INFO ] Validated TX BDs OK!\r\n");
-
-							pTenGigBd = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigBd);
-
-							pStatusBlock->totalSent++;
-							// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-							// Recycle RX BDs
-							status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
-							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for top ASIC!  Error code = %d\r\n", status); }
-							status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
-							if (status!=XST_SUCCESS) { printf("[ERROR] Failed to recycle buffer for bottom ASIC!  Error code = %d\r\n", status); }
-
-							// All finished, flag complete
-							done=1;
+							printf("[ERROR] Error on recycleBuffer for upload TX, error code %d\r\n", status);
 						}
+					}
 
-						// Check if there are any pending mailbox messages
-						u32 bytesRecvd = 0;
-						XMbox_Read(&mbox, &mailboxBuffer[0], 20, &bytesRecvd);
-						if (bytesRecvd == 20) {
-							printf("[INFO ] Got message!  cmd=%d (0x%08x)\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[0]);
-							switch (mailboxBuffer[0])
-							{
-							case CMD_ACQ_STOP: // STOP ACQUIRE
-								print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
-								done = 1;
-								acquireRunning = 0;
-								break;
-
-							default:
-								print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
-								break;
-							}
-						}
-					} // END while(done==0)
-
-				} // END while(acquireRunning)
-				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-				break;
+		    		break;
 
 			case CMD_ACQ_STOP:
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -383,7 +447,7 @@ int main()
 
 			default:
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-				printf("[ERROR] Unrecognised mailbox command %ld\r\n", mailboxBuffer[0]);
+				printf("[ERROR] Unrecognised mailbox command %d\r\n", (unsigned)mailboxBuffer[0]);
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				break;
 
@@ -649,7 +713,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 	}
 
 	XLlDma_Bd *pUploadBd;
-	*pFirstConfigBd = pUploadBd;
+	*pFirstConfigBd = pUploadBd;			// Pass back pointer to first BD
 	status = XLlDma_BdRingAlloc(pUploadBdRing, bufferCnt, &pUploadBd);
 	if (status!=XST_SUCCESS) {
 		printf("[ERROR] Failed to allocate config BD!  Error code %d\r\n", status);
@@ -667,6 +731,9 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 		currentOffset += bufferSz;
 		pUploadBd = XLlDma_BdRingNext(pUploadBdRing, pUploadBd);
 	}
+
+	// Update status
+	pStatusBlock->numConfigBds = bufferCnt;
 
 	return XST_SUCCESS;
 }
