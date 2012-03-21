@@ -247,7 +247,7 @@ int main()
 					while (acquireRunning)
 					{
 
-						print ("\r\n");
+						print("\r\n");
 
 						// Wait for data to be received
 						XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
@@ -405,37 +405,50 @@ int main()
 
 		    	case ACQ_MODE_UPLOAD:
 
-		    		printf("[INFO ] Sending %d configuration upload TXes...\r\n", (int)pStatusBlock->numConfigBds);
+		    		if (pStatusBlock->numConfigBds > 0)
+		    		{
 
-	    			// Send TX BDs to hardware control
-	    			status = XLlDma_BdRingToHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, pConfigBd);
-	    			if (status!=XST_SUCCESS)
-	    			{
-	    				printf("[ERROR] Could not commit %d upload BD(s) to hardware control!  Error code %d\r\n", (unsigned)mailboxBuffer[2], status);
-	    			}
+						printf("[INFO ] Sending %d configuration upload TXes...\r\n", (int)pStatusBlock->numConfigBds);
 
-	    			// Retrieve TX BDs
-					numTx = 0;
-					print("[INFO ] Waiting for upload TX...\r\n");
-					while (numTx!=pStatusBlock->numConfigBds)
-					{
-						numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
-					}
-
-					// Verify / free BDs
-					for(i=0; i<pStatusBlock->numConfigBds; i++)
-					{
-						status = validateBuffer(pBdRings[BD_RING_UPLOAD], pConfigBd, BD_TX);
+						// Send TX BDs to hardware control
+						status = XLlDma_BdRingToHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, pConfigBd);
 						if (status!=XST_SUCCESS)
 						{
-							printf("[ERROR] Error validating upload TX BD %d, error code %d\r\n", i, status);
+							printf("[ERROR] Could not commit %d upload BD(s) to hardware control!  Error code %d\r\n", (unsigned)mailboxBuffer[2], status);
 						}
-						status = recycleBuffer(pBdRings[BD_RING_UPLOAD], pTenGigBd, BD_TX);
-						if (status!=XST_SUCCESS)
+
+						// Retrieve TX BDs
+						numTx = 0;
+						print("[INFO ] Waiting for upload TX...\r\n");
+						while (numTx!=pStatusBlock->numConfigBds)
 						{
-							printf("[ERROR] Error on recycleBuffer for upload TX, error code %d\r\n", status);
+							numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
 						}
-					}
+
+						// Verify / free BDs
+						for(i=0; i<pStatusBlock->numConfigBds; i++)
+						{
+							status = validateBuffer(pBdRings[BD_RING_UPLOAD], pConfigBd, BD_TX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error validating upload TX BD %d, error code %d\r\n", i, status);
+							}
+							status = recycleBuffer(pBdRings[BD_RING_UPLOAD], pTenGigBd, BD_TX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error on recycleBuffer for upload TX, error code %d\r\n", status);
+							}
+							pConfigBd = XLlDma_BdRingNext(pBdRings[BD_RING_UPLOAD], pConfigBd);
+						}
+
+						// TODO: Subsequent calls to start configure will fail because we moved pConfigBd, this is a quick and dirty way to prevent this ;)
+						pStatusBlock->numConfigBds = 0;
+
+		    		}
+		    		else
+		    		{
+		    			print("[ERROR] Received CMD_ACQ_START for ACQ_MODE_UPLOAD, but no configured upload BDs!  Ignoring...\r\n");
+		    		}
 
 		    		break;
 
