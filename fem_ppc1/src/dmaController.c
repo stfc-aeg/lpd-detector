@@ -751,6 +751,13 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 	// Update status
 	pStatusBlock->numConfigBds = bufferCnt;
 
+	// Generate test pattern at a fixed memory address
+	u32 testPatternAddr = 0x30000000;
+	u32 testPatternLen = 0x18000;		// In bytes!
+	u32 testPatternPat = 0xFFFFFFFF;
+	printf("[INFO ] Generating test pattern 0x%08x at 0x%08x, 0x%08x bytes in length.\r\n", (unsigned)testPatternPat, (unsigned)testPatternAddr, (unsigned)testPatternLen);
+	status = Xil_TestMem32((u32*)testPatternAddr, testPatternLen/4, testPatternPat, XIL_TESTMEM_FIXEDPATTERN);
+
 	return XST_SUCCESS;
 }
 
