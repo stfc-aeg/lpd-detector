@@ -240,7 +240,14 @@ int main()
 		        break;
 
 		    case CMD_ACQ_START:
+
+		    	if (pStatusBlock->numConfigBds > 0)
+		    	{
+		    		mailboxBuffer[4] = ACQ_MODE_UPLOAD;
+		    	}
+
 		    	switch(mailboxBuffer[4])
+		    	{
 		    		case ACQ_MODE_NORMAL:
 		    		case ACQ_MODE_RX_ONLY:
 		    		case ACQ_MODE_TX_ONLY:
@@ -417,7 +424,7 @@ int main()
 						status = XLlDma_BdRingToHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, pConfigBd);
 						if (status!=XST_SUCCESS)
 						{
-							printf("[ERROR] Could not commit %d upload BD(s) to hardware control!  Error code %d\r\n", (unsigned)mailboxBuffer[2], status);
+							printf("[ERROR] Could not commit %d upload BD(s) to hardware control!  Error code %d\r\n", (int)pStatusBlock->numConfigBds, status);
 						}
 
 						// Retrieve TX BDs
@@ -454,7 +461,7 @@ int main()
 		    		}
 
 		    		break;
-
+		    	}
 			case CMD_ACQ_STOP:
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				printf("[INFO ] Not doing anything with stop acquire command.\r\n");
@@ -729,12 +736,12 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 	}
 
 	XLlDma_Bd *pUploadBd;
-	*pFirstConfigBd = pUploadBd;			// Pass back pointer to first BD
 	status = XLlDma_BdRingAlloc(pUploadBdRing, bufferCnt, &pUploadBd);
 	if (status!=XST_SUCCESS) {
 		printf("[ERROR] Failed to allocate config BD!  Error code %d\r\n", status);
 		return status;
 	}
+	*pFirstConfigBd = pUploadBd;			// Pass back pointer to first BD
 
 	// Configure BDs (We assume configurations are contiguous starting at bufferAddr)
 	int i=0;
@@ -750,6 +757,14 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 
 	// Update status
 	pStatusBlock->numConfigBds = bufferCnt;
+
+	// Start TX engine
+	status = XLlDma_BdRingStart(pUploadBdRing);
+	if (status!=XST_SUCCESS)
+	{
+		print("[ERROR] Can't start config TX engine, no initialised BDs!\r\n");
+		return status;
+	}
 
 	// Generate test pattern at a fixed memory address
 	u32 testPatternAddr = 0x30000000;
