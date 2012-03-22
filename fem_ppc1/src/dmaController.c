@@ -182,6 +182,7 @@ int main()
     	print("[INFO ] Waiting for mailbox message...\r\n");
 
     	// Blocking read of 5x 32bit word
+    	// TODO: Overlay struct on mailbox message, don't access via mailboxBuffer[]
     	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 20);
     	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2], (unsigned)mailboxBuffer[3], (unsigned)mailboxBuffer[4]);
 
@@ -200,11 +201,13 @@ int main()
 		    		case ACQ_MODE_RX_ONLY:
 		    			doTx = 0;
 		    			doRx = 1;
+		    			print("[INFO ] Warning, ACQ_MODE_RX_ONLY mode not completely implemented!\r\n");
 		    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
 		    			break;
 		    		case ACQ_MODE_TX_ONLY:
 		    			doTx = 1;
 		    			doRx = 0;
+		    			print("[INFO ] Warning, ACQ_MODE_TX_ONLY mode not completely implemented!\r\n");
 		    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
 		    			break;
 		    		case ACQ_MODE_UPLOAD:
@@ -715,7 +718,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 	}
 
 	u32 bdStartAddr = LL_BD_BADDR + LL_BD_SZ - (LL_MAX_CONFIG_BD * LL_DMA_ALIGNMENT);
-	printf("[INFO ] Creating config BDs at 0x%08x (%d max.)\r\n", (unsigned)bdStartAddr, LL_MAX_CONFIG_BD);
+	printf("[INFO ] Creating %d config BDs at 0x%08x (%d max.)\r\n", (int)bufferCnt, (unsigned)bdStartAddr, LL_MAX_CONFIG_BD);
 
 	// Create BD ring & BD
 	status = XLlDma_BdRingCreate(pUploadBdRing, bdStartAddr, bdStartAddr, LL_DMA_ALIGNMENT, bufferCnt);
