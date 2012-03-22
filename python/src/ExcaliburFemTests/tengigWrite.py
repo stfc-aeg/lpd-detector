@@ -13,10 +13,23 @@ from FemClient.FemClient import  *
 modeString = []
 args = defaults.parseArgs()
 
+# Set destination readout node, selects MAC addr: default = node 1
+node = 1
+if len(args) > 0:
+    node = int(args[0])
+
+if node == 1:
+    destMacVal = 0x205F1043 # 00:70:43:10:5F:20
+elif node == 2:
+    destMacVal = 0x00631043 # 00:70:43:10:63:00
+else:
+    print "Unknown node argument", node
+    sys.exit(1)
+    
 # Set data source mode. default or 0 = from DDR, 1 = LL frame gen
 mode = 0 # 0 = data from DDR, 1 = data from LL frame gen
-if len(args) > 0:
-    mode = int(args[0])    
+if len(args) > 1:
+    mode = int(args[1])    
 print "Data source mode is", mode
     
 try:
@@ -29,11 +42,11 @@ except FemClientError as errString:
 print "Set up UDP block 0"
 theFem.rdmaWrite(0x00000000, 0x00000062) # UDP Block 0 MAC Source Lower 32
 theFem.rdmaWrite(0x00000001, 0x07001000) # UDP Block 0 MAC Source Upper 16/Dest Lower 16
-theFem.rdmaWrite(0x00000002, 0x205F1043) # UDP Block 0 MAC Dest Upper 32
+theFem.rdmaWrite(0x00000002, destMacVal) # UDP Block 0 MAC Dest Upper 32
 theFem.rdmaWrite(0x00000004, 0xDB00001C) # UDP Block 0 IP Ident / Header Length
 theFem.rdmaWrite(0x00000006, 0x000A77B8) # UDP Block 0 IP Dest Addr / Checksum
-theFem.rdmaWrite(0x00000007, 0x000A0202) # UDP Block 0 IP Dest Addr / Src Addr
-theFem.rdmaWrite(0x00000008, 0x08000102) # UDP Block 0 IP Src Addr / Src Port
+theFem.rdmaWrite(0x00000007, 0x000A0102) # UDP Block 0 IP Dest Addr / Src Addr
+theFem.rdmaWrite(0x00000008, 0x08000202) # UDP Block 0 IP Src Addr / Src Port
 theFem.rdmaWrite(0x00000009, 0x0008D1F0) # UDP Block 0 UDP Length / Dest Port 
 theFem.rdmaWrite(0x0000000C, 0x000003E6) # UDP Block 0 Packet Size    
 theFem.rdmaWrite(0x0000000D, 0x00001000) # UDP Block 0 IFG Value
@@ -41,7 +54,7 @@ theFem.rdmaWrite(0x0000000F, 0x00000011) # UDP Block 0 IFG Enable
 
 if mode == 0:
     
-    theFem.rdmaWrite(0x30000001, 0x00000001) # Selects DDR memory
+    theFem.rdmaWrite(0x30000001, 0x00000000) # Selects DDR memory
 
 else:
 
@@ -64,3 +77,6 @@ else:
 print "Read local link monitor"
 llMonVals = theFem.rdmaRead(0x38000010, 0xA)
 print "Local link monitor result =", [hex(val) for val in llMonVals]
+
+# Arm the PPC1 DMA loop by sending a command
+theFem.commandSend(1)

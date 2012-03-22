@@ -18,6 +18,8 @@ class FemTransaction():
     CMD_UNSUPPORTED      = 0
     CMD_ACCESS           = 1
     CMD_INTERNAL         = 2
+    CMD_ACQUIRE          = 3
+    CMD_PERSONALITY      = 4
     
     BUS_UNSUPPORTED      = 0
     BUS_EEPROM           = 1
@@ -37,6 +39,18 @@ class FemTransaction():
     STATE_ACKNOWLEDGE    = 32
     STATE_NO_ACKNOWLEDGE = 64
     
+    CMD_ACQ_UNSUPPORTED   = 0
+    CMD_ACQ_CONFIG        = 1
+    CMD_ACQ_START         = 2
+    CMD_ACQ_STOP          = 3
+    CMD_ACQ_STATUS        = 4
+    
+    ACQ_MODE_UNSUPPORTED  = 0
+    ACQ_MODE_NORMAL       = 1
+    ACQ_MODE_RX_ONLY      = 2
+    ACQ_MODE_TX_ONLY      = 3
+    ACQ_MODE_UPLOAD       = 4
+ 
     widthEncoding =  { WIDTH_UNSUPPORTED : (0, 'x'),
                        WIDTH_BYTE        : (1, 'B'),
                        WIDTH_WORD        : (2, 'H'),

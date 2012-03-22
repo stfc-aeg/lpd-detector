@@ -7,8 +7,10 @@ Created on 22 Mar 2011
 import socket
 from FemApi.FemTransaction import FemTransaction
 from FemApi.FemConfig import FemConfig
+from FemApi.FemAcquireConfig import FemAcquireConfig
 
 import binascii
+from types import *
 
 class FemClientError(Exception):
     
@@ -51,7 +53,6 @@ class FemClient():
         
             theTransaction = FemTransaction(cmd=theCmd, bus=theBus, width=theWidth, state=theState, 
                                            addr=theAddr, payload=thePayload, readLen=theReadLen)
-
         data = theTransaction.encode()
         self.femSocket.send(data)
   
@@ -143,7 +144,26 @@ class FemClient():
         width = FemTransaction.WIDTH_BYTE
         values = self.read(bus, width, theAddr, theReadLen)
         return values
-          
+    
+    def acquireSend(self, theCmd, theMode=None, theBufSize=None, theBufCount=None, theNumAcqs=None):
+        
+        payload=None
+        
+        if theCmd == FemTransaction.CMD_ACQ_CONFIG:
+            acqConfig = FemAcquireConfig(theMode, theBufSize, theBufCount, theNumAcqs)
+            payload = acqConfig.decode()
+            pass       
+        
+        cmd   = FemTransaction.CMD_ACQUIRE
+        bus   = FemTransaction.BUS_UNSUPPORTED
+        width = FemTransaction.WIDTH_LONG
+        state = FemTransaction.STATE_UNSUPPORTED
+        addr  = theCmd
+
+        self.send(theCmd=cmd, theBus=bus, theWidth=width, theState=state, theAddr=addr, thePayload=payload)
+        response = self.recv()
+        return response.payload
+    
     def close(self):
         self.femSocket.close()
         self.femSocket = None

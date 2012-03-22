@@ -19,6 +19,7 @@ def sht21Temp(theFem, deviceAddress):
     
     # Read three bytes back
     response = theFem.i2cRead(deviceAddress, 3)
+    print [hex(val) for val in response]
     
     # Calculate temperature
     rawVal = (response[4] << 8) | response[5]

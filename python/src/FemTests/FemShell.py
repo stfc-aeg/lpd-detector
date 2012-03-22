@@ -33,6 +33,12 @@ class FemShell(cmd.Cmd,object):
                       'LONG' : FemTransaction.WIDTH_LONG
                     }
     
+    acqModeEncoding = { 'NORMAL' : FemTransaction.ACQ_MODE_NORMAL,
+                        'RX'     : FemTransaction.ACQ_MODE_RX_ONLY,
+                        'TX'     : FemTransaction.ACQ_MODE_TX_ONLY,
+                        'UPLOAD' : FemTransaction.ACQ_MODE_UPLOAD                           
+                      }
+    
     def __init__(self, completekey='tab', stdin=None, stdout=None, cmdqueue=None):
       
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
@@ -612,6 +618,95 @@ Example:
     def help_cmd(self):
         print self.do_cmd.__doc__
         
+    def do_acquire(self, s):
+        '''
+        Sends acquire command to the DMA controller of the FEM
+        Syntax: acquire [config <mode> <bufSize> <bufNum> <numAcqs>|start|stop|status] 
+        where config params are:
+           mode : normal, rx, tx or upload
+           bufSize : buffer size to set up
+           bufNum  : number of buffers to set up (0=maximise in memory)
+           numAcqs : number of images acquisitions to run
+           
+        N.B. start, stop and status commands require no addiotnal parameters
+        '''
+        
+        params = s.split()
+        
+        if len(params) < 1:
+            print "*** Invalid number of arguments"
+            return
+        
+        # Initialize default parameters
+        cmd      = None
+        mode     = None
+        bufSize  = None
+        bufCount = None
+        numAcqs  = None
+        
+        acqCommand = string.lower(params[0])
+        
+        if acqCommand == 'config':
+            
+            # Need an additional four parameters (mode, size, count, numAcqs)          
+            if len(params) < 5:
+                print "*** Invalid number of arguments for acquire configuration", len(params)
+                return
+            
+            # Set command
+            cmd = FemTransaction.CMD_ACQ_CONFIG
+            
+            # Decode mode parameter string to mode ID
+            modeStr = string.upper(params[1])
+            if FemShell.acqModeEncoding.has_key(modeStr):
+                mode = FemShell.acqModeEncoding[modeStr]
+            else:
+                print "*** mode parameter not recognized"
+                return
+            
+            # Try to decode buffer size, count and number of acqs from remaining params
+            try:
+                bufSize  = int(params[2], 0)
+                bufCount = int(params[3], 0)
+                numAcqs  = int(params[4], 0)
+            except ValueError:
+                print "*** buffer size, count and numAcq parameters must be integer"
+                return
+                        
+        elif acqCommand == 'start':
+            # Set command
+            cmd = FemTransaction.CMD_ACQ_START
+            
+        elif acqCommand == 'stop':
+            # Set command
+            cmd = FemTransaction.CMD_ACQ_STOP
+            
+        elif acqCommand == 'status':
+            # Set command
+            cmd = FemTransaction.CMD_ACQ_STATUS
+
+        else:                
+            print "Unrecognised acquire command:", acqCommand
+            return
+        
+        # Send acquire command to the FEM
+        if self.__class__.connectedFem == None:
+            print "*** Not connected to a FEM"
+            return
+        try:
+            ack = self.__class__.connectedFem.acquireSend(cmd, mode, bufSize, bufCount, numAcqs)
+            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
+        except FemClientError as e:
+            if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
+                print "Error, FEM has closed the client connection"
+                self.do_close(None)
+            else:
+                print "FEM Exception:", e, 'errno=', e.errno
+                
+            
+    def help_acquire(self):
+        print self.do_acquire.__doc__
+                
 if __name__ == "__main__":
     
     import sys
