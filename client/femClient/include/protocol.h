@@ -1,7 +1,7 @@
 /*
  * protocol.h
  *
- *  Basic protocol for FEM control and configuration over ethernet
+ *  Basic protocol for FEM control and configuration over Ethernet
  *
  */
 
@@ -10,8 +10,8 @@
 
 #include "dataTypes.h"
 
-// TODO: Change this once finished debugging
-#define MAX_PAYLOAD_SIZE          64
+// TODO: Fix this for large payload/multi-packet data reception....
+#define MAX_PAYLOAD_SIZE          1024
 
 #define PROTOCOL_MAGIC_WORD       0xDEADBEEF
 
@@ -26,7 +26,7 @@
 							xil_printf("Cmd:   0x%x\r\n",hdr->command); \
 							xil_printf("Bus:   0x%x\r\n",hdr->bus_target); \
 							xil_printf("Width: 0x%x\r\n",hdr->data_width); \
-							xil_printf("Stat:  0x%x\r\n",hdr->status); \
+							xil_printf("Stat:  0x%x\r\n",hdr->state); \
 							xil_printf("Addr:  0x%x\r\n",hdr->address); \
 							xil_printf("Payld: %d\r\n", hdr->payload_sz)
 #else
@@ -55,7 +55,7 @@ struct protocol_header
 	u8  command;
 	u8  bus_target;
 	u8  data_width;
-	u8  status;
+	u8  state;
 	u32 address;
 	u32 payload_sz;
 };
@@ -65,7 +65,9 @@ enum protocol_commands
 {
 	CMD_UNSUPPORTED = 0,
 	CMD_ACCESS      = 1,
-	CMD_INTERNAL	= 2
+	CMD_INTERNAL	= 2,
+	CMD_ACQUIRE		= 3,
+	CMD_PERSONALITY	= 4
 };
 
 // Target bus for commands
@@ -74,9 +76,10 @@ enum protocol_bus_type
 	BUS_UNSUPPORTED = 0,
 	BUS_EEPROM      = 1,
 	BUS_I2C         = 2,
-	BUS_RAW_REG     = 3,	// V5P memory-mapped peripherals
-	BUS_RDMA        = 4,	// Downstream configuration
-	BUS_SPI         = 5
+	BUS_RAW_REG     = 3,	//! V5P memory-mapped peripherals
+	BUS_RDMA        = 4,	//! Downstream configuration
+	BUS_SPI			= 5,	//! SPI bus
+	BUS_DIRECT		= 6		//! Direct memory write
 };
 
 // Size of data
@@ -97,6 +100,46 @@ enum protocol_status
 	STATE_ACK         = 6,
 	STATE_NACK        = 7
 };
+
+enum protocol_acq_command
+{
+	CMD_ACQ_UNSUPPORTED		= 0,
+	CMD_ACQ_CONFIG			= 1,
+	CMD_ACQ_START			= 2,
+	CMD_ACQ_STOP			= 3,
+	CMD_ACQ_STATUS			= 4
+};
+
+enum protocol_acq_mode
+{
+	ACQ_MODE_UNSUPPORTED	= 0,
+	ACQ_MODE_NORMAL			= 1,	//! Arm RX and TX, for normal acquisition
+	ACQ_MODE_RX_ONLY		= 2,	//! Arm RX only
+	ACQ_MODE_TX_ONLY		= 3,	//! Arm TX only
+	ACQ_MODE_UPLOAD			= 4		//! Upload config
+};
+
+typedef struct
+{
+	u32 acqMode;					//! protocol_acq_mode
+	u32 bufferSz;					//! Buffer size in bytes
+	u32 bufferCnt;					//! Buffer count
+	u32 numAcq;						//! Number of acquisitions expected
+} protocol_acq_config;
+
+// TODO: Move to common include for PPC1/PPC2!
+typedef struct
+{
+	u32 state;			//! Current mode?
+	u32 bufferCnt;		//! Number of buffers allocated
+	u32 bufferSize;		//! Size of buffers
+	u32 readPtr;		//! 'read pointer'
+	u32 writePtr;		//! 'write pointer'
+	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
+	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
+	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
+} acqStatusBlock;
+
 /* NEW FORMAT - WAIT FOR PYTHON TO BE UPDATED!
  * ALSO: UPDATE CBI/SBI MACROS!
 {

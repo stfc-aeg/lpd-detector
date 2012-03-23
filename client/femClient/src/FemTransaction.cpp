@@ -10,7 +10,6 @@
 #include <iostream>
 
 FemTransaction::FemTransaction(u8 cmd, u8 bus, u8 width, u8 state, u32 address, u8* payload, u32 payloadSize)
-	: mPayload(payloadSize)
 {
 
 	// Initialize header values
@@ -18,7 +17,7 @@ FemTransaction::FemTransaction(u8 cmd, u8 bus, u8 width, u8 state, u32 address, 
 	mHeader.command = cmd;
 	mHeader.bus_target = bus;
 	mHeader.data_width = width;
-	mHeader.status = state;
+	mHeader.state = state;
 	mHeader.address = address;
 	mHeader.payload_sz = 0;
 
@@ -60,13 +59,13 @@ std::vector<u8> FemTransaction::encode()
 	encoded.push_back(mHeader.command);
 	encoded.push_back(mHeader.bus_target);
 	encoded.push_back(mHeader.data_width);
-	encoded.push_back(mHeader.status);
+	encoded.push_back(mHeader.state);
 	u32Encode(encoded, mHeader.address);
 	u32Encode(encoded, mHeader.payload_sz);
 
 	// Append payload, converting to network byte order as appropriate. A read transaction
 	// always has a fixed length payload (read length) encoded as a long word
-	if ((mHeader.command == CMD_ACCESS) && (CMPBIT(mHeader.status,STATE_READ))) {
+	if ((mHeader.command == CMD_ACCESS) && (CMPBIT(mHeader.state,STATE_READ))) {
 		for (unsigned int i = 0; i < mHeader.payload_sz; i+= sizeof(u32))
 		{
 			u32 value = (u32)(*(u32*)&(mPayload[i]));
@@ -112,12 +111,14 @@ std::vector<u8> FemTransaction::encode()
 
 void FemTransaction::appendPayload(u8* aPayload, u32 aAppendLen)
 {
+
 	for (unsigned int i = 0; i < aAppendLen; i++)
 	{
 		mPayload.push_back(*(aPayload + i));
 	}
 	mHeader.payload_sz = (mHeader.payload_sz - mPayloadRemaining) + aAppendLen;
 	mPayloadRemaining = mHeader.payload_sz - mPayload.size();
+
 }
 
 void FemTransaction::appendPayloadFromStream(const std::vector<u8>& aByteStream, size_t offset)
@@ -129,7 +130,7 @@ void FemTransaction::appendPayloadFromStream(const std::vector<u8>& aByteStream,
 	// If the transaction is a read/write command acknowledgement, the first four bytes
 	// are the access length as u32 and should be swapped as such. Then skip decoding
 	// of this word in subsequent processing by offsetting copyStart from zero.
-	if ((mHeader.command == CMD_ACCESS) && (CMPBIT(mHeader.status,STATE_ACK)) && (offset == 0))
+	if ((mHeader.command == CMD_ACCESS) && (CMPBIT(mHeader.state,STATE_ACK)) && (offset == 0))
 	{
 		u32 ackLen = (u32)*(u32*)&(aByteStream[0]);
 		u32Decode(mPayload, ackLen);
@@ -202,7 +203,7 @@ u8 FemTransaction::getCommand(void)
 
 u8 FemTransaction::getState(void)
 {
-	return mHeader.status;
+	return mHeader.state;
 }
 
 u32 FemTransaction::getAddress(void)
@@ -217,13 +218,13 @@ std::ostream& operator<<(std::ostream& aOut, const FemTransaction &aTrans)
     aOut << "Command        : 0x" << std::hex << (u32)aTrans.mHeader.command << std::endl;
     aOut << "Bus            : 0x" << std::hex << (u32)aTrans.mHeader.bus_target << std::endl;
     aOut << "Width          : 0x" << std::hex << (u32)aTrans.mHeader.data_width << std::endl;
-    aOut << "State          : 0x" << std::hex << (u32)aTrans.mHeader.status << std::endl;
+    aOut << "State          : 0x" << std::hex << (u32)aTrans.mHeader.state << std::endl;
     aOut << "Address        : 0x" << std::hex << (u32)aTrans.mHeader.address << std::endl;
     aOut << "Payload length : 0x" << std::hex << (u32)aTrans.mHeader.payload_sz << std::endl;
     aOut << "Payload        : ";
 
-//    for (unsigned int i = 0; i < aTrans.mHeader.payload_sz; i++) {
-   for (unsigned int i = 0; i < aTrans.mPayload.size(); i++) {
+    for (unsigned int i = 0; i < aTrans.mHeader.payload_sz; i++) {
+   //for (unsigned int i = 0; i < aTrans.mPayload.size(); i++) {
     	aOut << "0x" << std::hex << (u32)aTrans.mPayload[i] << " ";
     	if (i && (i%8 == 0)) {
     		aOut << "                 " << std::endl;
