@@ -33,6 +33,7 @@ typedef enum
 	femClientReadMismatch,              ///< Mismatch in requested versus received access in read transaction
 	femClientWriteMismatch,             ///< Mismatch in requested versus acknowledged access in write transaction
 	femClientIllegalSensor,             ///< Illegal sensor specified in tempSensorRead call
+	femClientNextEnumRange = 20000      ///< Next enum range to use for derived class exceptions
 } FemClientErrorCode;
 
 typedef enum
@@ -65,6 +66,7 @@ public:
 	u32 write(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
 					  std::vector<u8>& aPayload);
 	virtual void command(unsigned int command);
+	void commandAcquire(unsigned int aAcqCommand, protocol_acq_config* apConfig=0);
 
 	std::size_t send(FemTransaction aTrans);
 	FemTransaction receive(void);
@@ -74,12 +76,19 @@ public:
 	u32 i2cWrite(unsigned int aAddress, std::vector<u8>&aValues);
 	std::vector<u8> rdmaRead(unsigned int aAddress, unsigned int aLength);
 	u32 rdmaWrite(unsigned int aAddress, std::vector<u8>& aPayload);
+	u32 rdmaWrite(unsigned int aAddress, std::vector<u32>& aPayload);
 	void rdmaWrite(u32 address, u32 value);
 	u32 spiWrite(unsigned int aAddress, std::vector<u8>& aPayload);
 	std::vector<u8> spiRead(unsigned int aAddress, unsigned int aLength);
 
 	// High-level FEM client functions, implemented in femClientHighLevel.cpp
 	double tempSensorRead(FemTemperatureSensor aSensor);
+
+	// Acquisition control functions implemented in FemClientAcquisition.cpp
+	void acquireConfig(u32 aAcqMode, u32 aBufferSize, u32 aBufferCount, u32 aNumAcq);
+	void acquireStart(void);
+	void acquireStop(void);
+	void acquireStatus(void);
 
 	void runIoService(void); // test function
 

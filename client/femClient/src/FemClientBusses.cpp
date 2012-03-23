@@ -83,6 +83,26 @@ u32 FemClient::rdmaWrite(unsigned int aAddress, std::vector<u8>& aPayload) {
 	u32 ack = this->write(bus, width, aAddress, aPayload);
     return ack;
 }
+/** rdmaWrite - perform an RDMA write transaction to the FEM
+ *
+ * This function performs an RDMA write transaction to the FEM, at an address
+ * specified in the arguments and of a length determined from the u8 byte
+ * values passed. The number of writes completed (which should match the
+ * expected length) is returned.
+ *
+ * @param aAdddress RDMA address to write (including upper byte as FEM bus select)
+ * @param aPayload reference to u32 word vector containing values to write
+ * @return number of bytes written
+ */
+u32 FemClient::rdmaWrite(unsigned int aAddress, std::vector<u32>& aPayload) {
+
+	unsigned int bus   = BUS_RDMA;
+	unsigned int width = WIDTH_LONG;
+	std::vector<u8>* payloadPtr = (std::vector<u8>*)&aPayload;
+	u32 ack = this->write(bus, width, aAddress, *payloadPtr);
+
+    return ack;
+}
 
 /** rdmaWrite - perform a single integer RDMA write transaction to the FEM
  *

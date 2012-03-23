@@ -224,27 +224,84 @@ void FemClient::command(unsigned int aCommand)
 
 	// Check that the response is an ACK of the correct command
 	u8 responseCmd   = response.getCommand();
-	if (responseCmd != CMD_INTERNAL) {
+	if (responseCmd != CMD_INTERNAL)
+	{
 		std::ostringstream msg;
 		msg << "Mismatched command type in FEM response. Sent cmd: " << (unsigned int)CMD_INTERNAL << " recvd: " << (unsigned int)responseCmd;
 		throw FemClientException(femClientResponseMismatch, msg.str());
 	}
 
 	u8 responseState = response.getState();
-	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK))) {
+	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK)))
+	{
 		std::ostringstream msg;
 		msg << "FEM response did not acknowledge command " << aCommand;
 		throw FemClientException(femClientMissingAck, msg.str());
 	}
 
 	u32 responseAddr = response.getAddress();
-	if (responseAddr != aCommand) {
+	if (responseAddr != aCommand)
+	{
 		std::ostringstream msg;
-		msg << "Mistmached internal command in FEM response. Sent: " << aCommand << " recvd: " << responseAddr;
+		msg << "Mismached internal command in FEM response. Sent: " << aCommand << " recvd: " << responseAddr;
 		throw FemClientException(femClientResponseMismatch, msg.str());
 	}
 }
 
+/** commandAcquire - send an acquire command transaction to the connected FEM
+ *
+ * This function encodes and transmits an aquire command transaction to the connected FEM, to set
+ * up the acquisition sequencing within the memory controller. The
+ * repsonse is checked to ensure that the command is acknowledged. Error conditions
+ * are signalled by thrown FemClientExceptions as appropriate. The operation will time out
+ * according to the current timeout value.
+ *
+ * @param aAcqCommand the FEM command to be sent
+ * @param apConfig pointer to protocol_acq_config structure to be sent as payload if any
+ */
+void FemClient::commandAcquire(unsigned int aAcqCommand, protocol_acq_config* apConfig)
+{
+
+	// Create an acquire command transaction based on the specified command and config structure.
+	// If this command requires no config payload, set the size to zero
+	FemTransaction request(CMD_ACQUIRE, 0, WIDTH_LONG, 0, aAcqCommand); //, (u8*)apConfig, configPayloadSize);
+	if (apConfig != NULL)
+	{
+		request.appendPayload((u8*)apConfig, sizeof(protocol_acq_config));
+	}
+
+	// Send the command transaction
+	this->send(request);
+
+	// Receive the response
+	FemTransaction response = this->receive();
+
+	// Check that the response is an ACK of the correct command
+	u8 responseCmd = response.getCommand();
+	if (responseCmd != CMD_ACQUIRE)
+	{
+		std::ostringstream msg;
+		msg << "Mismatched command type in FEM response. Sent cmd: " << (unsigned int)CMD_ACQUIRE << " recvd: " << (unsigned int)responseCmd;
+		throw FemClientException(femClientResponseMismatch, msg.str());
+	}
+
+	u8 responseState = response.getState();
+	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK)))
+	{
+		std::ostringstream msg;
+		msg << "FEM response did not acknowledge acquire command " << aAcqCommand;
+		throw FemClientException(femClientMissingAck, msg.str());
+	}
+
+	u32 responseAddr = response.getAddress();
+	if (responseAddr != aAcqCommand)
+	{
+		std::ostringstream msg;
+		msg << "Mismached acquire command in FEM response. Sent: " << aAcqCommand << " recvd: " << responseAddr;
+		throw FemClientException(femClientResponseMismatch, msg.str());
+	}
+
+}
 
 /** send - send a transaction to the connected FEM
  *
