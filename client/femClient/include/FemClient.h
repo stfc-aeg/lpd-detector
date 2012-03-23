@@ -92,6 +92,8 @@ public:
 
 	void runIoService(void); // test function
 
+	u32 configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort, char* hostIPaddress, u32 hostPort);
+
 private:
 
 	boost::asio::io_service     mIoService; ///< Boost asio IO service
@@ -105,6 +107,9 @@ private:
 	static void asyncCompletionHandler(
 			const boost::system::error_code& aErrorCode, std::size_t aLength,
 		    boost::system::error_code* apOutputErrorCode, std::size_t* apOutputLength);
+	void to_bytes(char *ipName, unsigned char* b, int n);
+	unsigned char* getMacAddressFromIP(char *ipName);
+
 };
 
 #endif /* FEMCLIENT_H_ */
