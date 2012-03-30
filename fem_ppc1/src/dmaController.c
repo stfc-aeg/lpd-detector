@@ -170,7 +170,11 @@ int main()
     }
     print("[INFO ] Mailbox initialised.\r\n");
 
-
+    // Debugging, remove!
+    u32 waitCount = 0;
+	u32 waitLimit = 10000;
+	u32 txCurBufAddr = 0;
+	u32 txCurBuffLen = 0;
 
     // Enter mailbox-driven outer loop
     while(1)
@@ -341,9 +345,25 @@ int main()
 							// TODO: This will keep RX/TX in lock step which we don't want to do!  Fix.
 							print("[INFO ] Waiting for TX BDs to return...\r\n");
 							numTx = 0;
+							waitCount = 0;
 							while (numTx!=2)
 							{
 								numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], 2, &pTenGigBd);
+								waitCount++;
+								// Quick and dirty debug
+								if (waitCount > waitLimit)
+								{
+									txCurBufAddr = mfdcr(0xC9);
+									txCurBuffLen = mfdcr(0xCA);
+									printf("[ERROR] Only got %d TX back!  txCurBufAddr=0x%08x, txCurBufLen=0x%08x\r\n.", numTx, (unsigned)txCurBufAddr, (unsigned)txCurBuffLen);
+									numTx = 2;
+								}
+							}
+							print("\r\n");
+							if (waitCount > waitLimit)
+							{
+								print("[ERROR] TX BDs not returned, aborting...\r\n");
+								return 0;
 							}
 
 							// -------------------- TX1 --------------------
