@@ -12,11 +12,11 @@
  */
 
 // Todo list, in order of priority
-// TODO: Implement configuration upload
+// TODO: Complete event loop with mailbox/DMA
+// TODO: Implement mailbox handshake on config
 // TODO: Fix configure for acquire, respect config BD storage area
 // TODO: Respect doTx / doRx flags
 // TODO: Move BD Free into recycleBuffer (not in validateBuffer)
-// TODO: Complete event loop with mailbox/DMA
 // TODO: Complete shared bram status flags
 
 #include <stdio.h>
@@ -90,11 +90,22 @@ typedef struct
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
 
+//! Data structure for mailbox messages
+// TODO: Store this in common header file!
+typedef struct
+{
+	u32 cmd;
+	u32 buffSz;
+	u32 buffCnt;
+	u32 param;
+	u32 mode;
+} mailMsg;
 
 
 // FUNCTION PROTOTYPES
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
+int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
 
@@ -120,10 +131,22 @@ int main()
     // Flags and main loop variables
     int status;
     int i;
-    short doRx = 0;			// RX control flag for main loop
-    short doTx = 0;			// TX control flag for main loop
-    unsigned numTx = 0;
+	XLlDma_Bd *pTenGigBd;
+	XLlDma_Bd *pConfigBd;
+	unsigned short acquireRunning = 0;	// Acquire control flag
+	unsigned short doRx = 0;			// RX control flag for main loop
+	unsigned short doTx = 0;			// TX control flag for main loop
     u32 lastMode = 0;
+
+    // TODO: Old loop, remove!
+    unsigned numTx = 0;
+
+    // NEW variables
+    int numTopAsicRxComplete = 0;
+    int numBotAsicRxComplete = 0;
+    int numTenGigTxComplete = 0;
+    mailMsg msg;
+    mailMsg *pMsg = &msg;
 
     // Initialise BRAM status
     acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
@@ -138,7 +161,7 @@ int main()
     pStatusBlock->totalSent =		0;
     pStatusBlock->totalErrors =		0;
 
-    u32 mailboxBuffer[5] =	{0,0,0,0,0};
+    //u32 mailboxBuffer[5] =	{0,0,0,0,0};
 
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
 
@@ -179,63 +202,78 @@ int main()
     // Enter mailbox-driven outer loop
     while(1)
     {
-
-    	XLlDma_Bd *pTenGigBd;
-    	XLlDma_Bd *pConfigBd;
-
-    	unsigned short acquireRunning = 0;
     	print("[INFO ] Waiting for mailbox message...\r\n");
 
-    	// Blocking read of 5x 32bit word
-    	// TODO: Overlay struct on mailbox message, don't access via mailboxBuffer[]
-    	XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 20);
-    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2], (unsigned)mailboxBuffer[3], (unsigned)mailboxBuffer[4]);
+    	// Blocking read of mailbox message
+    	//XMbox_ReadBlocking(&mbox, &mailboxBuffer[0], 20);
+    	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
+    	//printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n", (unsigned)mailboxBuffer[0], (unsigned)mailboxBuffer[1], (unsigned)mailboxBuffer[2], (unsigned)mailboxBuffer[3], (unsigned)mailboxBuffer[4]);
+    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd,
+    																											(unsigned)pMsg->buffSz,
+    																											(unsigned)pMsg->buffCnt,
+    																											(unsigned)pMsg->param,
+    																											(unsigned)pMsg->mode );
 
-    	switch (mailboxBuffer[0])
+    	//switch (mailboxBuffer[0])
+    	switch(pMsg->cmd)
     	{
 
     	case CMD_ACQ_CONFIG:
     		// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-    		lastMode = mailboxBuffer[4];		// Cache last mode
+    		//lastMode = mailboxBuffer[4];		// Cache last mode
+    		lastMode = pMsg->mode;
 
-    		switch(mailboxBuffer[4])
+    		//switch(mailboxBuffer[4])
+    		switch(pMsg->mode)
     		{
     		case ACQ_MODE_NORMAL:
     			doTx = 1;
     			doRx = 1;
-    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			//status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
     		case ACQ_MODE_RX_ONLY:
     			doTx = 0;
     			doRx = 1;
-    			print("[INFO ] Warning, ACQ_MODE_RX_ONLY mode not completely implemented!\r\n");
-    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			print("[INFO ] Using ACQ_MODE_RX_ONLY.\r\n");
+    			//status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
     		case ACQ_MODE_TX_ONLY:
     			doTx = 1;
     			doRx = 0;
-    			print("[INFO ] Warning, ACQ_MODE_TX_ONLY mode not completely implemented!\r\n");
-    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			print("[INFO ] Using ACQ_MODE_TX_ONLY.\r\n");
+    			//status = configureBdsForAcquisition(pBdRings, &pTenGigBd, mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			status = configureBdsForAcquisition(pBdRings, &pTenGigBd, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
     		case ACQ_MODE_UPLOAD:
     			// TODO: Refactor numAcq to something more generic (ACQ_MODE_NORMAL->numAcq, ACQ_MODE_UPLOAD->configStartAddr) --> modeParam?
-    			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, mailboxBuffer[3], mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			//status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, mailboxBuffer[3], mailboxBuffer[1], mailboxBuffer[2], pStatusBlock);
+    			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, pMsg->param, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
     		default:
-    			printf("[ERROR] Unknown ACQ mode %d - Ignoring.\r\n", (int)mailboxBuffer[4]);
+    			//printf("[ERROR] Unknown ACQ mode %d - Ignoring.\r\n", (int)mailboxBuffer[4]);
+    			printf("[ERROR] Unknown ACQ mode %d - Ignoring.\r\n", (int)pMsg->mode);
     			break;
     		} // END switch(mailboxBuffer[4])
 
     		if (status==XST_SUCCESS)
     		{
     			// All OK, update status struct with buffer details
-    			if (mailboxBuffer[4] != ACQ_MODE_UPLOAD)
+    			//if (mailboxBuffer[4] != ACQ_MODE_UPLOAD)
+    			if (pMsg->mode != ACQ_MODE_UPLOAD)
     			{
+    				/*
     				pStatusBlock->bufferSize = mailboxBuffer[1];
     				pStatusBlock->bufferCnt = mailboxBuffer[2];
     				pStatusBlock->numAcq = mailboxBuffer[3];
     				pStatusBlock->state = mailboxBuffer[4];
+    				*/
+    				pStatusBlock->bufferSize = pMsg->buffSz;
+    				pStatusBlock->bufferCnt = pMsg->buffCnt;
+    				pStatusBlock->numAcq = pMsg->param;
+    				pStatusBlock->state = pMsg->mode;
     			}
     		}
     		else
@@ -332,6 +370,7 @@ int main()
 								return 0;
 							}
 
+							// Don't believe we have to start the ring!
 							/*
 							status = XLlDma_BdRingStart(pBdRings[BD_RING_TENGIG]);
 							if (status!=XST_SUCCESS)
@@ -414,6 +453,7 @@ int main()
 						}
 
 						// Check if there are any pending mailbox messages
+						/*
 						u32 bytesRecvd = 0;
 						XMbox_Read(&mbox, &mailboxBuffer[0], 20, &bytesRecvd);
 						if (bytesRecvd == 20) {
@@ -431,6 +471,25 @@ int main()
 								break;
 							}
 						}
+						*/
+
+						// Check for mailbox message
+						if (checkForMailboxMessage(&mbox, pMsg))
+						{
+							switch (pMsg->cmd)
+							{
+							case CMD_ACQ_STOP:
+								print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
+								done = 1;
+								acquireRunning = 0;
+								break;
+
+							default:
+								print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
+								break;
+							}
+						}
+
 					} // END while(done==0)
 
 				} // END while(acquireRunning)
@@ -498,7 +557,8 @@ int main()
 
 		default:
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-			printf("[ERROR] Unrecognised mailbox command %d\r\n", (unsigned)mailboxBuffer[0]);
+			//printf("[ERROR] Unrecognised mailbox command %d\r\n", (unsigned)mailboxBuffer[0]);
+			printf("[ERROR] Unrecognised mailbox command %d\r\n", (unsigned)pMsg->cmd);
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			break;
 
@@ -806,8 +866,28 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 
 
 
+/* Checks for a mailbox message (non-blocking)
+ * @param pMailBox pointer to XMbox
+ * @param pMsg pointer to mailMsg buffer to receive to
+ * @return 1 on success, 0 otherwise
+ */
+int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
+{
+	u32 bytesRecvd = 0;
+
+	XMbox_Read(pMailBox, (u32*)pMsg, sizeof(mailMsg), &bytesRecvd);
+	if (bytesRecvd == sizeof(mailMsg)) {
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+
+
 /* Verifies a buffer by checking the STS/CTRL field of the BD matches the value expected.
- * Frees BD ready for processing
  * @param pRing pointer to BD ring
  * @param pBd pointer to BD
  * @param buffType buffer type, either BD_RX or BD_TX
@@ -815,7 +895,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
  */
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 {
-	int status;
+	//int status;
 	u32 sts, validSts;
 
 	switch(buffType)
@@ -834,11 +914,13 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 	sts = XLlDma_BdGetStsCtrl(pBd);
 
+	/*
 	status = XLlDma_BdRingFree(pRing, 1, pBd);
 	if (status!=XST_SUCCESS)
 	{
 		return status;
 	}
+	*/
 
 	// TODO: Check and report if DMA_ERROR bit set! (What return code to use?)
 
@@ -854,7 +936,7 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 
 
-/* Resets and re-allocates a buffer into the current BD ring
+/* Resets, frees and re-allocates a buffer into the current BD ring
  * @param pRing pointer to BD ring
  * @param pBd pointer to BD
  * @param buffType buffer type, either BD_RX or BD_TX
@@ -864,6 +946,13 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 {
 	int status;
 	u32 sts;
+
+	// Free BD
+	status = XLlDma_BdRingFree(pRing, 1, pBd);
+	if (status!=XST_SUCCESS)
+	{
+		return status;
+	}
 
 	// Re-alloc BDs into ring
 	status = XLlDma_BdRingAlloc(pRing, 1, &pBd);
@@ -900,3 +989,4 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 	return XST_SUCCESS;
 }
+
