@@ -289,7 +289,7 @@ int main()
 					// New and improved event loop (tm)
 
 					// Show we're still alive!
-					print(".");
+					//print(".");
 
 					// TODO: Use doTX / doRX!
 					// TODO: OK it's not as easy as that, what do we do with our counters if using doRx/doTx?????
@@ -339,7 +339,7 @@ int main()
 					}
 
 					// Is the RX complete across both ASICs?
-					if (numTopAsicRxComplete==numBotAsicRxComplete && numTopAsicRxComplete!=0)
+					if ((numRxBot!=0 || numRxTop!=0) && numTopAsicRxComplete==numBotAsicRxComplete && numTopAsicRxComplete!=0)
 					{
 						printf("[INFO ] RX complete across both ASICs (# %d)\r\n", numRxTotalComplete);
 						numRxTotalComplete++;
