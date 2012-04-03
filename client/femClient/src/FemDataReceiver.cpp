@@ -5,6 +5,7 @@
  *      Author: tcn
  */
 
+#include "FemClient.h"
 #include "FemDataReceiver.h"
 
 FemDataReceiver::FemDataReceiver()
@@ -19,9 +20,7 @@ FemDataReceiver::FemDataReceiver()
 {
 	int nativeSocket = (int)mRecvSocket.native_handle();
 	int rcvBufSize = 8388608;
-	int status = setsockopt(nativeSocket, SOL_SOCKET, SO_RCVBUF, (void*)&rcvBufSize, sizeof(rcvBufSize));
-	//std::cout << "set rcv buf return: " << status << std::endl;
-
+	setsockopt(nativeSocket, SOL_SOCKET, SO_RCVBUF, (void*)&rcvBufSize, sizeof(rcvBufSize));
 }
 
 FemDataReceiver::~FemDataReceiver()
