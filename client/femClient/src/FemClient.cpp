@@ -6,7 +6,6 @@
  */
 
 #include "FemClient.h"
-#include "FemException.h"
 #include <iostream>
 #include <sstream>
 
@@ -126,7 +125,6 @@ std::vector<u8> FemClient::read(unsigned int aBus, unsigned int aWidth, unsigned
 	u32 responseReadLen = (u32)(readPayload[0]);
 	if (responseReadLen != aLength)
 	{
-		std::cout << response << std::endl;
 		std::ostringstream msg;
 		msg << "Length mismatch when reading: requested " << aLength << " got " << responseReadLen;
 		throw FemClientException(femClientReadMismatch, msg.str());
@@ -139,6 +137,47 @@ std::vector<u8> FemClient::read(unsigned int aBus, unsigned int aWidth, unsigned
 	// Return the read values
 	return readPayload;
 
+}
+
+/** read - execute a read transaction on the connected FEM
+ *
+ * This function executes a read transaction on the connected FEM, returning the
+ * read values decoded from the transaction response. The returned vector should
+ * be decoded to the appropriate type according to the width specified.
+ *
+ * @param aBus FEM bus to write to
+ * @param aWidth width of each write (byte, word, long)
+ * @param aAddress address of first write transaction
+ * @param aLength number of reads to successive addresses to perform
+ * @return vector of read results as byte stream
+
+ */
+u32 FemClient::readNoCopy(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
+		std::size_t aLength, u8* aPayload)
+{
+
+	// Create a read transaction based on the specified bus, width, address and length parameters
+	u8 state = 0;
+	SBIT(state, STATE_READ);
+	u32 payload[] = { aLength };
+	FemTransaction request(CMD_ACCESS, aBus, aWidth, state, aAddress, (u8*)payload, sizeof(u_int32_t));
+
+	// Send the request transaction
+	this->send(request.encodeArray());
+
+	// Receive the response and get the payload
+	FemTransaction response = this->receive(aPayload);
+
+	// Read length parameter requested. If it doesn't return an exception
+	u32 responseReadLen = response.payloadLength();
+	if (responseReadLen != aLength)
+	{
+		std::ostringstream msg;
+		msg << "Length mismatch when reading: requested " << aLength << " got " << responseReadLen;
+		throw FemClientException(femClientReadMismatch, msg.str());
+
+	}
+	return response.payloadLength();
 }
 
 /** write - execute a write transaction on the connected FEM
@@ -198,6 +237,60 @@ u32 FemClient::write(unsigned int aBus, unsigned int aWidth, unsigned int aAddre
 	return responseWriteLen;
 }
 
+
+/** write - execute a write transaction on the connected FEM
+ *
+ * This function executes a write transaction on the connected FEM. The response
+ * is checked to ensure that the number of writes performed by the FEM matches
+ * the number requested, otherwise a femClientWriteMismatch exception is thrown
+ *
+ * @param aBus FEM bus to write to
+ * @param aWidth width of each write (byte, word, long)
+ * @param aAddress address of first write transaction
+ * @param aPayload vector of writes of appropriate width
+ * @return number of writes completed in transaction
+ */
+u32 FemClient::write(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
+					u8* aPayload, std::size_t size)
+{
+
+	// Create a write transaction based on the specified bus, width, address and payload
+	// parameters.
+	u8 state = 0;
+	SBIT(state, STATE_WRITE);
+	FemTransaction request(CMD_ACCESS, aBus, aWidth, state, aAddress, aPayload, size);
+
+	// Send the encoded write transaction
+	this->send(request.encodeArray());
+
+	// Receive the response
+	u32 payload[] = { 0 };
+	FemTransaction response = this->receive((u8*)payload);
+
+	// Check for an ACK and the absence of a NACK on the response
+	u8 responseState = response.getState();
+	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK))) {
+		std::ostringstream msg;
+		msg << "FEM response did not acknowledge write transaction to address " << aAddress;
+		throw FemClientException(femClientMissingAck, msg.str());
+	}
+
+	// The payload of the response to a write transaction should be a single
+	// 32bit word indicating the number of write access completed. This should
+	// match the number specified in the request.
+	u32 responseWriteLen = response.payloadLength();
+
+	u32 numWrites = size / FemTransaction::widthToSize(aWidth);
+	if (responseWriteLen  != numWrites)
+	{
+		std::ostringstream msg;
+		msg << "Length mismatch during FEM write transaction: requested="
+			<< numWrites << " responded=" << responseWriteLen;
+		throw FemClientException(femClientWriteMismatch, msg.str());
+	}
+
+	return responseWriteLen;
+}
 
 /** command - send a command transaction to the connected FEM
  *
@@ -375,6 +468,77 @@ std::size_t FemClient::send(FemTransaction aTrans)
 }
 
 
+/** send - send a transaction to the connected FEM
+ *
+ * This function encodes and transmits a transaction to the FEM, handling error conditions
+ * by throwing FemClientExceptions as appropriate. The operation will time out according to
+ * the current timeout value.
+ *
+ * @param aTrans FemTransaction instance to be sent to the FEM
+ * @return length of transaction sent to FEM as size_t
+ */
+std::size_t FemClient::send(std::vector<u8> encoded)
+{
+
+	// Encode the transaction to be sent onto a byte stream
+	//std::vector<u8> encoded = aTrans.encode();
+
+	// Set a deadline for the asynchronous receive operation if timeout is specified, otherwise
+	// revert it back to +ve infinity to stall the deadline timer actor
+	if (mTimeout > 0)
+	{
+		mDeadline.expires_from_now(boost::posix_time::milliseconds(mTimeout));
+	}
+	else
+	{
+		mDeadline.expires_at(boost::posix_time::pos_infin);
+	}
+
+	// Set up the variables that receive the result of the asynchronous operation. The error code
+	// is set to would_block to signal that the operation is incomplete. ASIO guarantees that its
+	// asynchronous operations never fail with would_block so any other value in error indicates
+	// completion
+	std::size_t sendLen = 0;
+	boost::system::error_code error = boost::asio::error::would_block;
+
+	// Start the asynchronous operation. The asyncCompletionHandler function is specified as a callback
+	// to update the error and length variables
+	boost::asio::async_write(mSocket, boost::asio::buffer(encoded),
+			boost::bind(&FemClient::asyncCompletionHandler, _1, _2, &error, &sendLen));
+
+	// Block until the asynchronous operation has completed
+	do
+	{
+		mIoService.run_one();
+	}
+	while (error == boost::asio::error::would_block);
+
+	// Handle any error conditions arising during asynchronous operation
+	if (error == boost::asio::error::eof)
+	{
+		// Connection closed by peer
+		throw FemClientException(femClientDisconnected, "Connection closed by FEM");
+	}
+	else if (error == boost::asio::error::operation_aborted)
+	{
+		// Timeout signalled by deadline actor
+		throw FemClientException(femClientTimeout, "Timeout sending transaction to FEM");
+	}
+	else if (error)
+	{
+		throw FemClientException((FemClientErrorCode)error.value(), error.message());
+	}
+	else if (sendLen != encoded.size())
+	{
+		// Sent length doesn't match the size of the encoded transcation
+		std::ostringstream msg;
+		msg << "Size mismatch when sending transaction: wrote " << sendLen << " expected " << encoded.size();
+		throw FemClientException(femClientSendMismatch, msg.str());
+	}
+
+	return sendLen;
+}
+
 /** receive - receive a transaction response from a FEM
  *
  * This function receives a transaction response from a FEM, unpacking the byte stream
@@ -387,14 +551,14 @@ FemTransaction FemClient::receive(void)
 
 	// Error code and receive length variables
 	boost::system::error_code error;
-	std::size_t recvLen = 0;
+//	std::size_t recvLen = 0;
 
 	// Receive a transaction header first to determine payload length
 	const std::size_t headerLen = FemTransaction::headerLen();
 	std::vector<u8> buffer(headerLen);
 
-	recvLen = receivePart(buffer, error);
-
+//	recvLen = receivePart(buffer, error);
+	receivePart(buffer, error);
 	if (error == boost::asio::error::eof)
 	{
 		// Connection closed by peer
@@ -415,11 +579,11 @@ FemTransaction FemClient::receive(void)
 
 	// Read the payload and append to transaction until the payload is complete and matches header
 	while (recvTrans.payloadIncomplete()) {
-
 		std::size_t remainingLen = recvTrans.payloadRemaining();
 		std::vector<u8> recvBuffer(remainingLen);
 
-		recvLen = receivePart(recvBuffer, error);
+//		recvLen = receivePart(recvBuffer, error);
+		receivePart(recvBuffer, error);
 
 		if (error == boost::asio::error::eof)
 		{
@@ -443,6 +607,64 @@ FemTransaction FemClient::receive(void)
 	return recvTrans;
 }
 
+FemTransaction FemClient::receive(u8* aPayload)
+{
+
+	// Error code and receive length variables
+	boost::system::error_code error;
+//	std::size_t recvLen = 0;
+
+	// Receive a transaction header first to determine payload length
+	const std::size_t headerLen = FemTransaction::headerLen();
+	std::vector<u8> buffer(headerLen);
+
+	receivePart(buffer, error);
+	if (error == boost::asio::error::eof)
+	{
+		// Connection closed by peer
+		throw FemClientException(femClientDisconnected, "Connection closed by FEM");
+	}
+	else if (error == boost::asio::error::operation_aborted)
+	{
+		// Timeout signalled by deadline actor
+		throw FemClientException(femClientTimeout, "Timeout receiving transaction header from FEM");
+	}
+	else if (error)
+	{
+		throw FemClientException((FemClientErrorCode)error.value(), error.message());
+	}
+
+	// Decode stream into header of new transaction
+	FemTransaction recvTrans(buffer);
+
+	// Read the payload and append to transaction until the payload is complete and matches header
+	while (recvTrans.payloadIncomplete()) {
+		std::size_t remainingLen = recvTrans.payloadRemaining();
+		std::vector<u8> recvBuffer(remainingLen);
+
+		receivePart(recvBuffer, error);
+
+		if (error == boost::asio::error::eof)
+		{
+			// Connection closed by peer
+			throw FemClientException(femClientDisconnected, "Connection closed by FEM");
+		}
+		else if (error == boost::asio::error::operation_aborted)
+		{
+			// Timeout signalled by deadline actor
+			throw FemClientException(femClientTimeout, "Timeout receiving transaction payload from FEM");
+		}
+		else if (error)
+		{
+			throw FemClientException((FemClientErrorCode)error.value(), error.message());
+		}
+
+		recvTrans.appendPayloadFromStream(recvBuffer, aPayload);
+
+	}
+
+	return recvTrans;
+}
 
 /** receivePart - receive part of a transaction from a FEM
  *
@@ -488,7 +710,7 @@ std::size_t FemClient::receivePart(std::vector<u8>& aBuffer, boost::system::erro
 		mIoService.run_one();
 	}
 	while (aError == boost::asio::error::would_block);
-
+//	std::cout << "receive len " << recvLen << std::endl;
 	return recvLen;
 }
 
@@ -548,5 +770,3 @@ void FemClient::runIoService(void)
 {
 	mIoService.run();
 }
-
-
