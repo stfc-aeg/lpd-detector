@@ -164,8 +164,6 @@ int main()
     pStatusBlock->totalSent =		0;
     pStatusBlock->totalErrors =		0;
 
-    //u32 mailboxBuffer[5] =	{0,0,0,0,0};
-
     XLlDma dmaAsicTop, dmaAsicBot, dmaTenGig, dmaPixMem;
 
     XLlDma_BdRing *pBdRings[4];
@@ -195,12 +193,6 @@ int main()
     	return 0;
     }
     print("[INFO ] Mailbox initialised.\r\n");
-
-    // Debugging, remove!
-    u32 waitCount = 0;
-	u32 waitLimit = 10000;
-	u32 txCurBufAddr = 0;
-	u32 txCurBuffLen = 0;
 
     // Enter mailbox-driven outer loop
     while(1)
@@ -284,22 +276,20 @@ int main()
 	    	    numRxTotalComplete = 0;
 	    	    numTenGigTxComplete = 0;
 
+				XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
+				unsigned numRxTop = 0;
+				unsigned numRxBot = 0;
+	    	    unsigned pendingTx = 0;
+	    	    unsigned returnedTx = 0;
+
 	    	    acquireRunning = 1;
 
 				while (acquireRunning)
 				{
-					print("\r\n");
-
-					// Wait for data to be received
-					XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
-					unsigned numRxTop = 0;
-					unsigned numRxBot = 0;
-					unsigned pendingTx = 0;
-					unsigned returnedTx = 0;
-
-					print("[INFO ] Waiting for ASIC RX...\r\n");
-
 					// New and improved event loop (tm)
+
+					// Show we're still alive!
+					print(".");
 
 					// TODO: Use doTX / doRX!
 					// TODO: OK it's not as easy as that, what do we do with our counters if using doRx/doTx?????
@@ -311,6 +301,7 @@ int main()
 					// RX Top ASIC
 					if (numRxTop!=0)
 					{
+						printf("[INFO ] RX:TOP\r\n");
 						status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 						if (status!=XST_SUCCESS)
 						{
@@ -330,6 +321,7 @@ int main()
 					// RX Bottom ASIC
 					if (numRxBot!=0)
 					{
+						printf("[INFO ] RX:BOT\r\n");
 						status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
 						if (status!=XST_SUCCESS)
 						{
@@ -347,7 +339,7 @@ int main()
 					}
 
 					// Is the RX complete across both ASICs?
-					if (numTopAsicRxComplete == numBotAsicRxComplete)
+					if (numTopAsicRxComplete==numBotAsicRxComplete && numTopAsicRxComplete!=0)
 					{
 						printf("[INFO ] RX complete across both ASICs (# %d)\r\n", numRxTotalComplete);
 						numRxTotalComplete++;
@@ -693,15 +685,18 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	currentOffset = 0;
 	for (i=0; i<totalNumBuffers; i++)
 	{
+
+		// DEBUG swapped order to bot-top TN
+		XLlDma_BdSetBufAddr(*pTenGigFirstBd, botAsicBufferAddress + currentOffset);
+		XLlDma_BdSetLength(*pTenGigFirstBd, bufferSz);
+		XLlDma_BdSetStsCtrl(*pTenGigFirstBd, LL_STSCTRL_TX_BD);
+		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
+
 		XLlDma_BdSetBufAddr(*pTenGigFirstBd, topAsicBufferAddress + currentOffset);
 		XLlDma_BdSetLength(*pTenGigFirstBd, bufferSz);
 		XLlDma_BdSetStsCtrl(*pTenGigFirstBd, LL_STSCTRL_TX_BD);
 		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
-		XLlDma_BdSetBufAddr(*pTenGigFirstBd, botAsicBufferAddress + currentOffset);
-		XLlDma_BdSetLength(*pTenGigFirstBd, bufferSz);
-		XLlDma_BdSetStsCtrl(*pTenGigFirstBd, LL_STSCTRL_TX_BD);
-		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
 		currentOffset += bufferSz;
 	}
