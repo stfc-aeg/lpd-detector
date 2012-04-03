@@ -65,6 +65,16 @@ public:
 			             unsigned int aLength);
 	u32 write(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
 					  std::vector<u8>& aPayload);
+	// added for zero copy
+	u32 readNoCopy(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
+			                        std::size_t aLength, u8* aPayload);
+	u32 write(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
+					  u8* aPayload, std::size_t size);
+	std::size_t send(std::vector<u8> encoded);
+	FemTransaction receive(u8* payload);
+
+	// end of added for zero copy
+	
 	virtual void command(unsigned int command);
 	void commandAcquire(unsigned int aAcqCommand, protocol_acq_config* apConfig=0);
 
@@ -93,6 +103,9 @@ public:
 	void runIoService(void); // test function
 
 	u32 configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort, char* hostIPaddress, u32 hostPort);
+
+	u32 personalityWrite(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
+						u8* aPayload, std::size_t size);
 
 private:
 
