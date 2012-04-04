@@ -4,7 +4,7 @@
  * Provides access to ESDG group FPGA blocks via
  * RS232-RDMA link register set
  *
- * THIS LIBRARY ONLY COMPATIBLE WITH 16550 UART AT PRESENT!
+ * Only compatible with 16550 UART
  *
  */
 

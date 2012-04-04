@@ -115,7 +115,6 @@ int rdmaSelftest(void)
 	}
 
 	return XST_SUCCESS;
-
 }
 
 /*
@@ -233,7 +232,6 @@ int writeRdma(u32 addr, u32 value)
 
 	// All OK
 	return XST_SUCCESS;
-
 }
 
 #endif

@@ -16,7 +16,6 @@ void reloadChain(XSysAce *pAce, unsigned int idx);
 int deleteImage(unsigned int idx);
 int writeImage(unsigned int idx);
 
-// TODO: Remove this once tested or move to a self-test?
 void testCF(void);
 
 int mySelfTest(XSysAce *pAce);

@@ -65,10 +65,9 @@
  *
  * HARDWARE:
  * TODO: Determine why execution halts sometimes after LWIP auto-negotiation - xlltemacif_hw.c -> Line 78?
- * TODO: Determine why UART loopback test occasionally fails - Update 2012, have not seen this error in a looong time?
- * TODO: Determine xsysace failure modes - currently failing with status = 0x200.  Also get this error if no CF inserted so maybe card format is damaged? (On Saeed's V2 FEM w/CF I see 0x80?)
  *
  * FUNCTIONALITY:
+ * TODO: Test CPU reset functionality (via CMD_INTERNAL?)
  * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
  * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
  * TODO: How to let personality module run validateHeaderContents equivalent?
