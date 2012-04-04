@@ -623,7 +623,16 @@ void commandHandler(struct protocol_header* pRxHeader,
 			SBIT(state, STATE_ACK);
 
 			// TODO: Implement CMD_INTERNAL
-			DBGOUT("CmdDisp: CMD_INTERNAL is not currently supported!\r\n");
+			//DBGOUT("CmdDisp: CMD_INTERNAL is not currently supported!\r\n");
+
+			// DEBUGGING ONLY!
+			// Try to reset CPU - DBCR0 (SPR 0x134) bits 2:3 (=0xC)
+			// 00 = nothing
+			// 01 = core reset
+			// 10 = chip reset
+			// 11 = system reset
+			mtspr(0x134, 0xC);
+
 			break;
 
 		case CMD_ACQUIRE:

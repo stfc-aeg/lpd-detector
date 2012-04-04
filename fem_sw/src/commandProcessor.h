@@ -18,6 +18,8 @@
 #include "i2c_24c08.h"
 #include "mailbox.h"
 
+#include "xpseudo_asm_gcc.h"		// For mtspr()
+
 #include "lwip/sockets.h"
 
 #include "personality.h"

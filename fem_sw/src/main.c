@@ -67,7 +67,7 @@
  * TODO: Determine why execution halts sometimes after LWIP auto-negotiation - xlltemacif_hw.c -> Line 78?
  *
  * FUNCTIONALITY:
- * TODO: Test CPU reset functionality (via CMD_INTERNAL?)
+ * TODO: Test CPU reset functionality (via CMD_INTERNAL)
  * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
  * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
  * TODO: How to let personality module run validateHeaderContents equivalent?
@@ -177,8 +177,6 @@ int initHardware(void);
 // ----------------------------------------------------------------------------
 // Global Variable Definitions
 // ----------------------------------------------------------------------------
-
-// TODO: Tidy up global variables!
 struct netif		server_netif;
 struct fem_config	femConfig;
 XIntc				intc;
