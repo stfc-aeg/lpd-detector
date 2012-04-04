@@ -38,6 +38,7 @@
 #define LL_STSCTRL_TX_OK			0x10000000						//! STS/CTRL field in BD should be 0x10 when successfully TX (COMPLETE)
 #define LL_STSCTRL_RX_BD			0x0															//! STS/CTRL field for a RX BD
 #define LL_STSCTRL_TX_BD			XLLDMA_BD_STSCTRL_SOP_MASK | XLLDMA_BD_STSCTRL_EOP_MASK		//! STS/CTRL field for a TX BD
+#define LL_DMA_ERROR				0x80000000						//! DMA error bit
 #define LL_MAX_CONFIG_BD			64								//! Maximum number of config upload BDs
 
 // Buffer management
@@ -127,6 +128,7 @@ int main()
     print("[INFO ] ------------------------------------------------\r\n");
 
     // Flags and main loop variables
+    // TODO: Tidy these up once refactored
     int status;
     int i;
 	XLlDma_Bd *pTenGigPreHW;
@@ -136,8 +138,6 @@ int main()
 	unsigned short doRx = 0;			// RX control flag for main loop
 	unsigned short doTx = 0;			// TX control flag for main loop
     u32 lastMode = 0;
-
-    // TODO: Old loop, rename! (used by upload)
     unsigned numTx = 0;
 
     // NEW variables
@@ -433,8 +433,7 @@ int main()
 							else
 							{
 								printf("[ERROR] Got stop acquire message but there are pending events! (rxTop=%d, rxBot=%d, tx=%d)\r\n", numTopAsicRxComplete, numBotAsicRxComplete, unsentTx);
-								// TODO: Force clean stop, this is for debugging only!
-								printf("[ERROR] Stopping anyway...\r\n");
+								printf("[DEBUG] Stopping anyway...\r\n");
 								acquireRunning = 0;
 							}
 							break;
@@ -499,7 +498,7 @@ int main()
 						pConfigBd = XLlDma_BdRingNext(pBdRings[BD_RING_UPLOAD], pConfigBd);
 					}
 
-					// TODO: Subsequent calls to start configure will fail because we moved pConfigBd, this is a quick and dirty way to prevent this ;)
+					// Subsequent calls to start configure will fail because we moved pConfigBd, so this prevents a config operation running again
 					pStatusBlock->numConfigBds = 0;
 
 				}
@@ -550,7 +549,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 {
 
 	// TODO: Check what the last configuration was for and if it matches the request, don't reconfigure BDs!
-
 	// TODO: Take into account the reserved BD config area!
 
 	XLlDma_BdRing *pRingTenGig = pBdRings[BD_RING_TENGIG];
@@ -680,7 +678,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		currentOffset += bufferSz;
 
 		// Set length / STS/CTRL fields
-		// TODO: Store BD index in STS/CTRL field, application data (at present this is overwritten by ASIC/Spartan??)
 		XLlDma_BdSetLength(*pTopRXBd, bufferSz);
 		XLlDma_BdSetLength(*pBotRXBd, bufferSz);
 		XLlDma_BdSetStsCtrl(*pTopRXBd, LL_STSCTRL_RX_BD);
@@ -818,13 +815,14 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 		return status;
 	}
 
-	// TODO: Remove test pattern generator
+	/*
 	// Generate test pattern at a fixed memory address
 	u32 testPatternAddr = 0x30000000;
 	u32 testPatternLen = 0x18000;		// In bytes!
 	u32 testPatternPat = 0xFFFFFFFF;
 	printf("[INFO ] Generating test pattern 0x%08x at 0x%08x, 0x%08x bytes in length.\r\n", (unsigned)testPatternPat, (unsigned)testPatternAddr, (unsigned)testPatternLen);
 	status = Xil_TestMem32((u32*)testPatternAddr, testPatternLen/4, testPatternPat, XIL_TESTMEM_FIXEDPATTERN);
+	*/
 
 	return XST_SUCCESS;
 }
@@ -869,11 +867,10 @@ int sendConfigCompleteMailboxMessage(XMbox *pMailbox)
  * @param pRing pointer to BD ring
  * @param pBd pointer to BD
  * @param buffType buffer type, either BD_RX or BD_TX
- * @return XST_SUCCESS, or error code
+ * @return XST_SUCCESS, or XST_DMA_ERROR if an error was flagged
  */
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 {
-	//int status;
 	u32 sts, validSts;
 
 	switch(buffType)
@@ -892,14 +889,14 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 	sts = XLlDma_BdGetStsCtrl(pBd);
 
-	//status = XLlDma_BdRingFree(pRing, 1, pBd);
-	//if (status!=XST_SUCCESS)
-	//{
-	//	return status;
-	//}
+	// Check DMA_ERROR bit
+	if ((sts&0xFF000000)&LL_DMA_ERROR)
+	{
+		print("[ERROR] DMA Transfer signalled error!\r\n");
+		return XST_DMA_ERROR;
+	}
 
-	// TODO: Check and report if DMA_ERROR bit set! (What return code to use?)
-
+	// Verify STS/CTRL matches what we expect to see
 	if (!(sts&0xFF000000)&validSts)
 	{
 		// NOTE: Even if code passes this check there can be no DMA transfer received :(
