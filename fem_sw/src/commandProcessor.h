@@ -37,6 +37,8 @@ struct clientStatus {
 	u8 *pPayload;					//! Pointer to payload buffer
 	int payloadBufferSz;			//! Currently allocated size for pPayload
 	int timeoutCount;				//! Counter for timeouts
+	u8 *pBusDirect;					//! Pointer for BUS_DIRECT writes
+	int busDirectSize;				//! Bytes received in BUS_DIRECT mode
 };
 
 void commandProcessorThread();
