@@ -13,6 +13,165 @@ import serial, time
 # Import Fem modules
 from FemClient import FemClient
 
+def extract_asic_data(asic_no, column_no, asic_data):
+    # Rob Halsall 12-04-2011
+    # Extract Image data from 1 ASIC, 1 time slice
+    # extract for specified time slice = column_no  jac
+    
+    start = asic_no + ((column_no-1) * 128 * 511);
+    stop = (asic_no + 128 * 511) + ((column_no-1) * 128 * 511);
+    image_data = reshape(asic_data(start:128:stop), 16, 32); # rob's
+    
+    return image_data
+
+def clear_ll_monitor(sCom, base_addr):
+    """ readout a local link monitor block
+        Rob Halsall 08-04-2011    """
+    
+    #input monitor registers are offset from base address by 16
+    
+    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
+    rdma_write(sCom,base_addr+1,1,'rw','Local Link Monitor Counter Reset')
+    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
+    
+    return 1
+
+
+def fem_10g_udp_net_set_up(sCom, base_addr, net):
+    #set up MAC address for SRC & destination
+
+    reg1 = (net.src_mac & 0x00000000FFFFFFFF)
+
+    reg2b = ((net.src_mac & 0x0000FFFF000000) >> 32)
+    reg2t = ((net.dst_mac & 0x000000000000FF) << 16)
+    reg2 = (reg2b | reg2t)
+
+    reg3 = (net.dst_mac >> 16)
+
+    rdma_write(sCom,base_addr+0,reg1,'rw','# src_mac_lower_32')
+    rdma_write(sCom,base_addr+1,reg2,'rw','# dst_mac_lower_16 & src_mac_upper_16')
+    rdma_write(sCom,base_addr+2,reg3 ,'rw','# dst_mac_upper_32')
+
+    #set up IP address for SRC & destination
+    reg6b = rdma_read(sCom,base_addr+6,'r','#')
+
+    reg6b = (reg6b & 0x0000FF)
+    reg6 =  (net.dst_ip << 16)
+    reg6 =  (reg6 | reg6b)
+
+    reg7 =  (net.dst_ip >> 16)
+    reg7 =  (reg7 | (net.src_ip << 16))
+
+    reg8t = rdma_read(sCom,base_addr+8,'r','#')
+
+    reg8t = (reg8t & 0xFFFF00)
+    reg8b =  (net.src_ip >> 16)
+    reg8 =  (reg8t | reg8b)
+
+    rdma_write(sCom,base_addr+6,reg6,'rw','# ')
+    rdma_write(sCom,base_addr+7,reg7,'rw','#  ')
+    rdma_write(sCom,base_addr+8,reg8 ,'rw','# ')
+
+    rdma_read(sCom,base_addr+9,'r','# ')
+
+    return 1
+
+def fem_local_link_mux_setup(sCom, base_addr, output_data_source):
+    # set up local link mux
+
+    reg1 = 0x00000001 | base_addr
+
+    if output_data_source == 0 is True:
+        rdma_write(sCom,reg1,0x00000000, 'rw','local link mux ouput 0')
+    else:
+        rdma_write(sCom,reg1,0x00000001, 'rw','local link mux output 1');
+    
+    return 1
+    
+
+def toggle_bits(s, base_addr, reg_addr, bit_pat,rw):
+    """ toggle_bits() """
+    address= base_addr + reg_addr
+    
+    bits_off = 0
+    bits_on  = bit_pat
+    
+    rdma_write(s,address,bits_off,'rw','')
+    rdma_write(s,address,bits_on, 'rw','')
+    rdma_write(s,address,bits_off,'rw','')
+    
+    return 1
+
+
+# Rob Halsall 08-04-2011
+def read_ll_monitor(s, base_addr):
+    """ readout a local link monitor block """
+    
+    #input monitor registers are offset from base address by 16
+    mon_addr = base_addr + 16
+    
+    rdma_read(s,mon_addr+0,'r','frm_last_length')
+    rdma_read(s,mon_addr+1,'r','frm_max_length')
+    rdma_read(s,mon_addr+2,'r','frm_min_length')
+    rdma_read(s,mon_addr+3,'r','frm_number')
+    rdma_read(s,mon_addr+4,'r','frm_last_cycles')
+    rdma_read(s,mon_addr+5,'r','frm_max_cycles')
+    rdma_read(s,mon_addr+6,'r','frm_min_cycles')
+    total_data = rdma_read(s,mon_addr+7,'r','frm_data_total')
+    total_cycles = rdma_read(s,mon_addr+8,'r','frm_cycle_total')
+    rdma_read(s,mon_addr+9,'r','frm_trig_count')
+    rdma_read(s,mon_addr+15,'r','frm_in_progress')
+    
+    # data path = 64 bit, clock = 156.25 MHz
+    total_time = total_cycles * (1/156.25e6)
+    rate = (total_data/total_time) * 8
+    
+    print "\nData Total = %e" % total_data
+    print "\nData Time = %e" % total_time
+    print "\nData Rate = %e" % rate
+    
+    print "\n\n"
+    
+    return 1
+
+
+
+def ll_frm_gen_setup(s, base_address, length, data_type):
+    """ This function sets up the data Generator & resets """
+
+    # frm gen - n.b. top nibble/2 - move to data gen setup
+    reg_length = length - 2
+    rdma_write(s,base_address+1,reg_length,'rw','DATA GEN Data Length')
+
+    control_reg = data_type & 0x00000003
+    control_reg = control_reg << 4
+
+    rdma_write(s,base_address+4,control_reg,'rw','DATA GEN Data Type')
+
+    if data_type == 0 is True:
+        data_0 = 0x00000000
+        data_1 = 0x00000001
+    elif data_type == 1 is True:
+        data_0 = 0x03020100
+        data_1 = 0x07060504
+    elif data_type == 2 is True:
+        data_0 = 0x00000000
+        data_1 = 0x00000000
+    else:
+        data_0 = 0xFFFFFFFF
+        data_1 = 0xFFFFFFFF
+
+    rdma_write(s,base_address+5,data_0,'rw','DATA GEN Data Init 0')
+    rdma_write(s,base_address+6,data_1,'rw','DATA GEN Data Init 1')
+
+    # Data Gen soft reset
+    rdma_write(s,base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
+    rdma_write(s,base_address+0,0x00000001,'rw','DATA GEN Internal Reset')
+    rdma_write(s,base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
+
+    return 1
+
+
 def fem_10g_udp_set_up(s, base_addr, udp_pkt_len, udp_frm_sze, eth_ifg):
 
     fixed_length = 0
@@ -95,6 +254,41 @@ def set_10g_structs_variables_te2bank():
 #    else:
 #        return "%X" % n
 
+#def set_fem_base_address_variables():
+#    """ 32 way splitter """
+udp_10g_0     = 0x00000000    #0
+udp_10g_1     = 0x08000000    #1
+data_gen_0    = 0x10000000    #2
+data_chk_0    = 0x18000000    #3
+data_gen_1    = 0x20000000    #4
+data_chk_1    = 0x28000000    #5
+fem_ctrl_0    = 0x30000000    #6
+llink_mon_0   = 0x38000000    #7
+data_mon_1    = 0x40000000    #8
+slow_ctr_2    = 0x48000000    #9
+fast_cmd_0    = 0x50000000    #10
+fast_cmd_1    = 0x58000000    #11
+asic_srx_0    = 0x60000000    #12
+rsvd_13       = 0x68000000    #13
+slow_ctr_0    = 0x70000000    #14
+slow_ctr_1    = 0x78000000    #15
+dma_gen_0    = 0x80000000    #16
+dma_chk_0    = 0x88000000    #17
+dma_gen_1    = 0x90000000    #18
+dma_chk_1    = 0x98000000    #19
+dma_gen_2    = 0xa0000000    #20
+dma_chk_2    = 0xa8000000    #21
+dma_gen_3    = 0xb0000000    #22
+dma_chk_3    = 0xb8000000    #23
+rsvd_24      = 0xc0000000    #24
+rsvd_25      = 0xc8000000    #25
+rsvd_26      = 0xd0000000    #26
+rsvd_27      = 0xd8000000    #27
+rsvd_28      = 0xe0000000    #28
+rsvd_29      = 0xe8000000    #29
+rsvd_30      = 0xf0000000    #30
+rsvd_31      = 0xf8000000    #31
+    
 
 '''
 if ispc == 1
@@ -166,11 +360,12 @@ except Exception as errString:
     print "Terminating program.."
     return
 
-'''
+
 #base addresses of IP blocks in FEM address space
-set_fem_base_address_variables;
-'''
-num_ll_frames = 2;  # nr of local link frames to generate
+#set_fem_base_address_variables()
+''' Contents of set_fem_base_address_variables() now at start of "main" function '''
+
+num_ll_frames = 2  # nr of local link frames to generate
 
 if (data_source_to_10g == 0 or data_source_to_10g == 2) is True:
     trigger_type = 'a';
@@ -286,8 +481,8 @@ if (enable_10g == 1) is True:
 #    fopen(u)    # Redundant
     
     # rob's udp packet headers
-    packet_header_10g_0 = bitor(hex2dec('0000000b'), udp_10g_0)   ''' Function call '''
-    packet_header_10g_1 = bitor(hex2dec('0000000b'), udp_10g_1)   ''' Function call '''
+    packet_header_10g_0 = (0x0000000 | udp_10g_0)   ''' Function call '''
+    packet_header_10g_1 = (0x0000000 | udp_10g_1)   ''' Function call '''
     
     rdma_write(sCom,packet_header_10g_0,robs_udp_packet_hdr,'rw','robs udp packet header 10g_0')   ''' Function call '''
     rdma_write(sCom,packet_header_10g_1,robs_udp_packet_hdr,'rw','robs udp packet header 10g_1')   ''' Function call '''
@@ -298,7 +493,7 @@ if (enable_10g == 1) is True:
 ll_frm_gen_data_type=0;
 
 # length specifies nr of 64 bit words
-ll_frm_gen_setup(sCom,data_gen_0,udp_frm_sze/4, ll_frm_gen_data_type);  # normal operation   ''' Function call '''
+ll_frm_gen_setup(sCom,data_gen_0,udp_frm_sze/4, ll_frm_gen_data_type)  # normal operation
 
 # length specifies nr of 64 bit words
 rdma_write(sCom,data_gen_0+2,num_ll_frames+1,'rw','DATA GEN Nr Frames');   ''' Function call '''
