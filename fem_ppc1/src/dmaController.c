@@ -745,10 +745,10 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	print("[ INFO] Completed BD configuration!\r\n");
 
 #ifdef PROFILE_SPEED
-	XTime_GetTime(&startTxBdConf);
+	XTime_GetTime(&endTxBdConf);
 	printf("[DEBUG] BD Config timing:\r\n");
-	printf("[DEBUG] Ticks to configure %d x2 RX BDs = %d\r\n", (unsigned)totalNumBuffers, (unsigned)(endRxBdConf-startRxBdConf));
-	printf("[DEBUG] Ticks to configure %d x2 TX BDs = %d\r\n", (unsigned)totalNumBuffers, (unsigned)(endTxBdConf-startTxBdConf));
+	printf("[DEBUG] Ticks to configure %d x2 RX BDs = %llu\r\n", (unsigned)totalNumBuffers, (endRxBdConf-startRxBdConf));
+	printf("[DEBUG] Ticks to configure %d x2 TX BDs = %llu\r\n", (unsigned)totalNumBuffers, (endTxBdConf-startTxBdConf));
 #endif
 
 	// Commit all RX BDs to DMA engines
