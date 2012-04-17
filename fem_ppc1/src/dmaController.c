@@ -12,9 +12,13 @@
  */
 
 // Todo list, in order of priority
+// ----------------------------------------------------------------------
+// TODO: Speed up BD configuration for acquire mode
 // TODO: Implement mailbox handshake on config
 // TODO: Fix configure for acquire, respect config BD storage area
+// TODO: Update state variables during event loop (read/writePtr)
 // TODO: Respect doTx / doRx flags
+// TODO: Graceful stop when pending events exist
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -22,6 +26,13 @@
 #include "platform.h"
 #include "xlldma.h"
 #include "xil_testmem.h"
+
+#define PROFILE_SPEED		1
+
+// For profiling BD configuration speed
+#ifdef PROFILE_SPEED
+#include "xtime_l.h"
+#endif
 
 // TODO: Move defines, function prototypes to header!
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
@@ -272,6 +283,14 @@ int main()
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 				printf("[INFO ] Entering acquire DMA event loop\r\n");
 
+				// Reset BRAM struct
+				// TODO: Update readPtr / writePtr in event loop! (store index in BD?)
+			    pStatusBlock->readPtr = 0;
+			    pStatusBlock->writePtr = 0;
+			    pStatusBlock->totalRecv = 0;
+			    pStatusBlock->totalSent = 0;
+			    pStatusBlock->totalErrors = 0;
+
 	    		// Reset counters
 	    	    numTopAsicRxComplete = 0;
 	    	    numBotAsicRxComplete = 0;
@@ -291,8 +310,6 @@ int main()
 
 				while (acquireRunning)
 				{
-					// New and improved event loop (tm)
-
 					// TODO: Use doTX / doRX!
 
 					// Try to get ASIC data, and validate it
@@ -339,7 +356,6 @@ int main()
 
 					// Is the RX complete across both ASICs?
 					if ((numRxBot!=0 || numRxTop!=0) && numTopAsicRxComplete==numBotAsicRxComplete)
-					//if ((numRxBot!=0 || numRxTop!=0) && numTopAsicRxComplete==numBotAsicRxComplete && numTopAsicRxComplete!=0)
 					{
 						printf("[INFO ] RX complete across both ASICs (# %d)\r\n", numRxTotalComplete);
 						numRxTotalComplete++;
@@ -548,8 +564,14 @@ int main()
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock)
 {
 
+	// TODO: Can we speed up configuration of BDs?  Takes a long time at present with 1000s of buffers! -Can't use clone as still have to set addresses...
 	// TODO: Check what the last configuration was for and if it matches the request, don't reconfigure BDs!
 	// TODO: Take into account the reserved BD config area!
+
+#ifdef PROFILE_SPEED
+	XTime startRxBdConf, endRxBdConf;
+	XTime startTxBdConf, endTxBdConf;
+#endif
 
 	XLlDma_BdRing *pRingTenGig = pBdRings[BD_RING_TENGIG];
 	XLlDma_BdRing *pRingAsicTop = pBdRings[BD_RING_TOP_ASIC];
@@ -654,6 +676,8 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		return status;
 	}
 
+	print("[ INFO] Starting BD configuration...\r\n");
+
 	// Pass back a pointer to the first TX BD
 	*pFirstTxBd = pTXBd;
 
@@ -667,6 +691,10 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	u32 currentOffset = 0;
 	u32 topAsicBufferAddress = DDR2_BADDR;
 	u32 botAsicBufferAddress = bankSize;
+
+#ifdef PROFILE_SPEED
+	XTime_GetTime(&startRxBdConf);
+#endif
 
 	// RX rings
 	for (i=0; i<totalNumBuffers; i++)
@@ -689,6 +717,11 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		pBotRXBd = XLlDma_BdRingNext(pRingAsicBot, pBotRXBd);
 	}
 
+#ifdef PROFILE_SPEED
+	XTime_GetTime(&endRxBdConf);
+	XTime_GetTime(&startTxBdConf);
+#endif
+
 	// TX ring
 	currentOffset = 0;
 	for (i=0; i<totalNumBuffers; i++)
@@ -709,6 +742,14 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		currentOffset += bufferSz;
 	}
 
+	print("[ INFO] Completed BD configuration!\r\n");
+
+#ifdef PROFILE_SPEED
+	XTime_GetTime(&startTxBdConf);
+	printf("[DEBUG] BD Config timing:\r\n");
+	printf("[DEBUG] Ticks to configure %d x2 RX BDs = %d\r\n", (unsigned)totalNumBuffers, (unsigned)(endRxBdConf-startRxBdConf));
+	printf("[DEBUG] Ticks to configure %d x2 TX BDs = %d\r\n", (unsigned)totalNumBuffers, (unsigned)(endTxBdConf-startTxBdConf));
+#endif
 
 	// Commit all RX BDs to DMA engines
 	status = XLlDma_BdRingToHw(pRingAsicTop, totalNumBuffers, pTopFirstBd);
