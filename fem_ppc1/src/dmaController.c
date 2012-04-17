@@ -718,7 +718,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	XTime_GetTime(&endGBeTxRingAlloc);
 #endif
 
-	print("[ INFO] Starting BD configuration...\r\n");
+	print("[INFO ] Starting BD configuration...\r\n");
 
 	// Pass back a pointer to the first TX BD
 	*pFirstTxBd = pTXBd;
@@ -780,14 +780,12 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		XLlDma_BdSetStsCtrl(*pTenGigFirstBd, LL_STSCTRL_TX_BD);
 		pTenGigFirstBd = XLlDma_BdRingNext(pRingTenGig, pTenGigFirstBd);
 
-
 		currentOffset += bufferSz;
 	}
 
-	print("[ INFO] Completed BD configuration!\r\n");
-
 #ifdef PROFILE_SPEED
 	XTime_GetTime(&endTxBdConf);
+	print("[DEBUG] ------------------------------------------------\r\n");
 	printf("[DEBUG] BD Config timing:\r\n");
 	printf("[DEBUG] Ticks to create Top ASIC RX      = %llu\r\n", (endTopRxRingCreate-startTopRxRingCreate));
 	printf("[DEBUG] Ticks to create Bot ASIC RX      = %llu\r\n", (endBotRxRingCreate-startBotRxRingCreate));
@@ -807,13 +805,19 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 									(endRxBdConf-startRxBdConf) +
 									(endTxBdConf-startTxBdConf);
 
-	int totalTimeMs = totalTime / (unsigned long long)100000;
+	int totalTimeMs = totalTime / 100000;
 
-	print("");
+	int timeRxConfNs = (((endRxBdConf-startRxBdConf) / (totalNumBuffers*2)) / 100);
+	int timeTxConfNs = (((endTxBdConf-startTxBdConf) / (totalNumBuffers*2)) / 100);
+
 	printf("[DEBUG] Total time for %d BDs: %llu ticks, %dms.\r\n", (unsigned)totalNumBuffers, totalTime, totalTimeMs);
-	print("");
+	printf("[DEBUG] Time per RX BD               %dns\r\n", timeRxConfNs);
+	printf("[DEBUG] Time per TX BD               %dns\r\n", timeTxConfNs);
+	print("[DEBUG] ------------------------------------------------\r\n");
 
 #endif
+
+	print("[INFO ] Completed BD configuration!\r\n");
 
 	// Commit all RX BDs to DMA engines
 	status = XLlDma_BdRingToHw(pRingAsicTop, totalNumBuffers, pTopFirstBd);
