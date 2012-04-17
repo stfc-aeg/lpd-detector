@@ -20,7 +20,26 @@ def extract_asic_data(asic_no, column_no, asic_data):
     
     start = asic_no + ((column_no-1) * 128 * 511);
     stop = (asic_no + 128 * 511) + ((column_no-1) * 128 * 511);
-    image_data = reshape(asic_data(start:128:stop), 16, 32); # rob's
+    
+    #image_data = reshape(asic_data(start:128:stop), 16, 32); # rob's
+    # reshape(A, rows, columns) = Turn matrix matrix (rows*columns) sized matrix
+    
+    # Matlab matrix: matrix = [3 4 5 6 7 8]
+    # display all elements:   matrix(1:6)
+    # Python List:   List =   [3, 4, 5, 6, 7, 8]
+    # display all elements:   List[0:6]
+    
+    # Copy sub list of asic_data,
+    # starting from (including) start until stop =    
+    # asic_data[(start-1):stop]
+    
+    counter = start
+    image_data = []
+    while counter < stop:
+        image_data.append(asic_data[counter-1])
+        counter += 128
+        
+    
     
     return image_data
 
@@ -30,9 +49,13 @@ def clear_ll_monitor(sCom, base_addr):
     
     #input monitor registers are offset from base address by 16
     
-    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
-    rdma_write(sCom,base_addr+1,1,'rw','Local Link Monitor Counter Reset')
-    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
+#    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
+#    rdma_write(sCom,base_addr+1,1,'rw','Local Link Monitor Counter Reset')
+#    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
+    print "Local Link Monitor Counter Reset"
+    myFemClient.rdmaWrite(base_addr+1,0)
+    myFemClient.rdmaWrite(base_addr+1,1)
+    myFemClient.rdmaWrite(base_addr+1,0)
     
     return 1
 
@@ -48,12 +71,20 @@ def fem_10g_udp_net_set_up(sCom, base_addr, net):
 
     reg3 = (net.dst_mac >> 16)
 
-    rdma_write(sCom,base_addr+0,reg1,'rw','# src_mac_lower_32')
-    rdma_write(sCom,base_addr+1,reg2,'rw','# dst_mac_lower_16 & src_mac_upper_16')
-    rdma_write(sCom,base_addr+2,reg3 ,'rw','# dst_mac_upper_32')
-
+#    rdma_write(sCom,     base_addr+0, reg1,'rw','# src_mac_lower_32')
+#    rdma_write(sCom,     base_addr+1, reg2,'rw','# dst_mac_lower_16 & src_mac_upper_16')
+#    rdma_write(sCom,     base_addr+2, reg3,'rw','# dst_mac_upper_32')
+    print "# src_mac_lower_32"
+    myFemClient.rdmaWrite(base_addr+0, reg1)
+    print "# dst_mac_lower_16 & src_mac_upper_16"
+    myFemClient.rdmaWrite(base_addr+1, reg2)
+    print "# dst_mac_upper_32"
+    myFemClient.rdmaWrite(base_addr+2, reg3)
+    
     #set up IP address for SRC & destination
-    reg6b = rdma_read(sCom,base_addr+6,'r','#')
+    print "Reading IP address for Src & destination.."
+#    reg6b = rdma_read(sCom,base_addr+6,'r','#')
+    reg6b = myFemClient.rdmaRead(base_addr+6, 1)
 
     reg6b = (reg6b & 0x0000FF)
     reg6 =  (net.dst_ip << 16)
@@ -62,17 +93,23 @@ def fem_10g_udp_net_set_up(sCom, base_addr, net):
     reg7 =  (net.dst_ip >> 16)
     reg7 =  (reg7 | (net.src_ip << 16))
 
-    reg8t = rdma_read(sCom,base_addr+8,'r','#')
+#    reg8t = rdma_read(sCom,     base_addr+8,'r','#')
+    reg8t = myFemClient.rdmaRead(base_addr+8, 1)    # 1 = 1 32 bit unsigned integer?
 
     reg8t = (reg8t & 0xFFFF00)
     reg8b =  (net.src_ip >> 16)
     reg8 =  (reg8t | reg8b)
 
-    rdma_write(sCom,base_addr+6,reg6,'rw','# ')
-    rdma_write(sCom,base_addr+7,reg7,'rw','#  ')
-    rdma_write(sCom,base_addr+8,reg8 ,'rw','# ')
+#    rdma_write(sCom,     base_addr+6, reg6,'rw','# ')
+#    rdma_write(sCom,     base_addr+7, reg7,'rw','#  ')
+#    rdma_write(sCom,     base_addr+8, reg8 ,'rw','# ')
+    print "Writing to reg6, reg7 & reg8.."
+    myFemClient.rdmaWrite(base_addr+6, reg6)    
+    myFemClient.rdmaWrite(base_addr+7, reg7)
+    myFemClient.rdmaWrite(base_addr+8, reg8)
 
-    rdma_read(sCom,base_addr+9,'r','# ')
+#    rdma_read(sCom,     base_addr+9,'r','# ')
+    myFemClient.rdmaRead(base_addr+9, 1)
 
     return 1
 
@@ -82,23 +119,31 @@ def fem_local_link_mux_setup(sCom, base_addr, output_data_source):
     reg1 = 0x00000001 | base_addr
 
     if output_data_source == 0 is True:
-        rdma_write(sCom,reg1,0x00000000, 'rw','local link mux ouput 0')
+        #rdma_write(sCom,reg1,0x00000000, 'rw','local link mux ouput 0')
+        print "local link mux ouput 0"
+        myFemClient.rdmaWrite(reg1, 0x00000000)
     else:
-        rdma_write(sCom,reg1,0x00000001, 'rw','local link mux output 1');
+#        rdma_write(sCom,reg1,0x00000001, 'rw','local link mux output 1');
+        print "local link mux output 1"
+        myFemClient.rdmaWrite(reg1, 0x00000001)
     
     return 1
     
 
-def toggle_bits(s, base_addr, reg_addr, bit_pat,rw):
+def toggle_bits(s, base_addr, reg_addr, bit_pat):
     """ toggle_bits() """
     address= base_addr + reg_addr
     
     bits_off = 0
     bits_on  = bit_pat
     
-    rdma_write(s,address,bits_off,'rw','')
-    rdma_write(s,address,bits_on, 'rw','')
-    rdma_write(s,address,bits_off,'rw','')
+#    rdma_write(s,address,bits_off,'rw','')
+#    rdma_write(s,address,bits_on, 'rw','')
+#    rdma_write(s,address,bits_off,'rw','')
+    print "target_bits() executing rdmaWrite.."
+    myFemClient.rdmaWrite(address,bits_off)
+    myFemClient.rdmaWrite(address,bits_on)
+    myFemClient.rdmaWrite(address,bits_off)
     
     return 1
 
@@ -110,18 +155,41 @@ def read_ll_monitor(s, base_addr):
     #input monitor registers are offset from base address by 16
     mon_addr = base_addr + 16
     
-    rdma_read(s,mon_addr+0,'r','frm_last_length')
-    rdma_read(s,mon_addr+1,'r','frm_max_length')
-    rdma_read(s,mon_addr+2,'r','frm_min_length')
-    rdma_read(s,mon_addr+3,'r','frm_number')
-    rdma_read(s,mon_addr+4,'r','frm_last_cycles')
-    rdma_read(s,mon_addr+5,'r','frm_max_cycles')
-    rdma_read(s,mon_addr+6,'r','frm_min_cycles')
-    total_data = rdma_read(s,mon_addr+7,'r','frm_data_total')
-    total_cycles = rdma_read(s,mon_addr+8,'r','frm_cycle_total')
-    rdma_read(s,mon_addr+9,'r','frm_trig_count')
-    rdma_read(s,mon_addr+15,'r','frm_in_progress')
+#    rdma_read(s,mon_addr+0,'r','frm_last_length')
+#    rdma_read(s,mon_addr+1,'r','frm_max_length')
+#    rdma_read(s,mon_addr+2,'r','frm_min_length')
+#    rdma_read(s,mon_addr+3,'r','frm_number')
+#    rdma_read(s,mon_addr+4,'r','frm_last_cycles')
+#    rdma_read(s,mon_addr+5,'r','frm_max_cycles')
+#    rdma_read(s,mon_addr+6,'r','frm_min_cycles')
+#    total_data = rdma_read(s,mon_addr+7,'r','frm_data_total')
+#    total_cycles = rdma_read(s,mon_addr+8,'r','frm_cycle_total')
+#    rdma_read(s,mon_addr+9,'r','frm_trig_count')
+#    rdma_read(s,mon_addr+15,'r','frm_in_progress')
     
+    print "frm_last_length"
+    myFemClient.rdmaWrite(mon_addr+0)
+    print "frm_max_length"
+    myFemClient.rdmaWrite(mon_addr+1)
+    print "frm_min_length"
+    myFemClient.rdmaWrite(mon_addr+2)
+    print "frm_number"
+    myFemClient.rdmaWrite(mon_addr+3)
+    print "frm_last_cycles"
+    myFemClient.rdmaWrite(mon_addr+4)
+    print "frm_max_cycles"
+    myFemClient.rdmaWrite(mon_addr+5)
+    print "frm_min_cycles"
+    myFemClient.rdmaWrite(mon_addr+6)
+    print "frm_data_total"
+    total_data = myFemClient.rdmaWrite(mon_addr+7)
+    print "frm_cycle_total"
+    total_cycles = myFemClient.rdmaWrite(mon_addr+8)
+    print "frm_trig_count"
+    myFemClient.rdmaWrite(mon_addr+9)
+    print "frm_in_progress"
+    myFemClient.rdmaWrite(mon_addr+15)
+       
     # data path = 64 bit, clock = 156.25 MHz
     total_time = total_cycles * (1/156.25e6)
     rate = (total_data/total_time) * 8
@@ -141,12 +209,17 @@ def ll_frm_gen_setup(s, base_address, length, data_type):
 
     # frm gen - n.b. top nibble/2 - move to data gen setup
     reg_length = length - 2
-    rdma_write(s,base_address+1,reg_length,'rw','DATA GEN Data Length')
+    #rdma_write(s,    base_address+1, reg_length,'rw','DATA GEN Data Length')
+    #rdma_write(sCom, address,        data,      type,description)
+    print "DATA GEN Data Length\n"
+    myFemClient.rdmaWrite(base_address+1,reg_length)
 
     control_reg = data_type & 0x00000003
     control_reg = control_reg << 4
 
-    rdma_write(s,base_address+4,control_reg,'rw','DATA GEN Data Type')
+    #rdma_write(s,        base_address+4, control_reg,'rw','DATA GEN Data Type')
+    print "DATA GEN Data Type\n"
+    myFemClient.rdmaWrite(base_address+4, control_reg)
 
     if data_type == 0 is True:
         data_0 = 0x00000000
@@ -161,13 +234,21 @@ def ll_frm_gen_setup(s, base_address, length, data_type):
         data_0 = 0xFFFFFFFF
         data_1 = 0xFFFFFFFF
 
-    rdma_write(s,base_address+5,data_0,'rw','DATA GEN Data Init 0')
-    rdma_write(s,base_address+6,data_1,'rw','DATA GEN Data Init 1')
+    #rdma_write(s,        base_address+5,data_0,'rw','DATA GEN Data Init 0')
+    print "DATA GEN Data Init 0"
+    myFemClient.rdmaWrite(base_address+5,data_0)
+    #rdma_write(s,        base_address+6,data_1,'rw','DATA GEN Data Init 1')
+    print "DATA GEN Data Init 1"
+    myFemClient.rdmaWrite(base_address+6,data_1)
 
     # Data Gen soft reset
-    rdma_write(s,base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
-    rdma_write(s,base_address+0,0x00000001,'rw','DATA GEN Internal Reset')
-    rdma_write(s,base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
+    #rdma_write(s,        base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
+    #rdma_write(s,        base_address+0,0x00000001,'rw','DATA GEN Internal Reset')
+    #rdma_write(s,        base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
+    print "DATA GEN Internal Reset\n"
+    myFemClient.rdmaWrite(base_address+0,0x00000000)    
+    myFemClient.rdmaWrite(base_address+0,0x00000001)
+    myFemClient.rdmaWrite(base_address+0,0x00000000)
 
     return 1
 
@@ -205,19 +286,28 @@ def fem_10g_udp_set_up(s, base_addr, udp_pkt_len, udp_frm_sze, eth_ifg):
     
     # set 8 x 8 Byte Packets
     data0 = ((udp_pkt_len/8)-2)
-    rdma_write(s,base_addr + 0x0000000C, data0,         'rw', 'UDP Block Packet Size')
+#    rdma_write(s,base_addr + 0x0000000C, data0,         'rw', 'UDP Block Packet Size')
+    print "UDP Block Packet Size\n"
+    myFemClient.rdmaWrite(base_addr + 0x0000000C, data0)
     
     # set IP header length + 64 Bytes
     data1 = 0xDB000000 + ip_hdr_len
-    rdma_write(s,base_addr + 0x00000004, data1,         'rw', 'UDP Block IP Header Length')    
+#    rdma_write(s,base_addr + 0x00000004, data1,         'rw', 'UDP Block IP Header Length')
+    print "UDP Block IP Header Length\n"
+    myFemClient.rdmaWrite(base_addr + 0x00000004, data1)    
     
     # set udp length +64 Bytes
     data2 = 0x0000D1F0 + udp_hdr_len
-    rdma_write(s,base_addr + 0x00000009, data2,         'rw', 'UDP Block UDP Length')
+#    rdma_write(s,base_addr + 0x00000009, data2,         'rw', 'UDP Block UDP Length')
+    print "UDP Block UDP Length\n"
+    myFemClient.rdmaWrite(base_addr + 0x00000009, data2)
     
     # enable & set IFG
-    rdma_write(s,base_addr + 0x0000000F, ctrl_reg_val,   'rw', 'UDP Block IFG')
-    rdma_write(s,base_addr + 0x0000000D, eth_ifg,        'rw', 'UDP Block IFG')
+#    rdma_write(s,base_addr + 0x0000000F, ctrl_reg_val,   'rw', 'UDP Block IFG')
+#    rdma_write(s,base_addr + 0x0000000D, eth_ifg,        'rw', 'UDP Block IFG')
+    print "UDP Block IFG\n"
+    myFemClient.rdmaWrite(base_addr + 0x0000000F, ctrl_reg_val)
+    myFemClient.rdmaWrite(base_addr + 0x0000000D, eth_ifg)
     
     return 1
 
@@ -462,8 +552,8 @@ if (enable_10g == 1) is True:
     fem_10g_udp_set_up(sCom, udp_10g_1, udp_pkt_len, udp_frm_sze, eth_ifg)
     
     #set MAC, IP Port addresses
-    fem_10g_udp_net_set_up(sCom, udp_10g_0, x10g_0)   ''' Function call '''
-    fem_10g_udp_net_set_up(sCom, udp_10g_1, x10g_1)   ''' Function call '''
+    fem_10g_udp_net_set_up(sCom, udp_10g_0, x10g_0)
+    fem_10g_udp_net_set_up(sCom, udp_10g_1, x10g_1)
 
     # create a udp record
 #    u = udp('192.168.0.13', 'LocalPort', 61649,'InputBufferSize', udp_in_buf_size, 'DatagramTerminateMode', 'off')
@@ -481,12 +571,17 @@ if (enable_10g == 1) is True:
 #    fopen(u)    # Redundant
     
     # rob's udp packet headers
-    packet_header_10g_0 = (0x0000000 | udp_10g_0)   ''' Function call '''
-    packet_header_10g_1 = (0x0000000 | udp_10g_1)   ''' Function call '''
+    packet_header_10g_0 = (0x0000000 | udp_10g_0)
+    packet_header_10g_1 = (0x0000000 | udp_10g_1)
+        
+    #rdma_write(sCom,    packet_header_10g_0,    robs_udp_packet_hdr,    'rw',    'robs udp packet header 10g_0')   ''' Function call '''
+    #rdma_write(sCom,    packet_header_10g_1,    robs_udp_packet_hdr,    'rw',    'robs udp packet header 10g_1')   ''' Function call '''
+    #rdma_write(sCom,    address,                data,                   type,    description)
     
-    rdma_write(sCom,packet_header_10g_0,robs_udp_packet_hdr,'rw','robs udp packet header 10g_0')   ''' Function call '''
-    rdma_write(sCom,packet_header_10g_1,robs_udp_packet_hdr,'rw','robs udp packet header 10g_1')   ''' Function call '''
-    
+    print "robs udp packet header 10g_0\n"
+    myFemClient.rdmaWrite(packet_header_10g_0, robs_udp_packet_hdr)
+    print "robs udp packet header 10g_1\n"
+    myFemClient.rdmaWrite(packet_header_10g_1, robs_udp_packet_hdr)
 
 
 #set up data generator 0
@@ -496,8 +591,9 @@ ll_frm_gen_data_type=0;
 ll_frm_gen_setup(sCom,data_gen_0,udp_frm_sze/4, ll_frm_gen_data_type)  # normal operation
 
 # length specifies nr of 64 bit words
-rdma_write(sCom,data_gen_0+2,num_ll_frames+1,'rw','DATA GEN Nr Frames');   ''' Function call '''
-
+print "DATA GEN Nr Frames\n"
+#rdma_write(sCom,     data_gen_0+2, num_ll_frames+1,'rw','DATA GEN Nr Frames');
+myFemClient.rdmaWrite(data_gen_0+2, num_ll_frames+1)
 
 #fprintf('\n');
 if (enable_10g == 1) is True:
@@ -585,27 +681,27 @@ fem_local_link_mux_setup(sCom, fem_ctrl_0, data_source_to_10g);   ''' Function c
 def all_asic_seq():
     # start asic seq  = reset, slow, fast & asic rx
     print "You selected 'all'"
-    toggle_bits(sCom,fem_ctrl_0,0, 2'rw')    ''' Function call '''    
+    toggle_bits(sCom,fem_ctrl_0,0, 2)    
     
 def alpha():
     print "You selected 'a'"
     # trigger to local link frame gen 
-    toggle_bits(sCom,fem_ctrl_0,0, 1)        ''' Function call '''
+    toggle_bits(sCom,fem_ctrl_0,0, 1)
     
 def bravo():
     print "You selected 'b'"
     # trigger the asic rx block
-    toggle_bits(sCom,fem_ctrl_0,3, 1)      ''' Function call '''
+    toggle_bits(sCom,fem_ctrl_0,3, 1)
 
 def sierra():
     # trigger just the slow contol IP block
     print "You selected 's'"
-    toggle_bits(sCom,fem_ctrl_0,7, 1)   ''' Function call '''    
+    toggle_bits(sCom,fem_ctrl_0,7, 1)    
     
 def foxtrot():
     # trigger just the fast cmd block
     print "You selected 'f'"
-    toggle_bits(sCom,fem_ctrl_0,7, 2)   ''' Function call '''
+    toggle_bits(sCom,fem_ctrl_0,7, 2)
     
 # Substitute switch statement with Python dictionary lookup
 options = {'all' : all_asic_seq,
@@ -624,7 +720,7 @@ except KeyError:
 
 if enable_10g == 1 is True:
     #Check local link frame statistics
-    read_ll_monitor(sCom, llink_mon_0)   ''' Function call '''
+    read_ll_monitor(sCom, llink_mon_0)
 
 
 # check contents of slow control read back BRAM
@@ -646,7 +742,7 @@ print "\n ...continuing\n"
 
 if send_ppc_reset == 1 is True:
     # Resets dma engines
-    toggle_bits(sCom,fem_ctrl_0, 9, 1)   ''' Function call '''
+    toggle_bits(sCom,fem_ctrl_0, 9, 1)
 
 
 #--------------------------------------------------------------------
@@ -654,7 +750,7 @@ if send_ppc_reset == 1 is True:
 
 #check how much data has arrived
 count=0
-while (myFemClient.bytesavailable ~= udp_frm_sze && count <= 8)
+while ( (myFemClient.bytesavailable != udp_frm_sze) and (count <= 8) ):
     no_bytes = myFemClient.bytesavailable;
     print "\n%4i" % count, "%8X" % no_bytes
     count=count+1;
@@ -667,9 +763,11 @@ data_size = udp_frm_sze/2
 dudp = [0] * data_size
 packet_size = udp_pkt_len/2
 
+print "Receiving the image data from 10g link.."
+
 if  readout_mode is "packet":     
     # loop to read udp frame packet by packet
-    for i =0:udp_pkt_num-1
+    for i in range(0,udp_pkt_num-1, 1):
 #        dudp = uint32(fread(u, packet_size, 'uint16'));
 #        fprintf('\n%04i %08X %08X %08X %08X',i, dudp(1),dudp(2),dudp(3),dudp(packet_size));
         dudp = myFemClient.recv()   # TODO: Understand how to use FemClient receive functionality
@@ -678,7 +776,8 @@ if  readout_mode is "packet":
         print "\n%4i %8X %8X %8X %8X" % (i, dudp(1),dudp(2),dudp(3),dudp(packet_size))
 elif readout_mode is "frame":
 #    dudp = uint32(fread(u, data_size, 'uint32'));
-    #dudp = myFemClient.recv()    # TODO: Understand how to use FemClient receive functionality    
+    dudp = myFemClient.recv()    # TODO: Understand how to use FemClient receive functionality
+            
 else:
     pass
 
@@ -710,7 +809,7 @@ else:
 # rotate to match ivan's display (isn't matlab clever :) )
 #image_data = rot90(image_data_raw);                        # Redundant?
 
-                        ''' How Plot Data? '''
+"""                        How Plot Data?             """
 #frame_nr = 1;
 ## plot the data from the asic
 #colormap gray;
