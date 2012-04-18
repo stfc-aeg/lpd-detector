@@ -315,7 +315,7 @@ int main()
 					if (doRx)
 					{
 
-						// See if there are RX DMA transfers
+						// See if there are RX DMA transfers - pop one off at a time!
 						numRxTop = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
 						numRxBot = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
 
@@ -356,6 +356,9 @@ int main()
 							print("[INFO ] Got ASIC RX OK from bottom.\r\n");
 							numBotAsicRxComplete++;
 						}
+
+						// DEBUG
+						printf("[DEBUG] numRxBot=%d, numRxTop=%d, numTopAsicRxComplete=%d, numBotAsicRxComplete=%d \r\n", numRxBot, numRxTop, numTopAsicRxComplete, numBotAsicRxComplete);
 
 						// Is the RX complete across both ASICs?
 						if ((numRxBot!=0 || numRxTop!=0) && numTopAsicRxComplete==numBotAsicRxComplete)
@@ -439,6 +442,7 @@ int main()
 								}
 
 								printf("[INFO ] Verified TX OK!\r\n");
+								print("\r\n");
 								returnedTx-=2;
 								pStatusBlock->totalSent++;
 							}
