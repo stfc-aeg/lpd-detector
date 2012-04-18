@@ -322,6 +322,9 @@ int main()
 						// RX Top ASIC
 						if (numRxTop!=0)
 						{
+							// DEBUG
+							printf("[DEBUG] numRxBot=%d, numRxTop=%d, numTopAsicRxComplete=%d, numBotAsicRxComplete=%d \r\n", numRxBot, numRxTop, numTopAsicRxComplete, numBotAsicRxComplete);
+
 							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 							if (status!=XST_SUCCESS)
 							{
@@ -356,9 +359,6 @@ int main()
 							print("[INFO ] Got ASIC RX OK from bottom.\r\n");
 							numBotAsicRxComplete++;
 						}
-
-						// DEBUG
-						printf("[DEBUG] numRxBot=%d, numRxTop=%d, numTopAsicRxComplete=%d, numBotAsicRxComplete=%d \r\n", numRxBot, numRxTop, numTopAsicRxComplete, numBotAsicRxComplete);
 
 						// Is the RX complete across both ASICs?
 						if ((numRxBot!=0 || numRxTop!=0) && numTopAsicRxComplete==numBotAsicRxComplete)
