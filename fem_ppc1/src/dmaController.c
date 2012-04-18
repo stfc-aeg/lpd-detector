@@ -310,128 +310,140 @@ int main()
 
 				while (acquireRunning)
 				{
-					// TODO: Use doTX / doRX!
 
-					// Try to get ASIC data, and validate it
-					numRxTop = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
-					numRxBot = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
-
-					// RX Top ASIC
-					if (numRxTop!=0)
+					// Process RX
+					if (doRx)
 					{
-						status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
-						if (status!=XST_SUCCESS)
-						{
-							printf("[ERROR] Failed to validate buffer index %d from top ASIC!\r\n", numTopAsicRxComplete);
-							return 0;
-						}
-						status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
-						if (status!=XST_SUCCESS)
-						{
-							printf("[ERROR] Failed to recycle buffer index %d from top ASIC!\r\n", numTopAsicRxComplete);
-							return 0;
-						}
-						print("[INFO ] Got ASIC RX OK from top.\r\n");
-						numTopAsicRxComplete++;
-					}
 
-					// RX Bottom ASIC
-					if (numRxBot!=0)
-					{
-						status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
-						if (status!=XST_SUCCESS)
-						{
-							printf("[ERROR] Failed to validate buffer index %d from bottom ASIC!\r\n", numBotAsicRxComplete);
-							return 0;
-						}
-						status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
-						if (status!=XST_SUCCESS)
-						{
-							printf("[ERROR] Failed to recycle buffer index %d from bottom ASIC!\r\n", numBotAsicRxComplete);
-							return 0;
-						}
-						print("[INFO ] Got ASIC RX OK from bottom.\r\n");
-						numBotAsicRxComplete++;
-					}
+						// See if there are RX DMA transfers
+						numRxTop = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
+						numRxBot = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
 
-					// Is the RX complete across both ASICs?
-					if ((numRxBot!=0 || numRxTop!=0) && numTopAsicRxComplete==numBotAsicRxComplete)
-					{
-						printf("[INFO ] RX complete across both ASICs (# %d)\r\n", numRxTotalComplete);
-						numRxTotalComplete++;
-						unsentTx++;
-						pStatusBlock->totalRecv++;
-					}
-
-					// pendingTx contains the number of *PAIRED* TX BDs to be sent!  so unsentTx = 1, there are 2 BDs to send...
-
-					// Do we have TX operations pending?  If so dispatch them...
-					if (unsentTx > 0)
-					{
-						printf("[INFO ] %d 10GBe TX pair(s) pending...\r\n", unsentTx);
-						status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], unsentTx*2, pTenGigPreHW);
-						pendingTx = unsentTx*2;
-						if (status!=XST_SUCCESS)
+						// RX Top ASIC
+						if (numRxTop!=0)
 						{
-							printf("[ERROR] Could not commit TX BD pair(s)!  Error code %d\r\n", status);
-							return 0;
-						}
-						else
-						{
-							// Sent all to HW, none left!
-							printf("[INFO ] Committed %d BDs to TX!\r\n", unsentTx);
-
-							// Advance our BD pointer
-							for (i=0; i<unsentTx*2; i++)
+							status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
+							if (status!=XST_SUCCESS)
 							{
-								pTenGigPreHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPreHW);
+								printf("[ERROR] Failed to validate buffer index %d from top ASIC!\r\n", numTopAsicRxComplete);
+								return 0;
 							}
-							unsentTx = 0;
-						}
-					}
-
-					// Verify any TX BDs that have returned and update status accordingly, if there are some outstanding
-					if (pendingTx>0)
-					{
-						returnedTx += XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
-						if (returnedTx > 1)		// If we have at least a pair (process TX in pairs!)
-						{
-							printf("[INFO ] %d completed TX BD(s)...\r\n", returnedTx);
-
-							// Verify / free a pair of TX
-							for(i=0; i<2; i++)
+							status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
+							if (status!=XST_SUCCESS)
 							{
-								// Validate TX response
-								status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
-								if (status!=XST_SUCCESS)
+								printf("[ERROR] Failed to recycle buffer index %d from top ASIC!\r\n", numTopAsicRxComplete);
+								return 0;
+							}
+							print("[INFO ] Got ASIC RX OK from top.\r\n");
+							numTopAsicRxComplete++;
+						}
+
+						// RX Bottom ASIC
+						if (numRxBot!=0)
+						{
+							status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Failed to validate buffer index %d from bottom ASIC!\r\n", numBotAsicRxComplete);
+								return 0;
+							}
+							status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Failed to recycle buffer index %d from bottom ASIC!\r\n", numBotAsicRxComplete);
+								return 0;
+							}
+							print("[INFO ] Got ASIC RX OK from bottom.\r\n");
+							numBotAsicRxComplete++;
+						}
+
+						// Is the RX complete across both ASICs?
+						if ((numRxBot!=0 || numRxTop!=0) && numTopAsicRxComplete==numBotAsicRxComplete)
+						{
+							printf("[INFO ] RX complete across both ASICs (# %d)\r\n", numRxTotalComplete);
+							numRxTotalComplete+=numTopAsicRxComplete;
+							unsentTx++;
+							pStatusBlock->totalRecv++;
+						}
+					} // END if(doRx)
+
+
+
+					// Process TX
+					if (doTx)
+					{
+						// pendingTx contains the number of *PAIRED* TX BDs to be sent!  so unsentTx = 1, there are 2 BDs to send...
+
+						// Do we have TX operations pending?  If so dispatch them...
+						if (unsentTx > 0)
+						{
+							printf("[INFO ] %d 10GBe TX pair(s) pending...\r\n", unsentTx);
+							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], unsentTx*2, pTenGigPreHW);
+							pendingTx = unsentTx*2;
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Could not commit TX BD pair(s)!  Error code %d\r\n", status);
+								return 0;
+							}
+							else
+							{
+								// Sent all to HW, none left!
+								printf("[INFO ] Committed %d BDs to TX!\r\n", unsentTx);
+
+								// Advance our BD pointer
+								for (i=0; i<unsentTx*2; i++)
 								{
-									printf("[ERROR] Error validating TX BD %d, error code %d\r\n", i, status);
-									return 0;
+									pTenGigPreHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPreHW);
+								}
+								unsentTx = 0;
+							}
+						}
+
+						// Verify any TX BDs that have returned and update status accordingly, if there are some outstanding
+						if (pendingTx>0)
+						{
+							returnedTx += XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
+							if (returnedTx > 1)		// If we have at least a pair (process TX in pairs!)
+							{
+								printf("[INFO ] %d completed TX BD(s)...\r\n", returnedTx);
+
+								// Verify / free a pair of TX
+								for(i=0; i<2; i++)
+								{
+									// Validate TX response
+									status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
+									if (status!=XST_SUCCESS)
+									{
+										printf("[ERROR] Error validating TX BD %d, error code %d\r\n", i, status);
+										return 0;
+									}
+
+									// Re-allocate BD into active ring
+									status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
+									if (status!=XST_SUCCESS)
+									{
+										printf("[ERROR] Error on recycleBuffer for TX BD %d, error code %d\r\n", i, status);
+										return 0;
+									}
+
+									// DEBUGGING!!
+									/*
+									bdSts = XLlDma_BdGetStsCtrl(pTenGigPostHW);
+									bdLen = XLlDma_BdGetLength(pTenGigPostHW);
+									bdAddr = XLlDma_BdGetBufAddr(pTenGigPostHW);
+									printf("[DEBUG] This TX BD: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
+									*/
+
+									// Move to next BD in set
+									pTenGigPostHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPostHW);
 								}
 
-								// Re-allocate BD into active ring
-								status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
-								if (status!=XST_SUCCESS)
-								{
-									printf("[ERROR] Error on recycleBuffer for TX BD %d, error code %d\r\n", i, status);
-									return 0;
-								}
-
-								// DEBUGGING!!
-								bdSts = XLlDma_BdGetStsCtrl(pTenGigPostHW);
-								bdLen = XLlDma_BdGetLength(pTenGigPostHW);
-								bdAddr = XLlDma_BdGetBufAddr(pTenGigPostHW);
-								printf("[DEBUG] This TX BD: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
-
-								// Move to next BD in set
-								pTenGigPostHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPostHW);
+								printf("[INFO ] Verified TX OK!\r\n");
+								returnedTx-=2;
+								pStatusBlock->totalSent++;
 							}
-
-							printf("[INFO ] Verified TX OK!\r\n");
-							returnedTx-=2;
-							pStatusBlock->totalSent++;
 						}
-					}
+					} // END if(doTx)
 
 					// Check for mailbox messages
 					if (checkForMailboxMessage(&mbox, pMsg))
@@ -564,9 +576,19 @@ int main()
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock)
 {
 
-	// TODO: Can we speed up configuration of BDs?  Takes a long time at present with 1000s of buffers! -Can't use clone as still have to set addresses...
-	// TODO: Check what the last configuration was for and if it matches the request, don't reconfigure BDs!
 	// TODO: Take into account the reserved BD config area!
+
+	short reuseBds = 0;
+
+	// Check if we can re-use BDs to save time configuring
+	if ((bufferSz==pStatusBlock->bufferSize) && (bufferCnt==pStatusBlock->bufferSize))
+	{
+		printf("[INFO ] Parameters for buffer size and count match last config, reusing BDs!\r\n");
+		reuseBds = 1;
+	}
+
+	// If we are reusing BDs then we can assume that the last acquisition completed successfully.
+	// i.e. all RX BDs are committed to HW, and no TXes are.
 
 #ifdef PROFILE_SPEED
 	XTime startRxBdConf, endRxBdConf;
