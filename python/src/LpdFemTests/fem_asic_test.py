@@ -1,316 +1,15 @@
-#FEM 10G UDP Test - Instrument Controls tool box
-# top level for fem with asic test module
-# updated to use Rob's new libraries for 10g, rdma, llink
-# jac 25.10.11
-# 03/04/12  jac   cleaned up again
+ '''
+Created on 18 Apr 2012
+
+@author: ckd27546
+'''
 
 # Import Python standard modules
 import serial, time
-# Force float division:
-#from __future__ import division    # Update: do NOT force float division
-#import numarray
 
 # Import Fem modules
 from FemClient import FemClient
-
-def extract_asic_data(asic_no, column_no, asic_data):
-    # Rob Halsall 12-04-2011
-    # Extract Image data from 1 ASIC, 1 time slice
-    # extract for specified time slice = column_no  jac
-    
-    start = asic_no + ((column_no-1) * 128 * 511);
-    stop = (asic_no + 128 * 511) + ((column_no-1) * 128 * 511);
-    
-    #image_data = reshape(asic_data(start:128:stop), 16, 32); # rob's
-    # reshape(A, rows, columns) = Turn matrix matrix (rows*columns) sized matrix
-    
-    # Matlab matrix: matrix = [3 4 5 6 7 8]
-    # display all elements:   matrix(1:6)
-    # Python List:   List =   [3, 4, 5, 6, 7, 8]
-    # display all elements:   List[0:6]
-    
-    # Copy sub list of asic_data,
-    # starting from (including) start until stop =    
-    # asic_data[(start-1):stop]
-    
-    counter = start
-    image_data = []
-    while counter < stop:
-        image_data.append(asic_data[counter-1])
-        counter += 128
-        
-    
-    
-    return image_data
-
-def clear_ll_monitor(sCom, base_addr):
-    """ readout a local link monitor block
-        Rob Halsall 08-04-2011    """
-    
-    #input monitor registers are offset from base address by 16
-    
-#    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
-#    rdma_write(sCom,base_addr+1,1,'rw','Local Link Monitor Counter Reset')
-#    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
-    print "Local Link Monitor Counter Reset"
-    myFemClient.rdmaWrite(base_addr+1,0)
-    myFemClient.rdmaWrite(base_addr+1,1)
-    myFemClient.rdmaWrite(base_addr+1,0)
-    
-    return 1
-
-
-def fem_10g_udp_net_set_up(sCom, base_addr, net):
-    #set up MAC address for SRC & destination
-
-    reg1 = (net.src_mac & 0x00000000FFFFFFFF)
-
-    reg2b = ((net.src_mac & 0x0000FFFF000000) >> 32)
-    reg2t = ((net.dst_mac & 0x000000000000FF) << 16)
-    reg2 = (reg2b | reg2t)
-
-    reg3 = (net.dst_mac >> 16)
-
-#    rdma_write(sCom,     base_addr+0, reg1,'rw','# src_mac_lower_32')
-#    rdma_write(sCom,     base_addr+1, reg2,'rw','# dst_mac_lower_16 & src_mac_upper_16')
-#    rdma_write(sCom,     base_addr+2, reg3,'rw','# dst_mac_upper_32')
-    print "# src_mac_lower_32"
-    myFemClient.rdmaWrite(base_addr+0, reg1)
-    print "# dst_mac_lower_16 & src_mac_upper_16"
-    myFemClient.rdmaWrite(base_addr+1, reg2)
-    print "# dst_mac_upper_32"
-    myFemClient.rdmaWrite(base_addr+2, reg3)
-    
-    #set up IP address for SRC & destination
-    print "Reading IP address for Src & destination.."
-#    reg6b = rdma_read(sCom,base_addr+6,'r','#')
-    reg6b = myFemClient.rdmaRead(base_addr+6, 1)
-
-    reg6b = (reg6b & 0x0000FF)
-    reg6 =  (net.dst_ip << 16)
-    reg6 =  (reg6 | reg6b)
-
-    reg7 =  (net.dst_ip >> 16)
-    reg7 =  (reg7 | (net.src_ip << 16))
-
-#    reg8t = rdma_read(sCom,     base_addr+8,'r','#')
-    reg8t = myFemClient.rdmaRead(base_addr+8, 1)    # 1 = 1 32 bit unsigned integer?
-
-    reg8t = (reg8t & 0xFFFF00)
-    reg8b =  (net.src_ip >> 16)
-    reg8 =  (reg8t | reg8b)
-
-#    rdma_write(sCom,     base_addr+6, reg6,'rw','# ')
-#    rdma_write(sCom,     base_addr+7, reg7,'rw','#  ')
-#    rdma_write(sCom,     base_addr+8, reg8 ,'rw','# ')
-    print "Writing to reg6, reg7 & reg8.."
-    myFemClient.rdmaWrite(base_addr+6, reg6)    
-    myFemClient.rdmaWrite(base_addr+7, reg7)
-    myFemClient.rdmaWrite(base_addr+8, reg8)
-
-#    rdma_read(sCom,     base_addr+9,'r','# ')
-    myFemClient.rdmaRead(base_addr+9, 1)
-
-    return 1
-
-def fem_local_link_mux_setup(sCom, base_addr, output_data_source):
-    # set up local link mux
-
-    reg1 = 0x00000001 | base_addr
-
-    if output_data_source == 0 is True:
-        #rdma_write(sCom,reg1,0x00000000, 'rw','local link mux ouput 0')
-        print "local link mux ouput 0"
-        myFemClient.rdmaWrite(reg1, 0x00000000)
-    else:
-#        rdma_write(sCom,reg1,0x00000001, 'rw','local link mux output 1');
-        print "local link mux output 1"
-        myFemClient.rdmaWrite(reg1, 0x00000001)
-    
-    return 1
-    
-
-def toggle_bits(s, base_addr, reg_addr, bit_pat):
-    """ toggle_bits() """
-    address= base_addr + reg_addr
-    
-    bits_off = 0
-    bits_on  = bit_pat
-    
-#    rdma_write(s,address,bits_off,'rw','')
-#    rdma_write(s,address,bits_on, 'rw','')
-#    rdma_write(s,address,bits_off,'rw','')
-    print "target_bits() executing rdmaWrite.."
-    myFemClient.rdmaWrite(address,bits_off)
-    myFemClient.rdmaWrite(address,bits_on)
-    myFemClient.rdmaWrite(address,bits_off)
-    
-    return 1
-
-
-# Rob Halsall 08-04-2011
-def read_ll_monitor(s, base_addr):
-    """ readout a local link monitor block """
-    
-    #input monitor registers are offset from base address by 16
-    mon_addr = base_addr + 16
-    
-#    rdma_read(s,mon_addr+0,'r','frm_last_length')
-#    rdma_read(s,mon_addr+1,'r','frm_max_length')
-#    rdma_read(s,mon_addr+2,'r','frm_min_length')
-#    rdma_read(s,mon_addr+3,'r','frm_number')
-#    rdma_read(s,mon_addr+4,'r','frm_last_cycles')
-#    rdma_read(s,mon_addr+5,'r','frm_max_cycles')
-#    rdma_read(s,mon_addr+6,'r','frm_min_cycles')
-#    total_data = rdma_read(s,mon_addr+7,'r','frm_data_total')
-#    total_cycles = rdma_read(s,mon_addr+8,'r','frm_cycle_total')
-#    rdma_read(s,mon_addr+9,'r','frm_trig_count')
-#    rdma_read(s,mon_addr+15,'r','frm_in_progress')
-    
-    print "frm_last_length"
-    myFemClient.rdmaWrite(mon_addr+0)
-    print "frm_max_length"
-    myFemClient.rdmaWrite(mon_addr+1)
-    print "frm_min_length"
-    myFemClient.rdmaWrite(mon_addr+2)
-    print "frm_number"
-    myFemClient.rdmaWrite(mon_addr+3)
-    print "frm_last_cycles"
-    myFemClient.rdmaWrite(mon_addr+4)
-    print "frm_max_cycles"
-    myFemClient.rdmaWrite(mon_addr+5)
-    print "frm_min_cycles"
-    myFemClient.rdmaWrite(mon_addr+6)
-    print "frm_data_total"
-    total_data = myFemClient.rdmaWrite(mon_addr+7)
-    print "frm_cycle_total"
-    total_cycles = myFemClient.rdmaWrite(mon_addr+8)
-    print "frm_trig_count"
-    myFemClient.rdmaWrite(mon_addr+9)
-    print "frm_in_progress"
-    myFemClient.rdmaWrite(mon_addr+15)
-       
-    # data path = 64 bit, clock = 156.25 MHz
-    total_time = total_cycles * (1/156.25e6)
-    rate = (total_data/total_time) * 8
-    
-    print "\nData Total = %e" % total_data
-    print "\nData Time = %e" % total_time
-    print "\nData Rate = %e" % rate
-    
-    print "\n\n"
-    
-    return 1
-
-
-
-def ll_frm_gen_setup(s, base_address, length, data_type):
-    """ This function sets up the data Generator & resets """
-
-    # frm gen - n.b. top nibble/2 - move to data gen setup
-    reg_length = length - 2
-    #rdma_write(s,    base_address+1, reg_length,'rw','DATA GEN Data Length')
-    #rdma_write(sCom, address,        data,      type,description)
-    print "DATA GEN Data Length\n"
-    myFemClient.rdmaWrite(base_address+1,reg_length)
-
-    control_reg = data_type & 0x00000003
-    control_reg = control_reg << 4
-
-    #rdma_write(s,        base_address+4, control_reg,'rw','DATA GEN Data Type')
-    print "DATA GEN Data Type\n"
-    myFemClient.rdmaWrite(base_address+4, control_reg)
-
-    if data_type == 0 is True:
-        data_0 = 0x00000000
-        data_1 = 0x00000001
-    elif data_type == 1 is True:
-        data_0 = 0x03020100
-        data_1 = 0x07060504
-    elif data_type == 2 is True:
-        data_0 = 0x00000000
-        data_1 = 0x00000000
-    else:
-        data_0 = 0xFFFFFFFF
-        data_1 = 0xFFFFFFFF
-
-    #rdma_write(s,        base_address+5,data_0,'rw','DATA GEN Data Init 0')
-    print "DATA GEN Data Init 0"
-    myFemClient.rdmaWrite(base_address+5,data_0)
-    #rdma_write(s,        base_address+6,data_1,'rw','DATA GEN Data Init 1')
-    print "DATA GEN Data Init 1"
-    myFemClient.rdmaWrite(base_address+6,data_1)
-
-    # Data Gen soft reset
-    #rdma_write(s,        base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
-    #rdma_write(s,        base_address+0,0x00000001,'rw','DATA GEN Internal Reset')
-    #rdma_write(s,        base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
-    print "DATA GEN Internal Reset\n"
-    myFemClient.rdmaWrite(base_address+0,0x00000000)    
-    myFemClient.rdmaWrite(base_address+0,0x00000001)
-    myFemClient.rdmaWrite(base_address+0,0x00000000)
-
-    return 1
-
-
-def fem_10g_udp_set_up(s, base_addr, udp_pkt_len, udp_frm_sze, eth_ifg):
-
-    fixed_length = 0
-    
-    # set up header lengths
-    if fixed_length == 1 is True:
-        ip_hdr_len   = 28 + udp_pkt_len
-        udp_hdr_len  = 8 + udp_pkt_len
-        ctrl_reg_val = 0x00000009
-        
-        udp_hdr_len1 = udp_hdr_len & 0x000000FF
-        udp_hdr_len2 = udp_hdr_len & 0x0000FF00
-        udp_hdr_len  = (udp_hdr_len1 << 8) + (udp_hdr_len2 >> 8)
-    
-        ip_hdr_len1 = ip_hdr_len & 0x000000FF
-        ip_hdr_len2 = ip_hdr_len & 0x0000FF00
-        ip_hdr_len  = (ip_hdr_len1 << 8) + (ip_hdr_len2 >> 8)
-    else:
-        ip_hdr_len   = 28
-        udp_hdr_len  = 8
-        ctrl_reg_val = 0x00000001    
-    
-    #set udp checksum = zero
-    ctrl_reg_val = ctrl_reg_val | 0x00000010
-    
-    #shift udp header length up to the top two bytes
-    udp_hdr_len  = (udp_hdr_len << 16)
-    
-    # set up frame generator size 
-    gen_frm_cyc = (udp_frm_sze >> 2)        # Never utilised by Matlab script..
-    
-    # set 8 x 8 Byte Packets
-    data0 = ((udp_pkt_len/8)-2)
-#    rdma_write(s,base_addr + 0x0000000C, data0,         'rw', 'UDP Block Packet Size')
-    print "UDP Block Packet Size\n"
-    myFemClient.rdmaWrite(base_addr + 0x0000000C, data0)
-    
-    # set IP header length + 64 Bytes
-    data1 = 0xDB000000 + ip_hdr_len
-#    rdma_write(s,base_addr + 0x00000004, data1,         'rw', 'UDP Block IP Header Length')
-    print "UDP Block IP Header Length\n"
-    myFemClient.rdmaWrite(base_addr + 0x00000004, data1)    
-    
-    # set udp length +64 Bytes
-    data2 = 0x0000D1F0 + udp_hdr_len
-#    rdma_write(s,base_addr + 0x00000009, data2,         'rw', 'UDP Block UDP Length')
-    print "UDP Block UDP Length\n"
-    myFemClient.rdmaWrite(base_addr + 0x00000009, data2)
-    
-    # enable & set IFG
-#    rdma_write(s,base_addr + 0x0000000F, ctrl_reg_val,   'rw', 'UDP Block IFG')
-#    rdma_write(s,base_addr + 0x0000000D, eth_ifg,        'rw', 'UDP Block IFG')
-    print "UDP Block IFG\n"
-    myFemClient.rdmaWrite(base_addr + 0x0000000F, ctrl_reg_val)
-    myFemClient.rdmaWrite(base_addr + 0x0000000D, eth_ifg)
-    
-    return 1
-
+from LpdFemClient import *  #LpdFemClient
 
 def set_10g_structs_variables_te2bank():
     """ Construct and return to dictionaries defining to network interfaces
@@ -334,65 +33,13 @@ def set_10g_structs_variables_te2bank():
 
     return x10g_0, x10g_1
 
-#def hex2dec(n): ''' Redundant! '''
-#    """ returned the hexadecimal string representation of integer n """
-#    try:
-#        int(n)
-#    except ValueError:
-#        print "hex2dec() error: 0x MUST prefix argument!"
-#        return
-#    else:
-#        return "%X" % n
 
-#def set_fem_base_address_variables():
-#    """ 32 way splitter """
-udp_10g_0     = 0x00000000    #0
-udp_10g_1     = 0x08000000    #1
-data_gen_0    = 0x10000000    #2
-data_chk_0    = 0x18000000    #3
-data_gen_1    = 0x20000000    #4
-data_chk_1    = 0x28000000    #5
-fem_ctrl_0    = 0x30000000    #6
-llink_mon_0   = 0x38000000    #7
-data_mon_1    = 0x40000000    #8
-slow_ctr_2    = 0x48000000    #9
-fast_cmd_0    = 0x50000000    #10
-fast_cmd_1    = 0x58000000    #11
-asic_srx_0    = 0x60000000    #12
-rsvd_13       = 0x68000000    #13
-slow_ctr_0    = 0x70000000    #14
-slow_ctr_1    = 0x78000000    #15
-dma_gen_0    = 0x80000000    #16
-dma_chk_0    = 0x88000000    #17
-dma_gen_1    = 0x90000000    #18
-dma_chk_1    = 0x98000000    #19
-dma_gen_2    = 0xa0000000    #20
-dma_chk_2    = 0xa8000000    #21
-dma_gen_3    = 0xb0000000    #22
-dma_chk_3    = 0xb8000000    #23
-rsvd_24      = 0xc0000000    #24
-rsvd_25      = 0xc8000000    #25
-rsvd_26      = 0xd0000000    #26
-rsvd_27      = 0xd8000000    #27
-rsvd_28      = 0xe0000000    #28
-rsvd_29      = 0xe8000000    #29
-rsvd_30      = 0xf0000000    #30
-rsvd_31      = 0xf8000000    #31
     
+    
+# --------------------------------------------------------------------------- #
 
-'''
-if ispc == 1
-    addpath ('C:\Users\jac36\WORKSPACES\common\rdma\tags\release_01\m\');
-    addpath ('C:\Users\jac36\WORKSPACES\common\local_link\tags\release_03_beta\m\');
-    addpath ('C:\Users\jac36\WORKSPACES\common\X10G\tags\release_01\m\');
-#    addpath ('C:\Users\jac36\WORKSPACES\common\X10G\trunk\Matlab\test\');
 
-if isunix == 1
-   addpath ('/u/rha73/pc/fpga/library/common/rdma/trunk/m/');
-   addpath ('/u/rha73/pc/fpga/library/common/local_link/trunk/m/');
-   addpath ('/u/rha73/pc/fpga/library/common/X10G/trunk/m/');
-   addpath ('/u/rha73/pc/fpga/library/common/X10G/trunk/matlab/test/');
-'''
+myLpdFemClient = LpdFemClient(hostAddr='192.168.0.13', timeout=10)
 
 # enable sending reset to both ppc processors if = 1
 send_ppc_reset = 0;
@@ -410,7 +57,7 @@ readout_mode = 'frame';
 # 0 = llink frame generator
 # 1 = direct from asic  
 # 2 = PPC
-data_source_to_10g = 0;
+data_source_to_10g = 0
 
 # 1 = dummy counting data from asic rx block
 # 0 = real data from asic
@@ -420,10 +67,10 @@ asic_data_source = 0;
 asic_pseudo_random = 1;
 
 # steer loading of brams for asic slow and fast configuration data
-if (data_source_to_10g == 0 or data_source_to_10g == 2) is True:
+if (data_source_to_10g == 0 or data_source_to_10g == 2):
     load_asic_config_brams = 0; 
 else:
-    if (asic_data_source == 0) is True:
+    if (asic_data_source == 0):
         load_asic_config_brams = 1;  
     else: # skip brams if using asic rx internal data generator
         load_asic_config_brams = 0;
@@ -434,30 +81,13 @@ else:
 if (asic_pseudo_random) is True:
     asic_rx_start_delay = 59   #uint32(59); 
 else:
-    asic_rx_start_delay = 1362  #uint32(1362);  
+    asic_rx_start_delay = 1362  #uint32(1362);
 
 
-# FEM UART baud rate   e.g. 9600 / 115200
-baud_rate=115200
-
-#Create a serial record for the device parameters
-#global sCom;
-#sCom=serial('COM1','BaudRate',baud_rate);
-try:
-    sCom = serial.Serial(port=1, baudrate = baud_rate, timeout = 1)
-except Exception as errString:
-    print "Unable to open serial connection: ", errString
-    print "Terminating program.."
-    return
-
-
-#base addresses of IP blocks in FEM address space
-#set_fem_base_address_variables()
-''' Contents of set_fem_base_address_variables() now at start of "main" function '''
 
 num_ll_frames = 2  # nr of local link frames to generate
 
-if (data_source_to_10g == 0 or data_source_to_10g == 2) is True:
+if (data_source_to_10g == 0 or data_source_to_10g == 2):
     trigger_type = 'a';
 else:
     trigger_type = 'all';
@@ -469,19 +99,10 @@ else:
 fast_cmd_reg_size = 22;
 
 # Asic Rx 128 bit channel enable masks
-'''
-mask_array = zeros(4,1,'uint32'); # disable all
-if asic_data_source == 1    # enable all channels for dummy data from asic rx 
-    mask_array(1) = uint32(hex2dec('ffffffff'));
-    mask_array(2) = uint32(hex2dec('ffffffff'));
-    mask_array(3) = uint32(hex2dec('ffffffff'));
-    mask_array(4) = uint32(hex2dec('ffffffff'));
-else # Enable only relevant channel for single ASIC test module
-    mask_array(1) = uint32(hex2dec('00000001'));
-'''
+
 # Use list instead of array
 mask_list = [0, 0, 0, 0]
-if asic_data_source == 1 is True:    # enable all channels for dummy data from asic rx    
+if asic_data_source == 1:    # enable all channels for dummy data from asic rx    
     mask_list[0] = 0xffffffff
     mask_list[1] = 0xffffffff
     mask_list[2] = 0xffffffff
@@ -521,19 +142,19 @@ udp_in_buf_size = 2048*1024;
 #  1001  force select x10          9
 #  1011  force select x1          11
 #  1111  force error condition ?  15
-asic_gain_override = 0;
+asic_gain_override = 0
 
 # rob's udp packet headers : 0 to disable ; Nb to enable need correct bit pattern
 # Nb this is not the same as asic rx header
 robs_udp_packet_hdr = 0;
 
-if (data_source_to_10g == 0) is True: # frame generator
+if (data_source_to_10g == 0): # frame generator
     udp_pkt_len = 8000  #1000
     udp_pkt_num = 1
     udp_frm_sze = 1024*1024*8
     udp_in_buf_size =1024*1024*1024*1
     
-elif (data_source_to_10g == 2) is True:
+elif (data_source_to_10g == 2):
     # skip following and by default use same values as asic rx
 #     udp_pkt_len = uint32(8000);
 #     udp_pkt_num = uint32(1);
@@ -542,18 +163,18 @@ elif (data_source_to_10g == 2) is True:
     pass
 
 
-if (enable_10g == 1) is True:
+if (enable_10g == 1):
     
     #set up the UDP IP blocks
     x10g_0, x10g_1 = set_10g_structs_variables_te2bank()
     
     #set up the UDP IP blocks
-    fem_10g_udp_set_up(sCom, udp_10g_0, udp_pkt_len, udp_frm_sze, eth_ifg)
-    fem_10g_udp_set_up(sCom, udp_10g_1, udp_pkt_len, udp_frm_sze, eth_ifg)
+    myLpdFemClient.fem_10g_udp_set_up_block0(udp_pkt_len, udp_frm_sze, eth_ifg)
+    myLpdFemClient.fem_10g_udp_set_up_block1(udp_pkt_len, udp_frm_sze, eth_ifg)
     
     #set MAC, IP Port addresses
-    fem_10g_udp_net_set_up(sCom, udp_10g_0, x10g_0)
-    fem_10g_udp_net_set_up(sCom, udp_10g_1, x10g_1)
+    myLpdFemClient.fem_10g_udp_net_set_up_block0(x10g_0)
+    myLpdFemClient.fem_10g_udp_net_set_up_block1(x10g_1)
 
     # create a udp record
 #    u = udp('192.168.0.13', 'LocalPort', 61649,'InputBufferSize', udp_in_buf_size, 'DatagramTerminateMode', 'off')
@@ -569,14 +190,15 @@ if (enable_10g == 1) is True:
     
     # open the udp connection
 #    fopen(u)    # Redundant
-    
+
+'''Move into function of LpdFemClient !'''   
     # rob's udp packet headers
-    packet_header_10g_0 = (0x0000000 | udp_10g_0)
-    packet_header_10g_1 = (0x0000000 | udp_10g_1)
+    packet_header_10g_0 = (0x0000000 | myLpdFemClient.udp_10g_0)
+    packet_header_10g_1 = (0x0000000 | myLpdFemClient.udp_10g_1)
         
-    #rdma_write(sCom,    packet_header_10g_0,    robs_udp_packet_hdr,    'rw',    'robs udp packet header 10g_0')   ''' Function call '''
-    #rdma_write(sCom,    packet_header_10g_1,    robs_udp_packet_hdr,    'rw',    'robs udp packet header 10g_1')   ''' Function call '''
-    #rdma_write(sCom,    address,                data,                   type,    description)
+    #rdma_write(   packet_header_10g_0,    robs_udp_packet_hdr,    'rw',    'robs udp packet header 10g_0')   ''' Function call '''
+    #rdma_write(   packet_header_10g_1,    robs_udp_packet_hdr,    'rw',    'robs udp packet header 10g_1')   ''' Function call '''
+    #rdma_write(   address,                data,                   type,    description)
     
     print "robs udp packet header 10g_0\n"
     myFemClient.rdmaWrite(packet_header_10g_0, robs_udp_packet_hdr)
@@ -588,24 +210,24 @@ if (enable_10g == 1) is True:
 ll_frm_gen_data_type=0;
 
 # length specifies nr of 64 bit words
-ll_frm_gen_setup(sCom,data_gen_0,udp_frm_sze/4, ll_frm_gen_data_type)  # normal operation
+myLpdFemClient.ll_frm_gen_setup(data_gen_0,udp_frm_sze/4, ll_frm_gen_data_type)  # normal operation
 
 # length specifies nr of 64 bit words
 print "DATA GEN Nr Frames\n"
-#rdma_write(sCom,     data_gen_0+2, num_ll_frames+1,'rw','DATA GEN Nr Frames');
-myFemClient.rdmaWrite(data_gen_0+2, num_ll_frames+1)
+#rdma_write(    data_gen_0+2, num_ll_frames+1,'rw','DATA GEN Nr Frames');
+LpdFemClient.rdmaWrite(data_gen_0+2, num_ll_frames+1)
 
-#fprintf('\n');
-if (enable_10g == 1) is True:
-    clear_ll_monitor(sCom, llink_mon_0);   ''' Function call '''
-#    fprintf('\n');  
-    read_ll_monitor(sCom, llink_mon_0);      ''' Function call '''
-#    fprintf('\n\n');   
+print "\n"
+if (enable_10g == 1):
+    myLpdFemClient.clear_ll_monitor()
+    print "\n"
+    myLpdFemClient.read_ll_monitor()
+    print "\n"
 
 
 #--------------------------------------------------------------------
 # configure the ASICs
-    """ LEAVE THIS SECTION FOR LATER """ '''
+""" LEAVE THIS SECTION FOR LATER """ '''
 if data_source_to_10g == 1
     
     if load_asic_config_brams == 1  # only load brams if sending data from asics
@@ -626,27 +248,27 @@ if data_source_to_10g == 1
     
     #set up the fast command block
     if fast_ctrl_dynamic == 1   # new design with dynamic vetos
-        fem_fast_bram_setup(sCom, fast_cmd_1, fast_cmd_data, no_of_words);
-        fem_fast_cmd_setup_new(sCom, fast_cmd_0, no_of_words+no_of_nops);
+        fem_fast_bram_setup(fast_cmd_data, no_of_words);
+        fem_fast_cmd_setup_new(no_of_words+no_of_nops);
     else
-        fem_fast_cmd_setup(sCom, fast_cmd_0, fast_cmd_1, fast_cmd_data, no_of_words, fast_ctrl_dynamic);
+        fem_fast_cmd_setup(fast_cmd_data, no_of_words, fast_ctrl_dynamic);
     
     
     #set up the slow control IP block
-    fem_slow_ctrl_setup(sCom, slow_ctr_0, slow_ctr_1, slow_ctrl_data, no_of_bits);
+    fem_slow_ctrl_setup(slow_ctrl_data, no_of_bits);
     
     # select slow control load mode  jac
     rdma_write(sCom,slow_ctr_0+0,uint32(2),'rw','asic load mode');
     
     #set up the ASIC RX IP block
-#    fem_asic_rx_setup(sCom, asic_srx_0, mask_array, no_asic_cols+1,no_asic_cols_per_frm+1);
-    fem_asic_rx_setup(sCom, asic_srx_0, mask_list, no_asic_cols+1,no_asic_cols_per_frm+1);
+#    fem_asic_rx_setup(mask_array, no_asic_cols+1,no_asic_cols_per_frm+1);
+    fem_asic_rx_setup(mask_list, no_asic_cols+1,no_asic_cols_per_frm+1);
     
     # data source - self test
-    data_source_reg           = bitor(hex2dec('00000001'), asic_srx_0);
+    data_source_reg           = bitor(hex2dec('00000001'));
     rdma_write(sCom,data_source_reg,asic_data_source,'rw','asic rx data source'); # 0 = real data ; 1 = test data
     
-    gain_override_reg = bitor(hex2dec('0000000'), asic_srx_0);
+    gain_override_reg = bitor(hex2dec('0000000'));
     rdma_write(sCom,gain_override_reg,asic_gain_override,'rw','asic rx gain override');
      
     # top level steering
@@ -655,24 +277,24 @@ if data_source_to_10g == 1
     rdma_write(sCom,fem_ctrl_0+4,asic_rx_start_delay,'rw','asic start readout delay wrt fast cmd');
 '''
 
-# select asic or llink gen as data source
-fem_local_link_mux_setup(sCom, fem_ctrl_0, data_source_to_10g);   ''' Function call '''
+## select asic or llink gen as data source
+#myLpdFemClient.fem_local_link_mux_setup(data_source_to_10g)
 
-##--------------------------------------------------------------------
-## send triggers to data generators
-#switch trigger_type
-#    case 'all'  # start asic seq  = reset, slow, fast & asic rx
-#        toggle_bits(sCom,fem_ctrl_0,uint32(0), uint32(2),'rw');
-#    case 'a'   # trigger to local link frame gen 
-#        toggle_bits(sCom,fem_ctrl_0,uint32(0), uint32(1));
-#    case 'b'    # trigger the asic rx block
-#        toggle_bits(sCom,fem_ctrl_0,uint32(3), uint32(1));
-#    case 's'  # trigger just the slow contol IP block
-#        toggle_bits(sCom,fem_ctrl_0,uint32(7), uint32(1));
-#    case 'f'  # trigger just the fast cmd block
-#        toggle_bits(sCom,fem_ctrl_0,uint32(7), uint32(2));
-#    otherwise
-#
+#--------------------------------------------------------------------
+# send triggers to data generators
+switch trigger_type
+    case 'all'  # start asic seq  = reset, slow, fast & asic rx
+        toggle_bits(sCom,fem_ctrl_0,uint32(0), uint32(2),'rw');
+    case 'a'   # trigger to local link frame gen 
+        toggle_bits(sCom,fem_ctrl_0,uint32(0), uint32(1));
+    case 'b'    # trigger the asic rx block
+        toggle_bits(sCom,fem_ctrl_0,uint32(3), uint32(1));
+    case 's'  # trigger just the slow contol IP block
+        toggle_bits(sCom,fem_ctrl_0,uint32(7), uint32(1));
+    case 'f'  # trigger just the fast cmd block
+        toggle_bits(sCom,fem_ctrl_0,uint32(7), uint32(2));
+    otherwise
+
 
 #--------------------------------------------------------------------
 # send triggers to data generators
@@ -681,27 +303,27 @@ fem_local_link_mux_setup(sCom, fem_ctrl_0, data_source_to_10g);   ''' Function c
 def all_asic_seq():
     # start asic seq  = reset, slow, fast & asic rx
     print "You selected 'all'"
-    toggle_bits(sCom,fem_ctrl_0,0, 2)    
+    LpdFemClient.toggle_bits(0, 2)    
     
 def alpha():
     print "You selected 'a'"
     # trigger to local link frame gen 
-    toggle_bits(sCom,fem_ctrl_0,0, 1)
+    LpdFemClient.toggle_bits(0, 1)
     
 def bravo():
     print "You selected 'b'"
     # trigger the asic rx block
-    toggle_bits(sCom,fem_ctrl_0,3, 1)
+    LpdFemClient.toggle_bits(3, 1)
 
 def sierra():
     # trigger just the slow contol IP block
     print "You selected 's'"
-    toggle_bits(sCom,fem_ctrl_0,7, 1)    
+    LpdFemClient.toggle_bits(7, 1)    
     
 def foxtrot():
     # trigger just the fast cmd block
     print "You selected 'f'"
-    toggle_bits(sCom,fem_ctrl_0,7, 2)
+    LpdFemClient.toggle_bits(7, 2)
     
 # Substitute switch statement with Python dictionary lookup
 options = {'all' : all_asic_seq,
@@ -718,31 +340,31 @@ except KeyError:
 #--------------------------------------------------------------------
 
 
-if enable_10g == 1 is True:
+if enable_10g == 1:
     #Check local link frame statistics
-    read_ll_monitor(sCom, llink_mon_0)
+    LpdFemClient.read_ll_monitor()
 
 
 # check contents of slow control read back BRAM
 # not working yet
-#rdma_block_read(sCom, slow_ctr_2, 4, 'Read Back Slow Ctrl RAM');
+#rdma_block_read(slow_ctr_2, 4, 'Read Back Slow Ctrl RAM');
 
-if enable_10g == 0 is True:
-    sCom.close()
-    return
+#if enable_10g == 0:
+#    sCom.close()
+#    return
 
 
-# allow time to trigger ppc dma transfer in sdk app
-if data_source_to_10g == 2 is True:
-    print "\n paused waiting 2 seconds allowing time to trigger ppc dma transfer in sdk app\n"
-    time.sleep(2)   # waits for keyboard input
+## allow time to trigger ppc dma transfer in sdk app
+#if data_source_to_10g == 2:
+#    print "\n paused waiting 2 seconds allowing time to trigger ppc dma transfer in sdk app\n"
+#    time.sleep(2)   # waits for keyboard input
 
 
 print "\n ...continuing\n"
 
-if send_ppc_reset == 1 is True:
+if send_ppc_reset == 1:
     # Resets dma engines
-    toggle_bits(sCom,fem_ctrl_0, 9, 1)
+    LpdFemClient.toggle_bits(9, 1)
 
 
 #--------------------------------------------------------------------
@@ -786,9 +408,9 @@ else:
 #fprintf('\nData Size, Time, Data Rate #8i #4e #4e\n',udp_frm_sze,time_taken,data_rate);
 print "\n"
 
-if enable_10g == 1 is True:
+if enable_10g == 1:
     #Check local link frame statistics
-    read_ll_monitor(sCom, llink_mon_0)    
+    LpdFemClient.read_ll_monitor()    
     myFemClient.close()
     print "Closed 10g \n"
 
@@ -800,16 +422,16 @@ if enable_10g == 1 is True:
 # changed skip to 8 when running with ppc dma 
 # 2nd arg is image/trigger nr starting at 1
 
-if (data_source_to_10g == 2) is True:
-    image_data_raw = extract_asic_data(1, 1, dudp)
+if (data_source_to_10g == 2):
+    image_data_raw = LpdFemClient.extract_asic_data(1, 1, dudp)
 else:
-    image_data_raw = extract_asic_data(8, 1, dudp)
+    image_data_raw = LpdFemClient.extract_asic_data(8, 1, dudp)
 
 
 # rotate to match ivan's display (isn't matlab clever :) )
 #image_data = rot90(image_data_raw);                        # Redundant?
 
-"""                        How Plot Data?             """
+"""                        Plot Data - Sort Later             """
 #frame_nr = 1;
 ## plot the data from the asic
 #colormap gray;
@@ -820,10 +442,4 @@ else:
 
 # report any bytes remaining in buffer
 #u.bytesavailable                                    # Redundant?
-
-try:
-    sCom.close()
-except:
-    print "Unable to close serial connection before program termination"
-
 
