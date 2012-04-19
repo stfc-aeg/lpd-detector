@@ -115,8 +115,8 @@ typedef struct
 
 // FUNCTION PROTOTYPES
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
-int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg);
+int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 int sendConfigCompleteMailboxMessage(XMbox *pMailbox);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
@@ -157,13 +157,17 @@ int main()
 	unsigned short doTx = 0;			// TX control flag for main loop
     unsigned numTx = 0;
 
-    u64 numTopAsicRxComplete = 0;		// Counts number of RXes from top ASIC (that have not been queued for TX)
-    u64 numBotAsicRxComplete = 0;		// Counts number of RXes from bottom ASIC (that have not been queued for TX)
+    u64 numTopAsicRxComplete = 0;		// Counts number of RXes from top ASIC
+    u64 numBotAsicRxComplete = 0;		// Counts number of RXes from bottom ASIC
     u64 lastNumTopAsicRxComplete = 0;
     u64 lastNumBotAsicRxComplete = 0;
+
     u64 numRxPairsComplete = 0;			// Counter for number of completed & validated RX across both ASICs
-    u64 numTxPairsSent = 0;				// Counter for TXes sent but not verified as complete
+
+    u64 numTxPairsSent = 0;				// Counter for TXes sent (but not verified as complete)
+
     u64 numTenGigTxComplete = 0;		// Counter for number of completed TX for 10GBe
+
 
 
 #ifdef DEBUG_BD
@@ -310,6 +314,11 @@ int main()
 
 				XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
 
+				int numBDFromTopAsic = 0;
+				int numBDFromBotAsic = 0;
+
+				int numBDFromTenGig = 0;
+
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
 
 	    	    acquireRunning = 1;
@@ -321,99 +330,96 @@ int main()
 					if (doRx)
 					{
 
-						// Pull down as many RX as possible each time
-						numTopAsicRxComplete += XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], XLLDMA_ALL_BDS, &pTopAsicBd);
-						numBotAsicRxComplete += XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], XLLDMA_ALL_BDS, &pBotAsicBd);
+						// Pull down any completed RX BDs
+						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], XLLDMA_ALL_BDS, &pTopAsicBd);
+						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], XLLDMA_ALL_BDS, &pBotAsicBd);
 
-						// If we got any on top ASIC, validate them
-						if(numTopAsicRxComplete > lastNumTopAsicRxComplete)
+						// Top ASIC
+						if(numBDFromTopAsic>0)
 						{
 
-							// Validate each RX
-							for (i=0; i<(numTopAsicRxComplete-lastNumTopAsicRxComplete); i++)
+							// Validate and recycle BDs
+							for (i=0; i<numBDFromTopAsic; i++)
 							{
 								status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to validate buffer index %d from top ASIC!\r\n", i);
+									printf("[ERROR] Failed to validate buffer index %llu from top ASIC!\r\n", numTopAsicRxComplete+i);
 									return 0;
 								}
 
 								status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to recycle buffer index %d from top ASIC!\r\n", i);
+									printf("[ERROR] Failed to recycle buffer index %llu from top ASIC!\r\n", numTopAsicRxComplete+i);
 									return 0;
 								}
-
 #ifdef DEBUG_BD
-									bdSts = XLlDma_BdGetStsCtrl(pTopAsicBd);
-									bdLen = XLlDma_BdGetLength(pTopAsicBd);
-									bdAddr = XLlDma_BdGetBufAddr(pTopAsicBd);
-									printf("[DEBUG] TopASIC RX: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
+								bdSts = XLlDma_BdGetStsCtrl(pTopAsicBd);
+								bdLen = XLlDma_BdGetLength(pTopAsicBd);
+								bdAddr = XLlDma_BdGetBufAddr(pTopAsicBd);
+								printf("[DEBUG] TopASIC RX: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
 #endif
-
 								pTopAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd);
 							}
 
-							//printf("[DEBUG] RX and validated %d transfers from top ASIC\r\n", (int)(numTopAsicRxComplete-lastNumTopAsicRxComplete));
+							numTopAsicRxComplete += numBDFromTopAsic;
 						}
 
-						// If we got any on bottom ASIC, validate them
-						if(numBotAsicRxComplete > lastNumBotAsicRxComplete)
+						// Bottom ASIC
+						if(numBDFromBotAsic>0)
 						{
 
-							// Validate each RX
-							for (i=0; i<(numBotAsicRxComplete-lastNumBotAsicRxComplete); i++)
+							// Validate and recycle BDs
+							for (i=0; i<numBDFromBotAsic; i++)
 							{
 
 								status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to validate buffer index %d from bottom ASIC!\r\n", i);
+									printf("[ERROR] Failed to validate buffer index %llu from bottom ASIC!\r\n", numBotAsicRxComplete+i);
 									return 0;
 								}
 
 								status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to recycle buffer index %d from bottom ASIC!\r\n", i);
+									printf("[ERROR] Failed to recycle buffer index %llu from bottom ASIC!\r\n", numBotAsicRxComplete+i);
 									return 0;
 								}
-
 #ifdef DEBUG_BD
-									bdSts = XLlDma_BdGetStsCtrl(pBotAsicBd);
-									bdLen = XLlDma_BdGetLength(pBotAsicBd);
-									bdAddr = XLlDma_BdGetBufAddr(pBotAsicBd);
-									printf("[DEBUG] BotASIC RX: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
+								bdSts = XLlDma_BdGetStsCtrl(pBotAsicBd);
+								bdLen = XLlDma_BdGetLength(pBotAsicBd);
+								bdAddr = XLlDma_BdGetBufAddr(pBotAsicBd);
+								printf("[DEBUG] BotASIC RX: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
 #endif
-
 								pBotAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd);
 							}
 
-							//printf("[DEBUG] RX and validated %d transfers from bottom ASIC\r\n", (int)(numBotAsicRxComplete-lastNumBotAsicRxComplete));
+							numBotAsicRxComplete += numBDFromBotAsic;
 						}
 
 
-						// Update TX variables if we have received more RX
-						if ( (numBotAsicRxComplete-lastNumBotAsicRxComplete) || (numTopAsicRxComplete-lastNumTopAsicRxComplete) )
+						// **************************************************************************************
+						// Update BD counters and pointers
+						// **************************************************************************************
+						// If we've received anything since last time
+						if ( (numBotAsicRxComplete!=lastNumBotAsicRxComplete) || (numTopAsicRxComplete!=lastNumTopAsicRxComplete) )
 						{
 
-							// Determine how many completed RX pairs, queue them for TX
+							// Determine how many completed pairs of RX we have and prepare them for TX
 							if (numBotAsicRxComplete < numTopAsicRxComplete)
 							{
 								numRxPairsComplete += numBotAsicRxComplete;
 								numTopAsicRxComplete -= numBotAsicRxComplete;
-								numBotAsicRxComplete = 0;
 							}
 							else
 							{
 								numRxPairsComplete += numTopAsicRxComplete;
 								numBotAsicRxComplete -= numTopAsicRxComplete;
-								numTopAsicRxComplete = 0;
 							}
 
-							//printf("[DEBUG] There are %llu pairs completed RX\r\n", numRxPairsComplete);
+							//printf("[DEBUG] There are %llu RX pairs to send.\r\n", numRxPairsComplete);
 
 							pStatusBlock->totalRecv += numRxPairsComplete;
 
@@ -431,15 +437,13 @@ int main()
 					if (doTx)
 					{
 
-						// Dispatch any pending TX descriptors
+						// Dispatch any waiting TX BD pairs
 						if (numRxPairsComplete>0)
 						{
 
-							//printf("[INFO ] %llu 10GBe TX pair(s) pending...\r\n", numRxPairsComplete);
-
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsComplete*2, pTenGigPreHW);
 
-							numTxPairsSent = numRxPairsComplete;
+							numTxPairsSent += numRxPairsComplete;
 
 							if (status!=XST_SUCCESS)
 							{
@@ -449,7 +453,7 @@ int main()
 							else
 							{
 								// Sent all to HW, none left!
-								//printf("[INFO ] Committed %llu BD pairs to TX!\r\n", numRxPairsComplete);
+								printf("[INFO ] Committed %llu BD pairs to TX!\r\n", numRxPairsComplete);
 
 								// Advance our BD pointer
 								for (i=0; i<numRxPairsComplete*2; i++)
@@ -463,21 +467,18 @@ int main()
 						// If we have any uncompleted TX, process them
 						if (numTxPairsSent>0)
 						{
-							numTenGigTxComplete += XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], numTxPairsSent*2, &pTenGigPostHW);
+							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
 
-							if (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
+							if (numBDFromTenGig>0)
 							{
-								//printf("[INFO ] %llu completed TX BD(s)...\r\n", numTenGigTxComplete);
-
-								// Verify / free a pair of TX
-								for(i=0; i<2; i++)
+								for (i=0; i<numBDFromTopAsic; i++)
 								{
 									// Validate TX response
 									status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
 									if (status!=XST_SUCCESS)
 									{
 										printf("[ERROR] Error validating TX BD %d, error code %d\r\n", i, status);
-										//return 0;
+										return 0;
 									}
 
 									// Re-allocate BD into active ring
@@ -485,72 +486,27 @@ int main()
 									if (status!=XST_SUCCESS)
 									{
 										printf("[ERROR] Error on recycleBuffer for TX BD %d, error code %d\r\n", i, status);
-										//return 0;
+										return 0;
 									}
-
 #ifdef DEBUG_BD
 									bdSts = XLlDma_BdGetStsCtrl(pTenGigPostHW);
 									bdLen = XLlDma_BdGetLength(pTenGigPostHW);
 									bdAddr = XLlDma_BdGetBufAddr(pTenGigPostHW);
 									printf("[DEBUG] 10GBe TX: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
 #endif
-
 									// Move to next BD in set
 									pTenGigPostHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPostHW);
 								}
 
-								//printf("[INFO ] Verified TX OK!\r\n");
-								//print("\r\n");
+								numTenGigTxComplete += numBDFromTenGig;
+							} // END if (numBDFromTenGig>0)
 
-								numTenGigTxComplete -= 2;
-								numTxPairsSent--;
-								pStatusBlock->totalSent++;
-
-							} // END while (numTenGigTxComplete > 1)
-
+								// TODO: CALCULATE numTxPairsSent, do pStat->totalSent update
 							/*
-							while (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
-							{
-								//printf("[INFO ] %llu completed TX BD(s)...\r\n", numTenGigTxComplete);
-
-								// Verify / free a pair of TX
-								for(i=0; i<2; i++)
-								{
-									// Validate TX response
-									status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
-									if (status!=XST_SUCCESS)
-									{
-										printf("[ERROR] Error validating TX BD %d, error code %d\r\n", i, status);
-										//return 0;
-									}
-
-									// Re-allocate BD into active ring
-									status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
-									if (status!=XST_SUCCESS)
-									{
-										printf("[ERROR] Error on recycleBuffer for TX BD %d, error code %d\r\n", i, status);
-										//return 0;
-									}
-
-#ifdef DEBUG_BD
-									bdSts = XLlDma_BdGetStsCtrl(pTenGigPostHW);
-									bdLen = XLlDma_BdGetLength(pTenGigPostHW);
-									bdAddr = XLlDma_BdGetBufAddr(pTenGigPostHW);
-									printf("[DEBUG] 10GBe TX: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
-#endif
-
-									// Move to next BD in set
-									pTenGigPostHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPostHW);
-								}
-
-								//printf("[INFO ] Verified TX OK!\r\n");
-								//print("\r\n");
 
 								numTenGigTxComplete -= 2;
 								numTxPairsSent--;
 								pStatusBlock->totalSent++;
-
-							} // END while (numTenGigTxComplete > 1)
 							*/
 
 						} // END if (numTxPairsSent>0)
@@ -1097,8 +1053,8 @@ int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
 
 
 
-/* Sends a handshake mailbox message to PPC2 to tell it we've
- * completed BD configuration for acquisition.
+/* Sends an ack mailbox message to PPC2 to tell it we're
+ * starting BD configuration for acquisition.
  * @param pMailbox pointer to XMbox
  * @return 1 on success, 0 otherwise
  */
