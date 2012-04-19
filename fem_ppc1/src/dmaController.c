@@ -434,7 +434,9 @@ int main()
 						// Dispatch any pending TX descriptors
 						if (numRxPairsComplete>0)
 						{
-							printf("[INFO ] %llu 10GBe TX pair(s) pending...\r\n", numRxPairsComplete);
+
+							//printf("[INFO ] %llu 10GBe TX pair(s) pending...\r\n", numRxPairsComplete);
+
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsComplete*2, pTenGigPreHW);
 
 							numTxPairsSent = numRxPairsComplete;
@@ -462,6 +464,51 @@ int main()
 						if (numTxPairsSent>0)
 						{
 							numTenGigTxComplete += XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], numTxPairsSent*2, &pTenGigPostHW);
+
+							if (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
+							{
+								//printf("[INFO ] %llu completed TX BD(s)...\r\n", numTenGigTxComplete);
+
+								// Verify / free a pair of TX
+								for(i=0; i<2; i++)
+								{
+									// Validate TX response
+									status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
+									if (status!=XST_SUCCESS)
+									{
+										printf("[ERROR] Error validating TX BD %d, error code %d\r\n", i, status);
+										//return 0;
+									}
+
+									// Re-allocate BD into active ring
+									status = recycleBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
+									if (status!=XST_SUCCESS)
+									{
+										printf("[ERROR] Error on recycleBuffer for TX BD %d, error code %d\r\n", i, status);
+										//return 0;
+									}
+
+#ifdef DEBUG_BD
+									bdSts = XLlDma_BdGetStsCtrl(pTenGigPostHW);
+									bdLen = XLlDma_BdGetLength(pTenGigPostHW);
+									bdAddr = XLlDma_BdGetBufAddr(pTenGigPostHW);
+									printf("[DEBUG] 10GBe TX: sts=0x%08x, len=0x%08x, addr=0x%08x\r\n", (unsigned)bdSts, (unsigned)bdLen, (unsigned)bdAddr);
+#endif
+
+									// Move to next BD in set
+									pTenGigPostHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPostHW);
+								}
+
+								//printf("[INFO ] Verified TX OK!\r\n");
+								//print("\r\n");
+
+								numTenGigTxComplete -= 2;
+								numTxPairsSent--;
+								pStatusBlock->totalSent++;
+
+							} // END while (numTenGigTxComplete > 1)
+
+							/*
 							while (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
 							{
 								//printf("[INFO ] %llu completed TX BD(s)...\r\n", numTenGigTxComplete);
@@ -500,9 +547,11 @@ int main()
 								//print("\r\n");
 
 								numTenGigTxComplete -= 2;
+								numTxPairsSent--;
 								pStatusBlock->totalSent++;
 
 							} // END while (numTenGigTxComplete > 1)
+							*/
 
 						} // END if (numTxPairsSent>0)
 
