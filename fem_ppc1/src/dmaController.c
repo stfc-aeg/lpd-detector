@@ -309,7 +309,6 @@ int main()
 	    	    numTenGigTxComplete = 0;
 
 				XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
-	    	    //unsigned returnedTx = 0;	// Number of TX BDs returned from HW
 
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
 
@@ -461,7 +460,8 @@ int main()
 						if (numTxPairsSent>0)
 						{
 							numTenGigTxComplete += XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
-							if (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
+							//if (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
+							while (numTenGigTxComplete > 1)
 							{
 								printf("[INFO ] %llu completed TX BD(s)...\r\n", numTenGigTxComplete);
 
@@ -499,8 +499,8 @@ int main()
 								print("\r\n");
 								numTenGigTxComplete-=2;
 								pStatusBlock->totalSent++;
-							}
-						}
+							} // END while(numTenGigTxComplete > 1)
+						} // END if (numTxPairsSent>0)
 					} // END if(doTx)
 
 					// Check for mailbox messages
