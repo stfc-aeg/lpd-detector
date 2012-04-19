@@ -309,6 +309,7 @@ int main()
 	    	    numTenGigTxComplete = 0;
 
 				XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
+	    	    //unsigned returnedTx = 0;	// Number of TX BDs returned from HW
 
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
 
@@ -356,7 +357,7 @@ int main()
 								pTopAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd);
 							}
 
-							printf("[DEBUG] RX and validated %d transfers from top ASIC\r\n", (int)(numTopAsicRxComplete-lastNumTopAsicRxComplete));
+							//printf("[DEBUG] RX and validated %d transfers from top ASIC\r\n", (int)(numTopAsicRxComplete-lastNumTopAsicRxComplete));
 						}
 
 						// If we got any on bottom ASIC, validate them
@@ -391,7 +392,7 @@ int main()
 								pBotAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd);
 							}
 
-							printf("[DEBUG] RX and validated %d transfers from bottom ASIC\r\n", (int)(numBotAsicRxComplete-lastNumBotAsicRxComplete));
+							//printf("[DEBUG] RX and validated %d transfers from bottom ASIC\r\n", (int)(numBotAsicRxComplete-lastNumBotAsicRxComplete));
 						}
 
 
@@ -413,7 +414,7 @@ int main()
 								numTopAsicRxComplete = 0;
 							}
 
-							printf("[DEBUG] There are %llu pairs completed RX\r\n", numRxPairsComplete);
+							//printf("[DEBUG] There are %llu pairs completed RX\r\n", numRxPairsComplete);
 
 							pStatusBlock->totalRecv += numRxPairsComplete;
 
@@ -436,7 +437,9 @@ int main()
 						{
 							printf("[INFO ] %llu 10GBe TX pair(s) pending...\r\n", numRxPairsComplete);
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsComplete*2, pTenGigPreHW);
+
 							numTxPairsSent = numRxPairsComplete*2;
+
 							if (status!=XST_SUCCESS)
 							{
 								printf("[ERROR] Could not commit TX BD pair(s)!  Error code %d\r\n", status);
@@ -445,7 +448,7 @@ int main()
 							else
 							{
 								// Sent all to HW, none left!
-								printf("[INFO ] Committed %llu BDs to TX!\r\n", numRxPairsComplete);
+								//printf("[INFO ] Committed %llu BD pairs to TX!\r\n", numRxPairsComplete);
 
 								// Advance our BD pointer
 								for (i=0; i<numRxPairsComplete*2; i++)
@@ -460,10 +463,9 @@ int main()
 						if (numTxPairsSent>0)
 						{
 							numTenGigTxComplete += XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
-							//if (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
-							while (numTenGigTxComplete > 1)
+							while (numTenGigTxComplete > 1)		// If we have at least a pair (process TX in pairs!)
 							{
-								printf("[INFO ] %llu completed TX BD(s)...\r\n", numTenGigTxComplete);
+								//printf("[INFO ] %llu completed TX BD(s)...\r\n", numTenGigTxComplete);
 
 								// Verify / free a pair of TX
 								for(i=0; i<2; i++)
@@ -473,7 +475,7 @@ int main()
 									if (status!=XST_SUCCESS)
 									{
 										printf("[ERROR] Error validating TX BD %d, error code %d\r\n", i, status);
-										return 0;
+										//return 0;
 									}
 
 									// Re-allocate BD into active ring
@@ -481,7 +483,7 @@ int main()
 									if (status!=XST_SUCCESS)
 									{
 										printf("[ERROR] Error on recycleBuffer for TX BD %d, error code %d\r\n", i, status);
-										return 0;
+										//return 0;
 									}
 
 #ifdef DEBUG_BD
@@ -495,11 +497,11 @@ int main()
 									pTenGigPostHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPostHW);
 								}
 
-								printf("[INFO ] Verified TX OK!\r\n");
-								print("\r\n");
+								//printf("[INFO ] Verified TX OK!\r\n");
+								//print("\r\n");
 								numTenGigTxComplete-=2;
 								pStatusBlock->totalSent++;
-							} // END while(numTenGigTxComplete > 1)
+							} // END while (numTenGigTxComplete > 1)
 						} // END if (numTxPairsSent>0)
 					} // END if(doTx)
 
@@ -1081,7 +1083,7 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 	// Check DMA_ERROR bit
 	if ((sts&0xFF000000)&LL_DMA_ERROR)
 	{
-		print("[ERROR] DMA Transfer signalled error!\r\n");
+		print("[ERROR] DMA transfer signalled error!\r\n");
 		return XST_DMA_ERROR;
 	}
 
