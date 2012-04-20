@@ -11,6 +11,7 @@ Created on 18 Apr 2012
 # 03/04/12  jac   cleaned up again
 
 # Import Python standard modules
+from string import strip, split
 import serial, time
 # Force float division:
 #from __future__ import division    # Update: do NOT force float division
@@ -293,9 +294,10 @@ class LpdFemClient(FemClient):
         
         return 1
     
-    def ll_frm_gen_setup(self, base_address, length, data_type):
+    def ll_frm_gen_setup(self, length, data_type):
         """ This function sets up the data Generator & resets """
     
+        base_address = LpdFemClient.data_gen_0
         # frm gen - n.b. top nibble/2 - move to data gen setup
         reg_length = length - 2
         #rdma_write(s,    base_address+1, reg_length,'rw','DATA GEN Data Length')
@@ -450,24 +452,185 @@ class LpdFemClient(FemClient):
         
         return 1   
 
+    def robs_udp_packet_header_10g(self, robs_udp_packet_hdr):
+        # rob's udp packet headers
+        packet_header_10g_0 = (0x0000000 | LpdFemClient.udp_10g_0)
+        packet_header_10g_1 = (0x0000000 | LpdFemClient.udp_10g_1)
+        
+        print "robs udp packet header 10g_0\n"
+        self.rdmaWrite(packet_header_10g_0, robs_udp_packet_hdr)
+        print "robs udp packet header 10g_1\n"
+        self.rdmaWrite(packet_header_10g_1, robs_udp_packet_hdr)
+
+    def frame_generator_set_up_10g(self, data_gen_0_offset, num_ll_frames):
+        # Original Matlab instruction:
+        #rdma_write(    data_gen_0+2, num_ll_frames+1,'rw','DATA GEN Nr Frames');
+        # data_gen_0 = LpdFemClient.data_gen_0
+        # num_ll_frames = defined in fem_asic_test; +1 added to num_ ll_frame argument when this function is called
+        print "DATA GEN Nr Frames\n"
+        #rdma_write(    data_gen_0+data_gen_0_offset, num_ll_frames)
+        LpdFemClient.rdmaWrite(LpdFemClient.data_gen_0+data_gen_0_offset, num_ll_frames)
+
+    def recv_image_data_as_packet(self, udp_pkt_num, dudp, packet_size): 
+        # loop to read udp frame packet by packet
+        for i in range(0,udp_pkt_num-1, 1):
+            # TODO: Will next packet overwrite previous packet?
+            dudp = LpdFemClient.recv()
+            # Or use read() function:  ->   #dudp = myFemClient.read(theBus, theWidth, theAddr, theReadLen)    ??
+            print "\n%4i %8X %8X %8X %8X" % (i, dudp(1),dudp(2),dudp(3),dudp(packet_size))
+            #dudp = uint32(fread(u, packet_size, 'uint16'));
+            #fprintf('\n%04i %08X %08X %08X %08X',i, dudp(1),dudp(2),dudp(3),dudp(packet_size));
+        return dudp
     
-    #def hex2dec(n): ''' Redundant! '''
-    #    """ returned the hexadecimal string representation of integer n """
-    #    try:
-    #        int(n)
-    #    except ValueError:
-    #        print "hex2dec() error: 0x MUST prefix argument!"
-    #        return
-    #    else:
-    #        return "%X" % n
+    def recv_image_data_as_frame(self, dudp):
+        # TODO: Understand how to use FemClient receive functionality
+        dudp = LpdFemClient.recv()
+        return dudp
 
+    def read_slow_ctrl_file(self, filename):
+    
+        slow_ctrl_file = open(filename, 'r')
+        lines = slow_ctrl_file.readlines()
+        slow_ctrl_file.close()    
+        
+        data = []
+        for line in lines:
+            ivals = [int(val) for val in split(strip(line))]
+            data.append(ivals)
+            
+        #print data[0][0], data[0][1], data[0][2], data[0][3], data[0][4]
+        #print data[1][0], data[1][1], data[1][2], data[1][3], data[1][4]
+        #print len(data), len(data[0])
+        i_max = len(data)
+#        j_max = len(data[0])
+        
+        no_words = i_max / 32
+        if i_max%32:
+            no_words = no_words + 1
+            
+        slow_ctrl_data = [0L] * no_words
+    
+        j = 0
+        k = 0
+        nbits = 0
+        data_word = 0L;
+        data_mask = 1L;
+        
+        for i in range(i_max):
+            if data[i][1] == 1:
+                nbits = nbits + 1
+                if data[i][2] == 1:
+                    data_word = data_word | data_mask
+                if j == 31:
+                    slow_ctrl_data[k] = data_word
+                    data_word = 0l
+                    data_mask = 1L
+                    k = k+1
+                    j = 0
+                else:
+                    data_mask = data_mask << 1
+                    j = j + 1
+        
+        slow_ctrl_data[k] = data_word
+        no_of_bits = nbits
+        
+        #print slow_ctrl_data
+        #print no_of_bits
+        
+        return slow_ctrl_data, no_of_bits
     
 
-if __name__ == "__main__":
-    # Execute actual program
-#    app = QtGui.QApplication(sys.argv)
-    client = LpdFemClient()
-#    sys.exit(app.exec_())
+
+    def read_fast_cmd_file(self, filename,cmd_reg_size):
+    
+        # Read fast control file (hex) into an array
+        # also adds nops 
+    
+        # read in command code and nops
+        fast_ctrl_file = open(filename, 'r')
+        lines = fast_ctrl_file.readlines()
+        fast_ctrl_file.close()
+    
+        data = []
+        for line in lines:
+            ivals = [val for val in split(strip(line))]
+            ivals[0] = int(ivals[0], 16)    # Read hexadecimal
+            ivals[1] = int(ivals[1])        # Read decimal (base 10)
+            data.append(ivals)
+            
+        #print data[0][0], data[0][1], data[1][0], data[1][1], data[2][0], data[2][1], data[3][0], data[3][1], data[4][0], data[4][1]
+        #print len(data), len(data[0])
+        
+        i_max = len(data)
+        j_max = len(data)
+    
+        fast_cmd_data = [0L] * i_max
+        fast_cmd_nops = [0L] * i_max 
+    
+        for i in range(i_max):
+            fast_cmd_data[i] = data[i][0] 
+            fast_cmd_nops[i] = data[i][1] 
+    
+        nops_total = 0
+    
+        # new bram format for 22 bit commands
+        # nops(31:22) - syncbit(21) - x(20) - cmd(19:12) - padding 0's (11:0)
+    
+        for j in range(j_max):
+    
+            fast_cmd_data[j] = (fast_cmd_data[j] & 0x000fffff)
+            # special sync_reset 20 bit command?
+            if (fast_cmd_data[j] == 0x5a):
+                fast_cmd_data[j] = 0x5a5a5
+                #fast_cmd_data[j]= bitshift(fast_cmd_data[j], cmd_reg_size-20)
+                fast_cmd_data[j] = LpdFemClient.bitshift_difference_of_arguments(fast_cmd_data[j], cmd_reg_size, 20)
+            elif (fast_cmd_data[j] == 0xfffff):  # special tests
+                #fast_cmd_data[j]= bitshift(fast_cmd_data[j], cmd_reg_size-20)
+                fast_cmd_data[j]= LpdFemClient.bitshift_difference_of_arguments(fast_cmd_data[j], cmd_reg_size, 20)
+            else:
+                #fast_cmd_data[j]= bitshift(fast_cmd_data[j], cmd_reg_size-10)
+                fast_cmd_data[j]= LpdFemClient.bitshift_difference_of_arguments(fast_cmd_data[j], cmd_reg_size, 10)
+                #fast_cmd_data[j]= bitor(fast_cmd_data[j],bitshift(1,cmd_reg_size-1))
+                fast_cmd_data[j]= (fast_cmd_data[j] | LpdFemClient.bitshift_difference_of_arguments(1, cmd_reg_size, 1) )
+
+            nops_total = nops_total + fast_cmd_nops[j]  
+            fast_cmd_data[j]= (fast_cmd_data[j] | (fast_cmd_nops[j] << 22))  
+    
+        no_of_words = j_max
+        no_of_nops = nops_total
+    
+        return fast_cmd_data, no_of_words, no_of_nops
+    
+    def bitshift_difference_of_arguments(self, bitVal, arg1, arg2):    
+        """ bit shift bitVal according to difference of arg1 - arg2
+            (arg1 - arg2) > 0 = bit shift to left (Increase bitVal)
+            (arg1 - arg2) < 0 = bit shift to right (Decrease bitVal) """
+        if (arg1-arg2 > 0):
+            bitVal = (bitVal << arg1-arg2)
+        elif (arg1-arg2 < 0):
+            bitVal = (bitVal >> arg2-arg1)
+        else:
+            pass   # If arg1 = arg2, do nothing (bit shift 0 steps)
+        return bitVal
 
 
+        def fem_fast_cmd_setup(self,fast_cmd_data, no_of_words):
+            
+            base_addr_1 = "not defined?"
+            #fast cmd set up function blank
+            
+            max_block_length = 1024
+            
+            # check length is not greater than FPGA Block RAM
+            
+            block_length = no_of_words
+            
+            if block_length > max_block_length:
+                block_length =  max_block_length        
+            
+            # load fast control pattern memory
+            
+            self.rdmaWrite(base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')
+        
+        
     
