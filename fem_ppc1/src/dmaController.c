@@ -338,6 +338,8 @@ int main()
 						if(numBDFromTopAsic>0)
 						{
 
+							printf("[DEBUG] Top ASIC BD=%d\r\n", numBDFromTopAsic);
+
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromTopAsic; i++)
 							{
@@ -369,6 +371,8 @@ int main()
 						// Bottom ASIC
 						if(numBDFromBotAsic>0)
 						{
+
+							printf("[DEBUG] Bot ASIC BD=%d\r\n", numBDFromBotAsic);
 
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromBotAsic; i++)
@@ -471,7 +475,9 @@ int main()
 
 							if (numBDFromTenGig>0)
 							{
-								for (i=0; i<numBDFromTopAsic; i++)
+								printf("[DEBUG] TenGig BD=%d\r\n", numBDFromTenGig);
+
+								for (i=0; i<numBDFromTenGig; i++)
 								{
 									// Validate TX response
 									status = validateBuffer(pBdRings[BD_RING_TENGIG], pTenGigPostHW, BD_TX);
