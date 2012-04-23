@@ -166,6 +166,8 @@ int main()
 
     u64 numTxPairsSent = 0;				// Counter for TXes sent (but not verified as complete)
 
+    unsigned short tempTxCounter = 0;	// Used to track how many single TXes (before they are grouped into pairs)
+
     u64 numTenGigTxComplete = 0;		// Counter for number of completed TX for 10GBe
 
 
@@ -225,7 +227,7 @@ int main()
 
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
-    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
+    	//printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
 
     	switch(pMsg->cmd)
     	{
@@ -334,7 +336,9 @@ int main()
 						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], XLLDMA_ALL_BDS, &pTopAsicBd);
 						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], XLLDMA_ALL_BDS, &pBotAsicBd);
 
-						// Top ASIC
+						// **************************************************************************************
+						// Top ASIC RX
+						// **************************************************************************************
 						if(numBDFromTopAsic>0)
 						{
 
@@ -368,7 +372,11 @@ int main()
 							numTopAsicRxComplete += numBDFromTopAsic;
 						}
 
-						// Bottom ASIC
+
+
+						// **************************************************************************************
+						// Bottom ASIC RX
+						// **************************************************************************************
 						if(numBDFromBotAsic>0)
 						{
 
@@ -425,6 +433,9 @@ int main()
 
 							//printf("[DEBUG] There are %llu RX pairs to send.\r\n", numRxPairsComplete);
 
+							printf("[DEBUG] Total TopASIC RX = %llu\r\n", numBotAsicRxComplete);
+							printf("[DEBUG] Total BotASIC RX = %llu\r\n", numTopAsicRxComplete);
+
 							pStatusBlock->totalRecv += numRxPairsComplete;
 
 						}
@@ -441,7 +452,9 @@ int main()
 					if (doTx)
 					{
 
+						// **************************************************************************************
 						// Dispatch any waiting TX BD pairs
+						// **************************************************************************************
 						if (numRxPairsComplete>0)
 						{
 
@@ -468,7 +481,10 @@ int main()
 							}
 						}
 
+
+						// **************************************************************************************
 						// If we have any uncompleted TX, process them
+						// **************************************************************************************
 						if (numTxPairsSent>0)
 						{
 							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
@@ -507,13 +523,17 @@ int main()
 								numTenGigTxComplete += numBDFromTenGig;
 							} // END if (numBDFromTenGig>0)
 
-								// TODO: CALCULATE numTxPairsSent, do pStat->totalSent update
-							/*
-
-								numTenGigTxComplete -= 2;
-								numTxPairsSent--;
-								pStatusBlock->totalSent++;
-							*/
+							// Calculate how many pairs processed, update counters
+							tempTxCounter += numBDFromTenGig;
+							while (tempTxCounter>1)
+							{
+								for (i=0; i<numBDFromTenGig; i++)
+								{
+									tempTxCounter -= 2;
+									numTxPairsSent++;
+									pStatusBlock->totalSent++;
+								}
+							}
 
 						} // END if (numTxPairsSent>0)
 
