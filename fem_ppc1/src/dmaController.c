@@ -336,13 +336,19 @@ int main()
 						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], XLLDMA_ALL_BDS, &pTopAsicBd);
 						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], XLLDMA_ALL_BDS, &pBotAsicBd);
 
+						// DEBUGGING
+						if (numBDFromBotAsic!=0 || numBDFromTopAsic!=0)
+						{
+							print("[-----]\r\n");
+						}
+
 						// **************************************************************************************
 						// Top ASIC RX
 						// **************************************************************************************
 						if(numBDFromTopAsic>0)
 						{
 
-							printf("[DEBUG] Top ASIC BD=%d\r\n", numBDFromTopAsic);
+							printf("[DEBUG] Got %d RX from top ASIC\r\n", numBDFromTopAsic);
 
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromTopAsic; i++)
@@ -380,7 +386,7 @@ int main()
 						if(numBDFromBotAsic>0)
 						{
 
-							printf("[DEBUG] Bot ASIC BD=%d\r\n", numBDFromBotAsic);
+							printf("[DEBUG] Got %d RX from bottom ASIC\r\n", numBDFromBotAsic);
 
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromBotAsic; i++)
@@ -419,8 +425,18 @@ int main()
 						if ( (numBotAsicRxComplete!=lastNumBotAsicRxComplete) || (numTopAsicRxComplete!=lastNumTopAsicRxComplete) )
 						{
 
+							printf("[DEBUG] Got RX this loop, calculating num completed RX pairs...\r\n");
+							printf("[DEBUG] Total TopASIC RX = %llu\r\n", numTopAsicRxComplete);
+							printf("[DEBUG] Total BotASIC RX = %llu\r\n", numBotAsicRxComplete);
+
 							// Determine how many completed pairs of RX we have and prepare them for TX
-							if (numBotAsicRxComplete < numTopAsicRxComplete)
+							if (numBotAsicRxComplete == numTopAsicRxComplete)
+							{
+								numRxPairsComplete += numBotAsicRxComplete;
+								numBotAsicRxComplete = 0;
+								numTopAsicRxComplete = 0;
+							}
+							else if (numBotAsicRxComplete < numTopAsicRxComplete)
 							{
 								numRxPairsComplete += numBotAsicRxComplete;
 								numTopAsicRxComplete -= numBotAsicRxComplete;
@@ -433,8 +449,12 @@ int main()
 
 							//printf("[DEBUG] There are %llu RX pairs to send.\r\n", numRxPairsComplete);
 
-							printf("[DEBUG] Total TopASIC RX = %llu\r\n", numBotAsicRxComplete);
-							printf("[DEBUG] Total BotASIC RX = %llu\r\n", numTopAsicRxComplete);
+							//printf("[DEBUG] Total TopASIC RX = %llu\r\n", numTopAsicRxComplete);
+							//printf("[DEBUG] Total BotASIC RX = %llu\r\n", numBotAsicRxComplete);
+							printf("[DEBUG] -- OK --\r\n");
+							printf("[DEBUG] numRxPairsComplete = %llu\r\n", numRxPairsComplete);
+							printf("[DEBUG] NOW TopASIC RX = %llu\r\n", numTopAsicRxComplete);
+							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRxComplete);
 
 							pStatusBlock->totalRecv += numRxPairsComplete;
 
@@ -457,6 +477,8 @@ int main()
 						// **************************************************************************************
 						if (numRxPairsComplete>0)
 						{
+
+							printf("[DEBUG] %llu TX pairs ready to send\r\n", numRxPairsComplete);
 
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsComplete*2, pTenGigPreHW);
 
@@ -481,17 +503,19 @@ int main()
 							}
 						}
 
-
 						// **************************************************************************************
 						// If we have any uncompleted TX, process them
 						// **************************************************************************************
 						if (numTxPairsSent>0)
 						{
+
+							//printf("[DEBUG] %llu pair(s) TX BDs ready to check\r\n", numTxPairsSent);
+
 							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
 
 							if (numBDFromTenGig>0)
 							{
-								printf("[DEBUG] TenGig BD=%d\r\n", numBDFromTenGig);
+								printf("[DEBUG] Got %d TX BD back to check...\r\n", numBDFromTenGig);
 
 								for (i=0; i<numBDFromTenGig; i++)
 								{
@@ -527,12 +551,10 @@ int main()
 							tempTxCounter += numBDFromTenGig;
 							while (tempTxCounter>1)
 							{
-								for (i=0; i<numBDFromTenGig; i++)
-								{
-									tempTxCounter -= 2;
-									numTxPairsSent++;
-									pStatusBlock->totalSent++;
-								}
+								tempTxCounter -= 2;
+								numTxPairsSent--;
+								pStatusBlock->totalSent++;
+								printf("[DEBUG] Pair TX validated, tempTx=%d, numTxpairsSent=%llu\r\n", (int)tempTxCounter, numTxPairsSent);
 							}
 
 						} // END if (numTxPairsSent>0)
