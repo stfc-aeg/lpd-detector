@@ -440,11 +440,13 @@ int main()
 							{
 								numRxPairsComplete += numBotAsicRxComplete;
 								numTopAsicRxComplete -= numBotAsicRxComplete;
+								numBotAsicRxComplete = 0;
 							}
-							else
+							else // numBot>numTop
 							{
 								numRxPairsComplete += numTopAsicRxComplete;
 								numBotAsicRxComplete -= numTopAsicRxComplete;
+								numTopAsicRxComplete = 0;
 							}
 
 							//printf("[DEBUG] There are %llu RX pairs to send.\r\n", numRxPairsComplete);
