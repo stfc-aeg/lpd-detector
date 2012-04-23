@@ -17,7 +17,6 @@
 // TODO: Implement mailbox handshake on config
 // TODO: Fix configure for acquire, respect config BD storage area
 // TODO: Update state variables during event loop (read/writePtr)
-// TODO: Respect doTx / doRx flags
 // TODO: Graceful stop when pending events exist
 
 #include <stdio.h>
@@ -30,6 +29,9 @@
 // Compile time switches
 //#define PROFILE_SPEED		1
 #define DEBUG_BD			1
+
+// TODO: Remove this once DMA event loop verified OK!
+#define VERBOSE_DEBUG		1
 
 // For profiling BD configuration speed
 #ifdef PROFILE_SPEED
@@ -337,10 +339,12 @@ int main()
 						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], XLLDMA_ALL_BDS, &pBotAsicBd);
 
 						// DEBUGGING
+#ifdef VERBOSE_DEBUG
 						if (numBDFromBotAsic!=0 || numBDFromTopAsic!=0)
 						{
 							print("[-----]\r\n");
 						}
+#endif
 
 						// **************************************************************************************
 						// Top ASIC RX
@@ -348,7 +352,9 @@ int main()
 						if(numBDFromTopAsic>0)
 						{
 
+#ifdef VERBOSE_DEBUG
 							printf("[DEBUG] Got %d RX from top ASIC\r\n", numBDFromTopAsic);
+#endif
 
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromTopAsic; i++)
@@ -386,7 +392,9 @@ int main()
 						if(numBDFromBotAsic>0)
 						{
 
+#ifdef VERBOSE_DEBUG
 							printf("[DEBUG] Got %d RX from bottom ASIC\r\n", numBDFromBotAsic);
+#endif
 
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromBotAsic; i++)
@@ -425,9 +433,11 @@ int main()
 						if ( (numBotAsicRxComplete!=lastNumBotAsicRxComplete) || (numTopAsicRxComplete!=lastNumTopAsicRxComplete) )
 						{
 
+#ifdef VERBOSE_DEBUG
 							printf("[DEBUG] Got RX this loop, calculating num completed RX pairs...\r\n");
 							printf("[DEBUG] Total TopASIC RX = %llu\r\n", numTopAsicRxComplete);
 							printf("[DEBUG] Total BotASIC RX = %llu\r\n", numBotAsicRxComplete);
+#endif
 
 							// Determine how many completed pairs of RX we have and prepare them for TX
 							if (numBotAsicRxComplete == numTopAsicRxComplete)
@@ -449,14 +459,12 @@ int main()
 								numTopAsicRxComplete = 0;
 							}
 
-							//printf("[DEBUG] There are %llu RX pairs to send.\r\n", numRxPairsComplete);
-
-							//printf("[DEBUG] Total TopASIC RX = %llu\r\n", numTopAsicRxComplete);
-							//printf("[DEBUG] Total BotASIC RX = %llu\r\n", numBotAsicRxComplete);
+#ifdef VERBOSE_DEBUG
 							printf("[DEBUG] -- OK --\r\n");
 							printf("[DEBUG] numRxPairsComplete = %llu\r\n", numRxPairsComplete);
 							printf("[DEBUG] NOW TopASIC RX = %llu\r\n", numTopAsicRxComplete);
 							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRxComplete);
+#endif
 
 							pStatusBlock->totalRecv += numRxPairsComplete;
 
@@ -480,7 +488,9 @@ int main()
 						if (numRxPairsComplete>0)
 						{
 
+#ifdef VERBOSE_DEBUG
 							printf("[DEBUG] %llu TX pairs ready to send\r\n", numRxPairsComplete);
+#endif
 
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsComplete*2, pTenGigPreHW);
 
@@ -494,7 +504,9 @@ int main()
 							else
 							{
 								// Sent all to HW, none left!
+#ifdef VERBOSE_DEBUG
 								printf("[INFO ] Committed %llu BD pairs to TX!\r\n", numRxPairsComplete);
+#endif
 
 								// Advance our BD pointer
 								for (i=0; i<numRxPairsComplete*2; i++)
@@ -511,13 +523,13 @@ int main()
 						if (numTxPairsSent>0)
 						{
 
-							//printf("[DEBUG] %llu pair(s) TX BDs ready to check\r\n", numTxPairsSent);
-
 							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
 
 							if (numBDFromTenGig>0)
 							{
+#ifdef VERBOSE_DEBUG
 								printf("[DEBUG] Got %d TX BD back to check...\r\n", numBDFromTenGig);
+#endif
 
 								for (i=0; i<numBDFromTenGig; i++)
 								{
@@ -556,7 +568,9 @@ int main()
 								tempTxCounter -= 2;
 								numTxPairsSent--;
 								pStatusBlock->totalSent++;
+#ifdef VERBOSE_DEBUG
 								printf("[DEBUG] Pair TX validated, tempTx=%d, numTxpairsSent=%llu\r\n", (int)tempTxCounter, numTxPairsSent);
+#endif
 							}
 
 						} // END if (numTxPairsSent>0)
