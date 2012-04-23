@@ -653,7 +653,7 @@ int main()
 							{
 								printf("[ERROR] Error validating upload TX BD %d, error code %d\r\n", i, status);
 							}
-							status = recycleBuffer(pBdRings[BD_RING_UPLOAD], pTenGigPreHW, BD_TX);
+							status = recycleBuffer(pBdRings[BD_RING_UPLOAD], pConfigBd, BD_TX);
 							if (status!=XST_SUCCESS)
 							{
 								printf("[ERROR] Error on recycleBuffer for upload TX, error code %d\r\n", status);
@@ -663,6 +663,8 @@ int main()
 						numConfigBdsToProcess -= numTx;
 
 					}
+
+					printf("[INFO ] Verified %d config. upload BD(s) OK!\r\n", (int)pStatusBlock->numConfigBds);
 
 					// Subsequent calls to start configure will fail because we moved pConfigBd, so this prevents a config operation running again
 					pStatusBlock->numConfigBds = 0;
