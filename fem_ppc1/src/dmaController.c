@@ -13,10 +13,11 @@
 
 // Todo list, in order of priority
 // ----------------------------------------------------------------------
-// TODO: Speed up BD configuration for acquire mode
+// TODO: Resolve recycleBuffer fail on config upload (for single BD)
 // TODO: Implement mailbox handshake on config
-// TODO: Fix configure for acquire, respect config BD storage area
+// TODO: Speed up BD configuration for acquire mode
 // TODO: Update state variables during event loop (read/writePtr)
+// TODO: Fix configure for acquire, respect config BD storage area
 // TODO: Graceful stop when pending events exist
 
 #include <stdio.h>
@@ -31,7 +32,7 @@
 #define DEBUG_BD			1
 
 // TODO: Remove this once DMA event loop verified OK!
-#define VERBOSE_DEBUG		1
+//#define VERBOSE_DEBUG		1
 
 // For profiling BD configuration speed
 #ifdef PROFILE_SPEED
@@ -171,6 +172,8 @@ int main()
     unsigned short tempTxCounter = 0;	// Used to track how many single TXes (before they are grouped into pairs)
 
     u64 numTenGigTxComplete = 0;		// Counter for number of completed TX for 10GBe
+
+    unsigned short numConfigBdsToProcess = 0;
 
 
 
@@ -638,28 +641,27 @@ int main()
 						printf("[ERROR] Could not commit %d upload BD(s) to hardware control!  Error code %d\r\n", (int)pStatusBlock->numConfigBds, status);
 					}
 
-					// Retrieve TX BDs
-					numTx = 0;
-					print("[INFO ] Waiting for upload TX...\r\n");
-					while (numTx!=pStatusBlock->numConfigBds)
+					numConfigBdsToProcess = pStatusBlock->numConfigBds;
+					while (numConfigBdsToProcess>0)
 					{
-						numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
-					}
 
-					// Verify / free BDs
-					for(i=0; i<pStatusBlock->numConfigBds; i++)
-					{
-						status = validateBuffer(pBdRings[BD_RING_UPLOAD], pConfigBd, BD_TX);
-						if (status!=XST_SUCCESS)
+						numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
+						for(i=0; i<numTx; i++)
 						{
-							printf("[ERROR] Error validating upload TX BD %d, error code %d\r\n", i, status);
+							status = validateBuffer(pBdRings[BD_RING_UPLOAD], pConfigBd, BD_TX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error validating upload TX BD %d, error code %d\r\n", i, status);
+							}
+							status = recycleBuffer(pBdRings[BD_RING_UPLOAD], pTenGigPreHW, BD_TX);
+							if (status!=XST_SUCCESS)
+							{
+								printf("[ERROR] Error on recycleBuffer for upload TX, error code %d\r\n", status);
+							}
+							pConfigBd = XLlDma_BdRingNext(pBdRings[BD_RING_UPLOAD], pConfigBd);
 						}
-						status = recycleBuffer(pBdRings[BD_RING_UPLOAD], pTenGigPreHW, BD_TX);
-						if (status!=XST_SUCCESS)
-						{
-							printf("[ERROR] Error on recycleBuffer for upload TX, error code %d\r\n", status);
-						}
-						pConfigBd = XLlDma_BdRingNext(pBdRings[BD_RING_UPLOAD], pConfigBd);
+						numConfigBdsToProcess -= numTx;
+
 					}
 
 					// Subsequent calls to start configure will fail because we moved pConfigBd, so this prevents a config operation running again
@@ -668,7 +670,7 @@ int main()
 				}
 				else
 				{
-					print("[ERROR] Received CMD_ACQ_START for ACQ_MODE_UPLOAD, but no configured upload BDs!  Ignoring...\r\n");
+					print("[INFO ] Received CMD_ACQ_START for ACQ_MODE_UPLOAD, but no configured upload BDs (or already uploaded)!  Ignoring...\r\n");
 				}
 
 				break;
@@ -1082,14 +1084,12 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 		return status;
 	}
 
-	/*
 	// Generate test pattern at a fixed memory address
 	u32 testPatternAddr = 0x30000000;
 	u32 testPatternLen = 0x18000;		// In bytes!
 	u32 testPatternPat = 0xFFFFFFFF;
 	printf("[INFO ] Generating test pattern 0x%08x at 0x%08x, 0x%08x bytes in length.\r\n", (unsigned)testPatternPat, (unsigned)testPatternAddr, (unsigned)testPatternLen);
 	status = Xil_TestMem32((u32*)testPatternAddr, testPatternLen/4, testPatternPat, XIL_TESTMEM_FIXEDPATTERN);
-	*/
 
 	return XST_SUCCESS;
 }
