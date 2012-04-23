@@ -214,33 +214,38 @@ if data_source_to_10g == 1:
     
     #set up the fast command block
     if fast_ctrl_dynamic == 1:   # new design with dynamic vetos
-        fem_fast_bram_setup(fast_cmd_data, no_of_words)
-        fem_fast_cmd_setup_new(no_of_words+no_of_nops)
+        myLpdFemClient.fem_fast_bram_setup(fast_cmd_data, no_of_words)
+        myLpdFemClient.fem_fast_cmd_setup_new(no_of_words+no_of_nops)
     else:
-        fem_fast_cmd_setup(fast_cmd_data, no_of_words, fast_ctrl_dynamic)
+        myLpdFemClient.fem_fast_cmd_setup(fast_cmd_data, no_of_words, fast_ctrl_dynamic)
     
     
     #set up the slow control IP block
-    fem_slow_ctrl_setup(slow_ctrl_data, no_of_bits)
+    myLpdFemClient.fem_slow_ctrl_setup(slow_ctrl_data, no_of_bits)
     
-    # select slow control load mode  jac
-    rdma_write(sCom,slow_ctr_0+0,uint32(2),'rw','asic load mode')
+#    # select slow control load mode  jac
+#    rdma_write(sCom,slow_ctr_0+0,uint32(2),'rw','asic load mode')
+    myLpdFemClient.select_slow_ctrl_load_mode(0, 2)
     
     #set up the ASIC RX IP block
 #    fem_asic_rx_setup(mask_array, no_asic_cols+1,no_asic_cols_per_frm+1)
-    fem_asic_rx_setup(mask_list, no_asic_cols+1,no_asic_cols_per_frm+1)
+    myLpdFemClient.fem_asic_rx_setup(mask_list, no_asic_cols+1, no_asic_cols_per_frm+1)
     
-    # data source - self test
-    data_source_reg           = bitor(hex2dec('00000001'))
-    rdma_write(sCom,data_source_reg,asic_data_source,'rw','asic rx data source') # 0 = real data ; 1 = test data
+#    # data source - self test
+#    data_source_reg           = (0x00000001 | LpdFemClient.asic_srx_0)
+#    rdma_write(sCom,data_source_reg,asic_data_source,'rw','asic rx data source') # 0 = real data ; 1 = test data
+    myLpdFemClient.data_source_self_test()
     
-    gain_override_reg = bitor(hex2dec('0000000'))
-    rdma_write(sCom,gain_override_reg,asic_gain_override,'rw','asic rx gain override')
+       
+#    gain_override_reg = bitor(hex2dec('0000000'))
+#    rdma_write(sCom,gain_override_reg,asic_gain_override,'rw','asic rx gain override')
+    myLpdFemClient.gain_override()
      
     # top level steering
-    rdma_write(sCom,fem_ctrl_0+5,uint32(0),'rw','asic turn on buffers')   # turn fast & slow buffers on
-    rdma_write(sCom,fem_ctrl_0+2,uint32(1),'rw','asic serial out readback is from bot sp3 i/o')
-    rdma_write(sCom,fem_ctrl_0+4,asic_rx_start_delay,'rw','asic start readout delay wrt fast cmd')
+#    rdma_write(sCom,fem_ctrl_0+5,uint32(0),'rw','asic turn on buffers')   # turn fast & slow buffers on
+#    rdma_write(sCom,fem_ctrl_0+2,uint32(1),'rw','asic serial out readback is from bot sp3 i/o')
+#    rdma_write(sCom,fem_ctrl_0+4,asic_rx_start_delay,'rw','asic start readout delay wrt fast cmd')
+    myLpdFemClient.top_level_steering()
 
 
 ## select asic or llink gen as data source

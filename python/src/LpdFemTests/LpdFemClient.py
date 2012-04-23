@@ -541,8 +541,11 @@ class LpdFemClient(FemClient):
     
 
 
-    def read_fast_cmd_file(self, filename,cmd_reg_size):
-    
+    #def read_fast_cmd_file(self, filename,cmd_reg_size):
+    def read_fast_cmd_file_jc_new(self, filename,cmd_reg_size):
+        # location:    \\te9files\ESDGshr\SDG\drop\for_christian\lpd_matlab_for_christian
+        # filename:    read_fast_cmd_file_jc.m
+        # function:    read_fast_cmd_file()
         # Read fast control file (hex) into an array
         # also adds nops 
     
@@ -614,23 +617,247 @@ class LpdFemClient(FemClient):
         return bitVal
 
 
-        def fem_fast_cmd_setup(self,fast_cmd_data, no_of_words):
-            
-            base_addr_1 = "not defined?"
-            #fast cmd set up function blank
-            
-            max_block_length = 1024
-            
-            # check length is not greater than FPGA Block RAM
-            
-            block_length = no_of_words
-            
-            if block_length > max_block_length:
-                block_length =  max_block_length        
-            
-            # load fast control pattern memory
-            
-            self.rdmaWrite(base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')
+    def fem_fast_bram_setup(self, fast_cmd_data, no_of_words):
+        # File path:    \\te9files\ESDGshr\SDG\drop\for_christian\lpd_matlab_for_christian\matlab\matlab
+        # Filename:     fem_fast_bram_setup.m
+        # Func name:    fem_fast_cmd_setup (!!! function name inside fem_fast_bram_setup.m !!!)
+        # fem_asic_test.m calls function:    fem_fast_bram_setup(s, fast_cmd_1, fast_cmd_data, no_of_words);
+        #                                    Line:258
+        base_addr_1 = LpdFemClient.fast_cmd_1
+        #fast cmd set up function blank
+        
+        max_block_length = 1024
+        
+        # check length is not greater than FPGA Block RAM
+        
+        block_length = no_of_words
+        
+        if block_length > max_block_length:
+            block_length =  max_block_length        
+        
+        # Build tuple of a list of addresses
+        addressTuple = tuple([base_addr_1+i for i in range(block_length)])
+        # Build tuple of a list of data
+        dataTuple = tuple([fast_cmd_data[i] for i in range(block_length)])
+        # load fast control pattern memory
+        #rdma_block_write(s, base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')
+        print "Fast Cmd RAM\n"
+        self.rdmaWrite(addressTuple, dataTuple)
         
         
+    ##def fem_fast_cmd_setup(self, no_of_words):
+    def fem_fast_cmd_setup_new(self, no_of_words):
+        # Location:    \\te9files\ESDGshr\SDG\drop\for_christian\lpd_matlab_for_christian\matlab\matlab
+        # filename:    fem_fast_cmd_setup_new.m
+        # func name:    fem_fast_cmd_setup(s, base_addr_0, no_of_words)
+        
+        base_addr_0 = LpdFemClient.fast_cmd_0
+        
+        #fast cmd set up function blank
     
+        max_block_length = 1024
+    
+        # check length is not greater than FPGA Block RAM
+    
+        block_length = no_of_words
+    
+        if block_length > max_block_length:
+            block_length =  max_block_length
+    
+        # load control registers
+        # reset mode  for old behaviour outputting bram , without vetos
+    
+#        rdma_write(s,base_addr_0+6, 0,'rw','fast_command_reg_reset_offset')  
+#        rdma_write(s,base_addr_0+7, no_of_words,'rw','fast_command_reg_reset_nwords')
+        
+        print "fast_command_reg_reset_offset\n"
+        self.rdmaWrite(base_addr_0+6, 0)
+        print "fast_command_reg_reset_nwords\n"  
+        self.rdmaWrite(base_addr_0+7, no_of_words)
+        
+    def fem_fast_cmd_setup(self, fast_cmd_data, no_of_words):
+    
+        base_addr_0 = LpdFemClient.fast_cmd_0
+        base_addr_1 = LpdFemClient.fast_cmd_1
+            
+        #fast cmd set up function blank
+    
+        max_block_length = 1024
+    
+        # check length is not greater than FPGA Block RAM
+    
+        block_length = no_of_words
+    
+        if block_length > max_block_length:
+            block_length =  max_block_length
+    
+        #rdma_block_write(s, base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')    
+        #rdma_write(s,base_addr_0+1, block_length-1,'rw','Fast cmd block length')  # was block_length - 1 ? jc        
+    
+        # Build tuple of a list of addresses
+        addressTuple = tuple([base_addr_1+i for i in range(block_length)])
+        # Build tuple of a list of data
+        dataTuple = tuple([fast_cmd_data+i for i in range(block_length)])
+        
+        # load fast control pattern memory
+        print "Fast Cmd RAM\n"
+        self.rdmaWrite(addressTuple, dataTuple)
+    
+        # load control registers
+        print "Fast cmd block length\n"
+        self.rdmaWrite(base_addr_0+1, block_length-1)  # was block_length - 1 ? jc
+        
+    def fem_slow_ctrl_setup(self, slow_ctrl_data, no_of_bits):
+    
+        base_addr_0 = LpdFemClient.slow_ctr_0
+        base_addr_1 = LpdFemClient.slow_ctr_1
+        
+        #slow control set up function blank
+        
+        max_block_length = 1024
+        
+        # load slow control pattern memory
+        
+        block_length = len(slow_ctrl_data)
+        
+        if block_length[1] > max_block_length:
+            block_length[1] =  max_block_length
+        
+        # Build tuple of a list of addresses
+        addressTuple = tuple([base_addr_1+i for i in range(block_length[1])])
+        dataTuple = tuple([slow_ctrl_data+i for i in range(block_length[1])])
+        
+        #rdma_block_write(s, base_addr_1, block_length(1), slow_ctrl_data, 'rw', 'Slow Ctrl RAM')
+        print "Slow Ctrl RAM\n"
+        self.rdmaWrite(addressTuple, dataTuple)
+        
+        # load control registers
+        
+        # set number of bits register
+        max_no_of_bits = 32*1024
+        if no_of_bits > max_no_of_bits:
+            no_of_bits = max_no_of_bits
+        
+        
+        no_of_bits = no_of_bits + 1    # fix added  jc
+        
+        control_reg_1 = base_addr_0 + 1
+        
+        #rdma_write(s,control_reg_1, no_of_bits,'rw','slow ctrl - no of bits (+1) to reg');
+        print "slow ctrl - no of bits (+1) to reg\n"
+        self.rdmaWrite(control_reg_1, no_of_bits)
+
+        
+    def select_slow_ctrl_load_mode(self, address_offset, slow_ctrl_load_mode):
+        # select slow control load mode  jac
+        
+        #rdma_write(s, slow_ctr_0+0, uint32(2), 'rw','asic load mode')
+        print "asic load mode\n"
+        self.rdmaWrite(LpdFemClient.slow_ctr_0+address_offset, slow_ctrl_load_mode)
+        
+    def fem_asic_rx_setup(self, mask_array, no_asic_cols, no_cols_frm):
+        
+        # called from script as:    fem_asic_rx_setup(s, asic_srx_0, mask_array, no_asic_cols+1,no_asic_cols_per_frm+1)
+        # defined in script as:     fem_asic_rx_setup(s, base_addr, mask_array,no_asic_cols,no_cols_frm)
+        
+        base_addr = LpdFemClient.asic_srx_0        
+
+        #Set up the XFEL FEM ASIC RX IP Block
+         
+        #setup IP Address register locations
+         
+        mask_reg0 = (0x00000004 | base_addr)
+        mask_reg1 = (0x00000005 | base_addr)
+        mask_reg2 = (0x00000006 | base_addr)
+        mask_reg3 = (0x00000007 | base_addr)
+         
+        #gain_override_reg         = (0x0000000 | base_addr)
+        #data_source_reg           = (0x00000001 | base_addr)
+        no_clk_cyc_dly_reg        = (0x00000002 | base_addr)
+        no_asic_cols_cols_frm_reg = (0x00000003 | base_addr)
+         
+        # setup data values
+        no_asic_cols = (no_asic_cols & 0x0000001FF)
+        no_cols_frm  = (no_cols_frm & 0x0000001FF)
+        no_cols_frm_shft  = (no_cols_frm << 16)
+        no_asic_cols_cols_frm = (no_cols_frm_shft | no_asic_cols)
+
+         
+        # clkc cycle delay for sof-eof formula 512 * 36 * no cols?
+        #no_clk_cyc_dly = 0x00011FDC)
+         
+        #no_clk_cyc_dly = 512 * 36 * no_asic_cols * no_cols_frm - 1 
+         
+        # this doesn't match formula in register doc ? jac
+        # frame clock length = (no cols * 512 * 36) - 36
+        # is this the nr of clocks for payload of each ll frame (or all frames) ?
+        # assume headers and footer are not included.
+         
+        # also fixed bug as above was using bit shifted value of no_cols_frm
+        no_clk_cyc_dly = (512 * 36 * no_cols_frm) - 36 
+                  
+        # set up clk cycle delay
+        print "asic rx clk cycle delay"
+        self.rdmaWrite(no_clk_cyc_dly_reg,no_clk_cyc_dly)
+        
+        # set up num asic cols & num cols per frame
+        print "asic rx no_cols cols_frm"
+        self.rdmaWrite(no_asic_cols_cols_frm_reg,no_asic_cols_cols_frm)
+   
+        # set up mask registers
+        print "asic rx 0"
+        self.rdmaWrite(mask_reg0,mask_array[0])
+        print "asic rx 1"
+        self.rdmaWrite(mask_reg1,mask_array[1])
+        print "asic rx 2"
+        self.rdmaWrite(mask_reg2,mask_array[2])
+        print "asic rx 3"
+        self.rdmaWrite(mask_reg3,mask_array[3])
+
+        # added override to gain selection 
+        # 
+        #  bits
+        #  0000  normal gain selection     0
+        #  1000  force select x100         8
+        #  1001  force select x10          9
+        #  1011  force select x1          11
+        #  1111  force error condition ?  15
+        # call moved to top level funcion
+        #self.rdmaWrite(gain_override_reg,0)  # "asic rx gain override" 
+         
+              
+        
+    def data_source_self_test(self, asic_data_source):
+        
+        # data source - self test
+        data_source_reg           = (0x00000001 | LpdFemClient.asic_srx_0)
+        print "asic rx data source" # 0 = real data ; 1 = test data
+        self.rdmaWrite(data_source_reg,asic_data_source)
+        
+        
+    def gain_override(self, asic_gain_override):
+        
+        gain_override_reg = (0x0000000 | LpdFemClient.asic_srx_0)
+        print "asic rx gain override"
+        self.rdmaWrite(gain_override_reg,asic_gain_override)
+        
+        
+        
+    def type_level_steering(self, asic_rx_start_delay):
+
+        # turn fast & slow buffers on
+        print "asic turn on buffers"
+        self.rdmaWrite(fem_ctrl_0+5,0)
+        print "asic serial out readback is from bot sp3 i/o"
+        self.rdmaWrite(fem_ctrl_0+2,1)
+        print "asic start readout delay wrt fast cmd"
+        self.rdmaWrite(fem_ctrl_0+4, self.asic_rx_start_delay)
+        
+        
+
+        
+        
+                        
+        
+        
+         
