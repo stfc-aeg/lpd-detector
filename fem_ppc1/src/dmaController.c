@@ -17,6 +17,7 @@
 // TODO: Don't recreate BDs for acquisition if they match last run
 // TODO: Fix DMA errors after initial acquisition loop (DMA error bit set on first BD received, because of DMA engine state from last run?)
 
+// TODO: Update state variable->state when config in process / complete
 // TODO: Update state variables during event loop (read/writePtr)
 // TODO: Fix configure for acquire, respect config. BD storage area
 // TODO: Graceful stop when pending events exist
@@ -625,6 +626,8 @@ int main()
 
 
 					// Check if we have received all expected frames
+					// TODO: Fix this, stops after only half frames!
+					/*
 					if(pStatusBlock->numAcq != 0)
 					{
 						if ((pStatusBlock->numAcq == pStatusBlock->totalRecv) && (pStatusBlock->numAcq == pStatusBlock->totalSent))
@@ -633,6 +636,7 @@ int main()
 							acquireRunning = 0;
 						}
 					}
+					*/
 
 				} // END while(acquireRunning)
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -729,15 +733,16 @@ int main()
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock)
 {
 
-	// TODO: Take into account the reserved BD config area!
+	// TODO: Respect the reserved BD config. area!
 
-	unsigned short reuseBds = 0;
+	//unsigned short reuseBds = 0;
 
 	// Check if we can re-use BDs to save time configuring
 	if ((bufferSz==pStatusBlock->bufferSize) && (bufferCnt==pStatusBlock->bufferCnt))
 	{
 		printf("[INFO ] Parameters for buffer size and count match last configuration, reusing BDs!\r\n");
-		reuseBds = 1;
+		//reuseBds = 1;
+		return XST_SUCCESS;
 	}
 
 	// If we are reusing BDs then we can assume that the last acquisition completed successfully.
@@ -1165,6 +1170,10 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 {
 	u32 sts, validSts;
 
+#ifdef DEBUG_BD
+    u32 len, addr;
+#endif
+
 	switch(buffType)
 	{
 		case BD_RX:
@@ -1181,10 +1190,18 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 	sts = XLlDma_BdGetStsCtrl(pBd);
 
+#ifdef DEBUG_BD
+	len =  XLlDma_BdGetLength(pBd);
+	addr = XLlDma_BdGetBufAddr(pBd);
+#endif
+
 	// Check DMA_ERROR bit
 	if ((sts&0xFF000000)&LL_DMA_ERROR)
 	{
 		print("[ERROR] DMA transfer signalled error!\r\n");
+#ifdef DEBUG_BD
+		printf("[ERROR] BD sts=%08x, len=%08x, addr=%08x\r\n", (unsigned)sts, (unsigned)len, (unsigned)addr);
+#endif
 		return XST_DMA_ERROR;
 	}
 
