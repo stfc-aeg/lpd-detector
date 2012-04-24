@@ -13,11 +13,12 @@
 
 // Todo list, in order of priority
 // ----------------------------------------------------------------------
-// TODO: Resolve recycleBuffer fail on config upload (for single BD)
-// TODO: Implement mailbox handshake on config
-// TODO: Speed up BD configuration for acquire mode
+// *** HIGH PRIORITY ***
+// TODO: Don't recreate BDs for acquisition if they match last run
+// TODO: Fix DMA errors after initial acquisition loop (DMA error bit set on first BD received, because of DMA engine state from last run?)
+
 // TODO: Update state variables during event loop (read/writePtr)
-// TODO: Fix configure for acquire, respect config BD storage area
+// TODO: Fix configure for acquire, respect config. BD storage area
 // TODO: Graceful stop when pending events exist
 
 #include <stdio.h>
@@ -149,6 +150,9 @@ int main()
     XLlDma_Bd *pTenGigPreHW;
 	XLlDma_Bd *pTenGigPostHW;
 	XLlDma_Bd *pConfigBd;
+
+	// Moved from main acquire loop
+	XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
 
 	mailMsg msg;
     mailMsg *pMsg = &msg;
@@ -328,7 +332,7 @@ int main()
 	    	    numTxPairsSent = 0;
 	    	    numTenGigTxComplete = 0;
 
-				XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
+				//XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
 
 				int numBDFromTopAsic = 0;
 				int numBDFromBotAsic = 0;
@@ -727,12 +731,12 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 
 	// TODO: Take into account the reserved BD config area!
 
-	short reuseBds = 0;
+	unsigned short reuseBds = 0;
 
 	// Check if we can re-use BDs to save time configuring
-	if ((bufferSz==pStatusBlock->bufferSize) && (bufferCnt==pStatusBlock->bufferSize))
+	if ((bufferSz==pStatusBlock->bufferSize) && (bufferCnt==pStatusBlock->bufferCnt))
 	{
-		printf("[INFO ] Parameters for buffer size and count match last config, reusing BDs!\r\n");
+		printf("[INFO ] Parameters for buffer size and count match last configuration, reusing BDs!\r\n");
 		reuseBds = 1;
 	}
 
@@ -1098,7 +1102,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 	// Generate test pattern at a fixed memory address
 	u32 testPatternAddr = 0x30000000;
 	u32 testPatternLen = 0x18000;		// In bytes!
-	u32 testPatternPat = 0xFFFFFFFF;
+	u32 testPatternPat = 0xAEAEAEAE;
 	printf("[INFO ] Generating test pattern 0x%08x at 0x%08x, 0x%08x bytes in length.\r\n", (unsigned)testPatternPat, (unsigned)testPatternAddr, (unsigned)testPatternLen);
 	status = Xil_TestMem32((u32*)testPatternAddr, testPatternLen/4, testPatternPat, XIL_TESTMEM_FIXEDPATTERN);
 
