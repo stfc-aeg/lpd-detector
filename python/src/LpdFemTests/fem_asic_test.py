@@ -1,14 +1,14 @@
- '''
+'''
 Created on 18 Apr 2012
 
 @author: ckd27546
 '''
 
 # Import Python standard modules
-import serial, time
+import sys
 
 # Import Fem modules
-from FemClient import FemClient
+#from FemClient import FemClient
 from LpdFemClient import *  #LpdFemClient
 
 def set_10g_structs_variables_te2bank():
@@ -16,30 +16,79 @@ def set_10g_structs_variables_te2bank():
         ..both interfaces same though? """
     
 #    myDict = {'field1': 'some val', 'field2': 'some val'}
-    x10g_0 = {'src_mac' : '62-00-00-00-00-01',
-              'src_ip'  : '192.168.0.1',
-              #x10g.src_prt   = prt_addr_to_uint16('0000'); # Typo?
-              'src_prt' : '0000',
-              'dst_mac' : '00-07-43-06-31-A3',
-              'dst_ip'  : '192.168.0.13',
-              'dst_prt' : '0000'}
+    x10g_0 = {'src_mac' : mac_addr_to_uint64('62-00-00-00-00-01'),
+              'src_ip'  : ip_addr_to_uint32('192.168.0.1'),
+              #x10g.src_prt   = prt_addr_to_uint16(prt_addr_to_uint16('0000')); # Typo?
+              'src_prt' : prt_addr_to_uint16('0000'),
+              'dst_mac' : mac_addr_to_uint64('00-07-43-06-31-A3'),
+              'dst_ip'  : ip_addr_to_uint32('192.168.0.13'),
+              'dst_prt' : prt_addr_to_uint16('0000')}
     
-    x10g_1 = {'src_mac' : '62-00-00-00-00-01',
-              'src_ip'  : '192.168.0.1',
-              'src_prt' : '0000',
-              'dst_mac' : '00-07-43-06-31-A3',  # in vhdl 10g 
-              'dst_ip'  : '192.168.0.13',
-              'dst_prt' : '0000'}
+    x10g_1 = {'src_mac' : mac_addr_to_uint64('62-00-00-00-00-01'),
+              'src_ip'  : ip_addr_to_uint32('192.168.0.1'),
+              'src_prt' : prt_addr_to_uint16('0000'),
+              'dst_mac' : mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
+              'dst_ip'  : ip_addr_to_uint32('192.168.0.13'),
+              'dst_prt' : prt_addr_to_uint16('0000')}
 
     return x10g_0, x10g_1
 
+def mac_addr_to_uint64(mac_addr_str):
+    #convert hex MAC address 'u-v-w-x-y-z' string to integer
+    # Convert MAC address into list of 6 elements (and removing the - characters)
+    mac_addr_list = mac_addr_str.split('-')
+   
+    # Reverse the order of the list
+    #mac_addr_list.reverse()         DO NOT REVERSE THE ORDER !!
+    
+    # Convert hexadecimal values into the decimals
+    mac_addr_list = [int(val, 16) for val in mac_addr_list]
+    
+    # combine the 6 elements into a single 48 bit MAC value
+    mac_address = 0
+    mac_address = (mac_address | mac_addr_list[0])
+    mac_address = (mac_address | (mac_addr_list[1] << 8))
+    mac_address = (mac_address | (mac_addr_list[2] << 16))
+    mac_address = (mac_address | (mac_addr_list[3] << 24))
+    mac_address = (mac_address | (mac_addr_list[4] << 32))
+    mac_address = (mac_address | (mac_addr_list[5] << 40))
+    
+    return mac_address
 
+def ip_addr_to_uint32(ip_addr_str):
+    # Convert MAC address into list of 6 elements (and removing the - characters)
+    ip_addr_list = ip_addr_str.split('.')
+       
+    # Convert hexadecimal values into the decimals
+    ip_addr_list = [int(val) for val in ip_addr_list]    
+    
+    # combine the 4 elements into a single 32 bit value 
+    ip_address = 0
+    ip_address = (ip_address | ip_addr_list[0])
+    ip_address = (ip_address | (ip_addr_list[1] << 8))
+    ip_address = (ip_address | (ip_addr_list[2] << 16))
+    ip_address = (ip_address | (ip_addr_list[3] << 24))
+    return ip_address 
+
+def prt_addr_to_uint16(prt_addr_str):
+    #convert hex prt string to integer
+
+    return int(prt_addr_str)
     
     
 # --------------------------------------------------------------------------- #
 
+#femHost = '192.168.0.13'
+#femPort = 6969
+femHost = '127.0.0.1'
+femPort = 5000
 
-myLpdFemClient = LpdFemClient(hostAddr='192.168.0.13', timeout=10)
+try:
+    myLpdFemClient = LpdFemClient((femHost, femPort), timeout=10)
+except FemClientError as errString:
+    print "Error: FEM connection failed:", errString
+    sys.exit(1)
+
 
 # enable sending reset to both ppc processors if = 1
 send_ppc_reset = 0;
@@ -169,8 +218,8 @@ if (enable_10g == 1):
     myLpdFemClient.fem_10g_udp_set_up_block1(udp_pkt_len, udp_frm_sze, eth_ifg)
     
     #set MAC, IP Port addresses
-    myLpdFemClient.fem_10g_udp_net_set_up_block0(x10g_0)
-    myLpdFemClient.fem_10g_udp_net_set_up_block1(x10g_1)
+#    myLpdFemClient.fem_10g_udp_net_set_up_block0(x10g_0)
+#    myLpdFemClient.fem_10g_udp_net_set_up_block1(x10g_1)
 
     ''' create a udp record - REMOVED '''
 #    u = udp('192.168.0.13', 'LocalPort', 61649,'InputBufferSize', udp_in_buf_size, 'DatagramTerminateMode', 'off')

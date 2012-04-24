@@ -12,13 +12,10 @@ Created on 18 Apr 2012
 
 # Import Python standard modules
 from string import strip, split
-import serial, time
-# Force float division:
-#from __future__ import division    # Update: do NOT force float division
-#import numarray
+import time
 
 # Import Fem modules
-from FemClient import FemClient
+#from FemClient import FemClient, FemClientError
 #from FemApi.FemTransaction import FemTransaction
 #from FemApi.FemConfig import FemConfig
 #from FemApi.FemAcquireConfig import FemAcquireConfig
@@ -26,8 +23,6 @@ from FemClient import FemClient
 #from FemApi.FemConfig import FemConfig
 #from FemApi.FemAcquireConfig import FemAcquireConfig
 from FemClient.FemClient import  *
-
-import ExcaliburFemTests.defaults as defaults
 
 class LpdFemClient(FemClient):
 
@@ -68,12 +63,8 @@ class LpdFemClient(FemClient):
     def __init__(self, hostAddr=None, timeout=None):
         
         # Call superclass initialising function   
-        try:
-#            super(LpdFemClient.self).__init__(((defaults.femHost, defaults.femPort), defaults.femTimeout))
-            super(LpdFemClient.self).__init__(hostAddr, timeout)
-        except FemClientError as errString:
-            print "Error: FEM connection failed:", errString
-            sys.exit(1)
+        super(LpdFemClient, self).__init__(hostAddr, timeout)
+            
     
     def extract_asic_data(self, asic_no, column_no, asic_data):
         # Rob Halsall 12-04-2011
@@ -123,13 +114,13 @@ class LpdFemClient(FemClient):
         #set up MAC address for SRC & destination
         base_addr = LpdFemClient.udp_10g_0
         
-        reg1 = (net.src_mac & 0x00000000FFFFFFFF)
+        reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
     
-        reg2b = ((net.src_mac & 0x0000FFFF000000) >> 32)
-        reg2t = ((net.dst_mac & 0x000000000000FF) << 16)
+        reg2b = ((net['src_mac'] & 0x0000FFFF000000) >> 32)
+        reg2t = ((net['dst_mac'] & 0x000000000000FF) << 16)
         reg2 = (reg2b | reg2t)
     
-        reg3 = (net.dst_mac >> 16)
+        reg3 = (net['dst_mac'] >> 16)
 
         print "# src_mac_lower_32\n"
         self.rdmaWrite(base_addr+0, reg1)
@@ -143,15 +134,15 @@ class LpdFemClient(FemClient):
         reg6b = self.rdmaRead(base_addr+6, 1)
     
         reg6b = (reg6b & 0x0000FF)
-        reg6 =  (net.dst_ip << 16)
+        reg6 =  (net['dst_ip'] << 16)
         reg6 =  (reg6 | reg6b)
     
-        reg7 =  (net.dst_ip >> 16)
-        reg7 =  (reg7 | (net.src_ip << 16))
+        reg7 =  (net['dst_ip'] >> 16)
+        reg7 =  (reg7 | (net['src_ip'] << 16))
         reg8t = self.rdmaRead(base_addr+8, 1)    # 1 = 1 32 bit unsigned integer?
     
         reg8t = (reg8t & 0xFFFF00)
-        reg8b =  (net.src_ip >> 16)
+        reg8b =  (net['src_ip'] >> 16)
         reg8 =  (reg8t | reg8b)
     
         print "Writing to reg6, reg7 & reg8..\n"
@@ -166,13 +157,13 @@ class LpdFemClient(FemClient):
         #set up MAC address for SRC & destination
         base_addr = LpdFemClient.udp_10g_1
         
-        reg1 = (net.src_mac & 0x00000000FFFFFFFF)
+        reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
     
-        reg2b = ((net.src_mac & 0x0000FFFF000000) >> 32)
-        reg2t = ((net.dst_mac & 0x000000000000FF) << 16)
+        reg2b = ((net['src_mac'] & 0x0000FFFF000000) >> 32)
+        reg2t = ((net['dst_mac'] & 0x000000000000FF) << 16)
         reg2 = (reg2b | reg2t)
     
-        reg3 = (net.dst_mac >> 16)
+        reg3 = (net['dst_mac'] >> 16)
 
         print "# src_mac_lower_32\n"
         self.rdmaWrite(base_addr+0, reg1)
@@ -186,15 +177,15 @@ class LpdFemClient(FemClient):
         reg6b = self.rdmaRead(base_addr+6, 1)
     
         reg6b = (reg6b & 0x0000FF)
-        reg6 =  (net.dst_ip << 16)
+        reg6 =  (net['dst_ip'] << 16)
         reg6 =  (reg6 | reg6b)
     
-        reg7 =  (net.dst_ip >> 16)
-        reg7 =  (reg7 | (net.src_ip << 16))
+        reg7 =  (net['dst_ip'] >> 16)
+        reg7 =  (reg7 | (net['src_ip'] << 16))
         reg8t = self.rdmaRead(base_addr+8, 1)    # 1 = 1 32 bit unsigned integer?
     
         reg8t = (reg8t & 0xFFFF00)
-        reg8b =  (net.src_ip >> 16)
+        reg8b =  (net['src_ip'] >> 16)
         reg8 =  (reg8t | reg8b)
     
         print "Writing to reg6, reg7 & reg8..\n"
@@ -381,10 +372,10 @@ class LpdFemClient(FemClient):
         print "UDP Block Packet Size\n"
         self.rdmaWrite(base_addr + 0x0000000C, data0)
         
-        # set IP header length + 64 Bytes
-        data1 = 0xDB000000 + ip_hdr_len
-        print "UDP Block IP Header Length\n"
-        self.rdmaWrite(base_addr + 0x00000004, data1)    
+#        # set IP header length + 64 Bytes
+#        data1 = 0xDB000000 + ip_hdr_len
+#        print "UDP Block IP Header Length\n"
+#        self.rdmaWrite(base_addr + 0x00000004, data1)    
         
         # set udp length +64 Bytes
         data2 = 0x0000D1F0 + udp_hdr_len
@@ -435,10 +426,10 @@ class LpdFemClient(FemClient):
         print "UDP Block Packet Size\n"
         self.rdmaWrite(base_addr + 0x0000000C, data0)
         
-        # set IP header length + 64 Bytes
-        data1 = 0xDB000000 + ip_hdr_len
-        print "UDP Block IP Header Length\n"
-        self.rdmaWrite(base_addr + 0x00000004, data1)    
+#        # set IP header length + 64 Bytes
+#        data1 = 0xDB000000 + ip_hdr_len
+#        print "UDP Block IP Header Length\n"
+#        self.rdmaWrite(base_addr + 0x00000004, data1)    
         
         # set udp length +64 Bytes
         data2 = 0x0000D1F0 + udp_hdr_len
