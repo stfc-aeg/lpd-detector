@@ -232,7 +232,7 @@ if data_source_to_10g == 1:
     myLpdFemClient.fem_asic_rx_setup(mask_list, no_asic_cols+1, no_asic_cols_per_frm+1)
     
 #    # data source - self test
-#    data_source_reg           = (0x00000001 | LpdFemClient.asic_srx_0)
+#    data_source_reg           = (0x00000001 | myLpdFemClient.asic_srx_0)
 #    rdma_write(sCom,data_source_reg,asic_data_source,'rw','asic rx data source') # 0 = real data ; 1 = test data
     myLpdFemClient.data_source_self_test()
     
@@ -245,11 +245,11 @@ if data_source_to_10g == 1:
 #    rdma_write(sCom,fem_ctrl_0+5,uint32(0),'rw','asic turn on buffers')   # turn fast & slow buffers on
 #    rdma_write(sCom,fem_ctrl_0+2,uint32(1),'rw','asic serial out readback is from bot sp3 i/o')
 #    rdma_write(sCom,fem_ctrl_0+4,asic_rx_start_delay,'rw','asic start readout delay wrt fast cmd')
-    myLpdFemClient.top_level_steering()
+    myLpdFemClient.top_level_steering(asic_rx_start_delay)
 
 
-## select asic or llink gen as data source
-#myLpdFemClient.fem_local_link_mux_setup(data_source_to_10g)
+# select asic or llink gen as data source
+myLpdFemClient.fem_local_link_mux_setup(data_source_to_10g)
 
 #--------------------------------------------------------------------
 # send triggers to data generators
@@ -273,27 +273,27 @@ if data_source_to_10g == 1:
 def all_asic_seq():
     # start asic seq  = reset, slow, fast & asic rx
     print "You selected 'all'"
-    LpdFemClient.toggle_bits(0, 2)    
+    myLpdFemClient.toggle_bits(0, 2)    
     
 def alpha():
     print "You selected 'a'"
     # trigger to local link frame gen 
-    LpdFemClient.toggle_bits(0, 1)
+    myLpdFemClient.toggle_bits(0, 1)
     
 def bravo():
     print "You selected 'b'"
     # trigger the asic rx block
-    LpdFemClient.toggle_bits(3, 1)
+    myLpdFemClient.toggle_bits(3, 1)
 
 def sierra():
     # trigger just the slow contol IP block
     print "You selected 's'"
-    LpdFemClient.toggle_bits(7, 1)    
+    myLpdFemClient.toggle_bits(7, 1)    
     
 def foxtrot():
     # trigger just the fast cmd block
     print "You selected 'f'"
-    LpdFemClient.toggle_bits(7, 2)
+    myLpdFemClient.toggle_bits(7, 2)
     
 # Substitute switch statement with Python dictionary lookup
 options = {'all' : all_asic_seq,
@@ -312,43 +312,32 @@ except KeyError:
 
 if enable_10g == 1:
     #Check local link frame statistics
-    LpdFemClient.read_ll_monitor()
+    myLpdFemClient.read_ll_monitor()
 
 
 # check contents of slow control read back BRAM
 # not working yet
 #rdma_block_read(slow_ctr_2, 4, 'Read Back Slow Ctrl RAM');
 
-#if enable_10g == 0:
-#    sCom.close()
-#    return
 
-
-## allow time to trigger ppc dma transfer in sdk app
-#if data_source_to_10g == 2:
-#    print "\n paused waiting 2 seconds allowing time to trigger ppc dma transfer in sdk app\n"
-#    time.sleep(2)   # waits for keyboard input
+# allow time to trigger ppc dma transfer in sdk app
+if data_source_to_10g == 2:
+    print "\n paused waiting 2 seconds allowing time to trigger ppc dma transfer in sdk app\n"
+    time.sleep(2)   # waits for keyboard input
 
 
 print "\n ...continuing\n"
 
 if send_ppc_reset == 1:
     # Resets dma engines
-    LpdFemClient.toggle_bits(9, 1)
+    myLpdFemClient.toggle_bits(9, 1)
 
 
 #--------------------------------------------------------------------
 # receive the image data from 10g link
 
 #check how much data has arrived
-#TODO: Will using  LpdFemClient.bytesavailable really work?!
-count=0
-while ( (LpdFemClient.bytesavailable != udp_frm_sze) and (count <= 8) ):
-    no_bytes = LpdFemClient.bytesavailable
-    print "\n%4i" % count, "%8X" % no_bytes
-    count=count+1
-    time.sleep(0.25)
-    time.sleep(0.75)
+myLpdFemClient.check_how_much_data_arrived(udp_frm_sze)
 
 
 # create an array of uint32 to hold the data frame
@@ -359,21 +348,19 @@ packet_size = udp_pkt_len/2
 print "Receiving the image data from 10g link.."
 
 if  readout_mode is "packet":     
-    dudp = LpdFemClient.recv_image_data_as_packet(udp_pkt_num, dudp, packet_size)
+    dudp = myLpdFemClient.recv_image_data_as_packet(udp_pkt_num, dudp, packet_size)
 elif readout_mode is "frame":
-    dudp = LpdFemClient.recv_image_data_as_frame(dudp)            
+    dudp = myLpdFemClient.recv_image_data_as_frame(dudp)            
 else:
     pass
 
 
-#data_rate = udp_frm_sze/time_taken;
-#fprintf('\nData Size, Time, Data Rate #8i #4e #4e\n',udp_frm_sze,time_taken,data_rate);
 print "\n"
 
 if enable_10g == 1:
     #Check local link frame statistics
-    LpdFemClient.read_ll_monitor()    
-    LpdFemClient.close()
+    myLpdFemClient.read_ll_monitor()    
+    myLpdFemClient.close()
     print "Closed 10g\n"
 
 
@@ -385,9 +372,9 @@ if enable_10g == 1:
 # 2nd arg is image/trigger nr starting at 1
 
 if (data_source_to_10g == 2):
-    image_data_raw = LpdFemClient.extract_asic_data(1, 1, dudp)
+    image_data_raw = myLpdFemClient.extract_asic_data(1, 1, dudp)
 else:
-    image_data_raw = LpdFemClient.extract_asic_data(8, 1, dudp)
+    image_data_raw = myLpdFemClient.extract_asic_data(8, 1, dudp)
 
 
 # rotate to match ivan's display (isn't matlab clever :) )

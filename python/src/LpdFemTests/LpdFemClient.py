@@ -483,9 +483,9 @@ class LpdFemClient(FemClient):
         return dudp
     
     def recv_image_data_as_frame(self, dudp):
-        # TODO: Understand how to use FemClient receive functionality
-        dudp = LpdFemClient.recv()
-        return dudp
+#        dudp = LpdFemClient.recv()
+#        return dudp
+        return LpdFemClient.recv()
 
     def read_slow_ctrl_file(self, filename):
     
@@ -635,14 +635,12 @@ class LpdFemClient(FemClient):
         if block_length > max_block_length:
             block_length =  max_block_length        
         
-        # Build tuple of a list of addresses
-        addressTuple = tuple([base_addr_1+i for i in range(block_length)])
         # Build tuple of a list of data
         dataTuple = tuple([fast_cmd_data[i] for i in range(block_length)])
         # load fast control pattern memory
         #rdma_block_write(s, base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')
         print "Fast Cmd RAM\n"
-        self.rdmaWrite(addressTuple, dataTuple)
+        self.rdmaWrite(base_addr_1, dataTuple)
         
         
     ##def fem_fast_cmd_setup(self, no_of_words):
@@ -694,14 +692,12 @@ class LpdFemClient(FemClient):
         #rdma_block_write(s, base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')    
         #rdma_write(s,base_addr_0+1, block_length-1,'rw','Fast cmd block length')  # was block_length - 1 ? jc        
     
-        # Build tuple of a list of addresses
-        addressTuple = tuple([base_addr_1+i for i in range(block_length)])
         # Build tuple of a list of data
         dataTuple = tuple([fast_cmd_data+i for i in range(block_length)])
         
         # load fast control pattern memory
         print "Fast Cmd RAM\n"
-        self.rdmaWrite(addressTuple, dataTuple)
+        self.rdmaWrite(base_addr_1, dataTuple)
     
         # load control registers
         print "Fast cmd block length\n"
@@ -723,13 +719,11 @@ class LpdFemClient(FemClient):
         if block_length[1] > max_block_length:
             block_length[1] =  max_block_length
         
-        # Build tuple of a list of addresses
-        addressTuple = tuple([base_addr_1+i for i in range(block_length[1])])
         dataTuple = tuple([slow_ctrl_data+i for i in range(block_length[1])])
         
         #rdma_block_write(s, base_addr_1, block_length(1), slow_ctrl_data, 'rw', 'Slow Ctrl RAM')
         print "Slow Ctrl RAM\n"
-        self.rdmaWrite(addressTuple, dataTuple)
+        self.rdmaWrite(base_addr_1, dataTuple)
         
         # load control registers
         
@@ -843,21 +837,33 @@ class LpdFemClient(FemClient):
         
         
         
-    def type_level_steering(self, asic_rx_start_delay):
+    def top_level_steering(self, asic_rx_start_delay):
 
         # turn fast & slow buffers on
         print "asic turn on buffers"
-        self.rdmaWrite(fem_ctrl_0+5,0)
+        self.rdmaWrite(LpdFemClient.fem_ctrl_0+5, 0)
+        
         print "asic serial out readback is from bot sp3 i/o"
-        self.rdmaWrite(fem_ctrl_0+2,1)
+        self.rdmaWrite(LpdFemClient.fem_ctrl_0+2, 1)
+        
         print "asic start readout delay wrt fast cmd"
-        self.rdmaWrite(fem_ctrl_0+4, self.asic_rx_start_delay)
+        self.rdmaWrite(LpdFemClient.fem_ctrl_0+4, asic_rx_start_delay)
         
         
-
+    def check_how_much_data_arrived(self, udp_frm_sze):
+        """ Check how much UDP data that has arrived """
+        print "Amount of UDP data arrived:\n"
+        count=0
+        while ( (self.bytesavailable != udp_frm_sze) and (count <= 8) ):
+            no_bytes = LpdFemClient.bytesavailable
+            print "\n%4i" % count, "%8X" % no_bytes
+            count=count+1
+            time.sleep(0.25)
+            time.sleep(0.75)
+    
         
         
-                        
+    
         
         
          
