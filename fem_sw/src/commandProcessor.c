@@ -381,7 +381,7 @@ void commandProcessorThread()
 										}
 									}
 
-									// Make sure to not read off the end of this packet - this might not be required as all comms will be synchronous...
+									// Make sure to not read off the end of this packet - this might not be required as all comms. will be synchronous...
 									if ( pState->pHdr->payload_sz - (pState->size - sizeof(struct protocol_header)) < NET_LRG_PKT_INCREMENT_SZ )
 									{
 										numBytesToRead = pState->pHdr->payload_sz - (pState->size - sizeof(struct protocol_header));
@@ -459,7 +459,7 @@ void commandProcessorThread()
 
 						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
 						{
-							// Error occured during response
+							// Error occurred during response
 							DBGOUT("CmdProc: Error sending response packet! (has client disconnected?)\r\n");
 							// TODO: Set FEM error state
 						}
@@ -499,7 +499,7 @@ void commandProcessorThread()
 				state[j].timeoutCount++;
 				if (state[j].timeoutCount > NET_DEFAULT_TIMEOUT_LIMIT)
 				{
-					// Client has timed out :(
+					// Client has timed out
 					DBGOUT("CmdProc: Client #%d - timed out on operation.\r\n", j+1);
 					state[j].state = STATE_COMPLETE;
 				}
@@ -613,6 +613,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	int status;
 
+	unsigned short configAck = 0;
+
 	// Determine operation type
 	switch(pRxHeader->command)
 	{
@@ -626,11 +628,12 @@ void commandHandler(struct protocol_header* pRxHeader,
 			//DBGOUT("CmdDisp: CMD_INTERNAL is not currently supported!\r\n");
 
 			// DEBUGGING ONLY!
-			// Try to reset CPU - DBCR0 (SPR 0x134) bits 2:3 (=0xC)
+			// Try to reset CPU - DBCR0 (SPR 0x134) bits 2:3
 			// 00 = nothing
 			// 01 = core reset
 			// 10 = chip reset
-			// 11 = system reset
+			// 11 = system reset (0xC)
+			DBGOUT("CmdDisp: DEBUG: Asserting PPC reset!\r\n");
 			mtspr(0x134, 0xC);
 
 			break;
@@ -661,7 +664,18 @@ void commandHandler(struct protocol_header* pRxHeader,
 			{
 
 				case CMD_ACQ_CONFIG:
+
+					// Send config request
 					mboxBytesSent = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode);
+
+					// Wait for response
+					configAck = acquireConfigAckReceive();
+					if (configAck==0)
+					{
+						DBGOUT("CmdDisp: WARNING - Failed to get ACK from PPC1 for acquire config request!\r\n");
+						// TODO: Error!
+					}
+
 					break;
 
 				case CMD_ACQ_START:
@@ -876,7 +890,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 						for (i=0; i<*pRxPayload_32; i++)
 						{
 							//DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
-							//*(pTxPayload_32+i) = readRdma(pRxHeader->address + i);
 							status = readRdma( (pRxHeader->address+i) , (pTxPayload_32+i) );
 							if (status==XST_FAILURE)
 							{
@@ -896,7 +909,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 						{
 							pRxPayload_32 = (u32*)pRxPayload;
 							//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
-							//writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
 							status = writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
 							if (status==XST_FAILURE)
 							{
@@ -1032,7 +1044,7 @@ int validateHeaderContents(struct protocol_header *pHeader)
 
 		case CMD_PERSONALITY:
 			// TODO - Implement CMD_PERSONALITY checks!
-			return 0;		// For the meantime, pass any old packets to the personality modules...
+			return 0;		// For the meantime, pass any packets to the personality modules...
 			break;
 
 		case CMD_UNSUPPORTED:

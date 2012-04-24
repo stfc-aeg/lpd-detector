@@ -120,7 +120,7 @@ typedef struct
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg);
 int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
-int sendConfigCompleteMailboxMessage(XMbox *pMailbox);
+unsigned short sendConfigRequestAckMessage(XMbox *pMailbox);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
 
@@ -152,6 +152,8 @@ int main()
 
 	mailMsg msg;
     mailMsg *pMsg = &msg;
+
+    unsigned short ackOK = 0;
 
     u32 lastMode = 0;
 
@@ -233,6 +235,13 @@ int main()
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
     	//printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
+
+    	// Send ACK
+    	ackOK = sendConfigRequestAckMessage(&mbox);
+    	if (!ackOK)
+    	{
+    		print("[ERROR] Could not send config ACK to PPC1!\r\n");
+    	}
 
     	switch(pMsg->cmd)
     	{
@@ -1124,10 +1133,20 @@ int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
  * @param pMailbox pointer to XMbox
  * @return 1 on success, 0 otherwise
  */
-int sendConfigCompleteMailboxMessage(XMbox *pMailbox)
+unsigned short sendConfigRequestAckMessage(XMbox *pMailbox)
 {
-	// TODO: Implement!
-	return 0;
+	int status;
+	u32 sentBytes;
+	u32 buf = 0xA5A5FACE;		// TODO: Make constant, put in header
+	status = XMbox_Write(pMailbox, &buf, 4, &sentBytes);
+	if (status==XST_SUCCESS)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 
