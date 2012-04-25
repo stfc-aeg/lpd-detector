@@ -251,6 +251,11 @@ int main()
     	case CMD_ACQ_CONFIG:
     		// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
+			XLlDma_Reset(&dmaAsicTop);
+			XLlDma_Reset(&dmaAsicBot);
+			XLlDma_Reset(&dmaTenGig);
+			XLlDma_Reset(&dmaPixMem);
+
     	    // Cache last mode
     		lastMode = pMsg->mode;
 
@@ -614,10 +619,12 @@ int main()
 							}
 
 							// Apply a reset to the DMA engine(s), which should stop them.
+							/*
 							XLlDma_Reset(&dmaAsicTop);
 							XLlDma_Reset(&dmaAsicBot);
 							XLlDma_Reset(&dmaTenGig);
 							XLlDma_Reset(&dmaPixMem);
+							*/
 
 							break;
 
