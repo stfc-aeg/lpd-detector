@@ -13,13 +13,10 @@
 
 // Todo list, in order of priority
 // ----------------------------------------------------------------------
-// *** HIGH PRIORITY ***
-// TODO: Don't recreate BDs for acquisition if they match last run
-// TODO: Fix DMA errors after initial acquisition loop (DMA error bit set on first BD received, because of DMA engine state from last run?)
-
+// TODO: Fix configure for acquire, respect config. BD storage area
+// TODO: Improve conditional for BD config skipping
 // TODO: Update state variable->state when config in process / complete
 // TODO: Update state variables during event loop (read/writePtr)
-// TODO: Fix configure for acquire, respect config. BD storage area
 // TODO: Fix main loop acquireRunning=0 loop (is off by factor of 2 at present)
 // TODO: Graceful stop when pending events exist
 // TODO: Refactor data counter variables and main event loop
@@ -251,6 +248,7 @@ int main()
     	case CMD_ACQ_CONFIG:
     		// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
+    		// Ensure DMA engines are in a stable state, and stopped!
 			XLlDma_Reset(&dmaAsicTop);
 			XLlDma_Reset(&dmaAsicBot);
 			XLlDma_Reset(&dmaTenGig);
@@ -618,14 +616,6 @@ int main()
 								acquireRunning = 0;
 							}
 
-							// Apply a reset to the DMA engine(s), which should stop them.
-							/*
-							XLlDma_Reset(&dmaAsicTop);
-							XLlDma_Reset(&dmaAsicBot);
-							XLlDma_Reset(&dmaTenGig);
-							XLlDma_Reset(&dmaPixMem);
-							*/
-
 							break;
 
 						default:
@@ -746,13 +736,39 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 
 	// TODO: Respect the reserved BD config. area!
 
+	unsigned status;
+	XLlDma_BdRing *pRingTenGig = pBdRings[BD_RING_TENGIG];
+	XLlDma_BdRing *pRingAsicTop = pBdRings[BD_RING_TOP_ASIC];
+	XLlDma_BdRing *pRingAsicBot = pBdRings[BD_RING_BOT_ASIC];
+
 	// Check if we can re-use BDs to save time configuring
 	// TODO: Improve this conditional to better match requirements
 	if ((bufferSz==pStatusBlock->bufferSize) && (bufferCnt==pStatusBlock->bufferCnt))
 	{
 		printf("[INFO ] Parameters for buffer size and count match last configuration, reusing BDs!\r\n");
 
-		// This is very quick and dirty but works so far...
+		// Start RX engines
+		status = XLlDma_BdRingStart(pRingAsicTop);
+		if (status!=XST_SUCCESS)
+		{
+			print("[ERROR] Can't start top ASIC RX engine, no initialised BDs!\r\n");
+			return status;
+		}
+		status = XLlDma_BdRingStart(pRingAsicBot);
+		if (status!=XST_SUCCESS)
+		{
+			print("[ERROR] Can't start top ASIC RX engine, no initialised BDs!\r\n");
+			return status;
+		}
+
+		// Start TX engine
+		status = XLlDma_BdRingStart(pRingTenGig);
+		if (status!=XST_SUCCESS)
+		{
+			print("[ERROR] Can't start 10GBe TX engine, no initialised BDs!\r\n");
+			return status;
+		}
+
 		return XST_SUCCESS;
 	}
 
@@ -770,11 +786,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	XTime startGBeTxRingAlloc, endGBeTxRingAlloc;
 #endif
 
-	XLlDma_BdRing *pRingTenGig = pBdRings[BD_RING_TENGIG];
-	XLlDma_BdRing *pRingAsicTop = pBdRings[BD_RING_TOP_ASIC];
-	XLlDma_BdRing *pRingAsicBot = pBdRings[BD_RING_BOT_ASIC];
-
-	unsigned status;
 	u32 totalNumBuffers = 0;				// Maximum number of buffers we can allocate
 	u32 bankSize = DDR2_SZ / 2;				// We have 2 DDR2 'banks', one for each I/O Spartan
 
