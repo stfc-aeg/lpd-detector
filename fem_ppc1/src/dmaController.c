@@ -20,7 +20,9 @@
 // TODO: Update state variable->state when config in process / complete
 // TODO: Update state variables during event loop (read/writePtr)
 // TODO: Fix configure for acquire, respect config. BD storage area
+// TODO: Fix main loop acquireRunning=0 loop (is off by factor of 2 at present)
 // TODO: Graceful stop when pending events exist
+// TODO: Refactor data counter variables and main event loop
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -147,44 +149,39 @@ int main()
 
     // Flags and main loop variables
     int status, i;
+    unsigned short ackOK = 0;
 
+    // BD pointers
     XLlDma_Bd *pTenGigPreHW;
 	XLlDma_Bd *pTenGigPostHW;
 	XLlDma_Bd *pConfigBd;
+	XLlDma_Bd *pTopAsicBd;		// Moved from main acquire loop
+	XLlDma_Bd *pBotAsicBd;		// Moved from main acquire loop
 
-	// Moved from main acquire loop
-	XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
-
+	// Mailbox stuff
 	mailMsg msg;
     mailMsg *pMsg = &msg;
 
-    unsigned short ackOK = 0;
-
-    u32 lastMode = 0;
-
+    // State variables
+    u32 lastMode = 0;					// Caches last mode used for acquire
 	unsigned short acquireRunning = 0;	// Acquire control flag
 	unsigned short doRx = 0;			// RX control flag for main loop
 	unsigned short doTx = 0;			// TX control flag for main loop
-    unsigned numTx = 0;
 
+	// Data counters
+    unsigned short numUploadTx = 0;		// Number of configuration upload BDs
     u64 numTopAsicRxComplete = 0;		// Counts number of RXes from top ASIC
     u64 numBotAsicRxComplete = 0;		// Counts number of RXes from bottom ASIC
     u64 lastNumTopAsicRxComplete = 0;
     u64 lastNumBotAsicRxComplete = 0;
-
     u64 numRxPairsComplete = 0;			// Counter for number of completed & validated RX across both ASICs
-
     u64 numTxPairsSent = 0;				// Counter for TXes sent (but not verified as complete)
-
     unsigned short tempTxCounter = 0;	// Used to track how many single TXes (before they are grouped into pairs)
-
     u64 numTenGigTxComplete = 0;		// Counter for number of completed TX for 10GBe
-
     unsigned short numConfigBdsToProcess = 0;
 
-
-
 #ifdef DEBUG_BD
+    // For BD debugging
     u32 bdSts, bdLen, bdAddr;
 #endif
 
@@ -615,6 +612,13 @@ int main()
 								printf("[DEBUG] Stopping anyway...\r\n");
 								acquireRunning = 0;
 							}
+
+							// Apply a reset to the DMA engine(s), which should stop them.
+							XLlDma_Reset(&dmaAsicTop);
+							XLlDma_Reset(&dmaAsicBot);
+							XLlDma_Reset(&dmaTenGig);
+							XLlDma_Reset(&dmaPixMem);
+
 							break;
 
 						default:
@@ -662,8 +666,8 @@ int main()
 					while (numConfigBdsToProcess>0)
 					{
 
-						numTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
-						for(i=0; i<numTx; i++)
+						numUploadTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
+						for(i=0; i<numUploadTx; i++)
 						{
 							status = validateBuffer(pBdRings[BD_RING_UPLOAD], pConfigBd, BD_TX);
 							if (status!=XST_SUCCESS)
@@ -677,7 +681,7 @@ int main()
 							}
 							pConfigBd = XLlDma_BdRingNext(pBdRings[BD_RING_UPLOAD], pConfigBd);
 						}
-						numConfigBdsToProcess -= numTx;
+						numConfigBdsToProcess -= numUploadTx;
 
 					}
 
@@ -735,13 +739,13 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 
 	// TODO: Respect the reserved BD config. area!
 
-	//unsigned short reuseBds = 0;
-
 	// Check if we can re-use BDs to save time configuring
+	// TODO: Improve this conditional to better match requirements
 	if ((bufferSz==pStatusBlock->bufferSize) && (bufferCnt==pStatusBlock->bufferCnt))
 	{
 		printf("[INFO ] Parameters for buffer size and count match last configuration, reusing BDs!\r\n");
-		//reuseBds = 1;
+
+		// This is very quick and dirty but works so far...
 		return XST_SUCCESS;
 	}
 
@@ -1274,4 +1278,3 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 	return XST_SUCCESS;
 }
-
