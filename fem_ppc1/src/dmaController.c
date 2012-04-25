@@ -29,16 +29,10 @@
 #include "xil_testmem.h"
 
 // Compile time switches
-//#define PROFILE_SPEED		1
 #define DEBUG_BD			1
 
 // TODO: Remove this once DMA event loop verified OK!
 //#define VERBOSE_DEBUG		1
-
-// For profiling BD configuration speed
-#ifdef PROFILE_SPEED
-#include "xtime_l.h"
-#endif
 
 // TODO: Move defines, function prototypes to header!
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
@@ -131,9 +125,10 @@ int main()
 {
     init_platform();
 
+    int i;
+
 	// Clear serial console
-	int foo;
-	for (foo=0; foo<100; foo++) { print("\r\n"); }
+	for (i=0; i<100; i++) { print("\r\n"); }
 
 	// Dump a little diagnostic info
     print("[INFO ] FEM PPC1 DMA Controller starting up...\r\n");
@@ -145,7 +140,7 @@ int main()
     print("[INFO ] ------------------------------------------------\r\n");
 
     // Flags and main loop variables
-    int status, i;
+    int status;
     unsigned short ackOK = 0;
 
     // BD pointers
@@ -332,8 +327,6 @@ int main()
 	    	    lastNumBotAsicRxComplete = 0;
 	    	    numTxPairsSent = 0;
 	    	    numTenGigTxComplete = 0;
-
-				//XLlDma_Bd *pTopAsicBd, *pBotAsicBd;
 
 				int numBDFromTopAsic = 0;
 				int numBDFromBotAsic = 0;
@@ -722,12 +715,13 @@ int main()
 
 
 /*
- * Generic DMA setup function, accepts segment size (size of data to RX from I/O Spartan),
+ * Generic DMA setup function, accepts segment size (size of data to RX from I/O FPGA),
  * and segment count (to limit the number of BDs created for debugging / #-frame mode)
  * @param pBdRings pointer to array of BD rings
  * @param pFirstTxBd set by function to be first BD in TX ring
- * @param segmentSz Size of data to RX from I/O Spartan
- * @param segmentCnt Number of segments to allocate, set to 0 for allocation of maximum BDs
+ * @param bufferSz Size of data buffer to RX from I/O FPGA
+ * @param bufferCnt Number of buffers to allocate, set to 0 for allocation of maximum BDs
+ * @param pStatusBlock pointer to status struct, updated by function
  * @return XST_SUCCESS if OK, otherwise an XST_xxx error code
  *
  */
@@ -741,11 +735,10 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	XLlDma_BdRing *pRingAsicTop = pBdRings[BD_RING_TOP_ASIC];
 	XLlDma_BdRing *pRingAsicBot = pBdRings[BD_RING_BOT_ASIC];
 
-	// Check if we can re-use BDs to save time configuring
-	// TODO: Improve this conditional to better match requirements
-	if ((bufferSz==pStatusBlock->bufferSize) && (bufferCnt==pStatusBlock->bufferCnt))
+	// Check if we can re-use BDs to save time configuring them
+	if ( bufferSz==pStatusBlock->bufferSize && (bufferCnt<=pStatusBlock->bufferCnt) )			// Size must match, count can be equal or less than
 	{
-		printf("[INFO ] Parameters for buffer size and count match last configuration, reusing BDs!\r\n");
+		printf("[INFO ] Parameters for buffer size and count match last configuration, reusing existing BDs!\r\n");
 
 		// Start RX engines
 		status = XLlDma_BdRingStart(pRingAsicTop);
@@ -771,20 +764,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 
 		return XST_SUCCESS;
 	}
-
-	// If we are reusing BDs then we can assume that the last acquisition completed successfully.
-	// i.e. all RX BDs are committed to HW, and no TXes are.
-
-#ifdef PROFILE_SPEED
-	XTime startRxBdConf, endRxBdConf;
-	XTime startTxBdConf, endTxBdConf;
-	XTime startTopRxRingCreate, endTopRxRingCreate;
-	XTime startBotRxRingCreate, endBotRxRingCreate;
-	XTime startGBeTxRingCreate, endGBeTxRingCreate;
-	XTime startTopRxRingAlloc, endTopRxRingAlloc;
-	XTime startBotRxRingAlloc, endBotRxRingAlloc;
-	XTime startGBeTxRingAlloc, endGBeTxRingAlloc;
-#endif
 
 	u32 totalNumBuffers = 0;				// Maximum number of buffers we can allocate
 	u32 bankSize = DDR2_SZ / 2;				// We have 2 DDR2 'banks', one for each I/O Spartan
@@ -835,10 +814,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	printf("[INFO ] Bottom ASIC  0x%08x\r\n", (unsigned)botAsicRXBdOffset);
 	printf("[INFO ] TenGig       0x%08x\r\n", (unsigned)tenGigTXBdOffset);
 
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&startTopRxRingCreate);
-#endif
-
 	status = XLlDma_BdRingCreate(pRingAsicTop, topAsicRXBdOffset, topAsicRXBdOffset, LL_DMA_ALIGNMENT, totalNumBuffers);
 	if (status!=XST_SUCCESS)
 	{
@@ -846,22 +821,12 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		return status;
 	}
 
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endTopRxRingCreate);
-	XTime_GetTime(&startBotRxRingCreate);
-#endif
-
 	status = XLlDma_BdRingCreate(pRingAsicBot, botAsicRXBdOffset, botAsicRXBdOffset, LL_DMA_ALIGNMENT, totalNumBuffers);
 	if (status!=XST_SUCCESS)
 	{
 		printf("[ERROR] Can't create bottom ASIC RX BD ring!  Error code %d\r\n", status);
 		return status;
 	}
-
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endBotRxRingCreate);
-	XTime_GetTime(&startGBeTxRingCreate);
-#endif
 
 	// Note the TX ring is double the length of the RX rings!
 	status = XLlDma_BdRingCreate(pRingTenGig, tenGigTXBdOffset, tenGigTXBdOffset, LL_DMA_ALIGNMENT, totalNumBuffers*2);
@@ -871,10 +836,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		return status;
 	}
 
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endGBeTxRingCreate);
-#endif
-
 	printf("[INFO ] Created BD rings w/%d buffers each.\r\n", (int)totalNumBuffers);
 
 
@@ -883,10 +844,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	XLlDma_Bd *pBotRXBd;
 	XLlDma_Bd *pTXBd;
 
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&startTopRxRingAlloc);
-#endif
-
 	// First allocate a BD for each ring
 	status = XLlDma_BdRingAlloc(pRingAsicTop, totalNumBuffers, &pTopRXBd);
 	if (status!=XST_SUCCESS) {
@@ -894,31 +851,17 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		return status;
 	}
 
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endTopRxRingAlloc);
-	XTime_GetTime(&startBotRxRingAlloc);
-#endif
-
 	status = XLlDma_BdRingAlloc(pRingAsicBot, totalNumBuffers, &pBotRXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate bottom ASIC RX BD!\r\n");
 		return status;
 	}
 
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endBotRxRingAlloc);
-	XTime_GetTime(&startGBeTxRingAlloc);
-#endif
-
 	status = XLlDma_BdRingAlloc(pRingTenGig, totalNumBuffers*2, &pTXBd);
 	if (status!=XST_SUCCESS) {
 		print ("[ERROR] Failed to allocate tengig TX BD!\r\n");
 		return status;
 	}
-
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endGBeTxRingAlloc);
-#endif
 
 	print("[INFO ] Starting BD configuration...\r\n");
 
@@ -935,10 +878,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	u32 currentOffset = 0;
 	u32 topAsicBufferAddress = DDR2_BADDR;
 	u32 botAsicBufferAddress = bankSize;
-
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&startRxBdConf);
-#endif
 
 	// RX rings
 	for (i=0; i<totalNumBuffers; i++)
@@ -961,11 +900,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		pBotRXBd = XLlDma_BdRingNext(pRingAsicBot, pBotRXBd);
 	}
 
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endRxBdConf);
-	XTime_GetTime(&startTxBdConf);
-#endif
-
 	// TX ring
 	currentOffset = 0;
 	for (i=0; i<totalNumBuffers; i++)
@@ -984,40 +918,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 
 		currentOffset += bufferSz;
 	}
-
-#ifdef PROFILE_SPEED
-	XTime_GetTime(&endTxBdConf);
-	print("[DEBUG] ------------------------------------------------\r\n");
-	printf("[DEBUG] BD Config timing:\r\n");
-	printf("[DEBUG] Ticks to create Top ASIC RX      = %llu\r\n", (endTopRxRingCreate-startTopRxRingCreate));
-	printf("[DEBUG] Ticks to create Bot ASIC RX      = %llu\r\n", (endBotRxRingCreate-startBotRxRingCreate));
-	printf("[DEBUG] Ticks to create GBe ASIC TX      = %llu\r\n", (endGBeTxRingCreate-startGBeTxRingCreate));
-	printf("[DEBUG] Ticks to alloc  Top ASIC RX      = %llu\r\n", (endTopRxRingAlloc-startTopRxRingAlloc));
-	printf("[DEBUG] Ticks to alloc  Bot ASIC RX      = %llu\r\n", (endBotRxRingAlloc-startBotRxRingAlloc));
-	printf("[DEBUG] Ticks to alloc  GBe ASIC TX      = %llu\r\n", (endGBeTxRingAlloc-startGBeTxRingAlloc));
-	printf("[DEBUG] Ticks to configure RX BDs        = %llu\r\n", (endRxBdConf-startRxBdConf));
-	printf("[DEBUG] Ticks to configure TX BDs        = %llu\r\n", (endTxBdConf-startTxBdConf));
-
-	unsigned long long totalTime =	(endTopRxRingCreate-startTopRxRingCreate) +
-									(endBotRxRingCreate-startBotRxRingCreate) +
-									(endGBeTxRingCreate-startGBeTxRingCreate) +
-									(endTopRxRingAlloc-startTopRxRingAlloc) +
-									(endBotRxRingAlloc-startBotRxRingAlloc) +
-									(endGBeTxRingAlloc-startGBeTxRingAlloc) +
-									(endRxBdConf-startRxBdConf) +
-									(endTxBdConf-startTxBdConf);
-
-	int totalTimeMs = totalTime / 100000;
-
-	int timeRxConfNs = (((endRxBdConf-startRxBdConf) / (totalNumBuffers*2)) / 100);
-	int timeTxConfNs = (((endTxBdConf-startTxBdConf) / (totalNumBuffers*2)) / 100);
-
-	printf("[DEBUG] Total time for %d BDs: %llu ticks, %dms.\r\n", (unsigned)totalNumBuffers, totalTime, totalTimeMs);
-	printf("[DEBUG] Time per RX BD               %dns\r\n", timeRxConfNs);
-	printf("[DEBUG] Time per TX BD               %dns\r\n", timeTxConfNs);
-	print("[DEBUG] ------------------------------------------------\r\n");
-
-#endif
 
 	print("[INFO ] Completed BD configuration!\r\n");
 
