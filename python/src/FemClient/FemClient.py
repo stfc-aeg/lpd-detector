@@ -24,7 +24,7 @@ class FemClientError(Exception):
     def __str__(self):
         return repr(self.msg)
     
-class FemClient():
+class FemClient(object):
     '''
     classdocs
     '''
