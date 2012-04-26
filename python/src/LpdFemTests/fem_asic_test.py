@@ -383,9 +383,6 @@ class FemAsicTest():
         #
         #colorbar('location', 'eastoutside');
         #title(['frame ',num2str(frame_nr)]);
-        
-        # report any bytes remaining in buffer
-        #u.bytesavailable                                    # Redundant?
 
 if __name__ == "__main__":
     femAsicTest = FemAsicTest()
