@@ -116,42 +116,43 @@ class LpdFemClient(FemClient):
         
         reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
     
-        reg2b = ((net['src_mac'] & 0x0000FFFF000000) >> 32)
-        reg2t = ((net['dst_mac'] & 0x000000000000FF) << 16)
+        reg2b = ((net['src_mac'] & 0x0000FFFF00000000) >> 32)
+        reg2t = ((net['dst_mac'] & 0x000000000000FFFF) << 16)
         reg2 = (reg2b | reg2t)
     
         reg3 = (net['dst_mac'] >> 16)
 
-        print "# src_mac_lower_32\n"
+        print "# src_mac_lower_32"
         self.rdmaWrite(base_addr+0, reg1)
-        print "# dst_mac_lower_16 & src_mac_upper_16\n"
+        print "# dst_mac_lower_16 & src_mac_upper_16"
         self.rdmaWrite(base_addr+1, reg2)
-        print "# dst_mac_upper_32\n"
+        print "# dst_mac_upper_32"
         self.rdmaWrite(base_addr+2, reg3)
         
         #set up IP address for SRC & destination
-        print "Reading IP address for Src & destination..\n"
-        reg6b = self.rdmaRead(base_addr+6, 1)
-    
-        reg6b = (reg6b & 0x0000FF)
-        reg6 =  (net['dst_ip'] << 16)
+        print "Reading IP address for Src & destination.."
+        reg6b = self.rdmaRead(base_addr+6, 1)[1]
+#        reg6b = 0xA1B2C3D4
+        reg6b = (reg6b & 0x0000FFFF)
+        reg6 =  ( (net['dst_ip'] << 16)  & 0xFFFFFFFF )
         reg6 =  (reg6 | reg6b)
     
         reg7 =  (net['dst_ip'] >> 16)
-        reg7 =  (reg7 | (net['src_ip'] << 16))
-        reg8t = self.rdmaRead(base_addr+8, 1)    # 1 = 1 32 bit unsigned integer?
-    
-        reg8t = (reg8t & 0xFFFF00)
+        reg7 = ( (reg7 | (net['src_ip'] << 16)) & 0xFFFFFFFF )
+        
+        reg8t = self.rdmaRead(base_addr+8, 1)[1]    # 1 = one 32 bit unsigned integer
+#        reg8t = 0x9F8E7D6C
+        reg8t = (reg8t & 0xFFFF0000)
         reg8b =  (net['src_ip'] >> 16)
         reg8 =  (reg8t | reg8b)
-    
-        print "Writing to reg6, reg7 & reg8..\n"
+
+#        print hex(reg6), "\n", hex(reg7), "\n", hex(reg8)        
+        print "Writing to reg6, reg7 & reg8.."
         self.rdmaWrite(base_addr+6, reg6)    
         self.rdmaWrite(base_addr+7, reg7)
         self.rdmaWrite(base_addr+8, reg8)
     
         self.rdmaRead(base_addr+9, 1)    
-        return 1
 
     def fem_10g_udp_net_set_up_block1(self, net):
         #set up MAC address for SRC & destination
@@ -159,42 +160,44 @@ class LpdFemClient(FemClient):
         
         reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
     
-        reg2b = ((net['src_mac'] & 0x0000FFFF000000) >> 32)
-        reg2t = ((net['dst_mac'] & 0x000000000000FF) << 16)
+        reg2b = ((net['src_mac'] & 0x0000FFFF00000000) >> 32)
+        reg2t = ((net['dst_mac'] & 0x000000000000FFFF) << 16)
         reg2 = (reg2b | reg2t)
     
         reg3 = (net['dst_mac'] >> 16)
 
-        print "# src_mac_lower_32\n"
+        print "# src_mac_lower_32"
         self.rdmaWrite(base_addr+0, reg1)
-        print "# dst_mac_lower_16 & src_mac_upper_16\n"
+        print "# dst_mac_lower_16 & src_mac_upper_16"
         self.rdmaWrite(base_addr+1, reg2)
-        print "# dst_mac_upper_32\n"
+        print "# dst_mac_upper_32"
         self.rdmaWrite(base_addr+2, reg3)
         
         #set up IP address for SRC & destination
-        print "Reading IP address for Src & destination..\n"
-        reg6b = self.rdmaRead(base_addr+6, 1)
+        print "Reading IP address for Src & destination.."
+        reg6b = self.rdmaRead(base_addr+6, 1)[1]
+#        reg6b = 0xA1B2C3D4
     
-        reg6b = (reg6b & 0x0000FF)
-        reg6 =  (net['dst_ip'] << 16)
+        reg6b = (reg6b & 0x0000FFFF)
+        reg6 =  ( (net['dst_ip'] << 16) & 0xFFFFFFFF )
         reg6 =  (reg6 | reg6b)
     
         reg7 =  (net['dst_ip'] >> 16)
-        reg7 =  (reg7 | (net['src_ip'] << 16))
-        reg8t = self.rdmaRead(base_addr+8, 1)    # 1 = 1 32 bit unsigned integer?
+        reg7 =  ( (reg7 | (net['src_ip'] << 16)) & 0xFFFFFFFF )
+        
+        reg8t = self.rdmaRead(base_addr+8, 1)[1]    # 1 = one 32 bit unsigned integer
+#        reg8t = 0x9F8E7D6C
+        reg8t = (reg8t & 0xFFFF0000)
+        reg8b = (net['src_ip'] >> 16)
+        reg8 =  (reg8t | reg8b)        
     
-        reg8t = (reg8t & 0xFFFF00)
-        reg8b =  (net['src_ip'] >> 16)
-        reg8 =  (reg8t | reg8b)
-    
-        print "Writing to reg6, reg7 & reg8..\n"
+#        print hex(reg6), "\n", hex(reg7), "\n", hex(reg8)
+        print "Writing to reg6, reg7 & reg8.."
         self.rdmaWrite(base_addr+6, reg6)    
         self.rdmaWrite(base_addr+7, reg7)
         self.rdmaWrite(base_addr+8, reg8)
     
         self.rdmaRead(base_addr+9, 1)    
-        return 1
     
     def fem_local_link_mux_setup(self, output_data_source):
         # set up local link mux
@@ -202,12 +205,11 @@ class LpdFemClient(FemClient):
     
         reg1 = 0x00000001 | base_addr
     
-        if output_data_source == 0:          
-            print "local link mux ouput 0\n"
+        if output_data_source == 0:
+            print "local link mux ouput 0"
             self.rdmaWrite(reg1, 0x00000000)
         else:
-    #        rdma_write(sCom,reg1,0x00000001, 'rw','local link mux output 1');
-            print "local link mux output 1\n"
+            print "local link mux output 1"
             self.rdmaWrite(reg1, 0x00000001)
         
         return 1
@@ -220,9 +222,6 @@ class LpdFemClient(FemClient):
         bits_off = 0
         bits_on  = bit_pat
         
-    #    rdma_write(s,address,bits_off,'rw','')
-    #    rdma_write(s,address,bits_on, 'rw','')
-    #    rdma_write(s,address,bits_off,'rw','')
         print "target_bits() executing rdmaWrite.."
         self.rdmaWrite(address,bits_off)
         self.rdmaWrite(address,bits_on)
@@ -237,51 +236,33 @@ class LpdFemClient(FemClient):
         
         #input monitor registers are offset from base address by 16
         mon_addr = LpdFemClient.llink_mon_0 + 16
+
+        print "frm_last_length:\t",         self.rdmaRead(mon_addr+0, 1)[1]
+        print "frm_max_length: \t",         self.rdmaRead(mon_addr+1, 1)[1]
+        print "frm_min_length: \t",         self.rdmaRead(mon_addr+2, 1)[1]
+        print "frm_number:\t\t",            self.rdmaRead(mon_addr+3, 1)[1]
+        print "frm_last_cycles:\t",         self.rdmaRead(mon_addr+4, 1)[1]
+        print "frm_max_cycles: \t",         self.rdmaRead(mon_addr+5, 1)[1]
+        print "frm_min_cycles: \t",         self.rdmaRead(mon_addr+6, 1)[1] 
+        total_data = self.rdmaRead(mon_addr+7, 1)[1]
+        print "frm_data_total: \t", total_data         
+        total_cycles = self.rdmaRead(mon_addr+8, 1)[1]
+        print "frm_cycle_total:\t", total_cycles
+        print "frm_trig_count: \t",         self.rdmaRead(mon_addr+9, 1)[1]
+        print "frm_in_progress:\t",         self.rdmaRead(mon_addr+15, 1)[1]
         
-    #    rdma_read(s,mon_addr+0,'r','frm_last_length')
-    #    rdma_read(s,mon_addr+1,'r','frm_max_length')
-    #    rdma_read(s,mon_addr+2,'r','frm_min_length')
-    #    rdma_read(s,mon_addr+3,'r','frm_number')
-    #    rdma_read(s,mon_addr+4,'r','frm_last_cycles')
-    #    rdma_read(s,mon_addr+5,'r','frm_max_cycles')
-    #    rdma_read(s,mon_addr+6,'r','frm_min_cycles')
-    #    total_data = rdma_read(s,mon_addr+7,'r','frm_data_total')
-    #    total_cycles = rdma_read(s,mon_addr+8,'r','frm_cycle_total')
-    #    rdma_read(s,mon_addr+9,'r','frm_trig_count')
-    #    rdma_read(s,mon_addr+15,'r','frm_in_progress')
-        
-        print "frm_last_length"
-        self.rdmaWrite(mon_addr+0)
-        print "frm_max_length"
-        self.rdmaWrite(mon_addr+1)
-        print "frm_min_length"
-        self.rdmaWrite(mon_addr+2)
-        print "frm_number"
-        self.rdmaWrite(mon_addr+3)
-        print "frm_last_cycles"
-        self.rdmaWrite(mon_addr+4)
-        print "frm_max_cycles"
-        self.rdmaWrite(mon_addr+5)
-        print "frm_min_cycles"
-        self.rdmaWrite(mon_addr+6)
-        print "frm_data_total"
-        total_data = self.rdmaWrite(mon_addr+7)
-        print "frm_cycle_total"
-        total_cycles = self.rdmaWrite(mon_addr+8)
-        print "frm_trig_count"
-        self.rdmaWrite(mon_addr+9)
-        print "frm_in_progress"
-        self.rdmaWrite(mon_addr+15)
-           
         # data path = 64 bit, clock = 156.25 MHz
-        total_time = total_cycles * (1/156.25e6)
-        rate = (total_data/total_time) * 8
+        total_time = float(total_cycles) * (1/156.25e6)
+        if (total_time):
+            rate = (total_data/total_time) * 8
+        else:
+            rate = 0
+            
+        print "Data Total = %e" % total_data
+        print "Data Time = %e" % total_time
+        print "Data Rate = %e" % rate
         
-        print "\nData Total = %e" % total_data
-        print "\nData Time = %e" % total_time
-        print "\nData Rate = %e" % rate
-        
-        print "\n\n"
+        print ""
         
         return 1
     
@@ -291,16 +272,13 @@ class LpdFemClient(FemClient):
         base_address = LpdFemClient.data_gen_0
         # frm gen - n.b. top nibble/2 - move to data gen setup
         reg_length = length - 2
-        #rdma_write(s,    base_address+1, reg_length,'rw','DATA GEN Data Length')
-        #rdma_write(sCom, address,        data,      type,description)
-        print "DATA GEN Data Length\n"
+        print "DATA GEN Data Length"
         self.rdmaWrite(base_address+1,reg_length)
     
         control_reg = data_type & 0x00000003
         control_reg = control_reg << 4
     
-        #rdma_write(s,        base_address+4, control_reg,'rw','DATA GEN Data Type')
-        print "DATA GEN Data Type\n"
+        print "DATA GEN Data Type"
         self.rdmaWrite(base_address+4, control_reg)
     
         if data_type == 0:
@@ -316,23 +294,17 @@ class LpdFemClient(FemClient):
             data_0 = 0xFFFFFFFF
             data_1 = 0xFFFFFFFF
     
-        #rdma_write(s,        base_address+5,data_0,'rw','DATA GEN Data Init 0')
         print "DATA GEN Data Init 0"
         self.rdmaWrite(base_address+5,data_0)
-        #rdma_write(s,        base_address+6,data_1,'rw','DATA GEN Data Init 1')
+
         print "DATA GEN Data Init 1"
         self.rdmaWrite(base_address+6,data_1)
     
         # Data Gen soft reset
-        #rdma_write(s,        base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
-        #rdma_write(s,        base_address+0,0x00000001,'rw','DATA GEN Internal Reset')
-        #rdma_write(s,        base_address+0,0x00000000,'rw','DATA GEN Internal Reset')
-        print "DATA GEN Internal Reset\n"
+        print "DATA GEN Internal Reset"
         self.rdmaWrite(base_address+0,0x00000000)    
         self.rdmaWrite(base_address+0,0x00000001)
         self.rdmaWrite(base_address+0,0x00000000)
-    
-        return 1
     
     
     def fem_10g_udp_set_up_block0(self, udp_pkt_len, udp_frm_sze, eth_ifg):
@@ -369,25 +341,23 @@ class LpdFemClient(FemClient):
         
         # set 8 x 8 Byte Packets
         data0 = ((udp_pkt_len/8)-2)
-        print "UDP Block Packet Size\n"
+        print "UDP Block Packet Size"
         self.rdmaWrite(base_addr + 0x0000000C, data0)
         
-#        # set IP header length + 64 Bytes
-#        data1 = 0xDB000000 + ip_hdr_len
-#        print "UDP Block IP Header Length\n"
-#        self.rdmaWrite(base_addr + 0x00000004, data1)    
+        # set IP header length + 64 Bytes
+        data1 = 0xDB000000 + ip_hdr_len      
+        print "UDP Block IP Header Length"
+        self.rdmaWrite(base_addr + 0x00000004, data1)    
         
         # set udp length +64 Bytes
         data2 = 0x0000D1F0 + udp_hdr_len
-        print "UDP Block UDP Length\n"
+        print "UDP Block UDP Length"
         self.rdmaWrite(base_addr + 0x00000009, data2)
         
         # enable & set IFG
-        print "UDP Block IFG\n"
+        print "UDP Block IFG"
         self.rdmaWrite(base_addr + 0x0000000F, ctrl_reg_val)
         self.rdmaWrite(base_addr + 0x0000000D, eth_ifg)
-        
-        return 1
     
     def fem_10g_udp_set_up_block1(self, udp_pkt_len, udp_frm_sze, eth_ifg):
     
@@ -423,21 +393,21 @@ class LpdFemClient(FemClient):
         
         # set 8 x 8 Byte Packets
         data0 = ((udp_pkt_len/8)-2)
-        print "UDP Block Packet Size\n"
+        print "UDP Block Packet Size"
         self.rdmaWrite(base_addr + 0x0000000C, data0)
         
-#        # set IP header length + 64 Bytes
-#        data1 = 0xDB000000 + ip_hdr_len
-#        print "UDP Block IP Header Length\n"
-#        self.rdmaWrite(base_addr + 0x00000004, data1)    
+        # set IP header length + 64 Bytes
+        data1 = 0xDB000000 + ip_hdr_len
+        print "UDP Block IP Header Length"
+        self.rdmaWrite(base_addr + 0x00000004, data1)    
         
         # set udp length +64 Bytes
         data2 = 0x0000D1F0 + udp_hdr_len
-        print "UDP Block UDP Length\n"
+        print "UDP Block UDP Length"
         self.rdmaWrite(base_addr + 0x00000009, data2)
         
         # enable & set IFG
-        print "UDP Block IFG\n"
+        print "UDP Block IFG"
         self.rdmaWrite(base_addr + 0x0000000F, ctrl_reg_val)
         self.rdmaWrite(base_addr + 0x0000000D, eth_ifg)
         
@@ -448,9 +418,9 @@ class LpdFemClient(FemClient):
         packet_header_10g_0 = (0x0000000 | LpdFemClient.udp_10g_0)
         packet_header_10g_1 = (0x0000000 | LpdFemClient.udp_10g_1)
         
-        print "robs udp packet header 10g_0\n"
+        print "robs udp packet header 10g_0"
         self.rdmaWrite(packet_header_10g_0, robs_udp_packet_hdr)
-        print "robs udp packet header 10g_1\n"
+        print "robs udp packet header 10g_1"
         self.rdmaWrite(packet_header_10g_1, robs_udp_packet_hdr)
 
     def frame_generator_set_up_10g(self, data_gen_0_offset, num_ll_frames):
@@ -458,26 +428,30 @@ class LpdFemClient(FemClient):
         #rdma_write(    data_gen_0+2, num_ll_frames+1,'rw','DATA GEN Nr Frames');
         # data_gen_0 = LpdFemClient.data_gen_0
         # num_ll_frames = defined in fem_asic_test; +1 added to num_ ll_frame argument when this function is called
-        print "DATA GEN Nr Frames\n"
+        print "DATA GEN Nr Frames"
         #rdma_write(    data_gen_0+data_gen_0_offset, num_ll_frames)
-        LpdFemClient.rdmaWrite(LpdFemClient.data_gen_0+data_gen_0_offset, num_ll_frames)
+        self.rdmaWrite(LpdFemClient.data_gen_0+data_gen_0_offset, num_ll_frames)
 
     def recv_image_data_as_packet(self, udp_pkt_num, dudp, packet_size): 
         # loop to read udp frame packet by packet
-        for i in range(0,udp_pkt_num-1, 1):
-            # TODO: Will next packet overwrite previous packet?
-            dudp = LpdFemClient.recv()
-            # Or use read() function:  ->   #dudp = myFemClient.read(theBus, theWidth, theAddr, theReadLen)    ??
-            print "\n%4i %8X %8X %8X %8X" % (i, dudp(1),dudp(2),dudp(3),dudp(packet_size))
-            #dudp = uint32(fread(u, packet_size, 'uint16'));
-            #fprintf('\n%04i %08X %08X %08X %08X',i, dudp(1),dudp(2),dudp(3),dudp(packet_size));
+#        for i in range(0,udp_pkt_num-1, 1):
+#             TODO: Will next packet overwrite previous packet?
+#            dudp = LpdFemClient.recv()
+#             Or use read() function:  ->   #dudp = myFemClient.read(theBus, theWidth, theAddr, theReadLen)    ??
+#            print "%4i %8X %8X %8X %8X" % (i, dudp(1),dudp(2),dudp(3),dudp(packet_size))
+#            dudp = uint32(fread(u, packet_size, 'uint16'));
+#            fprintf('%04i %08X %08X %08X %08X',i, dudp(1),dudp(2),dudp(3),dudp(packet_size));
+#        return dudp
+        dudp = []
         return dudp
     
     def recv_image_data_as_frame(self, dudp):
 #        dudp = LpdFemClient.recv()
 #        return dudp
-        return LpdFemClient.recv()
-
+#        return self.recv()
+        dudp = []
+        return dudp 
+    
     def read_slow_ctrl_file(self, filename):
     
         slow_ctrl_file = open(filename, 'r')
@@ -489,9 +463,6 @@ class LpdFemClient(FemClient):
             ivals = [int(val) for val in split(strip(line))]
             data.append(ivals)
             
-        #print data[0][0], data[0][1], data[0][2], data[0][3], data[0][4]
-        #print data[1][0], data[1][1], data[1][2], data[1][3], data[1][4]
-        #print len(data), len(data[0])
         i_max = len(data)
 #        j_max = len(data[0])
         
@@ -524,10 +495,7 @@ class LpdFemClient(FemClient):
         
         slow_ctrl_data[k] = data_word
         no_of_bits = nbits
-        
-        #print slow_ctrl_data
-        #print no_of_bits
-        
+                
         return slow_ctrl_data, no_of_bits
     
 
@@ -575,17 +543,13 @@ class LpdFemClient(FemClient):
             fast_cmd_data[j] = (fast_cmd_data[j] & 0x000fffff)
             # special sync_reset 20 bit command?
             if (fast_cmd_data[j] == 0x5a):
-                fast_cmd_data[j] = 0x5a5a5
-                #fast_cmd_data[j]= bitshift(fast_cmd_data[j], cmd_reg_size-20)
-                fast_cmd_data[j] = LpdFemClient.bitshift_difference_of_arguments(fast_cmd_data[j], cmd_reg_size, 20)
+                fast_cmd_data[j] = 0x5a5a5                
+                fast_cmd_data[j] = self.bitshift(fast_cmd_data[j], cmd_reg_size, 20)
             elif (fast_cmd_data[j] == 0xfffff):  # special tests
-                #fast_cmd_data[j]= bitshift(fast_cmd_data[j], cmd_reg_size-20)
-                fast_cmd_data[j]= LpdFemClient.bitshift_difference_of_arguments(fast_cmd_data[j], cmd_reg_size, 20)
+                fast_cmd_data[j]= self.bitshift(fast_cmd_data[j], cmd_reg_size, 20)
             else:
-                #fast_cmd_data[j]= bitshift(fast_cmd_data[j], cmd_reg_size-10)
-                fast_cmd_data[j]= LpdFemClient.bitshift_difference_of_arguments(fast_cmd_data[j], cmd_reg_size, 10)
-                #fast_cmd_data[j]= bitor(fast_cmd_data[j],bitshift(1,cmd_reg_size-1))
-                fast_cmd_data[j]= (fast_cmd_data[j] | LpdFemClient.bitshift_difference_of_arguments(1, cmd_reg_size, 1) )
+                fast_cmd_data[j]= self.bitshift(fast_cmd_data[j], cmd_reg_size, 10)
+                fast_cmd_data[j]= (fast_cmd_data[j] | self.bitshift(1, cmd_reg_size, 1) )
 
             nops_total = nops_total + fast_cmd_nops[j]  
             fast_cmd_data[j]= (fast_cmd_data[j] | (fast_cmd_nops[j] << 22))  
@@ -595,7 +559,7 @@ class LpdFemClient(FemClient):
     
         return fast_cmd_data, no_of_words, no_of_nops
     
-    def bitshift_difference_of_arguments(self, bitVal, arg1, arg2):    
+    def bitshift(self, bitVal, arg1, arg2):    
         """ bit shift bitVal according to difference of arg1 - arg2
             (arg1 - arg2) > 0 = bit shift to left (Increase bitVal)
             (arg1 - arg2) < 0 = bit shift to right (Decrease bitVal) """
@@ -629,8 +593,7 @@ class LpdFemClient(FemClient):
         # Build tuple of a list of data
         dataTuple = tuple([fast_cmd_data[i] for i in range(block_length)])
         # load fast control pattern memory
-        #rdma_block_write(s, base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')
-        print "Fast Cmd RAM\n"
+        print "Fast Cmd RAM"
         self.rdmaWrite(base_addr_1, dataTuple)
         
         
@@ -656,12 +619,9 @@ class LpdFemClient(FemClient):
         # load control registers
         # reset mode  for old behaviour outputting bram , without vetos
     
-#        rdma_write(s,base_addr_0+6, 0,'rw','fast_command_reg_reset_offset')  
-#        rdma_write(s,base_addr_0+7, no_of_words,'rw','fast_command_reg_reset_nwords')
-        
-        print "fast_command_reg_reset_offset\n"
+        print "fast_command_reg_reset_offset"
         self.rdmaWrite(base_addr_0+6, 0)
-        print "fast_command_reg_reset_nwords\n"  
+        print "fast_command_reg_reset_nwords"  
         self.rdmaWrite(base_addr_0+7, no_of_words)
         
     def fem_fast_cmd_setup(self, fast_cmd_data, no_of_words):
@@ -680,18 +640,15 @@ class LpdFemClient(FemClient):
         if block_length > max_block_length:
             block_length =  max_block_length
     
-        #rdma_block_write(s, base_addr_1, block_length, fast_cmd_data, 'rw', 'Fast Cmd RAM')    
-        #rdma_write(s,base_addr_0+1, block_length-1,'rw','Fast cmd block length')  # was block_length - 1 ? jc        
-    
         # Build tuple of a list of data
         dataTuple = tuple([fast_cmd_data+i for i in range(block_length)])
         
         # load fast control pattern memory
-        print "Fast Cmd RAM\n"
+        print "Fast Cmd RAM"
         self.rdmaWrite(base_addr_1, dataTuple)
     
         # load control registers
-        print "Fast cmd block length\n"
+        print "Fast cmd block length"
         self.rdmaWrite(base_addr_0+1, block_length-1)  # was block_length - 1 ? jc
         
     def fem_slow_ctrl_setup(self, slow_ctrl_data, no_of_bits):
@@ -712,8 +669,7 @@ class LpdFemClient(FemClient):
         
         dataTuple = tuple([slow_ctrl_data+i for i in range(block_length[1])])
         
-        #rdma_block_write(s, base_addr_1, block_length(1), slow_ctrl_data, 'rw', 'Slow Ctrl RAM')
-        print "Slow Ctrl RAM\n"
+        print "Slow Ctrl RAM"
         self.rdmaWrite(base_addr_1, dataTuple)
         
         # load control registers
@@ -728,16 +684,14 @@ class LpdFemClient(FemClient):
         
         control_reg_1 = base_addr_0 + 1
         
-        #rdma_write(s,control_reg_1, no_of_bits,'rw','slow ctrl - no of bits (+1) to reg');
-        print "slow ctrl - no of bits (+1) to reg\n"
+        print "slow ctrl - no of bits (+1) to reg"
         self.rdmaWrite(control_reg_1, no_of_bits)
 
         
     def select_slow_ctrl_load_mode(self, address_offset, slow_ctrl_load_mode):
         # select slow control load mode  jac
         
-        #rdma_write(s, slow_ctr_0+0, uint32(2), 'rw','asic load mode')
-        print "asic load mode\n"
+        print "asic load mode"
         self.rdmaWrite(LpdFemClient.slow_ctr_0+address_offset, slow_ctrl_load_mode)
         
     def fem_asic_rx_setup(self, mask_array, no_asic_cols, no_cols_frm):
@@ -798,7 +752,16 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(mask_reg2,mask_array[2])
         print "asic rx 3"
         self.rdmaWrite(mask_reg3,mask_array[3])
-
+         
+  
+    def data_source_self_test(self, asic_data_source):
+        # data source - self test
+        data_source_reg           = (0x00000001 | LpdFemClient.asic_srx_0)
+        print "asic rx data source" # 0 = real data ; 1 = test data
+        self.rdmaWrite(data_source_reg,asic_data_source)
+        
+        
+    def gain_override(self, asic_gain_override):
         # added override to gain selection 
         # 
         #  bits
@@ -807,29 +770,17 @@ class LpdFemClient(FemClient):
         #  1001  force select x10          9
         #  1011  force select x1          11
         #  1111  force error condition ?  15
-        # call moved to top level funcion
-        #self.rdmaWrite(gain_override_reg,0)  # "asic rx gain override" 
-         
-              
-        
-    def data_source_self_test(self, asic_data_source):
-        
-        # data source - self test
-        data_source_reg           = (0x00000001 | LpdFemClient.asic_srx_0)
-        print "asic rx data source" # 0 = real data ; 1 = test data
-        self.rdmaWrite(data_source_reg,asic_data_source)
-        
-        
-    def gain_override(self, asic_gain_override):
-        
+        # 
+        # Above explanation taken from: 
+        #    \\te9files\ESDGshr\SDG\drop\for_christian\lpd_matlab_for_christian\matlab\matlab\fem_asic_rx_setup.m
+        # However, the actual implementation is presumed to be inside:
+        #    fem_asic_test.m line 278    (rdma_write(s,gain_override_reg,..))
         gain_override_reg = (0x0000000 | LpdFemClient.asic_srx_0)
         print "asic rx gain override"
         self.rdmaWrite(gain_override_reg,asic_gain_override)
         
         
-        
     def top_level_steering(self, asic_rx_start_delay):
-
         # turn fast & slow buffers on
         print "asic turn on buffers"
         self.rdmaWrite(LpdFemClient.fem_ctrl_0+5, 0)
@@ -843,18 +794,12 @@ class LpdFemClient(FemClient):
         
     def check_how_much_data_arrived(self, udp_frm_sze):
         """ Check how much UDP data that has arrived """
-        print "Amount of UDP data arrived:\n"
-        count=0
-        while ( (self.bytesavailable != udp_frm_sze) and (count <= 8) ):
-            no_bytes = LpdFemClient.bytesavailable
-            print "\n%4i" % count, "%8X" % no_bytes
-            count=count+1
-            time.sleep(0.25)
-            time.sleep(0.75)
+        print "Amount of UDP data arrived:"
+#        count=0
+#        while ( (self.bytesavailable != udp_frm_sze) and (count <= 8) ):
+#            no_bytes = self.bytesavailable
+#            print "%4i" % count, "%8X" % no_bytes
+#            count=count+1
+#            time.sleep(0.25)
+#            time.sleep(0.75)
     
-        
-        
-    
-        
-        
-         
