@@ -87,7 +87,7 @@ typedef enum
 // TODO: Store this in common header file!
 typedef struct
 {
-	u32 state;			//! Current mode?
+	u32 state;			//! Current mode -> TODO: Define states!
 	u32 bufferCnt;		//! Number of buffers allocated
 	u32 bufferSize;		//! Size of buffers
 	u32 numAcq;			//! Number of acquisitions in this run
@@ -335,6 +335,13 @@ int main()
 
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
 
+	    	    // Quick fix for doTx
+	    	    if (lastMode == ACQ_MODE_TX_ONLY)
+	    	    {
+	    	    	printf("[DEBUG] ACQ_MODE_TX_ONLY detected, setting TX count to %d\r\n", (int)pStatusBlock->numAcq);
+	    	    	numRxPairsComplete = pStatusBlock->numAcq;
+	    	    }
+
 	    	    acquireRunning = 1;
 
 				while (acquireRunning)
@@ -489,6 +496,7 @@ int main()
 
 
 					// Process TX
+					// TODO: Fix logic if doTx & !doRx
 					if (doTx)
 					{
 
@@ -1195,4 +1203,14 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 	}
 
 	return XST_SUCCESS;
+}
+
+
+
+/* Starts the provided engines
+ * @return XST_SUCCESS, or error code
+ */
+int startDmaEngines(void)
+{
+
 }
