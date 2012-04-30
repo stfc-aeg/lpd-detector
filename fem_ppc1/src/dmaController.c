@@ -27,9 +27,11 @@
 #include "platform.h"
 #include "xlldma.h"
 #include "xil_testmem.h"
+#include "xtime_l.h"
 
 // Compile time switches
-#define DEBUG_BD			1
+//#define DEBUG_BD			1
+#define TIME_DMA		1
 
 // TODO: Remove this once DMA event loop verified OK!
 //#define VERBOSE_DEBUG		1
@@ -153,6 +155,12 @@ int main()
 	// Mailbox stuff
 	mailMsg msg;
     mailMsg *pMsg = &msg;
+
+#ifdef TIME_DMA
+    XTime startDma = 0;
+    XTime endDma = 0;
+    unsigned short gotDma = 0;
+#endif
 
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
@@ -373,6 +381,13 @@ int main()
 							printf("[DEBUG] Got %d RX from top ASIC\r\n", numBDFromTopAsic);
 #endif
 
+#ifdef TIME_DMA
+							if(!gotDma) {
+								gotDma = 1;
+								XTime_GetTime(&startDma);
+							}
+#endif
+
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromTopAsic; i++)
 							{
@@ -411,6 +426,13 @@ int main()
 
 #ifdef VERBOSE_DEBUG
 							printf("[DEBUG] Got %d RX from bottom ASIC\r\n", numBDFromBotAsic);
+#endif
+
+#ifdef TIME_DMA
+							if(!gotDma) {
+								gotDma = 1;
+								XTime_GetTime(&startDma);
+							}
 #endif
 
 							// Validate and recycle BDs
@@ -625,7 +647,17 @@ int main()
 						}
 					}
 
-
+#ifdef TIME_DMA
+					// Only for RX
+					// TODO: Remove once finished debugging!
+					if (pStatusBlock->numAcq == (pStatusBlock->totalRecv*2))
+					{
+						XTime_GetTime(&endDma);
+						printf("[DEBUG] DEBUG: Stopping run after %d events...\r\n", (int)pStatusBlock->numAcq);
+						printf("[DEBUG] TIME: Total time for transfer was %llu ticks.\r\n", (unsigned long)endDma-startDma);
+						acquireRunning = 0;
+					}
+#endif
 
 					// Check if we have received all expected frames
 					// TODO: Fix this, stops after only half frames!
