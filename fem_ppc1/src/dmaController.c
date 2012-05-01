@@ -452,7 +452,7 @@ int main()
 								pBotAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd);
 							}
 
-							numBotAsicRxComplete = numBDFromBotAsic;
+							numBotAsicRxComplete += numBDFromBotAsic;
 						}
 
 
@@ -496,7 +496,7 @@ int main()
 							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRxComplete);
 #endif
 
-							pStatusBlock->totalRecv += numRxPairsComplete;
+							pStatusBlock->totalRecv = numRxPairsComplete;
 
 						}
 
