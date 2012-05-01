@@ -47,9 +47,10 @@ class FemTransaction():
     
     ACQ_MODE_UNSUPPORTED  = 0
     ACQ_MODE_NORMAL       = 1
-    ACQ_MODE_RX_ONLY      = 2
-    ACQ_MODE_TX_ONLY      = 3
-    ACQ_MODE_UPLOAD       = 4
+    ACQ_MODE_BURST        = 2
+    ACQ_MODE_RX_ONLY      = 3
+    ACQ_MODE_TX_ONLY      = 4
+    ACQ_MODE_UPLOAD       = 5
  
     widthEncoding =  { WIDTH_UNSUPPORTED : (0, 'x'),
                        WIDTH_BYTE        : (1, 'B'),

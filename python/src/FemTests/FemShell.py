@@ -34,6 +34,7 @@ class FemShell(cmd.Cmd,object):
                     }
     
     acqModeEncoding = { 'NORMAL' : FemTransaction.ACQ_MODE_NORMAL,
+                        'BURST'  : FemTransaction.ACQ_MODE_BURST,
                         'RX'     : FemTransaction.ACQ_MODE_RX_ONLY,
                         'TX'     : FemTransaction.ACQ_MODE_TX_ONLY,
                         'UPLOAD' : FemTransaction.ACQ_MODE_UPLOAD                           
@@ -623,7 +624,7 @@ Example:
         Sends acquire command to the DMA controller of the FEM
         Syntax: acquire [config <mode> <bufSize> <bufNum> <numAcqs>|start|stop|status] 
         where config params are:
-           mode : normal, rx, tx or upload
+           mode    : normal, burst, rx, tx or upload
            bufSize : buffer size to set up
            bufNum  : number of buffers to set up (0=maximise in memory)
            numAcqs : number of images acquisitions to run
