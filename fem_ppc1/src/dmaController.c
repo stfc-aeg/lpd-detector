@@ -33,11 +33,11 @@
 #include "xtime_l.h"
 
 // Compile time switches
-//#define DEBUG_BD			1			// Outputs DMA BDs as received
-#define TIME_DMA		1				// Times DMA operations
+#define DEBUG_BD			1			// Outputs DMA BDs as received
+//#define TIME_DMA		1				// Times DMA operations
 
 // TODO: Remove this once DMA event loop verified OK!
-//#define VERBOSE_DEBUG		1
+#define VERBOSE_DEBUG		1
 
 // TODO: Move defines, function prototypes to header!
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
@@ -159,12 +159,6 @@ int main()
 	// Mailbox stuff
 	mailMsg msg;
     mailMsg *pMsg = &msg;
-
-#ifdef TIME_DMA
-    XTime startDma = 0;
-    XTime endDma = 0;
-    unsigned short gotDma = 0;
-#endif
 
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
@@ -288,7 +282,7 @@ int main()
     			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, pMsg->param, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
     		case ACQ_MODE_BURST:
-    			// Initially set to RX only then main event will switch to
+    			// Initially set to RX only then main event will switch to TX
     			doTx = 0;
     			doRx = 1;
     			status = configureBdsForAcquisition(pBdRings, &pTenGigPreHW, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
@@ -347,10 +341,6 @@ int main()
 	    	    numTxPairsSent = 0;
 	    	    numTenGigTxComplete = 0;
 
-#ifdef TIME_DMA
-	    	    gotDma = 0;
-#endif
-
 				int numBDFromTopAsic = 0;
 				int numBDFromBotAsic = 0;
 
@@ -396,13 +386,6 @@ int main()
 							printf("[DEBUG] Got %d RX from top ASIC\r\n", numBDFromTopAsic);
 #endif
 
-#ifdef TIME_DMA
-							if(!gotDma) {
-								gotDma = 1;
-								XTime_GetTime(&startDma);
-							}
-#endif
-
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromTopAsic; i++)
 							{
@@ -441,13 +424,6 @@ int main()
 
 #ifdef VERBOSE_DEBUG
 							printf("[DEBUG] Got %d RX from bottom ASIC\r\n", numBDFromBotAsic);
-#endif
-
-#ifdef TIME_DMA
-							if(!gotDma) {
-								gotDma = 1;
-								XTime_GetTime(&startDma);
-							}
 #endif
 
 							// Validate and recycle BDs
@@ -637,7 +613,7 @@ int main()
 					// **************************************************************************************
 					// Check if we have received the expected number of events
 					// **************************************************************************************
-					if (pStatusBlock->numAcq == (pStatusBlock->totalRecv*2))
+					if (pStatusBlock->numAcq == (pStatusBlock->totalRecv*2) && pStatusBlock->numAcq!=0)
 					{
 						if (lastMode==ACQ_MODE_BURST)
 						{
@@ -1259,5 +1235,6 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
  */
 int startDmaEngines(void)
 {
-
+	// TODO: Implement!
+	return XST_FAILURE;
 }
