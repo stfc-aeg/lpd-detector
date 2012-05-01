@@ -13,14 +13,12 @@
 
 // Todo list, in order of priority
 // ----------------------------------------------------------------------
-// TODO: Implement ACQ_MODE_BURST
 // TODO: Implement TIME_DMA
 // TODO: Fix acqStatusBlock so when config for acquire with buffCnt==0 (put calculated buffCnt in here, also fix reconfig checking)
 // TODO: Fix configure for acquire, respect config. BD storage area
 // TODO: Improve conditional for BD config skipping
 // TODO: Update state variable->state when config in process / complete
 // TODO: Update state variables during event loop (read/writePtr)
-// TODO: Fix main loop acquireRunning=0 loop (is off by factor of 2 at present)
 // TODO: Graceful stop when pending events exist
 // TODO: Refactor data counter variables and main event loop
 
@@ -72,12 +70,13 @@
 
 // TODO: Remove these once common protocol.h
 // TODO: Change to enum?
-#define ACQ_MODE_NORMAL				1
-#define ACQ_MODE_RX_ONLY			2
-#define ACQ_MODE_TX_ONLY			3
-#define ACQ_MODE_UPLOAD				4
-#define ACQ_MODE_BURST				5
+#define ACQ_MODE_NORMAL				1		// Sustained mode, e.g. 100Hz / 30kHz mode
+#define ACQ_MODE_BURST				2		// Burst mode, fills DDR2 with events then enables TX to flush to 10GBe
+#define ACQ_MODE_RX_ONLY			3		// Only RX
+#define ACQ_MODE_TX_ONLY			4		// Only TX
+#define ACQ_MODE_UPLOAD				5		// Configuration upload
 
+// TODO: Implement CMD_ACQ_STATUS
 #define CMD_ACQ_CONFIG				1
 #define CMD_ACQ_START				2
 #define CMD_ACQ_STOP				3
@@ -265,6 +264,7 @@ int main()
     			doRx = 1;
     			status = configureBdsForAcquisition(pBdRings, &pTenGigPreHW, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
+    		case ACQ_MODE_BURST:
     		case ACQ_MODE_RX_ONLY:
     			doTx = 0;
     			doRx = 1;
@@ -280,12 +280,6 @@ int main()
     		case ACQ_MODE_UPLOAD:
     			// TODO: Refactor numAcq to something more generic (ACQ_MODE_NORMAL->numAcq, ACQ_MODE_UPLOAD->configStartAddr) --> modeParam?
     			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, pMsg->param, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
-    			break;
-    		case ACQ_MODE_BURST:
-    			// Initially set to RX only then main event will switch to TX
-    			doTx = 0;
-    			doRx = 1;
-    			status = configureBdsForAcquisition(pBdRings, &pTenGigPreHW, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
     		default:
     			printf("[ERROR] Unknown ACQ mode %d - Ignoring.\r\n", (int)pMsg->mode);
@@ -325,7 +319,7 @@ int main()
 				printf("[INFO ] Entering acquire DMA event loop\r\n");
 
 				// Reset BRAM struct
-				// TODO: Update readPtr / writePtr in event loop! (store index in BD?)
+				// TODO: Update readPtr / writePtr in event loop!
 			    pStatusBlock->readPtr = 0;
 			    pStatusBlock->writePtr = 0;
 			    pStatusBlock->totalRecv = 0;
@@ -509,7 +503,6 @@ int main()
 
 
 					// Process TX
-					// TODO: Fix logic if doTx & !doRx
 					if (doTx)
 					{
 
@@ -611,17 +604,27 @@ int main()
 
 
 					// **************************************************************************************
-					// Check if we have received the expected number of events
+					// See if we have enough events to trigger a stop
 					// **************************************************************************************
-					if (pStatusBlock->numAcq == (pStatusBlock->totalRecv*2) && pStatusBlock->numAcq!=0)
+					//if (pStatusBlock->numAcq!=0 && (pStatusBlock->numAcq==(pStatusBlock->totalRecv*2)))
+					if (pStatusBlock->numAcq!=0 && pStatusBlock->numAcq==pStatusBlock->totalRecv)
 					{
 						if (lastMode==ACQ_MODE_BURST)
 						{
-							// If in burst mode, switch from RX to TX
-							doRx = 0;
-							doTx = 1;
-							numRxPairsComplete = pStatusBlock->numAcq;
-							printf("[DEBUG] Got %d events and using ACQ_MODE_BURST, disabling RX and enabling TX (%d pairs)!\r\n", (int)pStatusBlock->numAcq, (int)numRxPairsComplete);
+							if(doTx==0)
+							{
+								// Burst mode, completed RX so switch to TX
+								doRx = 0;
+								doTx = 1;
+								numRxPairsComplete = pStatusBlock->numAcq;
+								printf("[DEBUG] Got %d events and using ACQ_MODE_BURST, disabling RX and enabling TX (%d pairs)!\r\n", (int)pStatusBlock->numAcq, (int)numRxPairsComplete);
+							}
+							else
+							{
+								// Burst mode, completed TX
+								print("[DEBUG] Burst mode halting...\r\n");
+								acquireRunning = 0;
+							}
 						}
 						else
 						{
@@ -654,6 +657,17 @@ int main()
 								printf("[DEBUG] Stopping anyway...\r\n");
 								acquireRunning = 0;
 							}
+
+							// *****************************************************
+							// Debugging - dump loop counters
+							printf("[DEBUG] numTopAsicRxComplete=%d\r\n", (int)numTopAsicRxComplete);
+				    	    printf("[DEBUG] numBotAsicRxComplete=%d\r\n", (int)numBotAsicRxComplete);
+				    	    printf("[DEBUG] numRxPairsComplete=%d\r\n", (int)numRxPairsComplete);
+				    	    printf("[DEBUG] lastNumTopAsicRxComplete=%d\r\n", (int)lastNumTopAsicRxComplete);
+				    	    printf("[DEBUG] lastNumBotAsicRxComplete=%d\r\n", (int)lastNumBotAsicRxComplete);
+				    	    printf("[DEBUG] numTxPairsSent=%d\r\n", (int)numTxPairsSent);
+				    	    printf("[DEBUG] numTenGigTxComplete=%d\r\n", (int)numTenGigTxComplete);
+				    	    // *****************************************************
 
 							break;
 
