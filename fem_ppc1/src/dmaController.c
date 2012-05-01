@@ -13,6 +13,9 @@
 
 // Todo list, in order of priority
 // ----------------------------------------------------------------------
+// TODO: Implement ACQ_MODE_BURST
+// TODO: Implement TIME_DMA
+// TODO: Fix acqStatusBlock so when config for acquire with buffCnt==0 (put calculated buffCnt in here, also fix reconfig checking)
 // TODO: Fix configure for acquire, respect config. BD storage area
 // TODO: Improve conditional for BD config skipping
 // TODO: Update state variable->state when config in process / complete
@@ -30,8 +33,8 @@
 #include "xtime_l.h"
 
 // Compile time switches
-//#define DEBUG_BD			1
-#define TIME_DMA		1
+//#define DEBUG_BD			1			// Outputs DMA BDs as received
+#define TIME_DMA		1				// Times DMA operations
 
 // TODO: Remove this once DMA event loop verified OK!
 //#define VERBOSE_DEBUG		1
@@ -73,6 +76,7 @@
 #define ACQ_MODE_RX_ONLY			2
 #define ACQ_MODE_TX_ONLY			3
 #define ACQ_MODE_UPLOAD				4
+#define ACQ_MODE_BURST				5
 
 #define CMD_ACQ_CONFIG				1
 #define CMD_ACQ_START				2
@@ -283,6 +287,12 @@ int main()
     			// TODO: Refactor numAcq to something more generic (ACQ_MODE_NORMAL->numAcq, ACQ_MODE_UPLOAD->configStartAddr) --> modeParam?
     			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, pMsg->param, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
+    		case ACQ_MODE_BURST:
+    			// Initially set to RX only then main event will switch to
+    			doTx = 0;
+    			doRx = 1;
+    			status = configureBdsForAcquisition(pBdRings, &pTenGigPreHW, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
+    			break;
     		default:
     			printf("[ERROR] Unknown ACQ mode %d - Ignoring.\r\n", (int)pMsg->mode);
     			break;
@@ -314,6 +324,7 @@ int main()
 			switch(lastMode)
 			{
 			case ACQ_MODE_NORMAL:
+			case ACQ_MODE_BURST:
 			case ACQ_MODE_RX_ONLY:
 			case ACQ_MODE_TX_ONLY:
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -335,6 +346,10 @@ int main()
 	    	    lastNumBotAsicRxComplete = 0;
 	    	    numTxPairsSent = 0;
 	    	    numTenGigTxComplete = 0;
+
+#ifdef TIME_DMA
+	    	    gotDma = 0;
+#endif
 
 				int numBDFromTopAsic = 0;
 				int numBDFromBotAsic = 0;
@@ -461,7 +476,7 @@ int main()
 								pBotAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd);
 							}
 
-							numBotAsicRxComplete += numBDFromBotAsic;
+							numBotAsicRxComplete = numBDFromBotAsic;
 						}
 
 
@@ -619,7 +634,32 @@ int main()
 
 
 
+					// **************************************************************************************
+					// Check if we have received the expected number of events
+					// **************************************************************************************
+					if (pStatusBlock->numAcq == (pStatusBlock->totalRecv*2))
+					{
+						if (lastMode==ACQ_MODE_BURST)
+						{
+							// If in burst mode, switch from RX to TX
+							doRx = 0;
+							doTx = 1;
+							numRxPairsComplete = pStatusBlock->numAcq;
+							printf("[DEBUG] Got %d events and using ACQ_MODE_BURST, disabling RX and enabling TX (%d pairs)!\r\n", (int)pStatusBlock->numAcq, (int)numRxPairsComplete);
+						}
+						else
+						{
+							// Any other mode, we're finished so stop acquiring
+							printf("[DEBUG] Got %d events, stopping...\r\n", (int)pStatusBlock->numAcq);
+							acquireRunning = 0;
+						}
+					}
+
+
+
+					// **************************************************************************************
 					// Check for mailbox messages
+					// **************************************************************************************
 					if (checkForMailboxMessage(&mbox, pMsg))
 					{
 						switch (pMsg->cmd)
@@ -646,31 +686,6 @@ int main()
 							break;
 						}
 					}
-
-#ifdef TIME_DMA
-					// Only for RX
-					// TODO: Remove once finished debugging!
-					if (pStatusBlock->numAcq == (pStatusBlock->totalRecv*2))
-					{
-						XTime_GetTime(&endDma);
-						printf("[DEBUG] DEBUG: Stopping run after %d events...\r\n", (int)pStatusBlock->numAcq);
-						printf("[DEBUG] TIME: Total time for transfer was %llu ticks.\r\n", (unsigned long)endDma-startDma);
-						acquireRunning = 0;
-					}
-#endif
-
-					// Check if we have received all expected frames
-					// TODO: Fix this, stops after only half frames!
-					/*
-					if(pStatusBlock->numAcq != 0)
-					{
-						if ((pStatusBlock->numAcq == pStatusBlock->totalRecv) && (pStatusBlock->numAcq == pStatusBlock->totalSent))
-						{
-							printf("[INFO ] Received all %d frames OK, stopping acquisition!\r\n", (int)pStatusBlock->numAcq);
-							acquireRunning = 0;
-						}
-					}
-					*/
 
 				} // END while(acquireRunning)
 				// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
