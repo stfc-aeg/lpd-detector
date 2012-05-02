@@ -159,6 +159,9 @@ int main()
 	mailMsg msg;
     mailMsg *pMsg = &msg;
 
+    // Debugging
+    u32 dcr;
+
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
 	unsigned short acquireRunning = 0;	// Acquire control flag
@@ -669,6 +672,28 @@ int main()
 				    	    printf("[DEBUG] numTenGigTxComplete=%d\r\n", (int)numTenGigTxComplete);
 				    	    printf("[DEBUG] pStat->totalRecv=%d\r\n", (int)pStatusBlock->totalRecv);
 				    	    printf("[DEBUG] pStat->totalSent=%d\r\n", (int)pStatusBlock->totalSent);
+				    	    // *****************************************************
+
+				    	    print("[-----]\r\n");
+
+				    	    // *****************************************************
+				    	    // Debugging - dump 10GBe DCRs
+				    	    dcr = mfdcr(0xC8);
+				    	    printf("[DEBUG] TX_NXTDESC_PTR    = 0x%08x\r\n", (unsigned int)dcr);
+				    	    dcr = mfdcr(0xC9);
+				    	    printf("[DEBUG] TX_CURBUFF_ADDR   = 0x%08x\r\n", (unsigned int)dcr);
+				    	    dcr = mfdcr(0xCA);
+				    	    printf("[DEBUG] TX_CURBUF_LENGTH  = 0x%08x\r\n", (unsigned int)dcr);
+				    	    dcr = mfdcr(0xCB);
+				    	    printf("[DEBUG] TX_CURDESC_PTR    = 0x%08x\r\n", (unsigned int)dcr);
+				    	    dcr = mfdcr(0xCC);
+				    	    printf("[DEBUG] TX_TAILDESC_PTR   = 0x%08x\r\n", (unsigned int)dcr);
+				    	    dcr = mfdcr(0xCD);
+				    	    printf("[DEBUG] TX_CHANNEL_CTRL   = 0x%08x\r\n", (unsigned int)dcr);
+				    	    dcr = mfdcr(0xCE);
+				    	    printf("[DEBUG] TX_IRQ_REG        = 0x%08x\r\n", (unsigned int)dcr);
+				    	    dcr = mfdcr(0xCF);
+				    	    printf("[DEBUG] TX_STATUS_REG     = 0x%08x\r\n", (unsigned int)dcr);
 				    	    // *****************************************************
 
 							break;
