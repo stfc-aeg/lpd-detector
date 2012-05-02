@@ -32,7 +32,7 @@
 
 // Compile time switches
 #define DEBUG_BD			1			// Outputs DMA BDs as received
-//#define TIME_DMA		1				// Times DMA operations
+#define TIME_DMA			1			// Times DMA operations
 
 // TODO: Remove this once DMA event loop verified OK!
 #define VERBOSE_DEBUG		1
@@ -161,6 +161,8 @@ int main()
 
     // Debugging
     u32 dcr;
+    XTime tehTime[8];
+    unsigned short timerCounter;
 
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
@@ -343,6 +345,9 @@ int main()
 
 				int numBDFromTenGig = 0;
 
+				// DEBUG
+				timerCounter = 0;
+
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
 
 	    	    // Quick fix for doTx
@@ -362,8 +367,8 @@ int main()
 					{
 
 						// Pull down any completed RX BDs
-						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], XLLDMA_ALL_BDS, &pTopAsicBd);
-						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], XLLDMA_ALL_BDS, &pBotAsicBd);
+						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
+						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
 
 						// DEBUGGING
 #ifdef VERBOSE_DEBUG
@@ -493,6 +498,13 @@ int main()
 							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRxComplete);
 #endif
 
+
+							// Time profile
+							if (timerCounter<8)
+							{
+								XTime_GetTime(&(tehTime[timerCounter++]));
+							}
+
 							pStatusBlock->totalRecv += numRxPairsComplete;
 
 						}
@@ -550,7 +562,7 @@ int main()
 						if (numTxPairsSent>0)
 						{
 
-							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], XLLDMA_ALL_BDS, &pTenGigPostHW);
+							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], 2, &pTenGigPostHW);
 
 							if (numBDFromTenGig>0)
 							{
@@ -695,6 +707,11 @@ int main()
 				    	    dcr = mfdcr(0xCF);
 				    	    printf("[DEBUG] TX_STATUS_REG     = 0x%08x\r\n", (unsigned int)dcr);
 				    	    // *****************************************************
+
+				    	    for (i=0; i<8; i++)
+				    	    {
+				    	    	printf("[DEBUG] RX DMA %d = %llu\r\n", i, (long long unsigned)tehTime[i]);
+				    	    }
 
 							break;
 
