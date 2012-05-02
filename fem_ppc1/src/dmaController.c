@@ -490,7 +490,7 @@ int main()
 							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRxComplete);
 #endif
 
-							pStatusBlock->totalRecv = numRxPairsComplete;
+							pStatusBlock->totalRecv += numRxPairsComplete;
 
 						}
 
@@ -591,7 +591,7 @@ int main()
 							{
 								tempTxCounter -= 2;
 								numTxPairsSent--;
-								pStatusBlock->totalSent++;
+								pStatusBlock->totalSent = numTenGigTxComplete;
 #ifdef VERBOSE_DEBUG
 								printf("[DEBUG] Pair TX validated, tempTx=%d, numTxpairsSent=%llu\r\n", (int)tempTxCounter, numTxPairsSent);
 #endif
@@ -667,6 +667,8 @@ int main()
 				    	    printf("[DEBUG] lastNumBotAsicRxComplete=%d\r\n", (int)lastNumBotAsicRxComplete);
 				    	    printf("[DEBUG] numTxPairsSent=%d\r\n", (int)numTxPairsSent);
 				    	    printf("[DEBUG] numTenGigTxComplete=%d\r\n", (int)numTenGigTxComplete);
+				    	    printf("[DEBUG] pStat->totalRecv=%d\r\n", (int)pStatusBlock->totalRecv);
+				    	    printf("[DEBUG] pStat->totalSent=%d\r\n", (int)pStatusBlock->totalSent);
 				    	    // *****************************************************
 
 							break;
