@@ -13,14 +13,24 @@
 
 // Todo list, in order of priority
 // ----------------------------------------------------------------------
-// TODO: Implement TIME_DMA
+// TODO: Fix totalRecv when in ACQ_MODE_RX_ONLY, with !doTx numRxPairsComplete = 0 never executes and totalRecv becomes factoral!
+// TODO: Implement PROFILE_TIMING time profiling
 // TODO: Fix acqStatusBlock so when config for acquire with buffCnt==0 (put calculated buffCnt in here, also fix reconfig checking)
 // TODO: Fix configure for acquire, respect config. BD storage area
-// TODO: Improve conditional for BD config skipping
+// TODO: Improve conditional for BD config skipping -> Implement a dirty flag?
 // TODO: Update state variable->state when config in process / complete
 // TODO: Update state variables during event loop (read/writePtr)
 // TODO: Graceful stop when pending events exist
 // TODO: Refactor data counter variables and main event loop
+
+
+// Ideas for speeding up various DMA actions
+/*
+ * All modes:       Change validateBuffer to inline macro, reduce call overhead
+ * Burst mode only: Don't recycle RX buffers, increase burst speed (use a dirty flag to show BDs in inconsistent state and to reset next run?)
+ *
+ *
+ */
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -30,12 +40,21 @@
 #include "xil_testmem.h"
 #include "xtime_l.h"
 
-// Compile time switches
-#define DEBUG_BD			1			// Outputs DMA BDs as received
-#define TIME_DMA			1			// Times DMA operations
-
 // TODO: Remove this once DMA event loop verified OK!
-#define VERBOSE_DEBUG		1
+//#define VERBOSE_DEBUG		1
+
+// Compile time switches
+//#define DEBUG_BD			1			// Outputs DMA BDs as received
+// ---
+#define PROFILE_TIMING			1			//! Enables time profiling for DMA engines
+#define TIMING_COUNT			8			//! Number of DMA operations to profile during acquisition
+// ---
+
+
+// DMA timing tuning (EXPERIMENTAL)
+// These specify how many RX or TX descriptors are requested / sent per loop.
+#define LL_DMA_RX_CHUNK_SIZE		XLLDMA_ALL_BDS			//! Valid values are 1...XLLDMA_ALL_BDS
+#define LL_DMA_TX_CHUNK_SIZE		XLLDMA_ALL_BDS			//! Valid values are 2...XLLDMA_ALL_BDS
 
 // TODO: Move defines, function prototypes to header!
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
@@ -89,7 +108,6 @@ typedef enum
 } bufferType;
 
 //! Data structure to store in shared BRAM for status information
-// TODO: Store this in common header file!
 typedef struct
 {
 	u32 state;			//! Current mode -> TODO: Define states!
@@ -105,7 +123,6 @@ typedef struct
 } acqStatusBlock;
 
 //! Data structure for mailbox messages
-// TODO: Store this in common header file!
 typedef struct
 {
 	u32 cmd;
@@ -115,6 +132,36 @@ typedef struct
 	u32 mode;
 } mailMsg;
 
+typedef enum
+{
+	DCR_TOP_ASIC_RX,
+	DCR_BOT_ASIC_RX,
+	DCR_GBE_TX,
+	DCR_UPLOAD_TX
+} dcrRegistersBase;
+
+typedef enum
+{
+	DCR_CHANNEL_RX,
+	DCR_CHANNEL_TX
+} dcrRegistersChannelType;
+
+//! Storage for DMA DCR registers
+// Note this can be for either an RX or TX channel!
+typedef struct
+{
+	dcrRegistersChannelType type;
+	u32 nxtDescPtr;
+	u32 curBufAddr;
+	u32 curBufLength;
+	u32 curDescPtr;
+	u32 tailDescPtr;
+	u32 channelCtrl;
+	u32 irqReg;
+	u32 statusReg;
+	u32 controlReg;
+} dcrRegisters;
+
 
 // FUNCTION PROTOTYPES
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
@@ -123,6 +170,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 unsigned short sendConfigRequestAckMessage(XMbox *pMailbox);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
+int readDcrs(dcrRegistersBase type, dcrRegisters *pReg);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -161,8 +209,19 @@ int main()
 
     // Debugging
     u32 dcr;
-    XTime tehTime[8];
-    unsigned short timerCounter;
+
+#ifdef PROFILE_TIMING
+#ifndef TIMING_COUNT
+    assert("PROFILE_TIMING mode must specify TIMING_COUNT!\r\n");
+#endif
+    XTime dmaTimingRxEnd[TIMING_COUNT];		//! Time of RX(n) end
+    XTime dmaTimingTxStart[TIMING_COUNT];	//! Time of TX(n) start
+    XTime dmaTimingTxEnd[TIMING_COUNT];		//! Time of TX(n) end
+    unsigned short timerCounterRxEnd;
+    unsigned short timerCounterTxStart;
+    unsigned short timerCounterTxEnd;
+    int k;
+#endif
 
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
@@ -339,14 +398,15 @@ int main()
 	    	    lastNumBotAsicRxComplete = 0;
 	    	    numTxPairsSent = 0;
 	    	    numTenGigTxComplete = 0;
-
 				int numBDFromTopAsic = 0;
 				int numBDFromBotAsic = 0;
-
 				int numBDFromTenGig = 0;
 
-				// DEBUG
-				timerCounter = 0;
+#ifdef PROFILE_TIMING
+				timerCounterRxEnd = 0;
+				timerCounterTxStart = 0;
+				timerCounterTxEnd = 0;
+#endif
 
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
 
@@ -367,8 +427,8 @@ int main()
 					{
 
 						// Pull down any completed RX BDs
-						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], 1, &pTopAsicBd);
-						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], 1, &pBotAsicBd);
+						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], LL_DMA_RX_CHUNK_SIZE, &pTopAsicBd);
+						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], LL_DMA_RX_CHUNK_SIZE, &pBotAsicBd);
 
 						// DEBUGGING
 #ifdef VERBOSE_DEBUG
@@ -499,11 +559,12 @@ int main()
 #endif
 
 
-							// Time profile
-							if (timerCounter<8)
+#ifdef PROFILE_TIMING
+							if (timerCounterRxEnd<TIMING_COUNT)
 							{
-								XTime_GetTime(&(tehTime[timerCounter++]));
+								XTime_GetTime(&(dmaTimingRxEnd[timerCounterRxEnd++]));
 							}
+#endif
 
 							pStatusBlock->totalRecv += numRxPairsComplete;
 
@@ -529,6 +590,14 @@ int main()
 
 #ifdef VERBOSE_DEBUG
 							printf("[DEBUG] %llu TX pairs ready to send\r\n", numRxPairsComplete);
+#endif
+
+#ifdef PROFILE_TIMING
+							//if (timerCounterTxStart<TIMING_COUNT)
+							while (timerCounterTxStart<TIMING_COUNT)
+							{
+								XTime_GetTime(&(dmaTimingTxStart[timerCounterTxStart++]));
+							}
 #endif
 
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsComplete*2, pTenGigPreHW);
@@ -562,7 +631,7 @@ int main()
 						if (numTxPairsSent>0)
 						{
 
-							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], 2, &pTenGigPostHW);
+							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], LL_DMA_TX_CHUNK_SIZE, &pTenGigPostHW);
 
 							if (numBDFromTenGig>0)
 							{
@@ -621,7 +690,6 @@ int main()
 					// **************************************************************************************
 					// See if we have enough events to trigger a stop
 					// **************************************************************************************
-					//if (pStatusBlock->numAcq!=0 && (pStatusBlock->numAcq==(pStatusBlock->totalRecv*2)))
 					if (pStatusBlock->numAcq!=0 && pStatusBlock->numAcq==pStatusBlock->totalRecv)
 					{
 						if (lastMode==ACQ_MODE_BURST)
@@ -688,6 +756,7 @@ int main()
 
 				    	    print("[-----]\r\n");
 
+				    	    // TODO: Replace this with function call yo!
 				    	    // *****************************************************
 				    	    // Debugging - dump 10GBe DCRs
 				    	    dcr = mfdcr(0xC8);
@@ -708,11 +777,14 @@ int main()
 				    	    printf("[DEBUG] TX_STATUS_REG     = 0x%08x\r\n", (unsigned int)dcr);
 				    	    // *****************************************************
 
-				    	    for (i=0; i<8; i++)
+#ifdef PROFILE_TIMING
+				    	    printf("[DEBUG] Time profiling enabled, timed first %d events:\r\n", TIMING_COUNT);
+				    	    for (i=0; i<TIMING_COUNT; i++)
 				    	    {
-				    	    	printf("[DEBUG] RX DMA %d = %llu\r\n", i, (long long unsigned)tehTime[i]);
+				    	    	printf("[DEBUG] RX DMA %d = %llu\r\n", i, (long long unsigned)dmaTimingRxEnd[i]);
 				    	    }
-
+				    	    printf("[DEBUG] Interval %llu\r\n", (long long unsigned) ( (dmaTimingRxEnd[7]-dmaTimingRxEnd[0])/7));
+#endif
 							break;
 
 						default:
@@ -1295,4 +1367,79 @@ int startDmaEngines(void)
 {
 	// TODO: Implement!
 	return XST_FAILURE;
+}
+
+
+
+/* Reads DCR registers into a struct
+ *@param type
+ *@param pReg
+ *@return 1 if successful or 0 if type is invalid
+ */
+int readDcrs(dcrRegistersBase type, dcrRegisters *pReg)
+{
+
+	// You cannot pass variables into mfdcr only constants, so we have to do this the long way!
+	switch(type)
+	{
+
+	case DCR_TOP_ASIC_RX:
+		pReg->type = DCR_CHANNEL_RX;
+		pReg->nxtDescPtr = mfdcr(0xB8);
+		pReg->curBufAddr = mfdcr(0xB9);
+		pReg->curBufLength = mfdcr(0xBA);
+		pReg->curDescPtr = mfdcr(0xBB);
+		pReg->tailDescPtr = mfdcr(0xBC);
+		pReg->channelCtrl = mfdcr(0xBD);
+		pReg->irqReg = mfdcr(0xBE);
+		pReg->statusReg = mfdcr(0xBF);
+		pReg->controlReg = mfdcr(0xC0);
+		break;
+
+	case DCR_BOT_ASIC_RX:
+		pReg->type = DCR_CHANNEL_RX;
+		pReg->nxtDescPtr = mfdcr(0x88);
+		pReg->curBufAddr = mfdcr(0x89);
+		pReg->curBufLength = mfdcr(0x8A);
+		pReg->curDescPtr = mfdcr(0x8B);
+		pReg->tailDescPtr = mfdcr(0x8C);
+		pReg->channelCtrl = mfdcr(0x8D);
+		pReg->irqReg = mfdcr(0x8E);
+		pReg->statusReg = mfdcr(0x8F);
+		pReg->controlReg = mfdcr(0x90);
+		break;
+
+	case DCR_GBE_TX:
+		pReg->type = DCR_CHANNEL_TX;
+		pReg->nxtDescPtr = mfdcr(0xC8);
+		pReg->curBufAddr = mfdcr(0xC9);
+		pReg->curBufLength = mfdcr(0xCA);
+		pReg->curDescPtr = mfdcr(0xCB);
+		pReg->tailDescPtr = mfdcr(0xCC);
+		pReg->channelCtrl = mfdcr(0xCD);
+		pReg->irqReg = mfdcr(0xCE);
+		pReg->statusReg = mfdcr(0xCF);
+		pReg->controlReg = mfdcr(0xD8);
+		break;
+
+	case DCR_UPLOAD_TX:
+		pReg->type = DCR_CHANNEL_TX;
+		pReg->nxtDescPtr = mfdcr(0x98);
+		pReg->curBufAddr = mfdcr(0x99);
+		pReg->curBufLength = mfdcr(0x9A);
+		pReg->curDescPtr = mfdcr(0x9B);
+		pReg->tailDescPtr = mfdcr(0x9C);
+		pReg->channelCtrl = mfdcr(0x9D);
+		pReg->irqReg = mfdcr(0x9E);
+		pReg->statusReg = mfdcr(0x9F);
+		pReg->controlReg = mfdcr(0xA8);
+		break;
+
+	default:
+		// Invalid DCR!
+		return 0;
+
+	} // END switch(type)
+
+	return 1;
 }
