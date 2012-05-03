@@ -210,7 +210,6 @@ int main()
     mailMsg *pMsg = &msg;
 
     // Debugging
-    u32 dcr;
     dcrRegisters dcrTopAsic;
     dcrRegisters dcrBotAsic;
     dcrRegisters dcrGbe;
@@ -776,34 +775,12 @@ int main()
 
 				    	    print("[-----]\r\n");
 
-				    	    /*
-				    	    // TODO: Replace this with function call yo!
 				    	    // *****************************************************
-				    	    // Debugging - dump 10GBe DCRs
-				    	    dcr = mfdcr(0xC8);
-				    	    printf("[DEBUG] TX_NXTDESC_PTR    = 0x%08x\r\n", (unsigned int)dcr);
-				    	    dcr = mfdcr(0xC9);
-				    	    printf("[DEBUG] TX_CURBUFF_ADDR   = 0x%08x\r\n", (unsigned int)dcr);
-				    	    dcr = mfdcr(0xCA);
-				    	    printf("[DEBUG] TX_CURBUF_LENGTH  = 0x%08x\r\n", (unsigned int)dcr);
-				    	    dcr = mfdcr(0xCB);
-				    	    printf("[DEBUG] TX_CURDESC_PTR    = 0x%08x\r\n", (unsigned int)dcr);
-				    	    dcr = mfdcr(0xCC);
-				    	    printf("[DEBUG] TX_TAILDESC_PTR   = 0x%08x\r\n", (unsigned int)dcr);
-				    	    dcr = mfdcr(0xCD);
-				    	    printf("[DEBUG] TX_CHANNEL_CTRL   = 0x%08x\r\n", (unsigned int)dcr);
-				    	    dcr = mfdcr(0xCE);
-				    	    printf("[DEBUG] TX_IRQ_REG        = 0x%08x\r\n", (unsigned int)dcr);
-				    	    dcr = mfdcr(0xCF);
-				    	    printf("[DEBUG] TX_STATUS_REG     = 0x%08x\r\n", (unsigned int)dcr);
-				    	     */
-
-				    	    // Read DCRs
+				    	    // Debugging - dump 10GBe DCRs (but read all)
 				    	    readDcrs(DCR_TOP_ASIC_RX, &dcrTopAsic);
 				    	    readDcrs(DCR_BOT_ASIC_RX, &dcrBotAsic);
 				    	    readDcrs(DCR_GBE_TX, &dcrGbe);
 				    	    readDcrs(DCR_UPLOAD_TX, &dcrUpload);
-
 				    	    print("[DEBUG] 10GBe DMA DCRs:\r\n");
 				    	    printDcr(&dcrGbe);
 
@@ -811,13 +788,13 @@ int main()
 #ifdef PROFILE_TIMING
 				    	    printf("[DEBUG] Time profiling enabled, timed first %d events:\r\n", TIMING_COUNT);
 
-				    	    print("[DEBUG] Trx                Ttxs             Ttxf\r\n");
+				    	    print("[DEBUG] Trx          Ttxs         Ttxf\r\n");
 				    	    print("[DEBUG] ----------------------------------------------------------\r\n");
 				    	    for (i=0; i<TIMING_COUNT; i++)
 				    	    {
-				    	    	printf("[DEBUG] %llu      %llu      %llu\r\n", (long long unsigned)dmaTimingRxEnd[i], (long long unsigned)dmaTimingTxStart[i], (long long unsigned)dmaTimingTxEnd[i]);
+				    	    	printf("[DEBUG] %10u   %10u   %10u\r\n", (unsigned int)dmaTimingRxEnd[i], (unsigned int)dmaTimingTxStart[i], (unsigned int)dmaTimingTxEnd[i]);
 				    	    }
-				    	    printf("[DEBUG] Delta t (trx)=%lluus\r\n", (long long unsigned) ( (dmaTimingRxEnd[TIMING_COUNT]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
+				    	    printf("[DEBUG] Delta t (trx)=%uus\r\n", (unsigned int) ( (dmaTimingRxEnd[TIMING_COUNT]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
 
 #endif
 							break;
@@ -1498,14 +1475,14 @@ void printDcr(dcrRegisters *pReg)
 		print("[ DCR ] Channel is TX\r\n");
 	}
 
-	printf("[ DCR ] %cX_NXTDESC_PTR   0x%08x\r\n", type, (unsigned int)pReg->nxtDescPtr);
-	printf("[ DCR ] %cX_CURBUF_ADDR   0x%08x\r\n", type, (unsigned int)pReg->curBufAddr);
-	printf("[ DCR ] %cX_CURBUF_LENGTH 0x%08x\r\n", type, (unsigned int)pReg->curBufLength);
-	printf("[ DCR ] %cX_CURDESC_PTR   0x%08x\r\n", type, (unsigned int)pReg->curDescPtr);
-	printf("[ DCR ] %cX_TAILDESC_PTR  0x%08x\r\n", type, (unsigned int)pReg->tailDescPtr);
-	printf("[ DCR ] %cX_CHANNEL_CTRL  0x%08x\r\n", type, (unsigned int)pReg->channelCtrl);
-	printf("[ DCR ] %cX_IRQ_REG       0x%08x\r\n", type, (unsigned int)pReg->irqReg);
-	printf("[ DCR ] %cX_STATUS_REG    0x%08x\r\n", type, (unsigned int)pReg->statusReg);
+	printf("[ DCR ] %cX_NXTDESC_PTR    0x%08x\r\n", type, (unsigned int)pReg->nxtDescPtr);
+	printf("[ DCR ] %cX_CURBUF_ADDR    0x%08x\r\n", type, (unsigned int)pReg->curBufAddr);
+	printf("[ DCR ] %cX_CURBUF_LENGTH  0x%08x\r\n", type, (unsigned int)pReg->curBufLength);
+	printf("[ DCR ] %cX_CURDESC_PTR    0x%08x\r\n", type, (unsigned int)pReg->curDescPtr);
+	printf("[ DCR ] %cX_TAILDESC_PTR   0x%08x\r\n", type, (unsigned int)pReg->tailDescPtr);
+	printf("[ DCR ] %cX_CHANNEL_CTRL   0x%08x\r\n", type, (unsigned int)pReg->channelCtrl);
+	printf("[ DCR ] %cX_IRQ_REG        0x%08x\r\n", type, (unsigned int)pReg->irqReg);
+	printf("[ DCR ] %cX_STATUS_REG     0x%08x\r\n", type, (unsigned int)pReg->statusReg);
 	printf("[ DCR ] DMA_CONTROL_REG   0x%08x\r\n", (unsigned int)pReg->controlReg);
 
 }
