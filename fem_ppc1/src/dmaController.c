@@ -47,7 +47,7 @@
 //#define DEBUG_BD			1			// Outputs DMA BDs as received
 // ---
 #define PROFILE_TIMING			1			//! Enables time profiling for DMA engines
-#define TIMING_COUNT			2			//! Number of DMA operations to profile during acquisition
+#define TIMING_COUNT			8			//! Number of DMA operations to profile during acquisition
 // ---
 
 
@@ -406,6 +406,12 @@ int main()
 				timerCounterRxEnd = 0;
 				timerCounterTxStart = 0;
 				timerCounterTxEnd = 0;
+				for(k=0; k<TIMING_COUNT; k++)
+				{
+					dmaTimingRxEnd[k] = 0;
+					dmaTimingTxStart[k] = 0;
+					dmaTimingTxEnd[k] = 0;
+				}
 #endif
 
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
@@ -792,7 +798,7 @@ int main()
 				    	    print("[DEBUG] ----------------------------------------------------------\r\n");
 				    	    for (i=0; i<TIMING_COUNT; i++)
 				    	    {
-				    	    	printf("[DEBUG] %llu          %llu          %llu\r\n", (long long unsigned)dmaTimingRxEnd[i], (long long unsigned)dmaTimingTxStart[i], (long long unsigned)dmaTimingTxEnd[i]);
+				    	    	printf("[DEBUG] %llu      %llu      %llu\r\n", (long long unsigned)dmaTimingRxEnd[i], (long long unsigned)dmaTimingTxStart[i], (long long unsigned)dmaTimingTxEnd[i]);
 				    	    }
 				    	    printf("[DEBUG] Delta t (trx)=%lluus\r\n", (long long unsigned) ( (dmaTimingRxEnd[TIMING_COUNT]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
 
