@@ -170,7 +170,9 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 unsigned short sendConfigRequestAckMessage(XMbox *pMailbox);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
+
 int readDcrs(dcrRegistersBase type, dcrRegisters *pReg);
+void printDcr(dcrRegisters *pReg);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -209,6 +211,10 @@ int main()
 
     // Debugging
     u32 dcr;
+    dcrRegisters dcrTopAsic;
+    dcrRegisters dcrBotAsic;
+    dcrRegisters dcrGbe;
+    dcrRegisters dcrUpload;
 
 #ifdef PROFILE_TIMING
 #ifndef TIMING_COUNT
@@ -770,6 +776,7 @@ int main()
 
 				    	    print("[-----]\r\n");
 
+				    	    /*
 				    	    // TODO: Replace this with function call yo!
 				    	    // *****************************************************
 				    	    // Debugging - dump 10GBe DCRs
@@ -789,7 +796,17 @@ int main()
 				    	    printf("[DEBUG] TX_IRQ_REG        = 0x%08x\r\n", (unsigned int)dcr);
 				    	    dcr = mfdcr(0xCF);
 				    	    printf("[DEBUG] TX_STATUS_REG     = 0x%08x\r\n", (unsigned int)dcr);
-				    	    // *****************************************************
+				    	     */
+
+				    	    // Read DCRs
+				    	    readDcrs(DCR_TOP_ASIC_RX, &dcrTopAsic);
+				    	    readDcrs(DCR_BOT_ASIC_RX, &dcrBotAsic);
+				    	    readDcrs(DCR_GBE_TX, &dcrGbe);
+				    	    readDcrs(DCR_UPLOAD_TX, &dcrUpload);
+
+				    	    print("[DEBUG] 10GBe DMA DCRs:\r\n");
+				    	    printDcr(&dcrGbe);
+
 
 #ifdef PROFILE_TIMING
 				    	    printf("[DEBUG] Time profiling enabled, timed first %d events:\r\n", TIMING_COUNT);
@@ -1460,4 +1477,35 @@ int readDcrs(dcrRegistersBase type, dcrRegisters *pReg)
 	} // END switch(type)
 
 	return 1;
+}
+
+
+
+/* Prints out a DCR struct
+ * @param pReg pointer to DCR struct
+ */
+void printDcr(dcrRegisters *pReg)
+{
+	char type;
+	if (pReg->type==DCR_CHANNEL_RX)
+	{
+		type = 'R';
+		print("[ DCR ] Channel is RX\r\n");
+	}
+	else
+	{
+		type = 'T';
+		print("[ DCR ] Channel is TX\r\n");
+	}
+
+	printf("[ DCR ] %cX_NXTDESC_PTR   0x%08x\r\n", type, (unsigned int)pReg->nxtDescPtr);
+	printf("[ DCR ] %cX_CURBUF_ADDR   0x%08x\r\n", type, (unsigned int)pReg->curBufAddr);
+	printf("[ DCR ] %cX_CURBUF_LENGTH 0x%08x\r\n", type, (unsigned int)pReg->curBufLength);
+	printf("[ DCR ] %cX_CURDESC_PTR   0x%08x\r\n", type, (unsigned int)pReg->curDescPtr);
+	printf("[ DCR ] %cX_TAILDESC_PTR  0x%08x\r\n", type, (unsigned int)pReg->tailDescPtr);
+	printf("[ DCR ] %cX_CHANNEL_CTRL  0x%08x\r\n", type, (unsigned int)pReg->channelCtrl);
+	printf("[ DCR ] %cX_IRQ_REG       0x%08x\r\n", type, (unsigned int)pReg->irqReg);
+	printf("[ DCR ] %cX_STATUS_REG    0x%08x\r\n", type, (unsigned int)pReg->statusReg);
+	printf("[ DCR ] DMA_CONTROL_REG   0x%08x\r\n", (unsigned int)pReg->controlReg);
+
 }
