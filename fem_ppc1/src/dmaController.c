@@ -53,8 +53,8 @@
 
 // DMA timing tuning (EXPERIMENTAL)
 // These specify how many RX or TX descriptors are requested / sent per loop.
-#define LL_DMA_RX_CHUNK_SIZE		XLLDMA_ALL_BDS			//! Valid values are 1...XLLDMA_ALL_BDS
-#define LL_DMA_TX_CHUNK_SIZE		XLLDMA_ALL_BDS			//! Valid values are 2...XLLDMA_ALL_BDS
+#define LL_DMA_RX_CHUNK_SIZE		1			//! Valid values are 1...XLLDMA_ALL_BDS		(MUST BE 1 if PROFILE_TIMING enabled!)
+#define LL_DMA_TX_CHUNK_SIZE		2			//! Valid values are 2...XLLDMA_ALL_BDS		(MUST BE 2 if PROFILE_TIMING enabled!)
 
 // TODO: Move defines, function prototypes to header!
 // Device Control Register (DCR) offsets for PPC DMA engine (See Xilinx UG200, chapter 13)
@@ -593,8 +593,7 @@ int main()
 #endif
 
 #ifdef PROFILE_TIMING
-							//if (timerCounterTxStart<TIMING_COUNT)
-							while (timerCounterTxStart<TIMING_COUNT)
+							if (timerCounterTxStart<TIMING_COUNT)
 							{
 								XTime_GetTime(&(dmaTimingTxStart[timerCounterTxStart++]));
 							}
@@ -633,10 +632,19 @@ int main()
 
 							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], LL_DMA_TX_CHUNK_SIZE, &pTenGigPostHW);
 
+
+
 							if (numBDFromTenGig>0)
 							{
 #ifdef VERBOSE_DEBUG
 								printf("[DEBUG] Got %d TX BD back to check...\r\n", numBDFromTenGig);
+#endif
+
+#ifdef PROFILE_TIMING
+							if (timerCounterTxEnd<TIMING_COUNT)
+							{
+								XTime_GetTime(&(dmaTimingTxEnd[timerCounterTxEnd++]));
+							}
 #endif
 
 								for (i=0; i<numBDFromTenGig; i++)
@@ -781,9 +789,19 @@ int main()
 				    	    printf("[DEBUG] Time profiling enabled, timed first %d events:\r\n", TIMING_COUNT);
 				    	    for (i=0; i<TIMING_COUNT; i++)
 				    	    {
-				    	    	printf("[DEBUG] RX DMA %d = %llu\r\n", i, (long long unsigned)dmaTimingRxEnd[i]);
+				    	    	printf("[DEBUG] Trx Start %d = %llu\r\n", i, (long long unsigned)dmaTimingRxEnd[i]);
 				    	    }
-				    	    printf("[DEBUG] Interval %llu\r\n", (long long unsigned) ( (dmaTimingRxEnd[7]-dmaTimingRxEnd[0])/7));
+				    	    printf("[DEBUG] Delta t=%lluus\r\n", (long long unsigned) ( (dmaTimingRxEnd[TIMING_COUNT]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
+
+				    	    for (i=0; i<TIMING_COUNT; i++)
+				    	    {
+				    	    	printf("[DEBUG] Ttx Start %d = %llu\r\n", i, (long long unsigned)dmaTimingTxStart[i]);
+				    	    }
+
+				    	    for (i=0; i<TIMING_COUNT; i++)
+				    	    {
+				    	    	printf("[DEBUG] Ttx End   %d = %llu\r\n", i, (long long unsigned)dmaTimingTxEnd[i]);
+				    	    }
 #endif
 							break;
 
