@@ -47,7 +47,7 @@
 //#define DEBUG_BD			1			// Outputs DMA BDs as received
 // ---
 #define PROFILE_TIMING			1			//! Enables time profiling for DMA engines
-#define TIMING_COUNT			8			//! Number of DMA operations to profile during acquisition
+#define TIMING_COUNT			2			//! Number of DMA operations to profile during acquisition
 // ---
 
 
@@ -787,21 +787,15 @@ int main()
 
 #ifdef PROFILE_TIMING
 				    	    printf("[DEBUG] Time profiling enabled, timed first %d events:\r\n", TIMING_COUNT);
-				    	    for (i=0; i<TIMING_COUNT; i++)
-				    	    {
-				    	    	printf("[DEBUG] Trx Start %d = %llu\r\n", i, (long long unsigned)dmaTimingRxEnd[i]);
-				    	    }
-				    	    printf("[DEBUG] Delta t=%lluus\r\n", (long long unsigned) ( (dmaTimingRxEnd[TIMING_COUNT]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
 
+				    	    print("[DEBUG] Trx                Ttxs             Ttxf\r\n");
+				    	    print("[DEBUG] ----------------------------------------------------------\r\n");
 				    	    for (i=0; i<TIMING_COUNT; i++)
 				    	    {
-				    	    	printf("[DEBUG] Ttx Start %d = %llu\r\n", i, (long long unsigned)dmaTimingTxStart[i]);
+				    	    	printf("[DEBUG] %llu          %llu          %llu\r\n", (long long unsigned)dmaTimingRxEnd[i], (long long unsigned)dmaTimingTxStart[i], (long long unsigned)dmaTimingTxEnd[i]);
 				    	    }
+				    	    printf("[DEBUG] Delta t (trx)=%lluus\r\n", (long long unsigned) ( (dmaTimingRxEnd[TIMING_COUNT]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
 
-				    	    for (i=0; i<TIMING_COUNT; i++)
-				    	    {
-				    	    	printf("[DEBUG] Ttx End   %d = %llu\r\n", i, (long long unsigned)dmaTimingTxEnd[i]);
-				    	    }
 #endif
 							break;
 
