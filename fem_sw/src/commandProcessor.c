@@ -7,6 +7,9 @@
  */
 
 #include "commandProcessor.h"
+#ifdef USE_CACHE
+#include "xcache_l.h"
+#endif
 
 /* Manages the connection of clients to the FEM and
  * the reception / validation / response generation of
@@ -166,7 +169,7 @@ void commandProcessorThread()
 
 							numConnectedClients++;
 
-							state[newFd-1].state = STATE_COMPLETE;		// This causes reset at beginning of receive from existing client loop!
+							state[newFd-1].state = STATE_COMPLETE;		// This causes reset at beginning of receive from existing client loop
 
 						}
 					}
@@ -254,7 +257,7 @@ void commandProcessorThread()
 						//PRTDBG("Read %d bytes\r\n", numBytesRead);
 						if (numBytesRead == 0)
 						{
-							// Client has disconnected
+							// Client has disconnected or an error occurred, so disconnect client
 							disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
 						}
 						else if (numBytesRead < numBytesToRead)
@@ -284,11 +287,20 @@ void commandProcessorThread()
 					if (pState->state == STATE_GOT_HEADER)
 					{
 
+						// Validate header
 						//PRTDBG("IN STATE_GOT_HEADER\r\n");
-						// Validate
 						if(validateHeaderContents(pState->pHdr)==0)
 						{
 							// Header is valid!
+
+							// If a BUS_DIRECT write operation update pState accordingly
+							if (( pState->pHdr->bus_target==BUS_DIRECT) && (pState->pHdr->command==CMD_ACCESS) && (pState->pHdr->state==STATE_WRITE) )
+							{
+								pState->busDirectSize = pState->pHdr->payload_sz;
+								pState->pBusDirect = (u8*)pState->pHdr->address;
+								DBGOUT("CmdProc: Got a BUS_DIRECT, CMD_ACCESS STATE_WRITE!\r\n");
+							}
+
 							pState->state = STATE_HDR_VALID;
 							PRTDBG("CmdProc: Header is valid.\r\n");
 						}
@@ -314,26 +326,27 @@ void commandProcessorThread()
 						// TODO: We also need to reject an address of 0 as lwip sees this as a NULL pointer and doesn't do the rxbuf->appbuff copy!
 
 						// Check if this is a direct memory receive, if so handle it
-						if (	(pState->pHdr->bus_target==BUS_DIRECT) &&
-								(pState->pHdr->command==CMD_ACCESS) &&
-								(pState->pHdr->state==STATE_WRITE)
-							)
+						if ( (pState->pHdr->bus_target==BUS_DIRECT) && (pState->pHdr->command==CMD_ACCESS) && (pState->pHdr->state==STATE_WRITE) )
 						{
-							DBGOUT("CmdProc: Got a BUS_DIRECT, CMD_ACCESS STATE_WRITE!\r\n");
+							DBGOUT("CmdProc: BUS_DIRECT write: Trying to read %d bytes to 0x%08x...\r\n", pState->busDirectSize, pState->pBusDirect);
 
-
-							DBGOUT("CmdProc: Trying to read %d bytes to 0x%08x...\r\n", pState->pHdr->payload_sz, pState->pHdr->address);
 							// Read payload directly to DDR at specified address
-							numBytesRead = lwip_read(i, (void*)(pState->pHdr->address), pState->pHdr->payload_sz);
+							numBytesRead = lwip_read(i, (void*)(pState->pBusDirect), pState->busDirectSize);
 
-							DBGOUT("CmdProc: Read %d bytes...\r\n", numBytesRead);
-							if (numBytesRead!=pState->pHdr->payload_sz)
+							DBGOUT("CmdProc: BUS_DIRECT Write: Read %d bytes...\r\n", numBytesRead);
+							if (numBytesRead<=0)
 							{
-								DBGOUT("CmdProc: Only managed to read %d of %d bytes :(\r\n", numBytesRead, pState->pHdr->payload_sz);
-								pState->state = STATE_COMPLETE;
+								// Client has disconnected or an error occurred
+								DBGOUT("CmdProc: Client disconnected during BUS_DIRECT write!\r\n");
+								disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
 								break;
 							}
-							else
+
+							// Update counters with data received
+							pState->pBusDirect += numBytesRead;
+							pState->busDirectSize -= numBytesRead;
+
+							if (pState->busDirectSize == 0)
 							{
 								// Bypass normal reception of payload as we already have it
 								pState->state = STATE_GOT_PYLD;
@@ -364,7 +377,7 @@ void commandProcessorThread()
 										{
 											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
 											DBGOUT("Terminating thread...\r\n");
-											// TODO: Send NACK here!
+											// TODO: Send NACK here, and don't exit!
 											return;
 										}
 									}
@@ -405,9 +418,10 @@ void commandProcessorThread()
 									//DBGOUT("CmdProc: Trying to get %d bytes of payload (payload_sz=%d)\r\n", numBytesToRead, pState->pHdr->payload_sz);
 									numBytesRead = lwip_read(i, pState->pPayload + (pState->size - sizeof(struct protocol_header)), numBytesToRead);
 
-									if (numBytesRead == 0)
+									if (numBytesRead <= 0)
 									{
-										// Client has disconnected
+										// Client has disconnected or an error occurred
+										DBGOUT("CmdProc: Client disconnected during STATE_HDR_VALID.\r\n");
 										disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
 									}
 									else
@@ -622,20 +636,9 @@ void commandHandler(struct protocol_header* pRxHeader,
 		case CMD_INTERNAL:
 
 			numOps = 0;
-			SBIT(state, STATE_ACK);
-
+			SBIT(state, STATE_NACK);
 			// TODO: Implement CMD_INTERNAL
-			//DBGOUT("CmdDisp: CMD_INTERNAL is not currently supported!\r\n");
-
-			// DEBUGGING ONLY!
-			// Try to reset CPU - DBCR0 (SPR 0x134) bits 2:3
-			// 00 = nothing
-			// 01 = core reset
-			// 10 = chip reset
-			// 11 = system reset (0xC)
-			DBGOUT("CmdDisp: DEBUG: Asserting PPC reset!\r\n");
-			mtspr(0x134, 0xC);
-
+			DBGOUT("CmdDisp: CMD_INTERNAL not supported!!\r\n");
 			break;
 
 		case CMD_ACQUIRE:
@@ -673,7 +676,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 					if (configAck==0)
 					{
 						DBGOUT("CmdDisp: WARNING - Failed to get ACK from PPC1 for acquire config request!\r\n");
-						// TODO: Error!
+						SBIT(state, STATE_NACK);
+						// TODO: FEM error state
 					}
 
 					break;
@@ -931,9 +935,29 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 				// --------------------------------------------------------------------
 				case BUS_DIRECT:
-					numOps = pRxHeader->payload_sz;
-					SBIT(state, STATE_ACK);
-					break;
+					switch(pRxHeader->data_width)
+					{
+					case WIDTH_BYTE: dataWidth = 1; break;
+					case WIDTH_WORD: dataWidth = 2; break;
+					case WIDTH_LONG: dataWidth = 4; break;
+					default:
+						DBGOUT("CmdDisp: Unsupported data width %d in BUS_DIRECT access\r\n", pRxHeader->data_width);
+						dataWidth = 0;
+						break;
+					}
+					if (dataWidth==0)
+					{
+						// Invalid
+						SBIT(state, STATE_NACK);
+					}
+					else
+					{
+						numOps = pRxHeader->payload_sz/dataWidth;
+						SBIT(state, STATE_ACK);
+					}
+#ifdef USE_CACHE
+					XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
+#endif
 
 				case BUS_UNSUPPORTED:
 				default:
