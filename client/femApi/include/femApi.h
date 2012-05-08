@@ -151,6 +151,7 @@ void femClose(void* femHandle);
 #define FEM_OP_MPXIII_CASDAC 2024
 #define FEM_OP_MPXIII_TPREFADAC 2025
 #define FEM_OP_MPXIII_TPREFBDAC 2026
+#define FEM_OP_MPXIII_EFUSEID 2027
 /* Medipix III per pixel registers */
 #define FEM_OP_MPXIII_PIXELMASK 3000
 #define FEM_OP_MPXIII_PIXELTHRESHOLDA 3001
