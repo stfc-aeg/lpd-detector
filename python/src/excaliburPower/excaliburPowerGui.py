@@ -621,11 +621,11 @@ class ExcaliburPowerGui:
 
         thresholdAnswer = self.compareThresholds(lm92Value, self.humidityMin, self.humidityMax, self.humidityWarn)
         if thresholdAnswer is 0:
-            self.updateCoolantTempLed(thresholdAnswer) #Green
+            self.updateHumidityLed(thresholdAnswer) #Green
         elif thresholdAnswer is 1:
-            self.updateCoolantTempLed(thresholdAnswer) #Amber
+            self.updateHumidityLed(thresholdAnswer) #Amber
         elif thresholdAnswer is 2:
-            self.updateCoolantTempLed(thresholdAnswer) #Red
+            self.updateHumidityLed(thresholdAnswer) #Red
         else:
             self.displayErrorMessage("lm92ToDegrees() error: minimum exceeded maximum!")
             return None
