@@ -4,7 +4,7 @@ Created on 21 Oct 2011
 @author: ckd27546
 '''
 import sys, Queue
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 from excaliburPowerGuiMain_ui import Ui_mainWindow
 
 class ExcaliburPowerGuiMain(QtGui.QMainWindow):
@@ -45,14 +45,45 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                     try:
                         # path to component...
                         guiComponent = getattr(self.gui, "%s" % cmdList[0])
-                        # ...then it's .setText() function
-                        handlerMethod = getattr(guiComponent, "setText")
-                    except AttributeError:
-                        # A typo along the way?
-                        print "Error locating Gui component! A typo maybe?"
-                    else:
-                        # handlerMethod function complete, call with argument
-                        handlerMethod(str(cmdList[1]))
+#                        print cmdList[0], cmdList[1]
+
+                        # Component located ok
+                        try:
+                            
+                            # ...then it's .setText() function
+                            handlerMethod = getattr(guiComponent, "setText")
+                        except AttributeError:
+                            #  Not a QLineEdit object (or object lacking setTest() function..)                            
+                            try:
+                                # Is this a LED component?
+                                handlerMethod = getattr(guiComponent, "setStyleSheet")
+                                # e.g.: self.gui.gui.frmHumidityStatus.setStyleSheet()
+                            except:
+                                # Nope, unknown Gui Component
+                                print "Error: Gui component \"", guiComponent, "\" neither QLineEdit nor LED type!"
+                            else:
+                                try:
+                                    # Found setStyleSheet() attribute, now construct it's argument
+                                    argumentValue = QtCore.QString.fromUtf8( str( cmdList[1] ))
+                                    # e.g.: argumentsValue = QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);")
+                                    try:
+                                        # Call function with argument
+                                        handlerMethod( argumentValue )
+                                        # e.g.: self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
+                                    except:
+                                        # Failed, reason unknown
+                                        print "Couldn't update LED component, reason unknown"
+                                        
+                                except:
+                                    # Could not construct argumentValue
+                                    print "Could not construct argument for setStyleSheet function!"
+
+                        else:
+                            # QEditLine handlerMethod function complete, call with argument
+                            handlerMethod(str(cmdList[1]))
+                    except:
+                        # Gui component not found
+                        print "Gui Component doesn't exist: a typo maybe?"
 
             except Queue.Empty:
                 pass
