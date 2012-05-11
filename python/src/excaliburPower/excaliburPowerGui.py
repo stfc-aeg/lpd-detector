@@ -653,15 +653,18 @@ class ExcaliburPowerGui:
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
         if colour is 0: #"Green":
             self.bHumidityGreen = True
-            self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
+            self.queue.put("frmHumidityStatus=\nbackground-color: rgb(0, 255, 0);")
+#            self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
             return True
         elif colour is 1: #"Amber":
             self.bHumidityGreen = True  # Amber considered true as it's a warning but not yet out of range
-            self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb( 255, 255, 0);"))
+            self.queue.put("frmHumidityStatus=\nbackground-color: rgb( 255, 255, 0);")
+            #self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb( 255, 255, 0);"))
             return True
         elif colour is 2: #"Red":
             self.bHumidityGreen = False
-            self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+            self.queue.put("frmHumidityStatus=\nbackground-color: rgb(255, 0, 0);")
+            #self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
             return True
         else:
         # Check the argument colour is either Red, Amber or Green
@@ -672,15 +675,15 @@ class ExcaliburPowerGui:
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
         if colour is 0: #"Green":
             self.bAirTempGreen = True
-            self.gui.gui.frmAirTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
+            self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255, 0);")
             return True
         elif colour is 1: #"Amber":
             self.bAirTempGreen = True  # Amber considered true as it's a warning but not yet out of range
-            self.gui.gui.frmAirTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb( 255, 255, 0);"))
+            self.queue.put("frmAirTempStatus=\nbackground-color: rgb( 255, 255, 0);")
             return True
         elif colour is 2: #"Red":
             self.bAirTempGreen = False
-            self.gui.gui.frmAirTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+            self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
             return True
         else:
         # Check the argument colour is either Red, Amber or Green
@@ -867,12 +870,12 @@ class ExcaliburPowerGui:
             # Coolant Flow's gone
             if self.bCoolantFlowGreen is False:
                 # Only change to Green if previously Red
-                self.gui.gui.frmAirTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255,  0);"))
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255,  0);")
                 self.bCoolantFlowGreen = True
         else:
             # Ensure Coolant Flow's Red if previously Green
             if self.bCoolantFlowGreen is True:
-                self.gui.gui.frmAirTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bCoolantFlowGreen = False
         # Pin 2
         if rxVal & 4 is 4:
