@@ -621,13 +621,13 @@ class ExcaliburPowerGui:
 
         thresholdAnswer = self.compareThresholds(lm92Value, self.humidityMin, self.humidityMax, self.humidityWarn)
         if thresholdAnswer is 0:
-            self.updateHumidityLed(thresholdAnswer) #Green
+            self.updateCoolantTempLed(thresholdAnswer) #Green
         elif thresholdAnswer is 1:
-            self.updateHumidityLed(thresholdAnswer) #Amber
+            self.updateCoolantTempLed(thresholdAnswer) #Amber
         elif thresholdAnswer is 2:
-            self.updateHumidityLed(thresholdAnswer) #Red
+            self.updateCoolantTempLed(thresholdAnswer) #Red
         else:
-            self.displayErrorMessage("compareThresholds error: minimum exceeded maximum!")
+            self.displayErrorMessage("lm92ToDegrees() error: minimum exceeded maximum!")
             return None
         return lm92Value
         
@@ -635,9 +635,14 @@ class ExcaliburPowerGui:
         """ Compare val to minimum (minVal), maximum (maxVal) and warning (warn) thresholds
             and return integer accordingly (0 = Green, 1 = Amber, 2 = Red) """
         # Check 1st argument is float and other arguments are integers only
-        if ( compareTypes(val) is not 2 or compareTypes(minVal) is not 1 or
-             compareTypes(maxVal) is not 1 or compareTypes(warn) is not 1 ):
-            raise BadArgumentError, "compareThresholds argument error: Received unexpected  variable type"            
+        if ( compareTypes(val) is not 2):
+            raise BadArgumentError, "compareThresholds() error: Received unexpected val argument type"
+        elif compareTypes(minVal) is not 1:
+            raise BadArgumentError, "compareThresholds() error: Received unexpected minVal argument type"
+        elif compareTypes(maxVal) is not 1:
+            raise BadArgumentError, "compareThresholds() error: Received unexpected maxVal argument type"
+        elif compareTypes(warn) is not 1:
+            raise BadArgumentError, "compareThresholds() error: Received unexpected warn argument type"            
         # maxVal must be greater than minVal
         if not (maxVal > minVal):
             raise OutOfRangeError, "compareThresholds: maxVal must be greater than minVal!" 
@@ -651,81 +656,78 @@ class ExcaliburPowerGui:
     def updateHumidityLed(self, colour):
         """ Update Humidity Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
-        if colour is 0: #"Green":
+        if colour is 0: #"Green"
             self.bHumidityGreen = True
-            self.queue.put("frmHumidityStatus=\nbackground-color: rgb(0, 255, 0);")
-#            self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
-            return True
-        elif colour is 1: #"Amber":
+            humidityStatus = "frmHumidityStatus=\nbackground-color: rgb(0, 255, 0);"
+        elif colour is 1: #"Amber"
             self.bHumidityGreen = True  # Amber considered true as it's a warning but not yet out of range
-            self.queue.put("frmHumidityStatus=\nbackground-color: rgb( 255, 255, 0);")
-            #self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb( 255, 255, 0);"))
-            return True
-        elif colour is 2: #"Red":
+            humidityStatus = "frmHumidityStatus=\nbackground-color: rgb( 255, 255, 0);"
+        elif colour is 2: #"Red"
             self.bHumidityGreen = False
-            self.queue.put("frmHumidityStatus=\nbackground-color: rgb(255, 0, 0);")
-            #self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
-            return True
+            humidityStatus = "frmHumidityStatus=\nbackground-color: rgb(255, 0, 0);"
         else:
-        # Check the argument colour is either Red, Amber or Green
             raise BadArgumentError, "updateHumidityLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"
+            return False
+        # Signal to update Gui component
+        self.queue.put(humidityStatus)
+        return True
 
     def updateAirTempLed(self, colour):
         """ Update Air Temperature Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
         if colour is 0: #"Green":
             self.bAirTempGreen = True
-            self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255, 0);")
-            return True
+            airStatus = "frmAirTempStatus=\nbackground-color: rgb(0, 255, 0);"
         elif colour is 1: #"Amber":
             self.bAirTempGreen = True  # Amber considered true as it's a warning but not yet out of range
-            self.queue.put("frmAirTempStatus=\nbackground-color: rgb( 255, 255, 0);")
-            return True
+            airStatus = "frmAirTempStatus=\nbackground-color: rgb( 255, 255, 0);"
         elif colour is 2: #"Red":
             self.bAirTempGreen = False
-            self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
-            return True
+            airStatus = "frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);"
         else:
-        # Check the argument colour is either Red, Amber or Green
-            raise BadArgumentError, "updateAirTempLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"        
+            raise BadArgumentError, "updateAirTempLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"
+            return False        
+        # Signal to update Gui component
+        self.queue.put(airStatus)
+        return True
 
     def updateCoolantFlowLed(self, colour):
         """ Update Coolant Flow Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
         if colour is 0: #"Green":
             self.bCoolantFlowGreen = True
-            self.gui.gui.frmCoolantFlowStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
-            return True
+            coolantFlowStatus = "frmCoolantFlowStatus=\nbackground-color: rgb(0, 255, 0);"
         elif colour is 1: #"Amber":
             self.bCoolantFlowGreen = True  # Amber considered true as it's a warning but not yet out of range
-            self.gui.gui.frmCoolantFlowStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb( 255, 255, 0);"))
-            return True
+            coolantFlowStatus = "frmCoolantFlowStatus=\nbackground-color: rgb( 255, 255, 0);"
         elif colour is 2: #"Red":
             self.bCoolantFlowGreen = False
-            self.gui.gui.frmCoolantFlowStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
-            return True
+            coolantFlowStatus = "frmCoolantFlowStatus=\nbackground-color: rgb(255, 0, 0);"
         else:
-        # Check the argument colour is either Red, Amber or Green
             raise BadArgumentError, "updateCoolantFlowLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"
-
+            return False
+        # Signal to gui to update LED
+        self.queue.put(coolantFlowStatus)
+        return True
+    
     def updateCoolantTempLed(self, colour):
         """ Update Coolant Temperature Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
         if colour is 0: #"Green":
             self.bCoolantTempGreen = True
-            self.gui.gui.frmCoolantTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
-            return True
+            coolantTempStatus = "frmCoolantTempStatus=\nbackground-color: rgb(0, 255, 0);"
         elif colour is 1: #"Amber":
             self.bCoolantTempGreen = True  # Amber considered true as it's a warning but not yet out of range
-            self.gui.gui.frmCoolantTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb( 255, 255, 0);"))
-            return True
+            coolantTempStatus = "frmCoolantTempStatus=\nbackground-color: rgb( 255, 255, 0);"
         elif colour is 2: #"Red":
             self.bCoolantTempGreen = False
-            self.gui.gui.frmCoolantTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
-            return True
+            coolantTempStatus = "frmCoolantTempStatus=\nbackground-color: rgb(255, 0, 0);"
         else:
-        # Check the argument colour is either Red, Amber or Green
             raise BadArgumentError, "updateCoolantTempLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"
+            return False
+        # Signal to Gui to update LED
+        self.queue.put(coolantTempStatus)
+        return True
 
     def degreesToLm92(self, temp):
         """ Convert integer or float degrees to 13 bit temperature value """
@@ -765,7 +767,19 @@ class ExcaliburPowerGui:
         
         # temp is valid, convert into degrees centigrade
         temp = temp >> 4;           # 4 LSB bits unused
-        return float(temp * 0.0625) # 1 LSB = 0.0625C
+        temp = float(temp * 0.0625) # 1 LSB = 0.0625C
+        
+        thresholdAnswer = self.compareThresholds(temp, self.humidityMin, self.humidityMax, self.humidityWarn)
+        if thresholdAnswer is 0:
+            self.updateAirTempLed(thresholdAnswer) #Green
+        elif thresholdAnswer is 1:
+            self.updateAirTempLed(thresholdAnswer) #Amber
+        elif thresholdAnswer is 2:
+            self.updateAirTempLed(thresholdAnswer) #Red
+        else:
+            self.displayErrorMessage("tmpToDegrees() error: minimum exceeded maximum!")
+            return None
+        return temp 
 
     def readtmp(self):
 #        sCmd = "r 79 2 @"
