@@ -38,29 +38,24 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                 if cmdList[0].find("hideGuiBars") is not -1:
                     self.hideGuiProgressAndStatusBars()
                 else:
+                    # Not special case, look for updating ordinary GUI components
+                    #----------
                     # cmdList[0] is string containing GUI component, e.g. "leHum_mon"
                     # cmdList[1] is string containing it's value, e.g. "23.3125"
-                    #--------
+                    #----------
                     # Construct dispatch function in situ..
                     try:
                         # path to component...
                         guiComponent = getattr(self.gui, "%s" % cmdList[0])
-#                        print cmdList[0], cmdList[1]
-
-                        # Component located ok
-                        try:
-                            
-                            # ...then it's .setText() function
-                            handlerMethod = getattr(guiComponent, "setText")
-                        except AttributeError:
-                            #  Not a QLineEdit object (or object lacking setTest() function..)                            
-                            try:
-                                # Is this a LED component?
+                        #print "type(guiComponent) = ", type(guiComponent)
+                        if type(guiComponent) is QtGui.QFrame:
+                            # Execute LED procedure
+                            try:                                
                                 handlerMethod = getattr(guiComponent, "setStyleSheet")
                                 # e.g.: self.gui.gui.frmHumidityStatus.setStyleSheet()
                             except:
                                 # Nope, unknown Gui Component
-                                print "Error: Gui component \"", guiComponent, "\" neither QLineEdit nor LED type!"
+                                print "Unable to execute setStyleSheet function of ", type(guiComponent), " object"
                             else:
                                 try:
                                     # Found setStyleSheet() attribute, now construct it's argument
@@ -72,23 +67,29 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                                         # e.g.: self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
                                     except:
                                         # Failed, reason unknown
-                                        print "Couldn't update LED component, reason unknown"
-                                        
+                                        print "Couldn't update LED component, reason unknown"                                        
                                 except:
                                     # Could not construct argumentValue
                                     print "Could not construct argument for setStyleSheet function!"
-
+                        elif type(guiComponent) is QtGui.QLineEdit:
+                            # Execute setText procedure
+                            try:
+                                handlerMethod = getattr(guiComponent, "setText")
+#                                print "type(handlerMethod setText) = ", type(handlerMethod)
+                            except:
+                                print "Unable to execute setText function of ", type(guiComponent), " object"
+                            else:
+                                # QEditLine handlerMethod function complete, call with argument
+                                handlerMethod(str(cmdList[1]))
                         else:
-                            # QEditLine handlerMethod function complete, call with argument
-                            handlerMethod(str(cmdList[1]))
+                            print "Unable to update ", type(guiComponent), " Gui object"    
                     except:
                         # Gui component not found
                         print "Gui Component doesn't exist: a typo maybe?"
 
             except Queue.Empty:
                 pass
-
-
+            
     def hideGuiProgressAndStatusBars(self):
         # I2C devices initialised, hide status bar and progress bar
         self.progressBar.hide()
