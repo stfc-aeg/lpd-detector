@@ -63,7 +63,7 @@ unsigned short acquireConfigAckReceive(void)
 	u32 recBytes;
 	int status = XST_NO_DATA;
 	u32 count = 0;
-	u32 countMax = 1000;
+	u32 countMax = 10000;
 
 	while (count<countMax && status==XST_NO_DATA)
 	{

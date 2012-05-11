@@ -14,7 +14,6 @@
 // Todo list, in order of priority
 // ----------------------------------------------------------------------
 // TODO: Fix totalRecv when in ACQ_MODE_RX_ONLY, with !doTx numRxPairsComplete = 0 never executes and totalRecv becomes factoral!
-// TODO: Implement PROFILE_TIMING time profiling
 // TODO: Fix acqStatusBlock so when config for acquire with buffCnt==0 (put calculated buffCnt in here, also fix reconfig checking)
 // TODO: Fix configure for acquire, respect config. BD storage area
 // TODO: Improve conditional for BD config skipping -> Implement a dirty flag?
@@ -24,9 +23,9 @@
 // TODO: Refactor data counter variables and main event loop
 
 
-// Ideas for speeding up various DMA actions
+// Ideas for boosting DMA throughput / reducing RX-TX latency (currently ~475us total latency between pair RX to TX start??)
 /*
- * All modes:       Change validateBuffer to inline macro, reduce call overhead
+ * All modes:       Change validateBuffer to inline macro, reduce call overhead? (Verify with scope)
  * Burst mode only: Don't recycle RX buffers, increase burst speed (use a dirty flag to show BDs in inconsistent state and to reset next run?)
  *
  *
@@ -302,7 +301,6 @@ int main()
 
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
-    	//printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
 
     	// Send ACK
     	ackOK = sendConfigRequestAckMessage(&mbox);
@@ -310,6 +308,9 @@ int main()
     	{
     		print("[ERROR] Could not send config ACK to PPC1!\r\n");
     	}
+
+    	// Debugging
+    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
 
     	switch(pMsg->cmd)
     	{
@@ -334,6 +335,7 @@ int main()
     			status = configureBdsForAcquisition(pBdRings, &pTenGigPreHW, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			break;
     		case ACQ_MODE_BURST:
+    			print("[INFO ] Received ACQ_MODE_BURST, starting in ACQ_RX_ONLY mode...\r\n");		// Same initial set up but just let user know we know it's burst mode really!
     		case ACQ_MODE_RX_ONLY:
     			doTx = 0;
     			doRx = 1;
@@ -794,7 +796,7 @@ int main()
 				    	    {
 				    	    	printf("[DEBUG] %10u   %10u   %10u\r\n", (unsigned int)dmaTimingRxEnd[i], (unsigned int)dmaTimingTxStart[i], (unsigned int)dmaTimingTxEnd[i]);
 				    	    }
-				    	    printf("[DEBUG] Delta t (trx)=%uus\r\n", (unsigned int) ( (dmaTimingRxEnd[TIMING_COUNT]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
+				    	    printf("[DEBUG] Delta t (trx)=%uus\r\n", (unsigned int) ( (dmaTimingRxEnd[TIMING_COUNT-1]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
 
 #endif
 							break;

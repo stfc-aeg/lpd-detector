@@ -389,7 +389,7 @@ void commandProcessorThread()
 										{
 											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
 											DBGOUT("Terminating thread...\r\n");
-											// TODO: Send NACK here!
+											// TODO: Send NACK here, and don't exit!
 											return;
 										}
 									}
@@ -675,7 +675,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					configAck = acquireConfigAckReceive();
 					if (configAck==0)
 					{
-						DBGOUT("CmdDisp: WARNING - Failed to get ACK from PPC1 for acquire config request!\r\n");
+						DBGOUT("CmdDisp: WARNING - Failed to get ACK from PPC1 for acquire config. request!\r\n");
 						SBIT(state, STATE_NACK);
 						// TODO: FEM error state
 					}
@@ -1051,6 +1051,13 @@ int validateHeaderContents(struct protocol_header *pHeader)
 						return -1;
 					}
 					break;
+				case BUS_DIRECT:
+					// Only write operations make sense here
+					if (pHeader->state!=STATE_WRITE)
+					{
+						DBGOUT("validateHeader: BUS_DIRECT mode only supports STATE_WRITE! (Was %d)\r\n", pHeader->state);
+						return -1;
+					}
 
 				case BUS_UNSUPPORTED:
 					// Never valid!
