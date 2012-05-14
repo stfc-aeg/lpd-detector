@@ -90,7 +90,7 @@ class ExcaliburPowerGui:
             
             # Manual port selection (true), or automatic selection (false)
             ''' True = Manually choose port, False = Automatic selection '''
-            self.bManual = True
+            self.bManual = False
             
             # Open serial port
             if self.bManual is False:
@@ -448,21 +448,13 @@ class ExcaliburPowerGui:
             # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
             self.gui.gui.lvButton.setEnabled(False)
             self.gui.gui.leBiasLevel.setEnabled(False)
-#            self.queue.put(biasStatus)
+
+            # TODO: Grab bias level from leBiasLevel component, e.g.: 
+            #biasString = self.gui.gui.leBiasLevel.text()
+            #self.sCom.write( str(biasString) )
         # Signal to main thread to update Gui component
         self.queue.put(biasStatus)
 
-#    def toggleVisibleGuiComponents(self, bEnable):
-#        """ Hide/Display (Disable/Enable) GUI components by group """
-#        # Is bBool a boolean?
-#        if compareTypes(bEnable) is not 4:
-#            raise WrongVariableType, "toggleVisibleGuiComponents() was not passed a boolean argument!"  
-#        # Enable/Disable
-#        self.gui.gui.gbMonitor.setEnabled(bEnable)   # Monitor
-#        self.gui.gui.gbPower.setEnabled(bEnable)     # Power
-#        self.gui.gui.gbDebug.setEnabled(bEnable)     # Debug
-#        return bEnable
-    
     def lwSerialPortChosen(self):
         """ Called when an item is clicked inside the lwSerialPort
         Go through list of available COM ports in self.availableComPorts while comparing lwSerialPort.currentRow()
@@ -495,7 +487,6 @@ class ExcaliburPowerGui:
             currentLine = currentLine + 1
         # Disable list of COM ports
         self.gui.gui.lwSerialPort.setEnabled(False)
-
 
         
     def cmdStringFormat(self, sCmd):
@@ -592,7 +583,7 @@ class ExcaliburPowerGui:
             rxString = self.sCom.readline()
         except:
             # Occasionally throws Handle Exception when GUI exits
-            self.displayErrorMessage("readSerialInterface(), exception: ")
+            self.displayErrorMessage("readSerialInterface(), Error: ")
             print self.sCom
             return None
 
@@ -603,7 +594,7 @@ class ExcaliburPowerGui:
             rxString = self.sCom.readline()
             if rxString.__len__() == 0:
                 print "2nd attempt, rxString: (empty)"
-                self.displayErrorMessage("Serial Comm: Reply timed out!")
+                self.displayErrorMessage("Serial Comm: Read reply timed out!")
                 return None
         # 1st or 2nd attempt successful, return data
         return rxString
@@ -669,7 +660,6 @@ class ExcaliburPowerGui:
             humidityStatus = "frmHumidityStatus=\nbackground-color: rgb(255, 0, 0);"
         else:
             raise BadArgumentError, "updateHumidityLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"
-            return False
         # Signal to update Gui component
         self.queue.put(humidityStatus)
         return True
@@ -688,7 +678,6 @@ class ExcaliburPowerGui:
             airStatus = "frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);"
         else:
             raise BadArgumentError, "updateAirTempLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"
-            return False        
         # Signal to update Gui component
         self.queue.put(airStatus)
         return True
@@ -707,7 +696,6 @@ class ExcaliburPowerGui:
             coolantFlowStatus = "frmCoolantFlowStatus=\nbackground-color: rgb(255, 0, 0);"
         else:
             raise BadArgumentError, "updateCoolantFlowLed argument neither 0, 1 or 2 (i.e. Green/Amber/Red)!"
-            return False
         # Signal to gui to update LED
         self.queue.put(coolantFlowStatus)
         return True
@@ -784,12 +772,7 @@ class ExcaliburPowerGui:
         return temp 
 
     def readtmp(self):
-#        sCmd = "r 79 2 @"
-#        bWr, txtString = self.cmdStringFormat(sCmd)
-#        if bWr is True:
-#            print "Write command"
-#        else:
-#            print "Read command"
+        """ Read temperature from tmp275 device """
         self.sCom.write("r 79 2 @")
         rxString = self.readSerialInterface()
         if rxString is None:
@@ -874,48 +857,48 @@ class ExcaliburPowerGui:
             # Humidity's High
             if self.bHumidityGreen is False:
                 # Only change to Green if previously Red
-                self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255,  0);"))
+                self.queue.put("frmHumidityStatus=\nbackground-color: rgb(0, 255,  0);")
                 self.bHumidityGreen = True
         else:
             # Ensure Humidity's Red if previously Green
             if self.bHumidityGreen is True:
-                self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+                self.queue.put("frmHumidityStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bHumidityGreen = False                
         # Pin 1
         if rxVal & 2 is 2:
             # Coolant Flow's gone
             if self.bCoolantFlowGreen is False:
                 # Only change to Green if previously Red
-                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.queue.put("frmCoolantFlowStatus=\nbackground-color: rgb(0, 255,  0);")
                 self.bCoolantFlowGreen = True
         else:
             # Ensure Coolant Flow's Red if previously Green
             if self.bCoolantFlowGreen is True:
-                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.queue.put("frmCoolantFlowStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bCoolantFlowGreen = False
         # Pin 2
         if rxVal & 4 is 4:
             # Coolant Temp's gone low
             if self.bCoolantTempGreen is False:
                 # Only change to Green if previously Red
-                self.gui.gui.frmCoolantFlowStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255,  0);"))
+                self.queue.put("frmCoolantTempStatus=\nbackground-color: rgb(0, 255,  0);")
                 self.bCoolantTempGreen = True
         else:
             # Ensure Coolant Temp's Red if previously Green
             if self.bCoolantTempGreen is True:
-                self.gui.gui.frmCoolantFlowStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+                self.queue.put("frmCoolantTempStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bCoolantTempGreen = False
         # Pin 3
         if rxVal & 8 is 8:
             # Air Temp's gone low
             if self.bAirTempGreen is False:
                 # Only change to Green if previously Red
-                self.gui.gui.frmCoolantTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255,  0);"))
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255,  0);")
                 self.bAirTempGreen = True
         else:
             # Ensure Air Temp's Red if previously Green
             if self.bAirTempGreen is True:
-                self.gui.gui.frmCoolantTempStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bAirTempGreen = False
 
     def initialiseCommunication(self):
@@ -945,7 +928,7 @@ class ExcaliburPowerGui:
         try:
             self.sCom.write(sCmd)
         except:
-            self.displayErrorMessage("readAd7998(), Serial exception: ")
+            self.displayErrorMessage("readAd7998(), Serial Error: ")
         rxString = self.readSerialInterface()
         adcChannel = 0
         # No serial data?
@@ -1073,7 +1056,6 @@ class ExcaliburPowerGui:
             self.sCom.write(sCmd)
             # Select conversion register
             sCmd = "w " + str(i2cAddress) + " 0 @"
-#            self.sCom.write("w 35 0 @")
             self.sCom.write(sCmd)
             # Read enabled channel at address ..
             adcChannel, rxInt = self.readAd7998(i2cAddress) 
@@ -1081,10 +1063,10 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit15(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le48VV=%s" % str( rxInt ))      # U15, pin 7
+            try:    self.queue.put("le48VV=%s" % str( rxInt ))                          # U15, pin 7
             except: self.displayErrorMessage("U15 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le48VA=%s" % str( self.scale5V(rxInt) ))        # U15, pin 14
+            try:    self.queue.put("le48VA=%s" % str( self.scale5V(rxInt) ))            # U15, pin 14
             except: self.displayErrorMessage("U15 adc1, Error updating GUI: ")
         def two():
             try:    self.queue.put("le5SUPERVV=%s" % str( self.scale5V(rxInt) ))        # U15, pin 8
@@ -1093,16 +1075,16 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le5SUPERVA=%s" % str( self.scale5V(rxInt) ))        # U15, pin 13
             except: self.displayErrorMessage("U15 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("leHum_mon=%s" % str( self.scale5V(rxInt) ))        # U15, pin 9
+            try:    self.queue.put("leHum_mon=%s" % str( self.scale5V(rxInt) ))         # U15, pin 9
             except: self.displayErrorMessage("U15 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("leAirtmp_mon=%s" % str( self.scale5V(rxInt) ))        # U15, pin 12 
+            try:    self.queue.put("leAirtmp_mon=%s" % str( self.scale5V(rxInt) ))      # U15, pin 12 
             except: self.displayErrorMessage("U15 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("leCoolant_temp_mon=%s" % str( self.scale5V(rxInt) ))        # U15, pin 10
+            try:    self.queue.put("leCoolant_temp_mon=%s" % str( self.scale5V(rxInt) ))    # U15, pin 10
             except: self.displayErrorMessage("U15 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("leCoolant_flow_mon=%s" % str( self.scale5V(rxInt) ))        # U15, pin 11
+            try:    self.queue.put("leCoolant_flow_mon=%s" % str( self.scale5V(rxInt) ))    # U15, pin 11
             except: self.displayErrorMessage("U15 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
@@ -1138,7 +1120,6 @@ class ExcaliburPowerGui:
             self.sCom.write(sCmd)
             # Select conversion register
             sCmd = "w " + str(i2cAddress) + " 0 @"
-#            self.sCom.write("w 35 0 @")
             self.sCom.write(sCmd)
             # Read enabled channel at address ..
             adcChannel, rxInt = self.readAd7998(i2cAddress) 
@@ -1187,7 +1168,7 @@ class ExcaliburPowerGui:
         try:
             self.readlm92()          # Read lm92's current temperature
             self.readtmp()           # Read tmp275's current temperature
-#            self.readpca9538()       # Read pca9538's current value
+            self.readpca9538()       # Read pca9538's current value
 
             self.readAd7998_Unit14(0, 16)  # Read ad7998 Ch 1
             self.readAd7998_Unit14(0, 32)  # Read ad7998 Ch 2
