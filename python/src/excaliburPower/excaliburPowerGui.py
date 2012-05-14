@@ -90,7 +90,7 @@ class ExcaliburPowerGui:
             
             # Manual port selection (true), or automatic selection (false)
             ''' True = Manually choose port, False = Automatic selection '''
-            self.bManual = False
+            self.bManual = True
             
             # Open serial port
             if self.bManual is False:
@@ -185,9 +185,7 @@ class ExcaliburPowerGui:
     def periodicCall(self):
         """ Check every 100 ms if there is something new in the queue
             for the GUI side to process """
-        # Do not log file timers are "paused"
-        if self.bPauseTimers is False:
-            self.gui.processIncoming()
+        self.gui.processIncoming()
         if not self.running:
             self.app.quit()
             
@@ -202,7 +200,6 @@ class ExcaliburPowerGui:
             # Compare new choice with existing farming 
             if self.currentLogFile == filename:
                 # Same filename specified, do nothing
-#                print "Same filename specified, returning.."
                 return
             else:
                 # New file specified; Close existing file object in self.file
@@ -242,9 +239,8 @@ class ExcaliburPowerGui:
 #        print self.gui.gui.lwSerialPort.currentItem().text()
         # Disable list of COM ports if port selected manually
         if self.bManual is True:
-            self.gui.gui.lwSerialPort.setEnabled(False)
             # Wait until bias is enabled before continuing
-            while self.gui.gui.biasButton.isEnabled() is False:
+            while self.bBiasEnabled is False:
                 pass
         time.sleep(2)        
         # Wait for serial interface to initialise.
@@ -272,7 +268,7 @@ class ExcaliburPowerGui:
                 self.toggleDebugComponents(False)
                 self.toggleSelectFileComponents(False)
                 # Resume timers
-                self.bPauseTimers = False                
+                self.bPauseTimers = False
                 # Update polling interval in case it's been changed
                 self.pollingInterval = float(self.gui.gui.lePollingInterval.text())/1000
             # polling enabled, wait then poll all devices:
@@ -280,7 +276,7 @@ class ExcaliburPowerGui:
                 self.doEventHandler()
                 time.sleep(self.pollingInterval)
             except:
-                self.displayErrorMessage("workerThread1: doEventHandler() exception: ")
+                self.displayErrorMessage("doEventHandler() exception: ")
 
     def periodicLog(self):
         """ Log Gui values periodically """
@@ -310,7 +306,7 @@ class ExcaliburPowerGui:
                             self.logCurrentValues()
 
     def logPollingStatus(self):
-        """ Log polling status whenever cbPollingBox checkbox clicked """
+        """ Log polling status whenever cbPollingBox checkbox checked """
         # Is cbPollingBox enabled?
         if self.gui.gui.cbPollingBox.isChecked() is True:
             # Polling just enabled, Enable biasButton if serial port manually chosen
@@ -327,8 +323,7 @@ class ExcaliburPowerGui:
                 print "File object closed, will not log."
                 return
             else:
-                # File object exists and it's open: log change of Polling
-#                print "File object open, logging.."
+                # File object exists and it's already open: log change of Polling
                 # Construct current timestamp, append current polling status
                 logString = (strftime("%Y-%m-%d, %H:%M:%S, "))
                 if self.gui.gui.cbPollingBox.isChecked() is True:
@@ -338,11 +333,9 @@ class ExcaliburPowerGui:
                 self.file.write(logString)
         except AttributeError:
             pass                # No action required
-#            print "self.file file object doesn't exist"
-            
+
     def msgPrint(self, msg, term='\n'):
         """ Put msg (error) string into mbErrorMessages (TextField) """
-#        if msg is None:
         if compareTypes(msg) is not 3:
             raise BadArgumentError, "msgPrint() Error: argument not string!"            
         else:
@@ -364,9 +357,8 @@ class ExcaliburPowerGui:
 
     def logError(self, msgError):
         """ Write msgError to log file """
-#        if msgError is None:
         if compareTypes(msgError) is not 3:
-            raise BadArgumentError, "logError() Error, msgError argument not string!"
+            raise BadArgumentError, "logError() Error: argument not string!"
         else:
             # Unit testing only: return True if argument testing successful
             if self.bTest is True:
@@ -416,17 +408,20 @@ class ExcaliburPowerGui:
             self.bLvEnabled = False
             self.gui.gui.lvButton.setText("enable LV")
             self.bLvGreen = False
-            self.gui.gui.frmLowVoltageStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+            lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);"            
             # Disable biasButton while lv disabled
             self.gui.gui.biasButton.setEnabled(False)
         else:
             self.bLvEnabled = True      # lv is disabled, now Enabling...
             self.gui.gui.lvButton.setText("disable LV")
             self.bLvGreen = True
-            self.gui.gui.frmLowVoltageStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
+            lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(0, 255, 0);"
             # Enable biasButton only after lv successfully enabled
             self.gui.gui.biasButton.setEnabled(True)
-
+        
+        # Signal to main thread to update Gui component
+        self.queue.put(lowVoltageStatus)
+        
     def biasButtonAction(self):
         """ Execute each time biasButton is pressed """
         # If bBiasEnabled True, make False and turn associated LED red        
@@ -434,17 +429,18 @@ class ExcaliburPowerGui:
             self.bBiasEnabled = False
             self.gui.gui.biasButton.setText("enable Bias")
             self.bBiasGreen = False
-            self.gui.gui.frmBiasStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(255, 0, 0);"))
+            biasStatus = "frmBiasStatus=\nbackground-color: rgb(255, 0, 0);"
             # Disable Polling checkbox while bias is disabled
             self.gui.gui.cbPollingBox.setEnabled(False)
             # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
             self.gui.gui.lvButton.setEnabled(True)
             self.gui.gui.leBiasLevel.setEnabled(True)
+#            self.queue.put(biasStatus)
         else:
             self.bBiasEnabled = True    # bias is disabled, now Enabling...
             self.gui.gui.biasButton.setText("disable Bias")
             self.bBiasGreen = True
-            self.gui.gui.frmBiasStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
+            biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
             # Enable file selection only after bias successfully enabled
             self.gui.gui.selectButton.setEnabled(True)
             self.gui.gui.leSelectLogFileLocation.setEnabled(True)
@@ -452,6 +448,9 @@ class ExcaliburPowerGui:
             # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
             self.gui.gui.lvButton.setEnabled(False)
             self.gui.gui.leBiasLevel.setEnabled(False)
+#            self.queue.put(biasStatus)
+        # Signal to main thread to update Gui component
+        self.queue.put(biasStatus)
 
 #    def toggleVisibleGuiComponents(self, bEnable):
 #        """ Hide/Display (Disable/Enable) GUI components by group """
@@ -468,7 +467,7 @@ class ExcaliburPowerGui:
         """ Called when an item is clicked inside the lwSerialPort
         Go through list of available COM ports in self.availableComPorts while comparing lwSerialPort.currentRow()
         to find which COM port selected. Note that in some cases com ports on a PC are not in numerical order,
-        i.e., there is no COM2 on my machine currently:
+        i.e., there is no COM2 on my machine currently, so available ports are:
         [(0, 'COM1'), (2, 'COM3'), (3, 'COM4')]
         for that reason, currentLine is used, since comparing cNo against .currentRow() would never catch COM3
         if it were selected on my machine.
@@ -494,6 +493,9 @@ class ExcaliburPowerGui:
                         self.bPollingEnabled = False
             # Increment currentLine before next iteration
             currentLine = currentLine + 1
+        # Disable list of COM ports
+        self.gui.gui.lwSerialPort.setEnabled(False)
+
 
         
     def cmdStringFormat(self, sCmd):
