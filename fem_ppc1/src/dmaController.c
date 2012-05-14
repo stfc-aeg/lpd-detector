@@ -292,6 +292,11 @@ int main()
     	return 0;
     }
     print("[INFO ] Mailbox initialised.\r\n");
+    status = XMbox_Flush(&mbox);
+    if (status!=XST_SUCCESS)
+    {
+    	print("[ERROR] Mailbox flush failed!\r\n");
+    }
 
     // Enter mailbox-driven outer loop
     while(1)
