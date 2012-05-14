@@ -92,7 +92,8 @@
 #define NET_MAX_PAYLOAD_SZ			1048576				// Maximum payload size permitted
 #define NET_DEFAULT_TICK_SEC		2
 #define NET_DEFAULT_TICK_USEC		0
-#define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
+//#define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
+#define NET_DEFAULT_TIMEOUT_LIMIT	256					// In ticks
 
 // Self-test bits - if set these represent a failure during hardware init!
 #define TEST_XPSTIMER_INIT			0x0001

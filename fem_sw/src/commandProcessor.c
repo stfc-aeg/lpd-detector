@@ -254,7 +254,7 @@ void commandProcessorThread()
 						PRTDBG("CmdProc: Trying to get %d bytes of header...\r\n", numBytesToRead);
 
 						numBytesRead = lwip_read(i, pState->pHdr + pState->size, numBytesToRead);
-						//PRTDBG("Read %d bytes\r\n", numBytesRead);
+						PRTDBG("Read %d bytes\r\n", numBytesRead);
 						if (numBytesRead == 0)
 						{
 							// Client has disconnected or an error occurred, so disconnect client
@@ -273,7 +273,7 @@ void commandProcessorThread()
 							pState->state = STATE_GOT_HEADER;
 							// We don't want to allow this loop to continue trying to read data as there might not be any left!
 							// Drop out and let select re-enter if there is payload to read...
-							//PRTDBG("Got header OK\r\n");
+							PRTDBG("Got header OK\r\n");
 							if (pState->pHdr->payload_sz != 0) {
 								break;
 							}
@@ -288,7 +288,8 @@ void commandProcessorThread()
 					{
 
 						// Validate header
-						//PRTDBG("IN STATE_GOT_HEADER\r\n");
+						PRTDBG("IN STATE_GOT_HEADER\r\n");
+
 						if(validateHeaderContents(pState->pHdr)==0)
 						{
 							// Header is valid!
@@ -298,7 +299,7 @@ void commandProcessorThread()
 							{
 								pState->busDirectSize = pState->pHdr->payload_sz;
 								pState->pBusDirect = (u8*)pState->pHdr->address;
-								DBGOUT("CmdProc: Got a BUS_DIRECT, CMD_ACCESS STATE_WRITE!\r\n");
+								//DBGOUT("CmdProc: Got a BUS_DIRECT, CMD_ACCESS STATE_WRITE!\r\n");
 							}
 
 							pState->state = STATE_HDR_VALID;
@@ -307,8 +308,8 @@ void commandProcessorThread()
 						else
 						{
 							// Header NOT valid
-							DBGOUT("CmdProc: Header received but is invalid.\r\n");
-							DUMPHDR(pState->pHdr);
+							//DBGOUT("CmdProc: Header received but is invalid.\r\n");
+							//DUMPHDR(pState->pHdr);
 							pState->state = STATE_COMPLETE;
 						}
 
@@ -328,16 +329,19 @@ void commandProcessorThread()
 						// Check if this is a direct memory receive, if so handle it
 						if ( (pState->pHdr->bus_target==BUS_DIRECT) && (pState->pHdr->command==CMD_ACCESS) && (pState->pHdr->state==STATE_WRITE) )
 						{
-							DBGOUT("CmdProc: BUS_DIRECT write: Trying to read %d bytes to 0x%08x...\r\n", pState->busDirectSize, pState->pBusDirect);
+							//DBGOUT("CmdProc: BUS_DIRECT write: Trying to read %d bytes to 0x%08x...\r\n", pState->busDirectSize, pState->pBusDirect);
 
 							// Read payload directly to DDR at specified address
 							numBytesRead = lwip_read(i, (void*)(pState->pBusDirect), pState->busDirectSize);
 
-							DBGOUT("CmdProc: BUS_DIRECT Write: Read %d bytes...\r\n", numBytesRead);
+							//DBGOUT("CmdProc: BUS_DIRECT Write: Read %d bytes...\r\n", numBytesRead);
+							//DBGOUT("%d\r\n", numBytesRead);
 							if (numBytesRead<=0)
 							{
 								// Client has disconnected or an error occurred
 								DBGOUT("CmdProc: Client disconnected during BUS_DIRECT write!\r\n");
+								DUMPHDR(pState->pHdr);
+								DBGOUT("remaining bus direct size = 0x%x\r\n", pState->busDirectSize);
 								disconnectClient(&state[i-1], &i, &masterSet, &numConnectedClients);
 								break;
 							}
@@ -367,6 +371,10 @@ void commandProcessorThread()
 
 								if (pState->pHdr->payload_sz > pState->payloadBufferSz)
 								{
+
+									// DEBUG
+									printf("CmdProc: Larger payload than buffer, pld=0x%08x, bfr=0x%08x\r\n", (unsigned int)pState->pHdr->payload_sz, (unsigned int)pState->payloadBufferSz);
+
 									// Payload exceeds buffer, increase it by one chunk
 									if (pState->payloadBufferSz == NET_NOMINAL_RX_BUFFER_SZ)
 									{
@@ -404,7 +412,7 @@ void commandProcessorThread()
 										numBytesToRead = NET_LRG_PKT_INCREMENT_SZ;
 									}
 
-									DBGOUT("CmdProc: Resized payload buffer to %d\r\n", pState->payloadBufferSz);
+									DBGOUT("CmdProc: Resized payload buffer to %d numBytesToRead=%d\r\n", pState->payloadBufferSz, numBytesToRead);
 
 								}
 								else
@@ -955,6 +963,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 						numOps = pRxHeader->payload_sz/dataWidth;
 						SBIT(state, STATE_ACK);
 					}
+					break;
+
 #ifdef USE_CACHE
 					XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
 #endif
@@ -1058,6 +1068,7 @@ int validateHeaderContents(struct protocol_header *pHeader)
 						DBGOUT("validateHeader: BUS_DIRECT mode only supports STATE_WRITE! (Was %d)\r\n", pHeader->state);
 						return -1;
 					}
+					break;
 
 				case BUS_UNSUPPORTED:
 					// Never valid!
