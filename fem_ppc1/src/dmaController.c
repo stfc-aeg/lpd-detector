@@ -45,8 +45,8 @@
 // Compile time switches
 //#define DEBUG_BD			1			// Outputs DMA BDs as received
 // ---
-#define PROFILE_TIMING			1			//! Enables time profiling for DMA engines
-#define TIMING_COUNT			8			//! Number of DMA operations to profile during acquisition
+//#define PROFILE_TIMING			1			//! Enables time profiling for DMA engines
+//#define TIMING_COUNT			8			//! Number of DMA operations to profile during acquisition
 // ---
 
 
@@ -307,13 +307,6 @@ int main()
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
 
-    	// Send ACK
-    	ackOK = sendConfigRequestAckMessage(&mbox);
-    	if (!ackOK)
-    	{
-    		print("[ERROR] Could not send config ACK to PPC1!\r\n");
-    	}
-
     	// Debugging
     	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
 
@@ -322,6 +315,13 @@ int main()
 
     	case CMD_ACQ_CONFIG:
     		// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+        	// Send ACK
+        	ackOK = sendConfigRequestAckMessage(&mbox);
+        	if (!ackOK)
+        	{
+        		print("[ERROR] Could not send config ACK to PPC1!\r\n");
+        	}
 
     		// Ensure DMA engines are in a stable state, and stopped!
 			XLlDma_Reset(&dmaAsicTop);
@@ -1207,11 +1207,13 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 	}
 
 	// Generate test pattern at a fixed memory address
+	/*
 	u32 testPatternAddr = 0x30000000;
 	u32 testPatternLen = 0x18000;		// In bytes!
 	u32 testPatternPat = 0xAEAEAEAE;
 	printf("[INFO ] Generating test pattern 0x%08x at 0x%08x, 0x%08x bytes in length.\r\n", (unsigned)testPatternPat, (unsigned)testPatternAddr, (unsigned)testPatternLen);
 	status = Xil_TestMem32((u32*)testPatternAddr, testPatternLen/4, testPatternPat, XIL_TESTMEM_FIXEDPATTERN);
+	*/
 
 	return XST_SUCCESS;
 }
