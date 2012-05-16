@@ -33,6 +33,7 @@ void commandProcessorThread()
 		state[j].size = 0;
 		state[j].timeoutCount = 0;
 		state[j].payloadBufferSz = 0;
+		state[j].gotData = 0;
 		j++;
 	} while (j<NET_MAX_CLIENTS);
 
@@ -184,6 +185,8 @@ void commandProcessorThread()
 
 					struct clientStatus *pState = &(state[i-1]);
 
+					pState->gotData = 0;
+
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 					// Determine if the last packet was received from client, if so reset client status
@@ -215,6 +218,7 @@ void commandProcessorThread()
 						pState->payloadBufferSz = NET_NOMINAL_RX_BUFFER_SZ;
 						pState->size = 0;
 						pState->timeoutCount = 0;
+						pState->gotData = 0;
 						//DBGOUT("CmdProc: Receiving from client #%d.\r\n", i);
 					} // END if state == STATE_COMPLETE
 
@@ -349,6 +353,7 @@ void commandProcessorThread()
 							// Update counters with data received
 							pState->pBusDirect += numBytesRead;
 							pState->busDirectSize -= numBytesRead;
+							pState->gotData = 1;
 
 							if (pState->busDirectSize == 0)
 							{
@@ -364,6 +369,7 @@ void commandProcessorThread()
 							{
 								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", pState->pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
 								// TODO: Send NACK here!
+								// TODO: Should we flush data from client?
 								pState->state = STATE_COMPLETE;
 							}
 							else
@@ -435,6 +441,7 @@ void commandProcessorThread()
 									else
 									{
 										PRTDBG("CmdProc: Read %d bytes of %d as payload.\r\n", numBytesRead, numBytesToRead);
+										pState->gotData = 1;
 									}
 
 									pState->size += numBytesRead;
@@ -507,12 +514,14 @@ void commandProcessorThread()
 		// ********************************* START IDLE TICK *********************************
 
 		// Scan all clients and see if they are active, in which case increase the timeoutCount tick on them
+		// Added gotData flag which inhibits timeout count increment if set (otherwise we get invalid timeouts when receiving large payloads)
 		j=0;
 		do
 		{
 			//DBGOUT("!");
 
-			if (state[j].state!=STATE_COMPLETE)
+			//if (state[j].state!=STATE_COMPLETE)
+			if (state[j].state!=STATE_COMPLETE && !state[j].gotData)		// TODO: Test gotData timeout inhibit!
 			{
 
 				// Show timeout tick
@@ -631,7 +640,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 	// Increment response size to include #ops as first entry
 	responseSize += sizeof(u32);
 
-	u32 mboxBytesSent = 0;
+	//u32 mboxBytesSent = 0;
+	u32 dmaControllerAck = 0;
 
 	int status;
 
@@ -652,7 +662,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 		case CMD_ACQUIRE:
 
 			numOps = 0;
-			SBIT(state, STATE_ACK);
 
 			/*
 			 * Packet structure:
@@ -670,14 +679,13 @@ void commandHandler(struct protocol_header* pRxHeader,
 			// Cast payload to struct
 			protocol_acq_config* pAcqConfig =(protocol_acq_config*)pRxPayload_32;
 
-			// TODO: Check mboxBytesSent == 20
 			switch(pRxHeader->address)
 			{
 
 				case CMD_ACQ_CONFIG:
 
-					// Send config request
-					mboxBytesSent = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode);
+					// Send config request (does not block for CMD_ACQ_CONFIG)
+					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode);
 
 					// Wait for response
 					configAck = acquireConfigAckReceive();
@@ -687,13 +695,31 @@ void commandHandler(struct protocol_header* pRxHeader,
 						SBIT(state, STATE_NACK);
 						// TODO: FEM error state
 					}
+					else
+					{
+						SBIT(state, STATE_ACK);
+					}
 
 					break;
 
 				case CMD_ACQ_START:
 				case CMD_ACQ_STOP:
+					// For START/STOP this call *IS* blocking
+					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0);
+					if (dmaControllerAck)
+					{
+						SBIT(state, STATE_ACK);
+					}
+					else
+					{
+						SBIT(state, STATE_NACK);
+					}
+					break;
+
 				case CMD_ACQ_STATUS:
-					mboxBytesSent = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0);
+					// TODO: Implement
+					DBGOUT("CmdDisp: CMD_ACQ_STATUS is not implemented yet...\r\n");
+					SBIT(state, STATE_NACK);
 					break;
 
 				default:

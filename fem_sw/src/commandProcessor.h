@@ -41,6 +41,7 @@ struct clientStatus {
 	struct protocol_header *pHdr;	//! Pointer to protocol header buffer
 	u8 *pPayload;					//! Pointer to payload buffer
 	int payloadBufferSz;			//! Currently allocated size for pPayload
+	u8 gotData;						//! Whether we got data on this loop cycle or not
 	int timeoutCount;				//! Counter for timeouts
 	u8 *pBusDirect;					//! Pointer for BUS_DIRECT writes
 	int busDirectSize;				//! Bytes received in BUS_DIRECT mode

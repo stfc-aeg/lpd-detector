@@ -94,7 +94,6 @@
 #define ACQ_MODE_TX_ONLY			4		// Only TX
 #define ACQ_MODE_UPLOAD				5		// Configuration upload
 
-// TODO: Implement CMD_ACQ_STATUS
 #define CMD_ACQ_CONFIG				1
 #define CMD_ACQ_START				2
 #define CMD_ACQ_STOP				3
@@ -114,6 +113,7 @@ typedef struct
 	u32 bufferSize;		//! Size of buffers
 	u32 numAcq;			//! Number of acquisitions in this run
 	u32 numConfigBds;	//! Number of configuration BDs set
+	u32 configBusy;		//! Set to 1 when PPC1 is configuring for acquisition, cleared when finished
 	u32 readPtr;		//! 'read pointer'
 	u32 writePtr;		//! 'write pointer'
 	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
@@ -167,6 +167,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32
 int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg);
 int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 unsigned short sendConfigRequestAckMessage(XMbox *pMailbox);
+unsigned short sendAcquireAckMessage(XMbox *pMailbox, u32 state);
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
 
@@ -307,8 +308,8 @@ int main()
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
 
-    	// Debugging
-    	printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
+    	// Debugging - CAUTION ENABLING THIS WILL CAUSE ACK TO FAIL DUE TO TIMEOUT
+    	//printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
 
     	switch(pMsg->cmd)
     	{
@@ -436,6 +437,9 @@ int main()
 	    	    }
 
 	    	    acquireRunning = 1;
+
+	    	    // TODO: Parse result from sendAcquireAckMessage
+	    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
 
 				while (acquireRunning)
 				{
@@ -804,6 +808,10 @@ int main()
 				    	    printf("[DEBUG] Delta t (trx)=%uus\r\n", (unsigned int) ( (dmaTimingRxEnd[TIMING_COUNT-1]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
 
 #endif
+
+				    	    // TODO: Parse result from sendAcquireAckMessage
+				    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+
 							break;
 
 						default:
@@ -870,6 +878,8 @@ int main()
 			} // END switch(lastMode)
 			break;
 		case CMD_ACQ_STOP:
+    	    // TODO: Parse result from sendAcquireAckMessage
+    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			printf("[INFO ] Not doing anything with stop acquire command.\r\n");
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -1244,7 +1254,7 @@ int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
 /* Sends an ack mailbox message to PPC2 to tell it we're
  * starting BD configuration for acquisition.
  * @param pMailbox pointer to XMbox
- * @return 1 on success, 0 otherwise
+ * @return 1 on success, 0 otherwise (mailbox)
  */
 unsigned short sendConfigRequestAckMessage(XMbox *pMailbox)
 {
@@ -1252,6 +1262,28 @@ unsigned short sendConfigRequestAckMessage(XMbox *pMailbox)
 	u32 sentBytes;
 	u32 buf = 0xA5A5FACE;		// TODO: Make constant, put in header
 	status = XMbox_Write(pMailbox, &buf, 4, &sentBytes);
+	if (status==XST_SUCCESS)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+
+// TODO: Once established, consolidate all sendNNNNMessage functions to use common core function
+
+/* Sends a response to PPC2 on the request status of the CMD_ACQ_START or CMD_ACQ_STOP requests.
+ * @param state 0 for NACK, anthing else for ACK
+ * @return 1 on success, 0 on failure (mailbox)
+ */
+unsigned short sendAcquireAckMessage(XMbox *pMailbox, u32 state)
+{
+	int status;
+	u32 sentBytes;
+	status = XMbox_Write(pMailbox, &state, 4, &sentBytes);
 	if (status==XST_SUCCESS)
 	{
 		return 1;
