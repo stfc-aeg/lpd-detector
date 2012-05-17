@@ -17,6 +17,9 @@ int testGetSetShort(void* femHandle);
 int testCommand(void* femHandle);
 int testSetLargeShortArray(void* femHandle);
 int testSlowControl(void* femHandle);
+int testDacs(void* femHandle);
+int testPixelConfig(void* femHandle);
+int testReadEfuseIds(void* femHandle);
 int testAcquisitionLoop(void* femHandle);
 
 // Forward declaration of callback functions to simulate WP5 callbacks
@@ -69,8 +72,11 @@ int main(int argc, char* argv[]) {
 //	numPassed += testGetSetShort(femHandle);
 //	numPassed += testCommand(femHandle);
 //	numPassed += testSetLargeShortArray(femHandle);
-	numPassed += testSlowControl(femHandle);
-	//	numPassed += testAcquisitionLoop(femHandle);
+//	numPassed += testSlowControl(femHandle);
+//	numPassed += testDacs(femHandle);
+	numPassed += testPixelConfig(femHandle);
+//	numPassed += testReadEfuseIds(femHandle);
+//	numPassed += testAcquisitionLoop(femHandle);
 
 	printf("Hit return to quit ... ");
 	getchar();
@@ -332,6 +338,166 @@ int testSlowControl(void* femHandle)
 	return passed;
 }
 
+int testDacs(void* femHandle)
+{
+	int rc;
+	int passed = 1;
+
+	int value = 123;
+
+	printf("Testing set of THRESHOLD0 DAC                      ...");
+	rc = femSetInt(femHandle, 0, FEM_OP_MPXIII_THRESHOLD0DAC, 1, &value);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("\nGot error on call: %d",  rc);
+		passed = 0;
+	}
+	else
+	{
+		printf("OK\n");
+	}
+	value = 77;
+	printf("Testing set of THRESHOLD1 DAC                      ...");
+	rc = femSetInt(femHandle, 1, FEM_OP_MPXIII_THRESHOLD1DAC, 1, &value);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("\nGot error on call: %d",  rc);
+		passed = 0;
+	}
+	else
+	{
+		printf("OK\n");
+	}
+	value = 511;
+	printf("Testing set of TPREFB DAC                          ...");
+	rc = femSetInt(femHandle, 1, FEM_OP_MPXIII_TPREFBDAC, 1, &value);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("\nGot error on call: %d",  rc);
+		passed = 0;
+	}
+	else
+	{
+		printf("OK\n");
+	}
+
+	printf("Testing DAC write command                          ...\n");
+	rc = femCmd(femHandle, 1, FEM_OP_LOADDACS);
+	return passed;
+
+
+}
+
+int testPixelConfig(void* femHandle)
+{
+	int rc;
+	int passed = 1;
+	int chip;
+	int pixel;
+	const unsigned int kNumPixels = FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y;
+
+	// Arrays to contain test pixel config values
+	short pixelMask[kNumPixels];
+	short pixelThresholdA[kNumPixels];
+	short pixelThresholdB[kNumPixels];
+	short pixelGainMode[kNumPixels];
+	short pixelTestMode[kNumPixels];
+
+	printf("Testing setup of pixel configuration               ... ");
+
+	for (chip = 1; chip <= 1; chip++) {
+
+		// Initialize values with alernating patterns of 0 and 1
+		for (pixel = 0; pixel < kNumPixels; pixel++)
+		{
+//			pixelMask[pixel]       = (chip + pixel) & 1;
+//			pixelThresholdA[pixel] = (chip + pixel + 1) & 1;
+//			pixelThresholdB[pixel] = (chip + pixel) & 1;
+//			pixelGainMode[pixel]   = (chip + pixel + 1) & 1;
+//			pixelTestMode[pixel]   = (chip + pixel) & 1;
+			pixelMask[pixel]       = 0;
+			pixelThresholdA[pixel] = 0;
+			pixelThresholdB[pixel] = 0;
+			pixelGainMode[pixel]   = 0;
+			pixelTestMode[pixel]   = 0;
+		}
+//		pixelTestMode[0] = 1;
+
+		rc = femSetShort(femHandle, chip, FEM_OP_MPXIII_PIXELMASK, (size_t)(kNumPixels), (short *)&pixelMask);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on set of pixel mask config command for chip %d: %d ", chip, rc);
+			passed = 0;
+		}
+
+		rc = femSetShort(femHandle, chip, FEM_OP_MPXIII_PIXELTHRESHOLDA, (size_t)(kNumPixels), (short *)&pixelThresholdA);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on set of pixel thresholdA config command for chip %d: %d ", chip, rc);
+			passed = 0;
+		}
+
+		rc = femSetShort(femHandle, chip, FEM_OP_MPXIII_PIXELTHRESHOLDB, (size_t)(kNumPixels), (short *)&pixelThresholdB);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on set of pixel thresholdB config command for chip %d: %d ", chip, rc);
+			passed = 0;
+		}
+
+		rc = femSetShort(femHandle, chip, FEM_OP_MPXIII_PIXELGAINMODE, (size_t)(kNumPixels), (short *)&pixelGainMode);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on set of pixel gain mode config command for chip %d: %d ", chip, rc);
+			passed = 0;
+		}
+
+		rc = femSetShort(femHandle, chip, FEM_OP_MPXIII_PIXELTEST, (size_t)(kNumPixels), (short *)&pixelTestMode);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on set of pixel test mode config command for chip %d: %d ", chip, rc);
+			passed = 0;
+		}
+
+		// Send command to load pixel configuration
+		rc = femCmd(femHandle, chip, FEM_OP_LOADPIXELCONFIG);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on load pixel config command for chip %d: %d ", chip, rc);
+			passed = 0;
+		}
+
+
+	}
+
+	printf("%s\n", passed ? "passed" : "failed");
+
+	return passed;
+
+}
+int testReadEfuseIds(void* femHandle)
+{
+	int rc;
+	int passed = 1;
+	int chip;
+
+	printf("Testing read of eFuseIDs from chips                ...\n");
+	for (chip = 1; chip <= 8; chip++)
+	{
+		int value;
+		rc = femGetInt(femHandle, chip, FEM_OP_MPXIII_EFUSEID, 1, &value);
+		if (rc != FEM_RTN_OK) {
+			printf("\nGot error on call for eFuseID %d: %d ", chip, rc);
+			passed = 0;
+		}
+		else
+		{
+			printf("%d: OK (0x%08x) ", chip, value);
+			if (chip == 3) {
+				printf("\n");
+			}
+		}
+	}
+	printf("\n");
+	printf("eFuseID read test %s\n", passed ? "passed" : "failed");
+
+	return passed;
+
+}
+
 int testAcquisitionLoop(void* femHandle)
 {
 
@@ -349,7 +515,7 @@ int testAcquisitionLoop(void* femHandle)
 	}
 
 	printf("done.\nSending num frames to FEM...");
-	unsigned int numFrames = 8;
+	unsigned int numFrames = 10;
 	rc = femSetInt(femHandle, 0, FEM_OP_NUMFRAMESTOACQUIRE, sizeof(numFrames), (int*)&numFrames);
 	if (rc != FEM_RTN_OK)
 	{
@@ -384,13 +550,15 @@ int testAcquisitionLoop(void* femHandle)
 		passed = 0;
 	}
 
-	printf("Waiting for acquisition to complete ...\n");
-	do
-	{
-		usleep(10000);
-	}
-	while (acquiring);
+//	printf("Waiting for acquisition to complete ...\n");
+//	do
+//	{
+//		usleep(10000);
+//	}
+//	while (acquiring);
 
+	printf("Hit return to stop acq ... ");
+	getchar();
 
 //	printf("done.\nPress return to stop acquisition...");
 //	getchar();
