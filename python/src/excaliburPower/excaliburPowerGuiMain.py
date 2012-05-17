@@ -13,8 +13,11 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
 
         self.queue = queue
         self.endcommand = endcommand
-        
-#        # Set up the GUI part
+
+        # Print debug information
+        self.bDebug = False
+
+        # Set up the GUI part
         QtGui.QMainWindow.__init__(self)
         self.gui = Ui_mainWindow()
         self.gui.setupUi(self)
@@ -38,6 +41,8 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                 if cmdList[0].find("hideGuiBars") is not -1:
                     self.hideGuiProgressAndStatusBars()
                 else:
+                    if self.bDebug:
+                        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
                     # Not special case, look for updating ordinary GUI components
                     #----------
                     # cmdList[0] is string containing GUI component, e.g. "leHum_mon"
@@ -47,12 +52,15 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                     try:
                         # path to component...
                         guiComponent = getattr(self.gui, "%s" % cmdList[0])
-                        #print "type(guiComponent) = ", type(guiComponent)
+                        if self.bDebug:
+                            print "type(guiComponent) = ", type(guiComponent)
                         if type(guiComponent) is QtGui.QFrame:
                             # Execute LED procedure
                             try:                                
                                 handlerMethod = getattr(guiComponent, "setStyleSheet")
                                 # e.g.: self.gui.gui.frmHumidityStatus.setStyleSheet()
+                                if self.bDebug:
+                                    print "handlerMethod.setStyleSheet found"
                             except:
                                 # Nope, unknown Gui Component
                                 print "Unable to execute setStyleSheet function of ", type(guiComponent), " object"
@@ -61,10 +69,14 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                                     # Found setStyleSheet() attribute, now construct it's argument
                                     argumentValue = QtCore.QString.fromUtf8( str( cmdList[1] ))
                                     # e.g.: argumentsValue = QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);")
+                                    if self.bDebug:
+                                        print "argumentValue okay"
                                     try:
                                         # Call function with argument
                                         handlerMethod( argumentValue )
                                         # e.g.: self.gui.gui.frmHumidityStatus.setStyleSheet(QtCore.QString.fromUtf8("\nbackground-color: rgb(0, 255, 0);"))
+                                        if self.bDebug:
+                                            print "handlerMethod( argumentValue ) ok"
                                     except:
                                         # Failed, reason unknown
                                         print "Couldn't update LED component, reason unknown"                                        
@@ -75,7 +87,8 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                             # Execute setText procedure
                             try:
                                 handlerMethod = getattr(guiComponent, "setText")
-#                                print "type(handlerMethod setText) = ", type(handlerMethod)
+                                if self.bDebug:
+                                    print "type(handlerMethod setText) = ", type(handlerMethod)
                             except:
                                 print "Unable to execute setText function of ", type(guiComponent), " object"
                             else:
@@ -89,6 +102,8 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
 
             except Queue.Empty:
                 pass
+            if self.bDebug:
+                print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
             
     def hideGuiProgressAndStatusBars(self):
         # I2C devices initialised, hide status bar and progress bar
