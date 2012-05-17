@@ -120,6 +120,8 @@ void femClose(void* femHandle);
 #define FEM_OP_STOPACQUISITION 2
 #define FEM_OP_LOADPIXELCONFIG 3
 #define FEM_OP_FREEALLFRAMES 4
+#define FEM_OP_LOADDACS 5
+
 /* Medipix III global registers */
 #define FEM_OP_MPXIII_COLOURMODE 1000
 #define FEM_OP_MPXIII_COUNTERDEPTH 1001
