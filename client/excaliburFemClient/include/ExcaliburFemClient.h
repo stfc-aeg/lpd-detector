@@ -12,6 +12,17 @@
 #include <FemClient.h>
 #include <FemDataReceiver.h>
 #include <list>
+#include "asicControlParameters.h"
+#include "mpx3Parameters.h"
+
+const unsigned int kNumAsicsPerFem = 8;
+const unsigned int kNumAsicDpmWords = 8;
+const unsigned int kNumPixelsPerAsic = FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y;
+const unsigned int kNumColsPerAsic = FEM_PIXELS_PER_CHIP_X;
+const unsigned int kNumRowsPerAsic = FEM_PIXELS_PER_CHIP_Y;
+const unsigned int kPixelConfigBitsPerPixel = 12;
+const unsigned int kPixelConfigBufferSizeBytes = ((FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y * kPixelConfigBitsPerPixel)) / 8;
+const unsigned int kPixelConfigBufferSizeWords = kPixelConfigBufferSizeBytes /sizeof(u32);
 
 typedef enum {
 	frontEndEnable = 0,
@@ -22,6 +33,17 @@ typedef enum {
 	frontEndVDD    = 6,
 	frontEndDVDD   = 7
 } excaliburFrontEndSupply;
+
+
+typedef enum
+{
+	excaliburFemClientIllegalDacId = femClientNextEnumRange,
+	excaliburFemClientIllegalConfigId,
+	excaliburFemClientIllegalChipId,
+	excaliburFemClientIllegalConfigSize,
+	excaliburFemClientOmrTransactionTimeout
+
+} ExcaliburFemClientErrorCode;
 
 class ExcaliburFemClient: public FemClient {
 public:
@@ -39,6 +61,7 @@ public:
 	void setNumFrames(unsigned int numFrames);
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
+	void freeAllFrames();
 
 	void setFrontEndEnable(unsigned int aVal);
 
@@ -48,6 +71,30 @@ public:
 	int    frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply);
 	void   frontEndDacInWrite(unsigned int aChipId, unsigned int aDacValue);
 
+	void mpx3DacSet(unsigned int aChipId, int aDacId, unsigned int aDacValue);
+	void mpx3DacSenseSet(unsigned int aChipId, int aDac);
+	void mpx3DacExternalSet(unsigned int aChipId, int aDac);
+	void writeDacs(unsigned int aChipId);
+
+	void writeCtpr(unsigned int aChipId);
+
+	void mpx3PixelConfigSet(unsigned int aChipId, int aConfigId, std::size_t aSize, unsigned short* apValues);
+	void writePixelConfig(unsigned int aChipId);
+
+	unsigned int mpx3eFuseIdRead(unsigned int aChipId);
+
+	// ASIC control functions in ExcaliburFemClientAsicControl.cpp
+	void asicControlOmrSet(mpx3Omr aOmr);
+	void asicControlMuxChipSelect(unsigned int aChipIdx);
+	void asicControlCommandExecute(asicControlCommand aCommand);
+
+	void asicControlReset(void);
+	void asicControlAsicReset(void);
+
+	void mpx3ColourModeSet(int aColourMode);
+	void mpx3CounterDepthSet(int aCounterDepth);
+
+
 private:
 
 	u16 frontEndSht21Read(u8 cmdByte);
@@ -56,12 +103,26 @@ private:
 	void frontEndPCF8574Write(unsigned int aVal);
 	void frontEndAD5625Write(unsigned int aDevice, unsigned int aChan, unsigned int aVal);
 
+	mpx3Dac getmpx3DacId(int aId);
+	mpx3PixelConfig getMpx3PixelConfigId(int aConfigId);
+
+	mpx3Omr omrBuild(unsigned int aChipId, mpx3OMRMode aMode);
+
+
+
+	mpx3OMRParameters     mMpx3OmrParams[kNumAsicsPerFem];
+	unsigned int          mMpx3DacCache[kNumAsicsPerFem][numExcaliburDacs];
+	unsigned short        mMpx3PixelConfigCache[kNumAsicsPerFem][numPixelConfigs][kNumPixelsPerAsic];
+	unsigned short        mMpx3ColumnTestPulseEnable[kNumAsicsPerFem][kNumColsPerAsic];
+
 	FemDataReceiver       mFemDataReceiver;
 	void*                 mCtlHandle;
 	const CtlCallbacks*   mCallbacks;
 	const CtlConfig*      mConfig;
 
 	std::list<CtlFrame*> mFrameQueue;
+
+	unsigned int          mNumFrames;
 
 };
 
