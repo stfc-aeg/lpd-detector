@@ -277,7 +277,7 @@ int testSlowControl(void* femHandle)
 	}
 
 	printf("Reading front-end DAC channels from FEM          ... ");
-	for (chip = 0; chip < 8; chip++)
+	for (chip = 1; chip <= 8; chip++)
 	{
 		rc = femGetFloat(femHandle, chip, FEM_OP_DAC_OUT_FROM_MEDIPIX, 1, &dacValue);
 		if (rc != FEM_RTN_OK)
