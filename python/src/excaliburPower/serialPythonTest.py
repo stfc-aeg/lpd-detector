@@ -650,6 +650,73 @@ class testScale3_3VBadInput(unittest.TestCase):
         """ scale3_3V() should fail with too large input """
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale3_3V, 4096)
 
+class KnownScale48V(unittest.TestCase):
+    knownValues = ( (0, 0.0),
+                    (9, 0.10549450549450549),
+                    (501,  5.8725274725274721),
+                    (1289, 15.109157509157509),
+                    (2070, 24.263736263736263),
+                    (3246, 38.048351648351648),
+                    (4095, 48.0)
+                    )
+    
+    def testScale48V(self):
+        """ scale48V() should scale ad7998's 0-4095 into 0-48V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scale48V(adcValue)
+            self.assertEqual(Vscale, result)
+            
+
+class testScale48VBadInput(unittest.TestCase):
+    def testNegative(self):
+        """ scale48V() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale48V, -1)
+
+    def testTooLarge(self):
+        """ scale48V() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale48V, 4096)
+
+
+class KnownScale200V(unittest.TestCase):
+    knownValues = ( (0, 0.0),
+                    (2, 0.09768009768009768),
+                    (9, 0.43956043956043955),
+                    (501, 24.468864468864467),
+                    (1289, 62.954822954822951),
+                    (2070, 101.09890109890109),
+                    (3246, 158.53479853479854),
+                    (4095, 200.0)
+                    )
+    
+    def testScale200V(self):
+        """ scale200V() should scale ad7998's 0-4095 into 0-200V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scale200V(adcValue)
+            self.assertEqual(Vscale, result)
+            
+
+class testScale200VBadInput(unittest.TestCase):
+    def testNegative(self):
+        """ scale200V() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V, -1)
+
+    def testTooLarge(self):
+        """ scale200V() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V, 4096)
+
+class writead5301_u12(unittest.TestCase):
+    def testArgumentMissing(self):
+        """writead5301_u12 should fail if decimalBinaryCode argument not specified, ie NoneType"""
+        self.assertRaises(excaliburPowerGui.ArgumentTypeNoneError, excaliburObj.writead5301_u12, None)
+        
+    def testArgumentOneNegative(self):
+        """writead5301_u12 should fail if decimalBinaryCode argument negative"""
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writead5301_u12, -1)
+        
+    def testArgumentOneTooLarge(self):
+        """writead5301_u12 should fail if decimalBinaryCode argument too large (>256) """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writead5301_u12, 257)
+
 
 class KnownDebugBooleanValues(unittest.TestCase):
     booleanValues = ( (True, True),

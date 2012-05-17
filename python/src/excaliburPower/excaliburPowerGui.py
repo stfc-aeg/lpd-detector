@@ -50,6 +50,7 @@ class ExcaliburPowerGui:
         self.bCoolantTempGreen = False
         self.bLvGreen = False
         self.bBiasGreen = False
+        self.bFanFaultGreen = True
 
         # Boolean True: Log header, False: Log Gui values
         self.bInitialisation = True     # I2C devices initialisation period while True
@@ -824,6 +825,100 @@ class ExcaliburPowerGui:
             wrString = "w 75 " + str(sReg) + " @"            
         self.sCom.write(wrString)        
 
+    def readpcf8574(self):
+        """ Read pcf8574 u3 device """
+        # pcf8574 I2C address is 32 (or 64 ?)
+        self.sCom.write("w 32 1 @")
+        # Read reply
+        rxString = self.readSerialInterface()
+        rxVal = int(rxString)
+
+        # P0 - Coolant_Temp_Status
+        if rxVal & 1 is 1:
+            # Coolant_Temp_Status's fine
+            if self.bCoolantTempGreen is False:
+                # Only change to Green if previously Red
+                self.queue.put("frmCoolantTempStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.bCoolantTempGreen = True
+        else:
+            # Ensure Coolant_Temp_Status' Red if previously Green
+            if self.bCoolantTempGreen is True:
+                self.queue.put("frmCoolantTempStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.bCoolantTempGreen = False                
+        # P1 - Humidity_Status
+        if rxVal & 2 is 2:
+            # Humidity_Status fine
+            if self.bHumidityGreen is False:
+                # Only change to Green if previously Red
+                self.queue.put("frmHumidityStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.bHumidityGreen = True
+        else:
+            # Ensure Humidity_Status's Red if previously Green
+            if self.bHumidityGreen is True:
+                self.queue.put("frmHumidityStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.bHumidityGreen = False
+        # P2 - Coolant_Flow_Status
+        if rxVal & 4 is 4:
+            # Coolant_Flow_Status fine
+            if self.bCoolantFlowGreen is False:
+                # Only change to Green if previously Red
+                self.queue.put("frmCoolantFlowStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.bCoolantFlowGreen = True
+        else:
+            # Ensure Coolant_Flow_Status's Red if previously Green
+            if self.bCoolantFlowGreen is True:
+                self.queue.put("frmCoolantFlowStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.bCoolantFlowGreen = False
+        # P3 - Air_Temp_Status
+        if rxVal & 8 is 8:
+            # Air_Temp_Status fine
+            if self.bAirTempGreen is False:
+                # Only change to Green if previously Red
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.bAirTempGreen = True
+        else:
+            # Ensure Air_Temp_Status's Red if previously Green
+            if self.bAirTempGreen is True:
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.bAirTempGreen = False
+        # P4 - BIAS_ON/OFF
+        if rxVal & 16 is 16:
+            # BIAS_ON/OFF fine
+            if self.bBiasGreen is False:
+                # Only change to Green if previously Red
+                self.queue.put("frmBiasStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.bBiasGreen = True
+        else:
+            # Ensure BIAS_ON/OFF Red if previously Green
+            if self.bBiasGreen is True:
+                self.queue.put("frmBiasStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.bBiasGreen = False
+        # P5 - LV_ON/OFF
+        if rxVal & 32 is 32:
+            # LV_ON is on
+            if self.bLvGreen is False:
+                # Only change to Green if previously Red
+                self.queue.put("frmLowVoltageStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.bLvGreen = True
+        else:
+            # Ensure LV_ON's Red if previously Green
+            if self.bLvGreen is True:
+                self.queue.put("frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.bLvGreen = False
+        # P6 - FAN_FAULT
+        if rxVal & 64 is 64:
+            # FAN_FAULT is ok
+            if self.b is False:
+                # Only change to Green if previously Red
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.bAirTempGreen = True
+        else:
+            # Ensure FAN_FAULT's Red if previously Green
+            if self.bAirTempGreen is True:
+                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.bAirTempGreen = False
+
+        
     def readlm92(self):
         """ Read from lm92 device """
         self.sCom.write("r 75 2 @")
@@ -842,6 +937,28 @@ class ExcaliburPowerGui:
         # Send to excaliburPowerGuiMain, who'll update GUI
         self.queue.put(msg)
         return rxString
+    
+    def readad5301_u12(self):
+        """ Read bias level from DAC AD5301 device """
+        # I2C address: 000110+A0 where A0 = 0
+        # hence address: 12
+        self.sCom.write("r 12 1 @")
+        rxString = self.readSerialInterface()
+        if rxString is None:
+            self.displayErrorMessage("readad5301_u12() read None!")
+            return None
+        rxVal = int(rxString)
+        return rxVal
+    
+    def writead5301_u12(self, decimalBinaryCode=None):
+        """ Write (decimalBinaryCode) bias level to DAC ad5301_u12 device """
+        # I2C address: 12
+        if decimalBinaryCode is None:
+            raise ArgumentTypeNoneError, "writead5301_u12() decimalBinaryCode not specified"
+        # Suitable decimalBinaryCode?
+        if not (0 <= int(decimalBinaryCode) <= 256):
+            raise OutOfRangeError, "writead5301_u12() decimalBinaryCode argument out of range"
+        self.sCom.write("w 12 " + str(decimalBinaryCode) + " @")
     
     def readpca9538(self):
         """ Read from pca9538 device """
@@ -951,15 +1068,6 @@ class ExcaliburPowerGui:
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale5V() adcValue outside 0-4095 range!"
         return (adcValue / 819.0)
-
-    def scale1_8V(self, adcValue):
-        """ Scale ad7998's range of ADC count: 0-4095 to 0-1.8Volts """
-        # Ensure adcValue is integer
-        adcValue=int(adcValue)
-        # Check adcValue 0-4095
-        if not (0 <= adcValue <= 4095):
-            raise OutOfRangeError, "scale1_8V() adcValue outside 0-4095 range!"
-        return (adcValue / 2275.0)
     
     def scale3_3V(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-3.3Volt """
@@ -969,7 +1077,44 @@ class ExcaliburPowerGui:
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale3_3V() adcValue outside 0-4095 range!"
         return (adcValue *(11 / 13650.0))        
+
+    def scale1_8V(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-1.8Volts """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale1_8V() adcValue outside 0-4095 range!"
+        return (adcValue / 2275.0)
+
+    def scale48V(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-48Volts """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale48V() adcValue outside 0-4095 range!"
+        return (adcValue * (16 / 1365.0))
     
+    def scale200V(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-200Volts """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale200V() adcValue outside 0-4095 range!"
+        return (adcValue * (40 / 819.0))
+
+    def scaleHumidity(self, humidityValue):
+        """ Scale ad7998's range of ADC count: 0-4095 
+            Note that scale is 31mv/% according to SB's circuit diagram """
+        # Ensure humidityValue is integer
+        humidityValue=int(humidityValue)
+        # Check humidityValue 0-4095
+        if not (0 <= humidityValue <= 4095):
+            raise OutOfRangeError, "scale200V() humidityValue outside 0-4095 range!"
+        return (humidityValue * (40 / 819.0))
+
     def readAd7998_Unit14(self, ch8to5, ch4to1):
         """ Select ad7998's channel(s) according to arguments,
             select conversion register and call readAd7998()
@@ -1063,10 +1208,10 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit15(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le48VV=%s" % str( rxInt ))                          # U15, pin 7
+            try:    self.queue.put("le48VV=%s" % str( self.scale48V(rxInt) ))            # U15, pin 7
             except: self.displayErrorMessage("U15 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le48VA=%s" % str( self.scale5V(rxInt) ))            # U15, pin 14
+            try:    self.queue.put("le48VA=%s" % str( self.scale48V(rxInt) ))            # U15, pin 14
             except: self.displayErrorMessage("U15 adc1, Error updating GUI: ")
         def two():
             try:    self.queue.put("le5SUPERVV=%s" % str( self.scale5V(rxInt) ))        # U15, pin 8
@@ -1127,28 +1272,28 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit16(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le33VA=%s" % str( rxInt ))      # U16, pin 7
+            try:    self.queue.put("le33VA=%s" % str( self.scale3_3V(rxInt) ))         # U16, pin 7
             except: self.displayErrorMessage("U16 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le18VAA=%s" % str( self.scale5V(rxInt) ))        # U16, pin 14
+            try:    self.queue.put("le18VAA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 14
             except: self.displayErrorMessage("U16 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le200VA=%s" % str( self.scale5V(rxInt) ))        # U16, pin 8
+            try:    self.queue.put("le200VA=%s" % str( self.scale200V(rxInt) ))        # U16, pin 8
             except: self.displayErrorMessage("U16 adc2, Error updating GUI: ")
         def three():
-            try:    self.queue.put("le33VV=%s" % str( self.scale5V(rxInt) ))        # U16, pin 13
+            try:    self.queue.put("le33VV=%s" % str( self.scale3_3V(rxInt) ))        # U16, pin 13
             except: self.displayErrorMessage("U16 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("le18VVA=%s" % str( self.scale5V(rxInt) ))        # U16, pin 9
+            try:    self.queue.put("le18VVA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 9
             except: self.displayErrorMessage("U16 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("le200VV=%s" % str( self.scale5V(rxInt) ))        # U16, pin 12 
+            try:    self.queue.put("le200VV=%s" % str( self.scale200V(rxInt) ))        # U16, pin 12 
             except: self.displayErrorMessage("U16 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("le18VAB=%s" % str( self.scale5V(rxInt) ))        # U16, pin 10
+            try:    self.queue.put("le18VAB=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 10
             except: self.displayErrorMessage("U16 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("le18VVB=%s" % str( self.scale5V(rxInt) ))        # U16, pin 11
+            try:    self.queue.put("le18VVB=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 11
             except: self.displayErrorMessage("U16 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
