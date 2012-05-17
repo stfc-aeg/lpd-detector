@@ -64,6 +64,7 @@ public:
 
 	void startAcquisition(void);
 	void stopAcquisition(void);
+
 	void registerCallbacks(CallbackBundle* aBundle);
 
 	void setNumFrames(unsigned int aNumFrames);

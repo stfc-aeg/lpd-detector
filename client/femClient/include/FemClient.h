@@ -85,11 +85,14 @@ public:
 	std::vector<u8> i2cRead(unsigned int aAddress, unsigned int aLength);
 	u32 i2cWrite(unsigned int aAddress, std::vector<u8>&aValues);
 	std::vector<u8> rdmaRead(unsigned int aAddress, unsigned int aLength);
+	u32 rdmaRead(unsigned int aAddress);
 	u32 rdmaWrite(unsigned int aAddress, std::vector<u8>& aPayload);
 	u32 rdmaWrite(unsigned int aAddress, std::vector<u32>& aPayload);
 	void rdmaWrite(u32 address, u32 value);
 	u32 spiWrite(unsigned int aAddress, std::vector<u8>& aPayload);
 	std::vector<u8> spiRead(unsigned int aAddress, unsigned int aLength);
+	u32 memoryWrite(unsigned int aAddress, u32* apPayload, unsigned int aLength);
+	u32 memoryWrite(unsigned int aAddress, u8* apPayload, unsigned int aLength);
 
 	// High-level FEM client functions, implemented in femClientHighLevel.cpp
 	double tempSensorRead(FemTemperatureSensor aSensor);

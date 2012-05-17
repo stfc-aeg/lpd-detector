@@ -114,9 +114,10 @@ enum protocol_acq_mode
 {
 	ACQ_MODE_UNSUPPORTED	= 0,
 	ACQ_MODE_NORMAL			= 1,	//! Arm RX and TX, for normal acquisition
-	ACQ_MODE_RX_ONLY		= 2,	//! Arm RX only
-	ACQ_MODE_TX_ONLY		= 3,	//! Arm TX only
-	ACQ_MODE_UPLOAD			= 4		//! Upload config
+	ACQ_MODE_BURST          = 2,
+	ACQ_MODE_RX_ONLY		= 3,	//! Arm RX only
+	ACQ_MODE_TX_ONLY		= 4,	//! Arm TX only
+	ACQ_MODE_UPLOAD			= 5		//! Upload config
 };
 
 typedef struct

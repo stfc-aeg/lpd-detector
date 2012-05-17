@@ -269,9 +269,10 @@ u32 FemClient::write(unsigned int aBus, unsigned int aWidth, unsigned int aAddre
 
 	// Check for an ACK and the absence of a NACK on the response
 	u8 responseState = response.getState();
+
 	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK))) {
 		std::ostringstream msg;
-		msg << "FEM response did not acknowledge write transaction to address " << aAddress;
+		msg << "FEM response did not acknowledge write transaction to address 0x" << std::hex << aAddress << std::dec;
 		throw FemClientException(femClientMissingAck, msg.str());
 	}
 

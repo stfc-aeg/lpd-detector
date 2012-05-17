@@ -65,6 +65,27 @@ std::vector<u8> FemClient::rdmaRead(unsigned int aAddress, unsigned int aLength)
     return values;
 }
 
+/** rdmaRead - perform a single-beat RDMA read transaction from the FEM
+ *
+ * This function performs single-beat RDMA read transaction from the FEM, at
+ * an address specified in the arguments. The result is returned as
+ * a vector of bytes to the user
+ *
+ * @param aAddress RDMA address to read (including upper byte as FEM bus select)
+ * @return vector of u8 byte data read from FEM
+ */
+u32 FemClient::rdmaRead(unsigned int aAddress)
+{
+
+	unsigned int bus = BUS_RDMA;
+	unsigned int width = WIDTH_LONG;
+	u32 payload = 0;
+	u32 respLen = this->readNoCopy(bus, width, aAddress, 1, (u8*)&payload);
+
+	return payload;
+}
+
+
 /** rdmaWrite - perform an RDMA write transaction to the FEM
  *
  * This function performs an RDMA write transaction to the FEM, at an address
@@ -83,6 +104,7 @@ u32 FemClient::rdmaWrite(unsigned int aAddress, std::vector<u8>& aPayload) {
 	u32 ack = this->write(bus, width, aAddress, aPayload);
     return ack;
 }
+
 /** rdmaWrite - perform an RDMA write transaction to the FEM
  *
  * This function performs an RDMA write transaction to the FEM, at an address
@@ -160,7 +182,49 @@ std::vector<u8> FemClient::spiRead(unsigned int aAddress, unsigned int aLength) 
     return values;
 }
 
+/** memoryWrite - perform a direct write into the memory of the FEM
+ *
+ * This function performs a direct write transaction into the memory address
+ * space of the FEM, as long word transactions of the specified legnth.
+ *
+ * @param aAddress address of memory to write to
+ * @param apPayload pointer to payload buffer
+ * @param aLength number of long words to write
+ * @return number of bytes written
+ */
+u32 FemClient::memoryWrite(unsigned int aAddress, u32* apPayload, unsigned int aLength)
+{
 
+	unsigned int bus   = BUS_DIRECT;
+	unsigned int width = WIDTH_LONG;
+
+	size_t size = aLength * sizeof(u32);
+	u32 ack = this->write(bus, width, aAddress, (u8*)apPayload, size);
+	return ack;
+
+}
+
+/** memoryWrite - perform a direct write into the memory of the FEM
+ *
+ * This function performs a direct write transaction into the memory address
+ * space of the FEM, as long word transactions of the specified legnth.
+ *
+ * @param aAddress address of memory to write to
+ * @param apPayload pointer to payload buffer
+ * @param aLength number of long words to write
+ * @return number of bytes written
+ */
+u32 FemClient::memoryWrite(unsigned int aAddress, u8* apPayload, unsigned int aLength)
+{
+
+	unsigned int bus   = BUS_RAW_REG;
+	unsigned int width = WIDTH_BYTE;
+
+	size_t size = aLength;
+	u32 ack = this->write(bus, width, aAddress, (u8*)apPayload, size);
+	return ack;
+
+}
 
 
 
