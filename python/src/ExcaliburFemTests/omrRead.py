@@ -16,7 +16,7 @@ except FemClientError as errString:
     print "Error: FEM connection failed:", errString
     sys.exit(1)
 
-theFem.rdmaWrite(0x48000000, (0x80,))  # ASIC MUX select (was 0xF0)
+theFem.rdmaWrite(0x48000000, (0x80,))  # ASIC MUX select (was 0x08)
 theFem.rdmaWrite(0x48000002, (0x67,))  # OMR LSB
 theFem.rdmaWrite(0x48000003, (0x2E0,)) # OMR MSB
 theFem.rdmaWrite(0x48000001, (0x25,))  # Control register

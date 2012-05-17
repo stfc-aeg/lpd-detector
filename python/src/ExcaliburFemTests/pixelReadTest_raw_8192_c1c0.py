@@ -15,14 +15,16 @@ try:
 except FemClientError as errString:
     print "Error: FEM connection failed:", errString
     sys.exit(1)
+
+theFem.rdmaWrite(0x30000001, 0x00000001) # Raw data
     
-theFem.rdmaWrite(0x48000000, (0x08,))    # ASIC MUX select (was 0x0F)
-theFem.rdmaWrite(0x48000002, (0x38460,))  # OMR LSB
+theFem.rdmaWrite(0x48000000, (0xFF,))    # ASIC MUX select (was 0x08)
+theFem.rdmaWrite(0x48000002, (0x3860,))  # OMR LSB
 theFem.rdmaWrite(0x48000003, (0x0,))     # OMR MSB
 theFem.rdmaWrite(0x48000006, (0xF,))	# was 0xF
 theFem.rdmaWrite(0x48000007, (0xF,))	# was 0xF
 theFem.rdmaWrite(0x48000008, (0x1,))
 theFem.rdmaWrite(0x4800000A, (0x5,))	# was 0x5
-theFem.rdmaWrite(0x4800000B, (0x18000,))
+theFem.rdmaWrite(0x4800000B, (0x2000,))
 theFem.rdmaWrite(0x48000009, (0xC,))     # ASIC counter depth (0xC = 12 bits)
-theFem.rdmaWrite(0x48000001, (0xE41,))
+theFem.rdmaWrite(0x48000001, (0x1E41,))

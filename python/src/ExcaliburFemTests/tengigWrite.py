@@ -48,8 +48,9 @@ theFem.rdmaWrite(0x00000006, 0x000A77B8) # UDP Block 0 IP Dest Addr / Checksum
 theFem.rdmaWrite(0x00000007, 0x000A0102) # UDP Block 0 IP Dest Addr / Src Addr
 theFem.rdmaWrite(0x00000008, 0x08000202) # UDP Block 0 IP Src Addr / Src Port
 theFem.rdmaWrite(0x00000009, 0x0008D1F0) # UDP Block 0 UDP Length / Dest Port 
-theFem.rdmaWrite(0x0000000C, 0x000003E6) # UDP Block 0 Packet Size    
-theFem.rdmaWrite(0x0000000D, 0x00001000) # UDP Block 0 IFG Value
+theFem.rdmaWrite(0x0000000C, 0x000003E6) # UDP Block 0 Packet Size - ORIGINAL   
+#theFem.rdmaWrite(0x0000000C, 0x000001FE) # 510 bytes - NEW
+theFem.rdmaWrite(0x0000000D, 0x00000800) # UDP Block 0 IFG Value
 theFem.rdmaWrite(0x0000000F, 0x00000011) # UDP Block 0 IFG Enable
 
 if mode == 0:
@@ -79,4 +80,4 @@ llMonVals = theFem.rdmaRead(0x38000010, 0xA)
 print "Local link monitor result =", [hex(val) for val in llMonVals]
 
 # Arm the PPC1 DMA loop by sending a command
-theFem.commandSend(1)
+#theFem.commandSend(1)

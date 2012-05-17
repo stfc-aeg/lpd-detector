@@ -15,6 +15,8 @@ try:
 except FemClientError as errString:
     print "Error: FEM connection failed:", errString
     sys.exit(1)
+
+theFem.rdmaWrite(0x30000001, 0x00000001) # Raw data
     
 theFem.rdmaWrite(0x48000000, (0x08,))    # ASIC MUX select (was 0x0F)
 theFem.rdmaWrite(0x48000002, (0x38460,))  # OMR LSB
