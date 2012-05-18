@@ -1,8 +1,8 @@
 /*
- * ExcaliburFemClient.cpp
+ * ExcaliburFemClient.cpp - EXCALIBUR FEM client class implementation
  *
  *  Created on: 7 Dec 2011
- *      Author: tcn
+ *      Author: Tim Nicholls, STFC Application Engineering Group
  */
 
 #include "ExcaliburFemClient.h"
@@ -76,11 +76,25 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 
 	mFemDataReceiver.registerCallbacks(&callbacks);
 
-	// Temp hack to test recveier
-	mFemDataReceiver.setFrameLength(98304*2);
+	// Temp hack to test receiver
+	mFemDataReceiver.setFrameLength(393216*2);
 	mFemDataReceiver.setFrameHeaderLength(8);
 
+	// Initialise 10GigE UDP firmware block
+	// TODO some of these parameters need to be passed in config block and/or derived
+	u32 hostPort = 61649;
+	u32 fpgaPort = 8;
+	char* fpgaIPAddress = "10.0.2.2";
+	char* fpgaMacAddress = "62:00:00:00:00:01";
+	char* hostIpAddress = "10.0.2.1";
+
+	u32 rc = this->configUDP(fpgaMacAddress, fpgaIPAddress, fpgaPort, hostIpAddress, hostPort);
+	if (rc != 0)
+	{
+		throw FemClientException((FemClientErrorCode)excaliburFemClientUdpSetupFailed, "Failed to set up FEM UDP firmware block");
+	}
 }
+
 
 ExcaliburFemClient::~ExcaliburFemClient() {
 
@@ -159,9 +173,37 @@ void ExcaliburFemClient::command(unsigned int aCommand)
 	switch (aCommand)
 	{
 	case FEM_OP_STARTACQUISITION:
-		this->acquireConfig(ACQ_MODE_NORMAL, 0x18000, 0, mNumFrames);
-		mFemDataReceiver.startAcquisition();
+
+		// TODO hive these commands into method
+
+		// Set up the acquisition DMA controller and arm it
+		this->acquireConfig(ACQ_MODE_NORMAL, 0x60000, 0, 0);
 		this->acquireStart();
+
+		// Start the data receiver thread
+		mFemDataReceiver.startAcquisition();
+
+		// Set up counter depth for ASIC control based on current OMR settings
+		this->asicControlCounterDepthSet(mMpx3OmrParams[0].counterDepth);
+
+		// Set data mode (0 = reordered, 1 = raw)
+		this->rdmaWrite(0x30000001, 1);
+
+		// Set ASIC mux select - TEMP hack for 1-chip system
+		this->asicControlMuxChipSelect(0);
+
+		// Set up the readout length
+		// TODO this is hard coded
+		this->asicControlReadoutLengthSet(0x18000);
+
+		// Set up the OMR
+		{
+			mpx3Omr theOmr = this->omrBuild(0, readPixelMatrixC0);
+			this->asicControlOmrSet(theOmr);
+		}
+		// Execute the acquisition
+		this->asicControlCommandExecute(asicRunSequentialC0);
+
 		break;
 
 	case FEM_OP_STOPACQUISITION:
@@ -187,7 +229,9 @@ void ExcaliburFemClient::setNumFrames(unsigned int aNumFrames)
 	// Set up the number of frames for the receiver thread
 	mFemDataReceiver.setNumFrames(aNumFrames);
 
-	// TODO - add FEM write transaction to set this in FEM too
+	// Set up the number of frames in the FEM
+	this->asicControlNumFramesSet(aNumFrames);
+
 }
 
 void ExcaliburFemClient::setAcquisitionPeriod(unsigned int aPeriodMs)
@@ -205,7 +249,9 @@ void ExcaliburFemClient::setAcquisitionTime(unsigned int aTimeMs)
 	// Set up the acquisition period for the receiver thread
 	mFemDataReceiver.setAcquisitionTime(aTimeMs);
 
-	// TODO - add FEM write transaction to set this in FEM too
+	// Set up shutter in microseconds
+	unsigned long aTimeUs = aTimeMs * 1000;
+	this->asicControlShutterDurationSet(aTimeUs);
 
 }
 
@@ -635,14 +681,12 @@ void ExcaliburFemClient::writePixelConfig(unsigned int aChipId)
 
 		// Set up the PPC1 DMA engine for upload mode
 		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 1, configBaseAddr);
-		this->acquireStart();
 
-		sleep(1);
+		// TODO poll config completion
+		this->acquireStart();
 
 		// Set ASIC MUX register
 		this->asicControlMuxChipSelect(chipIdx);
-//		u32 muxSelectVal = ((u32)1 << (7 - chipIdx));
-//		this->rdmaWrite(kExcaliburAsicMuxSelect, muxSelectVal);
 
 		// Setup OMR value C0 load in the FEM
 		mpx3Omr theOmr = this->omrBuild(chipIdx, loadPixelMatrixC0);
@@ -651,20 +695,18 @@ void ExcaliburFemClient::writePixelConfig(unsigned int aChipId)
 		// Execute the config load command
 		this->asicControlCommandExecute(asicPixelConfigLoad);
 
+		// TODO poll state of FW to test for completion
 		sleep(1);
-
 		this->acquireStop();
-
-		sleep(1);
 
 		// Write counter 1 configuration into the FEM memory
 		this->memoryWrite(configBaseAddr + kPixelConfigBufferSizeBytes, (u32*)&pixelConfigCounter1Buffer, kPixelConfigBufferSizeWords);
 
 		// Set up the PPC1 DMA engine for upload mode
 		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 1, configBaseAddr + kPixelConfigBufferSizeBytes);
-		this->acquireStart();
 
-		sleep(1);
+		// TODO poll config completion
+		this->acquireStart();
 
 		// Setup OMR value for C1 load in the FEM
 		theOmr = this->omrBuild(chipIdx, loadPixelMatrixC1);
@@ -687,17 +729,14 @@ unsigned int ExcaliburFemClient::mpx3eFuseIdRead(unsigned int aChipId)
 	this->asicControlReset();
 
 	// Set ASIC MUX register
-	u32 muxSelectVal = ((u32)1 << (7 - chipIdx));
-	this->rdmaWrite(kExcaliburAsicMuxSelect, muxSelectVal);
+	this->asicControlMuxChipSelect(chipIdx);
 
 	// Set OMR registers
-	mpx3Omr theOMR = this->omrBuild(chipIdx, readEFuseId);
-
-	this->rdmaWrite(kExcaliburAsicOmrBottom, (u32)theOMR.fields.bottom);
-	this->rdmaWrite(kExcaliburAsicOmrTop, (u32)theOMR.fields.top);
+	mpx3Omr theOmr = this->omrBuild(chipIdx, readEFuseId);
+	this->asicControlOmrSet(theOmr);
 
 	// Trigger an OMR transaction
-	this->rdmaWrite(kExcaliburAsicControlReg, 0x25);
+	this->asicControlCommandExecute(asicCommandRead);
 
 	// Wait for the OMR transaction to complete
 	u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);

@@ -113,6 +113,7 @@ void FemDataReceiver::setNumFrames(unsigned int aNumFrames)
 void FemDataReceiver::setFrameLength(unsigned int aFrameLength)
 {
 	mFrameLength = aFrameLength;
+	std::cout << "DEBUG frame length = " << mFrameLength << std::endl;
 }
 
 void FemDataReceiver::setAcquisitionPeriod(unsigned int aPeriodMs)
@@ -194,8 +195,9 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 
 		mFrameTotalBytesReceived   += bytesReceived;
 		mFramePayloadBytesReceived += (bytesReceived - mFrameHeaderLength);
-		std::cout << std::hex << mPacketHeader.frameNumber << " " << mPacketHeader.packetNumberFlags << std::dec << " "
-				  << bytesReceived << " " << mFrameTotalBytesReceived << " " << mFramePayloadBytesReceived << std::endl;
+
+//		std::cout << std::hex << mPacketHeader.frameNumber << " " << mPacketHeader.packetNumberFlags << std::dec << " "
+//				  << bytesReceived << " " << mFrameTotalBytesReceived << " " << mFramePayloadBytesReceived << std::endl;
 
 		// Flag current buffer as received if completed -
 		// TODO: this calc will need to be more complex to cope with headers/trailers etc

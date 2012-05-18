@@ -41,7 +41,9 @@ typedef enum
 	excaliburFemClientIllegalConfigId,
 	excaliburFemClientIllegalChipId,
 	excaliburFemClientIllegalConfigSize,
-	excaliburFemClientOmrTransactionTimeout
+	excaliburFemClientIllegalCounterDepth,
+	excaliburFemClientOmrTransactionTimeout,
+	excaliburFemClientUdpSetupFailed,
 
 } ExcaliburFemClientErrorCode;
 
@@ -87,7 +89,10 @@ public:
 	void asicControlOmrSet(mpx3Omr aOmr);
 	void asicControlMuxChipSelect(unsigned int aChipIdx);
 	void asicControlCommandExecute(asicControlCommand aCommand);
-
+	void asicControlNumFramesSet(unsigned int aNumFrames);
+	void asicControlShutterDurationSet(unsigned int aTimeUs);
+	void asicControlCounterDepthSet(mpx3CounterDepth aCounterDepth);
+	void asicControlReadoutLengthSet(unsigned int aLength);
 	void asicControlReset(void);
 	void asicControlAsicReset(void);
 

@@ -25,9 +25,9 @@
 #define IP_PKT_LENGTH_BASE 0x1c
 #define UDP_LENGTH_BASE 0x0008
 #define PACKET_SPLIT_SIZE 0x3e6
-#define INT_PKT_GAP_VAL 0x1000
+#define INT_PKT_GAP_VAL 0x800
 
-#define INT_PKT_GAP_EN 0x1
+#define INT_PKT_GAP_EN 0x11
 #define DEBUG_MODE_EN  0x2
 #define DEBUG_MODE_STEP 0x4
 #define FXD_PKT_SZE	0x8
@@ -52,9 +52,9 @@ u32 FemClient::configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort
 		return -1;
 	}
 	try {
-		to_bytes(fpgaMACaddress, fpgaMAC, 6);
-		to_bytes(fpgaIPaddress, fpgaIP, 4);
-		to_bytes(hostIPaddress, hostIP, 4);
+		to_bytes(fpgaMACaddress, fpgaMAC, 6, 16);
+		to_bytes(fpgaIPaddress, fpgaIP, 4, 10);
+		to_bytes(hostIPaddress, hostIP, 4, 10);
 		value = (fpgaMAC[3] << 24) + (fpgaMAC[2] << 16) + (fpgaMAC[1] << 8) + fpgaMAC[0];
 		this->rdmaWrite(0x00000000, value); // UDP Block 0 MAC Source Lower 32
 
@@ -97,11 +97,11 @@ u32 FemClient::configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort
 }
 
 
-void FemClient::to_bytes(char *ipName, unsigned char* b, int n) {
+void FemClient::to_bytes(char *ipName, unsigned char* b, int n, int base) {
 	char *end;
 	char* iptr = ipName;
 	for (int i=0; i<n; i++) {
-		b[i] = (unsigned char) strtol(iptr, &end, 10);
+		b[i] = (unsigned char) strtol(iptr, &end, base);
 		iptr = end + 1;
 	}
 }

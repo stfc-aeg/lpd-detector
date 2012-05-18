@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "femApi.h"
 
@@ -32,6 +33,7 @@ int acquiring = 0;
 int framesReceived = 0;
 
 FILE* outputFile = 0;
+struct timespec startTime, endTime;
 
 int main(int argc, char* argv[]) {
 
@@ -74,9 +76,9 @@ int main(int argc, char* argv[]) {
 //	numPassed += testSetLargeShortArray(femHandle);
 //	numPassed += testSlowControl(femHandle);
 //	numPassed += testDacs(femHandle);
-	numPassed += testPixelConfig(femHandle);
+//	numPassed += testPixelConfig(femHandle);
 //	numPassed += testReadEfuseIds(femHandle);
-//	numPassed += testAcquisitionLoop(femHandle);
+	numPassed += testAcquisitionLoop(femHandle);
 
 	printf("Hit return to quit ... ");
 	getchar();
@@ -503,19 +505,20 @@ int testAcquisitionLoop(void* femHandle)
 
 	int rc;
 	int passed = 1;
+	double startSecs, endSecs, elapsedSecs, framesPerSec;
 
 	acquiring = 1;
 
-	printf("Opening output file...");
-	outputFile = fopen("test.dat", "w+b");
+	printf("Opening output file... ");
+	outputFile = fopen("/tmp/test.dat", "w+b");
 	if (outputFile == 0)
 	{
 		perror("Failed to open output file");
 		passed = 0;
 	}
 
-	printf("done.\nSending num frames to FEM...");
-	unsigned int numFrames = 10;
+	printf("done.\nSending num frames to FEM... ");
+	unsigned int numFrames = 1000;
 	rc = femSetInt(femHandle, 0, FEM_OP_NUMFRAMESTOACQUIRE, sizeof(numFrames), (int*)&numFrames);
 	if (rc != FEM_RTN_OK)
 	{
@@ -523,8 +526,8 @@ int testAcquisitionLoop(void* femHandle)
 		passed = 0;
 	}
 
-	printf("done.\nSending acq period to FEM...");
 	unsigned int acqPeriodMs = 10;
+	printf("done.\nSending acquisition period of %dms to FEM... ", acqPeriodMs);
 	rc = femSetInt(femHandle, 0, FEM_OP_ACQUISITIONPERIOD, sizeof(acqPeriodMs), (int*)&acqPeriodMs);
 	if (rc != FEM_RTN_OK)
 	{
@@ -532,8 +535,8 @@ int testAcquisitionLoop(void* femHandle)
 		passed = 0;
 	}
 
-	printf("done.\nSending acq time frames to FEM...");
-	unsigned int acqTimeMs = 10;
+	unsigned int acqTimeMs = 3;
+	printf("done.\nSending acquisition time of %dms to FEM... ", acqTimeMs);
 	rc = femSetInt(femHandle, 0, FEM_OP_ACQUISITIONTIME, sizeof(acqTimeMs), (int*)&acqTimeMs);
 	if (rc != FEM_RTN_OK)
 	{
@@ -550,15 +553,12 @@ int testAcquisitionLoop(void* femHandle)
 		passed = 0;
 	}
 
-//	printf("Waiting for acquisition to complete ...\n");
-//	do
-//	{
-//		usleep(10000);
-//	}
-//	while (acquiring);
-
-	printf("Hit return to stop acq ... ");
-	getchar();
+	printf("Waiting for acquisition to complete ...\n");
+	do
+	{
+		usleep(10000);
+	}
+	while (acquiring);
 
 //	printf("done.\nPress return to stop acquisition...");
 //	getchar();
@@ -572,7 +572,13 @@ int testAcquisitionLoop(void* femHandle)
 	}
 	printf("done.\n");
 
-	printf("Acquisition completed, received %d frames.\n", framesReceived);
+	startSecs = startTime.tv_sec  + ((double)startTime.tv_nsec / 1.0E9);
+	endSecs   = endTime.tv_sec  + ((double)endTime.tv_nsec / 1.0E9);
+
+	elapsedSecs = endSecs - startSecs;
+	framesPerSec = (double)framesReceived / elapsedSecs;
+
+	printf("Acquisition completed, received %d frames in %.2fs, rate %.2f Hz.\n", framesReceived, elapsedSecs, framesPerSec);
 
 	fclose(outputFile);
 	outputFile = 0;
@@ -591,11 +597,11 @@ CtlFrame* allocateCallback(void* ctlHandle)
 		allocFrame->sizeZ = 1;
 		allocFrame->bitsPerPixel = 16;
 //		allocFrame->bufferLength = allocFrame->sizeX * allocFrame->sizeY * allocFrame->sizeZ * (allocFrame->bitsPerPixel / 8);
-		allocFrame->bufferLength = 98304 * 2;
+		allocFrame->bufferLength = 393216 * 2;
 		allocFrame->buffer = (char *)malloc(allocFrame->bufferLength);
 	}
-	printf("In allocateCallback, allocated frame is at 0x%lx buffer at 0x%lx size %ld\n", (unsigned long)allocFrame,
-			(unsigned long)allocFrame->buffer, allocFrame->bufferLength);
+//	printf("In allocateCallback, allocated frame is at 0x%lx buffer at 0x%lx size %ld\n", (unsigned long)allocFrame,
+//			(unsigned long)allocFrame->buffer, allocFrame->bufferLength);
 	return allocFrame;
 }
 
@@ -613,26 +619,30 @@ void freeCallback(void* ctlHandle, CtlFrame* buffer)
 void receiveCallback(void* ctlHandle, CtlFrame* buffer)
 {
 	int i;
-	printf("In receive callback, start of data in buffer: ");
-
-	 //Do something with the frame
-	 //...
-
-	char* bufPtr = (char *)(buffer->buffer);
-	for (i = 0; i < 16; i++) {
-		printf("%x ", (unsigned char)*(bufPtr + i));
-	}
-	printf("\n");
-
-	unsigned int* u32Ptr = (unsigned int *)(buffer->buffer);
-	printf("Data at start of buffer: %x %x\n", *u32Ptr, *(u32Ptr+1));
+//	printf("In receive callback, start of data in buffer: ");
+//
+//	 //Do something with the frame
+//	 //...
+//
+//	char* bufPtr = (char *)(buffer->buffer);
+//	for (i = 0; i < 16; i++) {
+//		printf("%x ", (unsigned char)*(bufPtr + i));
+//	}
+//	printf("\n");
+//
+//	unsigned int* u32Ptr = (unsigned int *)(buffer->buffer);
+//	printf("Data at start of buffer: %x %x\n", *u32Ptr, *(u32Ptr+1));
 
 	// Write data to output file
-	if (outputFile != 0)
-	{
-		fwrite(buffer->buffer, sizeof(char), buffer->bufferLength, outputFile);
-	}
+//	if (outputFile != 0)
+//	{
+//		fwrite(buffer->buffer, sizeof(char), buffer->bufferLength, outputFile);
+//	}
 
+	if (framesReceived == 0)
+	{
+		clock_gettime(CLOCK_REALTIME, &startTime);
+	}
 	framesReceived++;
 
 	if ((framesReceived % 100) == 0)
@@ -645,13 +655,13 @@ void receiveCallback(void* ctlHandle, CtlFrame* buffer)
 
 void signalCallback(void* ctlHandle, int id)
 {
-	printf("In signal callback: %d\n", id);
 
 	switch (id)
 	{
 	case FEM_OP_ACQUISITIONCOMPLETE:
-		printf("Acquisition complete!\n");
+		clock_gettime(CLOCK_REALTIME, &endTime);
 		acquiring = 0;
+		printf("Acquisition complete!\n");
 		break;
 
 	default:

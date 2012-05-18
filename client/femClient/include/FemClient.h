@@ -123,7 +123,7 @@ private:
 	static void asyncCompletionHandler(
 			const boost::system::error_code& aErrorCode, std::size_t aLength,
 		    boost::system::error_code* apOutputErrorCode, std::size_t* apOutputLength);
-	void to_bytes(char *ipName, unsigned char* b, int n);
+	void to_bytes(char *ipName, unsigned char* b, int n, int base=10);
 	unsigned char* getMacAddressFromIP(char *ipName);
 
 };

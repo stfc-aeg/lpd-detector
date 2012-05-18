@@ -89,3 +89,92 @@ void ExcaliburFemClient::asicControlAsicReset(void)
 	this->rdmaWrite(kExcaliburAsicControlReg, 0x0);
 
 }
+
+/** asicControlNumFramesSet - set the number of frames to acquire
+ *
+ * This function sets the number of frames to acquire in the ASIC
+ * control firmware block of the FEM.
+ *
+ * @param aNumFrames number of frames to acquire
+ */
+void ExcaliburFemClient::asicControlNumFramesSet(unsigned int aNumFrames)
+{
+	// Set number of frames in ASIC control RDMA register
+	this->rdmaWrite(kExcaliburAsicFrameCounter, (u32)aNumFrames);
+}
+
+/** asicControlShutterDurationSet - set the ASIC shutter duration in microseconds
+ *
+ * This function sets up the internal shutter duration in microseconds. There
+ * are two registers in the ASIC control block, setting the shutter resolution
+ * and the shutter counter. We run with a fixed resolution of 500ns, so the
+ * shuttter counter should be twice the argument specified in microseconds
+ *
+ * @param aTimeUs shutter duration in microseconds
+ */
+void ExcaliburFemClient::asicControlShutterDurationSet(unsigned int aTimeUs)
+{
+
+	u32 shutterCounter = aTimeUs * 2;
+
+	// Set constant shutter resolution of 500ns = 0x64
+	this->rdmaWrite(kExcaliburAsicShutterResolution, 0x64);
+
+	// Set both shutter 0 and shutter 1 counters to value in 500ns steps
+	this->rdmaWrite(kExcaliburAsicShutter0Counter, shutterCounter);
+	this->rdmaWrite(kExcaliburAsicShutter1Counter, shutterCounter);
+
+}
+
+/** asicControlCounterDepthSet - set the ASIC pixel counter depth
+ *
+ * This function sets up the ASIC control block pixel counter depth. Note
+ * that this is NOT the setup for the ASIC itself, which is done through the
+ * OMR, but for the readout block. The two values MUST match.
+ *
+ * @param aCounterDepth enumerated counter depth from MPX3 setttings
+ */
+void ExcaliburFemClient::asicControlCounterDepthSet(mpx3CounterDepth aCounterDepth)
+{
+
+	u32 counterDepthBits = 0;
+
+	switch (aCounterDepth)
+	{
+	case counterDepth1:
+		counterDepthBits = 1;
+		break;
+
+	case counterDepth4:
+		counterDepthBits = 4;
+		break;
+
+	case counterDepth12:
+		counterDepthBits = 12;
+		break;
+
+	case counterDepth24:
+		counterDepthBits = 12; // 24bit counter = 2x12 readout
+		break;
+
+	default:
+		break;
+	}
+
+	// Throw exception if illegal counter depth specified
+	if (counterDepthBits == 0)
+	{
+		std::ostringstream msg;
+		msg << "Illegal counter depth specified: " << aCounterDepth;
+		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalCounterDepth, msg.str());
+	}
+
+	// Set up the counter depth in the RDMA register
+	this->rdmaWrite(kExcaliburAsicPixelCounterDepth, counterDepthBits);
+
+}
+
+void ExcaliburFemClient::asicControlReadoutLengthSet(unsigned int aLength)
+{
+	this->rdmaWrite(kExcaliburAsicReadoutLength, (u32)aLength);
+}
