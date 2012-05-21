@@ -30,6 +30,10 @@ typedef struct packetHeader_t
 	u32			packetNumberFlags;
 } PacketHeader;
 
+const u32 kStartOfFrameMarker = 1 << 31;
+const u32 kEndOfFrameMarker   = 1 << 30;
+const u32 kPacketNumberMask   = 0x3FFFFFFF;
+
 typedef enum
 {
 	headerAtStart,
@@ -56,6 +60,7 @@ namespace FemDataReceiverSignal {
 	} FemDataReceiverSignals;
 }
 
+
 class FemDataReceiver {
 public:
 
@@ -71,6 +76,7 @@ public:
 	void setFrameLength(unsigned int mFrameLength);
 	void setFrameHeaderLength(unsigned int aHeaderLength);
 	void setFrameHeaderPosition(FemDataReceiverHeaderPosition aPosition);
+	void setNumSubFrames(unsigned int aNumSubFrames);
 
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
@@ -96,13 +102,15 @@ private:
 	FemDataReceiverHeaderPosition     mHeaderPosition;
 	unsigned int                      mAcquisitionPeriod;
 	unsigned int                      mAcquisitionTime;
+	unsigned int                      mNumSubFrames;
 
 	PacketHeader                      mPacketHeader;
 	BufferInfo                        mCurrentBuffer;
 
 	unsigned int                      mFrameTotalBytesReceived;
 	unsigned int                      mFramePayloadBytesReceived;
-
+	unsigned int                      mSubFramePacketsReceived;
+	unsigned int                      mSubFramesReceived;
 
 	void checkDeadline(BufferInfo aFramePtr);
 };

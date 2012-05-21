@@ -15,6 +15,8 @@ FemDataReceiver::FemDataReceiver()
 	  mCurrentFrame(0),
 	  mNumFrames(0),
 	  mFrameLength(0),
+	  mHeaderPosition(headerAtStart),
+	  mNumSubFrames(1),
 	  mFrameTotalBytesReceived(0),
 	  mFramePayloadBytesReceived(0)
 {
@@ -44,8 +46,11 @@ void FemDataReceiver::startAcquisition(void)
 		// Initialise current frame counter to number of frames to be acquired
 		mCurrentFrame = mNumFrames;
 
-		// Initialise bytes received counter for next frame
+		// Initialise counters for next frame acquisition sequence
 		mFramePayloadBytesReceived = 0;
+		mFrameTotalBytesReceived   = 0;
+		mSubFramesReceived         = 0;
+		mSubFramePacketsReceived   = 0;
 
 		if (mCallbacks.allocate)
 		{
@@ -69,8 +74,7 @@ void FemDataReceiver::startAcquisition(void)
 				boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader)),
 				boost::asio::buffer(mCurrentBuffer.addr, mCurrentBuffer.length) }};
 
-			mRecvSocket.async_receive_from(rxBufs, //boost::asio::buffer(mCurrentBuffer.addr, mCurrentBuffer.length),
-					mRemoteEndpoint,
+			mRecvSocket.async_receive_from(rxBufs, mRemoteEndpoint,
 					boost::bind(&FemDataReceiver::handleReceive, this,
 							    boost::asio::placeholders::error,
 							    boost::asio::placeholders::bytes_transferred
@@ -113,7 +117,6 @@ void FemDataReceiver::setNumFrames(unsigned int aNumFrames)
 void FemDataReceiver::setFrameLength(unsigned int aFrameLength)
 {
 	mFrameLength = aFrameLength;
-	std::cout << "DEBUG frame length = " << mFrameLength << std::endl;
 }
 
 void FemDataReceiver::setAcquisitionPeriod(unsigned int aPeriodMs)
@@ -135,6 +138,12 @@ void FemDataReceiver::setFrameHeaderPosition(FemDataReceiverHeaderPosition aPosi
 {
 	mHeaderPosition = aPosition;
 }
+
+void FemDataReceiver::setNumSubFrames(unsigned int aNumSubFrames)
+{
+	mNumSubFrames = aNumSubFrames;
+}
+
 
 void FemDataReceiver::registerCallbacks(CallbackBundle* aBundle)
 {
@@ -196,11 +205,57 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 		mFrameTotalBytesReceived   += bytesReceived;
 		mFramePayloadBytesReceived += (bytesReceived - mFrameHeaderLength);
 
+		// DEBUG output
 //		std::cout << std::hex << mPacketHeader.frameNumber << " " << mPacketHeader.packetNumberFlags << std::dec << " "
-//				  << bytesReceived << " " << mFrameTotalBytesReceived << " " << mFramePayloadBytesReceived << std::endl;
+//				  << bytesReceived << " " << mFrameTotalBytesReceived << " " << mFramePayloadBytesReceived << " "
+//				  << mSubFramesReceived << " " << mSubFramePacketsReceived << std::endl;
+
+		// If this is the first packet in a sub-frame, we expect packet header to have SOF marker and packet number to
+		// be zero. Otherwise, check that the packet number is incrementing correctly, i.e. we have not dropped any
+		// packets
+		if (mSubFramePacketsReceived == 0)
+		{
+			if (!(mPacketHeader.packetNumberFlags & kStartOfFrameMarker))
+			{
+				std::cout << "MISSING SOF marker" << std::endl;
+			}
+			else
+			{
+				mSubFramePacketsReceived++;
+			}
+		}
+		else
+		{
+			// Check packet number is incrementing as expected within subframe
+			if ((mPacketHeader.packetNumberFlags & kPacketNumberMask) != mSubFramePacketsReceived)
+			{
+				std::cout << "INCORRECT PACKET number sequence" << std::endl;
+			}
+
+			// Check for EOF marker in packet header, if so, reset subframe packet
+			// counter and increment number of subframes received
+			if (mPacketHeader.packetNumberFlags & kEndOfFrameMarker)
+			{
+				mSubFramePacketsReceived = 0;
+				mSubFramesReceived++;
+
+				// If the number of subframes received matches the number expected for the
+				// frame, check that we have received the correct amount of data
+				if (mSubFramesReceived == mNumSubFrames)
+				{
+					if (mFramePayloadBytesReceived != mFrameLength)
+					{
+						std::cout << "***** Received complete frame with incorrect size" << std::endl;
+					}
+				}
+			}
+			else
+			{
+				mSubFramePacketsReceived++;
+			}
+		}
 
 		// Flag current buffer as received if completed -
-		// TODO: this calc will need to be more complex to cope with headers/trailers etc
 
 		if (mFramePayloadBytesReceived >= mFrameLength)
 		{
@@ -231,30 +286,28 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 				mCurrentFrame--;
 			}
 			mFramePayloadBytesReceived = 0;
-			mFrameTotalBytesReceived = 0;
+			mFrameTotalBytesReceived  = 0;
+			mSubFramePacketsReceived  = 0;
+			mSubFramesReceived        = 0;
 		}
 	}
 	else
 	{
 		std::cout << "Got error during receive: " << errorCode.value() << " : " << errorCode.message() << " recvd=" << bytesReceived << std::endl;
+		// TODO signal error through callback
 	}
 
 	if (mAcquiring)
 	{
 
+		// Construct buffer sequence for reception of next packet header and payload. Payload buffer
+		// points to the next position in the current buffer
 		boost::array<boost::asio::mutable_buffer, 2> rxBufs = {{
 			boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader)),
 			boost::asio::buffer(mCurrentBuffer.addr   + mFramePayloadBytesReceived,
 					            mCurrentBuffer.length - mFramePayloadBytesReceived) }};
 
-//		mRecvSocket.async_receive_from(boost::asio::buffer(
-//				mCurrentBuffer.addr + mFrameTotalBytesReceived,
-//				mCurrentBuffer.length - mFrameTotalBytesReceived), mRemoteEndpoint,
-//				boost::bind(&FemDataReceiver::handleReceive, this,
-//						    boost::asio::placeholders::error,
-//						    boost::asio::placeholders::bytes_transferred
-//						    )
-//		);
+		// Launch the asynchronous receive onto this handler
 		mRecvSocket.async_receive_from(rxBufs, mRemoteEndpoint,
 				boost::bind(&FemDataReceiver::handleReceive, this,
 						    boost::asio::placeholders::error,
