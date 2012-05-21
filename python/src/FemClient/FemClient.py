@@ -30,9 +30,10 @@ class FemClient(object):
     '''
 
     def __init__(self, hostAddr=None, timeout=None):
-        print "Connecting to FEM at", hostAddr
+        #print "Connecting to FEM at", hostAddr
         self.femSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.femSocket.settimeout(timeout)
+        self.femSocket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024*1024)
         try:
             self.femSocket.connect(hostAddr)
         except socket.timeout:
@@ -54,7 +55,7 @@ class FemClient(object):
             theTransaction = FemTransaction(cmd=theCmd, bus=theBus, width=theWidth, state=theState, 
                                            addr=theAddr, payload=thePayload, readLen=theReadLen)
         data = theTransaction.encode()
-        self.femSocket.send(data)
+        self.femSocket.sendall(data)
   
     def recv(self):
         initRecvLen = FemTransaction.headerSize()
