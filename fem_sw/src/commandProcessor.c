@@ -108,6 +108,9 @@ void commandProcessorThread()
 		// Check file descriptors, see which one needs servicing
 		for (i=0; i<=numFds; i++)
 		{
+
+			state[i-1].gotData = 0;
+
 			if(FD_ISSET(i, &readSet))
 			{
 
@@ -185,7 +188,7 @@ void commandProcessorThread()
 
 					struct clientStatus *pState = &(state[i-1]);
 
-					pState->gotData = 0;
+					//pState->gotData = 0;
 
 					// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -339,7 +342,7 @@ void commandProcessorThread()
 							numBytesRead = lwip_read(i, (void*)(pState->pBusDirect), pState->busDirectSize);
 
 							//DBGOUT("CmdProc: BUS_DIRECT Write: Read %d bytes...\r\n", numBytesRead);
-							//DBGOUT("%d\r\n", numBytesRead);
+
 							if (numBytesRead<=0)
 							{
 								// Client has disconnected or an error occurred
@@ -358,6 +361,7 @@ void commandProcessorThread()
 							if (pState->busDirectSize == 0)
 							{
 								// Bypass normal reception of payload as we already have it
+								DBGOUT("CmdProc: Finished payload rx on BUS_DIRECT operation!\r\n");
 								pState->state = STATE_GOT_PYLD;
 							}
 
@@ -365,11 +369,12 @@ void commandProcessorThread()
 						else
 						{
 
-							if (pState->pHdr->payload_sz > NET_MAX_PAYLOAD_SZ)
+							if (pState->pHdr->payload_sz > NET_LRG_RX_BUFFER_SZ)
 							{
+								// Too big to receive so flush it's data and NACK client
 								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", pState->pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
-								// TODO: Send NACK here!
-								// TODO: Should we flush data from client?
+								flushSocket(i, (void*)pState->pPayload, pState->payloadBufferSz);
+								// TODO: Send NACK
 								pState->state = STATE_COMPLETE;
 							}
 							else
@@ -377,54 +382,28 @@ void commandProcessorThread()
 
 								if (pState->pHdr->payload_sz > pState->payloadBufferSz)
 								{
-
-									// DEBUG
-									printf("CmdProc: Larger payload than buffer, pld=0x%08x, bfr=0x%08x\r\n", (unsigned int)pState->pHdr->payload_sz, (unsigned int)pState->payloadBufferSz);
-
-									// Payload exceeds buffer, increase it by one chunk
-									if (pState->payloadBufferSz == NET_NOMINAL_RX_BUFFER_SZ)
+									// Increase payload buffer from nominal to large
+									pState->pPayload = realloc(pState->pPayload, NET_LRG_RX_BUFFER_SZ);
+									pState->payloadBufferSz = NET_LRG_RX_BUFFER_SZ;
+									if (pState->pPayload == NULL)
 									{
-										// If we only have nominal buffer, resize to single chunk (saves having n*chunk + nominal at end...)
-										pState->pPayload = realloc(pState->pPayload, NET_LRG_PKT_INCREMENT_SZ);
-										pState->payloadBufferSz = NET_LRG_PKT_INCREMENT_SZ;
-										if (pState->pPayload == NULL)
-										{
-											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
-											DBGOUT("Terminating thread...\r\n");
-											// TODO: Send NACK here, and don't exit!
-											return;
-										}
+										DBGOUT("CmdProc: Error - can't realloc. RX buffer!\r\n");
+										flushSocket(i, (void*)pState->pPayload, pState->payloadBufferSz);
+										// TODO: Send NACK
+										pState->state = STATE_COMPLETE;
 									}
-									else
-									{
-										pState->pPayload = realloc(pState->pPayload, pState->payloadBufferSz + NET_LRG_PKT_INCREMENT_SZ);
-										pState->payloadBufferSz += NET_LRG_PKT_INCREMENT_SZ;
-										if (pState->pPayload == NULL)
-										{
-											DBGOUT("CmdProc: Fatal error - can't realloc rx buffer!\r\n");
-											DBGOUT("Terminating thread...\r\n");
-											// TODO: Send NACK here, and don't exit!
-											return;
-										}
-									}
-
-									// Make sure to not read off the end of this packet - this might not be required as all comms. will be synchronous...
-									if ( pState->pHdr->payload_sz - (pState->size - sizeof(struct protocol_header)) < NET_LRG_PKT_INCREMENT_SZ )
-									{
-										numBytesToRead = pState->pHdr->payload_sz - (pState->size - sizeof(struct protocol_header));
-									}
-									else
-									{
-										numBytesToRead = NET_LRG_PKT_INCREMENT_SZ;
-									}
-
 									DBGOUT("CmdProc: Resized payload buffer to %d numBytesToRead=%d\r\n", pState->payloadBufferSz, numBytesToRead);
 
 								}
+
+								// Skip processing if the realloc failed
+								if (pState->state == STATE_COMPLETE)
+								{
+									numBytesToRead = 0;
+								}
 								else
 								{
-									// Payload will fit in existing buffer
-									numBytesToRead = pState->pHdr->payload_sz;
+									numBytesToRead = pState->pHdr->payload_sz;;
 								}
 
 								if (numBytesToRead != 0)
@@ -525,7 +504,7 @@ void commandProcessorThread()
 			{
 
 				// Show timeout tick
-				//DBGOUT("T");
+				DBGOUT("T");
 
 				state[j].timeoutCount++;
 				if (state[j].timeoutCount > NET_DEFAULT_TIMEOUT_LIMIT)
@@ -1125,6 +1104,31 @@ int validateHeaderContents(struct protocol_header *pHeader)
 	// ...otherwise, header is valid!
 	return 0;
 }
+
+
+
+/* Flushes data on given socket.  Generally used after malformed packet or
+ * packet exceeding maximum payload size received.
+ * Will read in chunks to the specified buffer, overwriting the contents.
+ * @param sock socket
+ * @param mem pointer to memory buffer
+ * @param len size of memory buffer
+ */
+void flushSocket(int sock, void *mem, int len)
+{
+	DBGOUT("flushSocket: Starting flush...\r\n");
+	int numBytesRead = len;
+	int totalBytes = 0;
+	while (len==numBytesRead)
+	{
+		numBytesRead = lwip_read(sock, mem, len);
+		totalBytes+=numBytesRead;
+		//DBGOUT("flushSocket: Flushed %d bytes...\r\n", numBytesRead);
+	}
+	DBGOUT("flushSocket: Flush complete, flushed %d bytes.\r\n", totalBytes);
+}
+
+
 
 /* Generates and sends a BADPKT response packet which signals
  * to a client that the last packet received was not

@@ -87,13 +87,12 @@
 #define NET_MAX_CLIENTS				8
 #define NET_THREAD_STACKSIZE 		1024
 #define NET_SOCK_BACKLOG			1					// Accept queue size for LWIP
-#define NET_NOMINAL_RX_BUFFER_SZ	2048				// Normal payload receive buffer size
-#define NET_LRG_PKT_INCREMENT_SZ	65536				// Large payload receive chunk size
+#define NET_NOMINAL_RX_BUFFER_SZ	8192				// Normal payload receive buffer size
+#define NET_LRG_RX_BUFFER_SZ		65536				// Large payload receive chunk size
 #define NET_MAX_PAYLOAD_SZ			1048576				// Maximum payload size permitted
 #define NET_DEFAULT_TICK_SEC		2
 #define NET_DEFAULT_TICK_USEC		0
-//#define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
-#define NET_DEFAULT_TIMEOUT_LIMIT	256					// In ticks
+#define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
 
 // Self-test bits - if set these represent a failure during hardware init!
 #define TEST_XPSTIMER_INIT			0x0001

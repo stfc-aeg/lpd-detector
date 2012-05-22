@@ -52,6 +52,7 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
 void commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes);
 int validateHeaderContents(struct protocol_header *pHeader);
+void flushSocket(int sock, void *mem, int len);
 void generateBadPacketResponse(struct protocol_header *pHeader, int clientSocket);
 
 #endif /* COMMANDPROCESSOR_H_ */
