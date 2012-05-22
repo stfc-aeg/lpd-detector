@@ -619,12 +619,14 @@ void commandHandler(struct protocol_header* pRxHeader,
 	// Increment response size to include #ops as first entry
 	responseSize += sizeof(u32);
 
-	//u32 mboxBytesSent = 0;
 	u32 dmaControllerAck = 0;
 
 	int status;
 
 	unsigned short configAck = 0;
+
+	// TODO: Remove, replace with struct once it's common
+	u32 acqStatus;
 
 	// Determine operation type
 	switch(pRxHeader->command)
@@ -696,9 +698,14 @@ void commandHandler(struct protocol_header* pRxHeader,
 					break;
 
 				case CMD_ACQ_STATUS:
-					// TODO: Implement
-					DBGOUT("CmdDisp: CMD_ACQ_STATUS is not implemented yet...\r\n");
-					SBIT(state, STATE_NACK);
+					// TODO: Implement with struct
+					DBGOUT("CmdDisp: CMD_ACQ_STATUS still in development, just sending 32-bit state variable!\r\n");
+
+					// Read state variable off top of BRAM, return it
+					acqStatus = *((u32*)0x8A000000);		// Oh please tell me you didn't just do that
+					*pTxPayload_32 = acqStatus;
+					responseSize += 4;						// In bytes, so 4
+					SBIT(state, STATE_ACK);
 					break;
 
 				default:
