@@ -1,64 +1,13 @@
 /**
  * ----------------------------------------------------------------------------
- * XCAL / LPD FEM prototype embedded platform
+ * @brief	FEM Embedded Acquisition Platform - Power PC #2 - C&C interface
  *
- * Matt Thorpe (matt.thorpe@stfc.ac.uk)
- * Application Engineering Department, STFC RAL
+ * @author	Matt Thorpe (matt.thorpe@stfc.ac.uk), Application Engineering Department, STFC RAL
  *
- * ----------------------------------------------------------------------------
- *
- * OVERVIEW:
- *
- * Provides Lightweight IP stack on xilkernel platform, supporting basic
- * remote register read / write functionality and full support for I2C
- * devices (M24C08 8k EEPROM, LM82 monitoring chip) using a simple socket interface.
- *
- * Provides support for FPM (FEM Personality Modules), providing application specific
- * functionality through special commands.
- *
- * Developed against Xilinx ML507 development board under EDK 13.1 (Linux)
- *
- * Ported to FEM production hardware
- *
- * ----------------------------------------------------------------------------
- *
- * Version 1.7 - not for distribution
- *
- * ----------------------------------------------------------------------------
- *
- * CHANGELOG:
- *
- * 1.1		06-July-2011
- * 	- First functional implementation of FEM communications protocol
- *  - Bug fixes in network select / command processing
- *
- * 1.2		25-July-2011
- *  - RDMA protocol handling implemented
- *  - EEPROM store / retrieve config implemented
- *
- * 1.3		04-Aug-2011
- *  - Refactoring / tidying
- *  - Replaced all xil_printf for DBGOUT macro
- *
- * 1.4		24-Aug-2011
- *  - Reimplemented I2C code to be able to address multiple busses
- *  - Fixed number of operations in response packet as first u32
- *  - Made comms code adhere to MAX_PAYLOAD_SIZE for response packets
- *
- * 1.5		23-Sep-2011
- *  - Revised RDMA library to support 16550 UART
- *  - Implemented RDMA self-test routine
- *
- * 1.6		03-Oct-2011
- *  - Added stub for internal state queries / CMD_INTERNAL
- *  - Added preliminary support for SystemACE / writing to CF via xilfatfs library
- *
- * 1.7		16-Nov-2011
- *  - Restructured network receive loop
- *  - Added support for large payloads (pixel memory configs, sysace images)
- *  - Introduced FEM personality modules
- *  - Added CMD_PERSONALITY for application-specific commands (passed to FEM personality module)
- *
+ * @details	Provides FEM command and control interface over TCP/IP socket using
+ * 			Hard TEMAC and 1GBe interface.  Supports read / write operations on all
+ * 			hardware busses and inter-PPC mailbox communications.
+ * 			Functionality expandable by using FEM Personality Modules (FPM).
  * ----------------------------------------------------------------------------
  *
  * TO DO LIST: (in order of descending importance)
@@ -67,10 +16,9 @@
  * TODO: Determine why execution halts sometimes after LWIP auto-negotiation - xlltemacif_hw.c -> Line 78?
  *
  * FUNCTIONALITY:
- * TODO: Test CPU reset functionality (via CMD_INTERNAL)
  * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
  * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
- * TODO: How to let personality module run validateHeaderContents equivalent?
+ * TODO: How to let personality module run validateHeaderContents equivalent? -> Register a callback!
  * TODO: Re-enable BADPKT response sending where necessary (generateBadPacketResponse())
  * TODO: Provide access to femErrorState via CMD_INTERNAL
  * TODO: Clean up RDMA wrapper (was kludged into place and never fixed!)
@@ -151,7 +99,6 @@
 
 // Xilinx mailbox
 #ifndef HW_PLATFORM_DEVBOARD
-//#include "xmbox.h"
 #include "mailbox.h"
 #endif
 

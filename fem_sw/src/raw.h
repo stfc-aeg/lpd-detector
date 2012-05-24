@@ -11,7 +11,6 @@
 
 #include "xil_io.h"
 
-// Wrapper methods for memory access
 u32 readRegister_32(u32 addr);
 void writeRegister_32(u32 addr, u32 value);
 
@@ -20,6 +19,5 @@ void writeRegister_16(u32 addr, u16 value);
 
 u8 readRegister_8(u32 addr);
 void writeRegister_8(u32 addr, u8 value);
-
 
 #endif /* RAW_H_ */

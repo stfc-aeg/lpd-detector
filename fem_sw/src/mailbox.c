@@ -12,7 +12,7 @@ XMbox mbox;
 /* Initialises intra-PPC mailbox
  * @return XST_SUCCESS on success, or XST_nnn on failure
  */
-int initMailbox()
+int initMailbox(void)
 {
 	int status;
 

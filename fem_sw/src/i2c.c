@@ -7,7 +7,7 @@
 
 #include "i2c.h"
 
-/*
+/**
  * Performs a write transaction to an I2C slave device.
  * @param slaveAddr I2C slave address
  * @param pData pointer to data buffer to write from
@@ -22,7 +22,7 @@ int writeI2C(u32 bAddr, u8 slaveAddr, u8* pData, unsigned dataLen)
 	return XIic_Send(bAddr, slaveAddr, pData, dataLen, XIIC_STOP);
 }
 
-/*
+/**
  * Performs a read transaction from an I2C slave device.
  * @param slaveAddr I2C slave address
  * @param pData pointer to data buffer to read to

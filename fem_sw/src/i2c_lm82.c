@@ -7,11 +7,10 @@
 
 #include "i2c_lm82.h"
 
-/*
+/**
  * Initialises LM82 system monitor chip with high and critical setpoints
  * @param highTemp high temperature setpoint, in degrees celcius
  * @param critTemp critical (shutdown) temperature setpoint, in degrees celcius
- *
  */
 void initLM82(int highTemp, int critTemp)
 {
@@ -56,10 +55,9 @@ void initLM82(int highTemp, int critTemp)
 
 }
 
-/*
+/**
  * Reads status register of LM82 device
  * @return status register, 8 bit
- *
  */
 u8 readStatus(void)
 {
@@ -72,12 +70,11 @@ u8 readStatus(void)
 	return stat;
 }
 
-/*
+/**
  * Reads either the local(LM82) or remote(FPGA) temperature
  * @param tempRegCmd either LM82_REG_READ_LOCAL_TEMP or LM82_REG_READ_REMOTE_TEMP
  *
  * @return temperature in degrees celcius
- *
  */
 int readTemp(u8 tempRegCmd)
 {
@@ -102,7 +99,7 @@ int readTemp(u8 tempRegCmd)
 
 }
 
-/*
+/**
  * Reads LM82 temperature
  * @return temperature in degrees celcius
  */
@@ -111,22 +108,20 @@ int readLocalTemp(void)
 	return readTemp(LM82_REG_READ_LOCAL_TEMP);
 }
 
-/*
+/**
  * Reads FPGA temperature
  * @return temperature in degrees celcius
- *
  */
 int readRemoteTemp(void)
 {
 	return readTemp(LM82_REG_READ_REMOTE_TEMP);
 }
 
-/*
+/**
  * Converts a raw reading from an LM82 (8bit 2s compliment) to degrees celcius
  * @param rawVal raw reading from LM82
  *
  * @return temperature in degrees celcius
- *
  */
 int convertTemperature(u8 rawVal)
 {

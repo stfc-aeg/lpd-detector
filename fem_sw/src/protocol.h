@@ -33,92 +33,77 @@
 #define DUMPHDR(hdr)
 #endif
 
-// New header format
-// Size     Description
-// ----------------------------------------------------------------------------
-//  32      Magic word   (must be 0xDEADBEEF)
-//   8      Command type (must be 1)
-//   8      Bus target   (see protocol_bus_type enum)
-//   8      Data width   (see protocol_data_width enum)
-//   8      Status byte  (see protocol_status enum)
-//  32      Address      Target address (for selected bus)
-//  32      Payload sz   Size of payload in bytes (can be 0)
-//
-//  ??		[payload]
-// ----------------------------------------------------------------------------
-// Total 128 bytes + payload
-
 // Packet header
 struct protocol_header
 {
-	u32 magic;			// Always 0xDEADBEEF
-	u8  command;
-	u8  bus_target;
-	u8  data_width;
-	u8  state;
-	u32 address;
-	u32 payload_sz;
+	u32 magic;				//! Magic word, always 0xDEADBEEF
+	u8  command;			//! Maps to protocol_commands
+	u8  bus_target;			//! Maps to protocol_bus_type
+	u8  data_width;			//! Maps to protocol_data_width
+	u8  state;				//! State byte (R/W/ACK/NACK/Error)
+	u32 address;			//! Target address for command / operation
+	u32 payload_sz;			//! Size of payload on packet, 0 is valid
 };
 
 // Supported commands (v2)
 enum protocol_commands
 {
-	CMD_UNSUPPORTED = 0,
-	CMD_ACCESS      = 1,
-	CMD_INTERNAL	= 2,
-	CMD_ACQUIRE		= 3,
-	CMD_PERSONALITY	= 4
+	CMD_UNSUPPORTED = 0,	//! Unsupported command
+	CMD_ACCESS      = 1,	//! Access command (R/W to a FEM bus)
+	CMD_INTERNAL	= 2,	//! Internal command (FEM internal state)
+	CMD_ACQUIRE		= 3,	//! Acquisition command (configure DMA engines)
+	CMD_PERSONALITY	= 4		//! Personality command (handed off to FPM)
 };
 
 // Target bus for commands
 enum protocol_bus_type
 {
-	BUS_UNSUPPORTED = 0,
-	BUS_EEPROM      = 1,
-	BUS_I2C         = 2,
+	BUS_UNSUPPORTED = 0,	//! Unsupported
+	BUS_EEPROM      = 1,	//! I2C EEPROM
+	BUS_I2C         = 2,	//! I2C bus
 	BUS_RAW_REG     = 3,	//! V5P memory-mapped peripherals
-	BUS_RDMA        = 4,	//! Downstream configuration
+	BUS_RDMA        = 4,	//! RDMA downstream configuration
 	BUS_SPI			= 5,	//! SPI bus
-	BUS_DIRECT		= 6		//! Direct memory write
+	BUS_DIRECT		= 6		//! Direct DDR2 memory write
 };
 
 // Size of data
 enum protocol_data_width
 {
-    WIDTH_UNSUPPORTED = 0,
-    WIDTH_BYTE        = 1,	// 8bit
-    WIDTH_WORD        = 2,	// 16bit
-    WIDTH_LONG        = 3	// 32bit
+    WIDTH_UNSUPPORTED = 0,	//! Unsupported data width
+    WIDTH_BYTE        = 1,	//! 8-bit
+    WIDTH_WORD        = 2,	//! 16-bit
+    WIDTH_LONG        = 3	//! 32-bit
 };
 
 // Status bit bank
 enum protocol_status
 {
-	STATE_UNSUPPORTED = 0,
-	STATE_READ        = 1,
-	STATE_WRITE       = 2,
-	STATE_ACK         = 6,
-	STATE_NACK        = 7
+	STATE_UNSUPPORTED = 0,	//! Unsupported status
+	STATE_READ        = 1,	//! Read operation
+	STATE_WRITE       = 2,	//!	Write operation
+	STATE_ACK         = 6,	//! Acknowledge (ACK)
+	STATE_NACK        = 7	//! No-acknowledge (NACK)
 };
 
 // TODO: Make common
 enum protocol_acq_command
 {
-	CMD_ACQ_UNSUPPORTED		= 0,
-	CMD_ACQ_CONFIG			= 1,
-	CMD_ACQ_START			= 2,
-	CMD_ACQ_STOP			= 3,
-	CMD_ACQ_STATUS			= 4
+	CMD_ACQ_UNSUPPORTED		= 0,	//! Unsupported command
+	CMD_ACQ_CONFIG			= 1,	//! Configure ready for acquisition
+	CMD_ACQ_START			= 2,	//! Start acquisition
+	CMD_ACQ_STOP			= 3,	//! Stop acquisition
+	CMD_ACQ_STATUS			= 4		//! Report acquisition status
 };
 
 // TODO: Make common
 enum protocol_acq_mode
 {
-	ACQ_MODE_UNSUPPORTED	= 0,
-	ACQ_MODE_NORMAL			= 1,	//! Arm RX and TX, for normal acquisition
+	ACQ_MODE_UNSUPPORTED	= 0,	//! Unsupported acquisition mode
+	ACQ_MODE_NORMAL			= 1,	//! Arm RX and TX for normal acquisition
 	ACQ_MODE_RX_ONLY		= 2,	//! Arm RX only
 	ACQ_MODE_TX_ONLY		= 3,	//! Arm TX only
-	ACQ_MODE_UPLOAD			= 4		//! Upload config
+	ACQ_MODE_UPLOAD			= 4		//! Upload upstream configuration
 };
 
 typedef struct
@@ -132,14 +117,14 @@ typedef struct
 // TODO: Make common
 typedef struct
 {
-	u32 state;			//! Current mode?
-	u32 bufferCnt;		//! Number of buffers allocated
-	u32 bufferSize;		//! Size of buffers
-	u32 readPtr;		//! 'read pointer'
-	u32 writePtr;		//! 'write pointer'
-	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
-	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
-	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
+	u32 state;						//! Current state
+	u32 bufferCnt;					//! Number of acquisition buffers allocated
+	u32 bufferSize;					//! Size of acquisition buffers
+	u32 readPtr;					//! Read pointer
+	u32 writePtr;					//! Write pointer
+	u32 totalRecv;					//! Total number of buffers received from I/O Spartans
+	u32 totalSent;					//! Total number of buffers sent to 10GBe DMA channel
+	u32 totalErrors;				//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
 
 /* NEW FORMAT - WAIT FOR PYTHON TO BE UPDATED!

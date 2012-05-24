@@ -7,14 +7,7 @@
 
 #include "sysace.h"
 
-/*
- * Knowledge of the SystemACE file structure needs to be incorporated into this library.
- * As firmware images will be combined with iMPACT into a single .ace file, this is what should
- * be passed into the writeImage function as a -> byte array??
- *
- */
-
-/*
+/**
  * Triggers the SystemACE controller to reconfigure the chain of JTAG devices.
  * It is assumed that the SystemACE controller is already initialised.
  * @param pAce pointer to XSysAce device
@@ -30,10 +23,9 @@ void reloadChain(XSysAce *pAce, unsigned int idx)
 	 XSysAce_SetCfgAddr(pAce, idx);
 	 XSysAce_SetStartMode(pAce, TRUE, FALSE);
 	 XSysAce_ResetCfg(pAce);
-
 }
 
-/*
+/**
  * Deletes the configuration image
  * @param idx index of image to delete (0-7)
  * @return 0 for success, -1 for failure
@@ -47,6 +39,7 @@ int deleteImage(unsigned int idx)
 /*
  * Writes a data buffer to the SystemACE Compact Flash as a set of image files
  * @param idx index of image to write (0-7)
+ *
  * @return 0 for success, -1 for failure
  */
 int writeImage(unsigned int idx)
@@ -55,9 +48,8 @@ int writeImage(unsigned int idx)
 	return 42;
 }
 
-/*
- * Writes an empty test file to the CF via SystemACE
- *
+/**
+ * Writes an empty test file to the CF
  */
 void testCF(void)
 {
@@ -89,12 +81,17 @@ void testCF(void)
 
 }
 
-/*
+/**
  * My copy of the xsysace self test routine with extra debug
+ * @param InstancePtr pointer to XSysAce
+ *
+ * @return operation status
  */
 int mySelfTest(XSysAce *InstancePtr)
 {
 	int Result;
+
+	// TODO: Remove this function
 
 	// THIS CODE IS ADDED TO ORIGINAL XSYSACE_SELFTEST AS DIAGS!
 /*
@@ -156,4 +153,3 @@ int mySelfTest(XSysAce *InstancePtr)
 
 	return XST_SUCCESS;
 }
-
