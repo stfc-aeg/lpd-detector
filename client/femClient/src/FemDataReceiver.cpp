@@ -7,22 +7,34 @@
 
 #include "FemClient.h"
 #include "FemDataReceiver.h"
+#include <time.h>
 
-FemDataReceiver::FemDataReceiver()
-	: mRecvSocket(mIoService, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 61649)),
-	  mDeadline(mIoService),
+#ifdef SCRATCH_BUFFER
+void* lScratchBuffer = 0;
+#endif
+
+FemDataReceiver::FemDataReceiver(unsigned int aRecvPort)
+	: mRecvSocket(mIoService, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), aRecvPort)),
+	  mWatchdogTimer(mIoService),
 	  mAcquiring(false),
 	  mCurrentFrame(0),
 	  mNumFrames(0),
 	  mFrameLength(0),
 	  mHeaderPosition(headerAtStart),
+	  mAcquisitionPeriod(0),
+	  mAcquisitionTime(0),
 	  mNumSubFrames(1),
+	  mSubFrameLength(0),
 	  mFrameTotalBytesReceived(0),
 	  mFramePayloadBytesReceived(0)
 {
 	int nativeSocket = (int)mRecvSocket.native_handle();
 	int rcvBufSize = 8388608;
-	setsockopt(nativeSocket, SOL_SOCKET, SO_RCVBUF, (void*)&rcvBufSize, sizeof(rcvBufSize));
+	int rc = setsockopt(nativeSocket, SOL_SOCKET, SO_RCVBUF, (void*)&rcvBufSize, sizeof(rcvBufSize));
+	if (rc != 0)
+	{
+		std::cout << "setsockopt failed" << std::endl;
+	}
 }
 
 FemDataReceiver::~FemDataReceiver()
@@ -38,6 +50,14 @@ void FemDataReceiver::startAcquisition(void)
 
 	if (!mAcquiring) {
 
+#ifdef SCRATCH_BUFFER
+		lScratchBuffer = malloc(mFrameLength*4);
+		if (lScratchBuffer == 0) {
+			std::cout << "FATAL could not allocate scratch buffer";
+			return;
+		}
+#endif
+
 		std::cout << "Starting acquisition loop for " << mNumFrames <<  " frames" << std::endl;
 
 		// Set acquisition flag
@@ -51,6 +71,15 @@ void FemDataReceiver::startAcquisition(void)
 		mFrameTotalBytesReceived   = 0;
 		mSubFramesReceived         = 0;
 		mSubFramePacketsReceived   = 0;
+		mSubFrameBytesReceived     = 0;
+		mFramesReceived            = 0;
+		mLatchedFrameNumber        = 0;
+
+		// Initialise subframe length
+		mSubFrameLength = mFrameLength / mNumSubFrames;
+
+		// Initialise latched error signal
+		mLatchedErrorSignal = FemDataReceiverSignal::femAcquisitionNullSignal;
 
 		if (mCallbacks.allocate)
 		{
@@ -58,21 +87,54 @@ void FemDataReceiver::startAcquisition(void)
 			// Pre-allocate an initial buffer via the callback
 			mCurrentBuffer = mCallbacks.allocate();
 
-			// Launch a thread to start the io_service for receiving data
-			mReceiverThread = boost::shared_ptr<boost::thread>(new boost::thread(
-					boost::bind(&boost::asio::io_service::run, &mIoService)));
-#ifdef SIMULATED_RX
-			// Temp - setup deadline timer to simulate data arriving
-			mDeadline.expires_from_now(boost::posix_time::milliseconds(mAcquisitionPeriod));
+			// If the IO service is stopped (i.e. the receiver has been run before), restart it
+			// and check that it is running OK
+			if (mIoService.stopped())
+			{
+				std::cout << "Resetting IO service" << std::endl;
+				mIoService.reset();
+			}
 
-			// Start the deadline actor
-			checkDeadline(buffer);
+			if (mIoService.stopped())
+			{
+				std::cout << "Resetting IO service FAILED" << std::endl;
+				// TODO handle error here
+			}
+
+#ifdef SIMULATED_RECEIVER
+
+			// Launch a simulated receive handler using a deadline actor, set to run on the
+			// watchdog timer at the acquisition period interval. This simulates reception of
+			// frames by calling the receive callback and requesting a new buffer
+			mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(mAcquisitionPeriod));
+			simulateRecieve();
+
 #else
+			// Launch async receive on UDP socket - we provide an array of boost mutable buffers
+			// that allow the receive to function in scatter/gather mode, where the packet header,
+			// payload and frame counter are written to separate locations.
+			boost::array<boost::asio::mutable_buffer, 3> rxBufs;
+			if (mHeaderPosition == headerAtStart)
+			{
+				rxBufs[0] = boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader));
 
-			// Launch async receive on UDP socket
-			boost::array<boost::asio::mutable_buffer, 2> rxBufs = {{
-				boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader)),
-				boost::asio::buffer(mCurrentBuffer.addr, mCurrentBuffer.length) }};
+#ifdef SCRATCH_BUFFER
+				//rxBufs[1] = boost::asio::buffer(mScratchBuffer, mSubFrameLength);
+#else
+				rxBufs[1] = boost::asio::buffer(mCurrentBuffer.addr, mSubFrameLength);
+#endif
+				rxBufs[2] = boost::asio::buffer((void*)&mCurrentFrameNumber, sizeof(mCurrentFrameNumber));
+			}
+			else
+			{
+#ifdef SCRATCH_BUFFER
+				//rxBufs[0] = boost::asio::buffer(mScratchBuffer, mSubFrameLength);
+#else
+				rxBufs[0] = boost::asio::buffer(mCurrentBuffer.addr, mSubFrameLength);
+#endif
+				rxBufs[1] = boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader));
+				rxBufs[2] = boost::asio::buffer((void*)&mCurrentFrameNumber, sizeof(mCurrentFrameNumber));
+			}
 
 			mRecvSocket.async_receive_from(rxBufs, mRemoteEndpoint,
 					boost::bind(&FemDataReceiver::handleReceive, this,
@@ -80,7 +142,18 @@ void FemDataReceiver::startAcquisition(void)
 							    boost::asio::placeholders::bytes_transferred
 							    )
 			);
+
+			// Setup watchdog handler deadline actor to handle receive timeouts
+			mRecvWatchdogCounter = 0;
+			mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(kWatchdogHandlerIntervalMs));
+			watchdogHandler();
 #endif
+
+
+
+			// Launch a thread to start the io_service for receiving data, running the watchdog etc
+			mReceiverThread = boost::shared_ptr<boost::thread>(new boost::thread(
+					boost::bind(&boost::asio::io_service::run, &mIoService)));
 
 		}
 		else
@@ -97,15 +170,19 @@ void FemDataReceiver::stopAcquisition(void)
 	// Set acq flag to false
 	mAcquiring = false;
 
-	// Stop the IO service and wait for the receive thread to terminate.
-	mIoService.stop();
-	if (mReceiverThread)
+	// Stop the IO service to allow the receive thread to terminate gracefully
+	if (!mIoService.stopped())
 	{
-		mReceiverThread->join();
+		mIoService.stop();
 	}
 
-	// Delete the receiver thread so a new one can be created next time
-	mReceiverThread.reset();
+#ifdef SCRATCH_BUFFER
+	if (lScratchBuffer != 0)
+	{
+		free(lScratchBuffer);
+		lScratchBuffer = 0;
+	}
+#endif
 
 }
 
@@ -150,16 +227,41 @@ void FemDataReceiver::registerCallbacks(CallbackBundle* aBundle)
 	mCallbacks = *aBundle;
 }
 
-void FemDataReceiver::checkDeadline(BufferInfo aBuffer)
+void FemDataReceiver::watchdogHandler(void)
+{
+	if (mWatchdogTimer.expires_at() <= boost::asio::deadline_timer::traits_type::now())
+	{
+
+		std::cout << mRecvWatchdogCounter;
+
+		// Check if receive watchdog counter has been not been cleared
+
+		// Increment watchdog counter - this will be reset to zero by the
+		// receive handler every time a receive occurs
+		mRecvWatchdogCounter++;
+
+		// Reset deadline timer
+		mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(kWatchdogHandlerIntervalMs));
+
+	}
+
+	if (mAcquiring)
+	{
+		mWatchdogTimer.async_wait(boost::bind(&FemDataReceiver::watchdogHandler, this));
+	}
+
+}
+
+void FemDataReceiver::simulateReceive(BufferInfo aBuffer)
 {
 	BufferInfo buffer = aBuffer;
 
-	if (mDeadline.expires_at() <= boost::asio::deadline_timer::traits_type::now())
+	if (mWatchdogTimer.expires_at() <= boost::asio::deadline_timer::traits_type::now())
 	{
 		// Flag current buffer as received
 		if (mCallbacks.receive)
 		{
-			mCallbacks.receive(mCurrentFrame);
+			mCallbacks.receive(mCurrentFrame, (time_t)0);
 		}
 
 		if (mCurrentFrame == 1)
@@ -183,7 +285,7 @@ void FemDataReceiver::checkDeadline(BufferInfo aBuffer)
 			}
 
 			// Reset deadline timer
-			mDeadline.expires_from_now(boost::posix_time::milliseconds(mAcquisitionPeriod));
+			mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(mAcquisitionPeriod));
 
 			// Decrement current frame counter
 			mCurrentFrame--;
@@ -192,23 +294,40 @@ void FemDataReceiver::checkDeadline(BufferInfo aBuffer)
 	}
 	if (mAcquiring)
 	{
-		mDeadline.async_wait(boost::bind(&FemDataReceiver::checkDeadline, this, buffer));
+		mWatchdogTimer.async_wait(boost::bind(&FemDataReceiver::simulateReceive, this, buffer));
 	}
+
+	// Reset watchdog counter
+	mRecvWatchdogCounter = 0;
 }
 
 void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, std::size_t bytesReceived)
 {
 
+	time_t recvTime;
+	FemDataReceiverSignal::FemDataReceiverSignals errorSignal = FemDataReceiverSignal::femAcquisitionNullSignal;
+
 	if (!errorCode && bytesReceived > 0)
 	{
 
+		unsigned int payloadBytesReceived = bytesReceived - mFrameHeaderLength;
+
+		// Update Total amount of data received in this frame so far including headers
 		mFrameTotalBytesReceived   += bytesReceived;
-		mFramePayloadBytesReceived += (bytesReceived - mFrameHeaderLength);
+
+		// Update total payload data received in this subframe so far
+		mSubFrameBytesReceived     += payloadBytesReceived;
+
+		// Update total payload data received in this subframe so far, minus packet headers and any frame counters recevied
+		// at the end of each subframe
+		mFramePayloadBytesReceived += payloadBytesReceived;
 
 		// DEBUG output
 //		std::cout << std::hex << mPacketHeader.frameNumber << " " << mPacketHeader.packetNumberFlags << std::dec << " "
 //				  << bytesReceived << " " << mFrameTotalBytesReceived << " " << mFramePayloadBytesReceived << " "
-//				  << mSubFramesReceived << " " << mSubFramePacketsReceived << std::endl;
+//				  << mSubFramesReceived << " " << mSubFramePacketsReceived << " "
+//				  << (mCurrentBuffer.length - mFramePayloadBytesReceived) << " "
+//				  << mSubFrameBytesReceived << std::endl;
 
 		// If this is the first packet in a sub-frame, we expect packet header to have SOF marker and packet number to
 		// be zero. Otherwise, check that the packet number is incrementing correctly, i.e. we have not dropped any
@@ -217,7 +336,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 		{
 			if (!(mPacketHeader.packetNumberFlags & kStartOfFrameMarker))
 			{
-				std::cout << "MISSING SOF marker" << std::endl;
+				std::cout << "Missing SOF marker" << std::endl;
+				errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 			}
 			else
 			{
@@ -229,14 +349,52 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 			// Check packet number is incrementing as expected within subframe
 			if ((mPacketHeader.packetNumberFlags & kPacketNumberMask) != mSubFramePacketsReceived)
 			{
-				std::cout << "INCORRECT PACKET number sequence" << std::endl;
+				std::cout << "Incorrect packet number sequence, got: " << (mPacketHeader.packetNumberFlags & kPacketNumberMask)
+						  << " expected: " << mSubFramePacketsReceived << std::endl;
+				errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+
 			}
 
-			// Check for EOF marker in packet header, if so, reset subframe packet
-			// counter and increment number of subframes received
+			// Check for EOF marker in packet header, if so, test sanity of frame counters, handle
+			// end-of-subframe bookkeeping, reset subframe packet and data counters and increment
+			// number of subframes received
 			if (mPacketHeader.packetNumberFlags & kEndOfFrameMarker)
 			{
-				mSubFramePacketsReceived = 0;
+
+				// Timestamp reception of last packet of frame
+				time(&recvTime);
+
+				// If this is the first subframe, store the frame counter from the end
+				// of the frame and check it is incrementing correctly from the last
+				// frame, otherwise check that they agree across subframes
+				if (mSubFramesReceived == 0)
+				{
+					if (mCurrentFrameNumber != (mLatchedFrameNumber+1))
+					{
+						std::cout << "Incorrect frame counter on first subframe, got: " << mCurrentFrameNumber
+								  << " expected: " << mLatchedFrameNumber+1 << std::endl;
+						errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+
+					}
+					mLatchedFrameNumber = mCurrentFrameNumber;
+				}
+				else
+				{
+					if (mCurrentFrameNumber != mLatchedFrameNumber)
+					{
+						std::cout << "Incorrect frame counter in subframe, got: " << mCurrentFrameNumber
+								  << " expected: " << mLatchedFrameNumber << std::endl;
+						errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+
+					}
+				}
+
+				// Decrement subframe and frame payload bytes received to account for frame counter
+				// appended to last packet
+				mSubFrameBytesReceived -= sizeof(mCurrentFrameNumber);
+				mFramePayloadBytesReceived -= sizeof(mCurrentFrameNumber);
+
+				// Increment number of subframes received
 				mSubFramesReceived++;
 
 				// If the number of subframes received matches the number expected for the
@@ -245,9 +403,21 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 				{
 					if (mFramePayloadBytesReceived != mFrameLength)
 					{
-						std::cout << "***** Received complete frame with incorrect size" << std::endl;
+						std::cout << "Received complete frame with incorrect size, got " << mFramePayloadBytesReceived
+								  << " expected " << mFrameLength << std::endl;
+						errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+
 					}
+					else
+					{
+						//std::cout << "Frame completed OK counter = " << mCurrentFrameNumber << std::endl;
+					}
+					mFramesReceived++;
 				}
+
+				// Reset subframe counters
+				mSubFramePacketsReceived = 0;
+				mSubFrameBytesReceived   = 0;
 			}
 			else
 			{
@@ -255,13 +425,18 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 			}
 		}
 
-		// Flag current buffer as received if completed -
+		if (mFramePayloadBytesReceived > mFrameLength)
+		{
+			std::cout << "Buffer overrun in receive?" << std::endl;
+		}
 
+		// Signal current buffer as received if completed, and request a new one unless
+		// we are on the last frame, in which case signal acquisition complete
 		if (mFramePayloadBytesReceived >= mFrameLength)
 		{
 			if (mCallbacks.receive)
 			{
-				mCallbacks.receive(mCurrentFrame);
+				mCallbacks.receive(mCurrentFrameNumber, recvTime);
 			}
 
 			if (mCurrentFrame == 1)
@@ -285,16 +460,30 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 				// Decrement frame counter
 				mCurrentFrame--;
 			}
+
+			// Reset frame counters
 			mFramePayloadBytesReceived = 0;
-			mFrameTotalBytesReceived  = 0;
-			mSubFramePacketsReceived  = 0;
-			mSubFramesReceived        = 0;
+			mFrameTotalBytesReceived   = 0;
+			mSubFramePacketsReceived   = 0;
+			mSubFramesReceived         = 0;
+			mSubFrameBytesReceived     = 0;
+
+			// Reset latched error signal
+			mLatchedErrorSignal = FemDataReceiverSignal::femAcquisitionNullSignal;
 		}
 	}
 	else
 	{
 		std::cout << "Got error during receive: " << errorCode.value() << " : " << errorCode.message() << " recvd=" << bytesReceived << std::endl;
-		// TODO signal error through callback
+		errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+	}
+
+	// If an error condition has been set during packet decoding, signal it through the callback only if the
+	// value has changed, so that this is only done once per frame
+	if ((errorSignal != FemDataReceiverSignal::femAcquisitionNullSignal) && (errorSignal != mLatchedErrorSignal))
+	{
+		mCallbacks.signal(errorSignal);
+		mLatchedErrorSignal = errorSignal;
 	}
 
 	if (mAcquiring)
@@ -302,10 +491,30 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 
 		// Construct buffer sequence for reception of next packet header and payload. Payload buffer
 		// points to the next position in the current buffer
-		boost::array<boost::asio::mutable_buffer, 2> rxBufs = {{
-			boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader)),
-			boost::asio::buffer(mCurrentBuffer.addr   + mFramePayloadBytesReceived,
-					            mCurrentBuffer.length - mFramePayloadBytesReceived) }};
+
+		boost::array<boost::asio::mutable_buffer, 3> rxBufs;
+		if (mHeaderPosition == headerAtStart)
+		{
+			rxBufs[0] = boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader));
+#ifdef SCRATCH_BUFFER
+			rxBufs[1] = boost::asio::buffer(lScratchBuffer, mSubFrameLength - mSubFrameBytesReceived);
+#else
+			rxBufs[1] = boost::asio::buffer(mCurrentBuffer.addr   + mFramePayloadBytesReceived,
+					                        mSubFrameLength - mSubFrameBytesReceived);
+#endif
+			rxBufs[2] = boost::asio::buffer((void*)&mCurrentFrameNumber, sizeof(mCurrentFrameNumber));
+		}
+		else
+		{
+			rxBufs[1] = boost::asio::buffer((void*)&mPacketHeader, sizeof(mPacketHeader));
+#ifdef SCRATCH_BUFFER
+			rxBufs[0] = boost::asio::buffer(lScratchBuffer, mSubFrameLength - mSubFrameBytesReceived);
+#else
+			rxBufs[0] = boost::asio::buffer(mCurrentBuffer.addr   + mFramePayloadBytesReceived,
+                                            mSubFrameLength - mSubFrameBytesReceived);
+#endif
+			rxBufs[2] = boost::asio::buffer((void*)&mCurrentFrameNumber, sizeof(mCurrentFrameNumber));
+		}
 
 		// Launch the asynchronous receive onto this handler
 		mRecvSocket.async_receive_from(rxBufs, mRemoteEndpoint,
@@ -315,5 +524,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 						    )
 		);
 	}
+
+	// Reset receive watchdog counter
+	mRecvWatchdogCounter = 0;
 
 }

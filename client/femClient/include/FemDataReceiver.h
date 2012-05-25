@@ -17,6 +17,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include <dataTypes.h>
+#include <time.h>
 
 typedef struct bufferInfo_t
 {
@@ -40,9 +41,11 @@ typedef enum
 	headerAtEnd
 } FemDataReceiverHeaderPosition;
 
+typedef u64 FrameNumber;
+
 typedef boost::function<BufferInfo(void)> allocateCallback_t;
 typedef boost::function<void(int)> freeCallback_t;
-typedef boost::function<void(int)> receiveCallback_t;
+typedef boost::function<void(int, time_t)> receiveCallback_t;
 typedef boost::function<void(int)> signalCallback_t;
 
 typedef struct callbackBundle_t
@@ -56,15 +59,18 @@ typedef struct callbackBundle_t
 
 namespace FemDataReceiverSignal {
 	typedef enum {
-		femAcquisitionComplete
+		femAcquisitionNullSignal,
+		femAcquisitionComplete,
+		femAcquisitionCorruptImage
 	} FemDataReceiverSignals;
 }
 
+const unsigned int kWatchdogHandlerIntervalMs = 1000;
 
 class FemDataReceiver {
 public:
 
-	FemDataReceiver();
+	FemDataReceiver(unsigned int aRecvPort);
 	virtual ~FemDataReceiver();
 
 	void startAcquisition(void);
@@ -81,15 +87,15 @@ public:
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
 
-	void handleReceive(const boost::system::error_code& errorCode, std::size_t bytesReceived);
-
 private:
 
 	boost::asio::io_service   	      mIoService;
 	boost::asio::ip::udp::endpoint	  mRemoteEndpoint;
 	boost::asio::ip::udp::socket      mRecvSocket;
-	boost::asio::deadline_timer       mDeadline;
+	boost::asio::deadline_timer       mWatchdogTimer;
 	boost::shared_ptr<boost::thread>  mReceiverThread;
+
+	unsigned int                      mRecvWatchdogCounter;
 
 	CallbackBundle     				  mCallbacks;
 
@@ -103,16 +109,27 @@ private:
 	unsigned int                      mAcquisitionPeriod;
 	unsigned int                      mAcquisitionTime;
 	unsigned int                      mNumSubFrames;
+	unsigned int                      mSubFrameLength;
 
 	PacketHeader                      mPacketHeader;
 	BufferInfo                        mCurrentBuffer;
+	FrameNumber			    		  mCurrentFrameNumber;
+	FrameNumber                       mLatchedFrameNumber;
 
 	unsigned int                      mFrameTotalBytesReceived;
 	unsigned int                      mFramePayloadBytesReceived;
 	unsigned int                      mSubFramePacketsReceived;
 	unsigned int                      mSubFramesReceived;
+	unsigned int                      mSubFrameBytesReceived;
+	unsigned int                      mFramesReceived;
 
-	void checkDeadline(BufferInfo aFramePtr);
+	FemDataReceiverSignal::FemDataReceiverSignals mLatchedErrorSignal;
+
+	void*                               lScratchBuffer;
+
+	void handleReceive(const boost::system::error_code& errorCode, std::size_t bytesReceived);
+	void simulateReceive(BufferInfo aBuffer);
+	void watchdogHandler(void);
 };
 
 #endif /* FEMDATARECEIVER_H_ */
