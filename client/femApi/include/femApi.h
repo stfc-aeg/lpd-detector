@@ -66,6 +66,7 @@ typedef struct CtlFrame
     time_t timeStamp;
     void* internalArray;
     struct CtlFrame* internalNext;
+    unsigned int frameCounter;
     int referenceCount;
 } CtlFrame;
 
@@ -120,8 +121,7 @@ void femClose(void* femHandle);
 #define FEM_OP_STOPACQUISITION 2
 #define FEM_OP_LOADPIXELCONFIG 3
 #define FEM_OP_FREEALLFRAMES 4
-#define FEM_OP_LOADDACS 5
-
+#define FEM_OP_LOADDACCONFIG 5
 /* Medipix III global registers */
 #define FEM_OP_MPXIII_COLOURMODE 1000
 #define FEM_OP_MPXIII_COUNTERDEPTH 1001
@@ -212,6 +212,7 @@ void femClose(void* femHandle);
 
 /* Ids 5000..5999 are signals */
 #define FEM_OP_ACQUISITIONCOMPLETE 5000
+#define FEM_OP_CORRUPTIMAGE 5001
 
 #ifdef __cplusplus
 }  /* Closing brace for extern "C" */

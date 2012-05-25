@@ -347,7 +347,8 @@ int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femGetInt: " << e.what() << std::endl;
+			std::cerr << "Exception caught during femGetInt, chipId: " << chipId << " opId: "
+					  << id << " : " << e.what() << std::endl;
 			rc = translateFemErrorCode(e.which());
 		}
 
@@ -737,12 +738,12 @@ int femCmd(void* femHandle, int chipId, int id)
 			theFem->command(id);
 			break;
 
-		case FEM_OP_LOADDACS:
-			theFem->writeDacs(chipId);
+		case FEM_OP_LOADDACCONFIG:
+			theFem->mpx3DacsWrite(chipId);
 			break;
 
 		case FEM_OP_LOADPIXELCONFIG:
-			theFem->writePixelConfig(chipId);
+			theFem->mpx3PixelConfigWrite(chipId);
 			break;
 
 		case FEM_OP_FREEALLFRAMES:
