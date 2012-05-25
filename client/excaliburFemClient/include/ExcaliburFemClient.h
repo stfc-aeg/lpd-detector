@@ -12,6 +12,7 @@
 #include <FemClient.h>
 #include <FemDataReceiver.h>
 #include <list>
+#include <time.h>
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
 
@@ -23,6 +24,8 @@ const unsigned int kNumRowsPerAsic = FEM_PIXELS_PER_CHIP_Y;
 const unsigned int kPixelConfigBitsPerPixel = 12;
 const unsigned int kPixelConfigBufferSizeBytes = ((FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y * kPixelConfigBitsPerPixel)) / 8;
 const unsigned int kPixelConfigBufferSizeWords = kPixelConfigBufferSizeBytes /sizeof(u32);
+
+const unsigned int kHostDataPort = 61649;
 
 typedef enum {
 	frontEndEnable = 0,
@@ -44,6 +47,7 @@ typedef enum
 	excaliburFemClientIllegalCounterDepth,
 	excaliburFemClientOmrTransactionTimeout,
 	excaliburFemClientUdpSetupFailed,
+	excaliburFemClientDataReceviverSetupFailed
 
 } ExcaliburFemClientErrorCode;
 
@@ -55,35 +59,40 @@ public:
 
 	BufferInfo allocateCallback(void);
 	void freeCallback(int aVal);
-	void receiveCallback(int aVal);
+	void receiveCallback(int aFrameCounter, time_t aRecvTime);
 	void signalCallback(int aSignal);
 
 	void command(unsigned int aCommand);
+
+	void startAcquisition(void);
+	void stopAcquisition(void);
+
+	void toyAcquisition(void);
 
 	void setNumFrames(unsigned int numFrames);
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
 	void freeAllFrames();
 
+	// EXCALIBUR detector front-end functions in ExcaliburFemClientFrontEndDevices.cpp
 	void setFrontEndEnable(unsigned int aVal);
-
 	double frontEndTemperatureRead(void);
 	double frontEndHumidityRead(void);
 	double frontEndDacOutRead(unsigned int aChipId);
 	int    frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply);
 	void   frontEndDacInWrite(unsigned int aChipId, unsigned int aDacValue);
 
+	// MPX3 ASIC parameter control functions in ExcaliburFemClientMpx3.cpp
 	void mpx3DacSet(unsigned int aChipId, int aDacId, unsigned int aDacValue);
 	void mpx3DacSenseSet(unsigned int aChipId, int aDac);
 	void mpx3DacExternalSet(unsigned int aChipId, int aDac);
-	void writeDacs(unsigned int aChipId);
-
-	void writeCtpr(unsigned int aChipId);
-
+	void mpx3DacsWrite(unsigned int aChipId);
+	void mpx3CtprWrite(unsigned int aChipId);
 	void mpx3PixelConfigSet(unsigned int aChipId, int aConfigId, std::size_t aSize, unsigned short* apValues);
-	void writePixelConfig(unsigned int aChipId);
-
+	void mpx3PixelConfigWrite(unsigned int aChipId);
 	unsigned int mpx3eFuseIdRead(unsigned int aChipId);
+	void mpx3ColourModeSet(int aColourMode);
+	void mpx3CounterDepthSet(int aCounterDepth);
 
 	// ASIC control functions in ExcaliburFemClientAsicControl.cpp
 	void asicControlOmrSet(mpx3Omr aOmr);
@@ -96,9 +105,9 @@ public:
 	void asicControlReset(void);
 	void asicControlAsicReset(void);
 
-	void mpx3ColourModeSet(int aColourMode);
-	void mpx3CounterDepthSet(int aCounterDepth);
-
+	unsigned int asicReadoutDmaSize(void);
+	unsigned int asicReadoutLengthCycles(void);
+	unsigned int frameDataLengthBytes(void);
 
 private:
 
@@ -112,7 +121,8 @@ private:
 	mpx3PixelConfig getMpx3PixelConfigId(int aConfigId);
 
 	mpx3Omr omrBuild(unsigned int aChipId, mpx3OMRMode aMode);
-
+	unsigned int counterBitDepth(mpx3CounterDepth aCounterDepth);
+	unsigned int readoutBitWidth(mpx3ReadoutWidth aReadoutWidth);
 
 
 	mpx3OMRParameters     mMpx3OmrParams[kNumAsicsPerFem];
@@ -120,14 +130,22 @@ private:
 	unsigned short        mMpx3PixelConfigCache[kNumAsicsPerFem][numPixelConfigs][kNumPixelsPerAsic];
 	unsigned short        mMpx3ColumnTestPulseEnable[kNumAsicsPerFem][kNumColsPerAsic];
 
-	FemDataReceiver       mFemDataReceiver;
+	FemDataReceiver*      mFemDataReceiver;
+	unsigned int          mFemDataHostPort;
 	void*                 mCtlHandle;
 	const CtlCallbacks*   mCallbacks;
 	const CtlConfig*      mConfig;
 
+	CallbackBundle 		  mCallbackBundle;
+
+	asicDataReorderMode   mAsicDataReorderMode;
+	unsigned int          mNumSubFrames;
+
 	std::list<CtlFrame*> mFrameQueue;
 
 	unsigned int          mNumFrames;
+	unsigned int          mAcquisitionPeriodMs;
+	unsigned int          mAcquisitionTimeMs;
 
 };
 

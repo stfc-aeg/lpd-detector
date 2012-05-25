@@ -18,9 +18,12 @@
 ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCallbacks,
 		const CtlConfig* aConfig, unsigned int aTimeoutInMsecs) :
 	FemClient(aConfig->femAddress, aConfig->femPort, aTimeoutInMsecs),
+	mFemDataHostPort(kHostDataPort),
 	mCtlHandle(aCtlHandle),
 	mCallbacks(aCallbacks),
-	mConfig(aConfig)
+	mConfig(aConfig),
+	mAsicDataReorderMode(reorderedDataMode),
+	mNumSubFrames(2)
 {
 
 	// Initialize MPX3 DAC settings, values and pixel config caches to zero
@@ -67,22 +70,15 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 		}
 	}
 
-	// Register callbacks for data receiver
-	CallbackBundle callbacks;
-	callbacks.allocate = boost::bind(&ExcaliburFemClient::allocateCallback, this);
-	callbacks.free     = boost::bind(&ExcaliburFemClient::freeCallback, this, _1);
-	callbacks.receive  = boost::bind(&ExcaliburFemClient::receiveCallback, this, _1);
-	callbacks.signal   = boost::bind(&ExcaliburFemClient::signalCallback, this, _1);
-
-	mFemDataReceiver.registerCallbacks(&callbacks);
-
-	// Temp hack to test receiver
-	mFemDataReceiver.setFrameLength(393216*2);
-	mFemDataReceiver.setFrameHeaderLength(8);
+	// Build callback bundle to be registered with the data receiver
+	mCallbackBundle.allocate = boost::bind(&ExcaliburFemClient::allocateCallback, this);
+	mCallbackBundle.free     = boost::bind(&ExcaliburFemClient::freeCallback, this, _1);
+	mCallbackBundle.receive  = boost::bind(&ExcaliburFemClient::receiveCallback, this, _1, _2);
+	mCallbackBundle.signal   = boost::bind(&ExcaliburFemClient::signalCallback, this, _1);
 
 	// Initialise 10GigE UDP firmware block
 	// TODO some of these parameters need to be passed in config block and/or derived
-	u32 hostPort = 61649;
+	u32 hostPort = kHostDataPort;
 	u32 fpgaPort = 8;
 	char* fpgaIPAddress = "10.0.2.2";
 	char* fpgaMacAddress = "62:00:00:00:00:01";
@@ -92,6 +88,17 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 	if (rc != 0)
 	{
 		throw FemClientException((FemClientErrorCode)excaliburFemClientUdpSetupFailed, "Failed to set up FEM UDP firmware block");
+	}
+
+	try
+	{
+		mFemDataReceiver = new FemDataReceiver(mFemDataHostPort);
+	}
+	catch (boost::system::system_error &e)
+	{
+		std::ostringstream msg;
+		msg << "Failed to create FEM data receiver: " << e.what();
+		throw FemClientException((FemClientErrorCode)excaliburFemClientDataReceviverSetupFailed, msg.str());
 	}
 }
 
@@ -124,11 +131,20 @@ void ExcaliburFemClient::freeCallback(int aVal)
 }
 
 
-void ExcaliburFemClient::receiveCallback(int aVal)
+void ExcaliburFemClient::receiveCallback(int aFrameCounter, time_t aRecvTime)
 {
 
+	// Get the first frame on our queu
 	CtlFrame* frame = mFrameQueue.front();
+
+	// Fill fields into frame metadata
+	frame->frameCounter = aFrameCounter;
+	frame->timeStamp    = aRecvTime;
+
+	// Call the receive callback
 	mCallbacks->ctlReceive(mCtlHandle,frame);
+
+	// Pop the frame off the queue
 	mFrameQueue.pop_front();
 
 }
@@ -141,13 +157,24 @@ void ExcaliburFemClient::signalCallback(int aSignal)
 
 	switch (aSignal)
 	{
+
 	case FemDataReceiverSignal::femAcquisitionComplete:
+
 		theSignal = FEM_OP_ACQUISITIONCOMPLETE;
+		std::cout << "Got acquisition complete signal" << std::endl;
+		//this->acquireStop();
+		this->stopAcquisition();
+		break;
+
+	case FemDataReceiverSignal::femAcquisitionCorruptImage:
+		theSignal = FEM_OP_CORRUPTIMAGE;
+		std::cout << "Got corrupt image signal" << std::endl;
 		break;
 
 	default:
 		theSignal = aSignal;
 		break;
+
 	}
 
 	mCallbacks->ctlSignal(mCtlHandle, theSignal);
@@ -173,42 +200,12 @@ void ExcaliburFemClient::command(unsigned int aCommand)
 	switch (aCommand)
 	{
 	case FEM_OP_STARTACQUISITION:
-
-		// TODO hive these commands into method
-
-		// Set up the acquisition DMA controller and arm it
-		this->acquireConfig(ACQ_MODE_NORMAL, 0x60000, 0, 0);
-		this->acquireStart();
-
-		// Start the data receiver thread
-		mFemDataReceiver.startAcquisition();
-
-		// Set up counter depth for ASIC control based on current OMR settings
-		this->asicControlCounterDepthSet(mMpx3OmrParams[0].counterDepth);
-
-		// Set data mode (0 = reordered, 1 = raw)
-		this->rdmaWrite(0x30000001, 1);
-
-		// Set ASIC mux select - TEMP hack for 1-chip system
-		this->asicControlMuxChipSelect(0);
-
-		// Set up the readout length
-		// TODO this is hard coded
-		this->asicControlReadoutLengthSet(0x18000);
-
-		// Set up the OMR
-		{
-			mpx3Omr theOmr = this->omrBuild(0, readPixelMatrixC0);
-			this->asicControlOmrSet(theOmr);
-		}
-		// Execute the acquisition
-		this->asicControlCommandExecute(asicRunSequentialC0);
-
+		this->startAcquisition();
+		//this->toyAcquisition();
 		break;
 
 	case FEM_OP_STOPACQUISITION:
-		this->acquireStop();
-		mFemDataReceiver.stopAcquisition();
+		this->stopAcquisition();
 		break;
 
 	default:
@@ -220,6 +217,98 @@ void ExcaliburFemClient::command(unsigned int aCommand)
 
 }
 
+void ExcaliburFemClient::toyAcquisition(void)
+{
+	std::cout << "Running toy acquisition loop for numFrames=" << mNumFrames << std::endl;
+	for (unsigned int iBuffer = 0; iBuffer < mNumFrames; iBuffer++)
+	{
+		BufferInfo aBuffer = this->allocateCallback();
+		this->receiveCallback(iBuffer, (time_t)1234);
+	}
+	this->signalCallback(FemDataReceiverSignal::femAcquisitionComplete);
+	std::cout << "Ending toy acq loop" << std::endl;
+
+}
+
+
+void ExcaliburFemClient::startAcquisition(void)
+{
+
+	// Construct a new data receiver object
+	//mFemDataReceiver = new FemDataReceiver(mFemDataHostPort);
+
+	// Register callbacks for data receiver
+	mFemDataReceiver->registerCallbacks(&mCallbackBundle);
+
+	// Set up the number of frames, acquisition period and time for the receiver thread
+	mFemDataReceiver->setNumFrames(mNumFrames);
+	mFemDataReceiver->setAcquisitionPeriod(mAcquisitionPeriodMs);
+	mFemDataReceiver->setAcquisitionTime(mAcquisitionTimeMs);
+
+	// Set up frame length and header sizes for the data receiver thread
+	mFemDataReceiver->setFrameHeaderLength(8);
+	mFemDataReceiver->setFrameHeaderPosition(headerAtStart);
+	mFemDataReceiver->setNumSubFrames(mNumSubFrames);
+
+	unsigned int frameDataLengthBytes = this->frameDataLengthBytes();
+	mFemDataReceiver->setFrameLength(frameDataLengthBytes);
+
+	// Start the data receiver thread
+	mFemDataReceiver->startAcquisition();
+
+
+	// Set up the acquisition DMA controller and arm it
+	unsigned int dmaSize = this->asicReadoutDmaSize();
+	this->acquireConfig(ACQ_MODE_NORMAL, dmaSize, 0, 0);
+	this->acquireStart();
+
+	// Set up counter depth for ASIC control based on current OMR settings
+	this->asicControlCounterDepthSet(mMpx3OmrParams[0].counterDepth);
+
+	// Set ASIC data reordering mode
+	this->rdmaWrite(0x30000001, mAsicDataReorderMode);
+
+	// Set ASIC mux select - TEMP hack for 1-chip system
+	this->asicControlMuxChipSelect(0);
+
+	// Set up the readout length in clock cycles for the ASIC control block
+	unsigned int readoutLengthCycles = this->asicReadoutLengthCycles();
+	this->asicControlReadoutLengthSet(readoutLengthCycles);
+
+	// Set up the OMR
+	{
+		mpx3Omr theOmr = this->omrBuild(0, readPixelMatrixC0);
+		this->asicControlOmrSet(theOmr);
+	}
+
+	// Execute the acquisition
+	this->asicControlCommandExecute(asicRunSequentialC0);
+
+}
+
+void ExcaliburFemClient::stopAcquisition(void)
+{
+
+	// Send ACQUIRE stop command to the FEM
+	// TODO check if stopped already?
+	this->acquireStop();
+
+	if (mFemDataReceiver != 0)
+	{
+		// Ensure that the data receiver has stopped cleanly
+		mFemDataReceiver->stopAcquisition();
+
+		// Delete the data receiver
+		//delete(mFemDataReceiver);
+		//mFemDataReceiver = 0;
+	}
+
+	// Reset ASIC control firmware block
+	// TODO is this necessary - was put in to reset frame counter
+	this->asicControlReset();
+
+}
+
 void ExcaliburFemClient::setNumFrames(unsigned int aNumFrames)
 {
 
@@ -227,7 +316,7 @@ void ExcaliburFemClient::setNumFrames(unsigned int aNumFrames)
 	mNumFrames = aNumFrames;
 
 	// Set up the number of frames for the receiver thread
-	mFemDataReceiver.setNumFrames(aNumFrames);
+	//mFemDataReceiver.setNumFrames(aNumFrames);
 
 	// Set up the number of frames in the FEM
 	this->asicControlNumFramesSet(aNumFrames);
@@ -237,8 +326,9 @@ void ExcaliburFemClient::setNumFrames(unsigned int aNumFrames)
 void ExcaliburFemClient::setAcquisitionPeriod(unsigned int aPeriodMs)
 {
 
+	mAcquisitionPeriodMs = aPeriodMs;
 	// Set up the acquisition period for the receiver thread
-	mFemDataReceiver.setAcquisitionPeriod(aPeriodMs);
+	//mFemDataReceiver.setAcquisitionPeriod(aPeriodMs);
 
 	// TODO - add FEM write transaction to set this in FEM too
 }
@@ -246,8 +336,10 @@ void ExcaliburFemClient::setAcquisitionPeriod(unsigned int aPeriodMs)
 void ExcaliburFemClient::setAcquisitionTime(unsigned int aTimeMs)
 {
 
+	mAcquisitionTimeMs = aTimeMs;
+
 	// Set up the acquisition period for the receiver thread
-	mFemDataReceiver.setAcquisitionTime(aTimeMs);
+	//mFemDataReceiver.setAcquisitionTime(aTimeMs);
 
 	// Set up shutter in microseconds
 	unsigned long aTimeUs = aTimeMs * 1000;
@@ -255,530 +347,67 @@ void ExcaliburFemClient::setAcquisitionTime(unsigned int aTimeMs)
 
 }
 
-void ExcaliburFemClient::mpx3DacSet(unsigned int aChipId, int aDacId, unsigned int aDacValue)
+unsigned int ExcaliburFemClient::asicReadoutDmaSize(void)
 {
 
-	// Map the API-level DAC ID onto the internal ID
-	mpx3Dac dacIdx = getmpx3DacId(aDacId);
-	if (dacIdx == unknownDacId)
-	{
-		std::ostringstream msg;
-		msg << "Illegal DAC ID specified: " << aDacId;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalDacId, msg.str());
-	}
+	// Get counter bit depth of ASIC
+	unsigned int counterBitDepth = this->counterBitDepth(mMpx3OmrParams[0].counterDepth);
 
-	// Check chip ID is legal (noting that id = 0 implies all chips)
-	if ((aChipId < 0) || (aChipId > kNumAsicsPerFem)) {
-		std::ostringstream msg;
-		msg << "Illegal chip ID specified: " << aChipId;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalChipId, msg.str());
-	}
+	// DMA size is (numRows * numCols * (numAsics/2) counterDepth /  8 bits per bytes
+	unsigned int theLength = (kNumRowsPerAsic * kNumColsPerAsic * (kNumAsicsPerFem / 2) * counterBitDepth) / 8;
 
-	// If chip ID = 0, set the given DAC of all chips to the specified value. Otherwise set
-	// the value for a particular chip and DAC (NB chip indexing offset from zero in API)
-	if (aChipId == 0)
-	{
-		for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++) {
-			mMpx3DacCache[iChip][dacIdx] = aDacValue;
-		}
-	}
-	else
-	{
-		mMpx3DacCache[aChipId - 1][dacIdx] = aDacValue;
-	}
+	return theLength;
+}
+
+unsigned int ExcaliburFemClient::asicReadoutLengthCycles(void)
+{
+
+	unsigned int counterBitDepth = this->counterBitDepth(mMpx3OmrParams[0].counterDepth);
+	unsigned int readoutBitWidth = this->readoutBitWidth(mMpx3OmrParams[0].readoutWidth);
+
+	unsigned int theLength = (kNumRowsPerAsic * kNumColsPerAsic * counterBitDepth) / readoutBitWidth;
+
+	return theLength;
 
 }
 
-void ExcaliburFemClient::mpx3DacSenseSet(unsigned int aChipId, int aDac)
+unsigned int ExcaliburFemClient::frameDataLengthBytes(void)
 {
 
-	// Check chip ID is legal (noting that id = 0 implies all chips)
-	if ((aChipId < 0) || (aChipId > kNumAsicsPerFem)) {
-		std::ostringstream msg;
-		msg << "Illegal chip ID specified: " << aChipId;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalChipId, msg.str());
-	}
+	unsigned int frameDataLengthBytes = 0;
 
-	if (aChipId == 0) {
-		for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++)
+	// Get the counter bit depth
+	unsigned int counterBitDepth = this->counterBitDepth(mMpx3OmrParams[0].counterDepth);
+
+	// Calculate raw length of ASIC data in bits
+	unsigned int asicDataLengthBits = kNumRowsPerAsic * kNumColsPerAsic * kNumAsicsPerFem * counterBitDepth;
+
+	// Get the frame length in bytes. In 12/24-bit re-ordered mode, reordering expands each 12 bit ASIC
+	// counter up to 16 bits (two bytes)
+	if (mAsicDataReorderMode == reorderedDataMode)
+	{
+		switch (mMpx3OmrParams[0].counterDepth)
 		{
-			mMpx3OmrParams[iChip].dacSense = (unsigned int)aDac;
-		}
-	}
-	else
-	{
-		mMpx3OmrParams[aChipId - 1].dacSense = (unsigned int)aDac;
-	}
+		case counterDepth1:
+		case counterDepth4:
+			frameDataLengthBytes = (asicDataLengthBits / 8);
+			break;
 
-}
+		case counterDepth12:
+		case counterDepth24:
+			frameDataLengthBytes = ((asicDataLengthBits * 16)  / 12) / 8;
+			break;
 
-void ExcaliburFemClient::mpx3DacExternalSet(unsigned int aChipId, int aDac)
-{
-
-	// Check chip ID is legal (noting that id = 0 implies all chips)
-	if ((aChipId < 0) || (aChipId > kNumAsicsPerFem)) {
-		std::ostringstream msg;
-		msg << "Illegal chip ID specified: " << aChipId;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalChipId, msg.str());
-	}
-
-	if (aChipId == 0) {
-		for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++)
-		{
-			mMpx3OmrParams[iChip].dacExternal = (unsigned int)aDac;
-		}
-	}
-	else
-	{
-		mMpx3OmrParams[aChipId - 1].dacExternal = (unsigned int)aDac;
-	}
-
-}
-
-
-void ExcaliburFemClient::writeDacs(unsigned int aChipId)
-{
-
-	// If chip ID = 0, loop over all chips and call this function recursively
-	if (aChipId == 0)
-	{
-		for (unsigned int iChip = 1; iChip <= kNumAsicsPerFem; iChip++)
-		{
-			this->writeDacs(iChip);
-		}
-	}
-	else
-	{
-		// Internal chip index runs from 0 to 7
-		unsigned int chipIdx = aChipId - 1;
-
-		// Pack DAC values into u32 vector for upload to FEM
-		std::vector<u32>dacValues(kNumAsicDpmWords, 0);
-
-		dacValues[0] |= (u32)(mMpx3DacCache[chipIdx][tpRefBDac]      & 0x1FF) << 23;
-		dacValues[0] |= (u32)(mMpx3DacCache[chipIdx][tpRefADac]      & 0x1FF) << 14;
-		dacValues[0] |= (u32)(mMpx3DacCache[chipIdx][casDac]         & 0x0FF) << 6;
-		dacValues[0] |= (u32)(mMpx3DacCache[chipIdx][fbkDac]         & 0x0FC) >> 2;
-
-		dacValues[1] |= (u32)(mMpx3DacCache[chipIdx][fbkDac]         & 0x003) << 30;
-		dacValues[1] |= (u32)(mMpx3DacCache[chipIdx][tpRefDac]       & 0x0FF) << 22;
-		dacValues[1] |= (u32)(mMpx3DacCache[chipIdx][gndDac]         & 0x0FF) << 14;
-		dacValues[1] |= (u32)(mMpx3DacCache[chipIdx][rpzDac]         & 0x0FF) << 6;
-		dacValues[1] |= (u32)(mMpx3DacCache[chipIdx][tpBufferOutDac] & 0x0FC) >> 2;
-
-		dacValues[2] |= (u32)(mMpx3DacCache[chipIdx][tpBufferOutDac] & 0x003) << 30;
-		dacValues[2] |= (u32)(mMpx3DacCache[chipIdx][tpBufferInDac]  & 0x0FF) << 22;
-		dacValues[2] |= (u32)(mMpx3DacCache[chipIdx][delayDac]       & 0x0FF) << 14;
-		dacValues[2] |= (u32)(mMpx3DacCache[chipIdx][dacPixelDac]    & 0x0FF) << 6;
-		dacValues[2] |= (u32)(mMpx3DacCache[chipIdx][thresholdNDac]  & 0x0FC) >> 2;
-
-		dacValues[3] |= (u32)(mMpx3DacCache[chipIdx][thresholdNDac]  & 0x003) << 30;
-		dacValues[3] |= (u32)(mMpx3DacCache[chipIdx][discLsDac]      & 0x0FF) << 22;
-		dacValues[3] |= (u32)(mMpx3DacCache[chipIdx][discDac]        & 0x0FF) << 14;
-		dacValues[3] |= (u32)(mMpx3DacCache[chipIdx][shaperDac]      & 0x0FF) << 6;
-		dacValues[3] |= (u32)(mMpx3DacCache[chipIdx][ikrumDac]       & 0x0FC) >> 2;
-
-		dacValues[4] |= (u32)(mMpx3DacCache[chipIdx][ikrumDac]       & 0x003) << 30;
-		dacValues[4] |= (u32)(mMpx3DacCache[chipIdx][preampDac]      & 0x0FF) << 22;
-		dacValues[4] |= (u32)(mMpx3DacCache[chipIdx][threshold7Dac]  & 0x1FF) << 13;
-		dacValues[4] |= (u32)(mMpx3DacCache[chipIdx][threshold6Dac]  & 0x1FF) << 4;
-		dacValues[4] |= (u32)(mMpx3DacCache[chipIdx][threshold5Dac]  & 0x1E0) >> 5;
-
-		dacValues[5] |= (u32)(mMpx3DacCache[chipIdx][threshold5Dac]  & 0x01F) << 27;
-		dacValues[5] |= (u32)(mMpx3DacCache[chipIdx][threshold4Dac]  & 0x1FF) << 18;
-		dacValues[5] |= (u32)(mMpx3DacCache[chipIdx][threshold3Dac]  & 0x1DF) << 9;
-		dacValues[5] |= (u32)(mMpx3DacCache[chipIdx][threshold2Dac]  & 0x1FF) << 0;
-
-		dacValues[6] |= (u32)(mMpx3DacCache[chipIdx][threshold1Dac]  & 0x1FF) << 23;
-		dacValues[6] |= (u32)(mMpx3DacCache[chipIdx][threshold0Dac]  & 0x1FF) << 14;
-
-		std::cout << "Chip: " << chipIdx << " ";
-		for (unsigned int iWord = 0; iWord < 8; iWord++) {
-			std::cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << dacValues[iWord] << std::dec << " " ;
-		}
-		std::cout << std::endl;
-
-		// Write DAC values into FEM (into DPM area accessed via RDMA)
-		this->rdmaWrite(kExcaliburAsicDpmRdmaAddress, dacValues);
-
-		// Set ASIC MUX register
-		u32 muxSelectVal = ((u32)1 << (7 - chipIdx));
-		this->rdmaWrite(kExcaliburAsicMuxSelect, muxSelectVal);
-
-		// Set OMR registers
-		u32 omrLsb = 0x61;
-		u32 omrMsb = (u32)1 << 5;
-		this->rdmaWrite(kExcaliburAsicOmrBottom, omrLsb);
-		this->rdmaWrite(kExcaliburAsicOmrTop, omrMsb);
-
-		// Trigger OMR command write
-		this->rdmaWrite(kExcaliburAsicControlReg, 0x23);
-
-	}
-}
-
-/** writeCtpr - write the column test pulse enable registers to an ASIC
- *
- * This function uploads the current column test pulse enable settings to the FEM and
- * then loads them into the specified ASIC. The settings are derived from the
- * locally-cached values, which in turn are set up by the pixel configuration calls.
- *
- * @param aChipId chip ID  to write (1-8, 0=all)
- */
-void ExcaliburFemClient::writeCtpr(unsigned int aChipId)
-{
-
-	// If chip ID = 0, loop over all chips and call this function recursively
-	if (aChipId == 0)
-	{
-		for (unsigned int iChip = 1; iChip <= kNumAsicsPerFem; iChip++)
-		{
-			this->writeCtpr(iChip);
-		}
-	}
-	else
-	{
-		// Internal chip index runs from 0 to 7
-		unsigned int chipIdx = aChipId - 1;
-
-		// Store CTPR values into u32 vector for upload to FEM
-		std::vector<u32>ctprValues(kNumAsicDpmWords, 0);
-
-		// Pack CTPR values into the words of the vector, starting with the rightmost column (255)
-		// as the bits are loaded MSB first
-		unsigned int wordIdx = 0;
-		unsigned int bitIdx  = 31;
-
-		for (int iCol = (kNumColsPerAsic -1); iCol >= 0; iCol--)
-		{
-			ctprValues[wordIdx] |= (mMpx3ColumnTestPulseEnable[chipIdx][iCol] & 1) << bitIdx;
-			if (bitIdx == 0)
-			{
-				bitIdx = 31;
-				wordIdx++;
-			}
-			else
-			{
-				bitIdx--;
-			}
-		}
-
-//		std::cout << "Chip: " << chipIdx << " ";
-//		for (unsigned int iWord = 0; iWord < 8; iWord++) {
-//			std::cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << ctprValues[iWord] << std::dec << " " ;
-//		}
-//		std::cout << std::endl;
-
-		// Write DAC values into FEM (into DPM area accessed via RDMA)
-		this->rdmaWrite(kExcaliburAsicDpmRdmaAddress, ctprValues);
-
-		// Set ASIC MUX register
-		this->asicControlMuxChipSelect(chipIdx);
-
-		// Set OMR registers
-		mpx3Omr theOmr = this->omrBuild(chipIdx, setCtpr);
-		this->asicControlOmrSet(theOmr);
-
-		// Trigger OMR command write
-		this->asicControlCommandExecute(asicCommandWrite);
-
-	}
-}
-
-void ExcaliburFemClient::mpx3PixelConfigSet(unsigned int aChipId, int aConfigId, std::size_t aSize, unsigned short* apValues)
-{
-
-	// Map the API-level pixel config ID onto the internal ID
-	mpx3PixelConfig configIdx = getMpx3PixelConfigId(aConfigId);
-
-	if (configIdx == unknownPixelConfig)
-	{
-		std::ostringstream msg;
-		msg << "Illegal pixel configuration ID specified: " << aConfigId;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalConfigId, msg.str());
-	}
-
-	// Check chip ID is legal (noting that id = 0 implies all chips)
-	if ((aChipId < 0) || (aChipId > kNumAsicsPerFem)) {
-		std::ostringstream msg;
-		msg << "Illegal chip ID specified: " << aChipId;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalChipId, msg.str());
-	}
-
-	// Check that the size of the array matches the number of pixels for the chip
-	if (aSize != kNumPixelsPerAsic) {
-		std::ostringstream msg;
-		msg << "Illegal pixel configuration length specified: " << aSize;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalConfigSize, msg.str());
-	}
-
-	// If chip ID = 0, set the given config array of all chips to the specified value. Otherwise set
-	// the values for a particular chip and pixel config (NB chip indexing offset from zero in API)
-	if (aChipId == 0)
-	{
-		for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++)
-		{
-			for (unsigned int iPixel = 0; iPixel < kNumPixelsPerAsic; iPixel++)
-			{
-				mMpx3PixelConfigCache[iChip][configIdx][iPixel] = apValues[iPixel];
-			}
-		}
-	}
-	else
-	{
-		for (unsigned int iPixel = 0; iPixel < kNumPixelsPerAsic; iPixel++)
-		{
-			mMpx3PixelConfigCache[aChipId - 1][configIdx][iPixel] = apValues[iPixel];
+		default:
+			break;
 		}
 	}
 
+	// Add on size of frame counter(s), which is 8 bytes per subframe
+	//frameDataLengthBytes += (mNumSubFrames * 8);
 
-}
+	return frameDataLengthBytes;
 
-void ExcaliburFemClient::writePixelConfig(unsigned int aChipId)
-{
-
-	// If chip ID = 0, loop over all chips and call this function recursively
-	if (aChipId == 0) {
-
-		for (unsigned int iChip = 1; iChip <= kNumAsicsPerFem; iChip++)
-		{
-			this->writePixelConfig(iChip);
-		}
-	}
-	else
-	{
-		// Internal chip index runs from 0 to 7
-		unsigned int chipIdx = aChipId - 1;
-
-		// Zero test pulse enable param and column test pulse cache for this chip, so they are not
-		// left enabled when all test pulse bits are cleared
-
-		mMpx3OmrParams[chipIdx].testPulseEnable = 0;
-		for (unsigned int iCol = 0; iCol < kNumColsPerAsic; iCol++)
-		{
-			mMpx3ColumnTestPulseEnable[chipIdx][iCol] = 0;
-		}
-
-		// Per-pixel counter values to be loaded with bits from cache arrays
-		unsigned short pixelConfigCounter0[kNumRowsPerAsic][kNumColsPerAsic];
-		unsigned short pixelConfigCounter1[kNumRowsPerAsic][kNumColsPerAsic];
-
-		// Extract pixel configuration from cache and build 12-bit counter 0 and 1 values for each pixel,
-		// ordered in the pixel configuration bitstream load order as described in the MPX3 manual. For now
-		// these are 'sparse' values stored in unsigned shorts, which we will then need to pack into a bitstream
-
-		for (unsigned int iRow = 0; iRow < kNumRowsPerAsic; iRow++)
-		{
-			for (unsigned int iCol = 0; iCol < kNumColsPerAsic; iCol++)
-			{
-				// Calculate index into cache arrays, API order is in EPICS ADR order, with
-				// pixel (0,0) at top left, column varying fastest
-				unsigned int pixelCacheIdx = ((kNumRowsPerAsic - (iRow + 1)) * kNumColsPerAsic) + iCol;
-
-				// Extract bit fields from cache arrays
-				unsigned short gainMode   =  mMpx3PixelConfigCache[chipIdx][pixelGainModeConfig][pixelCacheIdx] & 1;
-				unsigned short testBit    =  mMpx3PixelConfigCache[chipIdx][pixelTestModeConfig][pixelCacheIdx] & 1;
-				unsigned short maskBit    =  mMpx3PixelConfigCache[chipIdx][pixelMaskConfig][pixelCacheIdx] & 1;
-				unsigned short configThA0 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdAConfig][pixelCacheIdx] >> 0) & 1;
-				unsigned short configThA1 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdAConfig][pixelCacheIdx] >> 1) & 1;
-				unsigned short configThA2 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdAConfig][pixelCacheIdx] >> 2) & 1;
-				unsigned short configThA3 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdAConfig][pixelCacheIdx] >> 3) & 1;
-				unsigned short configThA4 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdAConfig][pixelCacheIdx] >> 4) & 1;
-				unsigned short configThB0 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdBConfig][pixelCacheIdx] >> 0) & 1;
-				unsigned short configThB1 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdBConfig][pixelCacheIdx] >> 1) & 1;
-				unsigned short configThB2 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdBConfig][pixelCacheIdx] >> 2) & 1;
-				unsigned short configThB3 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdBConfig][pixelCacheIdx] >> 3) & 1;
-				unsigned short configThB4 = (mMpx3PixelConfigCache[chipIdx][pixelThresholdBConfig][pixelCacheIdx] >> 4) & 1;
-
-				// Build pixel configuration counter values from bit fields
-				pixelConfigCounter0[iRow][iCol] =
-						(gainMode << 8) | (configThA4 << 7) | (configThA2 << 6) | (configThA1 << 5) | (configThB4 << 4);
-				pixelConfigCounter1[iRow][iCol] =
-						(configThB1 << 10) | (maskBit << 9) | (configThB2 << 8) | (configThA3 << 7) | (configThB0 << 6) |
-						(configThA0 << 5) | (configThB3 << 4) | (testBit << 3);
-
-				// If any columns have test pulses enabled, enable the test pulse flag in the OMR parameters and set the
-				// appropriate bits in the column test pulse cache
-				if (testBit == 1)
-				{
-					mMpx3ColumnTestPulseEnable[chipIdx][iCol] = 1;
-					mMpx3OmrParams[chipIdx].testPulseEnable = 1;
-				}
-
-				// DEBUG - put recognizable values into first few pixels for counter 0 and 1
-//#define PIXEL_COUNTER_DEBUG
-#ifdef PIXEL_COUNTER_DEBUG
-				if ((iRow == 0) && (iCol == 255))
-				{
-					pixelConfigCounter0[iRow][iCol] = 0xABC;
-					pixelConfigCounter1[iRow][iCol] = 0x123;
-				}
-				if ((iRow == 0) && (iCol == 254))
-				{
-					pixelConfigCounter0[iRow][iCol] = 0xDEF;
-					pixelConfigCounter1[iRow][iCol] = 0x456;
-				}
-#endif
-			}
-		}
-
-//		std::cout << "MPX3 test pulse enable = " << mMpx3OmrParams[chipIdx].testPulseEnable << std::endl;
-//		for (unsigned int iCol = 0; iCol < kNumColsPerAsic; iCol++)
-//		{
-//			std::cout << mMpx3ColumnTestPulseEnable[chipIdx][iCol];
-//		}
-//		std::cout << std::endl;
-
-		// Pack the configuration counter values into a contiguous array ready to be uploaded to the FEM. These are packed
-		// with MSB first for each pixel counter, bitwise over all pixels in each row of the chip. The bitstream is
-		// shifted into the chip from the top-left corner, so the bottom-right pixel (0,255) is the head of the bistream.
-		// This means it is necessary to 'flip' the column order of the columns into the bitstream.
-
-		u32 pixelConfigCounter0Buffer[kPixelConfigBufferSizeWords] = { 0 };
-		u32 pixelConfigCounter1Buffer[kPixelConfigBufferSizeWords] = { 0 };
-
-		unsigned int bufferWordIdx = 0;  // Index of position in bitstream word buffer
-		unsigned int bufferBitIdx  = 31; // Bit position in bitstream word buffer
-
-		// Loop over all rows
-		for (unsigned int iRow = 0; iRow < kNumRowsPerAsic; iRow++)
-		{
-			// Loop over all counter bits, MSB first
-			for (int iBit = (kPixelConfigBitsPerPixel-1); iBit >= 0; iBit--)
-			{
-				// Loop over all columns, right-hand column (255) first
-				for (int iCol = (kNumColsPerAsic - 1); iCol >= 0; iCol--)
-				{
-
-					pixelConfigCounter0Buffer[bufferWordIdx] |= ((u32)((pixelConfigCounter0[iRow][iCol] >> iBit) & 0x1)) << bufferBitIdx;
-					pixelConfigCounter1Buffer[bufferWordIdx] |= ((u32)((pixelConfigCounter1[iRow][iCol] >> iBit) & 0x1)) << bufferBitIdx;
-
-					// If we've reached bit 0 in the buffer word, restart at bit 31 in the next word, otherwise
-					// decrement the buffer bit position index
-					if (bufferBitIdx == 0) {
-						bufferBitIdx = 31;
-						bufferWordIdx++;
-					}
-					else
-					{
-						bufferBitIdx--;
-					}
-
-				} // iCol
-			} // iBit
-		} // iRow
-
-		// Load the CTPR registers with the appropriate test pulse bits
-		this->writeCtpr(aChipId);
-
-		// Upload pixel configuration to FEM memory
-		// TODO: address calculations for this need resolving
-		unsigned int configBaseAddr = 0x30000000;
-
-		// Write counter 0 configuration into the FEM memory
-		this->memoryWrite(configBaseAddr, (u32*)&pixelConfigCounter0Buffer, kPixelConfigBufferSizeWords);
-
-		// Set up the PPC1 DMA engine for upload mode
-		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 1, configBaseAddr);
-
-		// TODO poll config completion
-		this->acquireStart();
-
-		// Set ASIC MUX register
-		this->asicControlMuxChipSelect(chipIdx);
-
-		// Setup OMR value C0 load in the FEM
-		mpx3Omr theOmr = this->omrBuild(chipIdx, loadPixelMatrixC0);
-		this->asicControlOmrSet(theOmr);
-
-		// Execute the config load command
-		this->asicControlCommandExecute(asicPixelConfigLoad);
-
-		// TODO poll state of FW to test for completion
-		sleep(1);
-		this->acquireStop();
-
-		// Write counter 1 configuration into the FEM memory
-		this->memoryWrite(configBaseAddr + kPixelConfigBufferSizeBytes, (u32*)&pixelConfigCounter1Buffer, kPixelConfigBufferSizeWords);
-
-		// Set up the PPC1 DMA engine for upload mode
-		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 1, configBaseAddr + kPixelConfigBufferSizeBytes);
-
-		// TODO poll config completion
-		this->acquireStart();
-
-		// Setup OMR value for C1 load in the FEM
-		theOmr = this->omrBuild(chipIdx, loadPixelMatrixC1);
-		this->asicControlOmrSet(theOmr);
-
-		// Trigger the OMR transaction
-		this->asicControlCommandExecute(asicPixelConfigLoad);
-
-		sleep(1);
-		this->acquireStop();
-
-	}
-}
-
-unsigned int ExcaliburFemClient::mpx3eFuseIdRead(unsigned int aChipId)
-{
-
-	unsigned int chipIdx = aChipId - 1;
-
-	this->asicControlReset();
-
-	// Set ASIC MUX register
-	this->asicControlMuxChipSelect(chipIdx);
-
-	// Set OMR registers
-	mpx3Omr theOmr = this->omrBuild(chipIdx, readEFuseId);
-	this->asicControlOmrSet(theOmr);
-
-	// Trigger an OMR transaction
-	this->asicControlCommandExecute(asicCommandRead);
-
-	// Wait for the OMR transaction to complete
-	u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
-
-	int retries = 0;
-	while ((retries < 10) && (ctrlState != 0x80000000)) {
-		usleep(10000);
-		ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
-		retries++;
-	}
-
-	// If the transaction didn't complete throw an exception
-	if (ctrlState != 0x80000000)
-	{
-		std::ostringstream msg;
-		msg << "Timeout on OMR read transaction to chip " << aChipId << " state=0x" << std::hex << ctrlState << std::dec;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientOmrTransactionTimeout, msg.str());
-	}
-
-	u32 eFuseId = this->rdmaRead(kExcaliburAsicDpmRdmaAddress+5);
-
-	return eFuseId;
-}
-
-void ExcaliburFemClient::mpx3ColourModeSet(int aColourMode)
-{
-
-	// Set value for all chips
-	for (unsigned int iChipIdx = 0; iChipIdx < kNumAsicsPerFem; iChipIdx++)
-	{
-		mMpx3OmrParams[iChipIdx].colourMode = (mpx3ColourMode)aColourMode;
-	}
-}
-
-void ExcaliburFemClient::mpx3CounterDepthSet(int aCounterDepth)
-{
-
-	// Set value for all chips
-	for (unsigned int iChipIdx = 0; iChipIdx < kNumAsicsPerFem; iChipIdx++)
-	{
-		mMpx3OmrParams[iChipIdx].counterDepth = (mpx3CounterDepth)aCounterDepth;
-	}
 }
 
 /// --- Private methods ---
@@ -897,3 +526,61 @@ mpx3Omr ExcaliburFemClient::omrBuild(unsigned int aChipIdx, mpx3OMRMode aMode)
 	return theOMR;
 }
 
+unsigned int ExcaliburFemClient::counterBitDepth(mpx3CounterDepth aCounterDepth)
+{
+	unsigned int counterBitDepth = 0;
+
+	switch (aCounterDepth)
+	{
+	case counterDepth1:
+		counterBitDepth = 1;
+		break;
+
+	case counterDepth4:
+		counterBitDepth = 4;
+		break;
+
+	case counterDepth12:
+		counterBitDepth = 12;
+		break;
+
+	case counterDepth24:
+		counterBitDepth = 12; // 24bit counter = 2x12 readout
+		break;
+
+	default:
+		break;
+	}
+
+	return counterBitDepth;
+
+}
+
+ unsigned int ExcaliburFemClient::readoutBitWidth(mpx3ReadoutWidth aReadoutWidth)
+ {
+	 unsigned int readoutBitWidth = 0;
+
+	 switch (aReadoutWidth)
+	 {
+	 case readoutWidth1:
+		 readoutBitWidth = 1;
+		 break;
+	 case readoutWidth2:
+		 readoutBitWidth = 2;
+		 break;
+
+	 case readoutWidth4:
+		 readoutBitWidth = 4;
+		 break;
+
+	 case readoutWidth8:
+		 readoutBitWidth = 8;
+		 break;
+
+	 default:
+		 break;
+	 }
+
+	 return readoutBitWidth;
+
+ }

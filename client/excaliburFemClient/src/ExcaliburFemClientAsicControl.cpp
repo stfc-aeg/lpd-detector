@@ -137,32 +137,10 @@ void ExcaliburFemClient::asicControlShutterDurationSet(unsigned int aTimeUs)
 void ExcaliburFemClient::asicControlCounterDepthSet(mpx3CounterDepth aCounterDepth)
 {
 
-	u32 counterDepthBits = 0;
-
-	switch (aCounterDepth)
-	{
-	case counterDepth1:
-		counterDepthBits = 1;
-		break;
-
-	case counterDepth4:
-		counterDepthBits = 4;
-		break;
-
-	case counterDepth12:
-		counterDepthBits = 12;
-		break;
-
-	case counterDepth24:
-		counterDepthBits = 12; // 24bit counter = 2x12 readout
-		break;
-
-	default:
-		break;
-	}
+	u32 counterBitDepth = this->counterBitDepth(aCounterDepth);
 
 	// Throw exception if illegal counter depth specified
-	if (counterDepthBits == 0)
+	if (counterBitDepth == 0)
 	{
 		std::ostringstream msg;
 		msg << "Illegal counter depth specified: " << aCounterDepth;
@@ -170,7 +148,7 @@ void ExcaliburFemClient::asicControlCounterDepthSet(mpx3CounterDepth aCounterDep
 	}
 
 	// Set up the counter depth in the RDMA register
-	this->rdmaWrite(kExcaliburAsicPixelCounterDepth, counterDepthBits);
+	this->rdmaWrite(kExcaliburAsicPixelCounterDepth, counterBitDepth);
 
 }
 
@@ -178,3 +156,4 @@ void ExcaliburFemClient::asicControlReadoutLengthSet(unsigned int aLength)
 {
 	this->rdmaWrite(kExcaliburAsicReadoutLength, (u32)aLength);
 }
+

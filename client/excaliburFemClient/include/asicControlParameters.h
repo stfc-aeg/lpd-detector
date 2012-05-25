@@ -37,4 +37,12 @@ typedef enum
 
 } asicControlCommand;
 
+typedef enum
+{
+	unknownMode        = -1,
+	reorderedDataMode  = 0,
+	rawDataMode        = 1
+
+} asicDataReorderMode;
+
 #endif /* EXCALIBURFEMRDMAADDRESSES_H_ */
