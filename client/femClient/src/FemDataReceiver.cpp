@@ -232,8 +232,6 @@ void FemDataReceiver::watchdogHandler(void)
 	if (mWatchdogTimer.expires_at() <= boost::asio::deadline_timer::traits_type::now())
 	{
 
-		std::cout << mRecvWatchdogCounter;
-
 		// Check if receive watchdog counter has been not been cleared
 
 		// Increment watchdog counter - this will be reset to zero by the
