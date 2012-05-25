@@ -40,6 +40,13 @@ class FemShell(cmd.Cmd,object):
                         'UPLOAD' : FemTransaction.ACQ_MODE_UPLOAD                           
                       }
     
+    acqStatusEncoding = { 0 : 'IDLE',
+                          1 : 'CONFIG BUSY',
+                          2 : 'NORMAL ACQ',
+                          3 : 'UPLOAD ACQ',
+                          4 : 'STOPPING ACQ'
+                        }
+    
     def __init__(self, completekey='tab', stdin=None, stdout=None, cmdqueue=None):
       
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
@@ -296,12 +303,17 @@ Example:
             if self.timerEnabled: deltaT = time.time() - t0
             print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
             if self.timerEnabled: print "Transaction took %.3f secs" % deltaT 
+
         except FemClientError as e:
             if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
-                print "Error, FEM has closed the client connection"
+                print "*** Error, FEM has closed the client connection"
+                self.do_close(None)
+            elif e.errno == FemClientError.ERRNO_SOCK_ERROR:
+                print "*** Socket error on FEM connection:", e.msg
                 self.do_close(None)
             else:
-                print "FEM Exception:", e, "errno=", e.errno
+                print "*** FEM Exception:", e, 'errno=', e.errno
+
             
     def help_write(self):
         print self.do_write.__doc__
@@ -361,10 +373,14 @@ Example:
             
         except FemClientError as e:
             if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
-                print "Error, FEM has closed the client connection"
+                print "*** Error, FEM has closed the client connection"
+                self.do_close(None)
+            elif e.errno == FemClientError.ERRNO_SOCK_ERROR:
+                print "*** Socket error on FEM connection:", e.msg
                 self.do_close(None)
             else:
-                print "FEM Exception:", e, "errno=", e.errno           
+                print "*** FEM Exception:", e, 'errno=', e.errno
+      
         
     def help_read(self):
         print self.do_read.__doc__
@@ -571,12 +587,17 @@ Example:
             try:            
                 ack = self.__class__.connectedFem.configWrite(theConfig)
                 print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
+                
             except FemClientError as e:
                 if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
-                    print "Error, FEM has closed the client connection"
+                    print "*** Error, FEM has closed the client connection"
+                    self.do_close(None)
+                elif e.errno == FemClientError.ERRNO_SOCK_ERROR:
+                    print "*** Socket error on FEM connection:", e.msg
                     self.do_close(None)
                 else:
-                    print "FEM Exception:", e, "errno=", e.errno            
+                    print "*** FEM Exception:", e, 'errno=', e.errno
+       
         
         else:
             print "Unrecognised config direction"
@@ -611,10 +632,14 @@ Example:
             
         except FemClientError as e:
             if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
-                print "Error, Fem has closed the client connection"
+                print "*** Error, FEM has closed the client connection"
+                self.do_close(None)
+            elif e.errno == FemClientError.ERRNO_SOCK_ERROR:
+                print "*** Socket error on FEM connection:", e.msg
                 self.do_close(None)
             else:
-                print "FEM Exception:", e, "errno=", e.errno
+                print "*** FEM Exception:", e, 'errno=', e.errno
+
                                
     def help_cmd(self):
         print self.do_cmd.__doc__
@@ -695,14 +720,34 @@ Example:
             print "*** Not connected to a FEM"
             return
         try:
+            
             ack = self.__class__.connectedFem.acquireSend(cmd, mode, bufSize, bufCount, numAcqs)
-            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
+            
+            if acqCommand == 'status':
+                
+                if ack[0] == 0:
+                    
+                    status = ack[1]
+                    if FemShell.acqStatusEncoding.has_key(status):
+                        statusStr = FemShell.acqStatusEncoding[status]
+                    else:
+                        statusStr = 'UNKNOWN STATUS:', status
+                    print "    Status         :", statusStr
+                    
+                else:
+                    print "Got bad ACK on acquire status command from FEM:", ack[0]  
+            else:
+                print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
+                
         except FemClientError as e:
             if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
-                print "Error, FEM has closed the client connection"
+                print "*** Error, FEM has closed the client connection"
+                self.do_close(None)
+            elif e.errno == FemClientError.ERRNO_SOCK_ERROR:
+                print "*** Socket error on FEM connection:", e.msg
                 self.do_close(None)
             else:
-                print "FEM Exception:", e, 'errno=', e.errno
+                print "*** FEM Exception:", e, 'errno=', e.errno
                 
             
     def help_acquire(self):
