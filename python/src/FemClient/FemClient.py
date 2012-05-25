@@ -16,6 +16,7 @@ class FemClientError(Exception):
     
     ERRNO_NO_ERROR    = 0
     ERRNO_SOCK_CLOSED = 1
+    ERRNO_SOCK_ERROR  = 2
     
     def __init__(self, msg, errno=ERRNO_NO_ERROR):
         self.msg = msg
@@ -55,11 +56,22 @@ class FemClient(object):
             theTransaction = FemTransaction(cmd=theCmd, bus=theBus, width=theWidth, state=theState, 
                                            addr=theAddr, payload=thePayload, readLen=theReadLen)
         data = theTransaction.encode()
-        self.femSocket.sendall(data)
-  
+        try:
+            self.femSocket.sendall(data)
+        except socket.error, (errno, sockErrStr):
+            if self.femSocket:
+                self.femSocket.close()
+            raise FemClientError("Socket error %d : %s" % (errno, sockErrStr), FemClientError.ERRNO_SOCK_ERROR)
+        
     def recv(self):
         initRecvLen = FemTransaction.headerSize()
-        data = self.femSocket.recv(initRecvLen)
+        try:
+            data = self.femSocket.recv(initRecvLen)
+        except socket.error, (errno, sockErrStr):
+            if self.femSocket:
+                self.femSocket.close()
+            raise FemClientError("Socket error %d : %s"  % (errno, sockErrStr), FemClientError.ERRNO_SOCK_ERROR)
+        
         if not data:
             raise FemClientError("FEM has closed socket connection", FemClientError.ERRNO_SOCK_CLOSED)
         
