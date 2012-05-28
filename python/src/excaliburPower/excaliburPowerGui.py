@@ -34,8 +34,8 @@ class ExcaliburPowerGui:
         
         # Defined thresholds for the four status quantities
         self.humidityMin = 17 #60
-        self.humidityMax = 30 #80
-        self.humidityWarn = 3
+        self.humidityWarn = 60
+        self.humidityMax = 80 #80
         self.airTempMin = 10
         self.airTempMax = 50
         self.coolantFlowMin = 5
@@ -91,7 +91,7 @@ class ExcaliburPowerGui:
             
             # Manual port selection (true), or automatic selection (false)
             ''' True = Manually choose port, False = Automatic selection '''
-            self.bManual = False
+            self.bManual = True
             
             # Open serial port
             if self.bManual is False:
@@ -238,20 +238,28 @@ class ExcaliburPowerGui:
             pass
         # Print selected com port:    (e.g. COM1)
 #        print self.gui.gui.lwSerialPort.currentItem().text()
-        # Disable list of COM ports if port selected manually
-        if self.bManual is True:
-            # Wait until bias is enabled before continuing
-            while self.bBiasEnabled is False:
-                pass
+
+#        if self.bManual is True:
+#            # Wait until bias is enabled before continuing
+#            while self.bBiasEnabled is False:
+#                pass
         time.sleep(2)        
         # Wait for serial interface to initialise.
         time.sleep(1.8)        # Redundant later on?
         # Initialise i2c devices
         if self.sCom:
+            # initialise devices
             self.initialiseCommunication()
-        if self.bManual is False:    
-            # Signal to GUI: hide progressBar and statusBar components
-            self.queue.put("hideGuiBars=...")
+            # enable lv button
+            self.gui.gui.lvButton.setEnabled(True)
+            
+            
+#        if self.bManual is True:    
+#            # Signal to GUI: hide progressBar and statusBar components
+#            self.queue.put("hideGuiBars=...")
+        # Hide progress bar
+        self.queue.put("hideGuiBars=...")
+        
         while self.running:
             #This is where we poll the Serial port. 
             # Do not proceed unless polling checkbox ticked:
@@ -404,55 +412,134 @@ class ExcaliburPowerGui:
 
     def lvButtonAction(self):
         """ Execute each time lvButton is pressed """
+#        # Check lv status
+#        currentPcfStatus = self.readpcf8574()
+#        print self.bLvEnabled, currentPcfStatus
+        
         # If bLvEnabled True (Green), make False and turn associated LED red
         if self.bLvEnabled is True:     # lv is enabled, now Disabling...
             self.bLvEnabled = False
-            self.gui.gui.lvButton.setText("enable LV")
-            self.bLvGreen = False
-            lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);"            
-            # Disable biasButton while lv disabled
-            self.gui.gui.biasButton.setEnabled(False)
+            # Attempt to update pcf8574 device
+            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+                # LV switched OFF
+                self.gui.gui.lvButton.setText("enable LV")
+                self.bLvGreen = False
+                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);"            
+                # Disable biasButton while lv disabled
+                self.gui.gui.biasButton.setEnabled(False)
+            else:
+                print "lvButtonAction: FAILED to switch on LV!"
+                self.bLvEnabled = True
         else:
             self.bLvEnabled = True      # lv is disabled, now Enabling...
-            self.gui.gui.lvButton.setText("disable LV")
-            self.bLvGreen = True
-            lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(0, 255, 0);"
-            # Enable biasButton only after lv successfully enabled
-            self.gui.gui.biasButton.setEnabled(True)
+            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+                # LV switched ON 
+                self.gui.gui.lvButton.setText("disable LV")
+                self.bLvGreen = True
+                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(0, 255, 0);"
+                # Enable biasButton only after lv successfully enabled
+                self.gui.gui.biasButton.setEnabled(True)
+            else:
+                print "lvButtonAction: FAILED to switch off LV!"
+                self.bLvEnabled = False
+                #
         
         # Signal to main thread to update Gui component
         self.queue.put(lowVoltageStatus)
+
+    def updatePcf8574Device(self, bEnableLvSetting, bEnableBiasSetting):
+        """ Set pcf8574 device according to bEnableLvSetting (True = on, False = off)
+            by writing to dev and reading back to confirm.
+            bitShift Value: 4 = Bias, 5 = lv """
+        if compareTypes(bEnableLvSetting) is not 4:
+            raise WrongVariableType, "updatePcf8574Device() bEnableLvSetting not a boolean argument!"
+        if compareTypes(bEnableBiasSetting) is not 4:
+            raise WrongVariableType, "updatedPcf8574Device() bEnableBiasSetting is not a boolean argument!"
+
+        # set bitMask for lv (16) and bias (32)
+        bitMask = 0
+        if bEnableLvSetting:
+            bitMask = 32
+        if bEnableBiasSetting:
+            bitMask = bitMask + 16
         
+        ''' ALL OTHER BITS ARE INPUTS, THEREFORE THEY SHOULD BE ALL 1's ! '''
+        # ie 1xx1111    (xx = lv and bias)
+        newPcfVal = bitMask + 79
+        # Write new value to pcf dev
+        self.writePcf8574(newPcfVal)
+        # Read value back to confirm setting changed
+        newVal = self.readpcf8574()
+        # Compare value read back (newVal) against bitMask, Because
+        #     the other 5 bits of newPcfVal are inputs and change because of external factors 
+        if (bitMask & newVal) is bitMask:
+            # TODO: Comment out when function proven to work:
+            print "updatePcf8574Device ok, set: ", bitMask, " read-back: ", newVal
+        else:
+            print "updatePcf8574Device: Failed to apply settings: ", bEnableLvSetting, bEnableBiasSetting, newPcfVal, newVal
+            raise Exception, "updatePcf8574Device: Couldn't udpate pcf8574 device!"
+        return True
+
+    def writePcf8574(self, sReg=None):
+        """ Write a new value to pcf8574 device """
+        if sReg is None:
+            raise ArgumentTypeNoneError, "writePcf8574() sReg not specified"
+        # Suitable sReg?
+        if not (0 <= int(sReg) <= 256):
+            raise OutOfRangeError, "writePcf8574() sReg argument out of range"
+        # Was sVal specified?
+        wrString = "w 35 " + str(sReg) + " @"
+        self.sCom.write(wrString)    
+
+
+    
     def biasButtonAction(self):
         """ Execute each time biasButton is pressed """
         # If bBiasEnabled True, make False and turn associated LED red        
         if self.bBiasEnabled is True:   # bias is enabled, now Disabling...
             self.bBiasEnabled = False
-            self.gui.gui.biasButton.setText("enable Bias")
-            self.bBiasGreen = False
-            biasStatus = "frmBiasStatus=\nbackground-color: rgb(255, 0, 0);"
-            # Disable Polling checkbox while bias is disabled
-            self.gui.gui.cbPollingBox.setEnabled(False)
-            # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
-            self.gui.gui.lvButton.setEnabled(True)
-            self.gui.gui.leBiasLevel.setEnabled(True)
+            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+                self.gui.gui.biasButton.setText("enable Bias")
+                self.bBiasGreen = False
+                biasStatus = "frmBiasStatus=\nbackground-color: rgb(255, 0, 0);"
+                # Disable Polling checkbox while bias is disabled
+                self.gui.gui.cbPollingBox.setEnabled(False)
+                # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
+                self.gui.gui.lvButton.setEnabled(True)
+                self.gui.gui.leBiasLevel.setEnabled(True)
+            else:
+                print "biasButtonAction: failed to switch off Bias!"
+                self.bBiasEnabled = True
 #            self.queue.put(biasStatus)
         else:
             self.bBiasEnabled = True    # bias is disabled, now Enabling...
-            self.gui.gui.biasButton.setText("disable Bias")
-            self.bBiasGreen = True
-            biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
-            # Enable file selection only after bias successfully enabled
-            self.gui.gui.selectButton.setEnabled(True)
-            self.gui.gui.leSelectLogFileLocation.setEnabled(True)
-            self.gui.gui.cbPollingBox.setEnabled(True)
-            # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
-            self.gui.gui.lvButton.setEnabled(False)
-            self.gui.gui.leBiasLevel.setEnabled(False)
+            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+                self.gui.gui.biasButton.setText("disable Bias")
+                self.bBiasGreen = True
+                biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
+                # Enable file selection only after bias successfully enabled
+                self.gui.gui.selectButton.setEnabled(True)
+                self.gui.gui.leSelectLogFileLocation.setEnabled(True)
+                self.gui.gui.cbPollingBox.setEnabled(True)
+                # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
+                self.gui.gui.lvButton.setEnabled(False)
+                self.gui.gui.leBiasLevel.setEnabled(False)
+                
+                # Write bias level value to AD5301 device 
+                # TODO: Grab bias level from leBiasLevel component, e.g.: 
+                biasValue = int( self.gui.gui.leBiasLevel.text() )
+                # Scale into 0-4095 adcCounts, 0-200V scale:
+                adcValue = (biasValue * 819) / 40
+                print "Gui bias level = ", biasValue, " adcValue = ", adcValue
+                
+                """ breakdown adcValue into 2 8 bit words !! """
+                self.sCom.write("r 12 " + str(adcValue) + " @")
+                # Read value back
+                self.write
+            else:
+                print "biasButtonAction: Failed to switch on Bias!"
+                self.bBiasEnabled = False
 
-            # TODO: Grab bias level from leBiasLevel component, e.g.: 
-            #biasString = self.gui.gui.leBiasLevel.text()
-            #self.sCom.write( str(biasString) )
         # Signal to main thread to update Gui component
         self.queue.put(biasStatus)
 
@@ -473,11 +560,19 @@ class ExcaliburPowerGui:
                 ''' Found the selected COM port, open port cNo '''
                 # Open serial port only if not already open!
                 if self.sCom is False:
+                    # Display progress bar while initialising serial connection.. 
+                    if self.bManual is True:
+                        # Call function to create status bar
+                        self.createStatusBar("Initialising ...")
+                        # Show progress bar and animate it
+                        self.gui.progressBar.show()
+                        self.gui.progressBar.setRange(0, 0)
                     try:
+
                         self.sCom = serial.Serial(port=cNo, baudrate = 57600, timeout = 1)
                         # If port successfully open, enable bias level control & lvButton
                         self.gui.gui.leBiasLevel.setEnabled(True)
-                        self.gui.gui.lvButton.setEnabled(True)
+#                        self.gui.gui.lvButton.setEnabled(True)    ''' Keep disabled until initialisation finished! '''
                     except:
                         ''' In practice, this will rarely fail unless selected port already in use '''
                         self.displayErrorMessage("Unable to open COM port: ", cNo)
@@ -629,7 +724,8 @@ class ExcaliburPowerGui:
         """ Compare val to minimum (minVal), maximum (maxVal) and warning (warn) thresholds
             and return integer accordingly (0 = Green, 1 = Amber, 2 = Red) """
         # Check 1st argument is float and other arguments are integers only
-        if ( compareTypes(val) is not 2):
+#        if ( compareTypes(val) is not 2):
+        if ( compareTypes(val) is not 1):
             raise BadArgumentError, "compareThresholds() error: Received unexpected val argument type"
         elif compareTypes(minVal) is not 1:
             raise BadArgumentError, "compareThresholds() error: Received unexpected minVal argument type"
@@ -828,11 +924,19 @@ class ExcaliburPowerGui:
     def readpcf8574(self):
         """ Read pcf8574 u3 device """
         # pcf8574 I2C address is 32 (or 64 ?)
-        self.sCom.write("w 32 1 @")
+        self.sCom.write("r 35 1 @")
         # Read reply
         rxString = self.readSerialInterface()
-        rxVal = int(rxString)
-
+        try:
+            rxVal = int(rxString)
+        except:
+            self.displayErrorMessage("readpcf8574(), Serial Error: ")
+        return rxVal
+    
+    def updatePcf8574GuiComponents(self, pcfVal):
+        """ Takes the value read from the pcf8574 and updates the seven
+            Gui components that relate to it """
+        rxVal = int(pcfVal)
         # P0 - Coolant_Temp_Status
         if rxVal & 1 is 1:
             # Coolant_Temp_Status's fine
@@ -1019,20 +1123,31 @@ class ExcaliburPowerGui:
                 self.bAirTempGreen = False
 
     def initialiseCommunication(self):
-        # pca9538
-        self.sCom.write("w 113 0 @")    # Configure I2C expander, access register 0 (I/O pins)
-        # lm92
-        self.writelm92(0)
-#        self.sCom.write("w 75 0 @")     # Select temperature register in lm92
-        # tml275
-        self.sCom.write("w 79 1 96 @")  # Initialise tmp275 device
-        self.sCom.write("w 79 0 @")     # Select temperature register
+#        # pca9538
+#        self.sCom.write("w 113 0 @")    # Configure I2C expander, access register 0 (I/O pins)
+#        # lm92
+#        self.writelm92(0)
+#        # tml275
+#        self.sCom.write("w 79 1 96 @")  # Initialise tmp275 device
+#        self.sCom.write("w 79 0 @")     # Select temperature register
+        # Initialise pcf8574's outputs to zero
+        self.writePcf8574(79)
         # Configure ad7998 device
-        self.sCom.write("w 35 2 0 16 @")    # Config Reg (2): Enable Channel 1 (0 16)
-        self.sCom.write("w 35 112 @")       # Set command bits in reg (mode 2 - command mode selected)
-        self.sCom.write("w 35 3 1 @")       # Set Cycle Timer Register
-        self.sCom.write("w 35 0 @")         # Point at Conversion Result Register
+        self.initialiseAd7998(34)           # Initiliase ad7998 Unit14
+        self.initialiseAd7998(32)           # Initiliase ad7998 Unit15
+        self.initialiseAd7998(33)           # Initiliase ad7998 Unit16
 
+#        self.sCom.write("w 34 2 0 16 @")    # Config Reg (2): Enable Channel 1 (0 16)
+#        self.sCom.write("w 34 112 @")       # Set command bits in reg (mode 2 - command mode selected)
+#        self.sCom.write("w 34 3 1 @")       # Set Cycle Timer Register
+#        self.sCom.write("w 34 0 @")         # Point at Conversion Result Register
+
+    def initialiseAd7998(self, i2caddress):
+        self.sCom.write("w " + str(i2caddress) + " 2 0 16 @")    # Config Reg (2): Enable Channel 1 (0 16)
+        self.sCom.write("w " + str(i2caddress) + " 112 @")       # Set command bits in reg (mode 2 - command mode selected)
+        self.sCom.write("w " + str(i2caddress) + " 3 1 @")       # Set Cycle Timer Register
+        self.sCom.write("w " + str(i2caddress) + " 0 @")         # Point at Conversion Result Register
+        
 #------------------------------##------------------------------#
 
     def readAd7998(self, address = 0):
@@ -1113,7 +1228,30 @@ class ExcaliburPowerGui:
         # Check humidityValue 0-4095
         if not (0 <= humidityValue <= 4095):
             raise OutOfRangeError, "scale200V() humidityValue outside 0-4095 range!"
-        return (humidityValue * (40 / 819.0))
+        # Remove 785 adc count (0.958V) offset
+        humidityValue = humidityValue - 785
+        # Convert into % scale
+        humidityValue = (humidityValue / 25)
+        
+        # Compare humidity against thresholds and update humidity LED accordingly
+        thresholdAnswer = self.compareThresholds(humidityValue, self.humidityMin, self.humidityMax, self.humidityWarn)
+        if thresholdAnswer is 0:
+            self.updateHumidityLed(thresholdAnswer) #Green
+        elif thresholdAnswer is 1:
+            self.updateHumidityLed(thresholdAnswer) #Amber
+        elif thresholdAnswer is 2:
+            self.updateHumidityLed(thresholdAnswer) #Red
+        else:
+            self.displayErrorMessage("lm92ToDegrees() error: minimum exceeded maximum!")
+            return None        
+        return humidityValue
+    
+    def scaleTemperature(self, tempValue):
+        """ Scale ad7998's range of ADC count into temperature degrees celsius """
+        if not (0 <= tempValue <= 4095):
+            raise OutOfRangeError, "scaleTemperature() tempValue outside 0-4095 range!"
+        return (tempValue / 82)
+        
 
     def readAd7998_Unit14(self, ch8to5, ch4to1):
         """ Select ad7998's channel(s) according to arguments,
@@ -1133,13 +1271,16 @@ class ExcaliburPowerGui:
         # Unit testing only: return True if argument testing successful
         if self.bTest is True:
             return True
-        sCmd = "w 35 2 " + str(ch8to5) + " " + str(ch4to1) + " @"
+        i2cAddress = 34
+        sCmd = "w " + str(i2cAddress) + " 2 " + str(ch8to5) + " " + str(ch4to1) + " @"
         try:
             self.sCom.write(sCmd)
             # Select conversion register
-            self.sCom.write("w 35 0 @")
-            # Read enabled channel at address 35
-            adcChannel, rxInt = self.readAd7998(35)
+            sCmd = "w " + str(i2cAddress) + " 0 @"
+            self.sCom.write(sCmd)
+            # Read enabled channel at address 34
+            adcChannel, rxInt = self.readAd7998(i2cAddress)
+            print adcChannel, rxInt
         except:
             self.displayErrorMessage("readAd7998_Unit14(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
@@ -1195,7 +1336,7 @@ class ExcaliburPowerGui:
         # Unit testing only: return True if argument testing successful
         if self.bTest is True:
             return True
-        i2cAddress = 0
+        i2cAddress = 32
         sCmd = "w " + str(i2cAddress) + " 2 " + str(ch8to5) + " " + str(ch4to1) + " @"
         try:
             self.sCom.write(sCmd)
@@ -1208,28 +1349,33 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit15(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le48VV=%s" % str( self.scale48V(rxInt) ))            # U15, pin 7
+#            try:    self.queue.put("le48VV=%s" % str( self.scale48V(rxInt) ))            # U15, pin 7
+            try:    self.queue.put("le48VV=%s" % str( (rxInt) ))            # U15, pin 7
             except: self.displayErrorMessage("U15 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le48VA=%s" % str( self.scale48V(rxInt) ))            # U15, pin 14
+#            try:    self.queue.put("le48VA=%s" % str( self.scale48V(rxInt) ))            # U15, pin 14
+            try:    self.queue.put("le48VA=%s" % str( (rxInt) ))            # U15, pin 14
             except: self.displayErrorMessage("U15 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le5SUPERVV=%s" % str( self.scale5V(rxInt) ))        # U15, pin 8
+#            try:    self.queue.put("le5SUPERVV=%s" % str( self.scale5V(rxInt) ))        # U15, pin 8
+            try:    self.queue.put("le5SUPERVV=%s" % str( (rxInt) ))        # U15, pin 8
             except: self.displayErrorMessage("U15 adc2, Error updating GUI: ")
         def three():
-            try:    self.queue.put("le5SUPERVA=%s" % str( self.scale5V(rxInt) ))        # U15, pin 13
+#            try:    self.queue.put("le5SUPERVA=%s" % str( self.scale5V(rxInt) ))        # U15, pin 13
+            try:    self.queue.put("le5SUPERVA=%s" % str( (rxInt) ))        # U15, pin 13
             except: self.displayErrorMessage("U15 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("leHum_mon=%s" % str( self.scale5V(rxInt) ))         # U15, pin 9
+            try:    self.queue.put("leHum_mon=%s" % str( self.scaleHumidity(rxInt) ))   # U15, pin 9
             except: self.displayErrorMessage("U15 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("leAirtmp_mon=%s" % str( self.scale5V(rxInt) ))      # U15, pin 12 
+            try:    self.queue.put("leAirtmp_mon=%s" % str( self.scaleTemperature(rxInt) ))      # U15, pin 12 
             except: self.displayErrorMessage("U15 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("leCoolant_temp_mon=%s" % str( self.scale5V(rxInt) ))    # U15, pin 10
+#            try:    self.queue.put("leCoolant_temp_mon=%s" % str( self.scale5V(rxInt) ))    # U15, pin 10
+            try:    self.queue.put("leCoolant_stat=%s" % str( (rxInt) ))    # U15, pin 10
             except: self.displayErrorMessage("U15 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("leCoolant_flow_mon=%s" % str( self.scale5V(rxInt) ))    # U15, pin 11
+            try:    self.queue.put("leCoolant_flow_mon=%s" % str( (rxInt) ))    # U15, pin 11
             except: self.displayErrorMessage("U15 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
@@ -1259,7 +1405,7 @@ class ExcaliburPowerGui:
         # Unit testing only: return True if argument testing successful
         if self.bTest is True:
             return True
-        i2cAddress = 0        
+        i2cAddress = 33
         sCmd = "w " + str(i2cAddress) + " 2 " + str(ch8to5) + " " + str(ch4to1) + " @"
         try:
             self.sCom.write(sCmd)
@@ -1311,19 +1457,28 @@ class ExcaliburPowerGui:
             (when in polling mode)
         """
         try:
-            self.readlm92()          # Read lm92's current temperature
-            self.readtmp()           # Read tmp275's current temperature
-            self.readpca9538()       # Read pca9538's current value
+#            self.readlm92()          # Read lm92's current temperature
+#            self.readtmp()           # Read tmp275's current temperature
+#            self.readpca9538()       # Read pca9538's current value
 
-            self.readAd7998_Unit14(0, 16)  # Read ad7998 Ch 1
-            self.readAd7998_Unit14(0, 32)  # Read ad7998 Ch 2
-            self.readAd7998_Unit14(0, 64)  # Read ad7998 Ch 3
-            self.readAd7998_Unit14(0, 128) # Read ad7998 Ch 4
+#            self.readAd7998_Unit14(0, 16)  # Read ad7998 Ch 1
+#            self.readAd7998_Unit14(0, 32)  # Read ad7998 Ch 2
+#            self.readAd7998_Unit14(0, 64)  # Read ad7998 Ch 3
+#            self.readAd7998_Unit14(0, 128) # Read ad7998 Ch 4
+#
+#            self.readAd7998_Unit14(1, 0)  # Read ad7998 Ch 5
+#            self.readAd7998_Unit14(2, 0)  # Read ad7998 Ch 6
+#            self.readAd7998_Unit14(4, 0)  # Read ad7998 Ch 7
+#            self.readAd7998_Unit14(8, 0)  # Read ad7998 Ch 8
+            self.readAd7998_Unit15(0, 16)  # Read ad7998 Ch 1
+            self.readAd7998_Unit15(0, 32)  # Read ad7998 Ch 2
+            self.readAd7998_Unit15(0, 64)  # Read ad7998 Ch 3
+            self.readAd7998_Unit15(0, 128) # Read ad7998 Ch 4
 
-            self.readAd7998_Unit14(1, 0)  # Read ad7998 Ch 5
-            self.readAd7998_Unit14(2, 0)  # Read ad7998 Ch 6
-            self.readAd7998_Unit14(4, 0)  # Read ad7998 Ch 7
-            self.readAd7998_Unit14(8, 0)  # Read ad7998 Ch 8
+            self.readAd7998_Unit15(1, 0)  # Read ad7998 Ch 5
+            self.readAd7998_Unit15(2, 0)  # Read ad7998 Ch 6
+            self.readAd7998_Unit15(4, 0)  # Read ad7998 Ch 7
+            self.readAd7998_Unit15(8, 0)  # Read ad7998 Ch 8
         except:
             self.displayErrorMessage("")
         # Gui now completely populated, allow logging to proceed
