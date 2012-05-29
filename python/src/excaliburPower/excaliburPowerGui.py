@@ -490,6 +490,9 @@ class ExcaliburPowerGui:
         """ Write a new value to pcf8574 device """
         if sReg is None:
             raise ArgumentTypeNoneError, "writePcf8574() sReg not specified"
+        if compareTypes(sReg) is not 1:
+            raise WrongVariableType, "updatePcf8574Device() bEnableLvSetting not a boolean argument!"
+
         # Suitable sReg?
         if not (0 <= int(sReg) <= 256):
             raise OutOfRangeError, "writePcf8574() sReg argument out of range"
@@ -513,7 +516,7 @@ class ExcaliburPowerGui:
                 # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
                 self.gui.gui.lvButton.setEnabled(True)
                 self.gui.gui.leBiasLevel.setEnabled(True)
-                print "biasButtonAction() switched OFF, biasStatus: ", biasStatus
+                print "biasButtonAction() switched OFF"
             else:
                 print "biasButtonAction: failed to switch off Bias!"
                 self.bBiasEnabled = True
@@ -950,35 +953,35 @@ class ExcaliburPowerGui:
             return None
         print "Received Ad7998 value: ", rxString
 
-    def writelm92(self, sReg, sVal=None):
-        """ Write to lm92 selecting register and optionally
-            its new value. E.g. Select high temp register:
-            writelm92(5)
-            Change Critical temp register to 81C:
-            writelm92(3, 81)
-            Note!   Valid register (sReg) range: 0-7
-            Note2!  Current (untested) function only supports
-                    positive temperatures: 0-150C
-        """
-        if sReg is None:
-            raise ArgumentTypeNoneError, "writelm92() sReg not specified"
-        # Suitable sReg?
-        if not (0 <= int(sReg) <= 7):
-            raise OutOfRangeError, "writelm92() sReg argument out of range"
-        # Check sVal suitable, provided it's not None
-        if sVal is not None:
-            if not (0 <= sVal <= 150):
-                raise OutOfRangeError, "writelm92() sVal argument out of range"
-        # Was sVal specified?
-        if sVal is not None:
-            # Change sVal into lm92's 13 bit format:
-            sVal =  self.degreesToLm92(sVal)
-            # Construct lm92 write command specifying register and value
-            wrString = "w 75 " + str(sReg) + " " + str(sVal) + " @"
-        else:
-            # Construct lm92 write command with only register
-            wrString = "w 75 " + str(sReg) + " @"            
-        self.sCom.write(wrString)        
+#    def writelm92(self, sReg, sVal=None):
+#        """ Write to lm92 selecting register and optionally
+#            its new value. E.g. Select high temp register:
+#            writelm92(5)
+#            Change Critical temp register to 81C:
+#            writelm92(3, 81)
+#            Note!   Valid register (sReg) range: 0-7
+#            Note2!  Current (untested) function only supports
+#                    positive temperatures: 0-150C
+#        """
+#        if sReg is None:
+#            raise ArgumentTypeNoneError, "writelm92() sReg not specified"
+#        # Suitable sReg?
+#        if not (0 <= int(sReg) <= 7):
+#            raise OutOfRangeError, "writelm92() sReg argument out of range"
+#        # Check sVal suitable, provided it's not None
+#        if sVal is not None:
+#            if not (0 <= sVal <= 150):
+#                raise OutOfRangeError, "writelm92() sVal argument out of range"
+#        # Was sVal specified?
+#        if sVal is not None:
+#            # Change sVal into lm92's 13 bit format:
+#            sVal =  self.degreesToLm92(sVal)
+#            # Construct lm92 write command specifying register and value
+#            wrString = "w 75 " + str(sReg) + " " + str(sVal) + " @"
+#        else:
+#            # Construct lm92 write command with only register
+#            wrString = "w 75 " + str(sReg) + " @"            
+#        self.sCom.write(wrString)        
 
     def readpcf8574(self):
         """ Read pcf8574 u3 device """
@@ -1122,6 +1125,9 @@ class ExcaliburPowerGui:
         # I2C address: 12
         if decimalBinaryCode is None:
             raise ArgumentTypeNoneError, "writead5301_u12() decimalBinaryCode not specified"
+        if compareTypes(decimalBinaryCode) is not 1:
+            raise BadArgumentError, "writead5301_u12() Error: argument not integer!"            
+
         # Suitable decimalBinaryCode?
         if not (0 <= int(decimalBinaryCode) <= 256):
             raise OutOfRangeError, "writead5301_u12() decimalBinaryCode argument out of range"
@@ -1254,7 +1260,8 @@ class ExcaliburPowerGui:
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale3_3V() adcValue outside 0-4095 range!"
-        return (adcValue *(11 / 13650.0))        
+        return (adcValue * 0.0012207)       # = (adcValue * 5)/4096 
+#        return (adcValue *(11 / 13650.0))        
 
     def scale1_8V(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-1.8Volts """
@@ -1274,23 +1281,35 @@ class ExcaliburPowerGui:
             raise OutOfRangeError, "scale48V() adcValue outside 0-4095 range!"
         return (adcValue * (16 / 1365.0))
     
-    def scale200V(self, adcValue):
+    def scale200V_CurrentlyConversion(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-200Volts """
         # Ensure adcValue is integer
         adcValue=int(adcValue)
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
-            raise OutOfRangeError, "scale200V() adcValue outside 0-4095 range!"
+            raise OutOfRangeError, "scale200V_CurrentlyConversion() adcValue outside 0-4095 range!"
         return (adcValue * (40 / 819.0))
 
+    def scale200VoltageConversion(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-200Volts """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale200VoltageConversion() adcValue outside 0-4095 range!"
+        return (adcValue * (0.061035))
+    
     def scaleHumidity(self, humidityValue):
         """ Scale ad7998's range of ADC count: 0-4095 
-            Note that scale is 31mv/% according to SB's circuit diagram """
+            Note that scale is 31mv/% according to SB's circuit diagram 
+            NOTE: 785 adc count off set, hence reject humidityValue < 785"""
+        if compareTypes(humidityValue) is not 1:
+            raise BadArgumentError, "scaleHumidity() Error: argument not string!"            
         # Ensure humidityValue is integer
         humidityValue=int(humidityValue)
         # Check humidityValue 0-4095
-        if not (0 <= humidityValue <= 4095):
-            raise OutOfRangeError, "scale200V() humidityValue outside 0-4095 range!"
+        if not (785 <= humidityValue <= 4095):
+            raise OutOfRangeError, "scaleHumidity() humidityValue outside 0-4095 range!"
         # Remove 785 adc count (0.958V) offset
         humidityValue = humidityValue - 785
         # Convert into % scale
@@ -1487,7 +1506,7 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le18VAA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 14
             except: self.displayErrorMessage("U16 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le200VA=%s" % str( self.scale200V(rxInt) ))        # U16, pin 8
+            try:    self.queue.put("le200VA=%s" % str( self.scale200V_CurrentlyConversion(rxInt) ))        # U16, pin 8
             except: self.displayErrorMessage("U16 adc2, Error updating GUI: ")
         def three():
             try:    self.queue.put("le33VV=%s" % str( self.scale3_3V(rxInt) ))        # U16, pin 13
@@ -1496,7 +1515,7 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le18VVA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 9
             except: self.displayErrorMessage("U16 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("le200VV=%s" % str( self.scale200V(rxInt) ))        # U16, pin 12 
+            try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12 
             except: self.displayErrorMessage("U16 adc5, Error updating GUI: ")
         def six():
             try:    self.queue.put("le18VAB=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 10
@@ -1542,6 +1561,8 @@ class ExcaliburPowerGui:
             self.readAd7998_Unit15(2, 0)  # Read ad7998 Ch 6
             self.readAd7998_Unit15(4, 0)  # Read ad7998 Ch 7
             self.readAd7998_Unit15(8, 0)  # Read ad7998 Ch 8
+            
+            self.readAd7998_Unit16(2, 0)  # Read ad7998 Ch 6
         except:
             self.displayErrorMessage("")
         # Gui now completely populated, allow logging to proceed
