@@ -468,17 +468,23 @@ class ExcaliburPowerGui:
         newPcfVal = bitMask + 79
         # Write new value to pcf dev
         self.writePcf8574(newPcfVal)
-        # Read value back to confirm setting changed
-        newVal = self.readpcf8574()
-        # Compare value read back (newVal) against bitMask, Because
-        #     the other 5 bits of newPcfVal are inputs and change because of external factors 
-        if (bitMask & newVal) is bitMask:
-            # TODO: Comment out when function proven to work:
-            print "updatePcf8574Device ok, set: ", bitMask, " read-back: ", newVal
-        else:
-            print "updatePcf8574Device: Failed to apply settings: ", bEnableLvSetting, bEnableBiasSetting, newPcfVal, newVal
-            raise Exception, "updatePcf8574Device: Couldn't udpate pcf8574 device!"
-        return True
+        try:
+            # Read value back to confirm setting changed
+            newVal = self.readpcf8574()
+            # Compare value read back (newVal) against bitMask, Because
+            #     the other 5 bits of newPcfVal are inputs and change because of external factors 
+            if (bitMask & newVal) is bitMask:
+                # TODO: Comment out when function proven to work:
+                #print "updatePcf8574Device ok, set: ", bitMask, " read-back: ", newVal
+                pass
+            else:
+                print "updatePcf8574Device: Failed to apply settings: ", bEnableLvSetting, bEnableBiasSetting, newPcfVal, newVal
+                self.displayWarningMessage("updatePcf8574Device: Read-back value didn't match requested change!")
+                return False
+            return True
+        except:
+            self.displayErrorMessage("updatePcf8574Device: Couldn't update pcf8574 device!")
+            #updatePcf8574Device
 
     def writePcf8574(self, sReg=None):
         """ Write a new value to pcf8574 device """
@@ -507,41 +513,95 @@ class ExcaliburPowerGui:
                 # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
                 self.gui.gui.lvButton.setEnabled(True)
                 self.gui.gui.leBiasLevel.setEnabled(True)
+                print "biasButtonAction() switched OFF, biasStatus: ", biasStatus
             else:
                 print "biasButtonAction: failed to switch off Bias!"
                 self.bBiasEnabled = True
 #            self.queue.put(biasStatus)
         else:
-            self.bBiasEnabled = True    # bias is disabled, now Enabling...
-            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-                self.gui.gui.biasButton.setText("disable Bias")
-                self.bBiasGreen = True
-                biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
-                # Enable file selection only after bias successfully enabled
-                self.gui.gui.selectButton.setEnabled(True)
-                self.gui.gui.leSelectLogFileLocation.setEnabled(True)
-                self.gui.gui.cbPollingBox.setEnabled(True)
-                # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
-                self.gui.gui.lvButton.setEnabled(False)
-                self.gui.gui.leBiasLevel.setEnabled(False)
-                
-                # Write bias level value to AD5301 device 
-                # TODO: Grab bias level from leBiasLevel component, e.g.: 
-                biasValue = int( self.gui.gui.leBiasLevel.text() )
-                # Scale into 0-4095 adcCounts, 0-200V scale:
-                adcValue = (biasValue * 819) / 40
-                print "Gui bias level = ", biasValue, " adcValue = ", adcValue
-                
-                """ breakdown adcValue into 2 8 bit words !! """
-                self.sCom.write("r 12 " + str(adcValue) + " @")
+            # bias was disabled; Going to enable it now..
+            # Obtain bias Level from Gui..  
+            biasValue = int( self.gui.gui.leBiasLevel.text() )
+            # Check biasValue within valid range
+            if (0 <= biasValue <= 200):
+                # biasValue within valid 0-200V range
+                print "biasButtonAction() read biasValue: ", biasValue
+                # Scale 0-200V range into 0-255 ADC range 
+                #    (just submit value in range 0-200)
+                biasString = self.biasLevelToAd5301Conversion(biasValue)
+                # send string
+                self.sCom.write(biasString)
                 # Read value back
-                self.write
+                rxString = self.readad5301_u12()
+                print "biasButtonAction() read back ad5301: ", rxString
+                    
+                self.bBiasEnabled = True    # bias is disabled, now Enabling...
+                # Attempt to switch on bias enable
+                if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+                    # Successfully enabled Bias; update related Gui components..
+                    self.gui.gui.biasButton.setText("disable Bias")
+                    self.bBiasGreen = True
+                    biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
+                    # Enable file selection only after bias successfully enabled
+                    self.gui.gui.selectButton.setEnabled(True)
+                    self.gui.gui.leSelectLogFileLocation.setEnabled(True)
+                    self.gui.gui.cbPollingBox.setEnabled(True)
+                    # Disable lvButton & biasLevel until bias disabled again 
+                    # to prevent disabling lv and/or changing biasLevel while bias enabled)
+                    self.gui.gui.lvButton.setEnabled(False)
+                    self.gui.gui.leBiasLevel.setEnabled(False)
+                    # Read back pcf8574 device
+                    rxString = self.readpcf8574()
+                    print "biasButtonAction() switched ON, then read back: ", rxString
+                else:
+                    # Failed to enable Bias in Pcf8574 device
+                    print "biasButtonAction: Failed to switch ON bias!"
+                    self.bBiasEnabled = False    # bias remained disabled
             else:
-                print "biasButtonAction: Failed to switch on Bias!"
-                self.bBiasEnabled = False
+                # Specified biasValue outside valid range
+                warningString = "Specified bias level outside valid 0-200V range!"
+                self.displayWarningMessage(warningString)
 
         # Signal to main thread to update Gui component
         self.queue.put(biasStatus)
+
+    def biasLevelToAd5301Conversion(self, biasLevel):
+        """ Convert integer biasLevel (0-200V) into format accepted by ad5301 device
+            where the 16 bits where bits represent: 
+                0 - 3:     Don't Care
+                4 - 11:    data bits 0 - 7
+                12, 13:    PD0,PD1 = Power Down bits
+                14, 15:    Don't Care
+        """
+        # Check biasLevel argument not negative
+        if biasLevel < 0:
+            raise OutOfRangeError, "biasLevelToAd5301Conversion() recevied negative argument!"
+#        if not (4 <= lm92Temp <= 19200):
+#            raise OutOfRangeError, "lm92 format valid range: 4 <= n <= 19200"
+
+        # Convert bias level range 0 - 200V into adcCount range 0 - 255
+        adcValue = (biasLevel * 255) / 200
+#        # Because 4 LSB not used, bitshift by 4
+#        ad5301Value = adcValue << 4
+#        # Discard 4 MSB (2 MSB: Don't care, 2 remaining are PD, so mask out too)
+#        ad5301Value = ad5301Value & 4080    # 4080 = 0ff0
+        # Break into 2 byte words if ad5301Value > 255
+#        if ad5301Value > 255:
+        if adcValue > 15:
+            # MSB byte = 4 MSB bits of adcValue
+            msbHalf = (adcValue >> 4)           # 8 MSB bits
+            # LSB byte = 4 LSB bits of adcValue but shifted 4 places so 4 LSB bit are 0000
+            lsbHalf = ( (adcValue & 15) << 4)
+            # Construct i2c string to transmit
+            txString = "w 12 " + str(msbHalf) + " " + str(lsbHalf) + " @"
+        else:
+            # ad5301Value fits into 1 byte
+            ad5301Value = (adcValue << 4)
+            txString = "w 12 " + str(ad5301Value) + " @"
+#        print "biasLevelToAd5301Conversion() constructed string: \"" + txString + "\""
+        return txString
+
+
 
     def lwSerialPortChosen(self):
         """ Called when an item is clicked inside the lwSerialPort
@@ -568,7 +628,6 @@ class ExcaliburPowerGui:
                         self.gui.progressBar.show()
                         self.gui.progressBar.setRange(0, 0)
                     try:
-
                         self.sCom = serial.Serial(port=cNo, baudrate = 57600, timeout = 1)
                         # If port successfully open, enable bias level control & lvButton
                         self.gui.gui.leBiasLevel.setEnabled(True)
@@ -697,28 +756,28 @@ class ExcaliburPowerGui:
         
 #------------------------------#
     
-    def lm92ToDegrees(self, temp):
-        """ Convert lm92 13 bit format into degrees centigrade
-            valid range, arduino restriction: 0c - +150c
-            valid range, lm92 13 bit format: 4 - 19200         """
-        lm92Temp = int(temp)
-        # Valid range  4 =< temp =< 19200
-        if not (4 <= lm92Temp <= 19200):
-            raise OutOfRangeError, "lm92 format valid range: 4 <= n <= 19200"
-
-        lm92Value = (lm92Temp >>3)*0.0625
-
-        thresholdAnswer = self.compareThresholds(lm92Value, self.humidityMin, self.humidityMax, self.humidityWarn)
-        if thresholdAnswer is 0:
-            self.updateHumidityLed(thresholdAnswer) #Green
-        elif thresholdAnswer is 1:
-            self.updateHumidityLed(thresholdAnswer) #Amber
-        elif thresholdAnswer is 2:
-            self.updateHumidityLed(thresholdAnswer) #Red
-        else:
-            self.displayErrorMessage("lm92ToDegrees() error: minimum exceeded maximum!")
-            return None
-        return lm92Value
+#    def lm92ToDegrees(self, temp):
+#        """ Convert lm92 13 bit format into degrees centigrade
+#            valid range, arduino restriction: 0c - +150c
+#            valid range, lm92 13 bit format: 4 - 19200         """
+#        lm92Temp = int(temp)
+#        # Valid range  4 =< temp =< 19200
+#        if not (4 <= lm92Temp <= 19200):
+#            raise OutOfRangeError, "lm92 format valid range: 4 <= n <= 19200"
+#
+#        lm92Value = (lm92Temp >>3)*0.0625
+#
+#        thresholdAnswer = self.compareThresholds(lm92Value, self.humidityMin, self.humidityMax, self.humidityWarn)
+#        if thresholdAnswer is 0:
+#            self.updateHumidityLed(thresholdAnswer) #Green
+#        elif thresholdAnswer is 1:
+#            self.updateHumidityLed(thresholdAnswer) #Amber
+#        elif thresholdAnswer is 2:
+#            self.updateHumidityLed(thresholdAnswer) #Red
+#        else:
+#            self.displayErrorMessage("lm92ToDegrees() error: minimum exceeded maximum!")
+#            return None
+#        return lm92Value
         
     def compareThresholds(self, val, minVal, maxVal, warn):
         """ Compare val to minimum (minVal), maximum (maxVal) and warning (warn) thresholds
@@ -816,72 +875,72 @@ class ExcaliburPowerGui:
         self.queue.put(coolantTempStatus)
         return True
 
-    def degreesToLm92(self, temp):
-        """ Convert integer or float degrees to 13 bit temperature value """
-        if compareTypes(temp) is not 1 and compareTypes(temp) is not 2:
-            raise BadArgumentError, "degreesToLm92() argument not float or integer!"
-        tempTest = float(temp)
-        # Valid range ?
-        if not (0 <= tempTest <= 150):
-            raise OutOfRangeError, "lm92 temperature valid range: 0 <= n <= 150"
-
-        # Store temp's mantissa and fraction as separate integers
-        intMantissa= int(temp)
-        # Binary << 1, is equivalent to Decimal * 2. Hence Dec * 16 (2^4) = Bin << 4
-        intFraction = int( (temp - intMantissa)*16 )
-        # To convert temp into lm92 format, left shift 7 times
-        intMantissa = intMantissa << 7
-        intFraction = intFraction << 3          # Only 3 times, already left shifted 4 times
-        intTotal =intFraction + intMantissa
-        bLow = intTotal & 0xff                  # Extract low 8 bits of temperature
-        bHigh = (intTotal >> 8) & 0xff          # Extract high 8 bits of temperature
-        lm92String = (str(bHigh) + " " + str(bLow))
-        return lm92String       
-         
-    def tmpToDegrees(self, temp=0):
-        """ Convert tmp temperature format into degrees centigrade 
-            tmp275 range: -55c to +127c
-            Arduino range: 0c to +127c
-            tmp275 format: 8 <= n <= 32512
-        """
-        # Empty string received?
-        if temp is None:
-            return temp
-        temp = int(temp)
-        # Valid range?
-        if not(8 <= temp <= 32512):
-            raise OutOfRangeError, "tmp275 format valid range: 8 <= temp <= 32,512"
-        
-        # temp is valid, convert into degrees centigrade
-        temp = temp >> 4;           # 4 LSB bits unused
-        temp = float(temp * 0.0625) # 1 LSB = 0.0625C
-        
-        thresholdAnswer = self.compareThresholds(temp, self.humidityMin, self.humidityMax, self.humidityWarn)
-        if thresholdAnswer is 0:
-            self.updateAirTempLed(thresholdAnswer) #Green
-        elif thresholdAnswer is 1:
-            self.updateAirTempLed(thresholdAnswer) #Amber
-        elif thresholdAnswer is 2:
-            self.updateAirTempLed(thresholdAnswer) #Red
-        else:
-            self.displayErrorMessage("tmpToDegrees() error: minimum exceeded maximum!")
-            return None
-        return temp 
-
-    def readtmp(self):
-        """ Read temperature from tmp275 device """
-        self.sCom.write("r 79 2 @")
-        rxString = self.readSerialInterface()
-        if rxString is None:
-            self.displayErrorMessage("readtmp() No serial!")
-            return None
-        # Convert tmp275 format into degrees centigrade
-        rxString = self.tmpToDegrees(rxString)
-        rndString = round3Decimals(rxString)
-        msg = "leAirtmp_mon="
-        msg = msg + str(rndString)
-        self.queue.put(msg)
-        return rxString
+#    def degreesToLm92(self, temp):
+#        """ Convert integer or float degrees to 13 bit temperature value """
+#        if compareTypes(temp) is not 1 and compareTypes(temp) is not 2:
+#            raise BadArgumentError, "degreesToLm92() argument not float or integer!"
+#        tempTest = float(temp)
+#        # Valid range ?
+#        if not (0 <= tempTest <= 150):
+#            raise OutOfRangeError, "lm92 temperature valid range: 0 <= n <= 150"
+#
+#        # Store temp's mantissa and fraction as separate integers
+#        intMantissa= int(temp)
+#        # Binary << 1, is equivalent to Decimal * 2. Hence Dec * 16 (2^4) = Bin << 4
+#        intFraction = int( (temp - intMantissa)*16 )
+#        # To convert temp into lm92 format, left shift 7 times
+#        intMantissa = intMantissa << 7
+#        intFraction = intFraction << 3          # Only 3 times, already left shifted 4 times
+#        intTotal =intFraction + intMantissa
+#        bLow = intTotal & 0xff                  # Extract low 8 bits of temperature
+#        bHigh = (intTotal >> 8) & 0xff          # Extract high 8 bits of temperature
+#        lm92String = (str(bHigh) + " " + str(bLow))
+#        return lm92String       
+#         
+#    def tmpToDegrees(self, temp=0):
+#        """ Convert tmp temperature format into degrees centigrade 
+#            tmp275 range: -55c to +127c
+#            Arduino range: 0c to +127c
+#            tmp275 format: 8 <= n <= 32512
+#        """
+#        # Empty string received?
+#        if temp is None:
+#            return temp
+#        temp = int(temp)
+#        # Valid range?
+#        if not(8 <= temp <= 32512):
+#            raise OutOfRangeError, "tmp275 format valid range: 8 <= temp <= 32,512"
+#        
+#        # temp is valid, convert into degrees centigrade
+#        temp = temp >> 4;           # 4 LSB bits unused
+#        temp = float(temp * 0.0625) # 1 LSB = 0.0625C
+#        
+#        thresholdAnswer = self.compareThresholds(temp, self.humidityMin, self.humidityMax, self.humidityWarn)
+#        if thresholdAnswer is 0:
+#            self.updateAirTempLed(thresholdAnswer) #Green
+#        elif thresholdAnswer is 1:
+#            self.updateAirTempLed(thresholdAnswer) #Amber
+#        elif thresholdAnswer is 2:
+#            self.updateAirTempLed(thresholdAnswer) #Red
+#        else:
+#            self.displayErrorMessage("tmpToDegrees() error: minimum exceeded maximum!")
+#            return None
+#        return temp 
+#
+#    def readtmp(self):
+#        """ Read temperature from tmp275 device """
+#        self.sCom.write("r 79 2 @")
+#        rxString = self.readSerialInterface()
+#        if rxString is None:
+#            self.displayErrorMessage("readtmp() No serial!")
+#            return None
+#        # Convert tmp275 format into degrees centigrade
+#        rxString = self.tmpToDegrees(rxString)
+#        rndString = round3Decimals(rxString)
+#        msg = "leAirtmp_mon="
+#        msg = msg + str(rndString)
+#        self.queue.put(msg)
+#        return rxString
 
     def readvolt(self):
         self.sCom.write("r 35 2 @")
@@ -931,6 +990,7 @@ class ExcaliburPowerGui:
             rxVal = int(rxString)
         except:
             self.displayErrorMessage("readpcf8574(), Serial Error: ")
+#        print "readpcf8574() read: ", rxVal
         return rxVal
     
     def updatePcf8574GuiComponents(self, pcfVal):
@@ -1047,11 +1107,14 @@ class ExcaliburPowerGui:
         # I2C address: 000110+A0 where A0 = 0
         # hence address: 12
         self.sCom.write("r 12 1 @")
-        rxString = self.readSerialInterface()
-        if rxString is None:
-            self.displayErrorMessage("readad5301_u12() read None!")
-            return None
-        rxVal = int(rxString)
+        try:
+            rxString = self.readSerialInterface()
+            if rxString is None:
+                self.displayErrorMessage("readad5301_u12() read None!")
+                return None
+            rxVal = int(rxString)
+        except:
+            self.displayErrorMessage("readad5301(), Serial Error: ")
         return rxVal
     
     def writead5301_u12(self, decimalBinaryCode=None):
