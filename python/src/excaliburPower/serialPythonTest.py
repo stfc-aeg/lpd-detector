@@ -55,6 +55,7 @@ class logErrorBadInput(unittest.TestCase):
     def testArgumentBoolean(self):
         """  logError() should fail if msgError argument is boolean """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.logError, True)
+
 class KnownLogError(unittest.TestCase):
     knownError = ( ("Bad", True),
                    ("Error", True),)
@@ -66,154 +67,154 @@ class KnownLogError(unittest.TestCase):
             self.assertEqual(boolean, result)
         
 
-class KnownLm92ToDegrees(unittest.TestCase):
-    knownValues = ( (4, 0),         # temp_min = -55c, but arduino code starch from 0c
-                    (8, 0.0625),
-                    (16, 0.125),
-                    (32, 0.25),
-                    (64, 0.5),
-                    (128, 1),
-                    (196, 1.5),
-                    (256, 2),
-                    (384, 3),
-                    (512, 4),
-                    (1024, 8),
-                    (2048, 16),
-                    (4096, 32),
-                    (8192, 64),
-                    (9360, 73.125),
-                    (19200, 150),   # temp_max = +150c
-                    )
-
-    def testLm92ToDegrees(self):
-        """lm92ToDegrees() should turn lm92 13 bit format into degrees C"""
-        for lm92Degree, centiDegree in self.knownValues:
-            result = excaliburObj.lm92ToDegrees(lm92Degree)
-            self.assertEqual(centiDegree, result)
-
-
-class lm92ToDegreesBadInput(unittest.TestCase):
-    def testTooLarge(self):
-        """lm92ToDegrees should fail with large input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, 19201)
-        
-    def testTooSmall(self):
-        """lm92ToDegrees should fail with too small input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, 3)
-        
-    def testZero(self):
-        """lm92ToDegrees should fail with 0 input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, 0)
-
-    def testNegative(self):
-        """lm92ToDegrees should fail with negative input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, -1)
-        
-        
-class KnownDegreesToLm92(unittest.TestCase):
-    knownValues = ( (0, '0 0'),         # temp_min = -55c, but arduino code start from 0c
-                    (0.125, '0 16'),                    
-                    (0.75, '0 96'),
-                    (0.8125,'0 104'),
-                    (0.875, '0 112'),
-                    (0.9375, '0 120'),
-                    (1, '0 128'),
-                    (1.5, '0 192'),
-                    (3, '1 128'),
-                    (4, '2 0'),
-                    (5, '2 128'),
-                    (7, '3 128'),                    
-                    (9, '4 128'),
-                    (3.125, '1 144'),
-                    (6,'3 0'),
-                    (9.375, '4 176'),
-                    (10.0625, '5 8'),
-                    (12.5, '6 64'),
-                    (15.625, '7 208'),
-                    (18.75, '9 96'),                    
-                    (21.875, '10 240'),
-                    (25.0, '12 128'),
-                    (28.125, '14 16'),
-                    (30.1875, '15 24'),
-                    (31.25, '15 160'),
-                    (34.375, '17 48'),
-                    (40.25, '20 32'),
-                    (50.3125, '25 40'),
-                    (60.375, '30 48'),
-                    (66.4375, '33 56'),
-                    (90.5625, '45 72'),
-                    (100.625, '50 80'),
-                    (110.6875, '55 88'),
-                    (114.75, '57 96'),
-                    (118.125, '59 16'),
-                    (120.5, '60 64'),
-                    (124.875, '62 112'),
-                    (129.25, '64 160'),
-                    (131.625, '65 208'),
-                    (135.0, '67 128'),
-                    (138.375, '69 48'),
-                    (141.75, '70 224'),
-                    (145.125, '72 144'),
-                    (148.5, '74 64'),  
-                    (150, '75 0'),   # temp_max = +150c 
-                    )
-
-
-    def testDegreesToLm92(self):
-        """ degreesToLm92() should turn degrees C into lm92 13 bit format """
-        for centiDegree, lm92Degree in self.knownValues:
-            result = excaliburObj.degreesToLm92(centiDegree)
-            self.assertEqual(lm92Degree, result)
-        
-
-class degreesToLm92BadInput(unittest.TestCase):        
-    def testdegreesToLm92ArgumentTooLarge(self):
-        """degreesToLm92 should fail with large input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.degreesToLm92, 151)
-
-    def testdegreesToLm92ArgumentNegative(self):
-        """degreesToLm92 should fail with negative input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.degreesToLm92, -1)
-    def testdegreesToLm92ArgumentNone(self):
-        """ degreesToLm92 should fail with None argument """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.degreesToLm92, None)
-
-    def testdegreesToLm92ArgumentString(self):
-        """ degreesToLm92 should fail with string argument """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.degreesToLm92, "hi")
-
-    def testdegreesToLm92ArgumentBoolean(self):
-        """ degreesToLm92 should fail with boolean argument """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.degreesToLm92, True)
-
-
-class KnownTmpToDegrees(unittest.TestCase):
-    knownValues = ( (8, 0),
-                    (16, 0.0625),
-                    (32, 0.125),
-                    (64, 0.25),
-                    (128, 0.5),
-                    (256, 1),
-                    (512, 2),
-                    (768, 3),
-                    (32512, 127),
-                    )
-
-    def testTmpToDegrees(self):
-        """ tmpToDegrees() should turn degrees C into tmp275 12 bit format """
-        for centiDegree, tmp275Degree in self.knownValues:
-            result = excaliburObj.tmpToDegrees(centiDegree)
-            self.assertEqual(tmp275Degree, result)
-
-
-class tmpToDegreesBadInput(unittest.TestCase):        
-    def testTooLarge(self):
-        """tmpToDegrees should fail with large input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.tmpToDegrees, 32513)
-
-    def testNegative(self):
-        """tmpToDegrees should fail with negative input"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.tmpToDegrees, -1)
+#class KnownLm92ToDegrees(unittest.TestCase):
+#    knownValues = ( (4, 0),         # temp_min = -55c, but arduino code starch from 0c
+#                    (8, 0.0625),
+#                    (16, 0.125),
+#                    (32, 0.25),
+#                    (64, 0.5),
+#                    (128, 1),
+#                    (196, 1.5),
+#                    (256, 2),
+#                    (384, 3),
+#                    (512, 4),
+#                    (1024, 8),
+#                    (2048, 16),
+#                    (4096, 32),
+#                    (8192, 64),
+#                    (9360, 73.125),
+#                    (19200, 150),   # temp_max = +150c
+#                    )
+#
+#    def testLm92ToDegrees(self):
+#        """lm92ToDegrees() should turn lm92 13 bit format into degrees C"""
+#        for lm92Degree, centiDegree in self.knownValues:
+#            result = excaliburObj.lm92ToDegrees(lm92Degree)
+#            self.assertEqual(centiDegree, result)
+#
+#
+#class lm92ToDegreesBadInput(unittest.TestCase):
+#    def testTooLarge(self):
+#        """lm92ToDegrees should fail with large input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, 19201)
+#        
+#    def testTooSmall(self):
+#        """lm92ToDegrees should fail with too small input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, 3)
+#        
+#    def testZero(self):
+#        """lm92ToDegrees should fail with 0 input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, 0)
+#
+#    def testNegative(self):
+#        """lm92ToDegrees should fail with negative input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.lm92ToDegrees, -1)
+#        
+#        
+#class KnownDegreesToLm92(unittest.TestCase):
+#    knownValues = ( (0, '0 0'),         # temp_min = -55c, but arduino code start from 0c
+#                    (0.125, '0 16'),                    
+#                    (0.75, '0 96'),
+#                    (0.8125,'0 104'),
+#                    (0.875, '0 112'),
+#                    (0.9375, '0 120'),
+#                    (1, '0 128'),
+#                    (1.5, '0 192'),
+#                    (3, '1 128'),
+#                    (4, '2 0'),
+#                    (5, '2 128'),
+#                    (7, '3 128'),                    
+#                    (9, '4 128'),
+#                    (3.125, '1 144'),
+#                    (6,'3 0'),
+#                    (9.375, '4 176'),
+#                    (10.0625, '5 8'),
+#                    (12.5, '6 64'),
+#                    (15.625, '7 208'),
+#                    (18.75, '9 96'),                    
+#                    (21.875, '10 240'),
+#                    (25.0, '12 128'),
+#                    (28.125, '14 16'),
+#                    (30.1875, '15 24'),
+#                    (31.25, '15 160'),
+#                    (34.375, '17 48'),
+#                    (40.25, '20 32'),
+#                    (50.3125, '25 40'),
+#                    (60.375, '30 48'),
+#                    (66.4375, '33 56'),
+#                    (90.5625, '45 72'),
+#                    (100.625, '50 80'),
+#                    (110.6875, '55 88'),
+#                    (114.75, '57 96'),
+#                    (118.125, '59 16'),
+#                    (120.5, '60 64'),
+#                    (124.875, '62 112'),
+#                    (129.25, '64 160'),
+#                    (131.625, '65 208'),
+#                    (135.0, '67 128'),
+#                    (138.375, '69 48'),
+#                    (141.75, '70 224'),
+#                    (145.125, '72 144'),
+#                    (148.5, '74 64'),  
+#                    (150, '75 0'),   # temp_max = +150c 
+#                    )
+#
+#
+#    def testDegreesToLm92(self):
+#        """ degreesToLm92() should turn degrees C into lm92 13 bit format """
+#        for centiDegree, lm92Degree in self.knownValues:
+#            result = excaliburObj.degreesToLm92(centiDegree)
+#            self.assertEqual(lm92Degree, result)
+#        
+#
+#class degreesToLm92BadInput(unittest.TestCase):        
+#    def testdegreesToLm92ArgumentTooLarge(self):
+#        """degreesToLm92 should fail with large input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.degreesToLm92, 151)
+#
+#    def testdegreesToLm92ArgumentNegative(self):
+#        """degreesToLm92 should fail with negative input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.degreesToLm92, -1)
+#    def testdegreesToLm92ArgumentNone(self):
+#        """ degreesToLm92 should fail with None argument """
+#        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.degreesToLm92, None)
+#
+#    def testdegreesToLm92ArgumentString(self):
+#        """ degreesToLm92 should fail with string argument """
+#        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.degreesToLm92, "hi")
+#
+#    def testdegreesToLm92ArgumentBoolean(self):
+#        """ degreesToLm92 should fail with boolean argument """
+#        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.degreesToLm92, True)
+#
+#
+#class KnownTmpToDegrees(unittest.TestCase):
+#    knownValues = ( (8, 0),
+#                    (16, 0.0625),
+#                    (32, 0.125),
+#                    (64, 0.25),
+#                    (128, 0.5),
+#                    (256, 1),
+#                    (512, 2),
+#                    (768, 3),
+#                    (32512, 127),
+#                    )
+#
+#    def testTmpToDegrees(self):
+#        """ tmpToDegrees() should turn degrees C into tmp275 12 bit format """
+#        for centiDegree, tmp275Degree in self.knownValues:
+#            result = excaliburObj.tmpToDegrees(centiDegree)
+#            self.assertEqual(tmp275Degree, result)
+#
+#
+#class tmpToDegreesBadInput(unittest.TestCase):        
+#    def testTooLarge(self):
+#        """tmpToDegrees should fail with large input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.tmpToDegrees, 32513)
+#
+#    def testNegative(self):
+#        """tmpToDegrees should fail with negative input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.tmpToDegrees, -1)
 
 
 class writelm92BadInput(unittest.TestCase):
@@ -717,6 +718,34 @@ class writead5301_u12(unittest.TestCase):
         """writead5301_u12 should fail if decimalBinaryCode argument too large (>256) """
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writead5301_u12, 257)
 
+class KnownAd5301ToDegrees(unittest.TestCase):
+    knownValues = ( (0, "w 12 0 @"),         # min: 0 in, "0" out
+                    (100, "w 12 7 240 @"),
+                    (200, "w 12 15 240 @"),
+#                    (4096, 32),
+#                    (8192, 64),
+#                    (9360, 73.125),
+#                    (19200, 150),           # max: 200 in, "7 240" out 
+                    )
+
+    def testAd5301ToDegrees(self):
+        """ad5301ToDegrees() should turn ad5301 13 bit format into degrees C"""
+        for ad5301Degree, centiDegree in self.knownValues:
+            result = excaliburObj.biasLevelToAd5301Conversion(ad5301Degree)
+            self.assertEqual(centiDegree, result)
+
+
+class ad5301ToDegreesBadInput(unittest.TestCase):
+#    # Won't fail with too large input as input masked by 4080 (0x0FF0)
+#    def testTooLarge(self):
+#        """ad5301ToDegrees should fail with large input"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.biasLevelToAd5301Conversion, 19201)
+        
+    def testNegative(self):
+        """ad5301ToDegrees should fail with negative input"""
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.biasLevelToAd5301Conversion, -1)
+
+
 
 class KnownDebugBooleanValues(unittest.TestCase):
     booleanValues = ( (True, True),
@@ -794,11 +823,11 @@ class testToggleSelectFileComponents(unittest.TestCase):
 class testcompareThresholdsBadInput(unittest.TestCase):
     def testMinGreaterThanMax(self):
         """ compareThresholds should fail unless max argument greater than min argument """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.compareThresholds, 21.0, 22, 20, 3)
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.compareThresholds, 21, 22, 20, 3)
 
     def testFirstArgumentNotFloat(self):
-        """ compareThresholds should fail if argument one is integer """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 10, 32, 3)
+        """ compareThresholds should fail if argument one is float """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.1, 10, 32, 3)
         """ compareThresholds should fail if argument one is string """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, "test", 22, 32, 3)
         """ compareThresholds should fail if argument one is boolean """
@@ -806,27 +835,27 @@ class testcompareThresholdsBadInput(unittest.TestCase):
 
     def testSecondArgumentNotInteger(self):
         """ compareThresholds should fail if argument two is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, 22.0, 32, 3)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 22.0, 32, 3)
         """ compareThresholds should fail if argument two is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, "test", 32, 3)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, "test", 32, 3)
         """ compareThresholds should fail if argument two is boolean """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, True, 32, 3)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, True, 32, 3)
 
     def testThirdArgumentNotInteger(self):
         """ compareThresholds should fail if argument three is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, 22, 20.0, 3)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 22, 20.0, 3)
         """ compareThresholds should fail if argument three is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, 22, "Test", 3)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 22, "Test", 3)
         """ compareThresholds should fail if argument three is boolean """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, 22, True, 3)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 22, True, 3)
         
     def testFourthArgumentNotInteger(self):
         """ compareThresholds should fail if argument four is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, 22, 32, 3.0)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 22, 32, 3.0)
         """ compareThresholds should fail if argument four is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, 22, 32, "Test")
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 22, 32, "Test")
         """ compareThresholds should fail if argument four is boolean """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21.0, 22, 32, True)
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.compareThresholds, 21, 22, 32, True)
 
 
 class KnownUpdateHumidityLed(unittest.TestCase):
