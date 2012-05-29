@@ -28,6 +28,7 @@ class msgPrintBadInput(unittest.TestCase):
     def testArgumentBoolean(self):
         """ msgPrint() should fail if msg argument is boolean """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.msgPrint, True)
+        
 class KnownMsgPrint(unittest.TestCase):
     knownMessage = ( ("Bad", True),
                      ("Error", True),)
@@ -55,6 +56,56 @@ class logErrorBadInput(unittest.TestCase):
     def testArgumentBoolean(self):
         """  logError() should fail if msgError argument is boolean """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.logError, True)
+
+class updatePcf8574DeviceBadInput(unittest.TestCase):
+    #def updatePcf8574Device(self, bEnableLvSetting, bEnableBiasSetting):
+    def testFirstArgumentNone(self):
+        """  updatePcf8574Device() should fail if bEnableLvSetting argument is None """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, None, True)
+
+    def testFirstArgumentInteger(self):
+        """  updatePcf8574Device() should fail if bEnableLvSetting argument is integer """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, 3, True)
+
+    def testFirstArgumentFloat(self):
+        """  updatePcf8574Device() should fail if bEnableLvSetting argument is float """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, 1.2, True)
+
+    def testFirstArgumentString(self):
+        """  updatePcf8574Device() should fail if bEnableLvSetting argument is string """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, "True", True)
+
+
+    def testSecondArgumentNone(self):
+        """  updatePcf8574Device() should fail if bEnableBiasSetting argument is None """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, True, None)
+
+    def testSecondArgumentInteger(self):
+        """  updatePcf8574Device() should fail if bEnableBiasSetting argument is integer """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, True, 3)
+
+    def testSecondArgumentFloat(self):
+        """  updatePcf8574Device() should fail if bEnableBiasSetting argument is float """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, True, 1.2)
+
+    def testSecondArgumentString(self):
+        """  updatePcf8574Device() should fail if bEnableBiasSetting argument is string """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.updatePcf8574Device, False, "True")
+
+class writePcf8574BadInput(unittest.TestCase):
+    #def writePcf8574(self, bEnableLvSetting, bEnableBiasSetting):
+    def testArgumentNone(self):
+        """  writePcf8574() should fail if bEnableLvSetting argument is None """
+        self.assertRaises(excaliburPowerGui.ArgumentTypeNoneError, excaliburObj.writePcf8574, None)
+
+    def testArgumentFloat(self):
+        """  writePcf8574() should fail if bEnableLvSetting argument is float """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.writePcf8574, 1.2)
+
+    def testArgumentBoolean(self):
+        """  writePcf8574() should fail if bEnableLvSetting argument is boolean """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.writePcf8574, True)
+
 
 class KnownLogError(unittest.TestCase):
     knownError = ( ("Bad", True),
@@ -217,26 +268,26 @@ class KnownLogError(unittest.TestCase):
 #        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.tmpToDegrees, -1)
 
 
-class writelm92BadInput(unittest.TestCase):
-    def testArgumentMissing(self):
-        """writelm92 should fail if sReg argument not specified, ie NoneType"""
-        self.assertRaises(excaliburPowerGui.ArgumentTypeNoneError, excaliburObj.writelm92, None, None)
-        
-    def testArgumentOneNegative(self):
-        """writelm92 should fail if sReg argument negative"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, -1, None)
-        
-    def testArgumentOneTooLarge(self):
-        """writelm92 should fail if sReg argument too large (>7)"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, 8, None)
-
-    def testArgumentTwoNegative(self):
-        """writelm92 should fail if sReg argument negative"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, 0, -1)
-        
-    def testArgumentTwoTooLarge(self):
-        """writelm92 should fail if sReg argument too large (>7)"""
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, 0, 151)
+#class writelm92BadInput(unittest.TestCase):
+#    def testArgumentMissing(self):
+#        """writelm92 should fail if sReg argument not specified, ie NoneType"""
+#        self.assertRaises(excaliburPowerGui.ArgumentTypeNoneError, excaliburObj.writelm92, None, None)
+#        
+#    def testArgumentOneNegative(self):
+#        """writelm92 should fail if sReg argument negative"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, -1, None)
+#        
+#    def testArgumentOneTooLarge(self):
+#        """writelm92 should fail if sReg argument too large (>7)"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, 8, None)
+#
+#    def testArgumentTwoNegative(self):
+#        """writelm92 should fail if sReg argument negative"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, 0, -1)
+#        
+#    def testArgumentTwoTooLarge(self):
+#        """writelm92 should fail if sReg argument too large (>7)"""
+#        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, 0, 151)
 
 
 class readAd7998BadInput(unittest.TestCase):
@@ -627,12 +678,12 @@ class testScale1_8VBadInput(unittest.TestCase):
 
 class KnownScale3_3V(unittest.TestCase):
     knownValues = ( (0, 0.0),
-                    (9, 0.0072527472527472523),
-                    (501, 0.40373626373626376),
-                    (1289, 1.0387545787545787),
-                    (2070, 1.6681318681318682),
-                    (3246, 2.615824175824176),
-                    (4095, 3.2999999999999998),
+                    (9, 0.010986299999999999),
+                    (501, 0.61157069999999991),
+                    (1289, 1.5734822999999998),
+                    (2070, 2.5268489999999999),
+                    (3246, 3.9623921999999996),
+                    (4095, 4.9987664999999994),
                     )
     
     def testScale3_3V(self):
@@ -690,20 +741,55 @@ class KnownScale200V(unittest.TestCase):
                     )
     
     def testScale200V(self):
-        """ scale200V() should scale ad7998's 0-4095 into 0-200V """
+        """ scale200V_CurrentlyConversion() should scale ad7998's 0-4095 into 0-200V """
         for adcValue, Vscale in self.knownValues:
-            result = excaliburObj.scale200V(adcValue)
+            result = excaliburObj.scale200V_CurrentlyConversion(adcValue)
             self.assertEqual(Vscale, result)
             
 
 class testScale200VBadInput(unittest.TestCase):
     def testNegative(self):
-        """ scale200V() should fail with negative input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V, -1)
+        """ scale200V_CurrentlyConversion() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V_CurrentlyConversion, -1)
 
     def testTooLarge(self):
-        """ scale200V() should fail with too large input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V, 4096)
+        """ scale200V_CurrentlyConversion() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V_CurrentlyConversion, 4096)
+
+
+class KnownScaleHumidity(unittest.TestCase):
+    knownValues = ( (785, 0),
+                    (1010, 9),
+                    (2135, 54),
+                    (3159, 94),
+                    (3952, 126),
+                    (4095, 132)
+                    )
+    
+    def testScaleHumidity(self):
+        """ scaleHumidity() should scale ad7998's 0-4095 into 0-200V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scaleHumidity(adcValue)
+            self.assertEqual(Vscale, result)
+            
+
+class testScaleHumidityBadInput(unittest.TestCase):
+    def testTooSmall(self):
+        """ scaleHumidity() should fail with input < 785 """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scaleHumidity, 784)
+
+    def testTooLarge(self):
+        """ scaleHumidity() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scaleHumidity, 4096)
+
+
+    def testArgumentFloat(self):
+        """ scaleHumidity() should fail if msg argument is float """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.scaleHumidity, 3.2)
+
+    def testArgumentBoolean(self):
+        """ scaleHumidity() should fail if msg argument is boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.scaleHumidity, True)
 
 class writead5301_u12(unittest.TestCase):
     def testArgumentMissing(self):
@@ -717,6 +803,16 @@ class writead5301_u12(unittest.TestCase):
     def testArgumentOneTooLarge(self):
         """writead5301_u12 should fail if decimalBinaryCode argument too large (>256) """
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writead5301_u12, 257)
+
+    def testArgumentFloat(self):
+        """ writead5301_u12() should fail if decimalBinaryCode argument is float """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.writead5301_u12, 3.2)
+
+    def testArgumentBoolean(self):
+        """ writead5301_u12() should fail if decimalBinaryCode argument is boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.writead5301_u12, True)
+
+
 
 class KnownAd5301ToDegrees(unittest.TestCase):
     knownValues = ( (0, "w 12 0 @"),         # min: 0 in, "0" out
