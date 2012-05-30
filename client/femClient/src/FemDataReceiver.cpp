@@ -17,7 +17,7 @@ FemDataReceiver::FemDataReceiver(unsigned int aRecvPort)
 	: mRecvSocket(mIoService, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), aRecvPort)),
 	  mWatchdogTimer(mIoService),
 	  mAcquiring(false),
-	  mCurrentFrame(0),
+	  mRemainingFrames(0),
 	  mNumFrames(0),
 	  mFrameLength(0),
 	  mHeaderPosition(headerAtStart),
@@ -64,7 +64,7 @@ void FemDataReceiver::startAcquisition(void)
 		mAcquiring = true;
 
 		// Initialise current frame counter to number of frames to be acquired
-		mCurrentFrame = mNumFrames;
+		mRemainingFrames = mNumFrames;
 
 		// Initialise counters for next frame acquisition sequence
 		mFramePayloadBytesReceived = 0;
@@ -259,16 +259,18 @@ void FemDataReceiver::simulateReceive(BufferInfo aBuffer)
 		// Flag current buffer as received
 		if (mCallbacks.receive)
 		{
-			mCallbacks.receive(mCurrentFrame, (time_t)0);
+			time_t now;
+			time(&now);
+			mCallbacks.receive(mRemainingFrames, now);
 		}
 
-		if (mCurrentFrame == 1)
+		if (mRemainingFrames == 1)
 		{
 			// On last frame, stop acq loop and signal completion
 			mAcquiring = false;
 			mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
 		}
-		else if (mCurrentFrame == 0)
+		else if (mRemainingFrames == 0)
 		{
 			// Do nothing, running continuously
 		}
@@ -286,7 +288,7 @@ void FemDataReceiver::simulateReceive(BufferInfo aBuffer)
 			mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(mAcquisitionPeriod));
 
 			// Decrement current frame counter
-			mCurrentFrame--;
+			mRemainingFrames--;
 		}
 
 	}
@@ -425,7 +427,9 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 
 		if (mFramePayloadBytesReceived > mFrameLength)
 		{
-			std::cout << "Buffer overrun in receive?" << std::endl;
+			std::cout << "Buffer overrun detected in receive of frame number " << mCurrentFrameNumber
+					  << " subframe " << mSubFramesReceived << " packet " << mSubFramePacketsReceived << std::endl;
+			errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 		}
 
 		// Signal current buffer as received if completed, and request a new one unless
@@ -437,13 +441,13 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 				mCallbacks.receive(mCurrentFrameNumber, recvTime);
 			}
 
-			if (mCurrentFrame == 1)
+			if (mRemainingFrames == 1)
 			{
-				// On last frame, stop acq loop and signal completion
+				// On last frame, stop acquisition loop and signal completion
 				mAcquiring = false;
 				mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
 			}
-			else if (mCurrentFrame == 0)
+			else if (mRemainingFrames == 0)
 			{
 				// Do nothing, running continuously
 			}
@@ -455,8 +459,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 					mCurrentBuffer = mCallbacks.allocate();
 				}
 
-				// Decrement frame counter
-				mCurrentFrame--;
+				// Decrement remaining frame counter
+				mRemainingFrames--;
 			}
 
 			// Reset frame counters

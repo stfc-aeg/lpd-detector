@@ -100,7 +100,7 @@ private:
 	CallbackBundle     				  mCallbacks;
 
 	bool							  mAcquiring;
-	unsigned int                      mCurrentFrame;
+	unsigned int                      mRemainingFrames;
 
 	unsigned int                      mNumFrames;
 	unsigned int                      mFrameLength;
