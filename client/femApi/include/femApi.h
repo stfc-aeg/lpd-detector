@@ -125,6 +125,8 @@ void femClose(void* femHandle);
 /* Medipix III global registers */
 #define FEM_OP_MPXIII_COLOURMODE 1000
 #define FEM_OP_MPXIII_COUNTERDEPTH 1001
+#define FEM_OP_MPXIII_EXTERNALTRIGGER 1002
+#define FEM_OP_MPXIII_OPERATIONMODE 1003
 /* Medipix III per chip registers */
 #define FEM_OP_MPXIII_DACSENSE 2000
 #define FEM_OP_MPXIII_DACEXTERNAL 2001

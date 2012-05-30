@@ -69,9 +69,12 @@ public:
 
 	void toyAcquisition(void);
 
-	void setNumFrames(unsigned int numFrames);
-	void setAcquisitionPeriod(unsigned int aPeriodMs);
-	void setAcquisitionTime(unsigned int aTimeMs);
+
+	void externalTriggerSet(unsigned int aExternalTrigger);
+	void operationModeSet(unsigned int aOperationMode);
+	void numFramesSet(unsigned int numFrames);
+	void acquisitionPeriodSet(unsigned int aPeriodMs);
+	void acquisitionTimeSet(unsigned int aTimeMs);
 	void freeAllFrames();
 
 	// EXCALIBUR detector front-end functions in ExcaliburFemClientFrontEndDevices.cpp
@@ -143,6 +146,8 @@ private:
 
 	std::list<CtlFrame*> mFrameQueue;
 
+	unsigned int          mExternalTrigger;
+	unsigned int          mOperationMode;
 	unsigned int          mNumFrames;
 	unsigned int          mAcquisitionPeriodMs;
 	unsigned int          mAcquisitionTimeMs;

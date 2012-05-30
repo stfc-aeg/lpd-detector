@@ -90,6 +90,30 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 				}
 				break;
 
+			case FEM_OP_MPXIII_EXTERNALTRIGGER:
+
+				if (size == 1)
+				{
+					theFem->externalTriggerSet((int)*value);
+				}
+				else
+				{
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
+			case FEM_OP_MPXIII_OPERATIONMODE:
+
+				if (size == 1)
+				{
+					theFem->operationModeSet((int)*value);
+				}
+				else
+				{
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
 			case FEM_OP_MPXIII_DACSENSE:
 
 				if (size == 1)
@@ -153,17 +177,17 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 			case FEM_OP_NUMFRAMESTOACQUIRE:
 
-				theFem->setNumFrames((unsigned int)*value);
+				theFem->numFramesSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_ACQUISITIONTIME:
 
-				theFem->setAcquisitionTime((unsigned int)*value);
+				theFem->acquisitionTimeSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_ACQUISITIONPERIOD:
 
-				theFem->setAcquisitionPeriod((unsigned int)*value);
+				theFem->acquisitionPeriodSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_VDD_ON_OFF:

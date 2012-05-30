@@ -105,6 +105,12 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 
 ExcaliburFemClient::~ExcaliburFemClient() {
 
+	// Delete the data receiver object if it was created
+	if (mFemDataReceiver)
+	{
+		delete (mFemDataReceiver);
+	}
+
 }
 
 BufferInfo ExcaliburFemClient::allocateCallback(void)
@@ -163,7 +169,7 @@ void ExcaliburFemClient::signalCallback(int aSignal)
 		theSignal = FEM_OP_ACQUISITIONCOMPLETE;
 		std::cout << "Got acquisition complete signal" << std::endl;
 		//this->acquireStop();
-		this->stopAcquisition();
+		//this->stopAcquisition();
 		break;
 
 	case FemDataReceiverSignal::femAcquisitionCorruptImage:
@@ -233,9 +239,6 @@ void ExcaliburFemClient::toyAcquisition(void)
 
 void ExcaliburFemClient::startAcquisition(void)
 {
-
-	// Construct a new data receiver object
-	//mFemDataReceiver = new FemDataReceiver(mFemDataHostPort);
 
 	// Register callbacks for data receiver
 	mFemDataReceiver->registerCallbacks(&mCallbackBundle);
@@ -309,7 +312,19 @@ void ExcaliburFemClient::stopAcquisition(void)
 
 }
 
-void ExcaliburFemClient::setNumFrames(unsigned int aNumFrames)
+void ExcaliburFemClient::externalTriggerSet(unsigned int aExternalTrigger)
+{
+	// Store external trigger setup for use during acquisition start
+	mExternalTrigger = aExternalTrigger;
+}
+
+void ExcaliburFemClient::operationModeSet(unsigned int aOperationMode)
+{
+	// Store operation mode for use during acquisition start
+	mOperationMode = aOperationMode;
+}
+
+void ExcaliburFemClient::numFramesSet(unsigned int aNumFrames)
 {
 
 	// Store number of frames to be received locally for config phase
@@ -323,7 +338,7 @@ void ExcaliburFemClient::setNumFrames(unsigned int aNumFrames)
 
 }
 
-void ExcaliburFemClient::setAcquisitionPeriod(unsigned int aPeriodMs)
+void ExcaliburFemClient::acquisitionPeriodSet(unsigned int aPeriodMs)
 {
 
 	mAcquisitionPeriodMs = aPeriodMs;
@@ -333,7 +348,7 @@ void ExcaliburFemClient::setAcquisitionPeriod(unsigned int aPeriodMs)
 	// TODO - add FEM write transaction to set this in FEM too
 }
 
-void ExcaliburFemClient::setAcquisitionTime(unsigned int aTimeMs)
+void ExcaliburFemClient::acquisitionTimeSet(unsigned int aTimeMs)
 {
 
 	mAcquisitionTimeMs = aTimeMs;
