@@ -300,11 +300,33 @@ class ExcaliburPowerGui:
                         # Create and write header first time only
                         self.bLogHeader = False
                         # Construct log file's header
+#                        header = (strftime("%Y-%m-%d, %H:%M:%S, ") +
+#                                  self.gui.gui.lbl5V_A.text() + ", " + self.gui.gui.lbl5V_B.text() + ", " + self.gui.gui.lbl5VF0.text() + ", " + 
+#                                  self.gui.gui.lbl5VF1.text() + ", " + self.gui.gui.lbl5VF2.text() + ", " + self.gui.gui.lbl5VF3.text() + ", " + 
+#                                  self.gui.gui.lbl5VF4.text() + ", " + self.gui.gui.lbl5VF5.text() + ", " + self.gui.gui.lblHum_mon.text() + ", " +
+#                                  self.gui.gui.lblHum_stat.text() + ",\n")
+                        # Header for entire GUI
                         header = (strftime("%Y-%m-%d, %H:%M:%S, ") +
-                                  self.gui.gui.lbl5V_A.text() + ", " + self.gui.gui.lbl5V_B.text() + ", " + self.gui.gui.lbl5VF0.text() + ", " + 
-                                  self.gui.gui.lbl5VF1.text() + ", " + self.gui.gui.lbl5VF2.text() + ", " + self.gui.gui.lbl5VF3.text() + ", " + 
-                                  self.gui.gui.lbl5VF4.text() + ", " + self.gui.gui.lbl5VF5.text() + ", " + self.gui.gui.lblHum_mon.text() + ", " +
-                                  self.gui.gui.lblHum_stat.text() + ",\n")
+                                  # LEDs
+                                  self.gui.gui.lblLEDlv.text() + ", " + self.gui.gui.lblLEDbias.text() + ", " + self.gui.gui.lblLEDHumstat.text() + ", " + 
+                                  self.gui.gui.lblLEDAirTmpStat.text() + ", " + self.gui.gui.lblLEDCoolFlowStat.text() + ", " + self.gui.gui.lblLEDCoolTempStat.text() + ", " + 
+                                  self.gui.gui.lblLEDFanFault.text() + ", " +  
+                                  # 5V + FEM5V
+                                  self.gui.gui.lbl5V_A.text() + ", " + self.gui.gui.lbl5V_B.text() + ", " + 
+                                  self.gui.gui.lbl5VF0.text() + ", " + self.gui.gui.lbl5VF1.text() + ", " + 
+                                  self.gui.gui.lbl5VF2.text() + ", " + self.gui.gui.lbl5VF3.text() + ", " + 
+                                  self.gui.gui.lbl5VF4.text() + ", " + self.gui.gui.lbl5VF5.text() + ", " + 
+                                  # 1.8V Voltage and Current
+                                  self.gui.gui.lbl18V_B.text() + ", " + self.gui.gui.lbl18V_B2.text() + ", " + 
+                                  self.gui.gui.lbl18V_C.text() + ", " + self.gui.gui.lbl18V_C2.text() + ", " +
+                                  # 3.3V Voltage and Current
+                                  self.gui.gui.lbl33VV.text() + ", " + self.gui.gui.lbl33VA.text() + ", " +
+                                  self.gui.gui.lbl200VV.text() + ", " + self.gui.gui.lbl200VA.text() + ", " +
+                                  self.gui.gui.lbl48VV.text() + ", " + self.gui.gui.lbl48VA.text() + ", " +
+                                  self.gui.gui.lbl5SUPERVV.text() + ", " + self.gui.gui.lbl5SUPERVA.text() + ", " +
+                                  # Sensor readings
+                                  self.gui.gui.lblHum_mon.text() + ", " + self.gui.gui.lblAirtmp_mon.text()+ ", " +
+                                  self.gui.gui.lblCoolant_flow_mon.text() + ", " + self.gui.gui.lblCoolant_temp_mon.text() + ",\n")
                         # Create log file
                         self.file = open( self.currentLogFile, 'w')
                         self.file.write(header)
@@ -354,11 +376,35 @@ class ExcaliburPowerGui:
         
     def logCurrentValues(self):
         """ Write all current Gui values to string and write that to log file """
-        data = (strftime("%Y-%m-%d, %H:%M:%S, ") + 
-                self.gui.gui.le5VAV.text() + ", " + self.gui.gui.le5VBV.text() + ", " + self.gui.gui.le5F0I.text() + ", " + 
-                self.gui.gui.le5F1I.text() + ", " + self.gui.gui.le5F2I.text() + ", " + self.gui.gui.le5F3I.text() + ", " + 
-                self.gui.gui.le5F4I.text() + ", " + self.gui.gui.le5F5I.text() + ", " + self.gui.gui.leHum_mon.text() + ", " +
-                self.gui.gui.leAirtmp_mon.text() + ",\n")
+#        data = (strftime("%Y-%m-%d, %H:%M:%S, ") +
+#                # Original quantities to log 
+#                self.gui.gui.le5VAV.text() + ", " + self.gui.gui.le5VBV.text() + ", " + 
+#                self.gui.gui.le5F0I.text() + ", " + self.gui.gui.le5F1I.text() + ", " + 
+#                self.gui.gui.le5F2I.text() + ", " + self.gui.gui.le5F3I.text() + ", " + 
+#                self.gui.gui.le5F4I.text() + ", " + self.gui.gui.le5F5I.text() + ", " + 
+        # Logging of complete set of quantities
+        data = (strftime("%Y-%m-%d, %H:%M:%S, ") +
+                # LEDs
+                self.bLvGreen + ", " + self.bBiasGreen + ", " + self.bHumidityGreen.text() + ", " + 
+                self.bAirTempGreen.text() + ", " + self.bCoolantFlowGreen.text() + ", " + self.bCoolantTempGreen.text() + ", " + 
+                self.bFanFaultGreen.text() + ", " +
+                # 5V + FEM5V
+                self.gui.gui.le5VAV.text() + ", " + self.gui.gui.le5VBV.text() + ", " + 
+                self.gui.gui.le5F0I.text() + ", " + self.gui.gui.le5F1I.text() + ", " + 
+                self.gui.gui.le5F2I.text() + ", " + self.gui.gui.le5F3I.text() + ", " + 
+                self.gui.gui.le5F4I.text() + ", " + self.gui.gui.le5F5I.text() + ", " + 
+                # 1.8V Voltage and Current
+                self.gui.gui.le18VAV.text() + ", " + self.gui.gui.le18VAA.text() + ", " + 
+                self.gui.gui.le18VBV.text() + ", " + self.gui.gui.le18VBA.text() + ", " +
+                
+                # 3.3V Voltage and Current
+                self.gui.gui.le33VV.text() + ", " + self.gui.gui.le33VA.text() + ", " +
+                self.gui.gui.le200VV.text() + ", " + self.gui.gui.le200VA.text() + ", " +
+                self.gui.gui.le48VV.text() + ", " + self.gui.gui.le48VA.text() + ", " +
+                self.gui.gui.le5SUPERVV.text() + ", " + self.gui.gui.le5SUPERVA.text() + ", " +
+                # Sensor readings
+                self.gui.gui.leHum_mon.text() + ", " + self.gui.gui.leAirtmp_mon.text()+ ", " +
+                self.gui.gui.leCoolant_flow_mon.text() + ", " + self.gui.gui.leCoolant_stat.text() + ",\n")
         try:
             self.file.write(data)
         except:
@@ -430,6 +476,7 @@ class ExcaliburPowerGui:
             else:
                 print "lvButtonAction: FAILED to switch on LV!"
                 self.bLvEnabled = True
+                return
         else:
             self.bLvEnabled = True      # lv is disabled, now Enabling...
             if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
@@ -442,7 +489,7 @@ class ExcaliburPowerGui:
             else:
                 print "lvButtonAction: FAILED to switch off LV!"
                 self.bLvEnabled = False
-                #
+                return
         
         # Signal to main thread to update Gui component
         self.queue.put(lowVoltageStatus)
@@ -483,7 +530,7 @@ class ExcaliburPowerGui:
                 return False
             return True
         except:
-            self.displayErrorMessage("updatePcf8574Device: Couldn't update pcf8574 device!")
+            self.displayErrorMessage("updatePcf8574Device: Couldn't read-back pcf8574 device!")
             #updatePcf8574Device
 
     def writePcf8574(self, sReg=None):
@@ -1192,13 +1239,6 @@ class ExcaliburPowerGui:
                 self.bAirTempGreen = False
 
     def initialiseCommunication(self):
-#        # pca9538
-#        self.sCom.write("w 113 0 @")    # Configure I2C expander, access register 0 (I/O pins)
-#        # lm92
-#        self.writelm92(0)
-#        # tml275
-#        self.sCom.write("w 79 1 96 @")  # Initialise tmp275 device
-#        self.sCom.write("w 79 0 @")     # Select temperature register
         # Initialise pcf8574's outputs to zero
         self.writePcf8574(79)
         # Configure ad7998 device
@@ -1503,7 +1543,7 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le33VA=%s" % str( self.scale3_3V(rxInt) ))         # U16, pin 7
             except: self.displayErrorMessage("U16 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le18VAA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 14
+            try:    self.queue.put("le18VAV=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 14
             except: self.displayErrorMessage("U16 adc1, Error updating GUI: ")
         def two():
             try:    self.queue.put("le200VA=%s" % str( self.scale200V_CurrentlyConversion(rxInt) ))        # U16, pin 8
@@ -1512,16 +1552,16 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le33VV=%s" % str( self.scale3_3V(rxInt) ))        # U16, pin 13
             except: self.displayErrorMessage("U16 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("le18VVA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 9
+            try:    self.queue.put("le18VAA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 9
             except: self.displayErrorMessage("U16 adc4, Error updating GUI: ")
         def five():
             try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12 
             except: self.displayErrorMessage("U16 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("le18VAB=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 10
+            try:    self.queue.put("le18VBV=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 10
             except: self.displayErrorMessage("U16 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("le18VVB=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 11
+            try:    self.queue.put("le18VBA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 11
             except: self.displayErrorMessage("U16 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
