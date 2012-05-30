@@ -20,7 +20,7 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>611</width>
+      <width>614</width>
       <height>631</height>
      </rect>
     </property>
@@ -145,7 +145,7 @@
            <bool>true</bool>
           </property>
          </widget>
-         <widget class="QLabel" name="lblLEDtest_5">
+         <widget class="QLabel" name="lblLEDbias">
           <property name="geometry">
            <rect>
             <x>220</x>
@@ -246,7 +246,7 @@ background-color: rgb(255, 0, 0);</string>
            <enum>QFrame::Raised</enum>
           </property>
          </widget>
-         <widget class="QLabel" name="lblLEDtest_6">
+         <widget class="QLabel" name="lblLEDlv">
           <property name="geometry">
            <rect>
             <x>220</x>
@@ -907,7 +907,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="9" column="1">
-            <widget class="QLineEdit" name="le18VAA">
+            <widget class="QLineEdit" name="le18VAV">
              <property name="enabled">
               <bool>true</bool>
              </property>
@@ -948,7 +948,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="9" column="3">
-            <widget class="QLineEdit" name="le18VVA">
+            <widget class="QLineEdit" name="le18VAA">
              <property name="enabled">
               <bool>true</bool>
              </property>
@@ -1010,7 +1010,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>1.8V_A</string>
+              <string>1.8VV_A</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1039,7 +1039,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>1.8V_B</string>
+              <string>1.8VV_B</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1067,7 +1067,7 @@ background-color: rgb(255, 0, 0);</string>
             </spacer>
            </item>
            <item row="10" column="1">
-            <widget class="QLineEdit" name="le18VAB">
+            <widget class="QLineEdit" name="le18VBV">
              <property name="enabled">
               <bool>true</bool>
              </property>
@@ -1108,7 +1108,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="10" column="3">
-            <widget class="QLineEdit" name="le18VVB">
+            <widget class="QLineEdit" name="le18VBA">
              <property name="enabled">
               <bool>true</bool>
              </property>
@@ -1149,7 +1149,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="12" column="0">
-            <widget class="QLabel" name="lbl33V">
+            <widget class="QLabel" name="lbl33VV">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1170,7 +1170,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>3.3V</string>
+              <string>3.3VV</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1178,7 +1178,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="13" column="0">
-            <widget class="QLabel" name="lbl200V">
+            <widget class="QLabel" name="lbl200VV">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1199,7 +1199,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>200V</string>
+              <string>200VV</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1207,7 +1207,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="14" column="0">
-            <widget class="QLabel" name="lbl48V">
+            <widget class="QLabel" name="lbl48VV">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1228,7 +1228,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>48V</string>
+              <string>48VV</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1236,7 +1236,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="15" column="0">
-            <widget class="QLabel" name="lbl5SUPERV">
+            <widget class="QLabel" name="lbl5SUPERVV">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1257,7 +1257,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>5SUPERV</string>
+              <string>5SUPERVV</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1971,6 +1971,180 @@ background-color: rgb(255, 0, 0);</string>
              </property>
             </widget>
            </item>
+           <item row="9" column="2">
+            <widget class="QLabel" name="lbl18V_B2">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="text">
+              <string>1.8VA_C</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="10" column="2">
+            <widget class="QLabel" name="lbl18V_C2">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="text">
+              <string>1.8VA_D</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="2">
+            <widget class="QLabel" name="lbl33VA">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="text">
+              <string>3.3VA</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="13" column="2">
+            <widget class="QLabel" name="lbl200VA">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="text">
+              <string>200VA</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="14" column="2">
+            <widget class="QLabel" name="lbl48VA">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="text">
+              <string>48VA</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="15" column="2">
+            <widget class="QLabel" name="lbl5SUPERVA">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="text">
+              <string>5SUPERVA</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
           </layout>
          </widget>
         </widget>
@@ -2047,7 +2221,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="1" column="0">
-            <widget class="QLabel" name="lblHum_stat">
+            <widget class="QLabel" name="lblLEDHumstat">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -2161,7 +2335,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="8" column="0">
-            <widget class="QLabel" name="lblAirtmp_stat">
+            <widget class="QLabel" name="lblLEDAirTmpStat">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -2222,7 +2396,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="12" column="0">
-            <widget class="QLabel" name="lblCoolont_flow_stat">
+            <widget class="QLabel" name="lblLEDCoolFlowStat">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -2280,7 +2454,7 @@ background-color: rgb(255, 0, 0);</string>
             </widget>
            </item>
            <item row="17" column="0">
-            <widget class="QLabel" name="lblCoolant_temp_stat">
+            <widget class="QLabel" name="lblLEDCoolTempStat">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -2411,7 +2585,7 @@ background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="styleSheet">
               <string notr="true">
-background-color: rgb(0, 255, 0);</string>
+background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="frameShape">
               <enum>QFrame::StyledPanel</enum>
@@ -2428,7 +2602,7 @@ background-color: rgb(0, 255, 0);</string>
              </property>
              <property name="styleSheet">
               <string notr="true">
-background-color: rgb(0, 255, 0);</string>
+background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="frameShape">
               <enum>QFrame::StyledPanel</enum>
@@ -2445,7 +2619,7 @@ background-color: rgb(0, 255, 0);</string>
              </property>
              <property name="styleSheet">
               <string notr="true">
-background-color: rgb(0, 255, 0);</string>
+background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="frameShape">
               <enum>QFrame::StyledPanel</enum>
@@ -2462,7 +2636,7 @@ background-color: rgb(0, 255, 0);</string>
              </property>
              <property name="styleSheet">
               <string notr="true">
-background-color: rgb(0, 255, 0);</string>
+background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="frameShape">
               <enum>QFrame::StyledPanel</enum>
@@ -2499,7 +2673,7 @@ background-color: rgb(0, 255, 0);</string>
              </property>
              <property name="styleSheet">
               <string notr="true">
-background-color: rgb(0, 255, 0);</string>
+background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="frameShape">
               <enum>QFrame::StyledPanel</enum>
@@ -2510,7 +2684,7 @@ background-color: rgb(0, 255, 0);</string>
             </widget>
            </item>
            <item row="18" column="0">
-            <widget class="QLabel" name="lblFanFault">
+            <widget class="QLabel" name="lblLEDFanFault">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -2607,7 +2781,7 @@ background-color: rgb(0, 255, 0);</string>
          </rect>
         </property>
         <property name="text">
-         <string>r 75 2 @</string>
+         <string>r 35 1 @</string>
         </property>
        </widget>
        <widget class="QPushButton" name="debugButton">
