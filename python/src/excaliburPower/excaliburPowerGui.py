@@ -385,9 +385,9 @@ class ExcaliburPowerGui:
         # Logging of complete set of quantities
         data = (strftime("%Y-%m-%d, %H:%M:%S, ") +
                 # LEDs
-                self.bLvGreen + ", " + self.bBiasGreen + ", " + self.bHumidityGreen.text() + ", " + 
-                self.bAirTempGreen.text() + ", " + self.bCoolantFlowGreen.text() + ", " + self.bCoolantTempGreen.text() + ", " + 
-                self.bFanFaultGreen.text() + ", " +
+                str(self.bLvGreen) + ", " + str(self.bBiasGreen) + ", " + str(self.bHumidityGreen) + ", " + 
+                str(self.bAirTempGreen) + ", " + str(self.bCoolantFlowGreen) + ", " + str(self.bCoolantTempGreen) + ", " + 
+                str(self.bFanFaultGreen) + ", " +
                 # 5V + FEM5V
                 self.gui.gui.le5VAV.text() + ", " + self.gui.gui.le5VBV.text() + ", " + 
                 self.gui.gui.le5F0I.text() + ", " + self.gui.gui.le5F1I.text() + ", " + 
