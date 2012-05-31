@@ -245,7 +245,7 @@ class ExcaliburPowerGui:
 #                pass
         time.sleep(2)        
         # Wait for serial interface to initialise.
-        time.sleep(1.8)        # Redundant later on?
+#        time.sleep(1.8)        # Redundant later on?
         # Initialise i2c devices
         if self.sCom:
             # initialise devices
@@ -465,38 +465,10 @@ class ExcaliburPowerGui:
         # If bLvEnabled True (Green), make False and turn associated LED red
         if self.bLvEnabled is True:     # lv is enabled, now Disabling...
             self.lvButton_SwitchOff()
-#            self.bLvEnabled = False
-#            # Attempt to update pcf8574 device
-#            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-#                # LV switched OFF
-#                self.gui.gui.lvButton.setText("enable LV")
-#                self.bLvGreen = False
-#                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);"            
-#                # Disable biasButton while lv disabled
-#                self.gui.gui.biasButton.setEnabled(False)
-#            else:
-#                print "lvButtonAction: FAILED to switch on LV!"
-#                self.bLvEnabled = True
-#                return
         else:
             self.lvButton_SwitchOn()
-#            self.bLvEnabled = True      # lv is disabled, now Enabling...
-#            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-#                # LV switched ON 
-#                self.gui.gui.lvButton.setText("disable LV")
-#                self.bLvGreen = True
-#                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(0, 255, 0);"
-#                # Enable biasButton only after lv successfully enabled
-#                self.gui.gui.biasButton.setEnabled(True)
-#            else:
-#                print "lvButtonAction: FAILED to switch off LV!"
-#                self.bLvEnabled = False
-#                return
-        
-        # Signal to main thread to update Gui component
-#        self.queue.put(lowVoltageStatus)
 
-    def lvButton_SwitchOn(self):
+    def lvButton_SwitchOff(self):
         """ Update S/W variables and Gui components related to switching the lv ON """
         self.bLvEnabled = False
         # Attempt to update pcf8574 device
@@ -509,12 +481,13 @@ class ExcaliburPowerGui:
             self.gui.gui.biasButton.setEnabled(False)
             # Update Gui
             self.queue.put(lowVoltageStatus)
+            print "lvButton now Off"
         else:
-            print "lvButtonAction: FAILED to switch on LV!"
+            print "lvButton_SwitchOff: FAILED to switch OFF lv!"
             self.bLvEnabled = True
             return
 
-    def lvButton_SwitchOff(self):
+    def lvButton_SwitchOn(self):
         """ Update S/W variables and Gui components related to switching the lv OFF """
         self.bLvEnabled = True      # lv is disabled, now Enabling...
         if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
@@ -527,7 +500,7 @@ class ExcaliburPowerGui:
             # Update Gui
             self.queue.put(lowVoltageStatus)
         else:
-            print "lvButtonAction: FAILED to switch off LV!"
+            print "lvButtonAction: FAILED to switch ON lv!"
             self.bLvEnabled = False
             return
         
@@ -558,8 +531,6 @@ class ExcaliburPowerGui:
             # Compare value read back (newVal) against bitMask, Because
             #     the other 5 bits of newPcfVal are inputs and change because of external factors 
             if (bitMask & newVal) is bitMask:
-                # TODO: Comment out when function proven to work:
-                #print "updatePcf8574Device ok, set: ", bitMask, " read-back: ", newVal
                 pass
             else:
                 print "updatePcf8574Device: Failed to apply settings: ", bEnableLvSetting, bEnableBiasSetting, newPcfVal, newVal
@@ -589,71 +560,14 @@ class ExcaliburPowerGui:
     
     def biasButtonAction(self):
         """ Execute each time biasButton is pressed """
+        print ""
         # If bBiasEnabled True, make False and turn associated LED red        
         if self.bBiasEnabled is True:   # bias is enabled, now Disabling...
             self.biasButton_SwitchOff()
-#            self.bBiasEnabled = False
-#            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-#                self.gui.gui.biasButton.setText("enable Bias")
-#                self.bBiasGreen = False
-#                biasStatus = "frmBiasStatus=\nbackground-color: rgb(255, 0, 0);"
-#                # Disable Polling checkbox while bias is disabled
-#                self.gui.gui.cbPollingBox.setEnabled(False)
-#                # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
-#                self.gui.gui.lvButton.setEnabled(True)
-#                self.gui.gui.leBiasLevel.setEnabled(True)
-#                print "biasButtonAction() switched OFF"
-#            else:
-#                print "biasButtonAction: failed to switch off Bias!"
-#                self.bBiasEnabled = True
-##            self.queue.put(biasStatus)
         else:
             self.biasButton_SwitchOn()
             # bias was disabled; Going to enable it now..
-#            # Obtain bias Level from Gui..  
-#            biasValue = int( self.gui.gui.leBiasLevel.text() )
-#            # Check biasValue within valid range
-#            if (0 <= biasValue <= 200):
-#                # biasValue within valid 0-200V range
-#                print "biasButtonAction() read biasValue: ", biasValue
-#                # Scale 0-200V range into 0-255 ADC range 
-#                #    (just submit value in range 0-200)
-#                biasString = self.biasLevelToAd5301Conversion(biasValue)
-#                # send string
-#                self.sCom.write(biasString)
-#                # Read value back
-#                rxString = self.readad5301_u12()
-#                print "biasButtonAction() read back ad5301: ", rxString
-#                    
-#                self.bBiasEnabled = True    # bias is disabled, now Enabling...
-#                # Attempt to switch on bias enable
-#                if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-#                    # Successfully enabled Bias; update related Gui components..
-#                    self.gui.gui.biasButton.setText("disable Bias")
-#                    self.bBiasGreen = True
-#                    biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
-#                    # Enable file selection only after bias successfully enabled
-#                    self.gui.gui.selectButton.setEnabled(True)
-#                    self.gui.gui.leSelectLogFileLocation.setEnabled(True)
-#                    self.gui.gui.cbPollingBox.setEnabled(True)
-#                    # Disable lvButton & biasLevel until bias disabled again 
-#                    # to prevent disabling lv and/or changing biasLevel while bias enabled)
-#                    self.gui.gui.lvButton.setEnabled(False)
-#                    self.gui.gui.leBiasLevel.setEnabled(False)
-#                    # Read back pcf8574 device
-#                    rxString = self.readpcf8574()
-#                    print "biasButtonAction() switched ON, then read back: ", rxString
-#                else:
-#                    # Failed to enable Bias in Pcf8574 device
-#                    print "biasButtonAction: Failed to switch ON bias!"
-#                    self.bBiasEnabled = False    # bias remained disabled
-#            else:
-#                # Specified biasValue outside valid range
-#                warningString = "Specified bias level outside valid 0-200V range!"
-#                self.displayWarningMessage(warningString)
 
-        # Signal to main thread to update Gui component
-#        self.queue.put(biasStatus)
 
     def biasButton_SwitchOff(self):
         """ Update all software variables/Gui components associated with switching OFF the bias button """
@@ -669,7 +583,7 @@ class ExcaliburPowerGui:
             self.gui.gui.leBiasLevel.setEnabled(True)
             # Update Gui
             self.queue.put(biasStatus)
-            print "biasButtonAction() switched OFF"
+            print "biasButton_SwitchOn() switched ON"
         else:
             print "biasButtonAction: failed to switch off Bias!"
             self.bBiasEnabled = True
@@ -710,7 +624,7 @@ class ExcaliburPowerGui:
                 rxString = self.readpcf8574()
                 # Update Gui
                 self.queue.put(biasStatus)
-                print "biasButtonAction() switched ON, then read back: ", rxString
+#                print "biasButtonAction() switched ON, then read back: ", rxString
             else:
                 # Failed to enable Bias in Pcf8574 device
                 print "biasButtonAction: Failed to switch ON bias!"
@@ -1400,24 +1314,44 @@ class ExcaliburPowerGui:
             raise OutOfRangeError, "scale5V() adcValue outside 0-4095 range!"
         return (adcValue / 819.0)
     
-    def scale3_3V(self, adcValue):
+    def scale3_3V_Voltage(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-3.3Volt """
         # Ensure adcValue is integer
         adcValue=int(adcValue)
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
-            raise OutOfRangeError, "scale3_3V() adcValue outside 0-4095 range!"
+            raise OutOfRangeError, "scale3_3V_Voltage() adcValue outside 0-4095 range!"
         return (adcValue * 0.0012207)       # = (adcValue * 5)/4096 
 #        return (adcValue *(11 / 13650.0))        
 
-    def scale1_8V(self, adcValue):
+    def scale3_3V_Current(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-3.3Volt """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale3_3V_Current() adcValue outside 0-4095 range!"
+        return (adcValue * 0.0024)       # = (adcValue * 5)/4096 
+#        return (adcValue *(11 / 13650.0))        
+
+    def scale1_8V_Voltage(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-1.8Volts """
         # Ensure adcValue is integer
         adcValue=int(adcValue)
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
-            raise OutOfRangeError, "scale1_8V() adcValue outside 0-4095 range!"
-        return (adcValue / 0.0012207)
+            raise OutOfRangeError, "scale1_8V_Voltage() adcValue outside 0-4095 range!"
+        return (adcValue * 0.0012207)
+#        return (adcValue / 2275.0)
+
+    def scale1_8V_Current(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-1.8Volts """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale1_8V_Current() adcValue outside 0-4095 range!"
+        return (adcValue * 0.0012207)
 #        return (adcValue / 2275.0)
 
     def scale48V(self, adcValue):
@@ -1436,7 +1370,8 @@ class ExcaliburPowerGui:
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale200V_CurrentConversion() adcValue outside 0-4095 range!"
-        return (adcValue * (40 / 819.0))
+        # TODO: Check bias current conversion
+        return (adcValue * 0.00122)
 
     def scale200VoltageConversion(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-200Volts """
@@ -1515,7 +1450,7 @@ class ExcaliburPowerGui:
             self.sCom.write(sCmd)
             # Read enabled channel at address 34
             adcChannel, rxInt = self.readAd7998(i2cAddress)
-            print adcChannel, rxInt
+#            print adcChannel, rxInt
         except:
             self.displayErrorMessage("readAd7998_Unit14(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
@@ -1648,28 +1583,28 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit16(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le33VA=%s" % str( self.scale3_3V(rxInt) ))         # U16, pin 7    - 3.3V, Current
+            try:    self.queue.put("le33VA=%s" % str( self.scale3_3V_Current(rxInt) ))         # U16, pin 7    - 3.3V, Current
             except: self.displayErrorMessage("U16 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le18VAA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 14    - 1.8V Mod A, Current
+            try:    self.queue.put("le18VAA=%s" % str( round5Decimals(self.scale1_8V_Current(rxInt)) ))        # U16, pin 14    - 1.8V Mod A, Current
             except: self.displayErrorMessage("U16 adc1, Error updating GUI: ")
         def two():
             try:    self.queue.put("le200VA=%s" % str( self.scale200V_CurrentConversion(rxInt) ))      # U16, pin 8
             except: self.displayErrorMessage("U16 adc2, Error updating GUI: ")
         def three():
-            try:    self.queue.put("le33VV=%s" % str( round2Decimals( self.scale3_3V(rxInt)) ))        # U16, pin 13    - 3.3V, Voltage
+            try:    self.queue.put("le33VV=%s" % str( round2Decimals( self.scale3_3V_Voltage(rxInt)) ))        # U16, pin 13    - 3.3V, Voltage
             except: self.displayErrorMessage("U16 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("le18VAV=%s" % str( round2Decimals(self.scale1_8V(rxInt)) ))        # U16, pin 9    - 1.8V Mod A, Voltage
+            try:    self.queue.put("le18VAV=%s" % str( round2Decimals(self.scale1_8V_Voltage(rxInt)) ))        # U16, pin 9    - 1.8V Mod A, Voltage
             except: self.displayErrorMessage("U16 adc4, Error updating GUI: ")
         def five():
             try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12    - 200V (bias) 
             except: self.displayErrorMessage("U16 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("le18VBA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 10    - 1.8V Mod B, Current
+            try:    self.queue.put("le18VBA=%s" % str( round5Decimals(self.scale1_8V_Current(rxInt)) ))        # U16, pin 10    - 1.8V Mod B, Current
             except: self.displayErrorMessage("U16 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("le18VBV=%s" % str( round2Decimals(self.scale1_8V(rxInt)) ))        # U16, pin 11    - 1.8V mod B, Voltage
+            try:    self.queue.put("le18VBV=%s" % str( round2Decimals(self.scale1_8V_Voltage(rxInt)) ))        # U16, pin 11    - 1.8V mod B, Voltage
             except: self.displayErrorMessage("U16 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
@@ -1700,19 +1635,19 @@ class ExcaliburPowerGui:
 #            self.readAd7998_Unit14(4, 0)   # Read ad7998 Ch 7    - 5V Fem4 Current
 #            self.readAd7998_Unit14(8, 0)   # Read ad7998 Ch 8    - 5V Fem5 Current
 
-#            self.readAd7998_Unit15(0, 16)  # Read ad7998 Ch 1     - 4.8V Voltage
-#            self.readAd7998_Unit15(0, 32)  # Read ad7998 Ch 2     - 4.8V Current
-#            self.readAd7998_Unit15(0, 64)  # Read ad7998 Ch 3     - 5V Super Voltage
-#            self.readAd7998_Unit15(0, 128) # Read ad7998 Ch 4     - 5V Super Current
-#            self.readAd7998_Unit15(1, 0)   # Read ad7998  Ch 5    - Humidity
-#            self.readAd7998_Unit15(2, 0)   # Read ad7998  Ch 6    - Air Temperature
-#            self.readAd7998_Unit15(4, 0)   # Read ad7998  Ch 7    - Coolant Temperature
-#            self.readAd7998_Unit15(8, 0)   # Read ad7998  Ch 8    - Coolant Flow
+            self.readAd7998_Unit15(0, 16)  # Read ad7998 Ch 1     - 4.8V Voltage
+            self.readAd7998_Unit15(0, 32)  # Read ad7998 Ch 2     - 4.8V Current
+            self.readAd7998_Unit15(0, 64)  # Read ad7998 Ch 3     - 5V Super Voltage
+            self.readAd7998_Unit15(0, 128) # Read ad7998 Ch 4     - 5V Super Current
+            self.readAd7998_Unit15(1, 0)   # Read ad7998  Ch 5    - Humidity
+            self.readAd7998_Unit15(2, 0)   # Read ad7998  Ch 6    - Air Temperature
+            self.readAd7998_Unit15(4, 0)   # Read ad7998  Ch 7    - Coolant Temperature
+            self.readAd7998_Unit15(8, 0)   # Read ad7998  Ch 8    - Coolant Flow
             
 
             self.readAd7998_Unit16(0, 16)  # Read ad7998 Ch 1    - 3.3V, Current
             self.readAd7998_Unit16(0, 32)  # Read ad7998 Ch 2    - 1.8V Mod A, Current
-#            self.readAd7998_Unit16(0, 64)  # Read ad7998 Ch 3    - 200V Bias, Current
+            self.readAd7998_Unit16(0, 64)  # Read ad7998 Ch 3    - 200V Bias, Current
             self.readAd7998_Unit16(0, 128) # Read ad7998 Ch 4    - 3.3V, Voltage
             self.readAd7998_Unit16(1, 0)   # Read ad7998 Ch 5    - 1.8V Mod A, Voltage
             self.readAd7998_Unit16(2, 0)   # Read ad7998 Ch 6    - 200V Bias, Voltage
@@ -1774,6 +1709,17 @@ def round3Decimals(floatVar):
         raise WrongVariableType, "round3Decimals() didn't receive string argument!"
     return str("%.3f" % floatVar)
 
+def round4Decimals(floatVar):
+    """ Round float floatVar to 4 decimal points and return as string """
+    if compareTypes(floatVar) is not 2:
+        raise WrongVariableType, "round4Decimals() didn't receive string argument!"
+    return str("%.4f" % floatVar)
+
+def round5Decimals(floatVar):
+    """ Round float floatVar to 5 decimal points and return as string """
+    if compareTypes(floatVar) is not 2:
+        raise WrongVariableType, "round5Decimals() didn't receive string argument!"
+    return str("%.5f" % floatVar)
 
 if __name__ == "__main__":
     # Execute actual program
