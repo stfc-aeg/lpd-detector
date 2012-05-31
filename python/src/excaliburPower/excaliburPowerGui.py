@@ -1417,7 +1417,8 @@ class ExcaliburPowerGui:
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale1_8V() adcValue outside 0-4095 range!"
-        return (adcValue / 2275.0)
+        return (adcValue / 0.0012207)
+#        return (adcValue / 2275.0)
 
     def scale48V(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-48Volts """
@@ -1428,13 +1429,13 @@ class ExcaliburPowerGui:
             raise OutOfRangeError, "scale48V() adcValue outside 0-4095 range!"
         return (adcValue * (16 / 1365.0))
     
-    def scale200V_CurrentlyConversion(self, adcValue):
+    def scale200V_CurrentConversion(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-200Volts """
         # Ensure adcValue is integer
         adcValue=int(adcValue)
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
-            raise OutOfRangeError, "scale200V_CurrentlyConversion() adcValue outside 0-4095 range!"
+            raise OutOfRangeError, "scale200V_CurrentConversion() adcValue outside 0-4095 range!"
         return (adcValue * (40 / 819.0))
 
     def scale200VoltageConversion(self, adcValue):
@@ -1519,28 +1520,28 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit14(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le5VAV=%s" % str( round2Decimals( self.scale5V(rxInt)) ))   # Unit 14, pin 7
+            try:    self.queue.put("le5VAV=%s" % str( round2Decimals( self.scale5V(rxInt)) ))   # Unit 14, pin 7 - 5V A Voltage
             except: self.displayErrorMessage("U14 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le5VBV=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 14
+            try:    self.queue.put("le5VBV=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 14 - 5V A Current
             except: self.displayErrorMessage("U14 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le5F0I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 8
+            try:    self.queue.put("le5F0I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 8 - 5V Fem0 Current
             except: self.displayErrorMessage("U14 adc2, Error updating GUI: ")
         def three():
-            try:    self.queue.put("le5F1I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 13
+            try:    self.queue.put("le5F1I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 13 - 5V Fem1 Current
             except: self.displayErrorMessage("U14 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("le5F2I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 9
+            try:    self.queue.put("le5F2I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 9 - 5V Fem2 Current
             except: self.displayErrorMessage("U14 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("le5F3I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 12
+            try:    self.queue.put("le5F3I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 12 - 5V Fem3 Current
             except: self.displayErrorMessage("U14 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("le5F4I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 10
+            try:    self.queue.put("le5F4I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 10 - 5V Fem4 Current
             except: self.displayErrorMessage("U14 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("le5F5I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 11
+            try:    self.queue.put("le5F5I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 11 - 5V Fem5 Current
             except: self.displayErrorMessage("U14 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
@@ -1583,32 +1584,28 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit15(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-#            try:    self.queue.put("le48VV=%s" % str( self.scale48V(rxInt) ))            # U15, pin 7
-            try:    self.queue.put("le48VV=%s" % str( (rxInt) ))            # U15, pin 7
+            try:    self.queue.put("le48VV=%s" % str( (rxInt) ))            # U15, pin 7 - 4.8V Voltage
             except: self.displayErrorMessage("U15 adc0, Error updating GUI: ")
         def one():
-#            try:    self.queue.put("le48VA=%s" % str( self.scale48V(rxInt) ))            # U15, pin 14
-            try:    self.queue.put("le48VA=%s" % str( (rxInt) ))            # U15, pin 14
+            try:    self.queue.put("le48VA=%s" % str( (rxInt) ))            # U15, pin 14 - 4.8V Current
             except: self.displayErrorMessage("U15 adc1, Error updating GUI: ")
         def two():
-#            try:    self.queue.put("le5SUPERVV=%s" % str( self.scale5V(rxInt) ))        # U15, pin 8
-            try:    self.queue.put("le5SUPERVV=%s" % str( (rxInt) ))        # U15, pin 8
+            try:    self.queue.put("le5SUPERVV=%s" % str( (rxInt) ))        # U15, pin 8 - 5V Super Voltage
             except: self.displayErrorMessage("U15 adc2, Error updating GUI: ")
         def three():
-#            try:    self.queue.put("le5SUPERVA=%s" % str( self.scale5V(rxInt) ))        # U15, pin 13
-            try:    self.queue.put("le5SUPERVA=%s" % str( (rxInt) ))        # U15, pin 13
+            try:    self.queue.put("le5SUPERVA=%s" % str( (rxInt) ))        # U15, pin 13 - 5V Super Current
             except: self.displayErrorMessage("U15 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("leHum_mon=%s" % str( self.scaleHumidity(rxInt) ))   # U15, pin 9
+            try:    self.queue.put("leHum_mon=%s" % str( self.scaleHumidity(rxInt) ))   # U15, pin 9 - Humidity
             except: self.displayErrorMessage("U15 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("leAirtmp_mon=%s" % str( self.scaleTemperature(rxInt) ))      # U15, pin 12 
+            try:    self.queue.put("leAirtmp_mon=%s" % str( self.scaleTemperature(rxInt) ))      # U15, pin 12 - Air Temperature
             except: self.displayErrorMessage("U15 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("leCoolant_stat=%s" % str( self.scaleTemperature(rxInt) ))    # U15, pin 10
+            try:    self.queue.put("leCoolant_stat=%s" % str( self.scaleTemperature(rxInt) ))    # U15, pin 10 - Coolant Temperature
             except: self.displayErrorMessage("U15 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("leCoolant_flow_mon=%s" % str( (rxInt) ))    # U15, pin 11
+            try:    self.queue.put("leCoolant_flow_mon=%s" % str( (rxInt) ))    # U15, pin 11 - Coolant Flow
             except: self.displayErrorMessage("U15 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
@@ -1651,28 +1648,28 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit16(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le33VA=%s" % str( self.scale3_3V(rxInt) ))         # U16, pin 7
+            try:    self.queue.put("le33VA=%s" % str( self.scale3_3V(rxInt) ))         # U16, pin 7    - 3.3V, Current
             except: self.displayErrorMessage("U16 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le18VAV=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 14
+            try:    self.queue.put("le18VAA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 14    - 1.8V Mod A, Current
             except: self.displayErrorMessage("U16 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le200VA=%s" % str( self.scale200V_CurrentlyConversion(rxInt) ))        # U16, pin 8
+            try:    self.queue.put("le200VA=%s" % str( self.scale200V_CurrentConversion(rxInt) ))      # U16, pin 8
             except: self.displayErrorMessage("U16 adc2, Error updating GUI: ")
         def three():
-            try:    self.queue.put("le33VV=%s" % str( self.scale3_3V(rxInt) ))        # U16, pin 13
+            try:    self.queue.put("le33VV=%s" % str( round2Decimals( self.scale3_3V(rxInt)) ))        # U16, pin 13    - 3.3V, Voltage
             except: self.displayErrorMessage("U16 adc3, Error updating GUI: ")
         def four():
-            try:    self.queue.put("le18VAA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 9
+            try:    self.queue.put("le18VAV=%s" % str( round2Decimals(self.scale1_8V(rxInt)) ))        # U16, pin 9    - 1.8V Mod A, Voltage
             except: self.displayErrorMessage("U16 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12 
+            try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12    - 200V (bias) 
             except: self.displayErrorMessage("U16 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("le18VBV=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 10
+            try:    self.queue.put("le18VBA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 10    - 1.8V Mod B, Current
             except: self.displayErrorMessage("U16 adc6, Error updating GUI: ")
         def seven():
-            try:    self.queue.put("le18VBA=%s" % str( self.scale1_8V(rxInt) ))        # U16, pin 11
+            try:    self.queue.put("le18VBV=%s" % str( round2Decimals(self.scale1_8V(rxInt)) ))        # U16, pin 11    - 1.8V mod B, Voltage
             except: self.displayErrorMessage("U16 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
         whichChannel = {0 : zero, 1 : one, 2 : two, 3 : three, 4 : four,
@@ -1694,30 +1691,35 @@ class ExcaliburPowerGui:
 #            self.readtmp()           # Read tmp275's current temperature
 #            self.readpca9538()       # Read pca9538's current value
 
-#            self.readAd7998_Unit14(0, 16)  # Read ad7998 Ch 1
-#            self.readAd7998_Unit14(0, 32)  # Read ad7998 Ch 2
-#            self.readAd7998_Unit14(0, 64)  # Read ad7998 Ch 3
-#            self.readAd7998_Unit14(0, 128) # Read ad7998 Ch 4
-#
-#            self.readAd7998_Unit14(1, 0)  # Read ad7998 Ch 5
-#            self.readAd7998_Unit14(2, 0)  # Read ad7998 Ch 6
-#            self.readAd7998_Unit14(4, 0)  # Read ad7998 Ch 7
-#            self.readAd7998_Unit14(8, 0)  # Read ad7998 Ch 8
-            self.readAd7998_Unit15(0, 16)  # Read ad7998 Ch 1
-            self.readAd7998_Unit15(0, 32)  # Read ad7998 Ch 2
-            self.readAd7998_Unit15(0, 64)  # Read ad7998 Ch 3
-            self.readAd7998_Unit15(0, 128) # Read ad7998 Ch 4
+#            self.readAd7998_Unit14(0, 16)  # Read ad7998 Ch 1    - 5V A Voltage
+#            self.readAd7998_Unit14(0, 32)  # Read ad7998 Ch 2    - 5V B Voltage
+#            self.readAd7998_Unit14(0, 64)  # Read ad7998 Ch 3    - 5V Fem0 Current
+#            self.readAd7998_Unit14(0, 128) # Read ad7998 Ch 4    - 5V Fem1 Current
+#            self.readAd7998_Unit14(1, 0)   # Read ad7998 Ch 5    - 5V Fem2 Current
+#            self.readAd7998_Unit14(2, 0)   # Read ad7998 Ch 6    - 5V Fem3 Current
+#            self.readAd7998_Unit14(4, 0)   # Read ad7998 Ch 7    - 5V Fem4 Current
+#            self.readAd7998_Unit14(8, 0)   # Read ad7998 Ch 8    - 5V Fem5 Current
 
-            self.readAd7998_Unit15(1, 0)  # Read ad7998 Ch 5
-            self.readAd7998_Unit15(2, 0)  # Read ad7998 Ch 6
-            self.readAd7998_Unit15(4, 0)  # Read ad7998 Ch 7
-            self.readAd7998_Unit15(8, 0)  # Read ad7998 Ch 8
-
-            self.readAd7998_Unit16(2, 0)  # Read ad7998 Ch 6
+#            self.readAd7998_Unit15(0, 16)  # Read ad7998 Ch 1     - 4.8V Voltage
+#            self.readAd7998_Unit15(0, 32)  # Read ad7998 Ch 2     - 4.8V Current
+#            self.readAd7998_Unit15(0, 64)  # Read ad7998 Ch 3     - 5V Super Voltage
+#            self.readAd7998_Unit15(0, 128) # Read ad7998 Ch 4     - 5V Super Current
+#            self.readAd7998_Unit15(1, 0)   # Read ad7998  Ch 5    - Humidity
+#            self.readAd7998_Unit15(2, 0)   # Read ad7998  Ch 6    - Air Temperature
+#            self.readAd7998_Unit15(4, 0)   # Read ad7998  Ch 7    - Coolant Temperature
+#            self.readAd7998_Unit15(8, 0)   # Read ad7998  Ch 8    - Coolant Flow
             
-            # Check status of pcf8574 device
-#            pcfStatus = self.readpcf8574()
-#            self.updatePcf8574GuiComponents(pcfStatus)
+
+            self.readAd7998_Unit16(0, 16)  # Read ad7998 Ch 1    - 3.3V, Current
+            self.readAd7998_Unit16(0, 32)  # Read ad7998 Ch 2    - 1.8V Mod A, Current
+#            self.readAd7998_Unit16(0, 64)  # Read ad7998 Ch 3    - 200V Bias, Current
+            self.readAd7998_Unit16(0, 128) # Read ad7998 Ch 4    - 3.3V, Voltage
+            self.readAd7998_Unit16(1, 0)   # Read ad7998 Ch 5    - 1.8V Mod A, Voltage
+            self.readAd7998_Unit16(2, 0)   # Read ad7998 Ch 6    - 200V Bias, Voltage
+            self.readAd7998_Unit16(4, 0)   # Read ad7998 Ch 7    - 1.8V Mod B, Current
+            self.readAd7998_Unit16(8, 0)   # Read ad7998 Ch 8    - 1.8V mod B, Voltage
+
+
         except:
             self.displayErrorMessage("")
         # Gui now completely populated, allow logging to proceed
