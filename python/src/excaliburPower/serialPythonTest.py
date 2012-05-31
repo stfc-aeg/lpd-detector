@@ -740,14 +740,14 @@ class KnownScale200V(unittest.TestCase):
                     (4095, 200.0)
                     )
     
-    def testScale200V(self):
+    def testScale200V_CurrentlyConversion(self):
         """ scale200V_CurrentlyConversion() should scale ad7998's 0-4095 into 0-200V """
         for adcValue, Vscale in self.knownValues:
             result = excaliburObj.scale200V_CurrentlyConversion(adcValue)
             self.assertEqual(Vscale, result)
             
 
-class testScale200VBadInput(unittest.TestCase):
+class testScale200V_CurrentlyConversionBadInput(unittest.TestCase):
     def testNegative(self):
         """ scale200V_CurrentlyConversion() should fail with negative input """
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V_CurrentlyConversion, -1)
@@ -784,13 +784,50 @@ class testScaleHumidityBadInput(unittest.TestCase):
 
 
     def testArgumentFloat(self):
-        """ scaleHumidity() should fail if msg argument is float """
+        """ scaleHumidity() should fail if humidityValue argument is float """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.scaleHumidity, 3.2)
 
     def testArgumentBoolean(self):
-        """ scaleHumidity() should fail if msg argument is boolean """
+        """ scaleHumidity() should fail if humidityValue argument is boolean """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.scaleHumidity, True)
 
+class KnownScaleTemperature(unittest.TestCase):
+    knownValues = ( (0, 0),
+                    (1010, 12),
+                    (2135, 26),
+#                    (3159, 94),
+#                    (3952, 126),
+#                    (4095, 132)
+                    )
+    
+    def testScaleTemperature(self):
+        """ ScaleTemperature() should scale ad7998's 0-4095 into 0-200V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scaleTemperature(adcValue)
+            self.assertEqual(Vscale, result)
+            
+
+class testScaleTemperatureBadInput(unittest.TestCase):
+    def testTooSmall(self):
+        """ ScaleTemperature() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scaleTemperature, -1)
+
+    def testTooLarge(self):
+        """ ScaleTemperature() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scaleTemperature, 4096)
+
+    def testArgumentNotFloat(self):
+        """ ScaleTemperature() should fail if tempValue argument is float """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.scaleTemperature, 3.2)
+
+    def testArgumentNotBoolean(self):
+        """ ScaleTemperature() should fail if tempValue argument is boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.scaleTemperature, True)
+
+    def testArgumentNotString(self):
+        """ ScaleTemperature() should fail if tempValue argument is string """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.scaleTemperature, "42")
+        
 class writead5301_u12(unittest.TestCase):
     def testArgumentMissing(self):
         """writead5301_u12 should fail if decimalBinaryCode argument not specified, ie NoneType"""
@@ -814,7 +851,7 @@ class writead5301_u12(unittest.TestCase):
 
 
 
-class KnownAd5301ToDegrees(unittest.TestCase):
+class KnownBiasLevelToAd5301Conversion(unittest.TestCase):
     knownValues = ( (0, "w 12 0 @"),         # min: 0 in, "0" out
                     (100, "w 12 7 240 @"),
                     (200, "w 12 15 240 @"),
@@ -824,23 +861,34 @@ class KnownAd5301ToDegrees(unittest.TestCase):
 #                    (19200, 150),           # max: 200 in, "7 240" out 
                     )
 
-    def testAd5301ToDegrees(self):
+    def testBiasLevelToAd5301Conversion(self):
         """ad5301ToDegrees() should turn ad5301 13 bit format into degrees C"""
         for ad5301Degree, centiDegree in self.knownValues:
             result = excaliburObj.biasLevelToAd5301Conversion(ad5301Degree)
             self.assertEqual(centiDegree, result)
 
 
-class ad5301ToDegreesBadInput(unittest.TestCase):
+class biasLevelToAd5301ConversionBadInput(unittest.TestCase):
 #    # Won't fail with too large input as input masked by 4080 (0x0FF0)
 #    def testTooLarge(self):
-#        """ad5301ToDegrees should fail with large input"""
+#        """biasLevelToAd5301Conversion should fail with large input"""
 #        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.biasLevelToAd5301Conversion, 19201)
         
     def testNegative(self):
-        """ad5301ToDegrees should fail with negative input"""
+        """biasLevelToAd5301Conversion should fail with negative input"""
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.biasLevelToAd5301Conversion, -1)
 
+    def testBoolean(self):
+        """ biasLevelToAd5301Conversion() should fail if received argument is an boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.biasLevelToAd5301Conversion, False)
+
+    def testFloat(self):
+        """ biasLevelToAd5301Conversion() should fail if received argument is a float """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.biasLevelToAd5301Conversion, 5.2)
+
+    def testString(self):
+        """ biasLevelToAd5301Conversion() should fail if received argument is a string """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.biasLevelToAd5301Conversion, "Test")
 
 
 class KnownDebugBooleanValues(unittest.TestCase):

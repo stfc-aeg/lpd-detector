@@ -541,7 +541,8 @@ class ExcaliburPowerGui:
             raise WrongVariableType, "updatePcf8574Device() bEnableLvSetting not a boolean argument!"
 
         # Suitable sReg?
-        if not (0 <= int(sReg) <= 256):
+#        if not (0 <= int(sReg) <= 256):
+        if not (0 <= sReg <= 256):
             raise OutOfRangeError, "writePcf8574() sReg argument out of range"
         # Was sVal specified?
         wrString = "w 35 " + str(sReg) + " @"
@@ -623,6 +624,8 @@ class ExcaliburPowerGui:
                 12, 13:    PD0,PD1 = Power Down bits
                 14, 15:    Don't Care
         """
+        if compareTypes(biasLevel) is not 1:
+            raise BadArgumentError, "biasLevelToAd5301Conversion() biasLevel argument not integer!"
         # Check biasLevel argument not negative
         if biasLevel < 0:
             raise OutOfRangeError, "biasLevelToAd5301Conversion() recevied negative argument!"
@@ -1370,8 +1373,13 @@ class ExcaliburPowerGui:
     
     def scaleTemperature(self, tempValue):
         """ Scale ad7998's range of ADC count into temperature degrees celsius """
+        # Check tempValue argument is integer
+        if compareTypes(tempValue) is not 1:
+            raise BadArgumentError,"scaleTemperature() tempValue argument not integer!"
         if not (0 <= tempValue <= 4095):
             raise OutOfRangeError, "scaleTemperature() tempValue outside 0-4095 range!"
+        # 1 ADC count = 5V / 4096 = 0.0012207
+#        return (tempValue * 0.00122)
         return (tempValue / 82)
         
 
@@ -1493,8 +1501,7 @@ class ExcaliburPowerGui:
             try:    self.queue.put("leAirtmp_mon=%s" % str( self.scaleTemperature(rxInt) ))      # U15, pin 12 
             except: self.displayErrorMessage("U15 adc5, Error updating GUI: ")
         def six():
-#            try:    self.queue.put("leCoolant_temp_mon=%s" % str( self.scale5V(rxInt) ))    # U15, pin 10
-            try:    self.queue.put("leCoolant_stat=%s" % str( (rxInt) ))    # U15, pin 10
+            try:    self.queue.put("leCoolant_stat=%s" % str( self.scaleTemperature(rxInt) ))    # U15, pin 10
             except: self.displayErrorMessage("U15 adc6, Error updating GUI: ")
         def seven():
             try:    self.queue.put("leCoolant_flow_mon=%s" % str( (rxInt) ))    # U15, pin 11
