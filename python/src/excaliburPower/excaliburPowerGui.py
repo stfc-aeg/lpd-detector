@@ -464,36 +464,73 @@ class ExcaliburPowerGui:
         
         # If bLvEnabled True (Green), make False and turn associated LED red
         if self.bLvEnabled is True:     # lv is enabled, now Disabling...
-            self.bLvEnabled = False
-            # Attempt to update pcf8574 device
-            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-                # LV switched OFF
-                self.gui.gui.lvButton.setText("enable LV")
-                self.bLvGreen = False
-                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);"            
-                # Disable biasButton while lv disabled
-                self.gui.gui.biasButton.setEnabled(False)
-            else:
-                print "lvButtonAction: FAILED to switch on LV!"
-                self.bLvEnabled = True
-                return
+            self.lvButton_SwitchOff()
+#            self.bLvEnabled = False
+#            # Attempt to update pcf8574 device
+#            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+#                # LV switched OFF
+#                self.gui.gui.lvButton.setText("enable LV")
+#                self.bLvGreen = False
+#                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);"            
+#                # Disable biasButton while lv disabled
+#                self.gui.gui.biasButton.setEnabled(False)
+#            else:
+#                print "lvButtonAction: FAILED to switch on LV!"
+#                self.bLvEnabled = True
+#                return
         else:
-            self.bLvEnabled = True      # lv is disabled, now Enabling...
-            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-                # LV switched ON 
-                self.gui.gui.lvButton.setText("disable LV")
-                self.bLvGreen = True
-                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(0, 255, 0);"
-                # Enable biasButton only after lv successfully enabled
-                self.gui.gui.biasButton.setEnabled(True)
-            else:
-                print "lvButtonAction: FAILED to switch off LV!"
-                self.bLvEnabled = False
-                return
+            self.lvButton_SwitchOn()
+#            self.bLvEnabled = True      # lv is disabled, now Enabling...
+#            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+#                # LV switched ON 
+#                self.gui.gui.lvButton.setText("disable LV")
+#                self.bLvGreen = True
+#                lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(0, 255, 0);"
+#                # Enable biasButton only after lv successfully enabled
+#                self.gui.gui.biasButton.setEnabled(True)
+#            else:
+#                print "lvButtonAction: FAILED to switch off LV!"
+#                self.bLvEnabled = False
+#                return
         
         # Signal to main thread to update Gui component
-        self.queue.put(lowVoltageStatus)
+#        self.queue.put(lowVoltageStatus)
 
+    def lvButton_SwitchOn(self):
+        """ Update S/W variables and Gui components related to switching the lv ON """
+        self.bLvEnabled = False
+        # Attempt to update pcf8574 device
+        if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+            # LV switched OFF
+            self.gui.gui.lvButton.setText("enable LV")
+            self.bLvGreen = False
+            lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);"            
+            # Disable biasButton while lv disabled
+            self.gui.gui.biasButton.setEnabled(False)
+            # Update Gui
+            self.queue.put(lowVoltageStatus)
+        else:
+            print "lvButtonAction: FAILED to switch on LV!"
+            self.bLvEnabled = True
+            return
+
+    def lvButton_SwitchOff(self):
+        """ Update S/W variables and Gui components related to switching the lv OFF """
+        self.bLvEnabled = True      # lv is disabled, now Enabling...
+        if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+            # LV switched ON 
+            self.gui.gui.lvButton.setText("disable LV")
+            self.bLvGreen = True
+            lowVoltageStatus = "frmLowVoltageStatus=\nbackground-color: rgb(0, 255, 0);"
+            # Enable biasButton only after lv successfully enabled
+            self.gui.gui.biasButton.setEnabled(True)
+            # Update Gui
+            self.queue.put(lowVoltageStatus)
+        else:
+            print "lvButtonAction: FAILED to switch off LV!"
+            self.bLvEnabled = False
+            return
+        
     def updatePcf8574Device(self, bEnableLvSetting, bEnableBiasSetting):
         """ Set pcf8574 device according to bEnableLvSetting (True = on, False = off)
             by writing to dev and reading back to confirm.
@@ -554,67 +591,134 @@ class ExcaliburPowerGui:
         """ Execute each time biasButton is pressed """
         # If bBiasEnabled True, make False and turn associated LED red        
         if self.bBiasEnabled is True:   # bias is enabled, now Disabling...
-            self.bBiasEnabled = False
-            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-                self.gui.gui.biasButton.setText("enable Bias")
-                self.bBiasGreen = False
-                biasStatus = "frmBiasStatus=\nbackground-color: rgb(255, 0, 0);"
-                # Disable Polling checkbox while bias is disabled
-                self.gui.gui.cbPollingBox.setEnabled(False)
-                # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
-                self.gui.gui.lvButton.setEnabled(True)
-                self.gui.gui.leBiasLevel.setEnabled(True)
-                print "biasButtonAction() switched OFF"
-            else:
-                print "biasButtonAction: failed to switch off Bias!"
-                self.bBiasEnabled = True
-#            self.queue.put(biasStatus)
+            self.biasButton_SwitchOff()
+#            self.bBiasEnabled = False
+#            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+#                self.gui.gui.biasButton.setText("enable Bias")
+#                self.bBiasGreen = False
+#                biasStatus = "frmBiasStatus=\nbackground-color: rgb(255, 0, 0);"
+#                # Disable Polling checkbox while bias is disabled
+#                self.gui.gui.cbPollingBox.setEnabled(False)
+#                # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
+#                self.gui.gui.lvButton.setEnabled(True)
+#                self.gui.gui.leBiasLevel.setEnabled(True)
+#                print "biasButtonAction() switched OFF"
+#            else:
+#                print "biasButtonAction: failed to switch off Bias!"
+#                self.bBiasEnabled = True
+##            self.queue.put(biasStatus)
         else:
+            self.biasButton_SwitchOn()
             # bias was disabled; Going to enable it now..
-            # Obtain bias Level from Gui..  
-            biasValue = int( self.gui.gui.leBiasLevel.text() )
-            # Check biasValue within valid range
-            if (0 <= biasValue <= 200):
-                # biasValue within valid 0-200V range
-                print "biasButtonAction() read biasValue: ", biasValue
-                # Scale 0-200V range into 0-255 ADC range 
-                #    (just submit value in range 0-200)
-                biasString = self.biasLevelToAd5301Conversion(biasValue)
-                # send string
-                self.sCom.write(biasString)
-                # Read value back
-                rxString = self.readad5301_u12()
-                print "biasButtonAction() read back ad5301: ", rxString
-                    
-                self.bBiasEnabled = True    # bias is disabled, now Enabling...
-                # Attempt to switch on bias enable
-                if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
-                    # Successfully enabled Bias; update related Gui components..
-                    self.gui.gui.biasButton.setText("disable Bias")
-                    self.bBiasGreen = True
-                    biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
-                    # Enable file selection only after bias successfully enabled
-                    self.gui.gui.selectButton.setEnabled(True)
-                    self.gui.gui.leSelectLogFileLocation.setEnabled(True)
-                    self.gui.gui.cbPollingBox.setEnabled(True)
-                    # Disable lvButton & biasLevel until bias disabled again 
-                    # to prevent disabling lv and/or changing biasLevel while bias enabled)
-                    self.gui.gui.lvButton.setEnabled(False)
-                    self.gui.gui.leBiasLevel.setEnabled(False)
-                    # Read back pcf8574 device
-                    rxString = self.readpcf8574()
-                    print "biasButtonAction() switched ON, then read back: ", rxString
-                else:
-                    # Failed to enable Bias in Pcf8574 device
-                    print "biasButtonAction: Failed to switch ON bias!"
-                    self.bBiasEnabled = False    # bias remained disabled
-            else:
-                # Specified biasValue outside valid range
-                warningString = "Specified bias level outside valid 0-200V range!"
-                self.displayWarningMessage(warningString)
+#            # Obtain bias Level from Gui..  
+#            biasValue = int( self.gui.gui.leBiasLevel.text() )
+#            # Check biasValue within valid range
+#            if (0 <= biasValue <= 200):
+#                # biasValue within valid 0-200V range
+#                print "biasButtonAction() read biasValue: ", biasValue
+#                # Scale 0-200V range into 0-255 ADC range 
+#                #    (just submit value in range 0-200)
+#                biasString = self.biasLevelToAd5301Conversion(biasValue)
+#                # send string
+#                self.sCom.write(biasString)
+#                # Read value back
+#                rxString = self.readad5301_u12()
+#                print "biasButtonAction() read back ad5301: ", rxString
+#                    
+#                self.bBiasEnabled = True    # bias is disabled, now Enabling...
+#                # Attempt to switch on bias enable
+#                if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+#                    # Successfully enabled Bias; update related Gui components..
+#                    self.gui.gui.biasButton.setText("disable Bias")
+#                    self.bBiasGreen = True
+#                    biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
+#                    # Enable file selection only after bias successfully enabled
+#                    self.gui.gui.selectButton.setEnabled(True)
+#                    self.gui.gui.leSelectLogFileLocation.setEnabled(True)
+#                    self.gui.gui.cbPollingBox.setEnabled(True)
+#                    # Disable lvButton & biasLevel until bias disabled again 
+#                    # to prevent disabling lv and/or changing biasLevel while bias enabled)
+#                    self.gui.gui.lvButton.setEnabled(False)
+#                    self.gui.gui.leBiasLevel.setEnabled(False)
+#                    # Read back pcf8574 device
+#                    rxString = self.readpcf8574()
+#                    print "biasButtonAction() switched ON, then read back: ", rxString
+#                else:
+#                    # Failed to enable Bias in Pcf8574 device
+#                    print "biasButtonAction: Failed to switch ON bias!"
+#                    self.bBiasEnabled = False    # bias remained disabled
+#            else:
+#                # Specified biasValue outside valid range
+#                warningString = "Specified bias level outside valid 0-200V range!"
+#                self.displayWarningMessage(warningString)
 
         # Signal to main thread to update Gui component
-        self.queue.put(biasStatus)
+#        self.queue.put(biasStatus)
+
+    def biasButton_SwitchOff(self):
+        """ Update all software variables/Gui components associated with switching OFF the bias button """
+        self.bBiasEnabled = False
+        if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+            self.gui.gui.biasButton.setText("enable Bias")
+            self.bBiasGreen = False
+            biasStatus = "frmBiasStatus=\nbackground-color: rgb(255, 0, 0);"
+            # Disable Polling checkbox while bias is disabled
+            self.gui.gui.cbPollingBox.setEnabled(False)
+            # Disable lvButton & biasLevel until bias disabled again (prevent disabling lv/changing biasLevel while bias enabled)
+            self.gui.gui.lvButton.setEnabled(True)
+            self.gui.gui.leBiasLevel.setEnabled(True)
+            # Update Gui
+            self.queue.put(biasStatus)
+            print "biasButtonAction() switched OFF"
+        else:
+            print "biasButtonAction: failed to switch off Bias!"
+            self.bBiasEnabled = True
+
+    def biasButton_SwitchOn(self):
+        """ Update all software variables/Gui components associated with switching ON the bias button """
+        # Obtain bias Level from Gui..  
+        biasValue = int( self.gui.gui.leBiasLevel.text() )
+        # Check biasValue within valid range
+        if (0 <= biasValue <= 200):
+            # biasValue within valid 0-200V range
+            print "biasButtonAction() read biasValue: ", biasValue
+            # Scale 0-200V range into 0-255 ADC range 
+            #    (just submit value in range 0-200)
+            biasString = self.biasLevelToAd5301Conversion(biasValue)
+            # send string
+            self.sCom.write(biasString)
+            # Read value back
+            rxString = self.readad5301_u12()
+            print "biasButtonAction() read back ad5301: ", rxString
+                
+            self.bBiasEnabled = True    # bias is disabled, now Enabling...
+            # Attempt to switch on bias enable
+            if self.updatePcf8574Device(self.bLvEnabled, self.bBiasEnabled):
+                # Successfully enabled Bias; update related Gui components..
+                self.gui.gui.biasButton.setText("disable Bias")
+                self.bBiasGreen = True
+                biasStatus = "frmBiasStatus=\nbackground-color: rgb(0, 255, 0);"
+                # Enable file selection only after bias successfully enabled
+                self.gui.gui.selectButton.setEnabled(True)
+                self.gui.gui.leSelectLogFileLocation.setEnabled(True)
+                self.gui.gui.cbPollingBox.setEnabled(True)
+                # Disable lvButton & biasLevel until bias disabled again 
+                # to prevent disabling lv and/or changing biasLevel while bias enabled)
+                self.gui.gui.lvButton.setEnabled(False)
+                self.gui.gui.leBiasLevel.setEnabled(False)
+                # Read back pcf8574 device
+                rxString = self.readpcf8574()
+                # Update Gui
+                self.queue.put(biasStatus)
+                print "biasButtonAction() switched ON, then read back: ", rxString
+            else:
+                # Failed to enable Bias in Pcf8574 device
+                print "biasButtonAction: Failed to switch ON bias!"
+                self.bBiasEnabled = False    # bias remained disabled
+        else:
+            # Specified biasValue outside valid range
+            warningString = "Specified bias level outside valid 0-200V range!"
+            self.displayWarningMessage(warningString)
 
     def biasLevelToAd5301Conversion(self, biasLevel):
         """ Convert integer biasLevel (0-200V) into format accepted by ad5301 device
@@ -627,28 +731,22 @@ class ExcaliburPowerGui:
         if compareTypes(biasLevel) is not 1:
             raise BadArgumentError, "biasLevelToAd5301Conversion() biasLevel argument not integer!"
         # Check biasLevel argument not negative
-        if biasLevel < 0:
-            raise OutOfRangeError, "biasLevelToAd5301Conversion() recevied negative argument!"
-#        if not (4 <= lm92Temp <= 19200):
-#            raise OutOfRangeError, "lm92 format valid range: 4 <= n <= 19200"
+        if not (0 <= biasLevel <= 200):
+            raise OutOfRangeError, "biasLevelToAd5301Conversion() biasLevel out of 0-200 range!"
 
         # Convert bias level range 0 - 200V into adcCount range 0 - 255
         adcValue = (biasLevel * 255) / 200
-#        # Because 4 LSB not used, bitshift by 4
-#        ad5301Value = adcValue << 4
-#        # Discard 4 MSB (2 MSB: Don't care, 2 remaining are PD, so mask out too)
-#        ad5301Value = ad5301Value & 4080    # 4080 = 0ff0
-        # Break into 2 byte words if ad5301Value > 255
-#        if ad5301Value > 255:
+        # Break into 2 byte words if ad5301Value > 15
+        # since least significant byte = 4 LSB + 0000b
         if adcValue > 15:
             # MSB byte = 4 MSB bits of adcValue
             msbHalf = (adcValue >> 4)           # 8 MSB bits
-            # LSB byte = 4 LSB bits of adcValue but shifted 4 places so 4 LSB bit are 0000
+            # LSB byte = 4 LSB bits of adcValue + 0000b
             lsbHalf = ( (adcValue & 15) << 4)
             # Construct i2c string to transmit
             txString = "w 12 " + str(msbHalf) + " " + str(lsbHalf) + " @"
         else:
-            # ad5301Value fits into 1 byte
+            # ad5301Value fits into 1 byte; bit shift by 4
             ad5301Value = (adcValue << 4)
             txString = "w 12 " + str(ad5301Value) + " @"
 #        print "biasLevelToAd5301Conversion() constructed string: \"" + txString + "\""
@@ -1061,7 +1159,8 @@ class ExcaliburPowerGui:
             # Ensure Coolant_Temp_Status' Red if previously Green
             if self.bCoolantTempGreen is True:
                 self.queue.put("frmCoolantTempStatus=\nbackground-color: rgb(255, 0, 0);")
-                self.bCoolantTempGreen = False                
+                self.bCoolantTempGreen = False
+                
         # P1 - Humidity_Status
         if rxVal & 2 is 2:
             # Humidity_Status fine
@@ -1074,6 +1173,7 @@ class ExcaliburPowerGui:
             if self.bHumidityGreen is True:
                 self.queue.put("frmHumidityStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bHumidityGreen = False
+
         # P2 - Coolant_Flow_Status
         if rxVal & 4 is 4:
             # Coolant_Flow_Status fine
@@ -1086,6 +1186,7 @@ class ExcaliburPowerGui:
             if self.bCoolantFlowGreen is True:
                 self.queue.put("frmCoolantFlowStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bCoolantFlowGreen = False
+
         # P3 - Air_Temp_Status
         if rxVal & 8 is 8:
             # Air_Temp_Status fine
@@ -1098,6 +1199,7 @@ class ExcaliburPowerGui:
             if self.bAirTempGreen is True:
                 self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bAirTempGreen = False
+
         # P4 - BIAS_ON/OFF
         if rxVal & 16 is 16:
             # BIAS_ON/OFF fine
@@ -1110,6 +1212,7 @@ class ExcaliburPowerGui:
             if self.bBiasGreen is True:
                 self.queue.put("frmBiasStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bBiasGreen = False
+
         # P5 - LV_ON/OFF
         if rxVal & 32 is 32:
             # LV_ON is on
@@ -1122,6 +1225,7 @@ class ExcaliburPowerGui:
             if self.bLvGreen is True:
                 self.queue.put("frmLowVoltageStatus=\nbackground-color: rgb(255, 0, 0);")
                 self.bLvGreen = False
+
         # P6 - FAN_FAULT
         if rxVal & 64 is 64:
             # FAN_FAULT is ok
@@ -1608,8 +1712,12 @@ class ExcaliburPowerGui:
             self.readAd7998_Unit15(2, 0)  # Read ad7998 Ch 6
             self.readAd7998_Unit15(4, 0)  # Read ad7998 Ch 7
             self.readAd7998_Unit15(8, 0)  # Read ad7998 Ch 8
-            
+
             self.readAd7998_Unit16(2, 0)  # Read ad7998 Ch 6
+            
+            # Check status of pcf8574 device
+#            pcfStatus = self.readpcf8574()
+#            self.updatePcf8574GuiComponents(pcfStatus)
         except:
             self.displayErrorMessage("")
         # Gui now completely populated, allow logging to proceed
