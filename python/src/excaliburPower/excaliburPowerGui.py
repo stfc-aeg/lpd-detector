@@ -239,10 +239,6 @@ class ExcaliburPowerGui:
         # Print selected com port:    (e.g. COM1)
 #        print self.gui.gui.lwSerialPort.currentItem().text()
 
-#        if self.bManual is True:
-#            # Wait until bias is enabled before continuing
-#            while self.bBiasEnabled is False:
-#                pass
         time.sleep(2)        
         # Wait for serial interface to initialise.
 #        time.sleep(1.8)        # Redundant later on?
@@ -252,8 +248,7 @@ class ExcaliburPowerGui:
             self.initialiseCommunication()
             # enable lv button
             self.gui.gui.lvButton.setEnabled(True)
-            
-            
+
 #        if self.bManual is True:    
 #            # Signal to GUI: hide progressBar and statusBar components
 #            self.queue.put("hideGuiBars=...")
@@ -485,7 +480,6 @@ class ExcaliburPowerGui:
         else:
             print "lvButton_SwitchOff: FAILED to switch OFF lv!"
             self.bLvEnabled = True
-            return
 
     def lvButton_SwitchOn(self):
         """ Update S/W variables and Gui components related to switching the lv OFF """
@@ -502,7 +496,6 @@ class ExcaliburPowerGui:
         else:
             print "lvButtonAction: FAILED to switch ON lv!"
             self.bLvEnabled = False
-            return
         
     def updatePcf8574Device(self, bEnableLvSetting, bEnableBiasSetting):
         """ Set pcf8574 device according to bEnableLvSetting (True = on, False = off)
@@ -512,7 +505,8 @@ class ExcaliburPowerGui:
             raise WrongVariableType, "updatePcf8574Device() bEnableLvSetting not a boolean argument!"
         if compareTypes(bEnableBiasSetting) is not 4:
             raise WrongVariableType, "updatedPcf8574Device() bEnableBiasSetting is not a boolean argument!"
-
+        # statusOk is return value of this function
+        statusOk = False
         # set bitMask for lv (16) and bias (32)
         bitMask = 0
         if bEnableLvSetting:
@@ -520,8 +514,8 @@ class ExcaliburPowerGui:
         if bEnableBiasSetting:
             bitMask = bitMask + 16
         
-        ''' ALL OTHER BITS ARE INPUTS, THEREFORE THEY SHOULD BE ALL 1's ! '''
-        # ie 1xx1111    (xx = lv and bias)
+        # All other bits are inputs, therefore they should be all 1's 
+        # ie 1xx1111    (xx = bias and lv)
         newPcfVal = bitMask + 79
         # Write new value to pcf dev
         self.writePcf8574(newPcfVal)
@@ -531,12 +525,12 @@ class ExcaliburPowerGui:
             # Compare value read back (newVal) against bitMask, Because
             #     the other 5 bits of newPcfVal are inputs and change because of external factors 
             if (bitMask & newVal) is bitMask:
-                pass
+                statusOk = True
             else:
                 print "updatePcf8574Device: Failed to apply settings: ", bEnableLvSetting, bEnableBiasSetting, newPcfVal, newVal
                 self.displayWarningMessage("updatePcf8574Device: Read-back value didn't match requested change!")
-                return False
-            return True
+                # statusOk already False
+            return statusOk
         except:
             self.displayErrorMessage("updatePcf8574Device: Couldn't read-back pcf8574 device!")
             #updatePcf8574Device
