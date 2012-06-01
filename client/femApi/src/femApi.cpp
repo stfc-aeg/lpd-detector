@@ -195,11 +195,11 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 				theFem->setFrontEndEnable((unsigned int)*value);
 				break;
 
-			case FEM_OP_DAC_IN_TO_MEDIPIX:
-
-				theFem->frontEndDacInWrite(chipId, (unsigned int)*value);
-				break;
-
+//			case FEM_OP_DAC_IN_TO_MEDIPIX:
+//
+//				theFem->frontEndDacInWrite(chipId, (unsigned int)*value);
+//				break;
+//
 			case FEM_OP_BIAS_ON_OFF:
 
 				// Do nothing for now
@@ -210,10 +210,10 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 				// Do nothing for now
 				break;
 
-			case FEM_OP_BIAS_LEVEL:
-
-				// Do nothing for now
-				break;
+//			case FEM_OP_BIAS_LEVEL:
+//
+//				// Do nothing for now
+//				break;
 
 			default:
 				{
@@ -294,6 +294,41 @@ int femSetShort(void* femHandle, int chipId, int id, std::size_t size, short* va
 int femSetFloat(void* femHandle, int chipId, int id, std::size_t size, double* value)
 {
 	int rc = FEM_RTN_OK;
+
+	if ((chipId < 0) || (chipId > (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
+	{
+		rc = FEM_RTN_ILLEGALCHIP;
+	}
+	else
+	{
+		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+
+		try {
+
+			switch (id)
+			{
+
+			case FEM_OP_DAC_IN_TO_MEDIPIX:
+
+				theFem->frontEndDacInWrite(chipId, *value);
+				break;
+
+			case FEM_OP_BIAS_LEVEL:
+
+				// Do nothing for now
+				break;
+
+			default:
+				rc = FEM_RTN_UNKNOWNOPID;
+				break;
+			}
+		}
+		catch (FemClientException& e)
+		{
+			std::cerr << "Exception caught during femSetInt: " << e.what() << std::endl;
+			rc = translateFemErrorCode(e.which());
+		}
+	}
 
 	return rc;
 }
