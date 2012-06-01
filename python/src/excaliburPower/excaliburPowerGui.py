@@ -530,10 +530,10 @@ class ExcaliburPowerGui:
                 print "updatePcf8574Device: Failed to apply settings: ", bEnableLvSetting, bEnableBiasSetting, newPcfVal, newVal
                 self.displayWarningMessage("updatePcf8574Device: Read-back value didn't match requested change!")
                 # statusOk already False
-            return statusOk
         except:
             self.displayErrorMessage("updatePcf8574Device: Couldn't read-back pcf8574 device!")
-            #updatePcf8574Device
+
+        return statusOk
 
     def writePcf8574(self, sReg=None):
         """ Write a new value to pcf8574 device """
