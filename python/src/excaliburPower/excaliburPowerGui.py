@@ -1360,7 +1360,7 @@ class ExcaliburPowerGui:
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale1_8V_Current() adcValue outside 0-4095 range!"
-        return (adcValue * 0.0012207)
+        return (adcValue * 0.012207)
 #        return (adcValue / 2275.0)
 
     def scale48V(self, adcValue):
@@ -1389,7 +1389,7 @@ class ExcaliburPowerGui:
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale200V_CurrentConversion() adcValue outside 0-4095 range!"
         # TODO: Check bias current conversion
-        return (adcValue * 0.00122)
+        return (adcValue * 0.0012207)
 
     def scale200VoltageConversion(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-200Volts """
@@ -1398,7 +1398,7 @@ class ExcaliburPowerGui:
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale200VoltageConversion() adcValue outside 0-4095 range!"
-        return (adcValue * (0.061035))
+        return (adcValue * 0.061035)
     
     def scaleHumidity(self, humidityValue):
         """ Scale ad7998's range of ADC count: 0-4095 
@@ -1415,7 +1415,6 @@ class ExcaliburPowerGui:
         humidityValue = humidityValue - 785
         # Convert into % scale
         humidityValue = (humidityValue / 25)
-        
         # Compare humidity against thresholds and update humidity LED accordingly
 #        thresholdAnswer = self.compareThresholds(humidityValue, self.humidityMin, self.humidityMax, self.humidityWarn)
 #        if thresholdAnswer is 0:
@@ -1437,8 +1436,6 @@ class ExcaliburPowerGui:
             raise BadArgumentError,"scaleTemperature() tempValue argument not integer!"
         if not (0 <= tempValue <= 4095):
             raise OutOfRangeError, "scaleTemperature() tempValue outside 0-4095 range!"
-        # 1 ADC count = 5V / 4096 = 0.0012207
-#        return (tempValue * 0.00122)
         return (tempValue / 82.0)
         
 
@@ -1539,17 +1536,17 @@ class ExcaliburPowerGui:
         # Local functions handling ADC dictionary lookup
         def zero():
 #            print "48V Voltage: ", rxInt
-            try:    self.queue.put("le48VV=%s" % str( round2Decimals(self.scale48V(rxInt)) ))            # U15, pin 7 - 48V Voltage
+            try:    self.queue.put("le48VV=%s" % str( round1Decimals(self.scale48V(rxInt)) ))            # U15, pin 7 - 48V Voltage
             except: self.displayErrorMessage("U15 adc0, Error updating GUI: ")
         def one():
 #            print "48 Current: ", rxInt
-            try:    self.queue.put("le48VA=%s" % str( round4Decimals(self.scale48V_CurrentConversion(rxInt)) ))            # U15, pin 14 - 48V Current
+            try:    self.queue.put("le48VA=%s" % str( round1Decimals(self.scale48V_CurrentConversion(rxInt)) ))            # U15, pin 14 - 48V Current
             except: self.displayErrorMessage("U15 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le5SUPERVV=%s" % str( round3Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) ))        # U15, pin 8 - 5V Super Voltage
+            try:    self.queue.put("le5SUPERVV=%s" % str( round1Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) ))        # U15, pin 8 - 5V Super Voltage
             except: self.displayErrorMessage("U15 adc2, Error updating GUI: ")
         def three():
-            try:    self.queue.put("le5SUPERVA=%s" % str( round3Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) ))        # U15, pin 13 - 5V Super Current
+            try:    self.queue.put("le5SUPERVA=%s" % str( round1Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) ))        # U15, pin 13 - 5V Super Current
             except: self.displayErrorMessage("U15 adc3, Error updating GUI: ")
         def four():
             try:    self.queue.put("leHum_mon=%s" % str( self.scaleHumidity(rxInt) ))   # U15, pin 9 - Humidity
@@ -1604,13 +1601,14 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit16(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le33VA=%s" % str( self.scale3_3V_Current(rxInt) ))         # U16, pin 7    - 3.3V, Current
+            try:    self.queue.put("le33VA=%s" % str( round1Decimals(self.scale3_3V_Current(rxInt)) ))         # U16, pin 7    - 3.3V, Current
             except: self.displayErrorMessage("U16 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le18VAA=%s" % str( round5Decimals(self.scale1_8V_Current(rxInt)) ))        # U16, pin 14    - 1.8V Mod A, Current
+#            print "1.8V Mod A, Current:", rxInt
+            try:    self.queue.put("le18VAA=%s" % str( round1Decimals(self.scale1_8V_Current(rxInt)) ))        # U16, pin 14    - 1.8V Mod A, Current
             except: self.displayErrorMessage("U16 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le200VA=%s" % str( self.scale200V_CurrentConversion(rxInt) ))      # U16, pin 8
+            try:    self.queue.put("le200VA=%s" % str( round2Decimals(self.scale200V_CurrentConversion(rxInt)) ))      # U16, pin 8    - 200V (bias) Current
             except: self.displayErrorMessage("U16 adc2, Error updating GUI: ")
         def three():
             try:    self.queue.put("le33VV=%s" % str( round2Decimals( self.scale3_3V_Voltage(rxInt)) ))        # U16, pin 13    - 3.3V, Voltage
@@ -1619,10 +1617,11 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le18VAV=%s" % str( round2Decimals(self.scale1_8V_Voltage(rxInt)) ))        # U16, pin 9    - 1.8V Mod A, Voltage
             except: self.displayErrorMessage("U16 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12    - 200V (bias) 
+            try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12    - 200V (bias) Voltage
             except: self.displayErrorMessage("U16 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("le18VBA=%s" % str( round5Decimals(self.scale1_8V_Current(rxInt)) ))        # U16, pin 10    - 1.8V Mod B, Current
+#            print "1.8V Mod B, Current:", rxInt
+            try:    self.queue.put("le18VBA=%s" % str( round1Decimals(self.scale1_8V_Current(rxInt)) ))        # U16, pin 10    - 1.8V Mod B, Current
             except: self.displayErrorMessage("U16 adc6, Error updating GUI: ")
         def seven():
             try:    self.queue.put("le18VBV=%s" % str( round2Decimals(self.scale1_8V_Voltage(rxInt)) ))        # U16, pin 11    - 1.8V mod B, Voltage
@@ -1720,6 +1719,13 @@ def compareTypes(var):
     if type(var) is type(True):
         return 4
     return -1       # Wtf? = Only possible if passing a function's object
+
+def round1Decimals(floatVar):
+    """ Round float floatVar to 1 decimal points and return as string """
+    if compareTypes(floatVar) is not 2:
+        raise WrongVariableType, "round1Decimals() didn't receive string argument!"
+    return str("%.1f" % floatVar)
+
 
 def round2Decimals(floatVar):
     """ Round float floatVar to 2 decimal points and return as string """
