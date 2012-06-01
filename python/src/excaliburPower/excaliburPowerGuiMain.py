@@ -98,7 +98,7 @@ class ExcaliburPowerGuiMain(QtGui.QMainWindow):
                             print "Unable to update ", type(guiComponent), " Gui object"    
                     except:
                         # Gui component not found
-                        print "Gui Component doesn't exist: a typo maybe?"
+                        print "Gui Component doesn't exist: a typo maybe?", cmdList[0]
 
             except Queue.Empty:
                 pass
