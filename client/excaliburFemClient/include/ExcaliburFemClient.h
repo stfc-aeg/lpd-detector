@@ -84,6 +84,7 @@ public:
 	double frontEndDacOutRead(unsigned int aChipId);
 	int    frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply);
 	void   frontEndDacInWrite(unsigned int aChipId, unsigned int aDacValue);
+	void   frontEndDacInWrite(unsigned int aChipId, double aDacVolts);
 
 	// MPX3 ASIC parameter control functions in ExcaliburFemClientMpx3.cpp
 	void mpx3DacSet(unsigned int aChipId, int aDacId, unsigned int aDacValue);
@@ -105,6 +106,7 @@ public:
 	void asicControlShutterDurationSet(unsigned int aTimeUs);
 	void asicControlCounterDepthSet(mpx3CounterDepth aCounterDepth);
 	void asicControlReadoutLengthSet(unsigned int aLength);
+	void asicControlTestPulseCountSet(unsigned int aCount);
 	void asicControlReset(void);
 	void asicControlAsicReset(void);
 
@@ -120,12 +122,12 @@ private:
 	void frontEndPCF8574Write(unsigned int aVal);
 	void frontEndAD5625Write(unsigned int aDevice, unsigned int aChan, unsigned int aVal);
 
-	mpx3Dac getmpx3DacId(int aId);
-	mpx3PixelConfig getMpx3PixelConfigId(int aConfigId);
+	mpx3Dac mpx3DacIdGet(int aId);
+	mpx3PixelConfig mpx3PixelConfigIdGet(int aConfigId);
 
-	mpx3Omr omrBuild(unsigned int aChipId, mpx3OMRMode aMode);
-	unsigned int counterBitDepth(mpx3CounterDepth aCounterDepth);
-	unsigned int readoutBitWidth(mpx3ReadoutWidth aReadoutWidth);
+	mpx3Omr mpx3OMRBuild(unsigned int aChipId, mpx3OMRMode aMode);
+	unsigned int mpx3CounterBitDepth(mpx3CounterDepth aCounterDepth);
+	unsigned int mpx3ReadoutBitWidth(mpx3ReadoutWidth aReadoutWidth);
 
 
 	mpx3OMRParameters     mMpx3OmrParams[kNumAsicsPerFem];

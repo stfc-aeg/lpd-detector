@@ -99,7 +99,7 @@ double ExcaliburFemClient::frontEndDacOutRead(unsigned int aChipId)
 	u16 rawAdcValue = this->frontEndAD7994Read(device, chan);
 
 	// Convert ADC units to volts (2V reference) and return
-	double dacOutVolts = 0.5 * (double)rawAdcValue;
+	double dacOutVolts = 2.0 * ((double)rawAdcValue / 4096.0);
 
 	return dacOutVolts;
 }
@@ -130,9 +130,9 @@ int ExcaliburFemClient::frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply
  * DAC values are connected to the external DAC inputs of the MPX3 ASICs.
  *
  * @param aChipId ID of MPX3 device to set external input DAC for (1-8)
- * @param aDacValue DAC value (code) to be set
+ * @param aDacCode DAC value (code) to be set
  */
-void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, unsigned int aDacValue)
+void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, unsigned int aDacCode)
 {
 
 	// Chip index starts from 0
@@ -143,7 +143,30 @@ void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, unsigned int a
 	unsigned int chan   = kAD5625ChipMap[chipIdx % 4];
 
 	// Write the DAC value
-	this->frontEndAD5625Write(device, chan, aDacValue);
+	this->frontEndAD5625Write(device, chan, aDacCode);
+
+	std::cout << "Setting FE DAC for chip " << aChipId << " (dev=" << device << " chan=" << chan
+			  << ") value: " << aDacCode << std::endl;
+
+}
+
+/** frontEndDacInWrite - set the front-end input DAC value
+ *
+ * Sets the front-end input DAC to the requested value via the I2C bus. These
+ * DAC values are connected to the external DAC inputs of the MPX3 ASICs.
+ *
+ * @param aChipId ID of MPX3 device to set external input DAC for (1-8)
+ * @param aDacVolts DAC value in volts to be set
+ */
+void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, double aDacVolts)
+{
+
+	std::cout << "DAC volts: " << aDacVolts << std::endl;
+
+	unsigned int aDacCode = (unsigned int)((aDacVolts / 3.3) * 4096) & 0xFFF;
+
+	// Write the DAC value
+	this->frontEndDacInWrite(aChipId, aDacCode);
 
 }
 
@@ -204,13 +227,21 @@ u16 ExcaliburFemClient::frontEndAD7994Read(unsigned int aDevice, unsigned int aC
 
 	this->i2cWrite(kAD7994Address[aDevice], cmd);
 
-	// TODO - wait for conversion?
+	// Wait 100ms
+	struct timespec sleep;
+	sleep.tv_sec = 0;
+	sleep.tv_nsec = 100000000;
+	nanosleep(&sleep, NULL);
 
 	// Read two bytes back
 	std::vector<u8> response = this->i2cRead(kAD7994Address[aDevice], 2);
 
 	// Decode ADC value to return
 	u16 adcVal = ((((u16)response[0]) << 8) | response[1]) & 0x7FF;
+
+	std::cout << "AD7994 read: dev=" << aDevice << " chan=" << aChan
+			  << " addr=0x" << std::hex << kAD7994Address[aDevice] << std::dec
+			  << " val=" << adcVal << std::endl;
 
 	return adcVal;
 }

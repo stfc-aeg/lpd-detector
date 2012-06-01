@@ -259,6 +259,23 @@ void ExcaliburFemClient::startAcquisition(void)
 	// Start the data receiver thread
 	mFemDataReceiver->startAcquisition();
 
+	// Check if test pulses are enablewd on any device, if so set a flag
+	bool testPulseEnabled = false;
+	for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++)
+	{
+		if (mMpx3OmrParams[iChip].testPulseEnable)
+		{
+			testPulseEnabled = true;
+		}
+	}
+
+	if (testPulseEnabled)
+	{
+		// TODO: this should be exposed in the API
+		unsigned int testPulseCount = 100;
+		std::cout << "Enabling test pulse injection on FEM (count=" << testPulseCount << ")" << std::endl;
+		this->asicControlTestPulseCountSet(testPulseCount);
+	}
 
 	// Set up the acquisition DMA controller and arm it
 	unsigned int dmaSize = this->asicReadoutDmaSize();
@@ -280,12 +297,18 @@ void ExcaliburFemClient::startAcquisition(void)
 
 	// Set up the OMR
 	{
-		mpx3Omr theOmr = this->omrBuild(0, readPixelMatrixC0);
+		mpx3Omr theOmr = this->mpx3OMRBuild(0, readPixelMatrixC0);
 		this->asicControlOmrSet(theOmr);
 	}
 
-	// Execute the acquisition
-	this->asicControlCommandExecute(asicRunSequentialC0);
+	// Execute the acquisition, enabling test pulses if necessary
+	unsigned int theCommand = asicRunSequentialC0;
+	if (testPulseEnabled)
+	{
+		theCommand |= asicTestPulseEnable;
+	}
+	std::cout << "Sending execute command 0x" << std::hex << theCommand << std::dec << std::endl;
+	this->asicControlCommandExecute((asicControlCommand)theCommand);
 
 }
 
@@ -366,7 +389,7 @@ unsigned int ExcaliburFemClient::asicReadoutDmaSize(void)
 {
 
 	// Get counter bit depth of ASIC
-	unsigned int counterBitDepth = this->counterBitDepth(mMpx3OmrParams[0].counterDepth);
+	unsigned int counterBitDepth = this->mpx3CounterBitDepth(mMpx3OmrParams[0].counterDepth);
 
 	// DMA size is (numRows * numCols * (numAsics/2) counterDepth /  8 bits per bytes
 	unsigned int theLength = (kNumRowsPerAsic * kNumColsPerAsic * (kNumAsicsPerFem / 2) * counterBitDepth) / 8;
@@ -377,8 +400,8 @@ unsigned int ExcaliburFemClient::asicReadoutDmaSize(void)
 unsigned int ExcaliburFemClient::asicReadoutLengthCycles(void)
 {
 
-	unsigned int counterBitDepth = this->counterBitDepth(mMpx3OmrParams[0].counterDepth);
-	unsigned int readoutBitWidth = this->readoutBitWidth(mMpx3OmrParams[0].readoutWidth);
+	unsigned int counterBitDepth = this->mpx3CounterBitDepth(mMpx3OmrParams[0].counterDepth);
+	unsigned int readoutBitWidth = this->mpx3ReadoutBitWidth(mMpx3OmrParams[0].readoutWidth);
 
 	unsigned int theLength = (kNumRowsPerAsic * kNumColsPerAsic * counterBitDepth) / readoutBitWidth;
 
@@ -392,7 +415,7 @@ unsigned int ExcaliburFemClient::frameDataLengthBytes(void)
 	unsigned int frameDataLengthBytes = 0;
 
 	// Get the counter bit depth
-	unsigned int counterBitDepth = this->counterBitDepth(mMpx3OmrParams[0].counterDepth);
+	unsigned int counterBitDepth = this->mpx3CounterBitDepth(mMpx3OmrParams[0].counterDepth);
 
 	// Calculate raw length of ASIC data in bits
 	unsigned int asicDataLengthBits = kNumRowsPerAsic * kNumColsPerAsic * kNumAsicsPerFem * counterBitDepth;
@@ -425,177 +448,3 @@ unsigned int ExcaliburFemClient::frameDataLengthBytes(void)
 
 }
 
-/// --- Private methods ---
-
-/** getMpx3DacId - map API-level DAC IDs onto internal values
- *
- * This method maps the API-level MPX3 DAC IDs onto the the internal
- * index used to address and store DAC values. It will return a value
- * of unknownDacId for undefined API IDs.
- *
- * @param aId - API-level DAC ID to look up
- * @return excaliburMpx3Dac index for internal addressing of DAC values
- */
-mpx3Dac ExcaliburFemClient::getmpx3DacId(int aId)
-{
-	// Set default resolved ID to unknown DAC
-	mpx3Dac resolvedId = unknownDacId;
-
-	// Static STL map to store mapping from API DAC IDs to internal.
-	// If map is empty (i.e. at first call to this function, initialise
-	// the values.
-	static std::map<int, mpx3Dac> dacMap;
-	if (dacMap.empty())
-	{
-		dacMap[FEM_OP_MPXIII_THRESHOLD0DAC]  = threshold0Dac;
-		dacMap[FEM_OP_MPXIII_THRESHOLD1DAC]  = threshold1Dac;
-		dacMap[FEM_OP_MPXIII_THRESHOLD2DAC]  = threshold2Dac;
-		dacMap[FEM_OP_MPXIII_THRESHOLD3DAC]  = threshold3Dac;
-		dacMap[FEM_OP_MPXIII_THRESHOLD4DAC]  = threshold4Dac;
-		dacMap[FEM_OP_MPXIII_THRESHOLD5DAC]  = threshold5Dac;
-		dacMap[FEM_OP_MPXIII_THRESHOLD6DAC]  = threshold6Dac;
-		dacMap[FEM_OP_MPXIII_THRESHOLD7DAC]  = threshold7Dac;
-		dacMap[FEM_OP_MPXIII_PREAMPDAC]      = preampDac;
-		dacMap[FEM_OP_MPXIII_IKRUMDAC]       = ikrumDac;
-		dacMap[FEM_OP_MPXIII_SHAPERDAC]      = shaperDac;
-		dacMap[FEM_OP_MPXIII_DISCDAC]        = discDac;
-		dacMap[FEM_OP_MPXIII_DISCLSDAC]      = discLsDac;
-		dacMap[FEM_OP_MPXIII_THRESHOLDNDAC]  = thresholdNDac;
-		dacMap[FEM_OP_MPXIII_DACPIXELDAC]    = dacPixelDac;
-		dacMap[FEM_OP_MPXIII_DELAYDAC]       = delayDac;
-		dacMap[FEM_OP_MPXIII_TPBUFFERINDAC]  = tpBufferInDac;
-		dacMap[FEM_OP_MPXIII_TPBUFFEROUTDAC] = tpBufferOutDac;
-		dacMap[FEM_OP_MPXIII_RPZDAC]         = rpzDac;
-		dacMap[FEM_OP_MPXIII_GNDDAC]         = gndDac;
-		dacMap[FEM_OP_MPXIII_TPREFDAC]       = tpRefDac;
-		dacMap[FEM_OP_MPXIII_FBKDAC]         = fbkDac;
-		dacMap[FEM_OP_MPXIII_CASDAC]         = casDac;
-		dacMap[FEM_OP_MPXIII_TPREFADAC]      = tpRefADac;
-		dacMap[FEM_OP_MPXIII_TPREFBDAC]      = tpRefBDac;
-	}
-
-	// Check if the DAC ID is present in the map. If so, resolve
-	// to the internal value.
-	if (dacMap.count(aId))
-	{
-		resolvedId = dacMap[aId];
-	}
-
-	return resolvedId;
-}
-
-mpx3PixelConfig ExcaliburFemClient::getMpx3PixelConfigId(int aConfigId)
-{
-	// Set default resolved ID to unknown config
-	mpx3PixelConfig resolvedId = unknownPixelConfig;
-
-	// Static STL map to store amping from API config IDs to internal.
-	// If map is empty (i.e. at first call to this function, initialise
-	// the values
-	static std::map<int, mpx3PixelConfig> pixelConfigMap;
-	if (pixelConfigMap.empty())
-	{
-		pixelConfigMap[FEM_OP_MPXIII_PIXELMASK]       = pixelMaskConfig;
-		pixelConfigMap[FEM_OP_MPXIII_PIXELTHRESHOLDA] = pixelThresholdAConfig;
-		pixelConfigMap[FEM_OP_MPXIII_PIXELTHRESHOLDB] = pixelThresholdBConfig;
-		pixelConfigMap[FEM_OP_MPXIII_PIXELGAINMODE]   = pixelGainModeConfig;
-		pixelConfigMap[FEM_OP_MPXIII_PIXELTEST]       = pixelTestModeConfig;
-	}
-
-	// Check if the config ID is present in the map. If so, resolve to
-	// the internal value
-	if (pixelConfigMap.count(aConfigId))
-	{
-		resolvedId = pixelConfigMap[aConfigId];
-	}
-
-	return resolvedId;
-}
-
-mpx3Omr ExcaliburFemClient::omrBuild(unsigned int aChipIdx, mpx3OMRMode aMode)
-{
-
-	mpx3Omr theOMR;
-
-	theOMR.raw = (((u64)aMode                                          & 0x7  ) << 0 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].readWriteMode         & 0x1  ) << 3 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].polarity              & 0x1  ) << 4 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].readoutWidth          & 0x3  ) << 5 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].unusedPTEnable        & 0x1  ) << 7 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].testPulseEnable       & 0x1  ) << 8 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].counterDepth          & 0x3  ) << 9 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].columnBlock           & 0x7  ) << 11) |
-				 (((u64)mMpx3OmrParams[aChipIdx].columnBlockSelect     & 0x1  ) << 14) |
-				 (((u64)mMpx3OmrParams[aChipIdx].rowBlock              & 0x7  ) << 15) |
-				 (((u64)mMpx3OmrParams[aChipIdx].rowBlockSelect        & 0x1  ) << 18) |
-			     (((u64)mMpx3OmrParams[aChipIdx].equalizeTHH           & 0x1  ) << 19) |
-			     (((u64)mMpx3OmrParams[aChipIdx].colourMode            & 0x1  ) << 20) |
-			     (((u64)mMpx3OmrParams[aChipIdx].pixelComEnable        & 0x1  ) << 21) |
-			     (((u64)mMpx3OmrParams[aChipIdx].shutterCtr            & 0x1  ) << 22) |
-			     (((u64)mMpx3OmrParams[aChipIdx].fuseSel               & 0x1F ) << 23) |
-			     (((u64)mMpx3OmrParams[aChipIdx].fusePulseWidth        & 0x1FF) << 28) |
-			     (((u64)mMpx3OmrParams[aChipIdx].dacSense              & 0x1F ) << 37) |
-			     (((u64)mMpx3OmrParams[aChipIdx].dacExternal           & 0x1F ) << 42) |
-			     (((u64)mMpx3OmrParams[aChipIdx].externalBandGapSelect & 0x1  ) << 47);
-
-	return theOMR;
-}
-
-unsigned int ExcaliburFemClient::counterBitDepth(mpx3CounterDepth aCounterDepth)
-{
-	unsigned int counterBitDepth = 0;
-
-	switch (aCounterDepth)
-	{
-	case counterDepth1:
-		counterBitDepth = 1;
-		break;
-
-	case counterDepth4:
-		counterBitDepth = 4;
-		break;
-
-	case counterDepth12:
-		counterBitDepth = 12;
-		break;
-
-	case counterDepth24:
-		counterBitDepth = 12; // 24bit counter = 2x12 readout
-		break;
-
-	default:
-		break;
-	}
-
-	return counterBitDepth;
-
-}
-
- unsigned int ExcaliburFemClient::readoutBitWidth(mpx3ReadoutWidth aReadoutWidth)
- {
-	 unsigned int readoutBitWidth = 0;
-
-	 switch (aReadoutWidth)
-	 {
-	 case readoutWidth1:
-		 readoutBitWidth = 1;
-		 break;
-	 case readoutWidth2:
-		 readoutBitWidth = 2;
-		 break;
-
-	 case readoutWidth4:
-		 readoutBitWidth = 4;
-		 break;
-
-	 case readoutWidth8:
-		 readoutBitWidth = 8;
-		 break;
-
-	 default:
-		 break;
-	 }
-
-	 return readoutBitWidth;
-
- }

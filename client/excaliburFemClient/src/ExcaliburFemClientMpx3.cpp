@@ -20,7 +20,7 @@ void ExcaliburFemClient::mpx3DacSet(unsigned int aChipId, int aDacId, unsigned i
 {
 
 	// Map the API-level DAC ID onto the internal ID
-	mpx3Dac dacIdx = getmpx3DacId(aDacId);
+	mpx3Dac dacIdx = mpx3DacIdGet(aDacId);
 	if (dacIdx == unknownDacId)
 	{
 		std::ostringstream msg;
@@ -153,7 +153,7 @@ void ExcaliburFemClient::mpx3DacsWrite(unsigned int aChipId)
 		dacValues[6] |= (u32)(mMpx3DacCache[chipIdx][threshold1Dac]  & 0x1FF) << 23;
 		dacValues[6] |= (u32)(mMpx3DacCache[chipIdx][threshold0Dac]  & 0x1FF) << 14;
 
-		std::cout << "Chip: " << chipIdx << " ";
+		std::cout << "DACS: Chip: " << chipIdx << " ";
 		for (unsigned int iWord = 0; iWord < 8; iWord++) {
 			std::cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << dacValues[iWord] << std::dec << " " ;
 		}
@@ -167,10 +167,13 @@ void ExcaliburFemClient::mpx3DacsWrite(unsigned int aChipId)
 		this->rdmaWrite(kExcaliburAsicMuxSelect, muxSelectVal);
 
 		// Set OMR registers
-		u32 omrLsb = 0x61;
-		u32 omrMsb = (u32)1 << 5;
-		this->rdmaWrite(kExcaliburAsicOmrBottom, omrLsb);
-		this->rdmaWrite(kExcaliburAsicOmrTop, omrMsb);
+	//		u32 omrLsb = 0x61;
+	//		u32 omrMsb = (u32)1 << 5;
+	//		this->rdmaWrite(kExcaliburAsicOmrBottom, omrLsb);
+	//		this->rdmaWrite(kExcaliburAsicOmrTop, omrMsb);
+		mpx3Omr theOmr = this->mpx3OMRBuild(0, setDacs);
+		std::cout << "OMR is 0x" << std::hex << theOmr.raw << std::dec << std::endl;
+		this->asicControlOmrSet(theOmr);
 
 		// Trigger OMR command write
 		this->rdmaWrite(kExcaliburAsicControlReg, 0x23);
@@ -224,11 +227,11 @@ void ExcaliburFemClient::mpx3CtprWrite(unsigned int aChipId)
 			}
 		}
 
-//		std::cout << "Chip: " << chipIdx << " ";
-//		for (unsigned int iWord = 0; iWord < 8; iWord++) {
-//			std::cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << ctprValues[iWord] << std::dec << " " ;
-//		}
-//		std::cout << std::endl;
+		std::cout << "CTPR Chip: " << chipIdx << " ";
+		for (unsigned int iWord = 0; iWord < 8; iWord++) {
+			std::cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << ctprValues[iWord] << std::dec << " " ;
+		}
+		std::cout << std::endl;
 
 		// Write DAC values into FEM (into DPM area accessed via RDMA)
 		this->rdmaWrite(kExcaliburAsicDpmRdmaAddress, ctprValues);
@@ -237,7 +240,7 @@ void ExcaliburFemClient::mpx3CtprWrite(unsigned int aChipId)
 		this->asicControlMuxChipSelect(chipIdx);
 
 		// Set OMR registers
-		mpx3Omr theOmr = this->omrBuild(chipIdx, setCtpr);
+		mpx3Omr theOmr = this->mpx3OMRBuild(chipIdx, setCtpr);
 		this->asicControlOmrSet(theOmr);
 
 		// Trigger OMR command write
@@ -250,7 +253,7 @@ void ExcaliburFemClient::mpx3PixelConfigSet(unsigned int aChipId, int aConfigId,
 {
 
 	// Map the API-level pixel config ID onto the internal ID
-	mpx3PixelConfig configIdx = getMpx3PixelConfigId(aConfigId);
+	mpx3PixelConfig configIdx = mpx3PixelConfigIdGet(aConfigId);
 
 	if (configIdx == unknownPixelConfig)
 	{
@@ -462,17 +465,17 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		this->asicControlMuxChipSelect(chipIdx);
 
 		// Setup OMR value C0 load in the FEM
-		mpx3Omr theOmr = this->omrBuild(chipIdx, loadPixelMatrixC0);
+		mpx3Omr theOmr = this->mpx3OMRBuild(chipIdx, loadPixelMatrixC0);
 		this->asicControlOmrSet(theOmr);
 
 		// Execute the config load command
 		this->asicControlCommandExecute(asicPixelConfigLoad);
 
 		u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
-		std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::endl;
+		std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
 
 		// Setup OMR value C1 load in the FEM
-		theOmr = this->omrBuild(chipIdx, loadPixelMatrixC1);
+		theOmr = this->mpx3OMRBuild(chipIdx, loadPixelMatrixC1);
 		this->asicControlOmrSet(theOmr);
 
 		// Execute the config load command
@@ -496,7 +499,7 @@ unsigned int ExcaliburFemClient::mpx3eFuseIdRead(unsigned int aChipId)
 	this->asicControlMuxChipSelect(chipIdx);
 
 	// Set OMR registers
-	mpx3Omr theOmr = this->omrBuild(chipIdx, readEFuseId);
+	mpx3Omr theOmr = this->mpx3OMRBuild(chipIdx, readEFuseId);
 	this->asicControlOmrSet(theOmr);
 
 	// Trigger an OMR transaction
@@ -546,5 +549,183 @@ void ExcaliburFemClient::mpx3CounterDepthSet(int aCounterDepth)
 }
 
 
+/// --- Private methods ---
+
+/** mpx3DacIdGet - map API-level DAC IDs onto internal values
+ *
+ * This method maps the API-level MPX3 DAC IDs onto the the internal
+ * index used to address and store DAC values. It will return a value
+ * of unknownDacId for undefined API IDs.
+ *
+ * @param aId - API-level DAC ID to look up
+ * @return excaliburMpx3Dac index for internal addressing of DAC values
+ */
+mpx3Dac ExcaliburFemClient::mpx3DacIdGet(int aId)
+{
+	// Set default resolved ID to unknown DAC
+	mpx3Dac resolvedId = unknownDacId;
+
+	// Static STL map to store mapping from API DAC IDs to internal.
+	// If map is empty (i.e. at first call to this function, initialise
+	// the values.
+	static std::map<int, mpx3Dac> dacMap;
+	if (dacMap.empty())
+	{
+		dacMap[FEM_OP_MPXIII_THRESHOLD0DAC]  = threshold0Dac;
+		dacMap[FEM_OP_MPXIII_THRESHOLD1DAC]  = threshold1Dac;
+		dacMap[FEM_OP_MPXIII_THRESHOLD2DAC]  = threshold2Dac;
+		dacMap[FEM_OP_MPXIII_THRESHOLD3DAC]  = threshold3Dac;
+		dacMap[FEM_OP_MPXIII_THRESHOLD4DAC]  = threshold4Dac;
+		dacMap[FEM_OP_MPXIII_THRESHOLD5DAC]  = threshold5Dac;
+		dacMap[FEM_OP_MPXIII_THRESHOLD6DAC]  = threshold6Dac;
+		dacMap[FEM_OP_MPXIII_THRESHOLD7DAC]  = threshold7Dac;
+		dacMap[FEM_OP_MPXIII_PREAMPDAC]      = preampDac;
+		dacMap[FEM_OP_MPXIII_IKRUMDAC]       = ikrumDac;
+		dacMap[FEM_OP_MPXIII_SHAPERDAC]      = shaperDac;
+		dacMap[FEM_OP_MPXIII_DISCDAC]        = discDac;
+		dacMap[FEM_OP_MPXIII_DISCLSDAC]      = discLsDac;
+		dacMap[FEM_OP_MPXIII_THRESHOLDNDAC]  = thresholdNDac;
+		dacMap[FEM_OP_MPXIII_DACPIXELDAC]    = dacPixelDac;
+		dacMap[FEM_OP_MPXIII_DELAYDAC]       = delayDac;
+		dacMap[FEM_OP_MPXIII_TPBUFFERINDAC]  = tpBufferInDac;
+		dacMap[FEM_OP_MPXIII_TPBUFFEROUTDAC] = tpBufferOutDac;
+		dacMap[FEM_OP_MPXIII_RPZDAC]         = rpzDac;
+		dacMap[FEM_OP_MPXIII_GNDDAC]         = gndDac;
+		dacMap[FEM_OP_MPXIII_TPREFDAC]       = tpRefDac;
+		dacMap[FEM_OP_MPXIII_FBKDAC]         = fbkDac;
+		dacMap[FEM_OP_MPXIII_CASDAC]         = casDac;
+		dacMap[FEM_OP_MPXIII_TPREFADAC]      = tpRefADac;
+		dacMap[FEM_OP_MPXIII_TPREFBDAC]      = tpRefBDac;
+	}
+
+	// Check if the DAC ID is present in the map. If so, resolve
+	// to the internal value.
+	if (dacMap.count(aId))
+	{
+		resolvedId = dacMap[aId];
+	}
+
+	return resolvedId;
+}
+
+mpx3PixelConfig ExcaliburFemClient::mpx3PixelConfigIdGet(int aConfigId)
+{
+	// Set default resolved ID to unknown config
+	mpx3PixelConfig resolvedId = unknownPixelConfig;
+
+	// Static STL map to store amping from API config IDs to internal.
+	// If map is empty (i.e. at first call to this function, initialise
+	// the values
+	static std::map<int, mpx3PixelConfig> pixelConfigMap;
+	if (pixelConfigMap.empty())
+	{
+		pixelConfigMap[FEM_OP_MPXIII_PIXELMASK]       = pixelMaskConfig;
+		pixelConfigMap[FEM_OP_MPXIII_PIXELTHRESHOLDA] = pixelThresholdAConfig;
+		pixelConfigMap[FEM_OP_MPXIII_PIXELTHRESHOLDB] = pixelThresholdBConfig;
+		pixelConfigMap[FEM_OP_MPXIII_PIXELGAINMODE]   = pixelGainModeConfig;
+		pixelConfigMap[FEM_OP_MPXIII_PIXELTEST]       = pixelTestModeConfig;
+	}
+
+	// Check if the config ID is present in the map. If so, resolve to
+	// the internal value
+	if (pixelConfigMap.count(aConfigId))
+	{
+		resolvedId = pixelConfigMap[aConfigId];
+	}
+
+	return resolvedId;
+}
+
+mpx3Omr ExcaliburFemClient::mpx3OMRBuild(unsigned int aChipIdx, mpx3OMRMode aMode)
+{
+
+	mpx3Omr theOMR;
+
+	std::cout << "OMR chip: " << aChipIdx << " TP: " <<  mMpx3OmrParams[aChipIdx].testPulseEnable
+			  << " ExtDAC: " << mMpx3OmrParams[aChipIdx].dacExternal
+			  << " SenseDAC: " << mMpx3OmrParams[aChipIdx].dacSense << std::endl;
+
+	theOMR.raw = (((u64)aMode                                          & 0x7  ) << 0 ) |
+				 (((u64)mMpx3OmrParams[aChipIdx].readWriteMode         & 0x1  ) << 3 ) |
+				 (((u64)mMpx3OmrParams[aChipIdx].polarity              & 0x1  ) << 4 ) |
+				 (((u64)mMpx3OmrParams[aChipIdx].readoutWidth          & 0x3  ) << 5 ) |
+				 (((u64)mMpx3OmrParams[aChipIdx].unusedPTEnable        & 0x1  ) << 7 ) |
+				 (((u64)mMpx3OmrParams[aChipIdx].testPulseEnable       & 0x1  ) << 8 ) |
+				 (((u64)mMpx3OmrParams[aChipIdx].counterDepth          & 0x3  ) << 9 ) |
+				 (((u64)mMpx3OmrParams[aChipIdx].columnBlock           & 0x7  ) << 11) |
+				 (((u64)mMpx3OmrParams[aChipIdx].columnBlockSelect     & 0x1  ) << 14) |
+				 (((u64)mMpx3OmrParams[aChipIdx].rowBlock              & 0x7  ) << 15) |
+				 (((u64)mMpx3OmrParams[aChipIdx].rowBlockSelect        & 0x1  ) << 18) |
+			     (((u64)mMpx3OmrParams[aChipIdx].equalizeTHH           & 0x1  ) << 19) |
+			     (((u64)mMpx3OmrParams[aChipIdx].colourMode            & 0x1  ) << 20) |
+			     (((u64)mMpx3OmrParams[aChipIdx].pixelComEnable        & 0x1  ) << 21) |
+			     (((u64)mMpx3OmrParams[aChipIdx].shutterCtr            & 0x1  ) << 22) |
+			     (((u64)mMpx3OmrParams[aChipIdx].fuseSel               & 0x1F ) << 23) |
+			     (((u64)mMpx3OmrParams[aChipIdx].fusePulseWidth        & 0x1FF) << 28) |
+			     (((u64)mMpx3OmrParams[aChipIdx].dacSense              & 0x1F ) << 37) |
+			     (((u64)mMpx3OmrParams[aChipIdx].dacExternal           & 0x1F ) << 42) |
+			     (((u64)mMpx3OmrParams[aChipIdx].externalBandGapSelect & 0x1  ) << 47);
+
+	return theOMR;
+}
+
+unsigned int ExcaliburFemClient::mpx3CounterBitDepth(mpx3CounterDepth aCounterDepth)
+{
+	unsigned int counterBitDepth = 0;
+
+	switch (aCounterDepth)
+	{
+	case counterDepth1:
+		counterBitDepth = 1;
+		break;
+
+	case counterDepth4:
+		counterBitDepth = 4;
+		break;
+
+	case counterDepth12:
+		counterBitDepth = 12;
+		break;
+
+	case counterDepth24:
+		counterBitDepth = 12; // 24bit counter = 2x12 readout
+		break;
+
+	default:
+		break;
+	}
+
+	return counterBitDepth;
+
+}
+
+ unsigned int ExcaliburFemClient::mpx3ReadoutBitWidth(mpx3ReadoutWidth aReadoutWidth)
+ {
+	 unsigned int readoutBitWidth = 0;
+
+	 switch (aReadoutWidth)
+	 {
+	 case readoutWidth1:
+		 readoutBitWidth = 1;
+		 break;
+	 case readoutWidth2:
+		 readoutBitWidth = 2;
+		 break;
+
+	 case readoutWidth4:
+		 readoutBitWidth = 4;
+		 break;
+
+	 case readoutWidth8:
+		 readoutBitWidth = 8;
+		 break;
+
+	 default:
+		 break;
+	 }
+
+	 return readoutBitWidth;
+
+ }
 
 

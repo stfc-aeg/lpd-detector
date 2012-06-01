@@ -56,6 +56,8 @@ void ExcaliburFemClient::asicControlMuxChipSelect(unsigned int aChipIdx)
 void ExcaliburFemClient::asicControlCommandExecute(asicControlCommand aCommand)
 {
 
+	std::cout << "Command execute: 0x" << std::hex << aCommand << std::dec << std::endl;
+
 	// Execute the command by writing to the command word register
 	this->rdmaWrite(kExcaliburAsicControlReg, (u32)aCommand);
 
@@ -137,7 +139,7 @@ void ExcaliburFemClient::asicControlShutterDurationSet(unsigned int aTimeUs)
 void ExcaliburFemClient::asicControlCounterDepthSet(mpx3CounterDepth aCounterDepth)
 {
 
-	u32 counterBitDepth = this->counterBitDepth(aCounterDepth);
+	u32 counterBitDepth = this->mpx3CounterBitDepth(aCounterDepth);
 
 	// Throw exception if illegal counter depth specified
 	if (counterBitDepth == 0)
@@ -157,3 +159,7 @@ void ExcaliburFemClient::asicControlReadoutLengthSet(unsigned int aLength)
 	this->rdmaWrite(kExcaliburAsicReadoutLength, (u32)aLength);
 }
 
+void ExcaliburFemClient::asicControlTestPulseCountSet(unsigned int aCount)
+{
+	this->rdmaWrite(kExcaliburAsicTestPulseCount, (u32)aCount);
+}
