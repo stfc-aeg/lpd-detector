@@ -139,7 +139,7 @@
            </rect>
           </property>
           <property name="text">
-           <string>Enable polling (ms)</string>
+           <string>Enable &amp;polling (ms)</string>
           </property>
           <property name="checked">
            <bool>true</bool>
@@ -1675,7 +1675,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>5V_FEM0</string>
+              <string>5V_FEM0 [A]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1704,7 +1704,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>5V_FEM2</string>
+              <string>5V_FEM2 [A]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1733,7 +1733,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>5V_FEM4</string>
+              <string>5V_FEM4 [A]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1750,7 +1750,7 @@ background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="minimumSize">
               <size>
-               <width>50</width>
+               <width>70</width>
                <height>0</height>
               </size>
              </property>
@@ -1768,7 +1768,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>5V_FEM1</string>
+              <string>5V_FEM1 [A]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1785,7 +1785,7 @@ background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="minimumSize">
               <size>
-               <width>50</width>
+               <width>70</width>
                <height>0</height>
               </size>
              </property>
@@ -1803,7 +1803,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>5V_FEM3</string>
+              <string>5V_FEM3 [A]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1820,7 +1820,7 @@ background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="minimumSize">
               <size>
-               <width>50</width>
+               <width>70</width>
                <height>0</height>
               </size>
              </property>
@@ -1838,7 +1838,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>5V_FEM5</string>
+              <string>5V_FEM5 [A]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -1993,7 +1993,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>1.8VA_C</string>
+              <string>1.8VA_A</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -2022,7 +2022,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>1.8VA_D</string>
+              <string>1.8VA_B</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -2080,7 +2080,7 @@ background-color: rgb(255, 0, 0);</string>
               </font>
              </property>
              <property name="text">
-              <string>200VA</string>
+              <string>200VA [mA]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -2139,6 +2139,94 @@ background-color: rgb(255, 0, 0);</string>
              </property>
              <property name="text">
               <string>5SUPERVA</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="1">
+            <widget class="QLabel" name="lblVoltage_2">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>60</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="baseSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="mouseTracking">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Voltage [V]</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="3">
+            <widget class="QLabel" name="lblCurrent_2">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>60</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="baseSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="mouseTracking">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Current [A]</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
