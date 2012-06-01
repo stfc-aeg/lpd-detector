@@ -649,67 +649,110 @@ class testScale5VBadInput(unittest.TestCase):
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale5V, 4096)
 
 
-class KnownScale1_8V(unittest.TestCase):
+class KnownScale1_8V_Voltage(unittest.TestCase):
     knownValues = ( (0, 0.0),
-                    (1, 0.00043956043956043956),
-                    (234, 0.10285714285714286),
-                    (1625, 0.7142857142857143),
-                    (2189, 0.96219780219780215),
-                    (3010, 1.323076923076923),
-                    (4095, 1.8),
-                    )
-
-    def testScale1_8V(self):
-        """ scale1_8V() should scale ad7998's 0-4095 into 0-1.8V """
-        for adcValue, Vscale in self.knownValues:
-            result = excaliburObj.scale1_8V(adcValue)
-            self.assertEqual(Vscale, result)
-
-
-class testScale1_8VBadInput(unittest.TestCase):
-    def testNegative(self):
-        """ scale1_8V() should fail with negative input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale1_8V, -1)
-
-    def testTooLarge(self):
-        """ scale1_8V() should fail with too large input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale1_8V, 4096)
-
-
-class KnownScale3_3V(unittest.TestCase):
-    knownValues = ( (0, 0.0),
-                    (9, 0.010986299999999999),
-                    (501, 0.61157069999999991),
-                    (1289, 1.5734822999999998),
-                    (2070, 2.5268489999999999),
-                    (3246, 3.9623921999999996),
+                    (1, 0.0012206999999999999),
+                    (234, 0.2856438),
+                    (1625, 1.9836374999999999),
+                    (2189, 2.6721122999999998),
+                    (3010, 3.6743069999999998),
                     (4095, 4.9987664999999994),
                     )
     
-    def testScale3_3V(self):
-        """ scale3_3V() should scale ad7998's 0-4095 into 0-3.3V """
+    def testScale1_8V_Voltage(self):
+        """ Scale1_8V_Voltage() should scale ad7998's 0-4095 into 0-1.8V """
         for adcValue, Vscale in self.knownValues:
-            result = excaliburObj.scale3_3V(adcValue)
+            result = excaliburObj.scale1_8V_Voltage(adcValue)
+            self.assertEqual(Vscale, result)
+
+class KnownScale1_8V_Current(unittest.TestCase):
+    knownValues = ( (0, 0.0),
+                    (1, 0.0012206999999999999),
+                    (234, 0.2856438),
+                    (1625, 1.9836374999999999),
+                    (2189, 2.6721122999999998),
+                    (3010, 3.6743069999999998),
+                    (4095, 4.9987664999999994),
+                    )
+    
+    def testScale1_8V_Current(self):
+        """ Scale1_8V_Current() should scale ad7998's 0-4095 into 0-1.8V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scale1_8V_Current(adcValue)
+            self.assertEqual(Vscale, result)
+
+
+
+class testScale1_8V_VoltageBadInput(unittest.TestCase):
+    def testNegative(self):
+        """ Scale1_8V_Voltage() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale1_8V_Voltage, -1)
+
+    def testTooLarge(self):
+        """ Scale1_8V_Voltage() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale1_8V_Voltage, 4096)
+
+
+class KnownScale3_3V_Voltage(unittest.TestCase):
+    knownValues = ( (0, 0.0),
+                    (1, 0.0012206999999999999),
+                    (234, 0.2856438),
+                    (1625, 1.9836374999999999),
+                    (2189, 2.6721122999999998),
+                    (3010, 3.6743069999999998),
+                    (4095, 4.9987664999999994),
+                    )
+        
+    def testScale3_3V_Voltage(self):
+        """ scale3_3V_Voltage() should scale ad7998's 0-4095 into 0-3.3V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scale3_3V_Voltage(adcValue)
             self.assertEqual(Vscale, result)
             
 
-class testScale3_3VBadInput(unittest.TestCase):
+class testScale3_3V_VoltageBadInput(unittest.TestCase):
     def testNegative(self):
-        """ scale3_3V() should fail with negative input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale3_3V, -1)
+        """ scale3_3V_Voltage() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale3_3V_Voltage, -1)
 
     def testTooLarge(self):
-        """ scale3_3V() should fail with too large input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale3_3V, 4096)
+        """ scale3_3V_Voltage() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale3_3V_Voltage, 4096)
+
+class KnownScale3_3V_Current(unittest.TestCase):
+    knownValues = ( (0, 0.0),
+                    (1, 0.0023999999999999998),
+                    (234, 0.56159999999999999),
+                    (1625, 3.8999999999999995),
+                    (2189, 5.2535999999999996),
+                    (3010, 7.2239999999999993),
+                    (4095, 9.8279999999999994),
+                    )
+        
+    def testScale3_3V_Current(self):
+        """ scale3_3V_Current() should scale ad7998's 0-4095 into 0-3.3V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scale3_3V_Current(adcValue)
+            self.assertEqual(Vscale, result)
+            
+
+class testScale3_3V_CurrentBadInput(unittest.TestCase):
+    def testNegative(self):
+        """ scale3_3V_Current() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale3_3V_Current, -1)
+
+    def testTooLarge(self):
+        """ scale3_3V_Current() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale3_3V_Current, 4096)
 
 class KnownScale48V(unittest.TestCase):
     knownValues = ( (0, 0.0),
-                    (9, 0.10549450549450549),
-                    (501,  5.8725274725274721),
-                    (1289, 15.109157509157509),
-                    (2070, 24.263736263736263),
-                    (3246, 38.048351648351648),
-                    (4095, 48.0)
+                    (9, 0.10989010989010989),
+                    (501,  6.1172161172161168),
+                    (1289, 15.738705738705738),
+                    (2070, 25.274725274725274),
+                    (3246, 39.633699633699635),
+                    (4095, 50.0)
                     )
     
     def testScale48V(self):
@@ -728,33 +771,87 @@ class testScale48VBadInput(unittest.TestCase):
         """ scale48V() should fail with too large input """
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale48V, 4096)
 
-
-class KnownScale200V(unittest.TestCase):
+class KnownScale48V_CurrentConversion(unittest.TestCase):
     knownValues = ( (0, 0.0),
-                    (2, 0.09768009768009768),
-                    (9, 0.43956043956043955),
-                    (501, 24.468864468864467),
-                    (1289, 62.954822954822951),
-                    (2070, 101.09890109890109),
-                    (3246, 158.53479853479854),
-                    (4095, 200.0)
+                    (9, 0.02197802197802198),
+                    (501,  1.2234432234432235),
+                    (1289, 3.1477411477411477),
+                    (2070, 5.0549450549450547),
+                    (3246, 7.926739926739927),
+                    (4095, 10.0)
                     )
     
-    def testScale200V_CurrentlyConversion(self):
-        """ scale200V_CurrentlyConversion() should scale ad7998's 0-4095 into 0-200V """
+    def testScale48V_CurrentConversion(self):
+        """ scale48V_CurrentConversion() should scale ad7998's 0-4095 into 0-48V """
         for adcValue, Vscale in self.knownValues:
-            result = excaliburObj.scale200V_CurrentlyConversion(adcValue)
+            result = excaliburObj.scale48V_CurrentConversion(adcValue)
             self.assertEqual(Vscale, result)
             
 
-class testScale200V_CurrentlyConversionBadInput(unittest.TestCase):
+class testScale48V_CurrentConversionBadInput(unittest.TestCase):
     def testNegative(self):
-        """ scale200V_CurrentlyConversion() should fail with negative input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V_CurrentlyConversion, -1)
+        """ scale48V_CurrentConversion() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale48V_CurrentConversion, -1)
 
     def testTooLarge(self):
-        """ scale200V_CurrentlyConversion() should fail with too large input """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V_CurrentlyConversion, 4096)
+        """ scale48V_CurrentConversion() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale48V_CurrentConversion, 4096)
+
+
+
+class KnownScale200V_CurrentConversion(unittest.TestCase):
+    knownValues = ( (0, 0.0),
+                    (1, 0.0012206999999999999),
+                    (234, 0.2856438),
+                    (1625, 1.9836374999999999),
+                    (2189, 2.6721122999999998),
+                    (3010, 3.6743069999999998),
+                    (4095, 4.9987664999999994),
+                    )
+    
+    def testScale200V_CurrentConversion(self):
+        """ scale200V_CurrentConversion() should scale ad7998's 0-4095 into 0-200V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scale200V_CurrentConversion(adcValue)
+            self.assertEqual(Vscale, result)
+            
+
+class testScale200V_CurrentConversionBadInput(unittest.TestCase):
+    def testNegative(self):
+        """ scale200V_CurrentConversion() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V_CurrentConversion, -1)
+
+    def testTooLarge(self):
+        """ scale200V_CurrentConversion() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200V_CurrentConversion, 4096)
+
+
+class KnownScale200VoltageConversion(unittest.TestCase):
+    knownValues = ( (0, 0.0),
+                    (9, 0.549315),
+                    (387, 23.620545),
+                    (1625, 99.181875000000005),
+                    (2189, 133.605615),
+                    (3010, 183.71535),
+                    (4095, 249.93832499999999),
+                    )
+    
+    def testScale200VoltageConversion(self):
+        """ scale200VoltageConversion() should scale ad7998's 0-4095 into 0-200V """
+        for adcValue, Vscale in self.knownValues:
+            result = excaliburObj.scale200VoltageConversion(adcValue)
+            self.assertEqual(Vscale, result)
+            
+
+class testScale200VoltageConversionBadInput(unittest.TestCase):
+    def testNegative(self):
+        """ scale200VoltageConversion() should fail with negative input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200VoltageConversion, -1)
+
+    def testTooLarge(self):
+        """ scale200VoltageConversion() should fail with too large input """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.scale200VoltageConversion, 4096)
+
 
 
 class KnownScaleHumidity(unittest.TestCase):
@@ -793,11 +890,12 @@ class testScaleHumidityBadInput(unittest.TestCase):
 
 class KnownScaleTemperature(unittest.TestCase):
     knownValues = ( (0, 0),
-                    (1010, 12),
-                    (2135, 26),
-#                    (3159, 94),
-#                    (3952, 126),
-#                    (4095, 132)
+                    (57, 0.6951219512195121),
+                    (1010, 12.317073170731707),
+                    (2135, 26.036585365853657),
+                    (3159, 38.524390243902438),
+                    (3952, 48.195121951219512),
+                    (4095, 49.939024390243901)
                     )
     
     def testScaleTemperature(self):
@@ -1161,7 +1259,6 @@ class testRound3DecimalsBadInput(unittest.TestCase):
     def testRound3DecimalsArgumentBoolean(self):
         """ round3Decimals() should fail if argument is boolean """
         self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round3Decimals, True)
-
 
 if __name__ == "__main__":
     # Run in all unittests
