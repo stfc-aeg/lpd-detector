@@ -1145,12 +1145,12 @@ class ExcaliburPowerGui:
             # FAN_FAULT is ok
             if self.b is False:
                 # Only change to Green if previously Red
-                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(0, 255,  0);")
+                self.queue.put("FrmFanFault=\nbackground-color: rgb(0, 255,  0);")
                 self.bAirTempGreen = True
         else:
             # Ensure FAN_FAULT's Red if previously Green
             if self.bAirTempGreen is True:
-                self.queue.put("frmAirTempStatus=\nbackground-color: rgb(255, 0, 0);")
+                self.queue.put("FrmFanFault=\nbackground-color: rgb(255, 0, 0);")
                 self.bAirTempGreen = False
 
         
@@ -1313,6 +1313,15 @@ class ExcaliburPowerGui:
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale5V() adcValue outside 0-4095 range!"
         return (adcValue / 819.0)
+
+    def scale5SUPERV_VoltageConversion(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-5Volts """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale5SUPERV_VoltageConversion() adcValue outside 0-4095 range!"
+        return (adcValue / 819.0)
     
     def scale3_3V_Voltage(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-3.3Volt """
@@ -1360,9 +1369,18 @@ class ExcaliburPowerGui:
         adcValue=int(adcValue)
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
-            raise OutOfRangeError, "scale48V() adcValue outside 0-4095 range!"
-        return (adcValue * (16 / 1365.0))
+            raise OutOfRangeError, "scale48V_Voltage() adcValue outside 0-4095 range!"
+        return ((adcValue * 10 )/ 819.0)
     
+    def scale48V_CurrentConversion(self, adcValue):
+        """ Scale ad7998's range of ADC count: 0-4095 to 0-5Volts """
+        # Ensure adcValue is integer
+        adcValue=int(adcValue)
+        # Check adcValue 0-4095
+        if not (0 <= adcValue <= 4095):
+            raise OutOfRangeError, "scale48V_CurrentConversion() adcValue outside 0-4095 range!"
+        return ((adcValue * 2) / 819.0)
+
     def scale200V_CurrentConversion(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-200Volts """
         # Ensure adcValue is integer
@@ -1399,20 +1417,21 @@ class ExcaliburPowerGui:
         humidityValue = (humidityValue / 25)
         
         # Compare humidity against thresholds and update humidity LED accordingly
-        thresholdAnswer = self.compareThresholds(humidityValue, self.humidityMin, self.humidityMax, self.humidityWarn)
-        if thresholdAnswer is 0:
-            self.updateHumidityLed(thresholdAnswer) #Green
-        elif thresholdAnswer is 1:
-            self.updateHumidityLed(thresholdAnswer) #Amber
-        elif thresholdAnswer is 2:
-            self.updateHumidityLed(thresholdAnswer) #Red
-        else:
-            self.displayErrorMessage("lm92ToDegrees() error: minimum exceeded maximum!")
-            return None        
+#        thresholdAnswer = self.compareThresholds(humidityValue, self.humidityMin, self.humidityMax, self.humidityWarn)
+#        if thresholdAnswer is 0:
+#            self.updateHumidityLed(thresholdAnswer) #Green
+#        elif thresholdAnswer is 1:
+#            self.updateHumidityLed(thresholdAnswer) #Amber
+#        elif thresholdAnswer is 2:
+#            self.updateHumidityLed(thresholdAnswer) #Red
+#        else:
+#            self.displayErrorMessage("lm92ToDegrees() error: minimum exceeded maximum!")
+#            return None        
         return humidityValue
     
     def scaleTemperature(self, tempValue):
         """ Scale ad7998's range of ADC count into temperature degrees celsius """
+#        print "ScaleTemp received: ", tempValue
         # Check tempValue argument is integer
         if compareTypes(tempValue) is not 1:
             raise BadArgumentError,"scaleTemperature() tempValue argument not integer!"
@@ -1420,7 +1439,7 @@ class ExcaliburPowerGui:
             raise OutOfRangeError, "scaleTemperature() tempValue outside 0-4095 range!"
         # 1 ADC count = 5V / 4096 = 0.0012207
 #        return (tempValue * 0.00122)
-        return (tempValue / 82)
+        return (tempValue / 82.0)
         
 
     def readAd7998_Unit14(self, ch8to5, ch4to1):
@@ -1519,25 +1538,27 @@ class ExcaliburPowerGui:
             self.displayErrorMessage("readAd7998_Unit15(), Serial exception: ")
         # Local functions handling ADC dictionary lookup
         def zero():
-            try:    self.queue.put("le48VV=%s" % str( (rxInt) ))            # U15, pin 7 - 4.8V Voltage
+#            print "48V Voltage: ", rxInt
+            try:    self.queue.put("le48VV=%s" % str( round2Decimals(self.scale48V(rxInt)) ))            # U15, pin 7 - 48V Voltage
             except: self.displayErrorMessage("U15 adc0, Error updating GUI: ")
         def one():
-            try:    self.queue.put("le48VA=%s" % str( (rxInt) ))            # U15, pin 14 - 4.8V Current
+#            print "48 Current: ", rxInt
+            try:    self.queue.put("le48VA=%s" % str( round4Decimals(self.scale48V_CurrentConversion(rxInt)) ))            # U15, pin 14 - 48V Current
             except: self.displayErrorMessage("U15 adc1, Error updating GUI: ")
         def two():
-            try:    self.queue.put("le5SUPERVV=%s" % str( (rxInt) ))        # U15, pin 8 - 5V Super Voltage
+            try:    self.queue.put("le5SUPERVV=%s" % str( round3Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) ))        # U15, pin 8 - 5V Super Voltage
             except: self.displayErrorMessage("U15 adc2, Error updating GUI: ")
         def three():
-            try:    self.queue.put("le5SUPERVA=%s" % str( (rxInt) ))        # U15, pin 13 - 5V Super Current
+            try:    self.queue.put("le5SUPERVA=%s" % str( round3Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) ))        # U15, pin 13 - 5V Super Current
             except: self.displayErrorMessage("U15 adc3, Error updating GUI: ")
         def four():
             try:    self.queue.put("leHum_mon=%s" % str( self.scaleHumidity(rxInt) ))   # U15, pin 9 - Humidity
             except: self.displayErrorMessage("U15 adc4, Error updating GUI: ")
         def five():
-            try:    self.queue.put("leAirtmp_mon=%s" % str( self.scaleTemperature(rxInt) ))      # U15, pin 12 - Air Temperature
+            try:    self.queue.put("leAirtmp_mon=%s" % str( round2Decimals(self.scaleTemperature(rxInt)) ))      # U15, pin 12 - Air Temperature
             except: self.displayErrorMessage("U15 adc5, Error updating GUI: ")
         def six():
-            try:    self.queue.put("leCoolant_stat=%s" % str( self.scaleTemperature(rxInt) ))    # U15, pin 10 - Coolant Temperature
+            try:    self.queue.put("leCoolant_stat=%s" % str( round2Decimals(self.scaleTemperature(rxInt)) ))    # U15, pin 10 - Coolant Temperature
             except: self.displayErrorMessage("U15 adc6, Error updating GUI: ")
         def seven():
             try:    self.queue.put("leCoolant_flow_mon=%s" % str( (rxInt) ))    # U15, pin 11 - Coolant Flow
@@ -1654,6 +1675,9 @@ class ExcaliburPowerGui:
             self.readAd7998_Unit16(4, 0)   # Read ad7998 Ch 7    - 1.8V Mod B, Current
             self.readAd7998_Unit16(8, 0)   # Read ad7998 Ch 8    - 1.8V mod B, Voltage
 
+            # Check status of pcf8574 device
+            pcfStatus = self.readpcf8574()
+            self.updatePcf8574GuiComponents(pcfStatus)
 
         except:
             self.displayErrorMessage("")
