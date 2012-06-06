@@ -504,7 +504,7 @@ class ExcaliburPowerGui:
         if compareTypes(bEnableLvSetting) is not 4:
             raise WrongVariableType, "updatePcf8574Device() bEnableLvSetting not a boolean argument!"
         if compareTypes(bEnableBiasSetting) is not 4:
-            raise WrongVariableType, "updatedPcf8574Device() bEnableBiasSetting is not a boolean argument!"
+            raise WrongVariableType, "updatePcf8574Device() bEnableBiasSetting is not a boolean argument!"
         # statusOk is return value of this function
         statusOk = False
         # set bitMask for lv (16) and bias (32)
@@ -1043,13 +1043,20 @@ class ExcaliburPowerGui:
         """ Read pcf8574 u3 device """
         # pcf8574 I2C address is 32 (or 64 ?)
         self.sCom.write("r 35 1 @")
-        # Read reply
-        rxString = self.readSerialInterface()
-        try:
-            rxVal = int(rxString)
+
+        try:        
+            # Read reply
+            rxString = self.readSerialInterface()
+            # Convert reply to integer unless None returned
+            if compareTypes(rxString) is not 0:
+                rxVal = int(rxString)
+#            else:
+#                # Error already flag inside .readSerialInterface() function
+#                self.displayErrorMessage("readpcf8574(), serial read back Error: ")
+    #        print "readpcf8574() read: ", rxVal
         except:
             self.displayErrorMessage("readpcf8574(), Serial Error: ")
-#        print "readpcf8574() read: ", rxVal
+
         return rxVal
     
     def updatePcf8574GuiComponents(self, pcfVal):
@@ -1432,6 +1439,50 @@ class ExcaliburPowerGui:
         if not (0 <= tempValue <= 4095):
             raise OutOfRangeError, "scaleTemperature() tempValue outside 0-4095 range!"
         return (tempValue / 82.0)
+
+    def convertSelectedChannelIntoAd7998SerialString(self, channelNumber):
+        """ Convert desired ad7998 channel into serial string needed to select said channel
+            ie: Channel 1 = "0 16", Channel 2 = "0 32", etc """
+        # Check argument channelNumber is an integer..
+        if compareTypes(channelNumber) is not 1:
+            raise BadArgumentError, "convertSelectedChannelIntoAd7998SerialString() argument not integer"
+        # .. Is between 1 - 8
+        if not (1 <= channelNumber <= 8):
+            raise OutOfRangeError, "convertSelectedChannelIntoAd7998SerialString() argument out of range"
+        
+        # Make the conversion
+        if channelNumber is 1:
+            ad7998string = "0 16"
+        elif channelNumber is 2:
+            ad7998string = "0 32"
+        elif channelNumber is 3:
+            ad7998string = "0 64"
+        elif channelNumber is 4:
+            ad7998string = "0 128"
+        elif channelNumber is 5:
+            ad7998string = "1 0"
+        elif channelNumber is 6:
+            ad7998string = "2 0"
+        elif channelNumber is 7:
+            ad7998string = "4 0"
+        else:   #if channelNumber is 8:
+            ad7998string = "8 0"
+        return ad7998string
+    
+    def readUniversalAd7998(self, i2caddress, adcChannel):
+        """ Read ad7998 devices using one universal function
+            i2caddress = 34, 35 or 36
+            adcChannel = 1 - 8        """
+        # Check arguments valid
+        if compareTypes(i2caddress) is not 1:
+            raise WrongVariableType, "readUniversalAd7998() i2caddress argument not integer"
+        if compareTypes(adcChannel) is not 1:
+            raise WrongVariableType, "readUniversalAd7998() adcChannel argument not integer"
+        # Check arguments within valid ranges
+        if not (34 <= i2caddress <= 36):
+            raise OutOfRangeError, "readUniversalAd7998() i2caddress not 34, 35 or 36!"
+        if not (1 <= adcChannel <= 8):
+            raise OutOfRangeError, "readUniversalAd7998() adcChannel outside 1-8 valid range!"
         
 
     def readAd7998_Unit14(self, ch8to5, ch4to1):
