@@ -289,7 +289,6 @@ class KnownLogError(unittest.TestCase):
 #        """writelm92 should fail if sReg argument too large (>7)"""
 #        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.writelm92, 0, 151)
 
-
 class readAd7998BadInput(unittest.TestCase):
     def testArgumentNone(self):
         """readAd7998 should fail if address argument is None """
@@ -303,6 +302,109 @@ class readAd7998BadInput(unittest.TestCase):
         """readAd7998 should fail if address argument not specified """
         self.assertRaises(excaliburPowerGui.ArgumentTypeNoneError, excaliburObj.readAd7998)
 
+class KnownconvertSelectedChannelIntoAd7998SerialString(unittest.TestCase):
+    knownValues = ( (1, "0 16"),
+                    (2, "0 32"),
+                    (3, "0 64"),
+                    (4, "0 128"),
+                    (5, "1 0"),
+                    (6, "2 0"),
+                    (7, "4 0"),
+                    (8, "8 0"),
+                    )
+
+    def testconvertSelectedChannelIntoAd7998SerialString(self):
+        """ convertSelectedChannelIntoAd7998SerialString() should integer channel number into equivalent string accepted by ad7998 """
+        for channelNumber, serialString in self.knownValues:
+            result = excaliburObj.convertSelectedChannelIntoAd7998SerialString(channelNumber)
+            self.assertEqual(serialString, result)
+
+
+class convertSelectedChannelIntoAd7998SerialStringBadInput(unittest.TestCase):
+    def testArgumentOneString(self):
+        """convertSelectedChannelIntoAd7998SerialStringBadInput should fail if channelNumber argument is string """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.convertSelectedChannelIntoAd7998SerialString, "")
+
+    def testArgumentOneNone(self):
+        """convertSelectedChannelIntoAd7998SerialStringBadInput should fail if channelNumber argument is None """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.convertSelectedChannelIntoAd7998SerialString, None)
+
+    def testArgumentOneFloat(self):
+        """convertSelectedChannelIntoAd7998SerialStringBadInput should fail if channelNumber argument is float """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.convertSelectedChannelIntoAd7998SerialString, 5.9)
+
+    def testArgumentOneBoolean(self):
+        """convertSelectedChannelIntoAd7998SerialStringBadInput should fail if channelNumber argument is bool """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.convertSelectedChannelIntoAd7998SerialString, False)
+
+
+#
+#class KnownreadUniversalAd7998(unittest.TestCase):
+#    knownValues = ( (1, "0 16"),
+#                    (2, "0 32"),
+#                    (3, "0 64"),
+#                    (4, "0 128"),
+#                    (5, "1 0"),
+#                    (6, "2 0"),
+#                    (7, "4 0"),
+#                    (8, "8 0"),
+#                    )
+#
+#    def testreadUniversalAd7998(self):
+#        """ readUniversalAd7998() should integer channel number into equivalent string accepted by ad7998 """
+#        for channelNumber, serialString in self.knownValues:
+#            result = excaliburObj.readUniversalAd7998(channelNumber)
+#            self.assertEqual(serialString, result)
+
+
+class readUniversalAd7998BadInput(unittest.TestCase):
+    def testArgumentOneString(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is string """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, "", 1)
+
+    def testArgumentOneNone(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is None """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, None, 2)
+
+    def testArgumentOneFloat(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is float """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, 5.9, 3)
+
+    def testArgumentOneBoolean(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is bool """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, False, 4)
+
+    def testArgumentTwoString(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is string """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, 5, "")
+
+    def testArgumentTwoNone(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is None """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, 6, None)
+
+    def testArgumentTwoFloat(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is float """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, 7, 5.9)
+
+    def testArgumentTwoBoolean(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is bool """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburObj.readUniversalAd7998, 8, False)
+
+    def testArgumentOneTooSmall(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is string """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 0, 1)
+
+    def testArgumentOneTooLarge(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is None """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 37, 2)
+
+    def testArgumentTwoTooSmall(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is string """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 35, 0)
+
+    def testArgumentTwoTooLarge(self):
+        """readUniversalAd7998BadInput should fail if adcChannel argument is None """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 36, 9)
 
 class readAd7998_Unit14BadInput(unittest.TestCase):
     def testArgumentOneString(self):
