@@ -1273,11 +1273,11 @@ class ExcaliburPowerGui:
 #        self.sCom.write("w 34 3 1 @")       # Set Cycle Timer Register
 #        self.sCom.write("w 34 0 @")         # Point at Conversion Result Register
 
-    def initialiseAd7998(self, i2caddress):
-        self.sCom.write("w " + str(i2caddress) + " 2 0 16 @")    # Config Reg (2): Enable Channel 1 (0 16)
-        self.sCom.write("w " + str(i2caddress) + " 112 @")       # Set command bits in reg (mode 2 - command mode selected)
-        self.sCom.write("w " + str(i2caddress) + " 3 1 @")       # Set Cycle Timer Register
-        self.sCom.write("w " + str(i2caddress) + " 0 @")         # Point at Conversion Result Register
+    def initialiseAd7998(self, i2cAddress):
+        self.sCom.write("w " + str(i2cAddress) + " 2 0 16 @")    # Config Reg (2): Enable Channel 1 (0 16)
+        self.sCom.write("w " + str(i2cAddress) + " 112 @")       # Set command bits in reg (mode 2 - command mode selected)
+        self.sCom.write("w " + str(i2cAddress) + " 3 1 @")       # Set Cycle Timer Register
+        self.sCom.write("w " + str(i2cAddress) + " 0 @")         # Point at Conversion Result Register
         
 #------------------------------##------------------------------#
 
@@ -1469,22 +1469,120 @@ class ExcaliburPowerGui:
             ad7998string = "8 0"
         return ad7998string
     
-    def readUniversalAd7998(self, i2caddress, adcChannel):
+    def readUniversalAd7998(self, i2cAddress, adcChannel):
         """ Read ad7998 devices using one universal function
-            i2caddress = 34, 35 or 36
+            i2cAddress = 34, 35 or 36
             adcChannel = 1 - 8        """
         # Check arguments valid
-        if compareTypes(i2caddress) is not 1:
-            raise WrongVariableType, "readUniversalAd7998() i2caddress argument not integer"
+        if compareTypes(i2cAddress) is not 1:
+            raise WrongVariableType, "readUniversalAd7998() i2cAddress argument not integer"
         if compareTypes(adcChannel) is not 1:
             raise WrongVariableType, "readUniversalAd7998() adcChannel argument not integer"
         # Check arguments within valid ranges
-        if not (34 <= i2caddress <= 36):
-            raise OutOfRangeError, "readUniversalAd7998() i2caddress not 34, 35 or 36!"
+        if not (34 <= i2cAddress <= 36):
+            raise OutOfRangeError, "readUniversalAd7998() i2cAddress not 34, 35 or 36!"
         if not (1 <= adcChannel <= 8):
             raise OutOfRangeError, "readUniversalAd7998() adcChannel outside 1-8 valid range!"
-        
-
+        if self.bTest is True:
+            return True
+        # Convert adcChannel from integer to equivalent serial string
+        adcString = self.convertSelectedChannelIntoAd7998SerialString(adcChannel)
+        # Construct string to select ADC channel
+        sCmd = "w " + str(i2cAddress) + " 2 " + adcString + " @"
+        try:
+            self.sCom.write(sCmd)
+            sCmd = "w " + str(i2cAddress) + " 0 @"
+            self.sCom.write(sCmd)
+            # Read enabled channel at address i2cAddress
+            adcChannel, rxInt = self.readAd7998(i2cAddress)
+#            print adcChannel, rxInt
+        except:
+            self.displayErrorMessage("readUniversalAd7998(), Serial exception: ")
+            
+        # Check that a valid adcChannel was received
+        if adcChannel is -1:
+            # Invalid !
+            self.displayErrorMessage("readUniversalAd7998() Error: Received invalid adcChannel data!")
+        else:
+            # Depending on which ad7998 device, construct string to update associated Gui component
+            guiString = ""
+            if i2cAddress is 34:
+                # Unit14
+                if adcChannel is 0:
+                    guiString = "le5VAV=%s" % str( round2Decimals( self.scale5V(rxInt)) )   # Unit 14, pin 7 - 5V A Voltage
+                elif adcChannel is 1:
+                    guiString = "le5VBV=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 14 - 5V A Current
+                elif adcChannel is 2:
+                    guiString =  "le5F0I=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 8 - 5V Fem0 Current
+                elif adcChannel is 3:
+                    guiString =  "le5F1I=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 13 - 5V Fem1 Current
+                elif adcChannel is 4:
+                    guiString =  "le5F2I=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 9 - 5V Fem2 Current
+                elif adcChannel is 5:
+                    guiString =  "le5F3I=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 12 - 5V Fem3 Current
+                elif adcChannel is 6:
+                    guiString =  "le5F4I=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 10 - 5V Fem4 Current
+                elif adcChannel is 7:
+                    guiString =  "le5F5I=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 11 - 5V Fem5 Current
+                # Signal to main thread to update associated Gui component
+                try:
+                    self.queue.put(guiString)
+                except:
+                    self.displayWarningMessage("readUniversalAd7998() U14 - Unable to update Gui component!")
+                    
+            elif i2cAddress is 35:
+                # Unit15
+                if adcChannel is 0:
+                    guiString = "le48VV=%s" % str( round1Decimals(self.scale48V(rxInt)) )                                   # U15, pin 7 - 48V Voltage
+                elif adcChannel is 1:
+                    guiString = "le48VA=%s" % str( round1Decimals(self.scale48V_CurrentConversion(rxInt)) )                 # U15, pin 14 - 48V Current
+                elif adcChannel is 2:
+                    guiString =  "le5SUPERVV=%s" % str( round1Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) )        # U15, pin 8 - 5V Super Voltage
+                elif adcChannel is 3:
+                    guiString =  "le5SUPERVA=%s" % str( round1Decimals(self.scale5SUPERV_VoltageConversion(rxInt)) )        # U15, pin 13 - 5V Super Current
+                elif adcChannel is 4:
+                    guiString =  "leHum_mon=%s" % str( self.scaleHumidity(rxInt) )                                          # U15, pin 9 - Humidity
+                elif adcChannel is 5:
+                    guiString =  "leAirtmp_mon=%s" % str( round2Decimals(self.scaleTemperature(rxInt)) )                    # U15, pin 12 - Air Temperature
+                elif adcChannel is 6:
+                    guiString =  "leCoolant_stat=%s" % str( round2Decimals(self.scaleTemperature(rxInt)) )                  # U15, pin 10 - Coolant Temperature
+                elif adcChannel is 7:
+                    guiString =  "leCoolant_flow_mon=%s" % str( (rxInt) )    # U15, pin 11 - Coolant Flow
+                # Signal to main thread to update associated Gui component
+                try:
+                    self.queue.put(guiString)
+                except:
+                    self.displayWarningMessage("readUniversalAd7998() U15 - Unable to update Gui component!")
+                    
+            elif i2cAddress is 36:
+                # Unit16
+                if adcChannel is 0:
+                    guiString = "le33VA=%s" % str( round1Decimals(self.scale3_3V_Current(rxInt)) )         # U16, pin 7    - 3.3V, Current
+                elif adcChannel is 1:
+                    guiString = "le18VAA=%s" % str( round1Decimals(self.scale1_8V_Current(rxInt)) )        # U16, pin 14    - 1.8V Mod A, Current
+                elif adcChannel is 2:
+                    guiString =  "le200VA=%s" % str( round2Decimals(self.scale200V_CurrentConversion(rxInt)) )      # U16, pin 8    - 200V (bias) Current
+                elif adcChannel is 3:
+                    guiString =  "le33VV=%s" % str( round2Decimals( self.scale3_3V_Voltage(rxInt)) )        # U16, pin 13    - 3.3V, Voltage
+                elif adcChannel is 4:
+                    guiString =  "le18VAV=%s" % str( round2Decimals(self.scale1_8V_Voltage(rxInt)) )        # U16, pin 9    - 1.8V Mod A, Voltage
+                elif adcChannel is 5:
+                    guiString =  "le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) )        # U16, pin 12    - 200V (bias) Voltage
+                elif adcChannel is 6:
+                    guiString =  "le18VBA=%s" % str( round1Decimals(self.scale1_8V_Current(rxInt)) )        # U16, pin 10    - 1.8V Mod B, Current
+                elif adcChannel is 7:
+                    guiString =  "le18VBV=%s" % str( round2Decimals(self.scale1_8V_Voltage(rxInt)) )        # U16, pin 11    - 1.8V mod B, Voltage
+                # Signal to main thread to update associated Gui component
+                try:
+                    self.queue.put(guiString)
+                except:
+                    self.displayWarningMessage("readUniversalAd7998() U16 - Unable to update Gui component!")
+                    
+            else:
+                # Impossible, argument i2cAddress only accepts 34, 35 or 36
+                print "Unexpected Error: Divide By Cucumber Error"
+            
+            
     def readAd7998_Unit14(self, ch8to5, ch4to1):
         """ Select ad7998's channel(s) according to arguments,
             select conversion register and call readAd7998()
