@@ -1527,7 +1527,7 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le5F0I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 8 - 5V Fem0 Current
             except: self.displayErrorMessage("U14 adc2, Error updating GUI: ")
         def three():
-#            print "1I: ", rxInt
+            print "1I: ", rxInt
             try:    self.queue.put("le5F1I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 13 - 5V Fem1 Current
             except: self.displayErrorMessage("U14 adc3, Error updating GUI: ")
         def four():
@@ -1554,7 +1554,7 @@ class ExcaliburPowerGui:
             whichChannel[adcChannel]()
         except:
             self.displayWarningMessage("Ad7998_U14 Received unrecognisable ADC data!")
-            print "U14 adcChannel: ", adcChannel, " rxInt: ", rxInt            
+            print "U14 adcChannel: ", adcChannel, " rxInt: ", rxInt, "\n"
 
     def readAd7998_Unit15(self, ch8to5, ch4to1):
         """ Select ad7998's channel(s) according to arguments,
@@ -1672,7 +1672,7 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le200VV=%s" % str( round2Decimals(self.scale200VoltageConversion(rxInt)) ))        # U16, pin 12    - 200V (bias) Voltage
             except: self.displayErrorMessage("U16 adc5, Error updating GUI: ")
         def six():
-#            print "1.8V Mod B, Current:", rxInt
+            print "1.8V Mod B, Current:", rxInt
             try:    self.queue.put("le18VBA=%s" % str( round1Decimals(self.scale1_8V_Current(rxInt)) ))        # U16, pin 10    - 1.8V Mod B, Current
             except: self.displayErrorMessage("U16 adc6, Error updating GUI: ")
         def seven():
