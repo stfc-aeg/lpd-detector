@@ -239,7 +239,7 @@ class ExcaliburPowerGui:
         # Print selected com port:    (e.g. COM1)
 #        print self.gui.gui.lwSerialPort.currentItem().text()
 
-        time.sleep(2)        
+        time.sleep(1.5)        
         # Wait for serial interface to initialise.
 #        time.sleep(1.8)        # Redundant later on?
         # Initialise i2c devices
@@ -1523,27 +1523,27 @@ class ExcaliburPowerGui:
             try:    self.queue.put("le5VBV=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 14 - 5V A Current
             except: self.displayErrorMessage("U14 adc1, Error updating GUI: ")
         def two():
-            print "0I: ", rxInt
+#            print "0I: ", rxInt
             try:    self.queue.put("le5F0I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 8 - 5V Fem0 Current
             except: self.displayErrorMessage("U14 adc2, Error updating GUI: ")
         def three():
-            print "1I: ", rxInt
+#            print "1I: ", rxInt
             try:    self.queue.put("le5F1I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 13 - 5V Fem1 Current
             except: self.displayErrorMessage("U14 adc3, Error updating GUI: ")
         def four():
-            print "2I: ", rxInt
+#            print "2I: ", rxInt
             try:    self.queue.put("le5F2I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 9 - 5V Fem2 Current
             except: self.displayErrorMessage("U14 adc4, Error updating GUI: ")
         def five():
-            print "3I: ", rxInt
+#            print "3I: ", rxInt
             try:    self.queue.put("le5F3I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 12 - 5V Fem3 Current
             except: self.displayErrorMessage("U14 adc5, Error updating GUI: ")
         def six():
-            print "4I: ", rxInt
+#            print "4I: ", rxInt
             try:    self.queue.put("le5F4I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 10 - 5V Fem4 Current
             except: self.displayErrorMessage("U14 adc6, Error updating GUI: ")
         def seven():
-            print "5I: ", rxInt
+#            print "5I: ", rxInt
             try:    self.queue.put("le5F5I=%s" % str( round2Decimals(self.scale5V(rxInt)) ))   # Unit 14, pin 11 - 5V Fem5 Current
             except: self.displayErrorMessage("U14 adc7, Error updating GUI: ")
         # Create dictionary lookup for channel number
