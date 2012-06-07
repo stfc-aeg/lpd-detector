@@ -16,9 +16,7 @@
 // TODO: Update state variables during event loop (read/writePtr)
 // TODO: Graceful stop when pending events exist
 // TODO: Fix configure for acquire, respect config. BD storage area
-// TODO: Move defines, function prototypes to header.  Move common structs to common header.
 // TODO: Refactor data counter variables and main event loop
-// TODO: [MAYBE?] Change validateBuffer to inline macro, reduce call overhead and decrease RX->TX latency? (Verify with scope)
 
 #include <stdio.h>
 #include "xmbox.h"
@@ -100,13 +98,13 @@ typedef struct
 	u32 state;			//! Acquisition state
 	u32 bufferCnt;		//! Number of buffers allocated
 	u32 bufferSize;		//! Size of buffers
-	u32 bufferDirty;	//! If non-zero a problem occured last run and the buffers / engines need to be reconfigured
+	u32 bufferDirty;	//! If non-zero a problem occurred last run and the buffers / engines need to be reconfigured
 	u32 readPtr;		//! Read pointer
 	u32 writePtr;		//! Write pointer
 	u32 numAcq;			//! Number of acquisitions in this run
 	u32 numConfigBds;	//! Number of configuration BDs set
-	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
-	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
+	u32 totalRecv;		//! Total number of BDs received from I/O FPGAs
+	u32 totalSent;		//! Total number of BDs sent to 10GBe block
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
 
@@ -922,7 +920,7 @@ int main()
 
 
 
-/*
+/**
  * Generic DMA setup function, accepts segment size (size of data to RX from I/O FPGA),
  * and segment count (to limit the number of BDs created for debugging / #-frame mode)
  * @param pBdRings pointer to array of BD rings
@@ -930,8 +928,8 @@ int main()
  * @param bufferSz Size of data buffer to RX from I/O FPGA
  * @param bufferCnt Number of buffers to allocate, set to 0 for allocation of maximum BDs
  * @param pStatusBlock pointer to status struct, updated by function
- * @return XST_SUCCESS if OK, otherwise an XST_xxx error code
  *
+ * @return XST_SUCCESS if OK, otherwise an XST_xxx error code
  */
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock)
 {
@@ -1134,12 +1132,14 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 
 
 
-/* Configures DMA engine for upstream configuration upload
+/**
+ * Configures DMA engine for upstream configuration upload
  * @param pUploadBdRing pointer to BD ring for upload channel
  * @param pFirstConfigBd set by function to be first BD in TX ring
  * @param bufferAddr address at which configuration data is stored
  * @param bufferSz size of configuration data
- * @param bufferCnt number of configuration datas
+ * @param bufferCnt number of configurations
+ *
  * @return XST_SUCCESS, or error code
  */
 int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock)
@@ -1209,7 +1209,12 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 
 
 
-/* Starts both RX and 10GBe engines
+/**
+ * Starts both ASIC RX and 10GBe TX engines
+ * @param pRingAsicTop pointer to top ASIC BD ring
+ * @param pRingAsicBot pointer to bottom ASIC BD ring
+ * @param pRingTenGig pointer to 10GBe BD ring
+ *
  * @return XST_SUCCESS, or XST_* error
  */
 int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot, XLlDma_BdRing* pRingTenGig)
@@ -1243,9 +1248,11 @@ int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot
 
 
 
-/* Checks for a mailbox message (non-blocking)
+/**
+ * Checks for a mailbox message (non-blocking)
  * @param pMailBox pointer to XMbox
  * @param pMsg pointer to mailMsg buffer to receive to
+ *
  * @return 1 on success, 0 otherwise
  */
 int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
@@ -1264,8 +1271,10 @@ int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
 
 
 
-/* Sends a response to PPC2 on the request status of the CMD_ACQ_START or CMD_ACQ_STOP requests.
+/**
+ * Sends a response to PPC2 on the request status of the CMD_ACQ_START or CMD_ACQ_STOP requests.
  * @param state 0 for NACK, anthing else for ACK
+ *
  * @return 1 on success, 0 on failure (mailbox)
  */
 unsigned short sendAcquireAckMessage(XMbox *pMailbox, u32 state)
@@ -1285,10 +1294,12 @@ unsigned short sendAcquireAckMessage(XMbox *pMailbox, u32 state)
 
 
 
-/* Verifies a buffer by checking the STS/CTRL field of the BD matches the value expected.
+/**
+ * Verifies a buffer by checking the STS/CTRL field of the BD matches the value expected.
  * @param pRing pointer to BD ring
  * @param pBd pointer to BD
  * @param buffType buffer type, either BD_RX or BD_TX
+ *
  * @return XST_SUCCESS, or XST_DMA_ERROR if an error was flagged
  */
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
@@ -1343,10 +1354,12 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 
 
-/* Resets, frees and re-allocates a buffer into the current BD ring
+/**
+ * Resets, frees and re-allocates a buffer into the current BD ring
  * @param pRing pointer to BD ring
  * @param pBd pointer to BD
  * @param buffType buffer type, either BD_RX or BD_TX
+ *
  * @return XST_SUCCESS, or error code
  */
 int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
@@ -1402,10 +1415,12 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 
 
 
-/* Reads DCR registers into a struct
- *@param type
- *@param pReg
- *@return 1 if successful or 0 if type is invalid
+/**
+ * Reads DCR registers into a struct
+ * @param type
+ * @param pReg
+ *
+ * @return 1 if successful or 0 if type is invalid
  */
 int readDcrs(dcrRegistersBase type, dcrRegisters *pReg)
 {
@@ -1477,7 +1492,8 @@ int readDcrs(dcrRegistersBase type, dcrRegisters *pReg)
 
 
 
-/* Prints out a DCR struct
+/**
+ * Prints out a DCR struct
  * @param pReg pointer to DCR struct
  */
 void printDcr(dcrRegisters *pReg)
