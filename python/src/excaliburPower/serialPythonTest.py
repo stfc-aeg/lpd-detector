@@ -338,23 +338,23 @@ class convertSelectedChannelIntoAd7998SerialStringBadInput(unittest.TestCase):
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.convertSelectedChannelIntoAd7998SerialString, False)
 
 
-#
-#class KnownreadUniversalAd7998(unittest.TestCase):
-#    knownValues = ( (1, "0 16"),
-#                    (2, "0 32"),
-#                    (3, "0 64"),
-#                    (4, "0 128"),
-#                    (5, "1 0"),
-#                    (6, "2 0"),
-#                    (7, "4 0"),
-#                    (8, "8 0"),
-#                    )
-#
-#    def testreadUniversalAd7998(self):
-#        """ readUniversalAd7998() should integer channel number into equivalent string accepted by ad7998 """
-#        for channelNumber, serialString in self.knownValues:
-#            result = excaliburObj.readUniversalAd7998(channelNumber)
-#            self.assertEqual(serialString, result)
+
+class KnownreadUniversalAd7998(unittest.TestCase):
+    knownValues = ( (32, 1, True),
+                    (33, 2, True),
+                    (34, 3, True),
+                    (32, 4, True),
+                    (33, 5, True),
+                    (34, 6, True),
+                    (32, 7, True),
+                    (33, 8, True),
+                    )
+
+    def testreadUniversalAd7998(self):
+        """ readUniversalAd7998() valid i2cAddress (32-34), channelNumber (1-8) should return True """
+        for i2cAddress, channelNumber, serialString in self.knownValues:
+            result = excaliburObj.readUniversalAd7998(i2cAddress, channelNumber)
+            self.assertEqual(serialString, result)
 
 
 class readUniversalAd7998BadInput(unittest.TestCase):
