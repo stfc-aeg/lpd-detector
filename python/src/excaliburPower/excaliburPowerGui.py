@@ -1471,7 +1471,7 @@ class ExcaliburPowerGui:
     
     def readUniversalAd7998(self, i2cAddress, adcChannel):
         """ Read ad7998 devices using one universal function
-            i2cAddress = 34, 35 or 36
+            i2cAddress = 32, 33 or 34
             adcChannel = 1 - 8        """
         # Check arguments valid
         if compareTypes(i2cAddress) is not 1:
