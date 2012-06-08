@@ -1214,14 +1214,27 @@ class KnownUpdateHumidityLed(unittest.TestCase):
             self.assertEqual(Boolean, result)
 
 class testUpdateHumidityLedBadInput(unittest.TestCase):
-    def testHumidityInvalidColourArgument(self):
-        """ updateHumidityLed should fail unless colour argument either: 0, 1 or 2 (integer)
-            Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateHumidityLed, -1)
-        """ updateHumidityLed should fail unless colour argument either 0, 1, 2 """
+    def testUpdateHumidityLedArgumentTooSmall(self):
+        """ updateHumidityLed should fail if colour argument too small """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateHumidityLed, -1)
+    
+    def testUpdateHumidityLedArgumentTooLarge(self):
+        """ updateHumidityLed should fail if colour argument too large """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateHumidityLed, 3)
+        
+    def testUpdateHumidityLedArgumentNotFloat(self):
+        """ updateHumidityLed should fail if colour argument is float """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateHumidityLed, 1.5)
-        """ updateHumidityLed should fail unless colour argument either 0, 1, 2 """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateHumidityLed, 3)
+
+    def testUpdateHumidityLedArgumentNotBoolean(self):
+        """ updateHumidityLed should fail if colour argument is boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateHumidityLed, True)
+
+    def testUpdateHumidityLedArgumentNotString(self):
+        """ updateHumidityLed should fail if colour argument is string """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateHumidityLed, "hello?")
+
+
 
 class KnownUpdateAirTempLed(unittest.TestCase):
     kValues = ( (0, True),
@@ -1235,14 +1248,26 @@ class KnownUpdateAirTempLed(unittest.TestCase):
             self.assertEqual(Boolean, result)
 
 class testUpdateAirTempLedBadInput(unittest.TestCase):
-    def testAirTempInvalidColourArgument(self):
-        """ updateAirTempLed should fail unless colour argument either: 0, 1 or 2 (integer)
-            Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateAirTempLed, -1)
-        """ updateAirTempLed should fail unless colour argument either 0, 1, 2 """
+    def testUpdateAirTempLedArgumentTooSmall(self):
+        """ updateAirTempLed should fail if colour argument too small """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateAirTempLed, -1)
+    
+    def testUpdateAirTempLedArgumentTooLarge(self):
+        """ updateAirTempLed should fail if colour argument too large """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateAirTempLed, 3)
+        
+    def testUpdateAirTempLedArgumentNotFloat(self):
+        """ updateAirTempLed should fail if colour argument is float """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateAirTempLed, 1.5)
-        """ updateAirTempLed should fail unless colour argument either 0, 1, 2 """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateAirTempLed, 3)
+
+    def testUpdateAirTempLedArgumentNotBoolean(self):
+        """ updateAirTempLed should fail if colour argument is boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateAirTempLed, True)
+
+    def testUpdateAirTempLedArgumentNotString(self):
+        """ updateAirTempLed should fail if colour argument is string """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateAirTempLed, "hello?")
+
 
 class KnownUpdateCoolantFlowLed(unittest.TestCase):
     kValues = ( (0, True),
@@ -1256,14 +1281,25 @@ class KnownUpdateCoolantFlowLed(unittest.TestCase):
             self.assertEqual(Boolean, result)
 
 class testUpdateCoolantFlowLedBadInput(unittest.TestCase):
-    def testCoolantFlowInvalidColourArgument(self):
-        """ updateCoolantFlowLed should fail unless colour argument either: 0, 1 or 2 (integer)
-            Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantFlowLed, -1)
-        """ updateCoolantFlowLed should fail unless colour argument either 0, 1, 2 """
+    def testUpdateCoolantFlowLedArgumentTooSmall(self):
+        """ updateCoolantFlowLed should fail if colour argument too small """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateCoolantFlowLed, -1)
+    
+    def testUpdateCoolantFlowLedArgumentTooLarge(self):
+        """ updateCoolantFlowLed should fail if colour argument too large """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateCoolantFlowLed, 3)
+        
+    def testUpdateCoolantFlowLedArgumentNotFloat(self):
+        """ updateCoolantFlowLed should fail if colour argument is float """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantFlowLed, 1.5)
-        """ updateCoolantFlowLed should fail unless colour argument either 0, 1, 2 """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantFlowLed, 3)
+
+    def testUpdateCoolantFlowLedArgumentNotBoolean(self):
+        """ updateCoolantFlowLed should fail if colour argument is boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantFlowLed, True)
+
+    def testUpdateCoolantFlowLedArgumentNotString(self):
+        """ updateCoolantFlowLed should fail if colour argument is string """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantFlowLed, "hello?")
 
 class KnownUpdateCoolantTempLed(unittest.TestCase):
     kValues = ( (0, True),
@@ -1277,14 +1313,25 @@ class KnownUpdateCoolantTempLed(unittest.TestCase):
             self.assertEqual(Boolean, result)
 
 class testUpdateCoolantTempLedBadInput(unittest.TestCase):
-    def testCoolantTempInvalidColourArgument(self):
-        """ updateCoolantTempLed should fail unless colour argument either: 0, 1 or 2 (integer)
-            Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantTempLed, -1)
-        """ updateCoolantTempLed should fail unless colour argument either 0, 1, 2 """
+    def testUpdateCoolantTempLedArgumentTooSmall(self):
+        """ updateCoolantTempLed should fail if colour argument too small """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateCoolantTempLed, -1)
+    
+    def testUpdateCoolantTempLedArgumentTooLarge(self):
+        """ updateCoolantTempLed should fail if colour argument too large """
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.updateCoolantTempLed, 3)
+        
+    def testUpdateCoolantTempLedArgumentNotFloat(self):
+        """ updateCoolantTempLed should fail if colour argument is float """
         self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantTempLed, 1.5)
-        """ updateCoolantTempLed should fail unless colour argument either 0, 1, 2 """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantTempLed, 3)
+
+    def testUpdateCoolantTempLedArgumentNotBoolean(self):
+        """ updateCoolantTempLed should fail if colour argument is boolean """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantTempLed, True)
+
+    def testUpdateCoolantTempLedArgumentNotString(self):
+        """ updateCoolantTempLed should fail if colour argument is string """
+        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.updateCoolantTempLed, "hello?")
 
 class testCompareTypes(unittest.TestCase):
     knownTypes = ( (None, 0),

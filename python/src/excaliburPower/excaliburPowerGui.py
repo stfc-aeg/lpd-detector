@@ -864,6 +864,12 @@ class ExcaliburPowerGui:
     def updateHumidityLed(self, colour):
         """ Update Humidity Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
+        # Check argument colour is integer
+        if compareTypes(colour) is not 1:
+            raise BadArgumentError, "updateHumidityLed() colour argument not integer!"
+        # Check argument colour is within valid range
+        if not (0 <= colour <= 2):
+            raise OutOfRangeError, "updateHumidityLed() colour argument outside 0-2 range!"
         if colour is 0: #"Green"
             self.bHumidityGreen = True
             humidityStatus = "frmHumidityStatus=\nbackground-color: rgb(0, 255, 0);"
@@ -882,6 +888,12 @@ class ExcaliburPowerGui:
     def updateAirTempLed(self, colour):
         """ Update Air Temperature Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
+        # Check argument colour is integer
+        if compareTypes(colour) is not 1:
+            raise BadArgumentError, "updateAirTempLed() colour argument not integer!"
+        # Check argument colour is within valid range
+        if not (0 <= colour <= 2):
+            raise OutOfRangeError, "updateAirTempLed() colour argument outside 0-2 range!"
         if colour is 0: #"Green":
             self.bAirTempGreen = True
             airStatus = "frmAirTempStatus=\nbackground-color: rgb(0, 255, 0);"
@@ -900,6 +912,12 @@ class ExcaliburPowerGui:
     def updateCoolantFlowLed(self, colour):
         """ Update Coolant Flow Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
+        # Check argument colour is integer
+        if compareTypes(colour) is not 1:
+            raise BadArgumentError, "updateCoolantFlowLed() colour argument not integer!"
+        # Check argument colour is within valid range
+        if not (0 <= colour <= 2):
+            raise OutOfRangeError, "updateCoolantFlowLed() colour argument outside 0-2 range!"
         if colour is 0: #"Green":
             self.bCoolantFlowGreen = True
             coolantFlowStatus = "frmCoolantFlowStatus=\nbackground-color: rgb(0, 255, 0);"
@@ -918,6 +936,12 @@ class ExcaliburPowerGui:
     def updateCoolantTempLed(self, colour):
         """ Update Coolant Temperature Status in Gui to colour's colour
             Note: colour must be either: 0 (Green), 1 (Amber) or 2 (Red) """
+        # Check argument colour is integer
+        if compareTypes(colour) is not 1:
+            raise BadArgumentError, "updateCoolantTempLed() colour argument not integer!"
+        # Check argument colour is within valid range
+        if not (0 <= colour <= 2):
+            raise OutOfRangeError, "updateCoolantTempLed() colour argument outside 0-2 range!"
         if colour is 0: #"Green":
             self.bCoolantTempGreen = True
             coolantTempStatus = "frmCoolantTempStatus=\nbackground-color: rgb(0, 255, 0);"
