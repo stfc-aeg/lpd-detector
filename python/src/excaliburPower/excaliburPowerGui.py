@@ -589,7 +589,7 @@ class ExcaliburPowerGui:
         # Check biasValue within valid range
         if (0 <= biasValue <= 200):
             # biasValue within valid 0-200V range
-            print "biasButtonAction() read biasValue: ", biasValue
+#            print "biasButtonAction() read biasValue: ", biasValue
             # Scale 0-200V range into 0-255 ADC range 
             #    (just submit value in range 0-200)
             biasString = self.biasLevelToAd5301Conversion(biasValue)
@@ -597,7 +597,7 @@ class ExcaliburPowerGui:
             self.sCom.write(biasString)
             # Read value back
             rxString = self.readad5301_u12()
-            print "biasButtonAction() read back ad5301: ", rxString
+            print "biasButtonAction() read back ad5301: ", rxString, " cmp w sent biasString: ", biasString
                 
             self.bBiasEnabled = True    # bias is disabled, now Enabling...
             # Attempt to switch on bias enable
@@ -1479,7 +1479,7 @@ class ExcaliburPowerGui:
         if compareTypes(adcChannel) is not 1:
             raise WrongVariableType, "readUniversalAd7998() adcChannel argument not integer"
         # Check arguments within valid ranges
-        if not (34 <= i2cAddress <= 36):
+        if not (32 <= i2cAddress <= 34):
             raise OutOfRangeError, "readUniversalAd7998() i2cAddress not 34, 35 or 36!"
         if not (1 <= adcChannel <= 8):
             raise OutOfRangeError, "readUniversalAd7998() adcChannel outside 1-8 valid range!"
@@ -1511,7 +1511,7 @@ class ExcaliburPowerGui:
                 if adcChannel is 0:
                     guiString = "le5VAV=%s" % str( round2Decimals( self.scale5V(rxInt)) )   # Unit 14, pin 7 - 5V A Voltage
                 elif adcChannel is 1:
-                    guiString = "le5VBV=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 14 - 5V A Current
+                    guiString = "le5VBV=%s" % str( round2Decimals(self.scale5V(rxInt)) )    # Unit 14, pin 14 - 5V A Current
                 elif adcChannel is 2:
                     guiString =  "le5F0I=%s" % str( round2Decimals(self.scale5V(rxInt)) )   # Unit 14, pin 8 - 5V Fem0 Current
                 elif adcChannel is 3:
@@ -1530,7 +1530,7 @@ class ExcaliburPowerGui:
                 except:
                     self.displayWarningMessage("readUniversalAd7998() U14 - Unable to update Gui component!")
                     
-            elif i2cAddress is 35:
+            elif i2cAddress is 32:
                 # Unit15
                 if adcChannel is 0:
                     guiString = "le48VV=%s" % str( round1Decimals(self.scale48V(rxInt)) )                                   # U15, pin 7 - 48V Voltage
@@ -1554,7 +1554,7 @@ class ExcaliburPowerGui:
                 except:
                     self.displayWarningMessage("readUniversalAd7998() U15 - Unable to update Gui component!")
                     
-            elif i2cAddress is 36:
+            elif i2cAddress is 33:
                 # Unit16
                 if adcChannel is 0:
                     guiString = "le33VA=%s" % str( round1Decimals(self.scale3_3V_Current(rxInt)) )         # U16, pin 7    - 3.3V, Current
@@ -1796,33 +1796,59 @@ class ExcaliburPowerGui:
 #            self.readtmp()           # Read tmp275's current temperature
 #            self.readpca9538()       # Read pca9538's current value
 
-            self.readAd7998_Unit14(0, 16)  # Read ad7998 Ch 1    - 5V A Voltage
-            self.readAd7998_Unit14(0, 32)  # Read ad7998 Ch 2    - 5V B Voltage
-            self.readAd7998_Unit14(0, 64)  # Read ad7998 Ch 3    - 5V Fem0 Current
-            self.readAd7998_Unit14(0, 128) # Read ad7998 Ch 4    - 5V Fem1 Current
-            self.readAd7998_Unit14(1, 0)   # Read ad7998 Ch 5    - 5V Fem2 Current
-            self.readAd7998_Unit14(2, 0)   # Read ad7998 Ch 6    - 5V Fem3 Current
-            self.readAd7998_Unit14(4, 0)   # Read ad7998 Ch 7    - 5V Fem4 Current
-            self.readAd7998_Unit14(8, 0)   # Read ad7998 Ch 8    - 5V Fem5 Current
+            self.readUniversalAd7998(34, 1) # Read ad7998 Ch 1    - 5V A Voltage
+            self.readUniversalAd7998(34, 2) # Read ad7998 Ch 2    - 5V B Voltage
+            self.readUniversalAd7998(34, 3) # Read ad7998 Ch 3    - 5V Fem0 Current
+            self.readUniversalAd7998(34, 4) # Read ad7998 Ch 4    - 5V Fem1 Current
+            self.readUniversalAd7998(34, 5) # Read ad7998 Ch 5    - 5V Fem2 Current
+            self.readUniversalAd7998(34, 6) # Read ad7998 Ch 6    - 5V Fem3 Current
+            self.readUniversalAd7998(34, 7) # Read ad7998 Ch 7    - 5V Fem4 Current
+            self.readUniversalAd7998(34, 8) # Read ad7998 Ch 8    - 5V Fem5 Current
 
-            self.readAd7998_Unit15(0, 16)  # Read ad7998 Ch 1     - 4.8V Voltage
-            self.readAd7998_Unit15(0, 32)  # Read ad7998 Ch 2     - 4.8V Current
-            self.readAd7998_Unit15(0, 64)  # Read ad7998 Ch 3     - 5V Super Voltage
-            self.readAd7998_Unit15(0, 128) # Read ad7998 Ch 4     - 5V Super Current
-            self.readAd7998_Unit15(1, 0)   # Read ad7998  Ch 5    - Humidity
-            self.readAd7998_Unit15(2, 0)   # Read ad7998  Ch 6    - Air Temperature
-            self.readAd7998_Unit15(4, 0)   # Read ad7998  Ch 7    - Coolant Temperature
-            self.readAd7998_Unit15(8, 0)   # Read ad7998  Ch 8    - Coolant Flow
-            
+            self.readUniversalAd7998(32, 1)   # Read ad7998 Ch 1     - 4.8V Voltage    # Unit 15 = 32
+            self.readUniversalAd7998(32, 2)   # Read ad7998 Ch 2     - 4.8V Current
+            self.readUniversalAd7998(32, 3)   # Read ad7998 Ch 3     - 5V Super Voltage
+            self.readUniversalAd7998(32, 4)   # Read ad7998 Ch 4     - 5V Super Current
+            self.readUniversalAd7998(32, 5)   # Read ad7998  Ch 5    - Humidity
+            self.readUniversalAd7998(32, 6)   # Read ad7998  Ch 6    - Air Temperature
+            self.readUniversalAd7998(32, 7)   # Read ad7998  Ch 7    - Coolant Temperature
+            self.readUniversalAd7998(32, 8)   # Read ad7998  Ch 8    - Coolant Flow
 
-            self.readAd7998_Unit16(0, 16)  # Read ad7998 Ch 1    - 3.3V, Current
-            self.readAd7998_Unit16(0, 32)  # Read ad7998 Ch 2    - 1.8V Mod A, Current
-            self.readAd7998_Unit16(0, 64)  # Read ad7998 Ch 3    - 200V Bias, Current
-            self.readAd7998_Unit16(0, 128) # Read ad7998 Ch 4    - 3.3V, Voltage
-            self.readAd7998_Unit16(1, 0)   # Read ad7998 Ch 5    - 1.8V Mod A, Voltage
-            self.readAd7998_Unit16(2, 0)   # Read ad7998 Ch 6    - 200V Bias, Voltage
-            self.readAd7998_Unit16(4, 0)   # Read ad7998 Ch 7    - 1.8V Mod B, Current
-            self.readAd7998_Unit16(8, 0)   # Read ad7998 Ch 8    - 1.8V mod B, Voltage
+            self.readUniversalAd7998(33, 1)   # Read ad7998 Ch 1    - 3.3V, Current        # Unit 16 = 33
+            self.readUniversalAd7998(33, 2)   # Read ad7998 Ch 2    - 1.8V Mod A, Current
+            self.readUniversalAd7998(33, 3)   # Read ad7998 Ch 3    - 200V Bias, Current
+            self.readUniversalAd7998(33, 4)   # Read ad7998 Ch 4    - 3.3V, Voltage
+            self.readUniversalAd7998(33, 5)   # Read ad7998 Ch 5    - 1.8V Mod A, Voltage
+            self.readUniversalAd7998(33, 6)   # Read ad7998 Ch 6    - 200V Bias, Voltage
+            self.readUniversalAd7998(33, 7)   # Read ad7998 Ch 7    - 1.8V Mod B, Current
+            self.readUniversalAd7998(33, 8)   # Read ad7998 Ch 8    - 1.8V mod B, Voltage
+
+#            self.readAd7998_Unit14(0, 16)  # Read ad7998 Ch 1    - 5V A Voltage
+#            self.readAd7998_Unit14(0, 32)  # Read ad7998 Ch 2    - 5V B Voltage
+#            self.readAd7998_Unit14(0, 64)  # Read ad7998 Ch 3    - 5V Fem0 Current
+#            self.readAd7998_Unit14(0, 128) # Read ad7998 Ch 4    - 5V Fem1 Current
+#            self.readAd7998_Unit14(1, 0)   # Read ad7998 Ch 5    - 5V Fem2 Current
+#            self.readAd7998_Unit14(2, 0)   # Read ad7998 Ch 6    - 5V Fem3 Current
+#            self.readAd7998_Unit14(4, 0)   # Read ad7998 Ch 7    - 5V Fem4 Current
+#            self.readAd7998_Unit14(8, 0)   # Read ad7998 Ch 8    - 5V Fem5 Current
+
+#            self.readAd7998_Unit15(0, 16)  # Read ad7998 Ch 1     - 4.8V Voltage
+#            self.readAd7998_Unit15(0, 32)  # Read ad7998 Ch 2     - 4.8V Current
+#            self.readAd7998_Unit15(0, 64)  # Read ad7998 Ch 3     - 5V Super Voltage
+#            self.readAd7998_Unit15(0, 128) # Read ad7998 Ch 4     - 5V Super Current
+#            self.readAd7998_Unit15(1, 0)   # Read ad7998  Ch 5    - Humidity
+#            self.readAd7998_Unit15(2, 0)   # Read ad7998  Ch 6    - Air Temperature
+#            self.readAd7998_Unit15(4, 0)   # Read ad7998  Ch 7    - Coolant Temperature
+#            self.readAd7998_Unit15(8, 0)   # Read ad7998  Ch 8    - Coolant Flow
+
+#            self.readAd7998_Unit16(0, 16)  # Read ad7998 Ch 1    - 3.3V, Current        # Unit 16 = 33
+#            self.readAd7998_Unit16(0, 32)  # Read ad7998 Ch 2    - 1.8V Mod A, Current
+#            self.readAd7998_Unit16(0, 64)  # Read ad7998 Ch 3    - 200V Bias, Current
+#            self.readAd7998_Unit16(0, 128) # Read ad7998 Ch 4    - 3.3V, Voltage
+#            self.readAd7998_Unit16(1, 0)   # Read ad7998 Ch 5    - 1.8V Mod A, Voltage
+#            self.readAd7998_Unit16(2, 0)   # Read ad7998 Ch 6    - 200V Bias, Voltage
+#            self.readAd7998_Unit16(4, 0)   # Read ad7998 Ch 7    - 1.8V Mod B, Current
+#            self.readAd7998_Unit16(8, 0)   # Read ad7998 Ch 8    - 1.8V mod B, Voltage
 
             # Check status of pcf8574 device
             pcfStatus = self.readpcf8574()
