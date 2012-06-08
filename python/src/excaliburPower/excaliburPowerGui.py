@@ -1041,7 +1041,7 @@ class ExcaliburPowerGui:
 
     def readpcf8574(self):
         """ Read pcf8574 u3 device """
-        # pcf8574 I2C address is 32 (or 64 ?)
+        # pcf8574 I2C address is 35
         self.sCom.write("r 35 1 @")
 
         try:        
@@ -1144,15 +1144,15 @@ class ExcaliburPowerGui:
         # P6 - FAN_FAULT
         if rxVal & 64 is 64:
             # FAN_FAULT is ok
-            if self.b is False:
+            if self.bFanFaultGreen is False:
                 # Only change to Green if previously Red
                 self.queue.put("FrmFanFault=\nbackground-color: rgb(0, 255,  0);")
-                self.bAirTempGreen = True
+                self.bFanFaultGreen = True
         else:
             # Ensure FAN_FAULT's Red if previously Green
-            if self.bAirTempGreen is True:
+            if self.bFanFaultGreen is True:
                 self.queue.put("FrmFanFault=\nbackground-color: rgb(255, 0, 0);")
-                self.bAirTempGreen = False
+                self.bFanFaultGreen = False
 
         
     def readlm92(self):
