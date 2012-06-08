@@ -392,19 +392,19 @@ class readUniversalAd7998BadInput(unittest.TestCase):
 
     def testArgumentOneTooSmall(self):
         """readUniversalAd7998BadInput should fail if adcChannel argument is string """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 0, 1)
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 31, 1)
 
     def testArgumentOneTooLarge(self):
         """readUniversalAd7998BadInput should fail if adcChannel argument is None """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 37, 2)
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 35, 2)
 
     def testArgumentTwoTooSmall(self):
         """readUniversalAd7998BadInput should fail if adcChannel argument is string """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 35, 0)
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 32, 0)
 
     def testArgumentTwoTooLarge(self):
         """readUniversalAd7998BadInput should fail if adcChannel argument is None """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 36, 9)
+        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 33, 9)
 
 class readAd7998_Unit14BadInput(unittest.TestCase):
     def testArgumentOneString(self):
