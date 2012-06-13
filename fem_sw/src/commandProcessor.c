@@ -41,6 +41,12 @@ void commandProcessorThread()
 	// TODO: Tidy these and change signature of commandHandler()!
 	u8* pTxBuffer = (u8*)malloc(sizeof(struct protocol_header)+MAX_PAYLOAD_SIZE);
 	struct protocol_header* pTxHeader = (struct protocol_header*)pTxBuffer;
+	if(pTxBuffer == NULL)
+	{
+		DBGOUT("CmdProc: Could not malloc main TX buffer!\r\n");
+		DBGOUT("Terminating thread...\r\n");
+		return;
+	}
 
 	// Prepare file descriptor sets
 	FD_ZERO(&readSet);
