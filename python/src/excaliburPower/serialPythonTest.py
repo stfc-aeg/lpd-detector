@@ -406,235 +406,6 @@ class readUniversalAd7998BadInput(unittest.TestCase):
         """readUniversalAd7998BadInput should fail if adcChannel argument is None """
         self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readUniversalAd7998, 33, 9)
 
-class readAd7998_Unit14BadInput(unittest.TestCase):
-    def testArgumentOneString(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, "", 0)
-
-    def testArgumentOneNone(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is None """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, None, 0)
-
-    def testArgumentOneFloat(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, 5.9, 0)
-
-    def testArgumentOneBoolean(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is bool """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, False, 0)
-
-    def testArgumentTwoString(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, 0, "")
-
-    def testArgumentTwoNone(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is None """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, 0, None)
-
-    def testArgumentTwoFloat(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, 0, 5.9)
-
-    def testArgumentTwoBoolean(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument is bool """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit14, 0, False)
-
-    def testArgumentOneTooLarge(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument > 8 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 9, 0)
-
-    def testArgumentOneNegative(self):
-        """readAd7998_Unit14 should fail if ch8to4 argument < 0 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, -1, 0)
-
-    def testArgumentTwoTooLarge(self):
-        """readAd7998_Unit14 should fail if ch4to1 argument > 128 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 0, 129)
-
-    def testArgumentTwoNegative(self):
-        """readAd7998_Unit14 should fail if ch4to1 argument < 0 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 0, -1)
-
-    def testArgumentTwoBetweenZeroAndSixteen(self):
-        """readAd7998_Unit14 should fail if ch4to1 argument between 0 and 16 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 0, 1)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 0, 2)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 0, 4)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 0, 8)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit14, 0, 15)
-#            readAd7998_Unit14(ch8to5, ch4to1)
-#            valid ranges: 0 <= ch8to5 <= 8, 
-#                         0,16 <= ch4to1 <= 128 (i.e. can be 0, or 16-128)
-class KnownReadAd7998_Unit14(unittest.TestCase):
-    knownChannels =( (0, 16, True),
-                     (0, 32, True),
-                     (0, 64, True),
-                     (0, 128, True),
-                     (1, 0, True),
-                     (2, 0, True),
-                     (4, 0, True),
-                     (8, 0, True),
-                     )
-
-    def testReadAd7998_Unit14(self):
-        """ readAd7998_Unit14 should return True for all values in knownChannels tuple """
-        for arg1, arg2, output in self.knownChannels:
-            result = excaliburObj.readAd7998_Unit14(arg1, arg2)
-            self.assertEqual(output, result)
-
-class readAd7998_Unit15BadInput(unittest.TestCase):
-    def testArgumentOneString(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, "", 0)
-
-    def testArgumentOneNone(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is None """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, None, 0)
-
-    def testArgumentOneFloat(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, 5.9, 0)
-
-    def testArgumentOneBoolean(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is bool """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, False, 0)
-
-    def testArgumentTwoString(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, 0, "")
-
-    def testArgumentTwoNone(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is None """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, 0, None)
-
-    def testArgumentTwoFloat(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, 0, 5.9)
-
-    def testArgumentTwoBoolean(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument is bool """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit15, 0, False)
-
-    def testArgumentOneTooLarge(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument > 8 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 9, 0)
-
-    def testArgumentOneNegative(self):
-        """readAd7998_Unit15 should fail if ch8to4 argument < 0 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, -1, 0)
-
-    def testArgumentTwoTooLarge(self):
-        """readAd7998_Unit15 should fail if ch4to1 argument > 128 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 0, 129)
-
-    def testArgumentTwoNegative(self):
-        """readAd7998_Unit15 should fail if ch4to1 argument < 0 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 0, -1)
-
-    def testArgumentTwoBetweenZeroAndSixteen(self):
-        """readAd7998_Unit15 should fail if ch4to1 argument between 0 and 16 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 0, 1)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 0, 2)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 0, 4)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 0, 8)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit15, 0, 15)
-#            readAd7998_Unit15(ch8to5, ch4to1)
-#            valid ranges: 0 <= ch8to5 <= 8, 
-#                         0,16 <= ch4to1 <= 128 (i.e. can be 0, or 16-128)
-class KnownReadAd7998_Unit15(unittest.TestCase):
-    knownChannels =( (0, 16, True),
-                     (0, 32, True),
-                     (0, 64, True),
-                     (0, 128, True),
-                     (1, 0, True),
-                     (2, 0, True),
-                     (4, 0, True),
-                     (8, 0, True),
-                     )
-
-    def testReadAd7998_Unit15(self):
-        """ readAd7998_Unit15 should return True for all values in knownChannels tuple """
-        for arg1, arg2, output in self.knownChannels:
-            result = excaliburObj.readAd7998_Unit15(arg1, arg2)
-            self.assertEqual(output, result)
-
-class readAd7998_Unit16BadInput(unittest.TestCase):
-    def testArgumentOneString(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, "", 0)
-
-    def testArgumentOneNone(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is None """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, None, 0)
-
-    def testArgumentOneFloat(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, 5.9, 0)
-
-    def testArgumentOneBoolean(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is bool """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, False, 0)
-
-    def testArgumentTwoString(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is string """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, 0, "")
-
-    def testArgumentTwoNone(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is None """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, 0, None)
-
-    def testArgumentTwoFloat(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is float """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, 0, 5.9)
-
-    def testArgumentTwoBoolean(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument is bool """
-        self.assertRaises(excaliburPowerGui.BadArgumentError, excaliburObj.readAd7998_Unit16, 0, False)
-
-    def testArgumentOneTooLarge(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument > 8 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 9, 0)
-
-    def testArgumentOneNegative(self):
-        """readAd7998_Unit16 should fail if ch8to4 argument < 0 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, -1, 0)
-
-    def testArgumentTwoTooLarge(self):
-        """readAd7998_Unit16 should fail if ch4to1 argument > 128 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 0, 129)
-
-    def testArgumentTwoNegative(self):
-        """readAd7998_Unit16 should fail if ch4to1 argument < 0 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 0, -1)
-
-    def testArgumentTwoBetweenZeroAndSixteen(self):
-        """readAd7998_Unit16 should fail if ch4to1 argument between 0 and 16 """
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 0, 1)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 0, 2)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 0, 4)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 0, 8)
-        self.assertRaises(excaliburPowerGui.OutOfRangeError, excaliburObj.readAd7998_Unit16, 0, 15)
-#            readAd7998_Unit16(ch8to5, ch4to1)
-#            valid ranges: 0 <= ch8to5 <= 8, 
-#                         0,16 <= ch4to1 <= 128 (i.e. can be 0, or 16-128)
-class KnownReadAd7998_Unit16(unittest.TestCase):
-    knownChannels =( (0, 16, True),
-                     (0, 32, True),
-                     (0, 64, True),
-                     (0, 128, True),
-                     (1, 0, True),
-                     (2, 0, True),
-                     (4, 0, True),
-                     (8, 0, True),
-                     )
-
-    def testReadAd7998_Unit16(self):
-        """ readAd7998_Unit16 should return True for all values in knownChannels tuple """
-        for arg1, arg2, output in self.knownChannels:
-            result = excaliburObj.readAd7998_Unit16(arg1, arg2)
-            self.assertEqual(output, result)
-
-
 class cmdStringFormat(unittest.TestCase):
     def testFirstCharacter(self):
         """cmdStringFormat argument sCmd's first character must be either of r, R, w, W"""
@@ -1409,10 +1180,74 @@ class testRound3DecimalsBadInput(unittest.TestCase):
         """ round3Decimals() should fail if argument is boolean """
         self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round3Decimals, True)
 
+class testRound4Decimals(unittest.TestCase):
+    """ NOTE: Python rounded numbers according to binary representation,
+                therefore 5 is sometimes rounded up, sometimes down """
+    knownDecimals = ( (0.0, "0.0000"),
+                      (2.16255, "2.1626"),
+                      (5.17325, "5.1733"),
+                      (8.43795, "8.4380"),
+                      (13.94999,  "13.9500"),
+                      )
+    def testRound4Decimals(self):
+        """ round3Decimals() should pass all pairs in knownDecimals tuple """
+        for floatVar, string in self.knownDecimals:
+            result = excaliburPowerGui.round4Decimals(floatVar)
+            self.assertEqual(string, result)
+
+class testRound4DecimalsBadInput(unittest.TestCase):
+    
+    def testRound4DecimalsArgumentNone(self):
+        """ round3Decimals() should fail if argument is None """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round4Decimals, None)
+
+    def testRound4DecimalsArgumentInteger(self):
+        """ round3Decimals() should fail if argument is Integer """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round4Decimals, 5)
+        
+    def testRound4DecimalsArgumentString(self):
+        """ round3Decimals() should fail if argument is string """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round4Decimals, "SSS")
+        
+    def testRound4DecimalsArgumentBoolean(self):
+        """ round3Decimals() should fail if argument is boolean """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round4Decimals, True)
+
+class testRound5Decimals(unittest.TestCase):
+    """ NOTE: Python rounded numbers according to binary representation,
+                therefore 5 is sometimes rounded up, sometimes down """
+    knownDecimals = ( (0.0, "0.00000"),
+                      (2.162553, "2.16255"),
+                      (5.170325, "5.17033"),
+                      (8.437295, "8.43730"),
+                      (13.949899,  "13.94990"),
+                      )
+    def testRound5Decimals(self):
+        """ round3Decimals() should pass all pairs in knownDecimals tuple """
+        for floatVar, string in self.knownDecimals:
+            result = excaliburPowerGui.round5Decimals(floatVar)
+            self.assertEqual(string, result)
+
+class testRound5DecimalsBadInput(unittest.TestCase):
+    
+    def testRound5DecimalsArgumentNone(self):
+        """ round3Decimals() should fail if argument is None """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round5Decimals, None)
+
+    def testRound5DecimalsArgumentInteger(self):
+        """ round3Decimals() should fail if argument is Integer """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round5Decimals, 5)
+        
+    def testRound5DecimalsArgumentString(self):
+        """ round3Decimals() should fail if argument is string """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round5Decimals, "SSS")
+        
+    def testRound5DecimalsArgumentBoolean(self):
+        """ round3Decimals() should fail if argument is boolean """
+        self.assertRaises(excaliburPowerGui.WrongVariableType, excaliburPowerGui.round5Decimals, True)
+
+
 if __name__ == "__main__":
     # Run in all unittests
     unittest.main()
-    # Close serial connection after unittests complete
-#    excaliburObj.sCom.close()
-    
     
