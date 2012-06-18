@@ -10,14 +10,6 @@
  * Controlled by PPC2 via Xilinx Mailbox commands.
  */
 
-// Todo list, in order of priority
-// ----------------------------------------------------------------------
-// TODO: Fix totalRecv when in ACQ_MODE_RX_ONLY, with !doTx numRxPairsComplete = 0 never executes and totalRecv becomes factoral!
-// TODO: Update state variables during event loop (read/writePtr)
-// TODO: Graceful stop when pending events exist
-// TODO: Fix configure for acquire, respect config. BD storage area
-// TODO: Refactor data counter variables and main event loop
-
 #include <stdio.h>
 #include "xmbox.h"
 #include "xparameters.h"
@@ -28,7 +20,7 @@
 
 // Compile time switches
 //#define VERBOSE_DEBUG			1			//! Verbose output during acquire loop
-//#define DEBUG_BD				1			//! Outputs DMA BDs as received
+#define DEBUG_BD				1			//! Outputs DMA BDs as received
 //#define PROFILE_TIMING		1			//! Enables time profiling for DMA engines
 //#define TIMING_COUNT			8			//! Number of DMA operations to profile during acquisition (MUST BE SET IF PROFILE_TIMING ENABLED!)
 
@@ -103,7 +95,8 @@ typedef struct
 	u32 writePtr;		//! Write pointer
 	u32 numAcq;			//! Number of acquisitions in this run
 	u32 numConfigBds;	//! Number of configuration BDs set
-	u32 totalRecv;		//! Total number of BDs received from I/O FPGAs
+	u32 totalRecvTop;	//! Total number of BDs received from top ASIC
+	u32 totalRecvBot;	//! Total number of BDs received from bot ASIC
 	u32 totalSent;		//! Total number of BDs sent to 10GBe block
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
@@ -160,6 +153,8 @@ int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot
 // TODO: Refactor to sendFemMailMsg(), recvFemMailMsg() - make common?
 int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg);
 unsigned short sendAcquireAckMessage(XMbox *pMailbox, u32 state);
+
+int checkRingConsistency(XLlDma_Bd *pTop, XLlDma_Bd *pBot, XLlDma_Bd *pTx);
 
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
@@ -229,14 +224,15 @@ int main()
     unsigned short ackOK = 0;
 
 	// Data counters
+    // TODO: These don't all need to be u64!
     unsigned short numUploadTx = 0;		// Number of configuration upload BDs
-    u64 numTopAsicRxComplete = 0;		// Counts number of RXes from top ASIC
-    u64 numBotAsicRxComplete = 0;		// Counts number of RXes from bottom ASIC
-    u64 lastNumTopAsicRxComplete = 0;
-    u64 lastNumBotAsicRxComplete = 0;
-    u64 numRxPairsComplete = 0;			// Counter for number of completed & validated RX across both ASICs
-    u64 numTxPairsSent = 0;				// Counter for TXes sent (but not verified as complete)
-    unsigned short tempTxCounter = 0;	// Used to track how many single TXes (before they are grouped into pairs)
+    u64 numTopAsicRx = 0;				// Number of RXes from top ASIC in current loop
+    u64 numBotAsicRx = 0;				// Number of RXes from bottom ASIC in current loop
+    u64 lastNumTopAsicRx = 0;			// Number of RXes from top ASIC, last loop
+    u64 lastNumBotAsicRx = 0;			// Number of RXes from top ASIC, last loop
+    u64 numRxPairsToSend = 0;			// Number of completed & validated RX across both ASICs
+    u64 numTxPairsSent = 0;				// Number of TXes sent but not verified as complete
+    unsigned short numTxBds = 0;		// Number of TX BDs (before they're grouped into pairs)
     u64 numTenGigTxComplete = 0;		// Counter for number of completed TX for 10GBe
     unsigned short numConfigBdsToProcess = 0;
 
@@ -244,6 +240,8 @@ int main()
     // For BD debugging
     u32 bdSts, bdLen, bdAddr;
 #endif
+
+    u32 bdAddrTop, bdAddrBot, bdAddrTenGig;
 
     // Initialise BRAM status
     acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
@@ -254,7 +252,8 @@ int main()
     pStatusBlock->numConfigBds =	0;
     pStatusBlock->readPtr =			0;
     pStatusBlock->writePtr =		0;
-    pStatusBlock->totalRecv =		0;
+    pStatusBlock->totalRecvTop =	0;
+    pStatusBlock->totalRecvBot =	0;
     pStatusBlock->totalSent =		0;
     pStatusBlock->totalErrors =		0;
 
@@ -402,16 +401,17 @@ int main()
 				// Reset BRAM struct
 			    pStatusBlock->readPtr = 0;
 			    pStatusBlock->writePtr = 0;
-			    pStatusBlock->totalRecv = 0;
+			    pStatusBlock->totalRecvTop = 0;
+			    pStatusBlock->totalRecvBot = 0;
 			    pStatusBlock->totalSent = 0;
 			    pStatusBlock->totalErrors = 0;
 
 	    		// Reset counters
-	    	    numTopAsicRxComplete = 0;
-	    	    numBotAsicRxComplete = 0;
-	    	    numRxPairsComplete = 0;
-	    	    lastNumTopAsicRxComplete = 0;
-	    	    lastNumBotAsicRxComplete = 0;
+	    	    numTopAsicRx = 0;
+	    	    numBotAsicRx = 0;
+	    	    numRxPairsToSend = 0;
+	    	    lastNumTopAsicRx = 0;
+	    	    lastNumBotAsicRx = 0;
 	    	    numTxPairsSent = 0;
 	    	    numTenGigTxComplete = 0;
 				int numBDFromTopAsic = 0;
@@ -436,7 +436,7 @@ int main()
 	    	    if (lastMode == ACQ_MODE_TX_ONLY)
 	    	    {
 	    	    	printf("[DEBUG] ACQ_MODE_TX_ONLY detected, setting TX count to %d\r\n", (int)pStatusBlock->numAcq);
-	    	    	numRxPairsComplete = pStatusBlock->numAcq;
+	    	    	numRxPairsToSend = pStatusBlock->numAcq;
 	    	    }
 
 				acquireRunning = 1;
@@ -473,20 +473,22 @@ int main()
 							printf("[DEBUG] Got %d RX from top ASIC\r\n", numBDFromTopAsic);
 #endif
 
+							pStatusBlock->totalRecvTop += numBDFromTopAsic;
+
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromTopAsic; i++)
 							{
 								status = validateBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to validate buffer index %llu from top ASIC!\r\n", numTopAsicRxComplete+i);
+									printf("[ERROR] Failed to validate buffer index %llu from top ASIC!\r\n", numTopAsicRx+i);
 									return 0;
 								}
 
 								status = recycleBuffer(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to recycle buffer index %llu from top ASIC!\r\n", numTopAsicRxComplete+i);
+									printf("[ERROR] Failed to recycle buffer index %llu from top ASIC!\r\n", numTopAsicRx+i);
 									return 0;
 								}
 #ifdef DEBUG_BD
@@ -498,7 +500,7 @@ int main()
 								pTopAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd);
 							}
 
-							numTopAsicRxComplete += numBDFromTopAsic;
+							numTopAsicRx += numBDFromTopAsic;
 						}
 
 
@@ -513,6 +515,8 @@ int main()
 							printf("[DEBUG] Got %d RX from bottom ASIC\r\n", numBDFromBotAsic);
 #endif
 
+							pStatusBlock->totalRecvBot += numBDFromBotAsic;
+
 							// Validate and recycle BDs
 							for (i=0; i<numBDFromBotAsic; i++)
 							{
@@ -520,14 +524,14 @@ int main()
 								status = validateBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to validate buffer index %llu from bottom ASIC!\r\n", numBotAsicRxComplete+i);
+									printf("[ERROR] Failed to validate buffer index %llu from bottom ASIC!\r\n", numBotAsicRx+i);
 									return 0;
 								}
 
 								status = recycleBuffer(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd, BD_RX);
 								if (status!=XST_SUCCESS)
 								{
-									printf("[ERROR] Failed to recycle buffer index %llu from bottom ASIC!\r\n", numBotAsicRxComplete+i);
+									printf("[ERROR] Failed to recycle buffer index %llu from bottom ASIC!\r\n", numBotAsicRx+i);
 									return 0;
 								}
 #ifdef DEBUG_BD
@@ -539,7 +543,7 @@ int main()
 								pBotAsicBd = XLlDma_BdRingNext(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd);
 							}
 
-							numBotAsicRxComplete += numBDFromBotAsic;
+							numBotAsicRx += numBDFromBotAsic;
 						}
 
 
@@ -547,40 +551,40 @@ int main()
 						// Update BD counters and pointers
 						// **************************************************************************************
 						// If we've received anything since last time
-						if ( (numBotAsicRxComplete!=lastNumBotAsicRxComplete) || (numTopAsicRxComplete!=lastNumTopAsicRxComplete) )
+						if ( (numBotAsicRx!=lastNumBotAsicRx) || (numTopAsicRx!=lastNumTopAsicRx) )
 						{
 
 #ifdef VERBOSE_DEBUG
 							printf("[DEBUG] Got RX this loop, calculating num completed RX pairs...\r\n");
-							printf("[DEBUG] Total TopASIC RX = %llu\r\n", numTopAsicRxComplete);
-							printf("[DEBUG] Total BotASIC RX = %llu\r\n", numBotAsicRxComplete);
+							printf("[DEBUG] Total TopASIC RX = %llu\r\n", numTopAsicRx);
+							printf("[DEBUG] Total BotASIC RX = %llu\r\n", numBotAsicRx);
 #endif
 
 							// Determine how many completed pairs of RX we have and prepare them for TX
-							if (numBotAsicRxComplete == numTopAsicRxComplete)
+							if (numBotAsicRx == numTopAsicRx)
 							{
-								numRxPairsComplete += numBotAsicRxComplete;
-								numBotAsicRxComplete = 0;
-								numTopAsicRxComplete = 0;
+								numRxPairsToSend += numBotAsicRx;
+								numBotAsicRx = 0;
+								numTopAsicRx = 0;
 							}
-							else if (numBotAsicRxComplete < numTopAsicRxComplete)
+							else if (numBotAsicRx < numTopAsicRx)
 							{
-								numRxPairsComplete += numBotAsicRxComplete;
-								numTopAsicRxComplete -= numBotAsicRxComplete;
-								numBotAsicRxComplete = 0;
+								numRxPairsToSend += numBotAsicRx;
+								numTopAsicRx -= numBotAsicRx;
+								numBotAsicRx = 0;
 							}
 							else // numBot>numTop
 							{
-								numRxPairsComplete += numTopAsicRxComplete;
-								numBotAsicRxComplete -= numTopAsicRxComplete;
-								numTopAsicRxComplete = 0;
+								numRxPairsToSend += numTopAsicRx;
+								numBotAsicRx -= numTopAsicRx;
+								numTopAsicRx = 0;
 							}
 
 #ifdef VERBOSE_DEBUG
 							printf("[DEBUG] -- OK --\r\n");
-							printf("[DEBUG] numRxPairsComplete = %llu\r\n", numRxPairsComplete);
-							printf("[DEBUG] NOW TopASIC RX = %llu\r\n", numTopAsicRxComplete);
-							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRxComplete);
+							printf("[DEBUG] numRxPairsComplete = %llu\r\n", numRxPairsToSend);
+							printf("[DEBUG] NOW TopASIC RX = %llu\r\n", numTopAsicRx);
+							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRx);
 #endif
 
 
@@ -591,13 +595,13 @@ int main()
 							}
 #endif
 
-							pStatusBlock->totalRecv += numRxPairsComplete;
+							//pStatusBlock->totalRecv += numRxPairsToSend;
 
 						}
 
 						// Update loop variables
-						lastNumBotAsicRxComplete = numBotAsicRxComplete;
-						lastNumTopAsicRxComplete = numTopAsicRxComplete;
+						lastNumBotAsicRx = numBotAsicRx;
+						lastNumTopAsicRx = numTopAsicRx;
 
 					} // END if(doRx)
 
@@ -610,11 +614,11 @@ int main()
 						// **************************************************************************************
 						// Dispatch any waiting TX BD pairs
 						// **************************************************************************************
-						if (numRxPairsComplete>0)
+						if (numRxPairsToSend>0)
 						{
 
 #ifdef VERBOSE_DEBUG
-							printf("[DEBUG] %llu TX pairs ready to send\r\n", numRxPairsComplete);
+							printf("[DEBUG] %llu TX pairs ready to send\r\n", numRxPairsToSend);
 #endif
 
 #ifdef PROFILE_TIMING
@@ -624,9 +628,9 @@ int main()
 							}
 #endif
 
-							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsComplete*2, pTenGigPreHW);
+							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsToSend*2, pTenGigPreHW);
 
-							numTxPairsSent += numRxPairsComplete;
+							numTxPairsSent += numRxPairsToSend;
 
 							if (status!=XST_SUCCESS)
 							{
@@ -637,15 +641,15 @@ int main()
 							{
 								// Sent all to HW, none left!
 #ifdef VERBOSE_DEBUG
-								printf("[INFO ] Committed %llu BD pairs to TX!\r\n", numRxPairsComplete);
+								printf("[INFO ] Committed %llu BD pairs to TX!\r\n", numRxPairsToSend);
 #endif
 
 								// Advance our BD pointer
-								for (i=0; i<numRxPairsComplete*2; i++)
+								for (i=0; i<numRxPairsToSend*2; i++)
 								{
 									pTenGigPreHW = XLlDma_BdRingNext(pBdRings[BD_RING_TENGIG], pTenGigPreHW);
 								}
-								numRxPairsComplete = 0;
+								numRxPairsToSend = 0;
 							}
 						}
 
@@ -701,14 +705,14 @@ int main()
 							} // END if (numBDFromTenGig>0)
 
 							// Calculate how many pairs processed, update counters
-							tempTxCounter += numBDFromTenGig;
-							while (tempTxCounter>1)
+							numTxBds += numBDFromTenGig;
+							while (numTxBds>1)
 							{
-								tempTxCounter -= 2;
+								numTxBds -= 2;
 								numTxPairsSent--;
 								pStatusBlock->totalSent = numTenGigTxComplete;
 #ifdef VERBOSE_DEBUG
-								printf("[DEBUG] Pair TX validated, tempTx=%d, numTxpairsSent=%llu\r\n", (int)tempTxCounter, numTxPairsSent);
+								printf("[DEBUG] Pair TX validated, tempTx=%d, numTxpairsSent=%llu\r\n", (int)numTxBds, numTxPairsSent);
 #endif
 							}
 
@@ -719,10 +723,16 @@ int main()
 
 
 					// **************************************************************************************
-					// See if we have enough events to trigger a stop
+					// Stop acquiring if we are running a limited number of frames
+					// This block also responsible for switching from RX -> TX in burst mode
 					// **************************************************************************************
-					if (pStatusBlock->numAcq!=0 && pStatusBlock->numAcq==pStatusBlock->totalRecv && pStatusBlock->numAcq==(pStatusBlock->totalSent/2))
+					if (	pStatusBlock->numAcq!=0 &&
+							pStatusBlock->numAcq==pStatusBlock->totalRecvTop &&
+							pStatusBlock->numAcq==pStatusBlock->totalRecvBot
+						)
 					{
+
+						// Burst mode RX -> TX logic
 						if (lastMode==ACQ_MODE_BURST)
 						{
 							if(doTx==0)
@@ -730,15 +740,19 @@ int main()
 								// Burst mode, completed RX so switch to TX
 								doRx = 0;
 								doTx = 1;
-								numRxPairsComplete = pStatusBlock->numAcq;
-								printf("[DEBUG] Got %d events and using ACQ_MODE_BURST, disabling RX and enabling TX (%d pairs)!\r\n", (int)pStatusBlock->numAcq, (int)numRxPairsComplete);
+								numRxPairsToSend = pStatusBlock->numAcq;		// Queue all RX to be TXed
+								printf("[DEBUG] Got %d events and using ACQ_MODE_BURST, disabling RX and enabling TX (%d pairs)!\r\n", (int)pStatusBlock->numAcq, (int)numRxPairsToSend);
 							}
 							else
 							{
 								// Burst mode, completed TX
-								print("[DEBUG] Burst mode halting...\r\n");
-								pStatusBlock->state = STATE_IDLE;
-								acquireRunning = 0;
+								// TODO: Fix this logic, evaluated every loop on TX
+								if (pStatusBlock->numAcq==(pStatusBlock->totalSent/2))
+								{
+									print("[DEBUG] Burst mode halting...\r\n");
+									pStatusBlock->state = STATE_IDLE;
+									acquireRunning = 0;
+								}
 							}
 						}
 						else
@@ -747,6 +761,24 @@ int main()
 							printf("[DEBUG] Got %d events, stopping...\r\n", (int)pStatusBlock->numAcq);
 							pStatusBlock->state = STATE_IDLE;
 							acquireRunning = 0;
+
+							// *****************************************************
+							// Debugging - dump loop counters
+							/*
+							printf("[DEBUG] numTopAsicRxComplete=%d\r\n", (int)numTopAsicRx);
+				    	    printf("[DEBUG] numBotAsicRxComplete=%d\r\n", (int)numBotAsicRx);
+				    	    printf("[DEBUG] numRxPairsComplete=%d\r\n", (int)numRxPairsToSend);
+				    	    printf("[DEBUG] lastNumTopAsicRxComplete=%d\r\n", (int)lastNumTopAsicRx);
+				    	    printf("[DEBUG] lastNumBotAsicRxComplete=%d\r\n", (int)lastNumBotAsicRx);
+				    	    printf("[DEBUG] numTxPairsSent=%d\r\n", (int)numTxPairsSent);
+				    	    printf("[DEBUG] numTenGigTxComplete=%d\r\n", (int)numTenGigTxComplete);
+				    	    print("[-----]\r\n");
+				    	    */
+				    	    printf("[DEBUG] pStat->totalRecvTop=%d\r\n", (int)pStatusBlock->totalRecvTop);
+				    	    printf("[DEBUG] pStat->totalRecvBot=%d\r\n", (int)pStatusBlock->totalRecvBot);
+				    	    printf("[DEBUG] pStat->totalSent=%d\r\n", (int)pStatusBlock->totalSent);
+				    	    // *****************************************************
+
 						}
 					}
 
@@ -761,33 +793,47 @@ int main()
 						{
 						case CMD_ACQ_STOP:
 
-							if (numRxPairsComplete==0 && numTopAsicRxComplete==numBotAsicRxComplete)
+							print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
+							acquireRunning = 0;
+
+							/*
+							 * 	u32 topAsicBufferAddress = DDR2_BADDR;
+							 *	u32 botAsicBufferAddress = DDR2_SZ / 2;
+							 */
+							// Bottom ASIC sent first, then top ASIC
+
+							// Check buffers for consistency
+							bdAddrTop = XLlDma_BdGetBufAddr(pTopAsicBd);
+							bdAddrBot = XLlDma_BdGetBufAddr(pBotAsicBd);
+							bdAddrTenGig = XLlDma_BdGetBufAddr(pTenGigPostHW);
+							printf("[DEBUG] bdAddrTop    = %d\r\n", (int)bdAddrTop);
+							printf("[DEBUG] bdAddrBot    = %d\r\n", (int)bdAddrBot);
+							printf("[DEBUG] bdAddrTenGig = %d\r\n", (int)bdAddrTenGig);
+
+							if ( (bdAddrTop==(bdAddrBot+(DDR2_SZ/2))) && (bdAddrTop==bdAddrTenGig) )
 							{
-								// All data flushed, OK to stop
-								print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
-								acquireRunning = 0;
-								//pStatusBlock->state = STATE_IDLE;
+								print("[ INFO] BDs consistent, clean stop!\r\n");
 							}
 							else
 							{
-								pStatusBlock->state = STATE_ACQ_STOPPING;
-								printf("[ERROR] Got stop acquire message but there are pending events! (rxTop=%llu, rxBot=%llu, tx=%llu)\r\n", numTopAsicRxComplete, numBotAsicRxComplete, numRxPairsComplete);
-								// TODO: Graceful stop here, if not set pStatusBlock->bufferDirty = 1;
-								printf("[DEBUG] Stopping anyway...\r\n");
-								//pStatusBlock->state = STATE_IDLE;
-								acquireRunning = 0;
+								print("[ WARN] BDs inconsistent!  Flagging as dirty...\r\n");
+								pStatusBlock->bufferDirty = 1;
 							}
 
 							// *****************************************************
 							// Debugging - dump loop counters
-							printf("[DEBUG] numTopAsicRxComplete=%d\r\n", (int)numTopAsicRxComplete);
-				    	    printf("[DEBUG] numBotAsicRxComplete=%d\r\n", (int)numBotAsicRxComplete);
-				    	    printf("[DEBUG] numRxPairsComplete=%d\r\n", (int)numRxPairsComplete);
-				    	    printf("[DEBUG] lastNumTopAsicRxComplete=%d\r\n", (int)lastNumTopAsicRxComplete);
-				    	    printf("[DEBUG] lastNumBotAsicRxComplete=%d\r\n", (int)lastNumBotAsicRxComplete);
+							/*
+							printf("[DEBUG] numTopAsicRxComplete=%d\r\n", (int)numTopAsicRx);
+				    	    printf("[DEBUG] numBotAsicRxComplete=%d\r\n", (int)numBotAsicRx);
+				    	    printf("[DEBUG] numRxPairsComplete=%d\r\n", (int)numRxPairsToSend);
+				    	    printf("[DEBUG] lastNumTopAsicRxComplete=%d\r\n", (int)lastNumTopAsicRx);
+				    	    printf("[DEBUG] lastNumBotAsicRxComplete=%d\r\n", (int)lastNumBotAsicRx);
 				    	    printf("[DEBUG] numTxPairsSent=%d\r\n", (int)numTxPairsSent);
 				    	    printf("[DEBUG] numTenGigTxComplete=%d\r\n", (int)numTenGigTxComplete);
-				    	    printf("[DEBUG] pStat->totalRecv=%d\r\n", (int)pStatusBlock->totalRecv);
+				    	    print("[-----]\r\n");
+				    	    */
+				    	    printf("[DEBUG] pStat->totalRecvTop=%d\r\n", (int)pStatusBlock->totalRecvTop);
+				    	    printf("[DEBUG] pStat->totalRecvBot=%d\r\n", (int)pStatusBlock->totalRecvBot);
 				    	    printf("[DEBUG] pStat->totalSent=%d\r\n", (int)pStatusBlock->totalSent);
 				    	    // *****************************************************
 
@@ -795,7 +841,8 @@ int main()
 
 				    	    // *****************************************************
 				    	    // Debugging - dump 10GBe DCRs (but read all)
-				    	    /*
+				    	    /*gnuradio
+				    	     *
 				    	    readDcrs(DCR_TOP_ASIC_RX, &dcrTopAsic);
 				    	    readDcrs(DCR_BOT_ASIC_RX, &dcrBotAsic);
 				    	    readDcrs(DCR_GBE_TX, &dcrGbe);
@@ -964,6 +1011,12 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		}
 	}
 	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)bufferCnt, (unsigned)bufferSz);
+
+	// dirty flag debugging
+	if (pStatusBlock->bufferDirty)
+	{
+		printf("[DEBUG] WARNING: Buffer dirty flag set!\r\n");
+	}
 
 	// Check if we can re-use BDs to save time configuring them
 	// i.e. !dirty, size matched last run and count is equal or smaller than last run
