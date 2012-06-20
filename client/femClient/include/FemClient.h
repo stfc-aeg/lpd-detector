@@ -121,6 +121,7 @@ private:
 
 	std::size_t receivePart(std::vector<u8>& aBuffer, boost::system::error_code& aError);
 	void checkDeadline(void);
+	static void asyncConnectHandler(const boost::system::error_code& ec, boost::system::error_code* apOutputErrorCode);
 	static void asyncCompletionHandler(
 			const boost::system::error_code& aErrorCode, std::size_t aLength,
 		    boost::system::error_code* apOutputErrorCode, std::size_t* apOutputLength);

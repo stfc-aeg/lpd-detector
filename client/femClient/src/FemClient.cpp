@@ -32,7 +32,49 @@ FemClient::FemClient(const char* aHostString, int aPortNum, unsigned int aTimeou
 
 	// Attempt to connect to the FEM, catching and rethrowing any exception that occur
 	try {
+
+#ifdef SYNC_CONNNECT
+
 		mSocket.connect(mEndpoint);
+
+#else
+
+		// If a client timeout is specified, set the deadline timer appropriately
+		if (mTimeout > 0)
+		{
+			mDeadline.expires_from_now(boost::posix_time::milliseconds(mTimeout));
+		}
+
+		// Set error code to would_block as async operations guarantee not to set this value
+		boost::system::error_code error = boost::asio::error::would_block;
+
+		// Start the asynchronous connection attempt, which will call the appropriate handler
+		// on completion
+		mSocket.async_connect(mEndpoint, boost::bind(&FemClient::asyncConnectHandler, _1, &error));
+
+		// Run the IO service and block until the connection handler completes
+		do
+		{
+			mIoService.run_one();
+		}
+		while (error == boost::asio::error::would_block);
+
+		// If the deadline timer has been called and cancelled the socket operation before
+		// the connection established, a timeout has occurred
+		if (error == boost::asio::error::operation_aborted)
+		{
+			mSocket.close();
+			throw FemClientException(femClientTimeout, "Timeout establishing client connection");
+		}
+		// If another error occurred during connect - throw an exception
+		else if (error)
+		{
+			mSocket.close();
+			throw FemClientException((FemClientErrorCode)error.value(), error.message());
+
+		}
+#endif
+
 	}
 	catch (boost::system::system_error& e)
 	{
@@ -745,6 +787,23 @@ void FemClient::checkDeadline(void)
 
 }
 
+/** asyncConnectHandkler - handler called when an asynchronous connect opertation completes
+ *
+ * This function is called as the completion handler on the asynschronous socket connect
+ * operation during initialisation. The handler simply fills the completion error code
+ * into the output error code for use in the calling function. The incoming error
+ * code is specified in the binding of the handler.
+ *
+ * @param aErrorCode reference to error code state at end of operation
+ * @param aOuptputErrorCode pointer to variable to receive error code
+ */
+void FemClient::asyncConnectHandler(const boost::system::error_code& aErrorCode,
+		                            boost::system::error_code* apOutputErrorCode)
+{
+
+	*apOutputErrorCode = aErrorCode;
+
+}
 
 /** asyncCompletionHandler - handler called when an asynchronous operation completes
  *
