@@ -510,7 +510,7 @@ void commandProcessorThread()
 			{
 
 				// Show timeout tick
-				DBGOUT("T");
+				//DBGOUT("T");
 
 				state[j].timeoutCount++;
 				if (state[j].timeoutCount > NET_DEFAULT_TIMEOUT_LIMIT)
@@ -672,7 +672,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 				case CMD_ACQ_CONFIG:
 
 					// Send config request (does not block for CMD_ACQ_CONFIG)
-					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode);
+					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode, 500);
 
 					// Wait for response
 					configAck = acquireConfigAckReceive();
@@ -691,8 +691,12 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 				case CMD_ACQ_START:
 				case CMD_ACQ_STOP:
+
+					// DEBUGGING
+					DBGOUT("CmdDisp: CMD_ACQ_CONFIG(%d)...\r\n");
+
 					// For START/STOP this call *IS* blocking
-					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0);
+					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0, 500);
 					if (dmaControllerAck)
 					{
 						SBIT(state, STATE_ACK);
@@ -701,16 +705,18 @@ void commandHandler(struct protocol_header* pRxHeader,
 					{
 						SBIT(state, STATE_NACK);
 					}
+
+					// DEBUGGING
+					DBGOUT("CmdDisp: CMD_ACQ_CONFIG msg. completed.\r\n");
+
 					break;
 
 				case CMD_ACQ_STATUS:
-					// TODO: Implement with struct
-					DBGOUT("CmdDisp: CMD_ACQ_STATUS still in development, just sending 32-bit state variable!\r\n");
 
-					// Read state variable off top of BRAM, return it
-					acqStatus = *((u32*)0x8A000000);		// Oh please tell me you didn't just do that
+					acqStatus = *((u32*)0x8A000000);		// TODO: Change 0x8A000000 to common constant
 					*pTxPayload_32 = acqStatus;
-					responseSize += 4;						// In bytes, so 4
+					responseSize += 4;						// Just return status
+					//responseSize += (12*4);					// TODO: Change to sizeof(acqStatusBlock) once it's made common
 					SBIT(state, STATE_ACK);
 					break;
 

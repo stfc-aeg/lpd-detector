@@ -841,7 +841,7 @@ int main()
 
 				    	    // *****************************************************
 				    	    // Debugging - dump 10GBe DCRs (but read all)
-				    	    /*gnuradio
+				    	    /*
 				    	     *
 				    	    readDcrs(DCR_TOP_ASIC_RX, &dcrTopAsic);
 				    	    readDcrs(DCR_BOT_ASIC_RX, &dcrBotAsic);
@@ -1011,12 +1011,6 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		}
 	}
 	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)bufferCnt, (unsigned)bufferSz);
-
-	// dirty flag debugging
-	if (pStatusBlock->bufferDirty)
-	{
-		printf("[DEBUG] WARNING: Buffer dirty flag set!\r\n");
-	}
 
 	// Check if we can re-use BDs to save time configuring them
 	// i.e. !dirty, size matched last run and count is equal or smaller than last run

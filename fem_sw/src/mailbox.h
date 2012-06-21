@@ -12,7 +12,7 @@
 #define MAILBOX_H_
 
 int initMailbox(void);
-int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode);
+int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode, int timeoutMax);
 unsigned short acquireConfigAckReceive(void);
 
 #endif /* MAILBOX_H_ */
