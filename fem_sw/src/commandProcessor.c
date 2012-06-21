@@ -670,7 +670,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 			{
 
 				case CMD_ACQ_CONFIG:
-
 					// Send config request (does not block for CMD_ACQ_CONFIG)
 					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode, 500);
 
@@ -691,11 +690,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 				case CMD_ACQ_START:
 				case CMD_ACQ_STOP:
-
-					// DEBUGGING
-					DBGOUT("CmdDisp: CMD_ACQ_CONFIG(%d)...\r\n");
-
-					// For START/STOP this call *IS* blocking
 					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0, 500);
 					if (dmaControllerAck)
 					{
@@ -705,14 +699,9 @@ void commandHandler(struct protocol_header* pRxHeader,
 					{
 						SBIT(state, STATE_NACK);
 					}
-
-					// DEBUGGING
-					DBGOUT("CmdDisp: CMD_ACQ_CONFIG msg. completed.\r\n");
-
 					break;
 
 				case CMD_ACQ_STATUS:
-
 					acqStatus = *((u32*)0x8A000000);		// TODO: Change 0x8A000000 to common constant
 					*pTxPayload_32 = acqStatus;
 					responseSize += 4;						// Just return status
