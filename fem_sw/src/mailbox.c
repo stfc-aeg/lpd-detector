@@ -46,11 +46,9 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 	u32 buf[5];
 	u32 sentBytes = 0;
 	u32 msgSize = 20;
-
 	int timeoutCount = 0;
 	u32 numBytes = 0;
 	u32 status;
-	int totalBytes = 0;
 
 	buf[0] = cmd;
 	buf[1] = bufferSz;
@@ -69,17 +67,20 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 		return 1;
 	}
 
-	// Get response
+	// Get response (mailbox operations atomic on 4-byte boundaries
 	while(timeoutCount<timeoutMax)
 	{
 		status = XMbox_Read(&mbox, buf, 4, &numBytes);
 		if (status==XST_SUCCESS) {
-			totalBytes += numBytes;
+			if (numBytes == 4) {
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
 		}
-		if (numBytes == 4)
-		{
-			if (buf[0]) { return 1; } else { return 0; }
-		}
+		timeoutCount++;
 	}
 
 	// Timed out, so NACK

@@ -151,7 +151,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot, XLlDma_BdRing* pRingTenGig);
 
 // TODO: Refactor to sendFemMailMsg(), recvFemMailMsg() - make common?
-int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg);
+int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg, int timeoutMax);
 unsigned short sendAcquireAckMessage(XMbox *pMailbox, u32 state);
 
 int checkRingConsistency(XLlDma_Bd *pTop, XLlDma_Bd *pBot, XLlDma_Bd *pTx);
@@ -787,7 +787,7 @@ int main()
 					// **************************************************************************************
 					// Check for mailbox messages
 					// **************************************************************************************
-					if (checkForMailboxMessage(&mbox, pMsg))
+					if (checkForMailboxMessage(&mbox, pMsg, 20))
 					{
 						switch (pMsg->cmd)
 						{
@@ -1299,21 +1299,38 @@ int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot
  * Checks for a mailbox message (non-blocking)
  * @param pMailBox pointer to XMbox
  * @param pMsg pointer to mailMsg buffer to receive to
+ * @param timeoutMax number of times to try to get message
  *
  * @return 1 on success, 0 otherwise
  */
-int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
+int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg, int timeoutMax)
 {
-	u32 bytesRecvd = 0;
+	u32 bytesRec = 0;
+	u32 totalRec = 0;
+	u32 msgBuffer[sizeof(mailMsg)];
+	int msgIndex = 0;
+	int timeoutCount = 0;
 
-	XMbox_Read(pMailBox, (u32*)pMsg, sizeof(mailMsg), &bytesRecvd);
-	if (bytesRecvd == sizeof(mailMsg)) {
+	while(totalRec<sizeof(mailMsg) && timeoutCount<timeoutMax)
+	{
+		XMbox_Read(pMailBox, &msgBuffer[msgIndex], (sizeof(mailMsg)-totalRec), &bytesRec);
+		if (bytesRec>0)
+		{
+			totalRec += bytesRec;
+			msgIndex+=(bytesRec/4);
+		}
+	}
+
+	if (totalRec==sizeof(mailMsg))
+	{
+		memcpy(msgBuffer, pMsg, sizeof(mailMsg));
 		return 1;
 	}
 	else
 	{
 		return 0;
 	}
+
 }
 
 
