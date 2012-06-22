@@ -241,8 +241,6 @@ int main()
     u32 bdSts, bdLen, bdAddr;
 #endif
 
-    u32 bdAddrTop, bdAddrBot, bdAddrTenGig;
-
     // Initialise BRAM status
     acqStatusBlock* pStatusBlock = (acqStatusBlock*)BRAM_BADDR;
     pStatusBlock->state =			STATE_IDLE;
@@ -759,8 +757,28 @@ int main()
 						{
 							// Any other mode, we're finished so stop acquiring
 							printf("[DEBUG] Got %d events, stopping...\r\n", (int)pStatusBlock->numAcq);
+							pStatusBlock->state = STATE_ACQ_STOPPING;
+						}
+					}
+
+
+
+					// **************************************************************************************
+					// Are we trying to stop?
+					// **************************************************************************************
+					if (pStatusBlock->state == STATE_ACQ_STOPPING)
+					{
+
+						// Cleanly stopped?
+						if (	pStatusBlock->totalRecvTop + pStatusBlock->totalRecvBot == pStatusBlock->totalSent &&
+								pStatusBlock->totalRecvTop == pStatusBlock->totalRecvBot )
+						{
+							print("[INFO ] Stop OK.\r\n");
 							pStatusBlock->state = STATE_IDLE;
 							acquireRunning = 0;
+
+				    	    // TODO: Parse result from sendAcquireAckMessage
+				    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
 
 							// *****************************************************
 							// Debugging - dump loop counters
@@ -780,6 +798,10 @@ int main()
 				    	    // *****************************************************
 
 						}
+						else
+						{
+							// TODO
+						}
 					}
 
 
@@ -792,84 +814,9 @@ int main()
 						switch (pMsg->cmd)
 						{
 						case CMD_ACQ_STOP:
-
-							print("[INFO ] Got stop acquire message, exiting acquire loop\r\n");
-							acquireRunning = 0;
-
-							/*
-							 * 	u32 topAsicBufferAddress = DDR2_BADDR;
-							 *	u32 botAsicBufferAddress = DDR2_SZ / 2;
-							 */
-							// Bottom ASIC sent first, then top ASIC
-
-							// Check buffers for consistency (rewind pointers because they are pointing to NEXT BD not the last processed one)
-							bdAddrTop = XLlDma_BdGetBufAddr( XLlDma_BdRingPrev(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd) );
-							bdAddrBot = XLlDma_BdGetBufAddr( XLlDma_BdRingPrev(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd) );
-							bdAddrTenGig = XLlDma_BdGetBufAddr( XLlDma_BdRingPrev(pBdRings[BD_RING_TENGIG], pTenGigPostHW) );
-							printf("[DEBUG] bdAddrTop    = %d\r\n", (int)bdAddrTop);
-							printf("[DEBUG] bdAddrBot    = %d\r\n", (int)bdAddrBot);
-							printf("[DEBUG] bdAddrTenGig = %d\r\n", (int)bdAddrTenGig);
-
-							if ( (bdAddrTop==(bdAddrBot+(DDR2_SZ/2))) && (bdAddrTop==bdAddrTenGig) )		// TODO:Make DDR2_SZ/2 calculation a define, use in configureBdsForAcquisition()
-							{
-								print("[ INFO] BDs consistent, clean stop!\r\n");
-							}
-							else
-							{
-								print("[ WARN] BDs inconsistent!  Flagging as dirty...\r\n");
-								pStatusBlock->bufferDirty = 1;
-							}
-
-							// *****************************************************
-							// Debugging - dump loop counters
-							/*
-							printf("[DEBUG] numTopAsicRxComplete=%d\r\n", (int)numTopAsicRx);
-				    	    printf("[DEBUG] numBotAsicRxComplete=%d\r\n", (int)numBotAsicRx);
-				    	    printf("[DEBUG] numRxPairsComplete=%d\r\n", (int)numRxPairsToSend);
-				    	    printf("[DEBUG] lastNumTopAsicRxComplete=%d\r\n", (int)lastNumTopAsicRx);
-				    	    printf("[DEBUG] lastNumBotAsicRxComplete=%d\r\n", (int)lastNumBotAsicRx);
-				    	    printf("[DEBUG] numTxPairsSent=%d\r\n", (int)numTxPairsSent);
-				    	    printf("[DEBUG] numTenGigTxComplete=%d\r\n", (int)numTenGigTxComplete);
-				    	    print("[-----]\r\n");
-				    	    */
-				    	    printf("[DEBUG] pStat->totalRecvTop=%d\r\n", (int)pStatusBlock->totalRecvTop);
-				    	    printf("[DEBUG] pStat->totalRecvBot=%d\r\n", (int)pStatusBlock->totalRecvBot);
-				    	    printf("[DEBUG] pStat->totalSent=%d\r\n", (int)pStatusBlock->totalSent);
-				    	    // *****************************************************
-
-				    	    print("[-----]\r\n");
-
-				    	    // *****************************************************
-				    	    // Debugging - dump 10GBe DCRs (but read all)
-				    	    /*
-				    	     *
-				    	    readDcrs(DCR_TOP_ASIC_RX, &dcrTopAsic);
-				    	    readDcrs(DCR_BOT_ASIC_RX, &dcrBotAsic);
-				    	    readDcrs(DCR_GBE_TX, &dcrGbe);
-				    	    readDcrs(DCR_UPLOAD_TX, &dcrUpload);
-				    	    print("[DEBUG] 10GBe DMA DCRs:\r\n");
-				    	    printDcr(&dcrGbe);
-				    	    */
-
-
-#ifdef PROFILE_TIMING
-				    	    printf("[DEBUG] Time profiling enabled, timed first %d events:\r\n", TIMING_COUNT);
-
-				    	    print("[DEBUG] Trx          Ttxs         Ttxf\r\n");
-				    	    print("[DEBUG] ----------------------------------------------------------\r\n");
-				    	    for (i=0; i<TIMING_COUNT; i++)
-				    	    {
-				    	    	printf("[DEBUG] %10u   %10u   %10u\r\n", (unsigned int)dmaTimingRxEnd[i], (unsigned int)dmaTimingTxStart[i], (unsigned int)dmaTimingTxEnd[i]);
-				    	    }
-				    	    printf("[DEBUG] Delta t (trx)=%uus\r\n", (unsigned int) ( (dmaTimingRxEnd[TIMING_COUNT-1]-dmaTimingRxEnd[0])/(TIMING_COUNT-1))/100 );
-
-#endif
-
-				    	    pStatusBlock->state = STATE_IDLE;
-
-				    	    // TODO: Parse result from sendAcquireAckMessage
-				    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
-
+							// Triggers a stop next cycle of event loop
+							print("[INFO ] Got stop acquire message, trying to stop...\r\n");
+							pStatusBlock->state = STATE_ACQ_STOPPING;
 							break;
 
 						default:
