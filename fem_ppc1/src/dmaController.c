@@ -1305,15 +1305,30 @@ int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot
 int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg)
 {
 	u32 bytesRecvd = 0;
+	u32 totalRecvd = 0;
+	u32 status;
 
-	XMbox_Read(pMailBox, (u32*)pMsg, sizeof(mailMsg), &bytesRecvd);
-	if (bytesRecvd == sizeof(mailMsg)) {
-		return 1;
-	}
-	else
+	u8 *pBytePtr =  (u8*)pMsg;
+
+	// Mailbox receive is only atomic on 4 byte level
+	while(totalRecvd<sizeof(mailMsg))
 	{
-		return 0;
+		status = XMbox_Read(pMailBox, (u32*)pBytePtr, (sizeof(mailMsg)-totalRecvd), &bytesRecvd);
+		if (status == XST_SUCCESS)
+		{
+			// Got some data!
+			pBytePtr += bytesRecvd;
+			totalRecvd += bytesRecvd;
+
+		}
+		else if (status==XST_NO_DATA && totalRecvd==0)
+		{
+			return 0;		// Nothing to read
+		}
+
 	}
+
+	return 1;
 }
 
 
