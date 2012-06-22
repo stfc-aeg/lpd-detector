@@ -802,10 +802,10 @@ int main()
 							 */
 							// Bottom ASIC sent first, then top ASIC
 
-							// Check buffers for consistency
-							bdAddrTop = XLlDma_BdGetBufAddr(pTopAsicBd);
-							bdAddrBot = XLlDma_BdGetBufAddr(pBotAsicBd);
-							bdAddrTenGig = XLlDma_BdGetBufAddr(pTenGigPostHW);
+							// Check buffers for consistency (rewind pointers because they are pointing to NEXT BD not the last processed one)
+							bdAddrTop = XLlDma_BdGetBufAddr( XLlDma_BdRingPrev(pBdRings[BD_RING_TOP_ASIC], pTopAsicBd) );
+							bdAddrBot = XLlDma_BdGetBufAddr( XLlDma_BdRingPrev(pBdRings[BD_RING_BOT_ASIC], pBotAsicBd) );
+							bdAddrTenGig = XLlDma_BdGetBufAddr( XLlDma_BdRingPrev(pBdRings[BD_RING_TENGIG], pTenGigPostHW) );
 							printf("[DEBUG] bdAddrTop    = %d\r\n", (int)bdAddrTop);
 							printf("[DEBUG] bdAddrBot    = %d\r\n", (int)bdAddrBot);
 							printf("[DEBUG] bdAddrTenGig = %d\r\n", (int)bdAddrTenGig);
@@ -1301,7 +1301,7 @@ int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot
  * @param pMsg pointer to mailMsg buffer to receive to
  * @param timeoutMax number of times to try to get message
  *
- * @return 1 on success, 0 otherwise
+ * @return 1 on success, 0 otherwise.
  */
 int checkForMailboxMessage(XMbox *pMailBox, mailMsg *pMsg, int timeoutMax)
 {
