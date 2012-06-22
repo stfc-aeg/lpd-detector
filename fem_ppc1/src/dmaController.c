@@ -28,6 +28,8 @@
 #define LL_DMA_RX_NUM_BD_PER_LOOP		1			//! Valid values are 1...XLLDMA_ALL_BDS		(MUST BE 1 if PROFILE_TIMING enabled!)
 #define LL_DMA_TX_NUM_BD_PER_LOOP		2			//! Valid values are 2...XLLDMA_ALL_BDS		(MUST BE 2 if PROFILE_TIMING enabled!)
 
+#define MAX_STOP_ATTEMPTS				500			//! Number of main event loops we'll wait for TX DMA operations to clear
+
 #define DDR2_BADDR					0x00000000						//! DDR2 base address
 #define DDR2_SZ						0x40000000						//! DDR2 size (1GB)
 #define BRAM_BADDR					XPAR_SHARED_BRAM_IF_CNTLR_PPC_1_BASEADDR
@@ -236,6 +238,8 @@ int main()
     u64 numTenGigTxComplete = 0;		// Counter for number of completed TX for 10GBe
     unsigned short numConfigBdsToProcess = 0;
 
+    u32 numStopAttempts = 0;
+
 #ifdef DEBUG_BD
     // For BD debugging
     u32 bdSts, bdLen, bdAddr;
@@ -412,21 +416,11 @@ int main()
 	    	    lastNumBotAsicRx = 0;
 	    	    numTxPairsSent = 0;
 	    	    numTenGigTxComplete = 0;
+	    	    numStopAttempts = 0;
+
 				int numBDFromTopAsic = 0;
 				int numBDFromBotAsic = 0;
 				int numBDFromTenGig = 0;
-
-#ifdef PROFILE_TIMING
-				timerCounterRxEnd = 0;
-				timerCounterTxStart = 0;
-				timerCounterTxEnd = 0;
-				for(k=0; k<TIMING_COUNT; k++)
-				{
-					dmaTimingRxEnd[k] = 0;
-					dmaTimingTxStart[k] = 0;
-					dmaTimingTxEnd[k] = 0;
-				}
-#endif
 
 	    	    pTenGigPostHW = pTenGigPreHW;		// PreHW is first BD in TX ring
 
@@ -748,8 +742,7 @@ int main()
 								if (pStatusBlock->numAcq==(pStatusBlock->totalSent/2))
 								{
 									print("[DEBUG] Burst mode halting...\r\n");
-									pStatusBlock->state = STATE_IDLE;
-									acquireRunning = 0;
+									pStatusBlock->state = STATE_ACQ_STOPPING;
 								}
 							}
 						}
@@ -800,7 +793,17 @@ int main()
 						}
 						else
 						{
-							// TODO
+							if (numStopAttempts++ == MAX_STOP_ATTEMPTS)
+							{
+								// Emergency stop!
+								printf("[ERROR] Doing emergency stop! (I waited %d loops.)\r\n", MAX_STOP_ATTEMPTS);
+								pStatusBlock->state = STATE_IDLE;
+								pStatusBlock->bufferDirty = 1;
+								acquireRunning = 0;
+
+								// TODO: Parse result from sendAcquireAckMessage
+								sendAcquireAckMessage(&mbox, 0);		// NACK because we didn't stop cleanly
+							}
 						}
 					}
 
