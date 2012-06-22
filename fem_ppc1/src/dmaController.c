@@ -21,12 +21,10 @@
 // Compile time switches
 //#define VERBOSE_DEBUG			1			//! Verbose output during acquire loop
 #define DEBUG_BD				1			//! Outputs DMA BDs as received
-//#define PROFILE_TIMING		1			//! Enables time profiling for DMA engines
-//#define TIMING_COUNT			8			//! Number of DMA operations to profile during acquisition (MUST BE SET IF PROFILE_TIMING ENABLED!)
 
 // DMA timing tuning - these specify how many RX or TX descriptors are requested / sent per loop.
-#define LL_DMA_RX_NUM_BD_PER_LOOP		1			//! Valid values are 1...XLLDMA_ALL_BDS		(MUST BE 1 if PROFILE_TIMING enabled!)
-#define LL_DMA_TX_NUM_BD_PER_LOOP		2			//! Valid values are 2...XLLDMA_ALL_BDS		(MUST BE 2 if PROFILE_TIMING enabled!)
+#define LL_DMA_RX_NUM_BD_PER_LOOP		1			//! Valid values are 1...XLLDMA_ALL_BDS
+#define LL_DMA_TX_NUM_BD_PER_LOOP		2			//! Valid values are 2...XLLDMA_ALL_BDS
 
 #define MAX_STOP_ATTEMPTS				500			//! Number of main event loops we'll wait for TX DMA operations to clear
 
@@ -204,19 +202,6 @@ int main()
     dcrRegisters dcrGbe;
     dcrRegisters dcrUpload;
 	*/
-
-#ifdef PROFILE_TIMING
-#ifndef TIMING_COUNT
-    assert("PROFILE_TIMING mode must specify TIMING_COUNT!\r\n");
-#endif
-    XTime dmaTimingRxEnd[TIMING_COUNT];		//! Time of RX(n) end
-    XTime dmaTimingTxStart[TIMING_COUNT];	//! Time of TX(n) start
-    XTime dmaTimingTxEnd[TIMING_COUNT];		//! Time of TX(n) end
-    unsigned short timerCounterRxEnd;
-    unsigned short timerCounterTxStart;
-    unsigned short timerCounterTxEnd;
-    int k;
-#endif
 
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
@@ -579,16 +564,6 @@ int main()
 							printf("[DEBUG] NOW BotASIC RX = %llu\r\n", numBotAsicRx);
 #endif
 
-
-#ifdef PROFILE_TIMING
-							if (timerCounterRxEnd<TIMING_COUNT)
-							{
-								XTime_GetTime(&(dmaTimingRxEnd[timerCounterRxEnd++]));
-							}
-#endif
-
-							//pStatusBlock->totalRecv += numRxPairsToSend;
-
 						}
 
 						// Update loop variables
@@ -611,13 +586,6 @@ int main()
 
 #ifdef VERBOSE_DEBUG
 							printf("[DEBUG] %llu TX pairs ready to send\r\n", numRxPairsToSend);
-#endif
-
-#ifdef PROFILE_TIMING
-							if (timerCounterTxStart<TIMING_COUNT)
-							{
-								XTime_GetTime(&(dmaTimingTxStart[timerCounterTxStart++]));
-							}
 #endif
 
 							status = XLlDma_BdRingToHw(pBdRings[BD_RING_TENGIG], numRxPairsToSend*2, pTenGigPreHW);
@@ -657,13 +625,6 @@ int main()
 							{
 #ifdef VERBOSE_DEBUG
 								printf("[DEBUG] Got %d TX BD back to check...\r\n", numBDFromTenGig);
-#endif
-
-#ifdef PROFILE_TIMING
-							if (timerCounterTxEnd<TIMING_COUNT)
-							{
-								XTime_GetTime(&(dmaTimingTxEnd[timerCounterTxEnd++]));
-							}
 #endif
 
 								for (i=0; i<numBDFromTenGig; i++)
