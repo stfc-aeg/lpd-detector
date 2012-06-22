@@ -671,7 +671,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 				case CMD_ACQ_CONFIG:
 					// Send config request (does not block for CMD_ACQ_CONFIG)
-					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode);
+					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode, 10000);
 
 					// Wait for response
 					configAck = acquireConfigAckReceive();
@@ -690,7 +690,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 				case CMD_ACQ_START:
 				case CMD_ACQ_STOP:
-					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0);
+					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0, 10000);
 					if (dmaControllerAck)
 					{
 						SBIT(state, STATE_ACK);

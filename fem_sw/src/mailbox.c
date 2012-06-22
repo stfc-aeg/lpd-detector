@@ -41,17 +41,22 @@ int initMailbox(void)
 // TODO: Move msgSize, message structure to common include
 // TODO: DO NOT HARDCODE CMD_ACQ_CONFIG!  MOVE TO COMMON HEADER
 #define CMD_ACQ_CONFIG 1
-int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode)
+int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode, int maxRetries)
 {
 	u32 buf[5];
 	u32 sentBytes = 0;
 	u32 msgSize = 20;
+
+	u32 status;
+	int numRetries = 0;
 
 	buf[0] = cmd;
 	buf[1] = bufferSz;
 	buf[2] = bufferCnt;
 	buf[3] = numAcq;
 	buf[4] = mode;
+
+	int tick = 100;
 
 	// Send to PPC1
 	XMbox_Write(&mbox, buf, msgSize, &sentBytes);
@@ -64,6 +69,34 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 		return 1;
 	}
 
+
+	while(numRetries < maxRetries)
+	{
+		status = XMbox_Read(&mbox, buf, 4, &sentBytes);
+		if (status == XST_SUCCESS)
+		{
+			// Got message!
+			if (buf[0])
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+
+		} else {
+			// No message, wait a bit
+			usleep(tick);
+			numRetries++;
+		}
+	}
+
+	// Timed out, so NACK
+	// TODO: Another return code, -1 for timeout?
+	return -1;
+
+	/*
 	// Wait for response from PPC1
 	XMbox_ReadBlocking(&mbox, buf, 4);		// Just 4 bytes, no sense using more
 	if (buf[0])
@@ -76,6 +109,7 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 		// NACK
 		return 0;
 	}
+	*/
 
 }
 
