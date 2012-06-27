@@ -18,7 +18,6 @@
  * FUNCTIONALITY:
  * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
  * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
- * TODO: How to let personality module run validateHeaderContents equivalent? -> Register a callback!
  * TODO: Re-enable BADPKT response sending where necessary (generateBadPacketResponse())
  * TODO: Provide access to femErrorState via CMD_INTERNAL
  * TODO: Clean up RDMA wrapper (was kludged into place and never fixed!)
@@ -29,12 +28,6 @@
  * TODO: Tune thread stacksize
  * TODO: Check for memory leaks
  * TODO: Determine why LWIP hangs on init using priority based scheduler
- *
- * CODING STANDARDS:
- * TODO: Make const-correct! (urgh)
- * TODO: Replace pass-by-pointer to pass-by-reference where possible
- * TODO: Make method names consistent across all files
- * TODO: Javadoc comments on all functions and structures
  *
  * ----------------------------------------------------------------------------
  */

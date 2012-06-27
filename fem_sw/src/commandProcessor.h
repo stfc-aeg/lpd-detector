@@ -9,11 +9,6 @@
 #ifndef COMMANDPROCESSOR_H_
 #define COMMANDPROCESSOR_H_
 
-
-// TODO: Move this to a higher level include, fem.h?
-// Uncomment this line if data caching enabled on PPC
-//#define USE_CACHE		1
-
 #include "xil_types.h"
 #include "fem.h"
 #include "protocol.h"

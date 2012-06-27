@@ -25,11 +25,6 @@
 #define RDMA_CMD_READ			0
 #define RDMA_CMD_WRITE			1
 
-// Hardware settings for RDMA block
-// TODO: Should these be moved to fem.h?
-#define RDMA_DEVICEID			XPAR_RS232_UART_PPC2_RDMA_DEVICE_ID
-#define RDMA_CLK				XPAR_RS232_UART_PPC2_CLOCK_FREQ_HZ
-
 // Serial settings for RDMA block
 #define RDMA_DEF_BAUDRATE		9600						// Probably not needed!
 #define RDMA_BAUDRATE			9600

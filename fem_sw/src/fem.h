@@ -49,17 +49,23 @@
 #define BADDR_INTC					XPAR_XPS_INTC_2_BASEADDR
 #define BADDR_RDMA					XPAR_RS232_UART_PPC2_RDMA_BASEADDR
 #define BADDR_MBOX					XPAR_MAILBOX_0_IF_1_BASEADDR
+#define BADDR_BRAM					XPAR_SHARED_BRAM_IF_CNTLR_PPC_2_BASEADDR
 #define XINTC_ID					XPAR_XPS_INTC_2_DEVICE_ID
 #define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
 #define MBOX_ID						XPAR_MAILBOX_0_IF_1_DEVICE_ID
 #define MBOX_RECV_ID				XPAR_MAILBOX_0_IF_1_RECV_FSL
 #define MBOX_SEND_ID				XPAR_MAILBOX_0_IF_1_SEND_FSL
 #define MBOX_USE_FSL				XPAR_MAILBOX_0_IF_1_USE_FSL
+#define RDMA_DEVICEID				XPAR_RS232_UART_PPC2_RDMA_DEVICE_ID
+#define RDMA_CLK					XPAR_RS232_UART_PPC2_CLOCK_FREQ_HZ
 #endif
 
 // DDR2 memory size
 #define FEM_DDR2_START				0x00000000
 #define FEM_DDR2_END				0x3FFFFFFF
+
+// Uncomment this line if data caching enabled on PPC
+//#define USE_CACHE		1
 
 // Enable / disable serial debugging output (comment to disable)
 #define GLOBAL_DEBUG

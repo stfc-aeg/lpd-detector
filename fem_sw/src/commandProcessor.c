@@ -636,8 +636,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 			numOps = 0;
 			SBIT(state, STATE_NACK);
-			// TODO: Implement CMD_INTERNAL
-			DBGOUT("CmdDisp: CMD_INTERNAL not supported!!\r\n");
+			DBGOUT("CmdDisp: No CMD_INTERNAL commands supported at this time!\r\n");
 			break;
 
 		case CMD_ACQUIRE:
@@ -696,7 +695,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					break;
 
 				case CMD_ACQ_STATUS:
-					acqStatus = *((u32*)0x8A000000);		// TODO: Change 0x8A000000 to common constant
+					acqStatus = *((u32*)BADDR_BRAM);
 					*pTxPayload_32 = acqStatus;
 					responseSize += 4;						// Just return status
 					//responseSize += (12*4);					// TODO: Change to sizeof(acqStatusBlock) once it's made common
