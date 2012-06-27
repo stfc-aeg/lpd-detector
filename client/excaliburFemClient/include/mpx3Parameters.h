@@ -173,4 +173,13 @@ typedef union
 
 } mpx3Omr;
 
+// Enumeration of MPX3 counter select for readout
+typedef enum
+{
+	mpx3Counter0 = 0,
+	mpx3Counter1 = 1
+
+} mpx3CounterSelect;
+
+
 #endif /* MPX3PARAMETERS_H_ */

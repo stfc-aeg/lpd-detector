@@ -27,6 +27,21 @@ const unsigned int kPixelConfigBufferSizeWords = kPixelConfigBufferSizeBytes /si
 
 const unsigned int kHostDataPort = 61649;
 
+typedef enum
+{
+	excaliburFemClientIllegalDacId = femClientNextEnumRange,
+	excaliburFemClientIllegalConfigId,
+	excaliburFemClientIllegalChipId,
+	excaliburFemClientIllegalConfigSize,
+	excaliburFemClientIllegalCounterDepth,
+	excaliburFemClientOmrTransactionTimeout,
+	excaliburFemClientUdpSetupFailed,
+	excaliburFemClientDataReceviverSetupFailed,
+	excaliburFemClientIllegalOperationMode,
+	excaliburFemClientIllegalCounterSelect
+
+} ExcaliburFemClientErrorCode;
+
 typedef enum {
 	frontEndEnable = 0,
 	frontEndAVDD1  = 2,
@@ -37,19 +52,14 @@ typedef enum {
 	frontEndDVDD   = 7
 } excaliburFrontEndSupply;
 
-
 typedef enum
 {
-	excaliburFemClientIllegalDacId = femClientNextEnumRange,
-	excaliburFemClientIllegalConfigId,
-	excaliburFemClientIllegalChipId,
-	excaliburFemClientIllegalConfigSize,
-	excaliburFemClientIllegalCounterDepth,
-	excaliburFemClientOmrTransactionTimeout,
-	excaliburFemClientUdpSetupFailed,
-	excaliburFemClientDataReceviverSetupFailed
 
-} ExcaliburFemClientErrorCode;
+	excaliburOperationModeNormal = 0,
+	excaliburOperationModeBurst  = 1,
+	excaliburOperationModeHistogram = 2
+
+} excaliburOperationMode;
 
 class ExcaliburFemClient: public FemClient {
 public:
@@ -72,19 +82,21 @@ public:
 
 	void externalTriggerSet(unsigned int aExternalTrigger);
 	void operationModeSet(unsigned int aOperationMode);
-	void numFramesSet(unsigned int numFrames);
+	void numFramesSet(unsigned int aNumFrames);
 	void acquisitionPeriodSet(unsigned int aPeriodMs);
 	void acquisitionTimeSet(unsigned int aTimeMs);
+	void numTestPulsesSet(unsigned int aNumTestPulses);
 	void freeAllFrames();
 
 	// EXCALIBUR detector front-end functions in ExcaliburFemClientFrontEndDevices.cpp
-	void setFrontEndEnable(unsigned int aVal);
+	void   frontEndEnableSet(unsigned int aVal);
 	double frontEndTemperatureRead(void);
 	double frontEndHumidityRead(void);
 	double frontEndDacOutRead(unsigned int aChipId);
 	int    frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply);
 	void   frontEndDacInWrite(unsigned int aChipId, unsigned int aDacValue);
 	void   frontEndDacInWrite(unsigned int aChipId, double aDacVolts);
+	void   frontEndDacInitialise(void);
 
 	// MPX3 ASIC parameter control functions in ExcaliburFemClientMpx3.cpp
 	void mpx3DacSet(unsigned int aChipId, int aDacId, unsigned int aDacValue);
@@ -97,10 +109,22 @@ public:
 	unsigned int mpx3eFuseIdRead(unsigned int aChipId);
 	void mpx3ColourModeSet(int aColourMode);
 	void mpx3CounterDepthSet(int aCounterDepth);
+	void mpx3CounterSelectSet(int aCounterSelect);
+	void mpx3DisableSet(unsigned int aChipId, unsigned int aDisable);
+
+
+private:
+
+	// Private functions in ExcaliburFemClient.cpp
+	// TODO Move this out of main class file to preserve interface??
+	unsigned int asicReadoutDmaSize(void);
+	unsigned int asicReadoutLengthCycles(void);
+	unsigned int frameDataLengthBytes(void);
 
 	// ASIC control functions in ExcaliburFemClientAsicControl.cpp
 	void asicControlOmrSet(mpx3Omr aOmr);
 	void asicControlMuxChipSelect(unsigned int aChipIdx);
+	void asicControlMuxSet(unsigned int aMuxValue);
 	void asicControlCommandExecute(asicControlCommand aCommand);
 	void asicControlNumFramesSet(unsigned int aNumFrames);
 	void asicControlShutterDurationSet(unsigned int aTimeUs);
@@ -110,17 +134,13 @@ public:
 	void asicControlReset(void);
 	void asicControlAsicReset(void);
 
-	unsigned int asicReadoutDmaSize(void);
-	unsigned int asicReadoutLengthCycles(void);
-	unsigned int frameDataLengthBytes(void);
-
-private:
-
+	// Private functions in ExcaliburFemClientFrontEndDevices.cpp
 	u16 frontEndSht21Read(u8 cmdByte);
 	u16 frontEndAD7994Read(unsigned int device, unsigned int aChan);
 	u8 frontEndPCF8574Read(void);
 	void frontEndPCF8574Write(unsigned int aVal);
 	void frontEndAD5625Write(unsigned int aDevice, unsigned int aChan, unsigned int aVal);
+	void frontEndAD5625InternalReferenceEnable(unsigned int aDevice, bool aEnable);
 
 	mpx3Dac mpx3DacIdGet(int aId);
 	mpx3PixelConfig mpx3PixelConfigIdGet(int aConfigId);
@@ -134,6 +154,10 @@ private:
 	unsigned int          mMpx3DacCache[kNumAsicsPerFem][numExcaliburDacs];
 	unsigned short        mMpx3PixelConfigCache[kNumAsicsPerFem][numPixelConfigs][kNumPixelsPerAsic];
 	unsigned short        mMpx3ColumnTestPulseEnable[kNumAsicsPerFem][kNumColsPerAsic];
+	unsigned short        mMpx3GlobalTestPulseEnable;
+	mpx3CounterSelect     mMpx3CounterSelect;
+	bool	              mMpx3Enable[kNumAsicsPerFem];
+	unsigned int          mMpx3TestPulseCount;
 
 	FemDataReceiver*      mFemDataReceiver;
 	unsigned int          mFemDataHostPort;
@@ -149,7 +173,7 @@ private:
 	std::list<CtlFrame*> mFrameQueue;
 
 	unsigned int          mExternalTrigger;
-	unsigned int          mOperationMode;
+	excaliburOperationMode mOperationMode;
 	unsigned int          mNumFrames;
 	unsigned int          mAcquisitionPeriodMs;
 	unsigned int          mAcquisitionTimeMs;

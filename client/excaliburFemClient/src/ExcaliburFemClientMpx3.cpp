@@ -53,6 +53,8 @@ void ExcaliburFemClient::mpx3DacSet(unsigned int aChipId, int aDacId, unsigned i
 void ExcaliburFemClient::mpx3DacSenseSet(unsigned int aChipId, int aDac)
 {
 
+	std::cout << "DAC sense set chip=" << aChipId << " DAC=" << aDac << std::endl;
+
 	// Check chip ID is legal (noting that id = 0 implies all chips)
 	if ((aChipId < 0) || (aChipId > kNumAsicsPerFem)) {
 		std::ostringstream msg;
@@ -75,6 +77,8 @@ void ExcaliburFemClient::mpx3DacSenseSet(unsigned int aChipId, int aDac)
 
 void ExcaliburFemClient::mpx3DacExternalSet(unsigned int aChipId, int aDac)
 {
+
+	std::cout << "DAC external set chip=" << aChipId << " DAC=" << aDac << std::endl;
 
 	// Check chip ID is legal (noting that id = 0 implies all chips)
 	if ((aChipId < 0) || (aChipId > kNumAsicsPerFem)) {
@@ -171,7 +175,7 @@ void ExcaliburFemClient::mpx3DacsWrite(unsigned int aChipId)
 	//		u32 omrMsb = (u32)1 << 5;
 	//		this->rdmaWrite(kExcaliburAsicOmrBottom, omrLsb);
 	//		this->rdmaWrite(kExcaliburAsicOmrTop, omrMsb);
-		mpx3Omr theOmr = this->mpx3OMRBuild(0, setDacs);
+		mpx3Omr theOmr = this->mpx3OMRBuild(chipIdx, setDacs);
 		std::cout << "OMR is 0x" << std::hex << theOmr.raw << std::dec << std::endl;
 		this->asicControlOmrSet(theOmr);
 
@@ -301,6 +305,10 @@ void ExcaliburFemClient::mpx3PixelConfigSet(unsigned int aChipId, int aConfigId,
 
 void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 {
+
+	struct timespec startTime, endTime, writeTime;
+
+	clock_gettime(CLOCK_REALTIME, &startTime);
 
 	// If chip ID = 0, loop over all chips and call this function recursively
 	if (aChipId == 0) {
@@ -455,6 +463,8 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		// Write counter 1 configuration into the FEM memory
 		this->memoryWrite(configBaseAddr + kPixelConfigBufferSizeBytes, (u32*)&pixelConfigCounter1Buffer, kPixelConfigBufferSizeWords);
 
+		clock_gettime(CLOCK_REALTIME, &writeTime);
+
 		// Set up the PPC1 DMA engine for upload mode for two configurations
 		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 2, configBaseAddr);
 
@@ -481,11 +491,37 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		// Execute the config load command
 		this->asicControlCommandExecute(asicPixelConfigLoad);
 
-		// TODO poll state of FW to test for completion
-		sleep(1);
-		this->acquireStop();
+		// Poll state of acquisition to test for completion of upload
+		FemAcquireStatus acqStatus = this->acquireStatus();
+		std::cout << "ACQ state=" << acqStatus.acquireState << std::endl;
+
+		int retries = 0;
+		while  ((retries < 10) && (acqStatus.acquireState != acquireIdle))
+		{
+			usleep(10000);
+			acqStatus = this->acquireStatus();
+		}
+
+		if (acqStatus.acquireState != acquireIdle)
+		{
+			std::ostringstream msg;
+			msg << "Timeout on pixel configuration write to chip" << aChipId << " acqState=" << acqStatus.acquireState;
+			throw FemClientException((FemClientErrorCode)excaliburFemClientOmrTransactionTimeout, msg.str());
+		}
 
 	}
+	clock_gettime(CLOCK_REALTIME, &endTime);
+
+	double startSecs = startTime.tv_sec  + ((double)startTime.tv_nsec / 1.0E9);
+	double endSecs   = endTime.tv_sec  + ((double)endTime.tv_nsec / 1.0E9);
+	double writeSecs = writeTime.tv_sec  + ((double)writeTime.tv_nsec / 1.0E9);
+
+	double elapsedSecs = endSecs - startSecs;
+	double elapsedWrite = writeSecs - startSecs;
+
+	std::cout << "Config write time          " << elapsedWrite << " secs" << std::endl;
+	std::cout << "pixelConfigWrite call took " << elapsedSecs << " secs" << std::endl;
+
 }
 
 unsigned int ExcaliburFemClient::mpx3eFuseIdRead(unsigned int aChipId)
@@ -548,6 +584,35 @@ void ExcaliburFemClient::mpx3CounterDepthSet(int aCounterDepth)
 	}
 }
 
+void ExcaliburFemClient::mpx3CounterSelectSet(int aCounterSelect)
+{
+
+	mMpx3CounterSelect = (mpx3CounterSelect)aCounterSelect;
+
+}
+
+void ExcaliburFemClient::mpx3DisableSet(unsigned int aChipId, unsigned int aDisable)
+{
+	// If chip ID = 0, loop over all chips and call this function recursively
+	if (aChipId == 0) {
+
+		for (unsigned int iChip = 1; iChip <= kNumAsicsPerFem; iChip++)
+		{
+			this->mpx3DisableSet(iChip, aDisable);
+		}
+	}
+	else
+	{
+		// Internal chip index runs from 0 to 7
+		unsigned int chipIdx = aChipId - 1;
+
+		// Set the enable flag for the chip - this is inverted in sense from the disable in the API
+		mMpx3Enable[chipIdx] = (aDisable == 0) ? true: false;
+
+		std::cout << "MPX3 Enable for chip " << chipIdx << " : " << mMpx3Enable[chipIdx] << std::endl;
+
+	}
+}
 
 /// --- Private methods ---
 
@@ -641,16 +706,17 @@ mpx3Omr ExcaliburFemClient::mpx3OMRBuild(unsigned int aChipIdx, mpx3OMRMode aMod
 
 	mpx3Omr theOMR;
 
-	std::cout << "OMR chip: " << aChipIdx << " TP: " <<  mMpx3OmrParams[aChipIdx].testPulseEnable
-			  << " ExtDAC: " << mMpx3OmrParams[aChipIdx].dacExternal
-			  << " SenseDAC: " << mMpx3OmrParams[aChipIdx].dacSense << std::endl;
+//	std::cout << "OMR chip: " << aChipIdx << " TP: " <<  mMpx3OmrParams[aChipIdx].testPulseEnable
+//			  << " ExtDAC: " << mMpx3OmrParams[aChipIdx].dacExternal
+//			  << " SenseDAC: " << mMpx3OmrParams[aChipIdx].dacSense << std::endl;
 
 	theOMR.raw = (((u64)aMode                                          & 0x7  ) << 0 ) |
 				 (((u64)mMpx3OmrParams[aChipIdx].readWriteMode         & 0x1  ) << 3 ) |
 				 (((u64)mMpx3OmrParams[aChipIdx].polarity              & 0x1  ) << 4 ) |
 				 (((u64)mMpx3OmrParams[aChipIdx].readoutWidth          & 0x3  ) << 5 ) |
 				 (((u64)mMpx3OmrParams[aChipIdx].unusedPTEnable        & 0x1  ) << 7 ) |
-				 (((u64)mMpx3OmrParams[aChipIdx].testPulseEnable       & 0x1  ) << 8 ) |
+//				 (((u64)mMpx3OmrParams[aChipIdx].testPulseEnable       & 0x1  ) << 8 ) |
+				 (((u64)mMpx3GlobalTestPulseEnable                     & 0x1  ) << 8 ) |
 				 (((u64)mMpx3OmrParams[aChipIdx].counterDepth          & 0x3  ) << 9 ) |
 				 (((u64)mMpx3OmrParams[aChipIdx].columnBlock           & 0x7  ) << 11) |
 				 (((u64)mMpx3OmrParams[aChipIdx].columnBlockSelect     & 0x1  ) << 14) |

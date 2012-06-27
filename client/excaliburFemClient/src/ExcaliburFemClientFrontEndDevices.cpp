@@ -25,7 +25,7 @@
  *
  * @param aVal enable value to set (0 or 1)
  */
-void ExcaliburFemClient::setFrontEndEnable(unsigned int aVal)
+void ExcaliburFemClient::frontEndEnableSet(unsigned int aVal)
 {
 
 	// Construct byte value to send to device. Since only bit 0 is RW,
@@ -163,13 +163,22 @@ void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, double aDacVol
 
 	std::cout << "DAC volts: " << aDacVolts << std::endl;
 
-	unsigned int aDacCode = (unsigned int)((aDacVolts / 3.3) * 4096) & 0xFFF;
+	unsigned int aDacCode = (unsigned int)((aDacVolts / kAD5625FullScale ) * 4096) & 0xFFF;
 
 	// Write the DAC value
 	this->frontEndDacInWrite(aChipId, aDacCode);
 
 }
 
+void ExcaliburFemClient::frontEndDacInitialise(void)
+{
+
+	for (unsigned int iChip = 0; iChip < kAD5626NumDevices; iChip++)
+	{
+		this->frontEndAD5625InternalReferenceEnable(iChip, true);
+	}
+
+}
 /// --------- Private methods ---------
 
 /** frontEndSht21Read - low level access to SHT21 device
@@ -308,11 +317,24 @@ void ExcaliburFemClient::frontEndAD5625Write(unsigned int aDevice, unsigned int 
 	cmd[1] = (dacWord & 0xFF00) >> 8;
 	cmd[2] = (dacWord & 0x00FF);
 
+	std::cout << "AD5625 write: cmd=0x" << std::hex << (int)cmd[0] << " MSB=0x" << (int)cmd[1]
+	          << " LSB=0x" << (int)cmd[2] << std::dec << std::endl;
 	// Send transaction to DAC
 	this->i2cWrite(kAD5625Address[aDevice], cmd);
 
 }
 
+void ExcaliburFemClient::frontEndAD5625InternalReferenceEnable(unsigned int aDevice, bool aEnable)
+{
+	std::vector<u8>cmd(3); // 3 byte write transaction to DAC
 
+	// Assemble command byte for internal reference setup, and LSB of data bytes to enable
+	cmd[0] = (kAD5626RefSetup << kAD5625CmdShift);
+	cmd[1] = 0;
+	cmd[2] = aEnable ? 1 : 0;
+
+	// Send transaction to DAC
+	this->i2cWrite(kAD5625Address[aDevice], cmd);
+}
 
 

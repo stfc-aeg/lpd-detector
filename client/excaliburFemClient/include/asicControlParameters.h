@@ -35,6 +35,7 @@ typedef enum
 	asicCommandRead       = 0x25,
 	asicPixelConfigLoad   = 0x2b,
 	asicRunSequentialC0   = 0xa41,
+	asicRunSequentialC1   = 0x1241,
 	asicTestPulseEnable   = 0x4000,
 
 } asicControlCommand;

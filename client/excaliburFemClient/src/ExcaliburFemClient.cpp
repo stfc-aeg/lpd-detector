@@ -18,6 +18,8 @@
 ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCallbacks,
 		const CtlConfig* aConfig, unsigned int aTimeoutInMsecs) :
 	FemClient(aConfig->femAddress, aConfig->femPort, aTimeoutInMsecs),
+	mMpx3GlobalTestPulseEnable(false),
+	mMpx3TestPulseCount(4000),
 	mFemDataHostPort(kHostDataPort),
 	mCtlHandle(aCtlHandle),
 	mCallbacks(aCallbacks),
@@ -68,7 +70,18 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 		{
 			mMpx3ColumnTestPulseEnable[iChip][iCol] = 0;
 		}
+
+		// Initialise chip enable flag
+		mMpx3Enable[iChip] = true;
+
 	}
+
+	// Reset the ASIC control f/w block and ASICS
+	this->asicControlReset();
+	this->asicControlAsicReset();
+
+	// Initialise front-end DACs
+	this->frontEndDacInitialise();
 
 	// Build callback bundle to be registered with the data receiver
 	mCallbackBundle.allocate = boost::bind(&ExcaliburFemClient::allocateCallback, this);
@@ -240,6 +253,10 @@ void ExcaliburFemClient::toyAcquisition(void)
 void ExcaliburFemClient::startAcquisition(void)
 {
 
+	struct timespec startTime, endTime, recvInitTime, acqInitTime;
+
+	clock_gettime(CLOCK_REALTIME, &startTime);
+
 	// Register callbacks for data receiver
 	mFemDataReceiver->registerCallbacks(&mCallbackBundle);
 
@@ -259,28 +276,86 @@ void ExcaliburFemClient::startAcquisition(void)
 	// Start the data receiver thread
 	mFemDataReceiver->startAcquisition();
 
-	// Check if test pulses are enablewd on any device, if so set a flag
-	bool testPulseEnabled = false;
+	clock_gettime(CLOCK_REALTIME, &recvInitTime);
+
+	// Set up the number of frames to be acquired in the ASIC control block
+	this->asicControlNumFramesSet(mNumFrames);
+
+	// Set up the acquisition period in the ASIC control block
+	// TODO not yet implemented in firmware
+
+	// Set up the acquisition time in the ASIC control block, convering from milliseconds
+	// to microseconds
+	this->asicControlShutterDurationSet(mAcquisitionTimeMs * 1000);
+
+	// Build chip mask from the enable flags and determine which is the first chip active - this is used
+	// to select settings for building the OMR for readout transactions, where the OMR is broadcast
+	// to all chips
+	int firstChipActive = -1;
+	unsigned int chipMask = 0;
 	for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++)
 	{
-		if (mMpx3OmrParams[iChip].testPulseEnable)
+		if (mMpx3Enable[iChip])
 		{
-			testPulseEnabled = true;
+			chipMask |= ((unsigned int)1 << (7 - iChip));
+			if (firstChipActive == -1)
+			{
+				firstChipActive = iChip;
+			}
+		}
+	}
+	std::cout << "Chip mask: 0x" << std::hex << chipMask << std::dec << " First chip active: " << firstChipActive << std::endl;
+
+	// Set up the ASIC mux based on calculated chip mask
+	this->asicControlMuxSet(chipMask);
+
+	// Check if test pulses are enabled on any enabled chip, if so set the global test pulse enable flag
+	for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++)
+	{
+		if (mMpx3Enable[iChip] && mMpx3OmrParams[iChip].testPulseEnable)
+		{
+			mMpx3GlobalTestPulseEnable = true;
 		}
 	}
 
-	if (testPulseEnabled)
+	if (mMpx3GlobalTestPulseEnable)
 	{
-		// TODO: this should be exposed in the API
-		unsigned int testPulseCount = 100;
-		std::cout << "Enabling test pulse injection on FEM (count=" << testPulseCount << ")" << std::endl;
-		this->asicControlTestPulseCountSet(testPulseCount);
+		std::cout << "Enabling test pulse injection on FEM (count=" << mMpx3TestPulseCount << ")" << std::endl;
+		this->asicControlTestPulseCountSet(mMpx3TestPulseCount);
 	}
 
-	// Set up the acquisition DMA controller and arm it
+	// Set up the acquisition DMA controller and arm it, based on operation mode
 	unsigned int dmaSize = this->asicReadoutDmaSize();
-	this->acquireConfig(ACQ_MODE_NORMAL, dmaSize, 0, 0);
+	u32 acqMode, numAcq = 0;
+	switch (mOperationMode)
+	{
+
+	case excaliburOperationModeNormal:
+		acqMode = ACQ_MODE_NORMAL;
+		numAcq = 0; // Let the acquire config command configure all buffers in this mode
+		break;
+
+	case excaliburOperationModeBurst:
+		acqMode = ACQ_MODE_BURST;
+		numAcq = mNumFrames;
+		break;
+
+	case excaliburOperationModeHistogram:
+		// Deliberate fall-thru as histogram mode not yet supported
+
+	default:
+		{
+			std::ostringstream msg;
+			msg << "Cannot start acquisition, illegal operation mode specified: " << mOperationMode;
+			throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalOperationMode, msg.str());
+		}
+		break;
+	}
+
+	this->acquireConfig(acqMode, dmaSize, 0, numAcq);
 	this->acquireStart();
+
+	clock_gettime(CLOCK_REALTIME, &acqInitTime);
 
 	// Set up counter depth for ASIC control based on current OMR settings
 	this->asicControlCounterDepthSet(mMpx3OmrParams[0].counterDepth);
@@ -288,28 +363,63 @@ void ExcaliburFemClient::startAcquisition(void)
 	// Set ASIC data reordering mode
 	this->rdmaWrite(0x30000001, mAsicDataReorderMode);
 
-	// Set ASIC mux select - TEMP hack for 1-chip system
-	this->asicControlMuxChipSelect(0);
-
 	// Set up the readout length in clock cycles for the ASIC control block
 	unsigned int readoutLengthCycles = this->asicReadoutLengthCycles();
 	this->asicControlReadoutLengthSet(readoutLengthCycles);
 
-	// Set up the OMR
+	// Set up OMR mode and execute command based on which counter is selected
+	mpx3OMRMode omrMode = (mpx3OMRMode)0;
+	unsigned int executeCmd = 0;
+	switch (mMpx3CounterSelect)
 	{
-		mpx3Omr theOmr = this->mpx3OMRBuild(0, readPixelMatrixC0);
-		this->asicControlOmrSet(theOmr);
+	case mpx3Counter0:
+		omrMode    = readPixelMatrixC0;
+		executeCmd = asicRunSequentialC0;
+		break;
+
+	case mpx3Counter1:
+		omrMode    = readPixelMatrixC1;
+		executeCmd = asicRunSequentialC1;
+		break;
+
+	default:
+		{
+			std::ostringstream msg;
+			msg << "Cannot start acquisition, illegal counter select specified: " << mMpx3CounterSelect;
+			throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalCounterSelect, msg.str());
+		}
+
+		break;
 	}
+
+	// Set up the OMR for readout using the first active chip to retrieve
+	// default values for OMR fields
+	mpx3Omr theOmr = this->mpx3OMRBuild(firstChipActive, omrMode);
+	std::cout << "OMR: 0x" << std::hex << theOmr.raw << std::dec << std::endl;
+	this->asicControlOmrSet(theOmr);
 
 	// Execute the acquisition, enabling test pulses if necessary
-	unsigned int theCommand = asicRunSequentialC0;
-	if (testPulseEnabled)
+	if (mMpx3GlobalTestPulseEnable)
 	{
-		theCommand |= asicTestPulseEnable;
+		executeCmd |= asicTestPulseEnable;
 	}
-	std::cout << "Sending execute command 0x" << std::hex << theCommand << std::dec << std::endl;
-	this->asicControlCommandExecute((asicControlCommand)theCommand);
+	std::cout << "Sending execute command 0x" << std::hex << executeCmd << std::dec << std::endl;
+	this->asicControlCommandExecute((asicControlCommand)executeCmd);
 
+	clock_gettime(CLOCK_REALTIME, &endTime);
+
+	double startSecs = startTime.tv_sec  + ((double)startTime.tv_nsec / 1.0E9);
+	double endSecs   = endTime.tv_sec  + ((double)endTime.tv_nsec / 1.0E9);
+	double recvSecs  = recvInitTime.tv_sec  + ((double)recvInitTime.tv_nsec / 1.0E9);
+	double acqSecs   = acqInitTime.tv_sec   + ((double)acqInitTime.tv_nsec / 1.0E9);
+
+	double elapsedSecs = endSecs - startSecs;
+	double elapsedRecv = recvSecs - startSecs;
+	double elapsedAcq  = acqSecs - startSecs;
+
+	std::cout << "Receiver thread init time  " << elapsedRecv << " secs" << std::endl;
+	std::cout << "Acq init time              " << elapsedAcq  << " secs" << std::endl;
+	std::cout << "startAcquisition call took " << elapsedSecs << " secs" << std::endl;
 }
 
 void ExcaliburFemClient::stopAcquisition(void)
@@ -344,45 +454,31 @@ void ExcaliburFemClient::externalTriggerSet(unsigned int aExternalTrigger)
 void ExcaliburFemClient::operationModeSet(unsigned int aOperationMode)
 {
 	// Store operation mode for use during acquisition start
-	mOperationMode = aOperationMode;
+	mOperationMode = (excaliburOperationMode)aOperationMode;
 }
 
 void ExcaliburFemClient::numFramesSet(unsigned int aNumFrames)
 {
-
-	// Store number of frames to be received locally for config phase
+	// Store number of frames to be received for use during acquisition start
 	mNumFrames = aNumFrames;
-
-	// Set up the number of frames for the receiver thread
-	//mFemDataReceiver.setNumFrames(aNumFrames);
-
-	// Set up the number of frames in the FEM
-	this->asicControlNumFramesSet(aNumFrames);
-
 }
 
 void ExcaliburFemClient::acquisitionPeriodSet(unsigned int aPeriodMs)
 {
-
+	// Store acquisition period for use during acquisition start
 	mAcquisitionPeriodMs = aPeriodMs;
-	// Set up the acquisition period for the receiver thread
-	//mFemDataReceiver.setAcquisitionPeriod(aPeriodMs);
-
-	// TODO - add FEM write transaction to set this in FEM too
 }
 
 void ExcaliburFemClient::acquisitionTimeSet(unsigned int aTimeMs)
 {
-
+	// Store acquisition time for use during acquisition start
 	mAcquisitionTimeMs = aTimeMs;
+}
 
-	// Set up the acquisition period for the receiver thread
-	//mFemDataReceiver.setAcquisitionTime(aTimeMs);
-
-	// Set up shutter in microseconds
-	unsigned long aTimeUs = aTimeMs * 1000;
-	this->asicControlShutterDurationSet(aTimeUs);
-
+void ExcaliburFemClient::numTestPulsesSet(unsigned int aNumTestPulses)
+{
+	// Store number of test pulses for use during acquisition start
+	mMpx3TestPulseCount = aNumTestPulses;
 }
 
 unsigned int ExcaliburFemClient::asicReadoutDmaSize(void)

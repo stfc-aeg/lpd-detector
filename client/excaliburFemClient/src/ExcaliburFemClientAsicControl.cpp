@@ -44,6 +44,21 @@ void ExcaliburFemClient::asicControlMuxChipSelect(unsigned int aChipIdx)
 
 }
 
+/** asicControlMuxSet - sets the ASIC control mux
+ *
+ * This function sets the ASIC control mux to the specified value, which is a
+ * bit mask of chips enabled in subsequent transactions. This is typically
+ * used to select which chips are enabled for readout.
+ *
+ * @param aMuxValue mux value to be set
+ */
+void ExcaliburFemClient::asicControlMuxSet(unsigned int aMuxValue)
+{
+	// Write generated value into ASIC control mux select register
+	this->rdmaWrite(kExcaliburAsicMuxSelect, (u32)aMuxValue);
+
+}
+
 /** asicControlCommandExecute - execute an ASIC command
  *
  * This function executes an ASIC by writing to the ASIC control
@@ -56,7 +71,7 @@ void ExcaliburFemClient::asicControlMuxChipSelect(unsigned int aChipIdx)
 void ExcaliburFemClient::asicControlCommandExecute(asicControlCommand aCommand)
 {
 
-	std::cout << "Command execute: 0x" << std::hex << aCommand << std::dec << std::endl;
+//	std::cout << "Command execute: 0x" << std::hex << aCommand << std::dec << std::endl;
 
 	// Execute the command by writing to the command word register
 	this->rdmaWrite(kExcaliburAsicControlReg, (u32)aCommand);
