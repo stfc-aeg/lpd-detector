@@ -15,6 +15,8 @@ static int translateFemErrorCode(FemErrorCode error);
 static void* lCtlHandle = NULL;
 static const CtlCallbacks* lCallbacks = NULL;
 
+const unsigned int kClientTimeoutMsecs = 10000;
+
 void* femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config)
 {
 
@@ -22,11 +24,7 @@ void* femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlCon
 	ExcaliburFemClient* theFem = NULL;
 	try
 	{
-		theFem = new ExcaliburFemClient(ctlHandle, callbacks, config);
-
-		// Temp hack to reset the ASIC control f/w block and ASICS
-		theFem->asicControlReset();
-		theFem->asicControlAsicReset();
+		theFem = new ExcaliburFemClient(ctlHandle, callbacks, config, kClientTimeoutMsecs);
 
 	}
 	catch (FemClientException& e)
@@ -114,6 +112,18 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 				}
 				break;
 
+			case FEM_OP_MPXIII_COUNTERSELECT:
+
+				if (size == 1)
+				{
+					theFem->mpx3CounterSelectSet((int)*value);
+				}
+				else
+				{
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
 			case FEM_OP_MPXIII_DACSENSE:
 
 				if (size == 1)
@@ -192,7 +202,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 			case FEM_OP_VDD_ON_OFF:
 
-				theFem->setFrontEndEnable((unsigned int)*value);
+				theFem->frontEndEnableSet((unsigned int)*value);
 				break;
 
 //			case FEM_OP_DAC_IN_TO_MEDIPIX:
@@ -215,21 +225,20 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 //				// Do nothing for now
 //				break;
 
-			default:
+			case FEM_OP_MEDIPIX_CHIP_DISABLE:
+
+				if (size == 1)
 				{
-					// TODO: remove this temporary hack of the address from chip ID and config ID
-					unsigned int address = 8000*chipId + id;
-
-					// Build a payload array from the parameters passed
-					std::vector<u32> payload(size);
-					for (unsigned int i = 0; i < (unsigned int)size; i++) {
-						payload[i] = *(value + i);
-					}
-					std::vector<u8>* payloadPtr = (std::vector<u8>*)&payload;
-
-					// Issue the write transaction
-					theFem->write(BUS_RAW_REG, WIDTH_LONG, address, *payloadPtr);
+					theFem->mpx3DisableSet((unsigned int)chipId, (unsigned int)*value);
 				}
+				else
+				{
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
+			default:
+				rc = FEM_RTN_UNKNOWNOPID;
 				break;
 			}
 		}
@@ -769,7 +778,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femGetFloat: " << e.what() << std::endl;
+			std::cerr << "Exception caught during femGetFloat with id=" << id << " : "<< e.what() << std::endl;
 			rc = translateFemErrorCode(e.which());
 		}
 
@@ -808,6 +817,13 @@ int femCmd(void* femHandle, int chipId, int id)
 		case FEM_OP_FREEALLFRAMES:
 			theFem->freeAllFrames();
 			break;
+
+		case 10:
+		{
+			FemAcquireStatus acqStatus = theFem->acquireStatus();
+			std::cout << "ACQ STATE = " << acqStatus.acquireState;
+		}
+		break;
 
 		default:
 			rc = FEM_RTN_UNKNOWNOPID;

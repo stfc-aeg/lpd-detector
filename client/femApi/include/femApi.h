@@ -113,6 +113,13 @@ void femClose(void* femHandle);
 #define FEM_RTN_UNKNOWNOPID 1
 #define FEM_RTN_ILLEGALCHIP 2
 #define FEM_RTN_BADSIZE 3
+#define FEM_RTN_INITFAILED 4
+
+/* Operation mode constants
+ */
+#define FEM_OPMODE_NORMAL 0
+#define FEM_OPMODE_BURST 1
+#define FEM_OPMODE_HISTOGRAM 2
 
 /* The operation identifiers for the get, set, cmd and signal functions.
  */
@@ -127,6 +134,7 @@ void femClose(void* femHandle);
 #define FEM_OP_MPXIII_COUNTERDEPTH 1001
 #define FEM_OP_MPXIII_EXTERNALTRIGGER 1002
 #define FEM_OP_MPXIII_OPERATIONMODE 1003
+#define FEM_OP_MPXIII_COUNTERSELECT 1004
 /* Medipix III per chip registers */
 #define FEM_OP_MPXIII_DACSENSE 2000
 #define FEM_OP_MPXIII_DACEXTERNAL 2001
@@ -211,6 +219,7 @@ void femClose(void* femHandle);
 #define FEM_OP_LOCAL_TEMP 4045
 #define FEM_OP_REMOTE_DIODE_TEMP 4046
 #define FEM_OP_MOLY_HUMIDITY 4047
+#define FEM_OP_MEDIPIX_CHIP_DISABLE 4048
 
 /* Ids 5000..5999 are signals */
 #define FEM_OP_ACQUISITIONCOMPLETE 5000
