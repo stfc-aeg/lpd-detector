@@ -108,8 +108,6 @@ int mySelfTest(XSysAce *InstancePtr)
 	}
 */
 
-	// END TERRIBLE DEBUGGING CODE
-
 	Xil_AssertNonvoid(InstancePtr != NULL);
 	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
 

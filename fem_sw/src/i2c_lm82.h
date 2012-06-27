@@ -70,7 +70,7 @@
 
 // ----------------------------------------------------------------------------
 
-void initLM82(int highTemp, int critTemp);
+int initLM82(int highTemp, int critTemp);
 u8 readStatus(void);
 int readTemp(u8 tempRegCmd);
 int readLocalTemp(void);

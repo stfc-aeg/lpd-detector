@@ -29,12 +29,14 @@ int initMailbox(void)
     return status;
 }
 
+
 /* Sends a configuration message to PPC1 to configure it for acquisition
  * This call will block until it receives a response from PPC1, unless
  * @param bufferSz size of segment to receive from *EACH I/O SPARTAN*
  * @param bufferCnt number of segments in capture
  * @param numAcq number of acquisitions
  * @param mode
+ *
  * @return 1 for ACK, 0 for NACK of command by PPC1, -1 on mailbox error
  */
 // TODO: Merge cmd/mode fields into single u32?
@@ -96,25 +98,12 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 	// TODO: Another return code, -1 for timeout?
 	return -1;
 
-	/*
-	// Wait for response from PPC1
-	XMbox_ReadBlocking(&mbox, buf, 4);		// Just 4 bytes, no sense using more
-	if (buf[0])
-	{
-		// ACK
-		return 1;
-	}
-	else
-	{
-		// NACK
-		return 0;
-	}
-	*/
-
 }
+
 
 /* Receives a confirmation message from PPC1 to confirm that it
  * is processing a config request (NOT that it has finished doing so!)
+ *
  * @return 1 if PPC1 confirms request or 0 if no message received before timeout
  */
 unsigned short acquireConfigAckReceive(void)

@@ -18,28 +18,10 @@
  */
 int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len)
 {
-	// According to datasheet, proper way to do a random access read at
-	// given memory address is:
-	// * Send device select as write
-	// * Write addr byte
-	// * Send repeated start
-	// * Send device select as read
-	// * Read byte (x1) - NOACK
-	// * Then normal read, len-1 (as you already got the first byte)
-
-	/*
-	numBytes  = XIic_Send(BADDR_I2C, slaveAddr, &addr, 1, XIIC_REPEATED_START);
-	numBytes  = XIic_Recv(BADDR_I2C, slaveAddr, pData, 1, XIIC_STOP);
-	numBytes += XIic_Recv(BADDR_I2C, slaveAddr, pData+1, dataLen-1, XIIC_STOP);
-	*/
-
-	// Great in theory but doesn't work (don't appear to issue stop after 1 byte read)
-
-	// Xilinx simply write the address to it then read, verified working on ML507 with Saleae logic
 	XIic_Send(BADDR_I2C_EEPROM, slaveAddr, &addr, 1, XIIC_STOP);
 	return XIic_Recv(BADDR_I2C_EEPROM, slaveAddr, pData, len, XIIC_STOP);
-
 }
+
 
 /**
  * Reads data from the M24C08 8K EEPROM on the FEM / development board
@@ -51,9 +33,9 @@ int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len)
  */
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len)
 {
-
 	return readEEPROM(IIC_ADDRESS_EEPROM, addr, pData, len);
 }
+
 
 /**
  * Writes data to the M24C08 8K EEPROM on the FEM / development board
@@ -79,10 +61,8 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 	// DELAY
 	usleep(EEPROM_WRITE_DELAY_MS*1000);
 
-	if (firstPage != lastPage)
+	if (firstPage != lastPage)		// Write spans pages
 	{
-		// Write spans pages
-
 		// Determine first write size
 		firstWriteSize = EEPROM_PAGE_SIZE - (addr%EEPROM_PAGE_SIZE);
 
@@ -101,7 +81,6 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		// Middle whole pages, if necessary
 		for (page=(firstPage+1); page<=(lastPage-1); page++)
 		{
-			// DELAY
 			usleep(EEPROM_WRITE_DELAY_MS*1000);
 			memcpy( &buffer[1], pData+(currentAddr-addr), EEPROM_PAGE_SIZE );
 			totalBytes += writeI2C( BADDR_I2C_EEPROM, IIC_ADDRESS_EEPROM, buffer, EEPROM_PAGE_SIZE+1 );
@@ -110,18 +89,14 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		}
 
 		// Last page
-		// DELAY
 		usleep(EEPROM_WRITE_DELAY_MS*1000);
 		memcpy( &buffer[1], pData+(currentAddr-addr), lastWriteSize );
 		totalBytes += writeI2C( BADDR_I2C_EEPROM, IIC_ADDRESS_EEPROM, buffer, lastWriteSize+1 );
 
 		return totalBytes;
 
-	} else {
-		// Write is to single page only
-
+	} else {			// Write is to single page only
 		memcpy( &buffer[1], pData, len);
-		// DELAY
 		usleep(EEPROM_WRITE_DELAY_MS*1000);
 		return writeI2C(BADDR_I2C_EEPROM, IIC_ADDRESS_EEPROM, buffer, len + 1);
 	}

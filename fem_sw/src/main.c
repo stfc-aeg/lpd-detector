@@ -345,7 +345,10 @@ int initHardware(void)
 
     // Show LM82 setpoints, and set them
     DBGOUT("initHardware: LM82 overheat limit %dc, shutdown limit %dc\r\n", femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint);
-    initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint);
+    if(!initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint))
+    {
+    	DBGOUT("initHardware: ERROR: Failed to init LM82 device!\r\n");
+    }
 
     // Read FPGA temp
     fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
@@ -353,6 +356,16 @@ int initHardware(void)
     if (fpgaTemp!=0 && lmTemp!=0)
     {
     	DBGOUT("initHardware: FPGA temp %dc, LM82 temp %dc\r\n", fpgaTemp, lmTemp);
+    }
+    else if (fpgaTemp==-1)
+    {
+    	DBGOUT("initHardware: ERROR - FPGA temperature read error!\r\n");
+    	// TODO: FEM error state
+    }
+    else if (lmTemp==-1)
+    {
+    	DBGOUT("initHardware: ERROR - LM82 temperature read error!\r\n");
+    	// TODO: FEM error state
     }
     else
     {

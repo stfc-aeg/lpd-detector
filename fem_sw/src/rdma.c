@@ -61,7 +61,8 @@ static XUartNs550_Config uartCfg;
 static XUartNs550Format uartFmt;
 
 /**
- * Initialises RDMA controller
+ * Initialise RDMA controller
+ *
  * @return one of XST_SUCCESS, XST_DEVICE_NOT_FOUND, XST_UART_BAUD_ERROR, XST_INVALID_PARAM
  */
 int initRdma(void)
@@ -100,8 +101,10 @@ int initRdma(void)
 	return XST_SUCCESS;
 }
 
+
 /**
  * Performs self test on UART and RDMA block
+ *
  * @return one of XST_SUCCESS, XST_UART_TEST_FAIL, XST_LOOPBACK_ERROR
  */
 int rdmaSelftest(void)
@@ -174,6 +177,7 @@ int readRdma(u32 addr, u32 *pVal)
 	*pVal = readVal;
 	return XST_SUCCESS;
 }
+
 
 /**
  * Writes 32bit RDMA register

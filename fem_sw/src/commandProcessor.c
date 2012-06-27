@@ -503,15 +503,9 @@ void commandProcessorThread()
 		j=0;
 		do
 		{
-			//DBGOUT("!");
-
-			//if (state[j].state!=STATE_COMPLETE)
 			if (state[j].state!=STATE_COMPLETE && !state[j].gotData)		// TODO: Test gotData timeout inhibit!
 			{
-
-				// Show timeout tick
 				//DBGOUT("T");
-
 				state[j].timeoutCount++;
 				if (state[j].timeoutCount > NET_DEFAULT_TIMEOUT_LIMIT)
 				{
@@ -871,7 +865,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 					{
 						for (i=0; i<*pRxPayload_32; i++)
 						{
-							//DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
 							*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*dataWidth));
 							//DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*dataWidth)));
 							responseSize += dataWidth;
@@ -895,7 +888,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 					{
 						// Neither R or W bits set, can't process request
 						DBGOUT("CmdDisp: Error, can't determine BUS_RAW_REG operation mode, status was 0x%x\r\n", state);
-
 						SBIT(state, STATE_NACK);
 						// TODO: Set FEM error state
 					}
@@ -908,7 +900,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					dataWidth = sizeof(u32);
 					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
 
-					if (CMPBIT(state, STATE_READ)) // READ OPERATION
+					if (CMPBIT(state, STATE_READ))
 					{
 
 						pRxPayload_32 = (u32*)pRxPayload;
@@ -928,7 +920,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 						SBIT(state, STATE_ACK);
 
 					}
-					else if (CMPBIT(state, STATE_WRITE)) // WRITE OPERATION
+					else if (CMPBIT(state, STATE_WRITE))
 					{
 						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
 						{
@@ -1093,13 +1085,13 @@ int validateHeaderContents(struct protocol_header *pHeader)
 			break;
 
 		case CMD_INTERNAL:
+			// TODO: Implement or remove!
 			//DBGOUT("validateHeader: CMD_INTERNAL not yet supported!\r\n");
 			return 0;
 			break;
 
 		case CMD_PERSONALITY:
-			// TODO - Implement CMD_PERSONALITY checks!
-			return 0;		// For the meantime, pass any packets to the personality modules...
+			return validateHeaderContents(pHeader);
 			break;
 
 		case CMD_UNSUPPORTED:
@@ -1124,16 +1116,15 @@ int validateHeaderContents(struct protocol_header *pHeader)
  */
 void flushSocket(int sock, void *mem, int len)
 {
-	DBGOUT("flushSocket: Starting flush...\r\n");
+	//DBGOUT("flushSocket: Starting flush...\r\n");
 	int numBytesRead = len;
 	int totalBytes = 0;
 	while (len==numBytesRead)
 	{
 		numBytesRead = lwip_read(sock, mem, len);
 		totalBytes+=numBytesRead;
-		//DBGOUT("flushSocket: Flushed %d bytes...\r\n", numBytesRead);
 	}
-	DBGOUT("flushSocket: Flush complete, flushed %d bytes.\r\n", totalBytes);
+	//DBGOUT("flushSocket: Flush complete, flushed %d bytes.\r\n", totalBytes);
 }
 
 

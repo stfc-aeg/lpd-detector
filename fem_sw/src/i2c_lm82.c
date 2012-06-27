@@ -11,8 +11,10 @@
  * Initialises LM82 system monitor chip with high and critical setpoints
  * @param highTemp high temperature setpoint, in degrees celcius
  * @param critTemp critical (shutdown) temperature setpoint, in degrees celcius
+ *
+ * @return 0 on success, -1 on error
  */
-void initLM82(int highTemp, int critTemp)
+int initLM82(int highTemp, int critTemp)
 {
 	unsigned int numBytes = 0;
 	unsigned int payloadSize = 0;
@@ -25,7 +27,7 @@ void initLM82(int highTemp, int critTemp)
 	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
-		// TODO: Error
+		return -1;
 	}
 
 	// Set T_CRIT setpoint to something sensible (power-on default is 127c!)
@@ -40,7 +42,7 @@ void initLM82(int highTemp, int critTemp)
 	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
-		// TODO: Error
+		return -1;
 	}
 
 	// Set HIGH setpoint
@@ -50,10 +52,13 @@ void initLM82(int highTemp, int critTemp)
 	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
-		// TODO: Error
+		return -1;
 	}
 
+	// All OK!
+	return 0;
 }
+
 
 /**
  * Reads status register of LM82 device
@@ -70,11 +75,12 @@ u8 readStatus(void)
 	return stat;
 }
 
+
 /**
  * Reads either the local(LM82) or remote(FPGA) temperature
  * @param tempRegCmd either LM82_REG_READ_LOCAL_TEMP or LM82_REG_READ_REMOTE_TEMP
  *
- * @return temperature in degrees celcius
+ * @return temperature in degrees celcius, or -1 if an error occured
  */
 int readTemp(u8 tempRegCmd)
 {
@@ -85,19 +91,20 @@ int readTemp(u8 tempRegCmd)
 	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, &tempRegCmd, 1);
 	if (numBytes<1)
 	{
-		// TODO: Error
+		return -1;
 	}
 
 	// Grab data byte from slave
 	numBytes = readI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, &rawVal, 1);
 	if (numBytes<1)
 	{
-		// TODO: Error
+		return -1;
 	}
 
 	return convertTemperature(rawVal);
 
 }
+
 
 /**
  * Reads LM82 temperature
@@ -108,6 +115,7 @@ int readLocalTemp(void)
 	return readTemp(LM82_REG_READ_LOCAL_TEMP);
 }
 
+
 /**
  * Reads FPGA temperature
  * @return temperature in degrees celcius
@@ -116,6 +124,7 @@ int readRemoteTemp(void)
 {
 	return readTemp(LM82_REG_READ_REMOTE_TEMP);
 }
+
 
 /**
  * Converts a raw reading from an LM82 (8bit 2s compliment) to degrees celcius
@@ -127,8 +136,7 @@ int convertTemperature(u8 rawVal)
 {
 	int temp;
 
-	// Check MSB for sign bit
-	if (rawVal & 0x80)
+	if (rawVal & 0x80)		// Check MSB for sign bit
 	{
 		// Negative
 		temp = ((int)~rawVal) + 1;

@@ -8,6 +8,8 @@
 #include "test.h"
 #include "rdma.h"
 
+// TODO: Tidy up / test this or remove it!
+
 /*
  * Test routine for various hardware components
  * @param bitmask an 8-bit bitmask that controls which tests are run
