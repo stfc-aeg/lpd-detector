@@ -20,7 +20,7 @@
 
 // Compile time switches
 //#define VERBOSE_DEBUG			1			//! Verbose output during acquire loop
-#define DEBUG_BD				1			//! Outputs DMA BDs as received
+//#define DEBUG_BD				1			//! Outputs DMA BDs as received
 
 // DMA timing tuning - these specify how many RX or TX descriptors are requested / sent per loop.
 #define LL_DMA_RX_NUM_BD_PER_LOOP		1			//! Valid values are 1...XLLDMA_ALL_BDS
@@ -211,7 +211,6 @@ int main()
     unsigned short ackOK = 0;
 
 	// Data counters
-    // TODO: These don't all need to be u64!
     unsigned short numUploadTx = 0;		// Number of configuration upload BDs
     u64 numTopAsicRx = 0;				// Number of RXes from top ASIC in current loop
     u64 numBotAsicRx = 0;				// Number of RXes from bottom ASIC in current loop
@@ -288,9 +287,6 @@ int main()
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
 
-    	// Debugging - CAUTION ENABLING THIS WILL CAUSE ACK TO FAIL DUE TO TIMEOUT
-    	//printf("[INFO ] Got message!  cmd=0x%08x, buffSz=0x%08x, buffCnt=0x%08x, modeParam=%d, mode=%d\r\n",	(unsigned)pMsg->cmd, (unsigned)pMsg->buffSz, (unsigned)pMsg->buffCnt, (unsigned)pMsg->param, (unsigned)pMsg->mode );
-
     	switch(pMsg->cmd)
     	{
 
@@ -324,11 +320,11 @@ int main()
     			break;
 
     		case ACQ_MODE_BURST:
-    			print("[INFO ] Received ACQ_MODE_BURST, starting in ACQ_RX_ONLY mode...\r\n");		// Same initial set up but just let user know we know it's burst mode really!
+    			//print("[INFO ] Received ACQ_MODE_BURST, starting in ACQ_RX_ONLY mode...\r\n");		// Same initial set up but just let user know we know it's burst mode really!
     		case ACQ_MODE_RX_ONLY:
     			doTx = 0;
     			doRx = 1;
-    			print("[INFO ] Using ACQ_MODE_RX_ONLY.\r\n");
+    			//print("[INFO ] Using ACQ_MODE_RX_ONLY.\r\n");
     			pStatusBlock->state = STATE_CFG_BSY;
     			status = configureBdsForAcquisition(pBdRings, &pTenGigPreHW, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			pStatusBlock->state = STATE_IDLE;
@@ -337,7 +333,7 @@ int main()
     		case ACQ_MODE_TX_ONLY:
     			doTx = 1;
     			doRx = 0;
-    			print("[INFO ] Using ACQ_MODE_TX_ONLY.\r\n");
+    			//print("[INFO ] Using ACQ_MODE_TX_ONLY.\r\n");
     			pStatusBlock->state = STATE_CFG_BSY;
     			status = configureBdsForAcquisition(pBdRings, &pTenGigPreHW, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
     			pStatusBlock->state = STATE_IDLE;
@@ -374,7 +370,7 @@ int main()
 
 		case CMD_ACQ_START:
 
-			printf("[INFO ] Starting acquisition, mode %d!\r\n", (int)lastMode);
+			//printf("[INFO ] Starting acquisition, mode %d!\r\n", (int)lastMode);
 			switch(lastMode)
 			{
 			case ACQ_MODE_NORMAL:
@@ -383,7 +379,7 @@ int main()
 			case ACQ_MODE_TX_ONLY:
 
 				pStatusBlock->state = STATE_ACQ_NORMAL;
-				printf("[INFO ] Entering acquire DMA event loop\r\n");
+				//printf("[INFO ] Entering acquire DMA event loop\r\n");
 
 				// Reset BRAM struct
 			    pStatusBlock->readPtr = 0;
@@ -412,7 +408,7 @@ int main()
 	    	    // Quick fix for doTx
 	    	    if (lastMode == ACQ_MODE_TX_ONLY)
 	    	    {
-	    	    	printf("[DEBUG] ACQ_MODE_TX_ONLY detected, setting TX count to %d\r\n", (int)pStatusBlock->numAcq);
+	    	    	//printf("[DEBUG] ACQ_MODE_TX_ONLY detected, setting TX count to %d\r\n", (int)pStatusBlock->numAcq);
 	    	    	numRxPairsToSend = pStatusBlock->numAcq;
 	    	    }
 
@@ -694,15 +690,14 @@ int main()
 								doRx = 0;
 								doTx = 1;
 								numRxPairsToSend = pStatusBlock->numAcq;		// Queue all RX to be TXed
-								printf("[DEBUG] Got %d events and using ACQ_MODE_BURST, disabling RX and enabling TX (%d pairs)!\r\n", (int)pStatusBlock->numAcq, (int)numRxPairsToSend);
+								//printf("[DEBUG] Got %d events and using ACQ_MODE_BURST, disabling RX and enabling TX (%d pairs)!\r\n", (int)pStatusBlock->numAcq, (int)numRxPairsToSend);
 							}
 							else
 							{
 								// Burst mode, completed TX
-								// TODO: Fix this logic, evaluated every loop on TX
 								if (pStatusBlock->numAcq==(pStatusBlock->totalSent/2))
 								{
-									print("[DEBUG] Burst mode halting...\r\n");
+									//print("[DEBUG] Burst mode halting...\r\n");
 									pStatusBlock->state = STATE_ACQ_STOPPING;
 								}
 							}
@@ -710,7 +705,7 @@ int main()
 						else
 						{
 							// Any other mode, we're finished so stop acquiring
-							printf("[DEBUG] Got %d events, stopping...\r\n", (int)pStatusBlock->numAcq);
+							//printf("[DEBUG] Got %d events, stopping...\r\n", (int)pStatusBlock->numAcq);
 							pStatusBlock->state = STATE_ACQ_STOPPING;
 						}
 					}
@@ -727,7 +722,7 @@ int main()
 						if (	pStatusBlock->totalRecvTop + pStatusBlock->totalRecvBot == pStatusBlock->totalSent &&
 								pStatusBlock->totalRecvTop == pStatusBlock->totalRecvBot )
 						{
-							print("[INFO ] Stop OK.\r\n");
+							//print("[INFO ] Stop OK.\r\n");
 							pStatusBlock->state = STATE_IDLE;
 							acquireRunning = 0;
 
@@ -746,9 +741,9 @@ int main()
 				    	    printf("[DEBUG] numTenGigTxComplete=%d\r\n", (int)numTenGigTxComplete);
 				    	    print("[-----]\r\n");
 				    	    */
-				    	    printf("[DEBUG] pStat->totalRecvTop=%d\r\n", (int)pStatusBlock->totalRecvTop);
-				    	    printf("[DEBUG] pStat->totalRecvBot=%d\r\n", (int)pStatusBlock->totalRecvBot);
-				    	    printf("[DEBUG] pStat->totalSent=%d\r\n", (int)pStatusBlock->totalSent);
+				    	    //printf("[DEBUG] pStat->totalRecvTop=%d\r\n", (int)pStatusBlock->totalRecvTop);
+				    	    //printf("[DEBUG] pStat->totalRecvBot=%d\r\n", (int)pStatusBlock->totalRecvBot);
+				    	    //printf("[DEBUG] pStat->totalSent=%d\r\n", (int)pStatusBlock->totalSent);
 				    	    // *****************************************************
 
 						}
@@ -779,12 +774,12 @@ int main()
 						{
 						case CMD_ACQ_STOP:
 							// Triggers a stop next cycle of event loop
-							print("[INFO ] Got stop acquire message, trying to stop...\r\n");
+							//print("[INFO ] Got stop acquire message, trying to stop...\r\n");
 							pStatusBlock->state = STATE_ACQ_STOPPING;
 							break;
 
 						default:
-							print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
+							//print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
 							break;
 						}
 					}
@@ -802,7 +797,7 @@ int main()
 
 					pStatusBlock->state = STATE_ACQ_UPLOAD;
 
-					printf("[INFO ] Sending %d configuration upload TXes...\r\n", (int)pStatusBlock->numConfigBds);
+					//printf("[INFO ] Sending %d configuration upload TXes...\r\n", (int)pStatusBlock->numConfigBds);
 
 					// Send TX BDs to hardware control
 					status = XLlDma_BdRingToHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, pConfigBd);
@@ -836,7 +831,7 @@ int main()
 
 					}
 
-					printf("[INFO ] Verified %d config. upload BD(s) OK!\r\n", (int)pStatusBlock->numConfigBds);
+					//printf("[INFO ] Verified %d config. upload BD(s) OK!\r\n", (int)pStatusBlock->numConfigBds);
 
 					// Subsequent calls to start configure will fail because we moved pConfigBd, so this prevents a config operation running again
 					pStatusBlock->numConfigBds = 0;
@@ -845,7 +840,7 @@ int main()
 				}
 				else
 				{
-					print("[INFO ] Received CMD_ACQ_START for ACQ_MODE_UPLOAD, but no configured upload BDs (or already uploaded)!  Ignoring...\r\n");
+					//print("[INFO ] Received CMD_ACQ_START for ACQ_MODE_UPLOAD, but no configured upload BDs (or already uploaded)!  Ignoring...\r\n");
 				}
 
 				break;
@@ -855,7 +850,7 @@ int main()
     	    // TODO: Parse result from sendAcquireAckMessage
     	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-			printf("[INFO ] Not doing anything with stop acquire command.\r\n");
+			//printf("[INFO ] Not doing anything with stop acquire command.\r\n");
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			break;
 
@@ -921,13 +916,13 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 			return XST_FAILURE;
 		}
 	}
-	printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)bufferCnt, (unsigned)bufferSz);
+	//printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)bufferCnt, (unsigned)bufferSz);
 
 	// Check if we can re-use BDs to save time configuring them
 	// i.e. !dirty, size matched last run and count is equal or smaller than last run
 	if ( !pStatusBlock->bufferDirty && (bufferSz==pStatusBlock->bufferSize && (bufferCnt<=pStatusBlock->bufferCnt)) )
 	{
-		printf("[INFO ] Parameters for buffer size and count match last configuration, reusing existing BDs!\r\n");
+		//printf("[INFO ] Parameters for buffer size and count match last configuration, reusing existing BDs!\r\n");
 
 		status = startAcquireEngines(pRingAsicTop, pRingAsicBot, pRingTenGig);
 		if (status!=XST_SUCCESS)
@@ -940,15 +935,15 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	}
 
 	// Create BD rings of appropriate size
-	// TODO: Should we have an assert to make sure we don't exceed our allocated space (doing so will overwrite PPC2 code!)
+	// TODO: Add assert to make sure we don't exceed our allocated space (doing so will overwrite PPC2 code!)
 	u32 bdChunkSize =			XLLDMA_BD_MINIMUM_ALIGNMENT * bufferCnt;			// Total space required for all BDs for a given channel
 	u32 topAsicRXBdOffset =		LL_BD_BADDR;
 	u32 botAsicRXBdOffset =		topAsicRXBdOffset + bdChunkSize;
 	u32 tenGigTXBdOffset =		botAsicRXBdOffset + bdChunkSize;
-	printf("[INFO ] BDs: \r\n");
-	printf("[INFO ] TopASIC      0x%08x\r\n", (unsigned)topAsicRXBdOffset);
-	printf("[INFO ] Bottom ASIC  0x%08x\r\n", (unsigned)botAsicRXBdOffset);
-	printf("[INFO ] TenGig       0x%08x\r\n", (unsigned)tenGigTXBdOffset);
+	//printf("[INFO ] BDs: \r\n");
+	//printf("[INFO ] TopASIC      0x%08x\r\n", (unsigned)topAsicRXBdOffset);
+	//printf("[INFO ] Bottom ASIC  0x%08x\r\n", (unsigned)botAsicRXBdOffset);
+	//printf("[INFO ] TenGig       0x%08x\r\n", (unsigned)tenGigTXBdOffset);
 
 	status = XLlDma_BdRingCreate(pRingAsicTop, topAsicRXBdOffset, topAsicRXBdOffset, LL_DMA_ALIGNMENT, bufferCnt);
 	if (status!=XST_SUCCESS)
@@ -972,7 +967,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		return status;
 	}
 
-	printf("[INFO ] Created BD rings w/%d buffers each.\r\n", (int)bufferCnt);
+	//printf("[INFO ] Created BD rings w/%d buffers each.\r\n", (int)bufferCnt);
 
 
 	// Configure BDs in rings
@@ -999,7 +994,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		return status;
 	}
 
-	print("[INFO ] Starting BD configuration...\r\n");
+	//print("[INFO ] Starting BD configuration...\r\n");
 
 	// Pass back a pointer to the first TX BD
 	*pFirstTxBd = pTXBd;
@@ -1054,7 +1049,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		currentOffset += bufferSz;
 	}
 
-	print("[INFO ] Completed BD configuration!\r\n");
+	//print("[INFO ] Completed BD configuration!\r\n");
 
 	// Commit all RX BDs to DMA engines
 	status = XLlDma_BdRingToHw(pRingAsicTop, bufferCnt, pTopFirstBd);
@@ -1078,7 +1073,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 		return status;
 	}
 
-	print("[INFO ] Committed BDs to HW and started DMA engines!\r\n");
+	//print("[INFO ] Committed BDs to HW and started DMA engines!\r\n");
 
 	// Update status
 	pStatusBlock->bufferCnt = bufferCnt;
@@ -1112,7 +1107,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 	}
 
 	u32 bdStartAddr = LL_BD_BADDR + LL_BD_SZ - (LL_MAX_CONFIG_BD * LL_DMA_ALIGNMENT);
-	printf("[INFO ] Creating %d config BDs at 0x%08x (%d max.)\r\n", (int)bufferCnt, (unsigned)bdStartAddr, LL_MAX_CONFIG_BD);
+	//printf("[INFO ] Creating %d config BDs at 0x%08x (%d max.)\r\n", (int)bufferCnt, (unsigned)bdStartAddr, LL_MAX_CONFIG_BD);
 
 	// Create BD ring & BD
 	status = XLlDma_BdRingCreate(pUploadBdRing, bdStartAddr, bdStartAddr, LL_DMA_ALIGNMENT, bufferCnt);
@@ -1152,15 +1147,6 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 		print("[ERROR] Can't start config TX engine, no initialised BDs!\r\n");
 		return status;
 	}
-
-	// Generate test pattern at a fixed memory address
-	/*
-	u32 testPatternAddr = 0x30000000;
-	u32 testPatternLen = 0x18000;		// In bytes!
-	u32 testPatternPat = 0xAEAEAEAE;
-	printf("[INFO ] Generating test pattern 0x%08x at 0x%08x, 0x%08x bytes in length.\r\n", (unsigned)testPatternPat, (unsigned)testPatternAddr, (unsigned)testPatternLen);
-	status = Xil_TestMem32((u32*)testPatternAddr, testPatternLen/4, testPatternPat, XIL_TESTMEM_FIXEDPATTERN);
-	*/
 
 	return XST_SUCCESS;
 }
