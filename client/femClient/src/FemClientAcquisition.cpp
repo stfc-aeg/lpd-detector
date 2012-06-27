@@ -7,7 +7,7 @@
 
 #include "FemClient.h"
 #include "FemException.h"
-
+#include "FemClientAcquisition.h"
 
 void FemClient::acquireConfig(u32 aAcqMode, u32 aBufferSize, u32 aBufferCount, u32 aNumAcq)
 {
@@ -28,7 +28,11 @@ void FemClient::acquireStop(void)
 	this->commandAcquire(CMD_ACQ_STOP, NULL);
 }
 
-void FemClient::acquireStatus(void)
+FemAcquireStatus FemClient::acquireStatus(void)
 {
-	this->commandAcquire(CMD_ACQ_STATUS, NULL);
+	std::vector<u8> acqResponse = this->commandAcquire(CMD_ACQ_STATUS, NULL);
+
+	FemAcquireStatus acqStatus = *((FemAcquireStatus*)&(acqResponse[4]));
+
+	return acqStatus;
 }

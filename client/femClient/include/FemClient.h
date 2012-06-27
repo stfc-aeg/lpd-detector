@@ -15,6 +15,7 @@
 #include <boost/asio/deadline_timer.hpp>
 #include "FemTransaction.h"
 #include "FemException.h"
+#include "FemClientAcquisition.h"
 
 using boost::asio::ip::tcp;
 
@@ -77,7 +78,7 @@ public:
 	// end of added for zero copy
 	
 	virtual void command(unsigned int command);
-	void commandAcquire(unsigned int aAcqCommand, protocol_acq_config* apConfig=0);
+	std::vector<u8> commandAcquire(unsigned int aAcqCommand, protocol_acq_config* apConfig=0);
 
 	std::size_t send(FemTransaction aTrans);
 	FemTransaction receive(void);
@@ -102,7 +103,7 @@ public:
 	void acquireConfig(u32 aAcqMode, u32 aBufferSize, u32 aBufferCount, u32 aNumAcq);
 	void acquireStart(void);
 	void acquireStop(void);
-	void acquireStatus(void);
+	FemAcquireStatus acquireStatus(void);
 
 	void runIoService(void); // test function
 
