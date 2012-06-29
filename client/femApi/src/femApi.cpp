@@ -821,7 +821,21 @@ int femCmd(void* femHandle, int chipId, int id)
 		case 10:
 		{
 			FemAcquireStatus acqStatus = theFem->acquireStatus();
-			std::cout << "ACQ STATE = " << acqStatus.acquireState;
+			std::cout << "Acquisition status" << std::endl;
+			std::cout << "------------------" << std::endl;
+			std::cout << "   State            : "   << acqStatus.state << std::endl;
+			std::cout << "   Buffer count     : 0x" << std::hex << acqStatus.bufferCnt << std::dec << std::endl;
+			std::cout << "   Buffer size      : 0x" << std::hex << acqStatus.bufferSize << std::dec << std::endl;
+			std::cout << "   Buffer dirty     : "   << acqStatus.bufferDirty << std::endl;
+			std::cout << "   Read pointer     : 0x" << std::hex << acqStatus.readPtr << std::dec << std::endl;
+			std::cout << "   Write pointer    : 0x" << std::hex << acqStatus.writePtr << std::dec << std::endl;
+			std::cout << "   Number of acqs   : "   << acqStatus.numAcq << std::endl;
+			std::cout << "   Configured BDs   : "   << acqStatus.numConfigBds << std::endl;
+			std::cout << "   Total RX bottom  : "   << acqStatus.totalRecvBot << std::endl;
+			std::cout << "   Total RX top     : "   << acqStatus.totalRecvTop << std::endl;
+			std::cout << "   Total TX sent    : "   << acqStatus.totalSent << std::endl;
+			std::cout << "   Total errors     : "   << acqStatus.totalErrors << std::endl;
+
 		}
 		break;
 

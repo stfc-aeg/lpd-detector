@@ -22,6 +22,7 @@ int testDacs(void* femHandle);
 int testPixelConfig(void* femHandle);
 int testReadEfuseIds(void* femHandle);
 int testAcquisitionLoop(void* femHandle, unsigned int numFrames);
+int testAcquireStatus(void* femHandle);
 
 // Forward declaration of callback functions to simulate WP5 callbacks
 static CtlFrame* allocateCallback(void* ctlHandle);
@@ -59,6 +60,7 @@ int main(int argc, char* argv[]) {
 	CtlConfig femConfig;
 	femConfig.femAddress = argv[1];
 	femConfig.femPort = atoi(argv[2]);
+	femConfig.femNumber = 1;
 
 	// Create a callback structure to pass to the FEM client
 	CtlCallbacks femCallbacks;
@@ -85,7 +87,8 @@ int main(int argc, char* argv[]) {
 //	numPassed += testDacs(femHandle);
 //	numPassed += testPixelConfig(femHandle);
 //	numPassed += testReadEfuseIds(femHandle);
-	numPassed += testAcquisitionLoop(femHandle, numFrames);
+//	numPassed += testAcquisitionLoop(femHandle, numFrames);
+	numPassed += testAcquireStatus(femHandle);
 
 	printf("Hit return to quit ... ");
 	getchar();
@@ -624,6 +627,14 @@ int testAcquisitionLoop(void* femHandle, unsigned int numFrames)
 
 	return passed;
 
+}
+
+int testAcquireStatus(void* femHandle)
+{
+	int rc;
+	rc = femCmd(femHandle, 0, 10);
+
+	return 1;
 }
 
 CtlFrame* allocateCallback(void* ctlHandle)
