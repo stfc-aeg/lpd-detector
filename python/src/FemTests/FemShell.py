@@ -649,12 +649,13 @@ Example:
         Sends acquire command to the DMA controller of the FEM
         Syntax: acquire [config <mode> <bufSize> <bufNum> <numAcqs>|start|stop|status] 
         where config params are:
-           mode    : normal, burst, rx, tx or upload
-           bufSize : buffer size to set up
-           bufNum  : number of buffers to set up (0=maximise in memory)
-           numAcqs : number of images acquisitions to run
+           mode     : normal, burst, rx, tx or upload
+           bufSize  : buffer size to set up
+           bufNum   : number of buffers to set up (0=maximise in memory)
+           numAcqs  : number of images acquisitions to run
+           coalesce : number of RXed images to coalesce before TX
            
-        N.B. start, stop and status commands require no addiotnal parameters
+        N.B. start, stop and status commands require no additional parameters
         '''
         
         params = s.split()
@@ -669,13 +670,14 @@ Example:
         bufSize  = None
         bufCount = None
         numAcqs  = None
+        coalesce = None
         
         acqCommand = string.lower(params[0])
         
         if acqCommand == 'config':
             
-            # Need an additional four parameters (mode, size, count, numAcqs)          
-            if len(params) < 5:
+            # Need an additional five parameters (mode, size, count, numAcqs, coalesce)          
+            if len(params) < 6:
                 print "*** Invalid number of arguments for acquire configuration", len(params)
                 return
             
@@ -695,8 +697,9 @@ Example:
                 bufSize  = int(params[2], 0)
                 bufCount = int(params[3], 0)
                 numAcqs  = int(params[4], 0)
+                coalesce = int(params[5], 0)
             except ValueError:
-                print "*** buffer size, count and numAcq parameters must be integer"
+                print "*** buffer size, count, numAcq and coalesce parameters must be integer"
                 return
                         
         elif acqCommand == 'start':
@@ -721,18 +724,42 @@ Example:
             return
         try:
             
-            ack = self.__class__.connectedFem.acquireSend(cmd, mode, bufSize, bufCount, numAcqs)
+            ack = self.__class__.connectedFem.acquireSend(cmd, mode, bufSize, bufCount, numAcqs, coalesce)
             
             if acqCommand == 'status':
                 
                 if ack[0] == 0:
                     
-                    status = ack[1]
+                    status       = ack[1]
+                    bufCount     = ack[2]
+                    bufSize      = ack[3]
+                    bufDirty     = ack[4]
+                    readPtr      = ack[5]
+                    writePtr     = ack[6]
+                    numAcqs      = ack[7]
+                    numBds       = ack[8]
+                    totalRecvTop = ack[9]
+                    totalRecvBot = ack[10]
+                    totalSent    = ack[11]
+                    totalErrors  = ack[12]
+                    
                     if FemShell.acqStatusEncoding.has_key(status):
                         statusStr = FemShell.acqStatusEncoding[status]
                     else:
                         statusStr = 'UNKNOWN STATUS:', status
-                    print "    Status         :", statusStr
+                        
+                    print "    Status          :", statusStr
+                    print "    Buffer count    :", hex(ack[2])
+                    print "    Buffer size     :", hex(ack[3])
+                    print "    Buffer dirty    :", bufDirty
+                    print "    Read pointer    :", hex(readPtr)
+                    print "    Write pointer   :", hex(writePtr)
+                    print "    Number of acqs  :", numAcqs
+                    print "    Configured BDs  :", numBds
+                    print "    Total recvd top :", totalRecvTop
+                    print "    Total recvd bot :", totalRecvBot
+                    print "    Total sent      :", totalSent
+                    print "    Total errors    :", totalErrors
                     
                 else:
                     print "Got bad ACK on acquire status command from FEM:", ack[0]  

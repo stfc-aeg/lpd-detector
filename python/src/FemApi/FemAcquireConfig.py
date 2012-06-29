@@ -11,9 +11,9 @@ class FemAcquireConfig():
     FEM acquire configuration payload 
     '''
 
-    configFormat = '!IIII'
+    configFormat = '!IIIII'
 
-    def __init__(self, mode=None, bufSize=None, bufCount=None, numAcq=None, encoded=None):
+    def __init__(self, mode=None, bufSize=None, bufCount=None, numAcq=None, coalesce=None, encoded=None):
         '''
         Constructor
         '''
@@ -21,7 +21,7 @@ class FemAcquireConfig():
         if encoded:
             
             self.encoded = encoded
-            (self.mode, self.bufSize, self.bufCount, self.numAcq) = struct.unpack(FemAcquireConfig.configFormat, encoded)
+            (self.mode, self.bufSize, self.bufCount, self.numAcq, self.coalesce) = struct.unpack(FemAcquireConfig.configFormat, encoded)
             
         else:
             
@@ -29,6 +29,7 @@ class FemAcquireConfig():
             self.bufSize  = bufSize
             self.bufCount = bufCount
             self.numAcq   = numAcq 
+            self.coalesce = coalesce
             
             self.encode()
             
@@ -42,7 +43,7 @@ class FemAcquireConfig():
     
     def getConfig(self):
         
-        config = [self.mode, self.bufSize, self.bufCount, self.numAcq]
+        config = [self.mode, self.bufSize, self.bufCount, self.numAcq, self.coalesce]
         return config
     
     def __str__(self):
@@ -50,7 +51,8 @@ class FemAcquireConfig():
         showStr = 'Mode         : ' + str(self.mode)     + '\n' + \
                   'Buffer size  : ' + hex(self.bufSize)  + '\n' + \
                   'Buffer count : ' + str(self.bufCount) + '\n' + \
-                  'Num acquires : ' + str(self.numAcq)   + '\n'
+                  'Num acquires : ' + str(self.numAcq)   + '\n' + \
+                  'Coalesce     : ' + str(self.coalesce) + '\n'
                   
         return showStr
     
@@ -64,8 +66,12 @@ if __name__ == '__main__':
     testBufSize  = 0x1234
     testBufCount = 64
     testNumAcqs  = 100
+    testCoalesce = 1
     
-    testAcqConfig = FemAcquireConfig(testMode, testBufSize, testBufCount, testNumAcqs)
+    testAcqConfig = FemAcquireConfig(testMode, testBufSize, testBufCount, testNumAcqs, testCoalesce)
+    
+    print "Test acquire config parameters:"
+    print testAcqConfig
     testPacked    = testAcqConfig.encode()
     print "Packed acq config:", binascii.hexlify(testPacked)
     

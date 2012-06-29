@@ -158,12 +158,12 @@ class FemClient(object):
         values = self.read(bus, width, theAddr, theReadLen)
         return values
     
-    def acquireSend(self, theCmd, theMode=None, theBufSize=None, theBufCount=None, theNumAcqs=None):
+    def acquireSend(self, theCmd, theMode=None, theBufSize=None, theBufCount=None, theNumAcqs=None, theCoalesce=None):
         
         payload=None
         
         if theCmd == FemTransaction.CMD_ACQ_CONFIG:
-            acqConfig = FemAcquireConfig(theMode, theBufSize, theBufCount, theNumAcqs)
+            acqConfig = FemAcquireConfig(theMode, theBufSize, theBufCount, theNumAcqs, theCoalesce)
             payload = acqConfig.decode()
             pass       
         
