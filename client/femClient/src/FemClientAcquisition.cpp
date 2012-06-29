@@ -9,10 +9,10 @@
 #include "FemException.h"
 #include "FemClientAcquisition.h"
 
-void FemClient::acquireConfig(u32 aAcqMode, u32 aBufferSize, u32 aBufferCount, u32 aNumAcq)
+void FemClient::acquireConfig(u32 aAcqMode, u32 aBufferSize, u32 aBufferCount, u32 aNumAcq, u32 aBdCoalesce)
 {
 
-	protocol_acq_config config = { aAcqMode, aBufferSize, aBufferCount, aNumAcq };
+	FemAcquireConfiguration config = { aAcqMode, aBufferSize, aBufferCount, aNumAcq, aBdCoalesce };
 
 	this->commandAcquire(CMD_ACQ_CONFIG, &config);
 }

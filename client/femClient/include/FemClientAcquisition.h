@@ -18,11 +18,8 @@ typedef enum
 
 } FemAcquireState;
 
-typedef struct
-{
-	u32 acquireState;
-
-} FemAcquireStatus;
+typedef protocol_acq_config FemAcquireConfiguration;
+typedef acqStatusBlock FemAcquireStatus;
 
 
 #endif /* FEMCLIENTACQUISITION_H_ */

@@ -395,7 +395,7 @@ void FemClient::command(unsigned int aCommand)
  * @param aAcqCommand the FEM command to be sent
  * @param apConfig pointer to protocol_acq_config structure to be sent as payload if any
  */
-std::vector<u8> FemClient::commandAcquire(unsigned int aAcqCommand, protocol_acq_config* apConfig)
+std::vector<u8> FemClient::commandAcquire(unsigned int aAcqCommand, FemAcquireConfiguration* apConfig)
 {
 
 	// Create an acquire command transaction based on the specified command and config structure.
@@ -403,7 +403,7 @@ std::vector<u8> FemClient::commandAcquire(unsigned int aAcqCommand, protocol_acq
 	FemTransaction request(CMD_ACQUIRE, 0, WIDTH_LONG, 0, aAcqCommand); //, (u8*)apConfig, configPayloadSize);
 	if (apConfig != NULL)
 	{
-		request.appendPayload((u8*)apConfig, sizeof(protocol_acq_config));
+		request.appendPayload((u8*)apConfig, sizeof(FemAcquireConfiguration));
 	}
 
 	// Send the command transaction

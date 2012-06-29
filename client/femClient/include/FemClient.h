@@ -78,7 +78,7 @@ public:
 	// end of added for zero copy
 	
 	virtual void command(unsigned int command);
-	std::vector<u8> commandAcquire(unsigned int aAcqCommand, protocol_acq_config* apConfig=0);
+	std::vector<u8> commandAcquire(unsigned int aAcqCommand, FemAcquireConfiguration* apConfig=0);
 
 	std::size_t send(FemTransaction aTrans);
 	FemTransaction receive(void);
@@ -100,7 +100,7 @@ public:
 	double tempSensorRead(FemTemperatureSensor aSensor);
 
 	// Acquisition control functions implemented in FemClientAcquisition.cpp
-	void acquireConfig(u32 aAcqMode, u32 aBufferSize, u32 aBufferCount, u32 aNumAcq);
+	void acquireConfig(u32 aAcqMode, u32 aBufferSize, u32 aBufferCount, u32 aNumAcq, u32 aBdCoalesce);
 	void acquireStart(void);
 	void acquireStop(void);
 	FemAcquireStatus acquireStatus(void);

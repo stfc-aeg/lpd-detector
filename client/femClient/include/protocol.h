@@ -126,18 +126,23 @@ typedef struct
 	u32 bufferSz;					//! Buffer size in bytes
 	u32 bufferCnt;					//! Buffer count
 	u32 numAcq;						//! Number of acquisitions expected
+	u32 bdCoalesceCount;			//! Numer of RX BDs to process per loop (TX set to x2 this value)
 } protocol_acq_config;
 
 // TODO: Move to common include for PPC1/PPC2!
 typedef struct
 {
-	u32 state;			//! Current mode?
+	u32 state;			//! Acquisition state
 	u32 bufferCnt;		//! Number of buffers allocated
 	u32 bufferSize;		//! Size of buffers
-	u32 readPtr;		//! 'read pointer'
-	u32 writePtr;		//! 'write pointer'
-	u32 totalRecv;		//! Total number of buffers received from I/O Spartans
-	u32 totalSent;		//! Total number of buffers sent to 10GBe DMA channel
+	u32 bufferDirty;	//! If non-zero a problem occurred last run and the buffers / engines need to be reconfigured
+	u32 readPtr;		//! Read pointer
+	u32 writePtr;		//! Write pointer
+	u32 numAcq;			//! Number of acquisitions in this run
+	u32 numConfigBds;	//! Number of configuration BDs set
+	u32 totalRecvTop;	//! Total number of BDs received from top ASIC
+	u32 totalRecvBot;	//! Total number of BDs received from bot ASIC
+	u32 totalSent;		//! Total number of BDs sent to 10GBe block
 	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
 
