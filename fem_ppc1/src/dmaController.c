@@ -110,6 +110,7 @@ typedef struct
 	u32 buffCnt;
 	u32 param;
 	u32 mode;
+	u32 bdCoalesceCnt;
 } mailMsg;
 
 // ------- DCR Debugging -----------
@@ -203,9 +204,9 @@ int main()
     dcrRegisters dcrUpload;
 	*/
 
-    //
-    int numRxBDPerLoop = LL_DMA_RX_NUM_BD_PER_LOOP;
-    int numTxBDPerLoop = LL_DMA_TX_NUM_BD_PER_LOOP;
+    // Coalescing count
+    int numRxBDPerLoop;// = LL_DMA_RX_NUM_BD_PER_LOOP;
+    int numTxBDPerLoop;// = LL_DMA_TX_NUM_BD_PER_LOOP;
 
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
@@ -286,7 +287,7 @@ int main()
     while(1)
     {
 
-    	print("[INFO ] Waiting for mailbox message...\r\n");
+    	//print("[INFO ] Waiting for mailbox message...\r\n");
 
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
@@ -312,6 +313,13 @@ int main()
 
     	    // Cache this operation mode so if we receive a start command we know what to do
     		lastMode = pMsg->mode;
+
+    		// Set coalescing counters
+    		if (pMsg->mode != ACQ_MODE_UPLOAD)
+    		{
+    			numRxBDPerLoop = pMsg->bdCoalesceCnt;
+    			numTxBDPerLoop = numRxBDPerLoop*2;
+    		}
 
     		switch(pMsg->mode)
     		{

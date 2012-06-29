@@ -112,6 +112,7 @@ typedef struct
 	u32 bufferSz;					//! Buffer size in bytes
 	u32 bufferCnt;					//! Buffer count
 	u32 numAcq;						//! Number of acquisitions expected
+	u32 bdCoalesceCount;			//! Numer of RX BDs to process per loop (TX set to x2 this value)
 } protocol_acq_config;
 
 // TODO: Make common

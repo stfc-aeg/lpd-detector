@@ -37,17 +37,18 @@ int initMailbox(void)
  * @param bufferCnt number of segments in capture
  * @param numAcq number of acquisitions
  * @param mode
+ * @param coalesceCnt number of RX BDs to process per event cycle of main event loop
  *
  * @return 1 for ACK, 0 for NACK of command by PPC1, -1 on mailbox error
  */
-// TODO: Merge cmd/mode fields into single u32?
+// TODO: Pass pointer to protocol_acq_config instead of parameters?
 // TODO: Move msgSize, message structure to common include
 #define CMD_ACQ_CONFIG 1	// TODO: Remove this declare and use fem_common.h
-int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode, int maxRetries)
+int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode, u32 coalesceCnt, int maxRetries)
 {
-	u32 buf[5];
+	u32 buf[6];
 	u32 sentBytes = 0;
-	u32 msgSize = 20;
+	u32 msgSize = 24;		// TODO: Set to X + sizeof(protocol_acq_config)
 
 	u32 status;
 	int numRetries = 0;
@@ -57,6 +58,7 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 	buf[2] = bufferCnt;
 	buf[3] = numAcq;
 	buf[4] = mode;
+	buf[5] = coalesceCnt;
 
 	int tick = 100;
 
