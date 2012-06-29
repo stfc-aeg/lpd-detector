@@ -695,10 +695,12 @@ void commandHandler(struct protocol_header* pRxHeader,
 					break;
 
 				case CMD_ACQ_STATUS:
+					/*
 					acqStatus = *((u32*)BADDR_BRAM);
 					*pTxPayload_32 = acqStatus;
 					responseSize += 4;						// Just return status
-					//responseSize += (12*4);					// TODO: Change to sizeof(acqStatusBlock) once it's made common
+					*/
+					memcpy((u32*)BADDR_BRAM, pTxPayload_32, (12*4));			// TODO: Change to sizeof(acqStatusBlock) from fem_common.h
 					SBIT(state, STATE_ACK);
 					break;
 

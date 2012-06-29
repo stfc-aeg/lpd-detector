@@ -19,7 +19,6 @@
  * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
  * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
  * TODO: Re-enable BADPKT response sending where necessary (generateBadPacketResponse())
- * TODO: Provide access to femErrorState via CMD_INTERNAL
  * TODO: Clean up RDMA wrapper (was kludged into place and never fixed!)
  * TODO: Implement iperf server and some way to activate / deactivate it without rebooting or rebuilding
  *
@@ -267,7 +266,7 @@ int initHardware(void)
 	int fpgaTemp,lmTemp = 0;
 	femErrorState = 0;
 
-	// Clear serial console by spamming CR/LF
+	// Clear serial console
 	int foo;
 	for (foo=0; foo<100; foo++)
 	{
@@ -447,21 +446,6 @@ int initHardware(void)
     {
     	DBGOUT("initHardware: Personality module hardware initialisation OK!\r\n");
     }
-
-    // Test DDR2
-    /*
-    DBGOUT("initHardware: Testing DDR2....");
-    status = Xil_TestMem32((u32*)FEM_DDR2_START, (256*1024*1024), 0, XIL_TESTMEM_ALLMEMTESTS);
-    if (status==0)
-    {
-    	DBGOUT("OK.\r\n");
-    }
-    else
-    {
-    	DBGOUT("!!!FAILED!!!\r\n");
-    	// TODO: FEM error state
-    }
-    */
 
     // All is well
     // TODO: Remove XST_SUCCESS, replace with a meaningful return code!

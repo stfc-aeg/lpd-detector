@@ -174,13 +174,13 @@ int main()
 	for (i=0; i<100; i++) { print("\r\n"); }
 
 	// Dump a little diagnostic info
-    print("[INFO ] FEM PPC1 DMA Controller starting up...\r\n");
-    print("[INFO ] ------------------------------------------------\r\n");
+    print( "[INFO ] FEM PPC1 DMA Controller starting up...\r\n");
+    print( "[INFO ] ------------------------------------------------\r\n");
     printf("[INFO ] Total DDR2 space for buffers:         0x%08x\r\n", DDR2_SZ);
     printf("[INFO ] Total SRAM space for BDs:             0x%08x\r\n", LL_BD_SZ);
     printf("[INFO ] Maximum number of readout BDs:        %d\r\n", ((LL_BD_SZ/LL_DMA_ALIGNMENT)/4)-LL_MAX_CONFIG_BD);
     printf("[INFO ] Maximum number of config upload BDs:  %d\r\n", LL_MAX_CONFIG_BD);
-    print("[INFO ] ------------------------------------------------\r\n");
+    print( "[INFO ] ------------------------------------------------\r\n");
 
     int status;
 
@@ -202,6 +202,10 @@ int main()
     dcrRegisters dcrGbe;
     dcrRegisters dcrUpload;
 	*/
+
+    //
+    int numRxBDPerLoop = LL_DMA_RX_NUM_BD_PER_LOOP;
+    int numTxBDPerLoop = LL_DMA_TX_NUM_BD_PER_LOOP;
 
     // State variables
     u32 lastMode = 0;					// Caches last mode used for acquire
@@ -425,8 +429,8 @@ int main()
 					{
 
 						// Pull down any completed RX BDs
-						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], LL_DMA_RX_NUM_BD_PER_LOOP, &pTopAsicBd);
-						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], LL_DMA_RX_NUM_BD_PER_LOOP, &pBotAsicBd);
+						numBDFromTopAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_TOP_ASIC], numRxBDPerLoop, &pTopAsicBd);
+						numBDFromBotAsic = XLlDma_BdRingFromHw(pBdRings[BD_RING_BOT_ASIC], numRxBDPerLoop, &pBotAsicBd);
 
 						// DEBUGGING
 #ifdef VERBOSE_DEBUG
@@ -615,7 +619,7 @@ int main()
 						if (numTxPairsSent>0)
 						{
 
-							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], LL_DMA_TX_NUM_BD_PER_LOOP, &pTenGigPostHW);
+							numBDFromTenGig = XLlDma_BdRingFromHw(pBdRings[BD_RING_TENGIG], numTxBDPerLoop, &pTenGigPostHW);
 
 							if (numBDFromTenGig>0)
 							{

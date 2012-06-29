@@ -10,6 +10,7 @@
 XMbox mbox;
 
 /* Initialises intra-PPC mailbox
+ *
  * @return XST_SUCCESS on success, or XST_nnn on failure
  */
 int initMailbox(void)
@@ -41,8 +42,7 @@ int initMailbox(void)
  */
 // TODO: Merge cmd/mode fields into single u32?
 // TODO: Move msgSize, message structure to common include
-// TODO: DO NOT HARDCODE CMD_ACQ_CONFIG!  MOVE TO COMMON HEADER
-#define CMD_ACQ_CONFIG 1
+#define CMD_ACQ_CONFIG 1	// TODO: Remove this declare and use fem_common.h
 int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode, int maxRetries)
 {
 	u32 buf[5];
