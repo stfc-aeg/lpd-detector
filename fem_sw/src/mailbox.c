@@ -106,9 +106,9 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 /* Receives a confirmation message from PPC1 to confirm that it
  * is processing a config request (NOT that it has finished doing so!)
  *
- * @return 1 if PPC1 confirms request or 0 if no message received before timeout
+ * @return 1 if PPC1 confirms request or 0 if no message received before timeout.  -1 on error.
  */
-unsigned short acquireConfigAckReceive(void)
+int acquireConfigAckReceive(void)
 {
 	u32 buf;		// Smallest possible message, has to be 4-byte aligned
 	u32 recBytes;
@@ -136,6 +136,7 @@ unsigned short acquireConfigAckReceive(void)
 	}
 	else
 	{
-		return 0;
+		// Timed out or an error occured
+		return -1;
 	}
 }

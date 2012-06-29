@@ -623,7 +623,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	int status;
 
-	unsigned short configAck = 0;
+	int configAck = 0;
 
 	// Determine operation type
 	switch(pRxHeader->command)
@@ -665,7 +665,11 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 					// Wait for response
 					configAck = acquireConfigAckReceive();
-					if (configAck==0)
+					if (configAck==1)
+					{
+						SBIT(state, STATE_ACK);
+					}
+					else if (configAck==0)
 					{
 						DBGOUT("CmdDisp: WARNING - Failed to get ACK from PPC1 for acquire config. request!\r\n");
 						SBIT(state, STATE_NACK);
@@ -673,7 +677,9 @@ void commandHandler(struct protocol_header* pRxHeader,
 					}
 					else
 					{
-						SBIT(state, STATE_ACK);
+						DBGOUT("CmdDisp: WARNING - ACK from PPC1 for acquire config. request had error or timeout!\r\n");
+						SBIT(state, STATE_NACK);
+						// TODO: FEM error state
 					}
 
 					break;
