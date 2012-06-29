@@ -326,18 +326,20 @@ void ExcaliburFemClient::startAcquisition(void)
 
 	// Set up the acquisition DMA controller and arm it, based on operation mode
 	unsigned int dmaSize = this->asicReadoutDmaSize();
-	u32 acqMode, numAcq = 0;
+	u32 acqMode, numAcq, bdCoalesce = 0;
 	switch (mOperationMode)
 	{
 
 	case excaliburOperationModeNormal:
 		acqMode = ACQ_MODE_NORMAL;
 		numAcq = 0; // Let the acquire config command configure all buffers in this mode
+		bdCoalesce = 1;
 		break;
 
 	case excaliburOperationModeBurst:
 		acqMode = ACQ_MODE_BURST;
 		numAcq = mNumFrames;
+		bdCoalesce = 1;
 		break;
 
 	case excaliburOperationModeHistogram:
@@ -352,7 +354,7 @@ void ExcaliburFemClient::startAcquisition(void)
 		break;
 	}
 
-	this->acquireConfig(acqMode, dmaSize, 0, numAcq);
+	this->acquireConfig(acqMode, dmaSize, 0, numAcq, bdCoalesce);
 	this->acquireStart();
 
 	clock_gettime(CLOCK_REALTIME, &acqInitTime);
@@ -398,11 +400,22 @@ void ExcaliburFemClient::startAcquisition(void)
 	std::cout << "OMR: 0x" << std::hex << theOmr.raw << std::dec << std::endl;
 	this->asicControlOmrSet(theOmr);
 
-	// Execute the acquisition, enabling test pulses if necessary
+	// Enable test pulses in the execute command if necessary
 	if (mMpx3GlobalTestPulseEnable)
 	{
 		executeCmd |= asicTestPulseEnable;
 	}
+
+	// Enable external trigger in the execute command and set trigger polarity if selected
+	if (mExternalTrigger)
+	{
+
+		executeCmd |= asicExternalTrigger;
+		// TODO Needs API selection for polarity
+		this->asicControlConfigRegisterSet(externalTrigActiveHigh);
+	}
+
+	// Execute the command
 	std::cout << "Sending execute command 0x" << std::hex << executeCmd << std::dec << std::endl;
 	this->asicControlCommandExecute((asicControlCommand)executeCmd);
 

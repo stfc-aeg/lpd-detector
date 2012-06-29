@@ -17,6 +17,7 @@ const u32 kExcaliburAsicMuxSelect         = kExcaliburAsicControlAddr + 0;
 const u32 kExcaliburAsicControlReg        = kExcaliburAsicControlAddr + 1;
 const u32 kExcaliburAsicOmrBottom         = kExcaliburAsicControlAddr + 2;
 const u32 kExcaliburAsicOmrTop            = kExcaliburAsicControlAddr + 3;
+const u32 kExcaliburAsicConfig1Reg        = kExcaliburAsicControlAddr + 4;
 const u32 kExcaliburAsicShutter0Counter   = kExcaliburAsicControlAddr + 6;
 const u32 kExcaliburAsicShutter1Counter   = kExcaliburAsicControlAddr + 7;
 const u32 kExcaliburAsicFrameCounter      = kExcaliburAsicControlAddr + 8;
@@ -37,6 +38,7 @@ typedef enum
 	asicRunSequentialC0   = 0xa41,
 	asicRunSequentialC1   = 0x1241,
 	asicTestPulseEnable   = 0x4000,
+	asicExternalTrigger   = 0x20000000
 
 } asicControlCommand;
 
@@ -47,5 +49,12 @@ typedef enum
 	rawDataMode        = 1
 
 } asicDataReorderMode;
+
+typedef enum
+{
+	unknownConfig          = -1,
+	enableLsfrCoding       = 0x1,
+	externalTrigActiveHigh = 0x2
+} asicControlConfigSetting;
 
 #endif /* EXCALIBURFEMRDMAADDRESSES_H_ */

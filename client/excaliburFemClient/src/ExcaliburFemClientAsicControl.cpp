@@ -178,3 +178,8 @@ void ExcaliburFemClient::asicControlTestPulseCountSet(unsigned int aCount)
 {
 	this->rdmaWrite(kExcaliburAsicTestPulseCount, (u32)aCount);
 }
+
+void ExcaliburFemClient::asicControlConfigRegisterSet(unsigned int aConfigRegister)
+{
+	this->rdmaWrite(kExcaliburAsicConfig1Reg, (u32)aConfigRegister);
+}

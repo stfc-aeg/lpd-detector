@@ -466,7 +466,7 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		clock_gettime(CLOCK_REALTIME, &writeTime);
 
 		// Set up the PPC1 DMA engine for upload mode for two configurations
-		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 2, configBaseAddr);
+		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 2, configBaseAddr, 1);
 
 		// TODO poll config completion
 		this->acquireStart();
@@ -493,19 +493,19 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 
 		// Poll state of acquisition to test for completion of upload
 		FemAcquireStatus acqStatus = this->acquireStatus();
-		std::cout << "ACQ state=" << acqStatus.acquireState << std::endl;
+		std::cout << "ACQ state=" << acqStatus.state << std::endl;
 
 		int retries = 0;
-		while  ((retries < 10) && (acqStatus.acquireState != acquireIdle))
+		while  ((retries < 10) && (acqStatus.state != acquireIdle))
 		{
 			usleep(10000);
 			acqStatus = this->acquireStatus();
 		}
 
-		if (acqStatus.acquireState != acquireIdle)
+		if (acqStatus.state != acquireIdle)
 		{
 			std::ostringstream msg;
-			msg << "Timeout on pixel configuration write to chip" << aChipId << " acqState=" << acqStatus.acquireState;
+			msg << "Timeout on pixel configuration write to chip" << aChipId << " acqState=" << acqStatus.state;
 			throw FemClientException((FemClientErrorCode)excaliburFemClientOmrTransactionTimeout, msg.str());
 		}
 

@@ -131,6 +131,7 @@ private:
 	void asicControlCounterDepthSet(mpx3CounterDepth aCounterDepth);
 	void asicControlReadoutLengthSet(unsigned int aLength);
 	void asicControlTestPulseCountSet(unsigned int aCount);
+	void asicControlConfigRegisterSet(unsigned int aConfigRegister);
 	void asicControlReset(void);
 	void asicControlAsicReset(void);
 
