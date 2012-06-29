@@ -625,9 +625,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 	unsigned short configAck = 0;
 
-	// TODO: Remove, replace with struct once it's common
-	u32 acqStatus;
-
 	// Determine operation type
 	switch(pRxHeader->command)
 	{
@@ -695,12 +692,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 					break;
 
 				case CMD_ACQ_STATUS:
-					/*
-					acqStatus = *((u32*)BADDR_BRAM);
-					*pTxPayload_32 = acqStatus;
-					responseSize += 4;						// Just return status
-					*/
-					memcpy((u32*)BADDR_BRAM, pTxPayload_32, (12*4));			// TODO: Change to sizeof(acqStatusBlock) from fem_common.h
+					memcpy(pTxPayload_32, (u32*)BADDR_BRAM, (12*4));			// TODO: Change to sizeof(acqStatusBlock) from fem_common.h
+					responseSize += (12*4);										// TODO: Change to sizeof(acqStatusBlock) from fem_common.h
 					SBIT(state, STATE_ACK);
 					break;
 
