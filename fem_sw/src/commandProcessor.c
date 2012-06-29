@@ -687,13 +687,19 @@ void commandHandler(struct protocol_header* pRxHeader,
 				case CMD_ACQ_START:
 				case CMD_ACQ_STOP:
 					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, 0, 0, 0, 0, 0, 10000);
-					if (dmaControllerAck)
+					if (dmaControllerAck==1)
 					{
 						SBIT(state, STATE_ACK);
+					}
+					else if (configAck==0)
+					{
+						SBIT(state, STATE_NACK);
+						// TODO: FEM error state
 					}
 					else
 					{
 						SBIT(state, STATE_NACK);
+						// TODO: FEM error state
 					}
 					break;
 
