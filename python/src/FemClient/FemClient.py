@@ -177,6 +177,18 @@ class FemClient(object):
         response = self.recv()
         return response.payload
     
+    def personalitySend(self, thePersCmd, thePayload=None):
+        
+        cmd   = FemTransaction.CMD_PERSONALITY
+        bus   = FemTransaction.BUS_RAW_REG
+        width = FemTransaction.WIDTH_LONG
+        state = FemTransaction.STATE_WRITE
+        addr  = thePersCmd
+        
+        self.send(cmd, bus, width, state, addr, thePayload)
+        response = self.recv()
+        return response
+    
     def close(self):
         self.femSocket.close()
         self.femSocket = None

@@ -779,6 +779,54 @@ Example:
             
     def help_acquire(self):
         print self.do_acquire.__doc__
+        
+    def do_pers(self,s):
+        '''
+        Sends a personality module command transaction to FEM
+        Syntax: pers <cmd> [payload,...] 
+        where params are:
+           cmd      : integer personality cmd to send
+           payload  : optional list of integer words to send as payload           
+       '''      
+        
+        params = s.split()
+        if len(params) < 1:
+            print "** Invalid number of arguments"
+            return
+    
+        try:
+            thePersCmd = int(params[0])
+        except ValueError:
+            print "Command parameters must be integer"
+            return
+        
+        cmdArgs = None
+        if len(params) > 1:
+            try:
+                cmdArgs = [int(val) for val in params[1:]]
+            except ValueError:
+                print "Personality command parameters must be integer"
+                return
+        
+        try:
+            if self.timerEnabled: t0 = time.time()
+            ack = self.__class__.connectedFem.personalitySend(thePersCmd, cmdArgs)
+            if self.timerEnabled: deltaT = time.time() - t0
+            if self.timerEnabled: print "Transaction took %.3f secs" % deltaT
+
+        except FemClientError as e:
+            if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
+                print "*** Error, FEM has closed the client connection"
+                self.do_close(None)
+            elif e.errno == FemClientError.ERRNO_SOCK_ERROR:
+                print "*** Socket error on FEM connection:", e.msg
+                self.do_close(None)
+            else:
+                print "*** FEM Exception:", e, 'errno=', e.errno
+                
+    def help_pers(self):
+        print self.do_pers.__doc__
+        
                 
 if __name__ == "__main__":
     
