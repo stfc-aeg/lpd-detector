@@ -458,16 +458,7 @@ void commandProcessorThread()
 						PRTDBG("CmdProc: Received entire packet...\r\n");
 
 						// Generate response
-						if (pState->pHdr->command == CMD_PERSONALITY)
-						{
-							// Hand off to personality module
-							handlePersonalityCommand(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header));
-						}
-						else
-						{
-							// Process request ourselves
-							commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header));
-						}
+						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header));
 
 						PRTDBG("CmdProc: Packet decoded, sending response...\r\n");
 
@@ -620,14 +611,23 @@ void commandHandler(struct protocol_header* pRxHeader,
 	responseSize += sizeof(u32);
 
 	u32 dmaControllerAck = 0;
-
 	int status;
-
 	int configAck = 0;
 
 	// Determine operation type
 	switch(pRxHeader->command)
 	{
+
+		case CMD_PERSONALITY:
+			if(handlePersonalityCommand(pRxHeader, pTxHeader, pRxPayload, pTxPayload, &responseSize))
+			{
+				SBIT(state, STATE_ACK);
+			}
+			else
+			{
+				SBIT(state, STATE_NACK);
+			}
+			break;
 
 		case CMD_INTERNAL:
 

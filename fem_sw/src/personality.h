@@ -20,10 +20,11 @@
 // Template header for FEM personality modules.  These methods must be implemented in the FPMs!
 int fpmInitHardware(void);
 int validatePersonalityHeaderContents(struct protocol_header *pHeader);
-void handlePersonalityCommand(	struct protocol_header* pRxHeader,
+int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 								struct protocol_header* pTxHeader,
 								u8* pRxPayload,
-								u8* pTxPayload
+								u8* pTxPayload,
+								int* pResponseSize
 							);
 
 #endif /* PERSONALITY_H_ */

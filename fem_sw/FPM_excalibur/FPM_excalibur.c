@@ -43,8 +43,8 @@ int fpmInitHardware()
  */
 int validatePersonalityHeaderContents(struct protocol_header *pHeader)
 {
-	// TODO: Implement
-	return -1;
+	// TODO: Implement validatePersonalityHeaderContents
+	return 0;
 }
 
 /*
@@ -54,14 +54,22 @@ int validatePersonalityHeaderContents(struct protocol_header *pHeader)
  * @param pTxHeader pointer to protocol_header for outbound packet
  * @param pRxPayload pointer to payload buffer of received packet
  * @param pTxPayload pointer to payload buffer for outbound packet
+ * @param pResponseSize pointer to response size
+ *
+ * @return 1 for ACK, 0 for NACK
  */
-void handlePersonalityCommand(	struct protocol_header* pRxHeader,
+int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 								struct protocol_header* pTxHeader,
 								u8* pRxPayload,
-								u8* pTxPayload
+								u8* pTxPayload,
+								int* pResponseSize
 							)
 {
 
-	// TODO: Implement Excalibur-specific command handling here!
+	// TODO: Remove pTxHeader parameter!
+
+	DUMPHDR(pRxHeader);
+
+	return 1;
 
 }
