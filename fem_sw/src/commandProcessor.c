@@ -619,6 +619,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 	{
 
 		case CMD_PERSONALITY:
+
 			if(handlePersonalityCommand(pRxHeader, pTxHeader, pRxPayload, pTxPayload, &responseSize))
 			{
 				SBIT(state, STATE_ACK);
@@ -1097,7 +1098,7 @@ int validateHeaderContents(struct protocol_header *pHeader)
 			break;
 
 		case CMD_PERSONALITY:
-			return validateHeaderContents(pHeader);
+			return validatePersonalityHeaderContents(pHeader);
 			break;
 
 		case CMD_UNSUPPORTED:
