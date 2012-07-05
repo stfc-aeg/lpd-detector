@@ -380,12 +380,6 @@ int initHardware(void)
     	femErrorState |= TEST_RDMA_UART_OK;
     	return status;
     }
-    else if (status == XST_LOOPBACK_ERROR)
-    {
-    	DBGOUT("FAILED - RDMA readback test failed.\r\n");
-    	femErrorState |= TEST_RDMA_READBACK;
-    	return status;
-    }
     else
     {
     	DBGOUT("OK.\r\n");
