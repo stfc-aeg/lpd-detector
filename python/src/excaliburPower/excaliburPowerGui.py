@@ -1347,7 +1347,8 @@ class ExcaliburPowerGui:
         # Check adcValue 0-4095
         if not (0 <= adcValue <= 4095):
             raise OutOfRangeError, "scale5SUPERV_VoltageConversion() adcValue outside 0-4095 range!"
-        return (adcValue / 819.0)
+        return (adcValue * 0.00244)
+#        return (adcValue / 819.0)
     
     def scale3_3V_Voltage(self, adcValue):
         """ Scale ad7998's range of ADC count: 0-4095 to 0-3.3Volt """
