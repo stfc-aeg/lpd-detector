@@ -246,11 +246,11 @@ u16 ExcaliburFemClient::frontEndAD7994Read(unsigned int aDevice, unsigned int aC
 	std::vector<u8> response = this->i2cRead(kAD7994Address[aDevice], 2);
 
 	// Decode ADC value to return
-	u16 adcVal = ((((u16)response[0]) << 8) | response[1]) & 0x7FF;
+	u16 adcVal = ((((u16)response[0]) << 8) | response[1]) & 0xFFF;
 
-	std::cout << "AD7994 read: dev=" << aDevice << " chan=" << aChan
-			  << " addr=0x" << std::hex << kAD7994Address[aDevice] << std::dec
-			  << " val=" << adcVal << std::endl;
+//	std::cout << "AD7994 read: dev=" << aDevice << " chan=" << aChan
+//			  << " addr=0x" << std::hex << kAD7994Address[aDevice] << std::dec
+//			  << " val=" << adcVal << std::endl;
 
 	return adcVal;
 }
@@ -317,8 +317,8 @@ void ExcaliburFemClient::frontEndAD5625Write(unsigned int aDevice, unsigned int 
 	cmd[1] = (dacWord & 0xFF00) >> 8;
 	cmd[2] = (dacWord & 0x00FF);
 
-	std::cout << "AD5625 write: cmd=0x" << std::hex << (int)cmd[0] << " MSB=0x" << (int)cmd[1]
-	          << " LSB=0x" << (int)cmd[2] << std::dec << std::endl;
+//	std::cout << "AD5625 write: cmd=0x" << std::hex << (int)cmd[0] << " MSB=0x" << (int)cmd[1]
+//	          << " LSB=0x" << (int)cmd[2] << std::dec << std::endl;
 	// Send transaction to DAC
 	this->i2cWrite(kAD5625Address[aDevice], cmd);
 

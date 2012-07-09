@@ -121,6 +121,12 @@ void femClose(void* femHandle);
 #define FEM_OPMODE_BURST 1
 #define FEM_OPMODE_HISTOGRAM 2
 
+/* Counter select constants
+ */
+#define FEM_CTRSELECT_A 0
+#define FEM_CTRSELECT_B 1
+#define FEM_CTRSELECT_AB 2
+
 /* The operation identifiers for the get, set, cmd and signal functions.
  */
 /* Commands */
@@ -135,6 +141,7 @@ void femClose(void* femHandle);
 #define FEM_OP_MPXIII_EXTERNALTRIGGER 1002
 #define FEM_OP_MPXIII_OPERATIONMODE 1003
 #define FEM_OP_MPXIII_COUNTERSELECT 1004
+#define FEM_OP_MPXIII_NUMTESTPULSES 1005
 /* Medipix III per chip registers */
 #define FEM_OP_MPXIII_DACSENSE 2000
 #define FEM_OP_MPXIII_DACEXTERNAL 2001

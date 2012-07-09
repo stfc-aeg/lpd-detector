@@ -124,6 +124,18 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 				}
 				break;
 
+			case FEM_OP_MPXIII_NUMTESTPULSES:
+
+				if (size == 1)
+				{
+					theFem->numTestPulsesSet((int)*value);
+				}
+				else
+				{
+					rc = FEM_RTN_BADSIZE;
+				}
+				break;
+
 			case FEM_OP_MPXIII_DACSENSE:
 
 				if (size == 1)
@@ -205,25 +217,15 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 				theFem->frontEndEnableSet((unsigned int)*value);
 				break;
 
-//			case FEM_OP_DAC_IN_TO_MEDIPIX:
-//
-//				theFem->frontEndDacInWrite(chipId, (unsigned int)*value);
-//				break;
-//
 			case FEM_OP_BIAS_ON_OFF:
 
-				// Do nothing for now
+				theFem->powerCardBiasEnable((unsigned int)*value);
 				break;
 
 			case FEM_OP_LV_ON_OFF:
 
-				// Do nothing for now
+				theFem->powerCardLowVoltageEnable((unsigned int)*value);
 				break;
-
-//			case FEM_OP_BIAS_LEVEL:
-//
-//				// Do nothing for now
-//				break;
 
 			case FEM_OP_MEDIPIX_CHIP_DISABLE:
 
@@ -324,7 +326,7 @@ int femSetFloat(void* femHandle, int chipId, int id, std::size_t size, double* v
 
 			case FEM_OP_BIAS_LEVEL:
 
-				// Do nothing for now
+				theFem->powerCardBiasLevelWrite(*value);
 				break;
 
 			default:
@@ -384,23 +386,23 @@ int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
 				break;
 
 			case FEM_OP_COOLANT_TEMP_STATUS:
-				*value = 1;
+				*value = theFem->powerCardStatusRead(coolantTempStatus);
 				break;
 
 			case FEM_OP_HUMIDITY_STATUS:
-				*value = 1;
+				*value = theFem->powerCardStatusRead(humidityStatus);
 				break;
 
 			case FEM_OP_COOLANT_FLOW_STATUS:
-				*value = 1;
+				*value = theFem->powerCardStatusRead(coolantFlowStatus);
 				break;
 
 			case FEM_OP_AIR_TEMP_STATUS:
-				*value = 1;
+				*value = theFem->powerCardStatusRead(airTempStatus);
 				break;
 
 			case FEM_OP_FAN_FAULT:
-				*value = 1;
+				*value = theFem->powerCardStatusRead(fanFaultStatus);
 				break;
 
 			case FEM_OP_MPXIII_EFUSEID:
@@ -435,15 +437,12 @@ int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value)
 	}
 	else
 	{
-		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+		//ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
 		try
 		{
 			switch (id)
 			{
-
-				*value = (short) id & 0x1;
-				break;
 
 			default:
 				rc = FEM_RTN_UNKNOWNOPID;
@@ -458,28 +457,6 @@ int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value)
 		}
 
 	}
-
-//	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-//
-//	// TODO: remove this temporary hack of the address from chip ID and config ID
-//	unsigned int address = 8000*chipId + id;
-//
-//	// Perform the read operation, trapping any exceptions that occur
-//	try
-//	{
-//		std::vector<u8> readResult = theFem->read(BUS_RAW_REG, WIDTH_WORD, address, size);
-//
-//		// Convert read byte vector into u16 and unpack into result array
-//		std::vector<u16>* shortResult = (std::vector<u16>*)&readResult;
-//		for (unsigned int i = 0; i < size; i++) {
-//			*(value + i) = (*shortResult)[i];
-//		}
-//	}
-//	catch (FemClientException& e)
-//	{
-//		std::cerr << "Exception caught during femGetShort: " << e.what() << std::endl;
-//		rc = translateFemErrorCode(e.which());
-//	}
 
 	return rc;
 }
@@ -506,7 +483,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 5.03;
+					*value = theFem->powerCardMonitorRead(p5vAVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -517,7 +494,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 4.97;
+					*value = theFem->powerCardMonitorRead(p5vBVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -533,7 +510,8 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 0.1 * (id - FEM_OP_P5V_FEMO0_IMON);
+					excaliburPowerCardMonitor theMon = (excaliburPowerCardMonitor)(p5vFem0CurrentMonitor + (id - FEM_OP_P5V_FEMO0_IMON));
+					*value = theFem->powerCardMonitorRead(theMon);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -545,7 +523,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 48.43;
+					*value = theFem->powerCardMonitorRead(p48vVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -556,7 +534,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 7.83;
+					*value = theFem->powerCardMonitorRead(p48vCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -567,7 +545,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 5.17;
+					*value = theFem->powerCardMonitorRead(p5vSupVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -578,7 +556,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 0.63;
+					*value = theFem->powerCardMonitorRead(p5vSupCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -589,7 +567,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 37.48;
+					*value = theFem->powerCardMonitorRead(humidityMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -600,7 +578,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 28.11;
+					*value = theFem->powerCardMonitorRead(airTempMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -611,7 +589,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 19.85;
+					*value = theFem->powerCardMonitorRead(coolantTempMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -622,7 +600,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 123.45;
+					*value = theFem->powerCardMonitorRead(coolantFlowMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -633,7 +611,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 0.77;
+					*value = theFem->powerCardMonitorRead(p3v3CurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -644,7 +622,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 19.44;
+					*value = theFem->powerCardMonitorRead(p1v8ACurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -655,7 +633,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 0.0043;
+					*value = theFem->powerCardMonitorRead(biasCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -666,7 +644,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 3.37;
+					*value = theFem->powerCardMonitorRead(p3v3VoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -677,7 +655,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 1.88;
+					*value = theFem->powerCardMonitorRead(p1v8AVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -688,7 +666,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 200.05;
+					*value = theFem->powerCardMonitorRead(biasVoltageMontor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -699,7 +677,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 18.69;
+					*value = theFem->powerCardMonitorRead(p1v8BCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -710,15 +688,13 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = 1.79;
+					*value = theFem->powerCardMonitorRead(p1v8BVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
 				}
 				break;
 
-
-			// -- Real calls below here
 			case FEM_OP_REMOTE_DIODE_TEMP:
 
 				if (size == 1)
@@ -792,12 +768,8 @@ int femCmd(void* femHandle, int chipId, int id)
 
 	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 
-	// TODO: remove this temporary hack of the command and chip ID
-	//unsigned int command = (10000 * chipId) + id;
-
 	try
 	{
-		//theFem->command(command);
 		switch (id)
 		{
 

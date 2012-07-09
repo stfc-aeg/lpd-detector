@@ -54,6 +54,43 @@ typedef enum {
 
 typedef enum
 {
+	coolantTempStatus = 0,
+	humidityStatus,
+	coolantFlowStatus,
+	airTempStatus,
+	fanFaultStatus
+} excaliburPowerCardStatus;
+
+typedef enum
+{
+	p5vAVoltageMonitor = 0,
+	p5vBVoltageMonitor,
+	p5vFem0CurrentMonitor,
+	p5vFem1CurrentMonitor,
+	p5vFem2CurrentMonitor,
+	p5vFem3CurrentMonitor,
+	p5vFem4CurrentMonitor,
+	p5vFem5CurrentMonitor,
+	p48vVoltageMonitor,
+	p48vCurrentMonitor,
+	p5vSupVoltageMonitor,
+	p5vSupCurrentMonitor,
+	humidityMonitor,
+	airTempMonitor,
+	coolantTempMonitor,
+	coolantFlowMonitor,
+	p3v3CurrentMonitor,
+	p1v8ACurrentMonitor,
+	biasCurrentMonitor,
+	p3v3VoltageMonitor,
+	p1v8AVoltageMonitor,
+	biasVoltageMontor,
+	p1v8BCurrentMonitor,
+	p1v8BVoltageMonitor
+} excaliburPowerCardMonitor;
+
+typedef enum
+{
 
 	excaliburOperationModeNormal = 0,
 	excaliburOperationModeBurst  = 1,
@@ -112,6 +149,13 @@ public:
 	void mpx3CounterSelectSet(int aCounterSelect);
 	void mpx3DisableSet(unsigned int aChipId, unsigned int aDisable);
 
+	// EXCALIBUR power card control functions in ExcaliburFemClientPowerCardDevices.cpps
+
+	void  powerCardBiasEnable(unsigned int aEnable);
+	void  powerCardLowVoltageEnable(unsigned int aEnable);
+	void  powerCardBiasLevelWrite(float aBiasLevel);
+	int   powerCardStatusRead(excaliburPowerCardStatus aStatus);
+	float powerCardMonitorRead(excaliburPowerCardMonitor aMonitor);
 
 private:
 
@@ -142,6 +186,12 @@ private:
 	void frontEndPCF8574Write(unsigned int aVal);
 	void frontEndAD5625Write(unsigned int aDevice, unsigned int aChan, unsigned int aVal);
 	void frontEndAD5625InternalReferenceEnable(unsigned int aDevice, bool aEnable);
+
+	// Private functions in ExcaliburFemClientPowerCardDevices.cpp
+	int  powerCardPCF8574BitRead(int aBit);
+	void powerCardPCF8475BitWrite(int aBit, int aVal);
+	void powerCardAD5301Write(u8 aDacValue);
+	u16 powerCardAD7998Read(unsigned int aDevice, unsigned int aChan);
 
 	mpx3Dac mpx3DacIdGet(int aId);
 	mpx3PixelConfig mpx3PixelConfigIdGet(int aConfigId);

@@ -81,7 +81,7 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 	this->asicControlAsicReset();
 
 	// Initialise front-end DACs
-	this->frontEndDacInitialise();
+	//this->frontEndDacInitialise();
 
 	// Build callback bundle to be registered with the data receiver
 	mCallbackBundle.allocate = boost::bind(&ExcaliburFemClient::allocateCallback, this);

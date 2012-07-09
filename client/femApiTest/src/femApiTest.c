@@ -23,6 +23,7 @@ int testPixelConfig(void* femHandle);
 int testReadEfuseIds(void* femHandle);
 int testAcquisitionLoop(void* femHandle, unsigned int numFrames);
 int testAcquireStatus(void* femHandle);
+int testPowerCardStatus(void* femHandle);
 
 // Forward declaration of callback functions to simulate WP5 callbacks
 static CtlFrame* allocateCallback(void* ctlHandle);
@@ -88,7 +89,8 @@ int main(int argc, char* argv[]) {
 //	numPassed += testPixelConfig(femHandle);
 //	numPassed += testReadEfuseIds(femHandle);
 //	numPassed += testAcquisitionLoop(femHandle, numFrames);
-	numPassed += testAcquireStatus(femHandle);
+//	numPassed += testAcquireStatus(femHandle);
+	numPassed += testPowerCardStatus(femHandle);
 
 	printf("Hit return to quit ... ");
 	getchar();
@@ -627,6 +629,69 @@ int testAcquisitionLoop(void* femHandle, unsigned int numFrames)
 
 	return passed;
 
+}
+
+int testPowerCardStatus(void* femHandle)
+{
+	int rc;
+	int passed = 1;
+
+	int coolantTempStatus = 0;
+	rc = femGetInt(femHandle, 0, FEM_OP_COOLANT_TEMP_STATUS, 1, &coolantTempStatus);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error retrieving power card coolant temperature status\n");
+		passed = 0;
+	}
+	else {
+		printf("Power card coolant temperature status : %d\n", coolantTempStatus);
+	}
+
+	int coolantFlowStatus = 0;
+	rc = femGetInt(femHandle, 0, FEM_OP_COOLANT_FLOW_STATUS, 1, &coolantFlowStatus);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error retrieving power card coolant flow status\n");
+		passed = 0;
+	}
+	else {
+		printf("Power card coolant flow status        : %d\n", coolantFlowStatus);
+	}
+
+	int airTempStatus = 0;
+	rc = femGetInt(femHandle, 0, FEM_OP_AIR_TEMP_STATUS, 1, &airTempStatus);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error retrieving power card air temperature flow status\n");
+		passed = 0;
+	}
+	else {
+		printf("Power card air temperature status     : %d\n", airTempStatus);
+	}
+
+	int humidityStatus = 0;
+	rc = femGetInt(femHandle, 0, FEM_OP_HUMIDITY_STATUS, 1, &humidityStatus);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error retrieving power card air temperature flow status\n");
+		passed = 0;
+	}
+	else {
+		printf("Power card humidity status            : %d\n", humidityStatus);
+	}
+
+	int fanFaultStatus = 0;
+	rc = femGetInt(femHandle, 0, FEM_OP_FAN_FAULT, 1, &fanFaultStatus);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error retrieving power card fan fault status\n");
+		passed = 0;
+	}
+	else {
+		printf("Power card fan fault status           : %d\n", fanFaultStatus);
+	}
+
+	return passed;
 }
 
 int testAcquireStatus(void* femHandle)
