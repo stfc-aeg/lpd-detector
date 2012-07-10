@@ -32,7 +32,7 @@ int fpmInitHardware()
 	status = writeRdma(0x48000001, 0x0);
 
 	// Initialise static variables
-	lastThreadOp = 0;
+	currentThreadType = 0;
 
 	state.state = 0;
 	state.numOps = 0;
@@ -142,16 +142,15 @@ int prepareDACScan(u8 *pRxPayload)
 
 	int dataSize = 12;	// TODO: What payload will we receive for DACscan?  (sizeof(u32) x 3)?
 
-	if (lastThreadOp!=0) {
+	if (currentThreadType!=0) {
 		// Already a thread running!
 		// TODO: Remove debugging
 		xil_printf("FPM_Excalibur: Worker thread already running, not starting another...\r\n");
 		return 0;
 	}
 
-	// TODO: Use enum / define for this not 1
 	// Signal a worker thread is launching
-	lastThreadOp = FPM_DACSCAN;
+	currentThreadType = FPM_DACSCAN;
 
 	// Initialise thread state
 	state.state = 0;
@@ -202,6 +201,7 @@ void *doDACScanThread(void *pArg)
 
 	// Flag as idle
 	state.state = 0;
+	currentThreadType = 0;
 
 	// Set datasize (none in this case)
 	outputSz = 0;
