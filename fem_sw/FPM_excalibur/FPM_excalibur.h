@@ -15,6 +15,16 @@
 #include "pthread.h"
 #include "rdma.h"
 
+// TODO: Remove
+#include "sleep.h"
+
+enum personality_commands
+{
+	FPM_DACSCAN		= 1,
+	FPM_GET_STATUS	= 20,
+	FPM_GET_RESULT	= 21
+};
+
 // DAQ scan
 int prepareDACScan(u8 *pRxPayload);
 void* doDACScanThread(void *pArg);

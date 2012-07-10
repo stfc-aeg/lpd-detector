@@ -96,8 +96,14 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 		case FPM_GET_STATUS:
 			// Transfer threadState to payload, increment payload size
 			memcpy(pTxPayload, &state, sizeof(threadState));
-			pTxHeader->payload_sz += (4*sizeof(threadState));
+			pTxHeader->payload_sz += sizeof(threadState);
 			retVal = 1;
+
+			xil_printf("FPM_Excalibur: state.state   = %d\r\n", state.state);
+			xil_printf("FPM_Excalibur: state.numOps  = %d\r\n", state.numOps);
+			xil_printf("FPM_Excalibur: state.compOps = %d\r\n", state.compOps);
+			xil_printf("FPM_Excalibur: state.error   = %d\r\n", state.error);
+
 			break;
 
 		case FPM_GET_RESULT:
@@ -120,7 +126,7 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 	}
 
 	// TODO: Remove debugging
-	xil_printf("FPM_Excalibur: TX payload sz=%d\r\n", pTxHeader->payload_sz);
+	xil_printf("FPM_Excalibur: TX payload sz =%d\r\n", pTxHeader->payload_sz);
 
 	return retVal;
 }
@@ -180,14 +186,9 @@ int prepareDACScan(u8 *pRxPayload)
  */
 void *doDACScanThread(void *pArg)
 {
-	int i;
-	// TODO: Declare local variables for operation (what do we need?)
 
 	// Flag as busy
 	state.state = 1;
-
-	// TODO: Copy data from pInput to local vars
-	// TODO: free(pInput)
 
 	// This won't return any data but if it were to do so, something like this would happen:
 	// malloc(pOutput, (size_t)n)
@@ -196,16 +197,16 @@ void *doDACScanThread(void *pArg)
 	xil_printf("FPM_Excalibur [DACscan]: Thread active!\r\n");
 
 	// TODO: Do actual DAC scan here!!
-	for (i=0;i<20;i++)
-	{
-		xil_printf("FPM_Excalibur [DACscan]: Wasting time! [%d]\r\n", i);
-	}
+	// Sleep 20s
+	usleep(20000000);
 
 	// Flag as idle
 	state.state = 0;
 
 	// Set datasize (none in this case)
 	outputSz = 0;
+
+	// TODO: free(pInput)
 
 	// Terminate
 	pthread_exit(NULL);
