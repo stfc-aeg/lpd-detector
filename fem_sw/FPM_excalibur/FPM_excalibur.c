@@ -24,12 +24,24 @@ int fpmInitHardware()
 	status = writeRdma(0x48000001, 0xC00000);
 	if (status!=XST_SUCCESS)
 	{
-		//return status;
 		// Don't skip reset as if the command DID work we leave ASICs held in reset
 		// which draws a lot of current...
+		//return status;
 	}
 
 	status = writeRdma(0x48000001, 0x0);
+
+	// Initialise static variables
+	lastThreadOp = 0;
+
+	state.state = 0;
+	state.numOps = 0;
+	state.compOps = 0;
+	state.error = 0;
+
+	pInput = NULL;
+	pOutput = NULL;
+	outputSz = 0;
 
 	return status;
 }
@@ -66,10 +78,140 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 							)
 {
 
-	// TODO: Remove pTxHeader parameter!
+	int retVal;
 
+	// Debugging, print header information
 	DUMPHDR(pRxHeader);
 
-	return 1;
+	// TODO: Remove debugging
+	xil_printf("FPM_Excalibur: Opmode %d\r\n", pRxHeader->address);
+
+	// For personality module address is overloaded to be command
+	switch(pRxHeader->address)
+	{
+		case FPM_DACSCAN:
+			retVal = prepareDACScan(pRxPayload);
+			break;
+
+		case FPM_GET_STATUS:
+			// Transfer threadState to payload, increment payload size
+			memcpy(pTxPayload, &state, sizeof(threadState));
+			pTxHeader->payload_sz += (4*sizeof(threadState));
+			retVal = 1;
+			break;
+
+		case FPM_GET_RESULT:
+			if (state.state!=0)
+			{
+				// Thread still executing
+				retVal = 0;
+			}
+			else
+			{
+				// Return data
+				pTxHeader->payload_sz += outputSz;
+				memcpy(pTxPayload, &state, (size_t)outputSz);
+			}
+			break;
+
+		default:
+			retVal = 0;
+			break;
+	}
+
+	// TODO: Remove debugging
+	xil_printf("FPM_Excalibur: TX payload sz=%d\r\n", pTxHeader->payload_sz);
+
+	return retVal;
+}
+
+
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+int prepareDACScan(u8 *pRxPayload)
+{
+
+	pthread_t t;
+	int tid;
+
+	int dataSize = 12;	// TODO: What payload will we receive for DACscan?  (sizeof(u32) x 3)?
+
+	if (lastThreadOp!=0) {
+		// Already a thread running!
+		// TODO: Remove debugging
+		xil_printf("FPM_Excalibur: Worker thread already running, not starting another...\r\n");
+		return 0;
+	}
+
+	// TODO: Use enum / define for this not 1
+	// Signal a worker thread is launching
+	lastThreadOp = FPM_DACSCAN;
+
+	// Initialise thread state
+	state.state = 0;
+	state.numOps = 0;
+	state.compOps = 0;
+	state.error = 0;
+
+	// Copy payload to static variable
+	realloc(pInput, (size_t)dataSize);
+	memcpy(pInput, pRxPayload, (size_t)dataSize);
+
+	// Launch thread
+	tid = pthread_create(&t, NULL, doDACScanThread, NULL);
+	if(tid==-1)
+	{
+		xil_printf("FPM_excalibur: Failed to launch thread!\r\n");
+		return 0;	// NACK
+	}
+	else
+	{
+		xil_printf("FPM_excalibur: Launched worker thread, ID=%d\r\n", tid);
+		return 1;	// ACK
+	}
 
 }
+
+
+/*
+ * Excalibur personality command: DAC scan
+ * Executes a DAC scan
+ * @param pArg NULL
+ */
+void *doDACScanThread(void *pArg)
+{
+	int i;
+	// TODO: Declare local variables for operation (what do we need?)
+
+	// Flag as busy
+	state.state = 1;
+
+	// TODO: Copy data from pInput to local vars
+	// TODO: free(pInput)
+
+	// This won't return any data but if it were to do so, something like this would happen:
+	// malloc(pOutput, (size_t)n)
+	// outputSz = n;
+
+	xil_printf("FPM_Excalibur [DACscan]: Thread active!\r\n");
+
+	// TODO: Do actual DAC scan here!!
+	for (i=0;i<20;i++)
+	{
+		xil_printf("FPM_Excalibur [DACscan]: Wasting time! [%d]\r\n", i);
+	}
+
+	// Flag as idle
+	state.state = 0;
+
+	// Set datasize (none in this case)
+	outputSz = 0;
+
+	// Terminate
+	pthread_exit(NULL);
+
+	// This statement never executes but suppresses warning on compiler
+	return 0;
+}
+
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
