@@ -105,7 +105,7 @@ int initRdma(void)
 /**
  * Performs self test on UART and RDMA block
  *
- * @return one of XST_SUCCESS, XST_UART_TEST_FAIL, XST_LOOPBACK_ERROR
+ * @return XST_SUCCESS or XST_UART_TEST_FAIL
  */
 int rdmaSelftest(void)
 {
