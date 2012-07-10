@@ -14,7 +14,6 @@
 #include <fem.h>
 #include "protocol.h"
 #include "xil_types.h"
-//#include "xmk.h"
 #include "stdio.h"
 #include "xstatus.h"
 
@@ -28,7 +27,6 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 								int* pResponseSize
 							);
 
-// TODO: Make this common to all personality modules?
 typedef struct
 {
 	u32 state;		//! Thread state (0=idle, 1=working)
@@ -37,14 +35,6 @@ typedef struct
 	u32 error;		//! Error code, non zero denotes error!
 } threadState;
 
-enum personality_commands
-{
-	FPM_DACSCAN		= 1,
-	FPM_GET_STATUS	= 20,
-	FPM_GET_RESULT	= 21
-};
-
-// TODO: Make these common to all personality modules?
 // Static (thread global) variables
 int lastThreadOp;		//! Non-zero if there is currently a thread running
 threadState state;
