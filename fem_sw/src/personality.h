@@ -36,7 +36,7 @@ typedef struct
 } threadState;
 
 // Static (thread global) variables
-int lastThreadOp;		//! Non-zero if there is currently a thread running
+int currentThreadType;		//! Non-zero if there is currently a thread running
 threadState state;
 u8 *pInput;
 u8 *pOutput;
