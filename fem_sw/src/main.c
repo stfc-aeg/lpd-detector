@@ -337,7 +337,7 @@ int initHardware(void)
 
     // Show LM82 setpoints, and set them
     DBGOUT("initHardware: LM82 overheat limit %dc, shutdown limit %dc\r\n", femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint);
-    if(!initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint))
+    if(initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint)==-1)
     {
     	DBGOUT("initHardware: ERROR: Failed to init LM82 device!\r\n");
     }
