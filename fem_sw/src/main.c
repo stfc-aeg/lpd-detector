@@ -340,6 +340,7 @@ int initHardware(void)
     if(initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint)==-1)
     {
     	DBGOUT("initHardware: ERROR: Failed to init LM82 device!\r\n");
+    	// TODO: FEM error state
     }
 
     // Read FPGA temp
@@ -424,6 +425,7 @@ int initHardware(void)
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to configure mailbox...\r\n");
+    	// TODO: FEM error state
     }
     else
     {
@@ -435,6 +437,7 @@ int initHardware(void)
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Personality module hardware initialisation failed...\r\n");
+    	// TODO: FEM error state
     }
     else
     {
@@ -442,7 +445,6 @@ int initHardware(void)
     }
 
     // All is well
-    // TODO: Remove XST_SUCCESS, replace with a meaningful return code!
     return XST_SUCCESS;
 
 }
