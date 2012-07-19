@@ -1,37 +1,38 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="Replaces the first column in the file fast_readout_4f_gaps.txt"
+<lpd_command_sequence name="fast readout replacement"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
-
-	<sync_reset/>
-	<!-- Power down-->
-	<stand_by/>
-	<!--Command sequence to drive the 
-	    state machine through the readout stages
-	  -->
+	<!-- Replaces the file fast_readout_4f_gaps.txt -->
 	
+	<sync_reset/> <!-- Start Config chip? -->
+	<on_chip_reset_enable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<start_write_pointer/>
+	<start_trigger_pointer/> 
+	<nop/>
+	<nop/>
+	<trigger_flag_set count="4"/>
+	<nop/>
 	<on_chip_reset_disable/>
 	<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>
-	<start_write_pointer/>
-	<start_trigger_pointer/>
-	<trigger_flag_set/>
 	<reset_write_pointer/>
-	<reset_trigger_pointer/>
-	<clear_skip_register/>
-	<read_out_data nop="7"/> <!-- Enough NOPS to perform a few ADC conversions of the level on the PAD input -->
-	<sync_reset nop="2"/> <!-- Return state machine to start write pointer -->
-	<stop_read_out/>
-	<!-- Alter the ADC pad input and start another conversion -->
-	<start_trigger_pointer/>
-	<trigger_flag_set/>
-	<reset_write_pointer/>
-	<reset_trigger_pointer/>
-	<clear_skip_register/>
-	<read_out_data nop="7"/>
-	<sync_reset nop="2"/>
-	<stop_read_out/>
+	<reset_trigger_pointer/>	
+	<nop/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/> 
+	<!-- Add additional NOPS to allow sufficient data to be clocked out of the ASICs -->
+	<loop count="4">
+		<nop/>
+		<nop count="501"/>
+	</loop>
+	<nop/>
 	<reset_state_machine/>
 	<nop/>
 </lpd_command_sequence>
