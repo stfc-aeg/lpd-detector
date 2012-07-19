@@ -56,7 +56,10 @@ class LpdCommandSequenceParser():
         self.nop_pos  = 22
         self.cmd_pos  = 12
         self.sync_reset_pos = 2
-        
+
+        # Count total number of nops
+        self.total_number_nops = 0
+                
         # Parse the XML specified, either from a file if the fromFile flag
         # was set or from the string passed
         if fromFile == True:
@@ -81,7 +84,7 @@ class LpdCommandSequenceParser():
         
         # Parse the tree, starting at the root element, obtaining the packed
         # binary command sequence as a list
-        sequence = self.parseElement(self.root)
+        self.total_number_nops, sequence  = self.parseElement(self.root)
         
         # Return the command sequence
         return sequence
@@ -95,6 +98,9 @@ class LpdCommandSequenceParser():
     
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = []
+        
+        # Track number of nops counted locally
+        localNopsSum = 0
         
         # Increment tree depth counter
         self.depth = self.depth + 1
@@ -114,7 +120,9 @@ class LpdCommandSequenceParser():
                 numLoops = self.getCountAttrib(child)
                 
                 if len(child):
-                    encodedSequence.extend(self.parseElement(child) * numLoops)
+                    nopsSum, childSequence = self.parseElement(child) 
+                    localNopsSum += nopsSum * numLoops 
+                    encodedSequence.extend(childSequence * numLoops)
                 else:
                     raise LpdCommandSequenceError('Loop specified with no children')
                 
@@ -135,14 +143,31 @@ class LpdCommandSequenceParser():
                         cmdWord = (self.cmdDict[cmd] << self.sync_reset_pos)
                     else:
                         cmdWord = (self.sync << self.sync_pos) | (self.cmdDict[cmd] << self.cmd_pos)
-                    
-                    # Add in the NOPs field to the word    
-                    cmdWord = (nops << self.nop_pos) |  cmdWord
+   
+                        
+                    # Add in the NOPs to the command word. If the command itself is a NOP, use
+                    # the count attribute to specify how many NOPs to add. Also reset count to
+                    # 1 to avoid injecting repeated individual NOPs into the encoded sequence
+                    if cmd == 'nop':
+                        if nops > 0:
+                            raise LpdCommandSequenceError('NOPs atttribute specified for NOP command, use count attribute instead')
+                        
+                        cmdWord = (count - 1 << self.nop_pos) | cmdWord
+                        # Count number of nops
+                        localNopsSum += count
+                        count = 1
+                        
+                    else:
+                        cmdWord = (nops << self.nop_pos) | cmdWord
+                        # Count number of nops if specified
+                        if nops > 0:
+                            localNopsSum += nops
+
                     
                     # Append packed command word to the encoded sequence the number of times
                     # specified by the count attribute
                     encodedSequence.extend([cmdWord] * count)
-                                            
+                                                                
                 else:
                     if self.strict:
                         raise LpdCommandSequenceError('Illegal command %s specified' % (child.tag))
@@ -151,8 +176,15 @@ class LpdCommandSequenceParser():
         self.depth = self.depth - 1
         
         # Return the encoded sequence for this (partial) tree
-        return encodedSequence
+        return localNopsSum, encodedSequence
     
+    def getTotalNumberNops(self):
+        '''
+        Returns the total number of nops read
+        '''
+        
+        return self.total_number_nops
+        
     def getCountAttrib(self, theElement):
         '''
         Returns the value of the count attribute of the specified element if it exists,
@@ -225,7 +257,7 @@ class LpdCommandSequenceParserTest(unittest.TestCase):
 
         expectedLenEncoded = 25
         
-        fileCmdSeq = LpdCommandSequenceParser('adcSweep.xml', fromFile=True)    
+        fileCmdSeq = LpdCommandSequenceParser('adcSweep.xml', fromFile=True)
         fileEncodedSeq = fileCmdSeq.encode()
 
         self.assertEqual(len(fileEncodedSeq), expectedLenEncoded, 
