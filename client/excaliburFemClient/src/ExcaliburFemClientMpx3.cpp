@@ -500,6 +500,7 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		{
 			usleep(10000);
 			acqStatus = this->acquireStatus();
+			retries++;
 		}
 
 		if (acqStatus.state != acquireIdle)
