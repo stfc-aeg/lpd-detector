@@ -20,6 +20,9 @@ const unsigned int kClientTimeoutMsecs = 10000;
 void* femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config)
 {
 
+	std::cout << "**************************************************************" << std::endl;
+	std::cout << "Connecting to FEM at address " << config->femAddress << std::endl;
+
 	// Initialise FEM client object, which opens and handles connection with the FEM
 	ExcaliburFemClient* theFem = NULL;
 	try
@@ -219,12 +222,12 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 			case FEM_OP_BIAS_ON_OFF:
 
-				theFem->powerCardBiasEnable((unsigned int)*value);
+				theFem->powerCardBiasEnableWrite((unsigned int)*value);
 				break;
 
 			case FEM_OP_LV_ON_OFF:
 
-				theFem->powerCardLowVoltageEnable((unsigned int)*value);
+				theFem->powerCardLowVoltageEnableWrite((unsigned int)*value);
 				break;
 
 			case FEM_OP_MEDIPIX_CHIP_DISABLE:
@@ -407,6 +410,14 @@ int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
 
 			case FEM_OP_MPXIII_EFUSEID:
 				*value = theFem->mpx3eFuseIdRead(chipId);
+				break;
+
+			case FEM_OP_BIAS_ON_OFF:
+				*value = theFem->powerCardBiasEnableRead();
+				break;
+
+			case FEM_OP_LV_ON_OFF:
+				*value = theFem->powerCardLowVoltageEnableRead();
 				break;
 
 			default:
@@ -784,6 +795,10 @@ int femCmd(void* femHandle, int chipId, int id)
 
 		case FEM_OP_LOADPIXELCONFIG:
 			theFem->mpx3PixelConfigWrite(chipId);
+			break;
+
+		case FEM_OP_FEINIT:
+			theFem->frontEndInitialise();
 			break;
 
 		case FEM_OP_FREEALLFRAMES:
