@@ -8,14 +8,24 @@
 #include "ExcaliburFemClient.h"
 #include "ExcaliburPowerCardDevices.h"
 
-void  ExcaliburFemClient::powerCardBiasEnable(unsigned int aEnable)
+void  ExcaliburFemClient::powerCardBiasEnableWrite(unsigned int aEnable)
 {
-	this->powerCardPCF8475BitWrite(kPwrCardPCF8574BiasEnableBit, aEnable);
+	this->powerCardPCF8574BitWrite(kPwrCardPCF8574BiasEnableBit, aEnable);
 }
 
-void  ExcaliburFemClient::powerCardLowVoltageEnable(unsigned int aEnable)
+void  ExcaliburFemClient::powerCardLowVoltageEnableWrite(unsigned int aEnable)
 {
-	this->powerCardPCF8475BitWrite(kPwrCardPCF8574LowVoltageEnableBit, aEnable);
+	this->powerCardPCF8574BitWrite(kPwrCardPCF8574LowVoltageEnableBit, aEnable);
+}
+
+unsigned int ExcaliburFemClient::powerCardBiasEnableRead(void)
+{
+	return this->powerCardPCF8574BitRead(kPwrCardPCF8574BiasEnableBit);
+}
+
+unsigned int ExcaliburFemClient::powerCardLowVoltageEnableRead(void)
+{
+	return this->powerCardPCF8574BitRead(kPwrCardPCF8574LowVoltageEnableBit);
 }
 
 void  ExcaliburFemClient::powerCardBiasLevelWrite(float aBiasLevel)
@@ -123,7 +133,7 @@ int ExcaliburFemClient::powerCardPCF8574BitRead(int aBit)
 	return theBit;
 }
 
-void ExcaliburFemClient::powerCardPCF8475BitWrite(int aBit, int aVal)
+void ExcaliburFemClient::powerCardPCF8574BitWrite(int aBit, int aVal)
 {
 
 	std::cout << "powerCardPCF8475BitWrite aBit=" << aBit << " aVal=" << aVal << std::endl;

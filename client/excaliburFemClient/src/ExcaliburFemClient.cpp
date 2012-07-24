@@ -77,8 +77,8 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 	}
 
 	// Reset the ASIC control f/w block and ASICS
-	this->asicControlReset();
-	this->asicControlAsicReset();
+//	this->asicControlReset();
+//	this->asicControlAsicReset();
 
 	// Initialise front-end DACs
 	//this->frontEndDacInitialise();
@@ -557,3 +557,19 @@ unsigned int ExcaliburFemClient::frameDataLengthBytes(void)
 
 }
 
+void ExcaliburFemClient::frontEndInitialise(void)
+{
+
+	std::cout << "**** Front-end initialise ****" << std::endl;
+	sleep(3);
+
+	// Initialise front-end DACs
+	this->frontEndDacInitialise();
+
+	// Reset the ASIC control f/w block and ASICS
+	this->asicControlReset();
+	this->asicControlAsicReset();
+
+	std::cout << "**** Front-end init done ****" << std::endl;
+
+}

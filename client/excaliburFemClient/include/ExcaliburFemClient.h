@@ -124,6 +124,7 @@ public:
 	void acquisitionTimeSet(unsigned int aTimeMs);
 	void numTestPulsesSet(unsigned int aNumTestPulses);
 	void freeAllFrames();
+	void frontEndInitialise(void);
 
 	// EXCALIBUR detector front-end functions in ExcaliburFemClientFrontEndDevices.cpp
 	void   frontEndEnableSet(unsigned int aVal);
@@ -151,8 +152,10 @@ public:
 
 	// EXCALIBUR power card control functions in ExcaliburFemClientPowerCardDevices.cpps
 
-	void  powerCardBiasEnable(unsigned int aEnable);
-	void  powerCardLowVoltageEnable(unsigned int aEnable);
+	void  powerCardBiasEnableWrite(unsigned int aEnable);
+	void  powerCardLowVoltageEnableWrite(unsigned int aEnable);
+	unsigned int powerCardLowVoltageEnableRead(void);
+	unsigned int powerCardBiasEnableRead(void);
 	void  powerCardBiasLevelWrite(float aBiasLevel);
 	int   powerCardStatusRead(excaliburPowerCardStatus aStatus);
 	float powerCardMonitorRead(excaliburPowerCardMonitor aMonitor);
@@ -189,7 +192,7 @@ private:
 
 	// Private functions in ExcaliburFemClientPowerCardDevices.cpp
 	int  powerCardPCF8574BitRead(int aBit);
-	void powerCardPCF8475BitWrite(int aBit, int aVal);
+	void powerCardPCF8574BitWrite(int aBit, int aVal);
 	void powerCardAD5301Write(u8 aDacValue);
 	u16 powerCardAD7998Read(unsigned int aDevice, unsigned int aChan);
 
