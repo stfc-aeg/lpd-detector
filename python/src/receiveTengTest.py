@@ -116,7 +116,7 @@ class BlitQT(FigureCanvas):
             
             print "SubPlotting selected; Preparing graphics.."
             
-            # Create a list for axis object and image object, to contain one instance for each splice
+            # Create a list for axis object and image object, to contain one instance for each image
             self.ax = []
             self.img = []
             
@@ -156,7 +156,7 @@ class BlitQT(FigureCanvas):
                 
                 self.draw()
         else:
-            ''' Ordinary readout, only plot the first splice from the image '''
+            ''' Ordinary readout, only plot the first image from the image '''
             self.ax = self.figure.add_subplot(1, 1, 1)  #111)
 
             self.ax.set_xticks(xlist)
@@ -267,31 +267,31 @@ class BlitQT(FigureCanvas):
             # Extract the 16 ASICs image data from the full Quadrant data
             completeDataArray = self.convertAsicDataIntoImage(_16BitWordArray)
             
-            # Plot multiple splices if subplot enabled according to line 35
+            # Plot multiple images if subplot enabled according to line 35
             if global_bSubPlotting:
                 # Define variables that increase with each while loop iteration
                 currentPlot = 0
-                bNextSpliceAvailable = True
+                bNextImageAvailable = True
                 
                 # Loop over the specified number of plots
-                while bNextSpliceAvailable and currentPlot < plotMaxPlots:
+                while bNextImageAvailable and currentPlot < plotMaxPlots:
                     
-                    # Get the first splice of the image
-                    bNextSpliceAvailable, spliceArray = self.retrieveFirstSpliceFromAsicData(_16BitWordArray)
+                    # Get the first image of the image
+                    bNextImageAvailable, imageArray = self.retrieveFirstImageFromAsicData(_16BitWordArray)
                     
-                    # The first splice, spliceArray, has now been stripped from the image
-                    # Reshape splice into 32 x 256 pixel array
+                    # The first image, imageArray, has now been stripped from the image
+                    # Reshape image into 32 x 256 pixel array
                     try:
-                        self.data = spliceArray.reshape(nrows, ncols)
+                        self.data = imageArray.reshape(nrows, ncols)
                     except Exception as errStr:
-                        print "handleDataRx() failed to reshape spliceArray: ", errStr, "\nExiting.."
+                        print "handleDataRx() failed to reshape imageArray: ", errStr, "\nExiting.."
                         exit()
                         
                     # Display debug information..
-                    print "currentPlot: ", currentPlot, " data left: ", len(_16BitWordArray), " splice data: \n", self.data
+                    print "currentPlot: ", currentPlot, " data left: ", len(_16BitWordArray), " image data: \n", self.data
                     
-                    # Set title as frame number, current splice number
-                    self.ax[currentPlot].set_title("Frame %i Splice %i" % (frameNumber, currentPlot))
+                    # Set title as frame number, current image number
+                    self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
                     
                     # Load image into figure
                     self.img[currentPlot].set_data(self.data)
@@ -302,8 +302,8 @@ class BlitQT(FigureCanvas):
                     # Increment currentPlot
                     currentPlot += 1
 
-                    """ Remove this splice from image array before next iteration
-                        NOTE: _16BitWordArray contains full quadrant data, therefore while one splice is 8192 pixels, 
+                    """ Remove this image from image array before next iteration
+                        NOTE: _16BitWordArray contains full quadrant data, therefore while one image is 8192 pixels, 
                                 it represents a region of 65,536 pixels within the full quadrant data !
                     """
                     _16BitWordArray = _16BitWordArray[65536:]
@@ -621,25 +621,25 @@ class BlitQT(FigureCanvas):
         return completeImageArray
 
 # ~~~~~~~~~~~~ #
-    def retrieveFirstSpliceFromAsicData(self, sixteenBitArray):
-        """ retrieveFirstSpliceFromAsicData() takes the sixteenBitArray array argument containing all
+    def retrieveFirstImageFromAsicData(self, sixteenBitArray):
+        """ retrieveFirstImageFromAsicData() takes the sixteenBitArray array argument containing all
             the ASIC data (full supermodule), and returns,
-                * boolean to signal whether this is the last splice in the data
-                * the first splice (32 x 16 x 16 pixels) of an image found in the data,
+                * boolean to signal whether this is the last image in the data
+                * the first image (32 x 16 x 16 pixels) of an image found in the data,
             in the form of the 16 ASICs organised into a 32 x 256 pixel image 
         """
         # Create an array to contain 8192 elements (32 x 16 x 16)
-        spliceImageArray = np.empty(8192, dtype=np.uint16)
+        imageImageArray = np.empty(8192, dtype=np.uint16)
         
         
         """ Debug information.. """
-#        print "retrieveFirstSpliceFromAsicData() len(sixteenBitArray) ", len(sixteenBitArray)
+#        print "retrieveFirstImageFromAsicData() len(sixteenBitArray) ", len(sixteenBitArray)
         
         # Distance between two consecutive pixels within the same ASIC in the quadrant detector
         pixelDistance = 128
         
-        # Boolean variable to track whether there is a splice after this one in the data
-        bNextSpliceAvailable = False
+        # Boolean variable to track whether there is a image after this one in the data
+        bNextImageAvailable = False
         
         # Define variables used by nested loops..
         # Distance between adjacent columns and rows, respectively
@@ -664,7 +664,7 @@ class BlitQT(FigureCanvas):
                         
                         rawDataOffset = (column * column_width) + (row * row_length) + lookupTableAsicDistance
                         
-                        spliceImageArray[ (15 - column) + (16 * asicOffset) + (256 * row)] = sixteenBitArray[rawDataOffset]
+                        imageImageArray[ (15 - column) + (16 * asicOffset) + (256 * row)] = sixteenBitArray[rawDataOffset]
                         
                         # Need to update lookupTableAsicDistance manually for ASIC 101, 17 and 21..
                         if asicOffset is 3:
@@ -684,19 +684,19 @@ class BlitQT(FigureCanvas):
                     print "IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
                     break
                 except Exception as errStr:
-                    print "retrieveFirstSpliceFromAsicData(), look up table execution failed: ", errStr, "\nExiting.."
+                    print "retrieveFirstImageFromAsicData(), look up table execution failed: ", errStr, "\nExiting.."
                     exit()                    
 
-        # Check whether this is the last splice in the image data..
+        # Check whether this is the last image in the image data..
         #    NOTE: the 8192 pixels come from a region spanning 65,536 pixel in the quadrant data
         try:
             sixteenBitArray[65536]
-            # Will only get here if there is a next splice available..
-            bNextSpliceAvailable = True
+            # Will only get here if there is a next image available..
+            bNextImageAvailable = True
         except IndexError:
-            print "Last Splice detected"
+            print "Last Image detected"
 
-        return bNextSpliceAvailable, spliceImageArray
+        return bNextImageAvailable, imageImageArray
 
 # ~~~~~~~~~~~~ #
 
