@@ -59,6 +59,9 @@ class LpdCommandSequenceParser():
 
         # Count total number of nops
         self.total_number_nops = 0
+        
+        # Count total number of words
+        self.total_number_words = 0
                 
         # Parse the XML specified, either from a file if the fromFile flag
         # was set or from the string passed
@@ -85,6 +88,9 @@ class LpdCommandSequenceParser():
         # Parse the tree, starting at the root element, obtaining the packed
         # binary command sequence as a list
         self.total_number_nops, sequence  = self.parseElement(self.root)
+        
+        # Count the total number of words
+        self.total_number_words = len(sequence)
         
         # Return the command sequence
         return sequence
@@ -184,6 +190,13 @@ class LpdCommandSequenceParser():
         '''
         
         return self.total_number_nops
+    
+    def getTotalNumberWords(self):
+        '''
+        Returns the total number of words
+        '''
+        
+        return self.total_number_words
         
     def getCountAttrib(self, theElement):
         '''
