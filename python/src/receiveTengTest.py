@@ -32,7 +32,6 @@ data_buf_lim = 100   # Number of packets in each frame
 
 # Variable used to enable/test subplotting
 global_bSubPlotting = True
-globalPlotNumber = 511
 # Define variables used as arguments by
 # Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
 #    where max number of plotMaxPlots = plotRows * plotCols
@@ -235,9 +234,9 @@ class BlitQT(FigureCanvas):
             
             """ DEBUG INFO: """
             # Display array content 32 bit integers
-#            print "Array contents structured into 32 bit elements [byte swapped!]:"
-#            self.display32BitArrayInHex(_32BitWordArray)
-#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            print "Array contents structured into 32 bit elements [byte swapped!]:"
+            self.display32BitArrayInHex(_32BitWordArray)
+            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             # Calculate length of 32 bit array
             _32BitArrayLen = len(_32BitWordArray)
@@ -261,9 +260,9 @@ class BlitQT(FigureCanvas):
 
             """ DEBUG INFO: """ 
             # Display array contenting 16 bit elements:
-#            print "Array contents re-structured into 16 bit elements:"
-#            self.display16BitArrayInHex(_16BitWordArray)
-#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            print "Array contents re-structured into 16 bit elements:"
+            self.display16BitArrayInHex(_16BitWordArray)
+            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
             
             # Extract the 16 ASICs image data from the full Quadrant data
             completeDataArray = self.convertAsicDataIntoImage(_16BitWordArray)
@@ -274,8 +273,7 @@ class BlitQT(FigureCanvas):
                 currentPlot = 0
                 bNextSpliceAvailable = True
                 
-                # First digit of globalPlotNumber determines how many plots 
-                #     i.e. if currentPlot = 911, break loop after 919 or 9 subplots
+                # Loop over the specified number of plots
                 while bNextSpliceAvailable and currentPlot < plotMaxPlots:
                     
                     # Get the first splice of the image
