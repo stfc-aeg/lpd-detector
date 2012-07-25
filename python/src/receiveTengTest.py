@@ -32,7 +32,13 @@ data_buf_lim = 100   # Number of packets in each frame
 
 # Variable used to enable/test subplotting
 global_bSubPlotting = True
-globalPlotNumber = 611
+globalPlotNumber = 511
+# Define variables used as arguments by
+# Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
+#    where max number of plotMaxPlots = plotRows * plotCols
+plotRows = 2
+plotCols = 1
+plotMaxPlots = plotRows * plotCols
 
 
 NX = 100
@@ -77,27 +83,26 @@ class BlitQT(FigureCanvas):
         data_buf_num = data_buf_lim+10
         
         #frame Info arrays
-        self.packet_count    = [0] * frm_buf_num    #[ 0 for i in range(frm_buf_num) ]
+        self.packet_count    = [0] * frm_buf_num
         self.frame_count  = 0
 
         # frame_length is frame length less header info
-        self.frame_length = [0] * frm_buf_num   #[ 0 for i in range(frm_buf_num) ]
+        self.frame_length = [0] * frm_buf_num
         
         
-#        self.data_num_nxt     =  [ 0 for i in range(frm_buf_num) ]
-#        self.packet_number_list     = [ [ 0 for i in range(data_buf_num) ] for j in range(frm_buf_num) ]
         self.packet_number_list     = [ [0] * data_buf_num ] * frm_buf_num
-        self.frame_number_list     = [0] * frm_buf_num  # [ 0 for i in range(frm_buf_num) ]
-        self.frame_number_index_list =  [0] * frm_buf_num   # [ 0 for i in range(frm_buf_num) ]
+        self.frame_number_list     = [0] * frm_buf_num
+        self.frame_number_index_list =  [0] * frm_buf_num
         
         self.first_frm_num = -1
 
         self.j = 0
         
+        # ---------------------------------------------- #
+        
         # Create a list (array?) to contain payload from all UDP packets
         self.rawImageData = ""
-        
-        # ---------------------------------------------- #
+
 
         # Generate list of xticks, yticks to label the x, y axis
         xlist = []
@@ -107,8 +112,9 @@ class BlitQT(FigureCanvas):
         ylist = []
         for i in range(8, 32, 8):
             ylist.append(i)
-        
+
         if global_bSubPlotting:
+            
             print "SubPlotting selected; Preparing graphics.."
             
             # Create a list for axis object and image object, to contain one instance for each splice
@@ -116,14 +122,16 @@ class BlitQT(FigureCanvas):
             self.img = []
             
             # Because subplotting has been selected, need a list of axis to cover multiple subplots
-            for idx in range( (globalPlotNumber - 11) / 100):
-#                print idx
-                axesObject =  self.figure.add_subplot(globalPlotNumber + idx)
+            for idx in range(plotMaxPlots):
+
+                axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
                 self.ax.extend([axesObject])
                 
                 self.ax[idx].set_xticks(xlist)
                 self.ax[idx].set_yticks(ylist)
-
+                
+                # Set the title of each plot temporarily
+                self.ax[idx].set_title("Frame %i" % idx)
                 
                 # Stuff copied from else statement..
                 
@@ -132,7 +140,14 @@ class BlitQT(FigureCanvas):
                 
                 imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
                 self.img.extend([imgObject])
-        
+
+                # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
+                axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
+                cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
+
+                # Set the colour bar
+                self.img[idx].colorbar = cb
+
                 # Add vertical lines to differentiate between the ASICs
                 for i in range(16, ncols, 16):
                     self.ax[idx].vlines(i-0.5, 0, nrows-1, color='b', linestyles='solid')
@@ -143,7 +158,7 @@ class BlitQT(FigureCanvas):
                 self.draw()
         else:
             ''' Ordinary readout, only plot the first splice from the image '''
-            self.ax = self.figure.add_subplot(111)
+            self.ax = self.figure.add_subplot(1, 1, 1)  #111)
 
             self.ax.set_xticks(xlist)
             self.ax.set_yticks(ylist)
@@ -161,7 +176,7 @@ class BlitQT(FigureCanvas):
             # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
             axc, kw = matplotlib.colorbar.make_axes(self.ax)
             cb = matplotlib.colorbar.Colorbar(axc, self.img)
-            
+
             # Set the colour bar
             self.img.colorbar = cb
     
@@ -179,8 +194,7 @@ class BlitQT(FigureCanvas):
         self.tstart = time.time()
         self.rxThread = RxThread(self.dataRxSignal)
         self.rxThread.start()
-        
-#        self.startTimer(10)
+
 
     def handleDataRx(self, data):
         
@@ -191,8 +205,7 @@ class BlitQT(FigureCanvas):
             current_size = self.ax.bbox.width, self.ax.bbox.height
             if self.old_size != current_size:
                 self.old_size = current_size
-                #self.ax.clear()
-                #self.ax.grid()
+
                 self.draw()
                 self.ax_background = self.copy_from_bbox(self.ax.bbox)
     
@@ -206,8 +219,7 @@ class BlitQT(FigureCanvas):
             sys.exit()
 
         # Only process image data when End Of File encountered..
-        ''' Note: Python considers "if foundEof:" as True..! '''
-        if foundEof is 1:
+        if foundEof:
             
             # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
             
@@ -228,21 +240,16 @@ class BlitQT(FigureCanvas):
 #            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             # Calculate length of 32 bit array
-            arrayLen = len(_32BitWordArray)
-            
-            # Debug info
-            print "Received = ", arrayLen, " pixels in total."
+            _32BitArrayLen = len(_32BitWordArray)
 
             # Create empty array to store 16 bit elements (eg 32Bit array * 2)
             #     Each 32-bit word contain 2 pixels
-            _16BitWordArray = np.empty(arrayLen*2, dtype='i2')
+            _16BitWordArray = np.empty(_32BitArrayLen*2, dtype='i2')
             
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
-            for rawIdx in range(arrayLen):
-
+            for rawIdx in range(_32BitArrayLen):
                 _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] >> 16
                 _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] & 0xFFFF
-                
                 # Check whether gain bits are set
                 if (_16BitWordArray[rawIdx*2] & 0xF000) > 0:
                     print " !",
@@ -254,70 +261,54 @@ class BlitQT(FigureCanvas):
 
             """ DEBUG INFO: """ 
             # Display array contenting 16 bit elements:
-            print "Array contents re-structured into 16 bit elements:"
-            self.display16BitArrayInHex(_16BitWordArray)
-            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+#            print "Array contents re-structured into 16 bit elements:"
+#            self.display16BitArrayInHex(_16BitWordArray)
+#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
             
             # Extract the 16 ASICs image data from the full Quadrant data
             completeDataArray = self.convertAsicDataIntoImage(_16BitWordArray)
             
-            
-            """ TESTING SUBPLOTTING EACH SPLICE OF DATA INTO SEPARATE SUBPLOT - THROWS ASSERTIONERROR!
-            ie:
-             
-Traceback (most recent call last):
-  File "receiveTengTest.py", line 263, in handleDataRx
-    self.ax.draw_artist(self.img)
-  File "/usr/local/lib/python2.7/site-packages/matplotlib/axes.py", line 1994, in draw_artist
-    assert self._cachedRenderer is not None
-AssertionError
-
-"""
             # Plot multiple splices if subplot enabled according to line 35
             if global_bSubPlotting:
                 # Define variables that increase with each while loop iteration
-                plotNumber = globalPlotNumber
+                currentPlot = 0
                 bNextSpliceAvailable = True
-                spliceNumber = 0
-                # Calculate how many subplots from globalPlotNumber
-                maxSubPlots = globalPlotNumber / 100   # e.g. 511 / 100 = 5
                 
-                # Keep going for a maximum of 9 splices, e.g. 
-                #     if plotNumber starts at 911, break loop after 919 or 9 subplots
-                while bNextSpliceAvailable and spliceNumber < maxSubPlots:
+                # First digit of globalPlotNumber determines how many plots 
+                #     i.e. if currentPlot = 911, break loop after 919 or 9 subplots
+                while bNextSpliceAvailable and currentPlot < plotMaxPlots:
                     
                     # Get the first splice of the image
                     bNextSpliceAvailable, spliceArray = self.retrieveFirstSpliceFromAsicData(_16BitWordArray)
                     
-                    # spliceArray now contains the first splice of the image
-                    # Display this as subplot 211
+                    # The first splice, spliceArray, has now been stripped from the image
+                    # Reshape splice into 32 x 256 pixel array
                     try:
                         self.data = spliceArray.reshape(nrows, ncols)
                     except Exception as errStr:
                         print "handleDataRx() failed to reshape spliceArray: ", errStr, "\nExiting.."
                         exit()
                         
-                    # We now have the image data for however many splices selected
-                    # Loop over each subplot, to display each splice in a different plot
-                    print "plotNumber: ", plotNumber, " bNextSpliceAvailable: ", bNextSpliceAvailable, " data left: ", len(_16BitWordArray), " self.data: \n", self.data
+                    # Display debug information..
+                    print "currentPlot: ", currentPlot, " data left: ", len(_16BitWordArray), " splice data: \n", self.data
                     
-                    # Set title to current frame number
-                    self.ax[spliceNumber].set_title("Frame %i Splice %i" % (frameNumber, spliceNumber))
+                    # Set title as frame number, current splice number
+                    self.ax[currentPlot].set_title("Frame %i Splice %i" % (frameNumber, currentPlot))
                     
                     # Load image into figure
-                    self.img[spliceNumber].set_data(self.data)
-                    
-                    ''' Replaced ax.draw_artist() with self.draw() to avoid AssertionError '''
-                    self.draw()
-#                    self.ax.draw_artist(self.img)
-                    self.blit(self.ax[spliceNumber].bbox)
+                    self.img[currentPlot].set_data(self.data)
+
+                    self.ax[currentPlot].draw_artist(self.img[currentPlot])
+                    self.blit(self.ax[currentPlot].bbox)
                                         
-                    # Increment plotNumber
-                    plotNumber += 1
-                    # Increment spliceNumber
-                    spliceNumber += 1
-                    # Remove splice from image array
-                    _16BitWordArray = _16BitWordArray[8192:]
+                    # Increment currentPlot
+                    currentPlot += 1
+
+                    """ Remove this splice from image array before next iteration
+                        NOTE: _16BitWordArray contains full quadrant data, therefore while one splice is 8192 pixels, 
+                                it represents a region of 65,536 pixels within the full quadrant data !
+                    """
+                    _16BitWordArray = _16BitWordArray[65536:]
                 else:
                     # Finished
                     print "Finished drawing subplots"
@@ -642,11 +633,15 @@ AssertionError
         # Create an array to contain 8192 elements (32 x 16 x 16)
         spliceImageArray = np.empty(8192, dtype=np.uint16)
         
+        
+        """ Debug information.. """
+#        print "retrieveFirstSpliceFromAsicData() len(sixteenBitArray) ", len(sixteenBitArray)
+        
         # Distance between two consecutive pixels within the same ASIC in the quadrant detector
         pixelDistance = 128
         
         # Boolean variable to track whether there is a splice after this one in the data
-        bNextSpiceAvailable = False
+        bNextSpliceAvailable = False
         
         # Define variables used by nested loops..
         # Distance between adjacent columns and rows, respectively
@@ -688,22 +683,22 @@ AssertionError
                         
                 except IndexError:
                     # If end of array reached, will raise IndexError
-                    print "Detected IndexError, breaking out of loop.."
+                    print "IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
                     break
                 except Exception as errStr:
                     print "retrieveFirstSpliceFromAsicData(), look up table execution failed: ", errStr, "\nExiting.."
                     exit()                    
 
         # Check whether this is the last splice in the image data..
+        #    NOTE: the 8192 pixels come from a region spanning 65,536 pixel in the quadrant data
         try:
-            sixteenBitArray[8192]
+            sixteenBitArray[65536]
             # Will only get here if there is a next splice available..
-            bNextSpiceAvailable = True
+            bNextSpliceAvailable = True
         except IndexError:
-            print "retrieveFirstSpliceFromAsicData() IndexError detected, no more splices in the sixteenBitArray after this splice.."
-        
-        return bNextSpiceAvailable, spliceImageArray
+            print "Last Splice detected"
 
+        return bNextSpliceAvailable, spliceImageArray
 
 # ~~~~~~~~~~~~ #
 
