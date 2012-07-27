@@ -6,30 +6,59 @@ Created on 18 Apr 2012
 
 # Import Python standard modules
 import sys
+import socket
 
 # Import Fem modules
 #from FemClient import FemClient
 from LpdFemClient import *  #LpdFemClient
 
+# Import library for parsing XML fast command files
+from LpdCommandSequence.LpdCommandSequenceParser import LpdCommandSequenceParser
+
 class FemAsicTest():
     def set_10g_structs_variables_te2bank(self):
-        """ Construct and return to dictionaries defining to network interfaces
-            ..both interfaces same though? """
+        """ Construct and return two dictionaries defining two network interfaces
+        """
         
-    #    myDict = {'field1': 'some val', 'field2': 'some val'}
         x10g_0 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-                  'src_ip'  : self.ip_addr_to_uint32('192.168.0.1'),
-                  #x10g.src_prt   = self.prt_addr_to_uint16(self.prt_addr_to_uint16('0000')); # Typo?
+                  'src_ip'  : self.ip_addr_to_uint32('192.168.7.2'),
                   'src_prt' : self.prt_addr_to_uint16('0000'),
+                  # PC TARGET:
                   'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),
                   'dst_ip'  : self.ip_addr_to_uint32('192.168.0.13'),
                   'dst_prt' : self.prt_addr_to_uint16('0000')}
         
-        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-                  'src_ip'  : self.ip_addr_to_uint32('192.168.0.1'),
+#        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
+#                  'src_ip'  : self.ip_addr_to_uint32('192.168.0.1'),
+#                  'src_prt' : self.prt_addr_to_uint16('0000'),
+#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
+#                  'dst_ip'  : self.ip_addr_to_uint32('192.168.0.13'),
+#                  'dst_prt' : self.prt_addr_to_uint16('0000')}
+        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-09'),
+                  'src_ip'  : self.ip_addr_to_uint32('192.168.0.100'),
                   'src_prt' : self.prt_addr_to_uint16('0000'),
                   'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
                   'dst_ip'  : self.ip_addr_to_uint32('192.168.0.13'),
+                  'dst_prt' : self.prt_addr_to_uint16('0000')}
+        return x10g_0, x10g_1
+
+    def set_10g_structs_variables_te7burntoak(self):
+        """ Construct and return two dictionaries defining two network interfaces
+        """
+        
+        x10g_0 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
+                  'src_ip'  : self.ip_addr_to_uint32('192.168.7.2'),
+                  'src_prt' : self.prt_addr_to_uint16('8'),
+                  # Target PC:
+                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-10-61-88'),
+                  'dst_ip'  : self.ip_addr_to_uint32('192.168.7.1'),
+                  'dst_prt' : self.prt_addr_to_uint16('61649')}
+        
+        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
+                  'src_ip'  : self.ip_addr_to_uint32('192.168.8.2'),
+                  'src_prt' : self.prt_addr_to_uint16('0000'),
+                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
+                  'dst_ip'  : self.ip_addr_to_uint32('192.168.8.1'),
                   'dst_prt' : self.prt_addr_to_uint16('0000')}
     
         return x10g_0, x10g_1
@@ -71,8 +100,9 @@ class FemAsicTest():
     # --------------------------------------------------------------------------- #
     
     def execute_tests(self):
-        femHost = '127.0.0.1'   # '192.168.0.13'
-        femPort = 5000          # 6969
+        
+        femHost = '192.168.2.2'
+        femPort = 6969
         
         try:
             myLpdFemClient = LpdFemClient((femHost, femPort), timeout=10)
@@ -80,37 +110,53 @@ class FemAsicTest():
             print "Error: FEM connection failed:", errString
             sys.exit(1)
         
-        
+       
+        # -------------------------------------------------
+        # Enable readback of every rdmaWrite function call
+        myLpdFemClient.set_rdma_read_back(True)
+        # -------------------------------------------------
+       
         # enable sending reset to both ppc processors if = 1
-        send_ppc_reset = 0;
+        send_ppc_reset = 1
         
         # for new fast controls with optional dynamic vetos if = 1
-        fast_ctrl_dynamic = 1;
+        fast_ctrl_dynamic = 1
         
-        # send data via 10g udp block (needs matlab toolbox license)
-        enable_10g = 1;
+        # (Skip loading slow control block)
+        # 0 = disable, 1 = enable filling slow control bram
+        # ON Cold Start:
+        setup_slow_control_bram = 1
+        # Once ASICs programmed:
+#        setup_slow_control_bram = 0
+        
+        # send data via 10g udp block
+        enable_10g = 1
         
         # Read 10g data either by packet or frames
-        readout_mode = 'frame';
+        readout_mode = 'frame'
         
         # choose data source to 10g block 
         # 0 = llink frame generator
         # 1 = direct from asic  
         # 2 = PPC
-        data_source_to_10g = 0
+        data_source_to_10g = 1
         
         # 1 = dummy counting data from asic rx block
         # 0 = real data from asic
-        asic_data_source = 0;
+        asic_rx_counting_data = 0
         
-        # for pseudo random frames from asic  (must also set asic_data_source = 0)
-        asic_pseudo_random = 1;
+        # 1 = single asic module
+        # 2 = 2-Tile box
+        asic_module_type = 2
+        
+        # for pseudo random frames from asic  (must also set asic_rx_counting_data = 0)
+        asic_pseudo_random = 0
         
         # steer loading of brams for asic slow and fast configuration data
         if (data_source_to_10g == 0 or data_source_to_10g == 2):
             load_asic_config_brams = 0 
         else:
-            if (asic_data_source == 0):
+            if (asic_rx_counting_data == 0):
                 load_asic_config_brams = 1  
             else: # skip brams if using asic rx internal data generator
                 load_asic_config_brams = 0
@@ -118,18 +164,40 @@ class FemAsicTest():
         # Nr (100 MHz) clock periods delay before start of asic data rx
         # tuned for various data runs to capture 1st data bit in stream
         # will be replaced later by signal from asic fast block to asic rx
-        if (asic_pseudo_random) is True:
-            asic_rx_start_delay = 59   #uint32(59); 
+        if asic_pseudo_random:
+            #asic_rx_start_delay = 59   #uint32(59)
+            asic_rx_start_delay = 61    # 58
         else:
-            asic_rx_start_delay = 1362  #uint32(1362);
+            if asic_module_type == 2:
+                asic_rx_start_delay = 1360  #1364
+            else:
+                asic_rx_start_delay = 1362  #uint32(1362)
         
         
-        num_ll_frames = 2  # nr of local link frames to generate
+        num_ll_frames = 1  # nr of local link frames to generate
         
         if (data_source_to_10g == 0 or data_source_to_10g == 2):
             trigger_type = 'a'
         else:
-            trigger_type = 'all'
+            # On cold start:
+            trigger_type = 'all'    # trigger FEM to load slow ctrl into ASICs    (Keep setup_slow_control_bram = 1)
+            # Once ASICs configured once:
+#            trigger_type = 'x'      # skip loading slow ctrl into ASICs - set setup_slow_control_bram = 0 in addition
+        
+        
+        #--------------------------------------------------------------------
+        # Resetting the PPC start the DMA test
+        # need to get the timing right or add handshaking
+                
+        if send_ppc_reset == 1:
+            # Resets dma engines
+            myLpdFemClient.toggle_bits(9, 1)
+        
+#        theDelay = 5
+        theDelay = 1
+        print "Waiting %s seconds.." % theDelay
+        time.sleep(theDelay)
+        print "Finished waiting %s seconds!" % theDelay
         
         #--------------------------------------------------------------------
         # Options for configuring LPD ASICs 
@@ -141,13 +209,29 @@ class FemAsicTest():
         
         # Use list instead of array
         mask_list = [0, 0, 0, 0]
-        if asic_data_source == 1:    # enable all channels for dummy data from asic rx    
+        if asic_rx_counting_data == 1:    # enable all channels for dummy data from asic rx    
             mask_list[0] = 0xffffffff
             mask_list[1] = 0xffffffff
             mask_list[2] = 0xffffffff
             mask_list[3] = 0xffffffff
         else: # Enable only relevant channel for single ASIC test module
-            mask_list[0] = 0x00000001
+            if asic_module_type == 1: # Enable 2 channel for single ASIC test module
+                mask_list[0] = 0x00000001
+            elif asic_module_type == 2: #Enable 16 channels for single ASIC test module
+                mask_list[0] = 0x00ff0000
+                mask_list[1] = 0x00000000
+                mask_list[2] = 0x0000ff00
+                mask_list[3] = 0x00000000
+#                mask_list[0] = 0xffffffff
+#                mask_list[1] = 0xffffffff
+#                mask_list[2] = 0xffffffff
+#                mask_list[3] = 0xffffffff
+            else:       # Enable all channels for supermodule
+                mask_list[0] = 0xffffffff
+                mask_list[1] = 0xffffffff
+                mask_list[2] = 0xffffffff
+                mask_list[3] = 0xffffffff
+                
         
         
         #set asic receiver readout size & frame allocation
@@ -156,8 +240,15 @@ class FemAsicTest():
         #  2,2 = 3 triggers with 3 triggers per ll frame ; ie 1 frame
         #  1,1 = 2 triggers with 2 triggers per ll frame ; ie 1 frame
         # see labbook #19 p191  jac
-        no_asic_cols         = 1   # no_asic_cols = nr triggers or time slices/images
-        no_asic_cols_per_frm = 1   # no images per local link frame
+        no_asic_cols         = 3   # no_asic_cols = nr triggers or time slices/images
+        no_asic_cols_per_frm = 3   # no images per local link frame
+#        no_asic_cols         = 0   # set to zero means 1 time slice per trigger (because +1 added wherever no_asic_cols used)
+#        no_asic_cols_per_frm = 0   # set to zero means 1 time slice per trigger (because +1 added wherever no_asic_cols used)
+
+        
+        
+        #
+        print "---> no_asic_cols, no_asic_cols_per_frm: ", no_asic_cols, no_asic_cols_per_frm, " <-----"
         #--------------------------------------------------------------------
         
         # Set up 10G UDP packet length, number & frame size
@@ -181,16 +272,23 @@ class FemAsicTest():
         #  1001  force select x10          9
         #  1011  force select x1          11
         #  1111  force error condition ?  15
-        asic_gain_override = 0
+#        asic_gain_override = 0
+        asic_gain_override = 8
         
-        # rob's udp packet headers : 0 to disable ; Nb to enable need correct bit pattern
+        # rob's udp packet headers : 0 to disable ; set bit 2 to enable, ie = 4 (decimal = 100b, binary) 
+        # Disable for Matlab ; Enable for Python
+        # Nb to enable need correct bit pattern
         # Nb this is not the same as asic rx header; Utilised by robs_udp_packet_header_10g()
-        robs_udp_packet_hdr = 0;
+        # Won't generate header
+        #robs_udp_packet_hdr = 0
+        # Generate header with 10g data
+        robs_udp_packet_hdr = 4
         
         if (data_source_to_10g == 0): # frame generator
             udp_pkt_len = 8000  #1000
             udp_pkt_num = 1
-            udp_frm_sze = 1024*1024*8
+#            udp_frm_sze = 1024*1024*8
+            udp_frm_sze = 262144
             udp_in_buf_size =1024*1024*1024*1
             
         elif (data_source_to_10g == 2):
@@ -201,7 +299,8 @@ class FemAsicTest():
         if (enable_10g == 1):
             
             #set up the UDP IP blocks
-            x10g_0, x10g_1 = self.set_10g_structs_variables_te2bank()
+#            x10g_0, x10g_1 = self.set_10g_structs_variables_te2bank()
+            x10g_0, x10g_1 = self.set_10g_structs_variables_te7burntoak()
             
             #set up the UDP IP blocks
             myLpdFemClient.fem_10g_udp_set_up_block0(udp_pkt_len, udp_frm_sze, eth_ifg)
@@ -210,11 +309,7 @@ class FemAsicTest():
             #set MAC, IP Port addresses
             myLpdFemClient.fem_10g_udp_net_set_up_block0(x10g_0)
             myLpdFemClient.fem_10g_udp_net_set_up_block1(x10g_1)
-        
-            ''' create a udp record - REMOVED '''
-        #    u = udp('192.168.0.13', 'LocalPort', 61649,'InputBufferSize', udp_in_buf_size, 'DatagramTerminateMode', 'off')
-        #    myFemClient = FemClient(hostAddr='192.168.0.13', timeout=10) 
-        
+                
             myLpdFemClient.robs_udp_packet_header_10g(robs_udp_packet_hdr)
         
         #set up data generator 0
@@ -242,34 +337,44 @@ class FemAsicTest():
             
             if load_asic_config_brams == 1:  # only load brams if sending data from asics
                 # slow data
-                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file('SlowControlDefault-1A.txt')
+                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file('/u/ckd27546/workspace/lpd/src/LpdFemTests/SlowControlDefault-1A.txt')
                 # fast data
-                if (asic_pseudo_random):
-                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('fast_test1.txt',fast_cmd_reg_size)
+                if asic_pseudo_random:
+                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_random_gaps.txt',fast_cmd_reg_size)
                 else:
-                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('fast_readout_4f_gaps.txt',fast_cmd_reg_size)
-            
-            #set up the fast command block
-            if fast_ctrl_dynamic == 1:   # new design with dynamic vetos
-                myLpdFemClient.fem_fast_bram_setup(fast_cmd_data, no_of_words)
-                myLpdFemClient.fem_fast_cmd_setup_new(no_of_words+no_of_nops)
-            else:
-                myLpdFemClient.fem_fast_cmd_setup(fast_cmd_data, no_of_words, fast_ctrl_dynamic)            
-            
-            #set up the slow control IP block
-            myLpdFemClient.fem_slow_ctrl_setup(slow_ctrl_data, no_of_bits)
-            
-            # select slow control load mode  jac
-            myLpdFemClient.select_slow_ctrl_load_mode(0, 2)
-            
+#                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_readout_4f_gaps.txt',fast_cmd_reg_size)
+                    
+                    ''' XML implementation '''
+                    fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/lpd/src/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
+                    fast_cmd_data = fileCmdSeq.encode()
+                    
+                    no_of_words = fileCmdSeq.getTotalNumberWords()
+                    no_of_nops = fileCmdSeq.getTotalNumberNops()
+                                
+                #set up the fast command block
+                if fast_ctrl_dynamic == 1:   # new design with dynamic vetos
+                    myLpdFemClient.fem_fast_bram_setup(fast_cmd_data, no_of_words)
+                    myLpdFemClient.fem_fast_cmd_setup_new(no_of_words+no_of_nops)
+                else:
+                    myLpdFemClient.fem_fast_cmd_setup(fast_cmd_data, no_of_words, fast_ctrl_dynamic)            
+
+                # select slow control load mode  jac
+                if setup_slow_control_bram == 1:                
+                    #set up the slow control IP block
+                    myLpdFemClient.fem_slow_ctrl_setup(slow_ctrl_data, no_of_bits)
+
+                # load mode = 0 for common (use this for 2-tile)    jac
+                # load mode = 2 for daisy chain
+                myLpdFemClient.select_slow_ctrl_load_mode(0, 0)
+
             #set up the ASIC RX IP block
             myLpdFemClient.fem_asic_rx_setup(mask_list, no_asic_cols+1, no_asic_cols_per_frm+1)
             
             # data source - self test
-            myLpdFemClient.data_source_self_test()
+            myLpdFemClient.data_source_self_test(asic_rx_counting_data)
 
             # asic rx gain override
-            myLpdFemClient.gain_override()
+            myLpdFemClient.gain_override(asic_gain_override)
              
             # top level steering - ie:
             # turn fast & slow buffers on
@@ -305,6 +410,9 @@ class FemAsicTest():
             # trigger just the fast cmd block
             print "You selected 'f'"
             myLpdFemClient.toggle_bits(7, 2)
+        elif trigger_type is 'x':   # trigger fastand asic rx  (not slow)
+            myLpdFemClient.toggle_bits(7, 2)
+            myLpdFemClient.toggle_bits(3, 1)
         else:
             print "No case matching variable trigger_type = ", trigger_type
         #--------------------------------------------------------------------
@@ -325,14 +433,22 @@ class FemAsicTest():
         
         
         print " ...continuing"
-        
-        if send_ppc_reset == 1:
-            # Resets dma engines
-            myLpdFemClient.toggle_bits(9, 1)
-        
-        
+
+#        #--------------------------------------------------------------------
+#        # Resetting the PPC start the DMA test
+#        # need to get the timing right or add handshaking
+#                
+#        if send_ppc_reset == 1:
+#            # Resets dma engines
+#            myLpdFemClient.toggle_bits(9, 1)
+
         #--------------------------------------------------------------------
         # receive the image data from 10g link
+        
+
+  
+  
+
         
         #check how much data has arrived
         myLpdFemClient.check_how_much_data_arrived(udp_frm_sze)
@@ -359,6 +475,14 @@ class FemAsicTest():
             #Check local link frame statistics
             myLpdFemClient.read_ll_monitor()    
         
+        # Close down Fem connection
+        try:
+            myLpdFemClient.close()
+        except Exception as errStr:
+            print "Unable to close Fem connection: ", errStr
+        else:
+            print "Closed Fem connection."
+            
         #--------------------------------------------------------------------
         # process the image data
         

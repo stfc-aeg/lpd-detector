@@ -60,12 +60,21 @@ class LpdFemClient(FemClient):
     rsvd_30      = 0xf0000000    #30
     rsvd_31      = 0xf8000000    #31
     
+    
+    def set_rdma_read_back(self, readBackFlag):
+            
+        self.rdmaReadBackFlag = readBackFlag 
+    
     def __init__(self, hostAddr=None, timeout=None):
         
         # Call superclass initialising function   
         super(LpdFemClient, self).__init__(hostAddr, timeout)
-            
-    
+
+        # Flag governing if each rdmaWrite should immediately follow a confirming rdmaRead
+        #    for debugging purposes.
+        self.rdmaReadBackFlag = False
+
+
     def extract_asic_data(self, asic_no, column_no, asic_data):
         # Rob Halsall 12-04-2011
         # Extract Image data from 1 ASIC, 1 time slice
@@ -100,16 +109,35 @@ class LpdFemClient(FemClient):
         base_addr = LpdFemClient.llink_mon_0
         #input monitor registers are offset from base address by 16
         
-    #    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
-    #    rdma_write(sCom,base_addr+1,1,'rw','Local Link Monitor Counter Reset')
-    #    rdma_write(sCom,base_addr+1,0,'rw','Local Link Monitor Counter Reset')
         print "Local Link Monitor Counter Reset"
         self.rdmaWrite(base_addr+1,0)
         self.rdmaWrite(base_addr+1,1)
         self.rdmaWrite(base_addr+1,0)
         
         return 1
-    
+
+    def rdmaWrite(self, theAddr, thePayload):
+        
+        ack = super(LpdFemClient, self).rdmaWrite(theAddr,thePayload)
+        
+        if self.rdmaReadBackFlag:
+            playloadLength = 0
+            if type(thePayload) is int:
+                playloadLength = 1
+            elif type(thePayload) is tuple:
+                playloadLength = len(thePayload)
+            else:
+                # Shouldn't be possible as always integer or tuple..
+                print "Error: thePayload neither int nor tuple!"
+                return    
+            values = self.rdmaRead(theAddr, playloadLength)
+            ack = values[1:]
+            # Display read values
+            print [hex(val) for val in ack]
+        
+        return ack
+
+        
     def fem_10g_udp_net_set_up_block0(self, net):
         #set up MAC address for SRC & destination
         base_addr = LpdFemClient.udp_10g_0
@@ -237,19 +265,19 @@ class LpdFemClient(FemClient):
         #input monitor registers are offset from base address by 16
         mon_addr = LpdFemClient.llink_mon_0 + 16
 
-        print "frm_last_length:\t",         self.rdmaRead(mon_addr+0, 1)[1]
-        print "frm_max_length: \t",         self.rdmaRead(mon_addr+1, 1)[1]
-        print "frm_min_length: \t",         self.rdmaRead(mon_addr+2, 1)[1]
-        print "frm_number:\t\t",            self.rdmaRead(mon_addr+3, 1)[1]
-        print "frm_last_cycles:\t",         self.rdmaRead(mon_addr+4, 1)[1]
-        print "frm_max_cycles: \t",         self.rdmaRead(mon_addr+5, 1)[1]
-        print "frm_min_cycles: \t",         self.rdmaRead(mon_addr+6, 1)[1] 
+        print "frm_last_length:\t",         hex( self.rdmaRead(mon_addr+0, 1)[1])
+        print "frm_max_length: \t",         hex( self.rdmaRead(mon_addr+1, 1)[1])
+        print "frm_min_length: \t",         hex( self.rdmaRead(mon_addr+2, 1)[1])
+        print "frm_number:\t\t",            hex( self.rdmaRead(mon_addr+3, 1)[1])
+        print "frm_last_cycles:\t",         hex( self.rdmaRead(mon_addr+4, 1)[1])
+        print "frm_max_cycles: \t",         hex( self.rdmaRead(mon_addr+5, 1)[1])
+        print "frm_min_cycles: \t",         hex( self.rdmaRead(mon_addr+6, 1)[1]) 
         total_data = self.rdmaRead(mon_addr+7, 1)[1]
         print "frm_data_total: \t", total_data         
         total_cycles = self.rdmaRead(mon_addr+8, 1)[1]
         print "frm_cycle_total:\t", total_cycles
-        print "frm_trig_count: \t",         self.rdmaRead(mon_addr+9, 1)[1]
-        print "frm_in_progress:\t",         self.rdmaRead(mon_addr+15, 1)[1]
+        print "frm_trig_count: \t",         hex( self.rdmaRead(mon_addr+9, 1)[1])
+        print "frm_in_progress:\t",         hex( self.rdmaRead(mon_addr+15, 1)[1])
         
         # data path = 64 bit, clock = 156.25 MHz
         total_time = float(total_cycles) * (1/156.25e6)
@@ -415,12 +443,12 @@ class LpdFemClient(FemClient):
 
     def robs_udp_packet_header_10g(self, robs_udp_packet_hdr):
         # rob's udp packet headers
-        packet_header_10g_0 = (0x0000000 | LpdFemClient.udp_10g_0)
-        packet_header_10g_1 = (0x0000000 | LpdFemClient.udp_10g_1)
+        packet_header_10g_0 = (LpdFemClient.udp_10g_0 + 0xb)
+        packet_header_10g_1 = (LpdFemClient.udp_10g_1 + 0xb)
         
-        print "robs udp packet header 10g_0"
+        print "robs udp packet header 10g_0", hex(packet_header_10g_0)
         self.rdmaWrite(packet_header_10g_0, robs_udp_packet_hdr)
-        print "robs udp packet header 10g_1"
+        print "robs udp packet header 10g_1", hex(packet_header_10g_1)
         self.rdmaWrite(packet_header_10g_1, robs_udp_packet_hdr)
 
     def frame_generator_set_up_10g(self, data_gen_0_offset, num_ll_frames):
@@ -501,7 +529,7 @@ class LpdFemClient(FemClient):
 
 
     #def read_fast_cmd_file(self, filename,cmd_reg_size):
-    def read_fast_cmd_file_jc_new(self, filename,cmd_reg_size):
+    def read_fast_cmd_file_jc_new(self, filename, cmd_reg_size):
         # location:    \\te9files\ESDGshr\SDG\drop\for_christian\lpd_matlab_for_christian
         # filename:    read_fast_cmd_file_jc.m
         # function:    read_fast_cmd_file()
@@ -634,7 +662,7 @@ class LpdFemClient(FemClient):
         max_block_length = 1024
     
         # check length is not greater than FPGA Block RAM
-    
+
         block_length = no_of_words
     
         if block_length > max_block_length:
@@ -663,11 +691,11 @@ class LpdFemClient(FemClient):
         # load slow control pattern memory
         
         block_length = len(slow_ctrl_data)
-        
-        if block_length[1] > max_block_length:
-            block_length[1] =  max_block_length
-        
-        dataTuple = tuple([slow_ctrl_data+i for i in range(block_length[1])])
+
+        if block_length > max_block_length:
+            block_length =  max_block_length
+
+        dataTuple = tuple(slow_ctrl_data)   # Do Not construct tuple from list like in fem_fast_.. func
         
         print "Slow Ctrl RAM"
         self.rdmaWrite(base_addr_1, dataTuple)
@@ -737,7 +765,7 @@ class LpdFemClient(FemClient):
                   
         # set up clk cycle delay
         print "asic rx clk cycle delay"
-        self.rdmaWrite(no_clk_cyc_dly_reg,no_clk_cyc_dly)
+        self.rdmaWrite(no_clk_cyc_dly_reg, no_clk_cyc_dly)
         
         # set up num asic cols & num cols per frame
         print "asic rx no_cols cols_frm"
@@ -757,7 +785,7 @@ class LpdFemClient(FemClient):
     def data_source_self_test(self, asic_data_source):
         # data source - self test
         data_source_reg           = (0x00000001 | LpdFemClient.asic_srx_0)
-        print "asic rx data source" # 0 = real data ; 1 = test data
+        print "asic rx counting data" # 0 = real data ; 1 = test data
         self.rdmaWrite(data_source_reg,asic_data_source)
         
         
@@ -782,7 +810,7 @@ class LpdFemClient(FemClient):
         
     def top_level_steering(self, asic_rx_start_delay):
         # turn fast & slow buffers on
-        print "asic turn on buffers"
+        print "ENABLE asic Tristate output buffers"
         self.rdmaWrite(LpdFemClient.fem_ctrl_0+5, 0)
         
         print "asic serial out readback is from bot sp3 i/o"
