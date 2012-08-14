@@ -28,10 +28,10 @@
 
 #define MAX_STOP_ATTEMPTS				500			//! Number of main event loops we'll wait for TX DMA operations to clear
 
-#define DDR2_BADDR					0x00000000						//! DDR2 base address
+#define DDR2_BADDR					0x40000000						//! DDR2 base address
 #define DDR2_SZ						0x40000000						//! DDR2 size (1GB)
 #define BRAM_BADDR					XPAR_SHARED_BRAM_IF_CNTLR_PPC_1_BASEADDR
-#define LL_BD_BADDR					0x8D280000						//! Bass address for BDs
+#define LL_BD_BADDR					0x90280000						//! Bass address for BDs
 #define LL_BD_SZ					0x00180000						//! Size of BD memory region
 #define LL_MAX_CONFIG_BD			64								//! Maximum number of upstream configuration BDs
 
