@@ -75,10 +75,10 @@
 #include "sysace.h"
 #endif
 
-// ML507 specific hardware
+// GPIO
+#include "xgpio.h"
 #ifdef HW_PLATFORM_DEVBOARD
 #include "gpio.h"
-#include "xgpio.h"
 #endif
 
 // Testing and benchmarking
@@ -127,6 +127,7 @@ XTmrCtr				timer;
 XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 #else
 XSysAce				sysace;
+XGpio gpioMux;
 #endif
 
 
@@ -431,6 +432,19 @@ int initHardware(void)
     {
     	DBGOUT("initHardware: Configured mailbox\r\n");
     }
+
+    // Initialise GPIO mux controller
+	#ifndef HW_PLATFORM_DEVBOARD
+	status = XGpio_Initialize(&gpioMux, GPIO_ID);
+	if (status!=XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to initialise GPIO mux.!\r\n");
+		return -1;
+	}
+	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
+	XGpio_DiscreteWrite(&gpioMux, 1, 0);			// Set to 0
+
+    #endif
 
     // Call FEM personality module hardware init
     status = fpmInitHardware();
