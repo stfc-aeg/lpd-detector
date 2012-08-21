@@ -28,7 +28,7 @@
 
 #define MAX_STOP_ATTEMPTS				500			//! Number of main event loops we'll wait for TX DMA operations to clear
 
-#define DDR2_BADDR					0x40000000						//! DDR2 base address
+#define DDR2_BADDR					XPAR_DDR2_SDRAM_MEM_BASEADDR	//! DDR2 base address
 #define DDR2_SZ						0x40000000						//! DDR2 size (1GB)
 #define BRAM_BADDR					XPAR_SHARED_BRAM_IF_CNTLR_PPC_1_BASEADDR
 #define LL_BD_BADDR					0x90280000						//! Bass address for BDs
@@ -1020,7 +1020,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	int i=0;
 	u32 currentOffset = 0;
 	u32 topAsicBufferAddress = DDR2_BADDR;
-	u32 botAsicBufferAddress = DDR2_SZ / 2;
+	u32 botAsicBufferAddress = DDR2_BADDR + (DDR2_SZ / 2);
 
 	// RX rings
 	for (i=0; i<bufferCnt; i++)
