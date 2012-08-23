@@ -570,6 +570,7 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
  * @param pTxHeader pointer to protocol_header for outbound packet
  * @param pRxPayload pointer to payload buffer of received packet
  * @param pTxPayload pointer to payload buffer for outbound packet
+ * @param pGpio pointer to RDMA MUX GPIO instance
  */
 void commandHandler(struct protocol_header* pRxHeader,
                         struct protocol_header* pTxHeader,
@@ -944,6 +945,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 								// TODO: Remove debug statement once tested
 								DBGOUT("CmdDisp: Setting RDMA MUX -> %d\r\n", (pRxHeader->address & 0xFF));
 								XGpio_DiscreteWrite(pGpio, 1, (pRxHeader->address & 0xFF));
+								numOps++;
+								SBIT(state, STATE_ACK);
 							}
 							else
 							{
