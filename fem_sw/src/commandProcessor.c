@@ -935,7 +935,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					else if (CMPBIT(state, STATE_WRITE))
 					{
 
-						if ( (pRxHeader->address&0xFF000000) == 0 )
+						if ( (pRxHeader->address&0xFF000000) == 0xFF000000 )
 						{
 							// Set RDMA MUX address
 
