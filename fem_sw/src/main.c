@@ -130,6 +130,11 @@ XSysAce				sysace;
 XGpio gpioMux;
 #endif
 
+// For I2C (not in i2c.h)s
+volatile int waitingRead  = 0;
+volatile int waitingWrite = 0;
+volatile int waitingBusy  = 0;
+volatile int iicDataSize = 0;
 
 u32 femErrorState;
 
@@ -231,8 +236,8 @@ void networkInitThread(void *p)
     	return;
     }
 
-    // Launch application thread
-    t = sys_thread_new("cmd", commandProcessorThread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    // Launch application thread (pass GPIO instance for RDMA MUX setting)
+    t = sys_thread_new("cmd", commandProcessorThread, &gpioMux, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 

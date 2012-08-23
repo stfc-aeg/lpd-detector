@@ -112,7 +112,7 @@ typedef struct
 	u32 bufferSz;					//! Buffer size in bytes
 	u32 bufferCnt;					//! Buffer count
 	u32 numAcq;						//! Number of acquisitions expected
-	u32 bdCoalesceCount;			//! Numer of RX BDs to process per loop (TX set to x2 this value)
+	u32 bdCoalesceCount;			//! Number of RX BDs to process per loop (TX set to x2 this value)
 } protocol_acq_config;
 
 // TODO: Make common
@@ -128,6 +128,7 @@ typedef struct
 	u32 totalErrors;				//! Total number of DMA errors (do we need to track for each channel?)
 } acqStatusBlock;
 
+// TODO: Move to new state model in protocol
 /* NEW FORMAT - WAIT FOR PYTHON TO BE UPDATED!
  * ALSO: UPDATE CBI/SBI MACROS!
 {

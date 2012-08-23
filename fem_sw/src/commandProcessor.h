@@ -16,6 +16,7 @@
 #include "rdma.h"
 #include "i2c_lm82.h"
 #include "i2c_24c08.h"
+#include "xgpio.h"
 #include "mailbox.h"
 
 #include "lwip/sockets.h"
@@ -44,7 +45,7 @@ struct clientStatus {
 
 void commandProcessorThread();
 void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients);
-void commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload);
+void commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload, XGpio *pGpio);
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes);
 int validateHeaderContents(struct protocol_header *pHeader);
 void flushSocket(int sock, void *mem, int len);

@@ -16,13 +16,15 @@
  * packets.
  *
  */
-void commandProcessorThread()
+void commandProcessorThread(void* arg)
 {
 	int listenerSocket, clientSocket, newFd, addrSize, numFds, numBytesRead, numBytesToRead, i, j;
 	struct sockaddr_in serverAddress, clientAddress;
 	fd_set readSet, masterSet;
 	struct timeval tv;
 	u8 numConnectedClients = 0;
+
+	XGpio *pGpio = (XGpio*)arg;
 
 	// Setup and initialise client statuses to idle
 	struct clientStatus state[NET_MAX_CLIENTS];
@@ -337,7 +339,8 @@ void commandProcessorThread()
 						//DUMPHDR(pState->pHdr);
 
 						// TODO: Check address is in valid range FEM_DDR2_START => addr => (FEM_DDR2_END-payload_sz)
-						// TODO: We also need to reject an address of 0 as lwip sees this as a NULL pointer and doesn't do the rxbuf->appbuff copy!
+
+						// Note that lwip will reject addresses of 0 as NULL pointers
 
 						// Check if this is a direct memory receive, if so handle it
 						if ( (pState->pHdr->bus_target==BUS_DIRECT) && (pState->pHdr->command==CMD_ACCESS) && (pState->pHdr->state==STATE_WRITE) )
@@ -458,7 +461,7 @@ void commandProcessorThread()
 						PRTDBG("CmdProc: Received entire packet...\r\n");
 
 						// Generate response
-						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header));
+						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pGpio);
 
 						PRTDBG("CmdProc: Packet decoded, sending response...\r\n");
 
@@ -571,7 +574,8 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
 void commandHandler(struct protocol_header* pRxHeader,
                         struct protocol_header* pTxHeader,
                         u8* pRxPayload,
-                        u8* pTxPayload)
+                        u8* pTxPayload,
+                        XGpio* pGpio)
 {
 
 	int i;					// General use variable
@@ -929,19 +933,44 @@ void commandHandler(struct protocol_header* pRxHeader,
 					}
 					else if (CMPBIT(state, STATE_WRITE))
 					{
-						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+
+						if ( (pRxHeader->address&0xFF000000) == 0 )
 						{
-							pRxPayload_32 = (u32*)pRxPayload;
-							//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
-							status = writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
-							if (status==XST_FAILURE)
+							// Set RDMA MUX address
+
+							if ( (pRxHeader->address & 0xFF) < 4)
 							{
-								// TODO: Proper error handling!
-								DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
+								// Set RDMA MUX
+								// TODO: Remove debug statement once tested
+								DBGOUT("CmdDisp: Setting RDMA MUX -> %d\r\n", (pRxHeader->address & 0xFF));
+								XGpio_DiscreteWrite(pGpio, 1, (pRxHeader->address & 0xFF));
 							}
-							numOps++;
+							else
+							{
+								// MUX address invalid so return error
+								DBGOUT("CmdDisp: RDMA MUX of %d is invalid!/r/n", (pRxHeader->address & 0xFF) );
+								SBIT(state, STATE_NACK);
+								// TODO: FEM error state
+							}
 						}
-						SBIT(state, STATE_ACK);
+						else
+						{
+							// Do normal RDMA write
+
+							for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+							{
+								pRxPayload_32 = (u32*)pRxPayload;
+								//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
+								status = writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
+								if (status==XST_FAILURE)
+								{
+									// TODO: Proper error handling!
+									DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
+								}
+								numOps++;
+							}
+							SBIT(state, STATE_ACK);
+						}
 					}
 					else
 					{
@@ -981,6 +1010,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 					XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
 #endif
 
+
+				// --------------------------------------------------------------------
 				case BUS_UNSUPPORTED:
 				default:
 					SBIT(state, STATE_NACK);
