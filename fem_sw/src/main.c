@@ -322,6 +322,44 @@ int initHardware(void)
     	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
     	femErrorState |= TEST_XINTC_INIT;
     }
+
+    // New for I2C!
+    /*
+    // -----------------------------------------
+    // Enable I2C interrupt
+    XIntc_Enable(&intc, XPAR_INTC_0_);
+
+    // Register callback for I2C interrupts
+    status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_0_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
+		// TODO: Fem error state
+	}
+
+	status - XIntc_Connect(&intc, XPAR_INTC_0_IIC_1_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
+		// TODO: Fem error state
+	}
+
+    status - XIntc_Connect(&intc, XPAR_INTC_0_IIC_2_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
+		// TODO: Fem error state
+	}
+
+	status - XIntc_Connect(&intc, XPAR_INTC_0_IIC_3_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
+		// TODO: Fem error state
+	}
+    // -----------------------------------------
+	*/
+
     status = XIntc_Start(&intc, XIN_REAL_MODE);
     if (status != XST_SUCCESS)
     {
