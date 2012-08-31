@@ -27,9 +27,9 @@ int stopI2C(void);
 void resetI2C(void);
 
 // I2C callback / interrupt handlers
-void statusHandler(XIic* pIic, int event);
-void sendHandler(XIic* pIic, int byteCount);
-void recvHandler(XIic* pIic, int byteCount);
+static void statusHandler(XIic* pIic, int event);
+static void sendHandler(XIic* pIic, int byteCount);
+static void recvHandler(XIic* pIic, int byteCount);
 
 // I2C operations
 int writeI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen);

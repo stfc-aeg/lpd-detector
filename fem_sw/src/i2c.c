@@ -17,24 +17,16 @@ int initI2C(void)
 	int status;
 
 	// Initialise I2C drivers
-	status = XIic_Initialize(&iicLm82, 0);
+	status = XIic_Initialize(&iicLm82, XPAR_IIC_1_DEVICE_ID);
 	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Initialize(&iicEeprom, 0);
+	/*
+	status = XIic_Initialize(&iicEeprom, XPAR_IIC_0_DEVICE_ID);
 	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Initialize(&iicRhs, 0);
+	status = XIic_Initialize(&iicRhs, XPAR_IIC_2_DEVICE_ID);
 	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Initialize(&iicLhs, 0);
+	status = XIic_Initialize(&iicLhs, XPAR_IIC_3_DEVICE_ID);
 	if (status!=XST_SUCCESS) { return status; }
-
-	// Start controllers
-	status = XIic_Start(&iicLm82);
-	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Start(&iicEeprom);
-	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Start(&iicRhs);
-	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Start(&iicLhs);
-	if (status!=XST_SUCCESS) { return status; }
+	*/
 
 	// Register ISRs (all share same ISRs as only one can be active at a time...)
 	// LM82
@@ -42,6 +34,7 @@ int initI2C(void)
 	XIic_SetSendHandler(&iicLm82, &iicLm82, (XIic_StatusHandler)sendHandler);
 	XIic_SetRecvHandler(&iicLm82, &iicLm82, (XIic_StatusHandler)recvHandler);
 
+	/*
 	// EEPROM
 	XIic_SetStatusHandler(&iicEeprom, &iicEeprom, (XIic_StatusHandler)statusHandler);
 	XIic_SetSendHandler(&iicEeprom, &iicEeprom, (XIic_StatusHandler)sendHandler);
@@ -56,6 +49,19 @@ int initI2C(void)
 	XIic_SetStatusHandler(&iicRhs, &iicRhs, (XIic_StatusHandler)statusHandler);
 	XIic_SetSendHandler(&iicRhs, &iicRhs, (XIic_StatusHandler)sendHandler);
 	XIic_SetRecvHandler(&iicRhs, &iicRhs, (XIic_StatusHandler)recvHandler);
+	*/
+
+	// Start controllers
+	status = XIic_Start(&iicLm82);
+	if (status!=XST_SUCCESS) { return status; }
+	/*
+	status = XIic_Start(&iicEeprom);
+	if (status!=XST_SUCCESS) { return status; }
+	status = XIic_Start(&iicRhs);
+	if (status!=XST_SUCCESS) { return status; }
+	status = XIic_Start(&iicLhs);
+	if (status!=XST_SUCCESS) { return status; }
+	*/
 
 	return status;
 }
@@ -73,17 +79,21 @@ int startI2C(void)
 
 	status = XIic_Start(&iicLm82);
 	if (status!=XST_SUCCESS) { return status; }
+	/*
 	status = XIic_Start(&iicEeprom);
 	if (status!=XST_SUCCESS) { return status; }
 	status = XIic_Start(&iicRhs);
 	if (status!=XST_SUCCESS) { return status; }
 	status = XIic_Start(&iicLhs);
+	*/
 
 	// Enable interrupts
 	XIic_IntrGlobalEnable(XPAR_IIC_LM82_BASEADDR);
+	/*
 	XIic_IntrGlobalEnable(XPAR_IIC_EEPROM_BASEADDR);
 	XIic_IntrGlobalEnable(XPAR_IIC_POWER_LHS_BASEADDR);
 	XIic_IntrGlobalEnable(XPAR_IIC_POWER_RHS_BASEADDR);
+	*/
 
 	return status;
 }
@@ -99,19 +109,24 @@ int stopI2C(void)
 {
 	int status;
 
+	// Disable interrupts
+	XIic_IntrGlobalDisable(XPAR_IIC_LM82_BASEADDR);
+	/*
+	XIic_IntrGlobalDisable(XPAR_IIC_EEPROM_BASEADDR);
+	XIic_IntrGlobalDisable(XPAR_IIC_POWER_LHS_BASEADDR);
+	XIic_IntrGlobalDisable(XPAR_IIC_POWER_RHS_BASEADDR);
+	*/
+
+	// Stop engines
 	status = XIic_Stop(&iicLm82);
 	if (status!=XST_SUCCESS) { return status; }
+	/*
 	status = XIic_Stop(&iicEeprom);
 	if (status!=XST_SUCCESS) { return status; }
 	status = XIic_Stop(&iicRhs);
 	if (status!=XST_SUCCESS) { return status; }
 	status = XIic_Stop(&iicLhs);
-
-	// Disable interrupts
-	XIic_IntrGlobalDisable(XPAR_IIC_LM82_BASEADDR);
-	XIic_IntrGlobalDisable(XPAR_IIC_EEPROM_BASEADDR);
-	XIic_IntrGlobalDisable(XPAR_IIC_POWER_LHS_BASEADDR);
-	XIic_IntrGlobalDisable(XPAR_IIC_POWER_RHS_BASEADDR);
+	*/
 
 	return status;
 }
@@ -140,6 +155,7 @@ void statusHandler(XIic* pIic, int event)
 {
 	// Signal that bus is no longer busy
 	busNotBusy = 0;
+	xil_printf("[x]\r\n");
 }
 
 
@@ -153,6 +169,7 @@ void sendHandler(XIic* pIic, int byteCount)
 {
 	// Signal send is complete
 	sendComplete = 0;
+	xil_printf("[S]\r\n");
 }
 
 
@@ -166,6 +183,7 @@ void recvHandler(XIic* pIic, int byteCount)
 {
 	// Signal receive is complete
 	recvComplete = 0;
+	xil_printf("[R]\r\n");
 }
 
 
@@ -189,7 +207,8 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	int status;
 	volatile int *pVal;
 	XIic *pI;
-	XTime timeout, now;
+
+	xil_printf("I2C: idx=%d, op=%d, addr=0x%08x\r\n", interfaceIdx, opMode, slaveAddr);
 
 	// Make sure all flags are cleared
 	sendComplete = 0;
@@ -217,18 +236,22 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	}
 
 	// Set slave address
-	status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, slaveAddr);
+	status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, 0x18);
 	if (status!=XST_SUCCESS) { return status; }
+
+	xil_printf("I2C: Address set OK\r\n");
 
 	// Do operation
 	switch(opMode)
 	{
 	case IIC_OPERATION_READ:
 		status = XIic_MasterRecv(pI, pData, dataLen);
+		xil_printf("I2C: XIix_MasterRecv complete\r\n");
 		pVal = &recvComplete;
 		break;
 	case IIC_OPERATION_WRITE:
 		status = XIic_MasterSend(pI, pData, dataLen);
+		xil_printf("I2C: XIix_MasterSend complete\r\n");
 		pVal = &sendComplete;
 		break;
 	default:
@@ -253,15 +276,32 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	// Store which IIC instance this is for
 	pIic = pI;
 
-	// Spin in a timed loop and wait the interrupt we're interested in to fire, or timeout and give up
-	XTime_GetTime(&timeout);
-	timeout+=100000;			// In CPU ticks
+	xil_printf("I2C: Entering interrupt loop\r\n");
 
+	// Spin in a timed loop and wait the interrupt we're interested in to fire, or timeout and give up
+	/*
+	XTime timeout, now;
+	XTime_GetTime(&timeout);
 	XTime_GetTime(&now);
+	xil_printf("I2C: tNow=%ul, tTimeout=%ul\r\n", now, timeout);
+	timeout+=100000;			// In CPU ticks
+	xil_printf("I2C: tNow=%ul, tTimeout=%ul\r\n", now, timeout);
 	while(*pVal!=0 && now<timeout)
 	{
 		XTime_GetTime(&now);
+		xil_printf("I2C: tNow=%d\r\n", now);
 	}
+	*/
+
+	// Rubbish loop-based timeout
+	int count = 0;
+	int max   = 100000;
+	while (*pVal!=0 && count<max)
+	{
+		count++;
+	}
+
+	xil_printf("I2C: Out of interrupt loop (%d)\r\n", count);
 
 	// Did we timeout?
 	if (*pVal!=0)
@@ -269,12 +309,23 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		status = stopI2C();
 		if (status==XST_IIC_BUS_BUSY)
 		{
-			// TODO: Deal with bus busy, another timeout loop?
-			// Will this ever happen if previous operation timed out??
+			// Always seems to trigger!
+			xil_printf("I2C: Bus was busy while stopping\r\n");
+			//resetI2C();
+			//startI2C();
 		}
-		startI2C();
+		else
+		{
+			xil_printf("I2C: Stop OK\r\n");
+			startI2C();
+		}
+
+		xil_printf("I2C: Timed out\r\n");
+
 		return XST_FAILURE;
 	}
+
+	xil_printf("I2C: Operation OK!\r\n");
 
 	return XST_SUCCESS;
 }

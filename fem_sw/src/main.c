@@ -323,49 +323,60 @@ int initHardware(void)
     	femErrorState |= TEST_XINTC_INIT;
     }
 
-    // New for I2C!
-    /*
-    // -----------------------------------------
-    // Enable I2C interrupt
-    XIntc_Enable(&intc, XPAR_INTC_0_);
+    // Enable I2C interrupts
+    //XIntc_Enable(&intc, XPAR_INTC_0_IIC_0_VEC_ID);
+    XIntc_Enable(&intc, XPAR_INTC_0_IIC_1_VEC_ID);
+    //XIntc_Enable(&intc, XPAR_INTC_0_IIC_2_VEC_ID);
+    //XIntc_Enable(&intc, XPAR_INTC_0_IIC_3_VEC_ID);
 
     // Register callback for I2C interrupts
-    status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_0_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
+    /*
+    status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_0_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
     if (status != XST_SUCCESS)
 	{
-		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
+		DBGOUT("initHardware: Failed to connect I2C ISR (EEPROM).\r\n");
 		// TODO: Fem error state
 	}
-
-	status - XIntc_Connect(&intc, XPAR_INTC_0_IIC_1_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
-    if (status != XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
-		// TODO: Fem error state
-	}
-
-    status - XIntc_Connect(&intc, XPAR_INTC_0_IIC_2_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
-    if (status != XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
-		// TODO: Fem error state
-	}
-
-	status - XIntc_Connect(&intc, XPAR_INTC_0_IIC_3_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, 0);
-    if (status != XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to connect I2C interrupts.\r\n");
-		// TODO: Fem error state
-	}
-    // -----------------------------------------
 	*/
 
+	status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_1_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to connect I2C ISR (LM82).\r\n");
+		// TODO: Fem error state
+	}
+
+    /*
+    status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_2_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicRhs);
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to connect I2C ISR (POWER_RHS).\r\n");
+		// TODO: Fem error state
+	}
+
+	status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_3_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to connect I2C ISR (POWER_LHS).\r\n");
+		// TODO: Fem error state
+	}
+	*/
+
+    // Start interrupt controller
     status = XIntc_Start(&intc, XIN_REAL_MODE);
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
     	femErrorState |= TEST_XINTC_START;
     }
+
+    // Start I2C controllers
+    status = initI2C();
+    if (status != XST_SUCCESS)
+	{
+		DBGOUT("initHardware: Failed to start I2C controllers.\r\n");
+		// TODO: FEM error state
+	}
 
     // Get config structure from EEPROM or use failsafe
     if (readConfigFromEEPROM(0, &femConfig) == -1)
@@ -485,8 +496,7 @@ int initHardware(void)
 		return -1;
 	}
 	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
-	XGpio_DiscreteWrite(&gpioMux, 1, 0);			// Set to 0
-
+	XGpio_DiscreteWrite(&gpioMux, 1, 0);		// Set to 0
     #endif
 
     // Call FEM personality module hardware init
