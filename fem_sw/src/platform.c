@@ -21,6 +21,8 @@
 
 #include "platform_config.h"
 
+#include "fem.h"
+
 #ifdef STDOUT_IS_16550
 #include "xuartns550_l.h"
 #endif
@@ -51,11 +53,13 @@ disable_caches()
 void
 init_platform()
 {
-    //enable_caches();
+#ifdef USE_CACHE
+    enable_caches();
+#endif
 
     /* if we have a uart 16550, then that needs to be initialized */
 #ifdef STDOUT_IS_16550
-    XUartNs550_SetBaud(STDOUT_BASEADDR, XPAR_XUARTNS550_CLOCK_HZ, 115200);
+    XUartNs550_SetBaud(STDOUT_BASEADDR, XPAR_XUARTNS550_CLOCK_HZ, FEM_UART_BAUD);
     XUartNs550_SetLineControlReg(STDOUT_BASEADDR, XUN_LCR_8_DATA_BITS);
 #endif
 }

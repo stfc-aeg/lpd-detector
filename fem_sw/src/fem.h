@@ -62,11 +62,14 @@
 #endif
 
 // DDR2 memory size
-#define FEM_DDR2_START				0x00000000
-#define FEM_DDR2_END				0x3FFFFFFF
+#define FEM_DDR2_START				0x40000000
+#define FEM_DDR2_SIZE				0x3FFFFFFF
 
 // Uncomment this line if data caching enabled on PPC
 //#define USE_CACHE		1
+
+// UART baud rate
+#define FEM_UART_BAUD				115200
 
 // Enable / disable serial debugging output (comment to disable)
 #define GLOBAL_DEBUG
@@ -101,17 +104,23 @@
 #define NET_DEFAULT_TICK_USEC		0
 #define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
 
-// Self-test bits - if set these represent a failure during hardware init!
-#define TEST_XPSTIMER_INIT			0x0001
-#define TEST_TIMER_CALIB			0x0002
-#define TEST_XINTC_INIT				0x0004
-#define TEST_XINTC_START			0x0008
-#define TEST_RDMA_UART_OK			0x0010
-#define TEST_RDMA_READBACK			0x0020
-#define TEST_SYSACE_INIT			0x0040
-#define TEST_SYSACE_BIST			0x0080
-
-#define TEST_EEPROM_CFG_READ		0x8000
+// Self-test bits - if set these represent a failure during hardware initialisation
+#define TEST_TIMER_INIT				0x0001		//! XPS Timer init.
+#define TEST_TIMER_CALIB			0x0002		//! Timer calibration
+#define TEST_INTC_INIT				0x0004		//! Interrupt controller init.
+#define TEST_INTC_START				0x0008		//! Interrupt controller start
+#define TEST_INTC_BIST				0x0010		//! Interrupt controller self-test
+#define TEST_RDMA_UART_BIST			0x0020		//! RDMA UART self-test (loopback test)
+#define TEST_SYSACE_INIT			0x0040		//! SystemACE init.
+#define TEST_SYSACE_BIST			0x0080		//! SystemACE self-test
+#define TEST_EEPROM_CFG_READ		0x0100		//! Config EEPROM read
+// 0x0200
+// 0x0400
+// 0x0800
+#define TEST_INTC_CON_LM82			0x1000		//! Interrupt controller LM82 interrupt connect
+#define TEST_INTC_CON_EEPROM		0x2000		//! Interrupt controller EEPROM interrupt connect
+#define TEST_INTC_CON_PWR_RHS		0x4000		//! Interrupt controller PWR_RHS interrupt connect
+#define TEST_INTC_CON_PWR_LHS		0x8000		//! Interrupt controller PWR_LHS interrupt connect
 
 #endif /* FEM_H_ */
 

@@ -296,13 +296,21 @@ int initHardware(void)
     }
 #endif
 
+    // Show memory and cache information
+    DBGOUT("initHardware: DDR2 @ 0x%08x, size 0x%08x ", FEM_DDR2_START, FEM_DDR2_SIZE);
+#ifdef USE_CACHE
+    DBGOUT(" cache ENABLED\r\n");
+#else
+    DBGOUT(" cache DISABLED\r\n");
+#endif
+
     // Initialise timer
     // Timer will give results in CPU ticks, so use XPAR_CPU_PPC440_CORE_CLOCK_FREQ_HZ in calculations!
     status = XTmrCtr_Initialize(&timer, XPAR_XPS_TIMER_0_DEVICE_ID);
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise timer.\r\n");
-    	femErrorState |= TEST_XPSTIMER_INIT;
+    	femErrorState |= TEST_TIMER_INIT;
     }
 
     // Calibrate usleep
@@ -320,7 +328,7 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
-    	femErrorState |= TEST_XINTC_INIT;
+    	femErrorState |= TEST_INTC_INIT;
     }
 
     // Not sure this is needed but set anyway
@@ -389,7 +397,7 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
-    	femErrorState |= TEST_XINTC_START;
+    	femErrorState |= TEST_INTC_START;
     }
 
     // Get config structure from EEPROM or use failsafe
@@ -451,7 +459,7 @@ int initHardware(void)
     if (status == XST_UART_TEST_FAIL)
     {
     	DBGOUT("FAILED - UART loopback test failed.\r\n");
-    	femErrorState |= TEST_RDMA_UART_OK;
+    	femErrorState |= TEST_RDMA_UART_BIST;
     	return status;
     }
     else
