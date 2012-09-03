@@ -19,9 +19,9 @@
 //#define HW_PLATFORM_DEVBOARD
 // ****************************************************************************
 
-// Hardware base addresses, redefine xparameters.h
+// Hardware base addresses, device IDs and general settings from xparameters.h
 
-// ML507 specific base address mappings
+// ML507 dev board
 #ifdef HW_PLATFORM_DEVBOARD
 // Devices only present on ML507
 #define BADDR_GP_LED8				XPAR_LEDS_8BIT_BASEADDR
@@ -40,7 +40,8 @@
 #define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
 
 #else
-// FEM devices
+// FEM hardware
+// Base addresses
 #define BADDR_I2C_LM82				XPAR_IIC_LM82_BASEADDR
 #define BADDR_I2C_EEPROM			XPAR_IIC_EEPROM_BASEADDR
 #define BADDR_I2C_SP3_TOP			XPAR_IIC_POWER_RHS_BASEADDR
@@ -50,15 +51,28 @@
 #define BADDR_RDMA					XPAR_RS232_UART_PPC2_RDMA_BASEADDR
 #define BADDR_MBOX					XPAR_MAILBOX_0_IF_1_BASEADDR
 #define BADDR_BRAM					XPAR_SHARED_BRAM_IF_CNTLR_PPC_2_BASEADDR
+
+// Device IDs
 #define XINTC_ID					XPAR_XPS_INTC_2_DEVICE_ID
 #define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
+#define TIMER_ID					XPAR_XPS_TIMER_0_DEVICE_ID
 #define MBOX_ID						XPAR_MAILBOX_0_IF_1_DEVICE_ID
+#define RDMA_DEVICEID				XPAR_RS232_UART_PPC2_RDMA_DEVICE_ID
+#define GPIO_ID						XPAR_XPS_GPIO_0_DEVICE_ID
+
+// Mailbox settings
 #define MBOX_RECV_ID				XPAR_MAILBOX_0_IF_1_RECV_FSL
 #define MBOX_SEND_ID				XPAR_MAILBOX_0_IF_1_SEND_FSL
 #define MBOX_USE_FSL				XPAR_MAILBOX_0_IF_1_USE_FSL
-#define RDMA_DEVICEID				XPAR_RS232_UART_PPC2_RDMA_DEVICE_ID
+
+// RDMA settings
 #define RDMA_CLK					XPAR_RS232_UART_PPC2_CLOCK_FREQ_HZ
-#define GPIO_ID						XPAR_XPS_GPIO_0_DEVICE_ID
+
+// I2C interrupt vector IDs
+#define I2C_INT_ID_EEPROM			XPAR_INTC_0_IIC_0_VEC_ID
+#define I2C_INT_ID_LM82				XPAR_INTC_0_IIC_1_VEC_ID
+#define I2C_INT_ID_PWR_RHS			XPAR_INTC_0_IIC_2_VEC_ID
+#define I2C_INT_ID_PWR_LHS			XPAR_INTC_0_IIC_3_VEC_ID
 #endif
 
 // DDR2 memory size
@@ -104,23 +118,43 @@
 #define NET_DEFAULT_TICK_USEC		0
 #define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
 
-// Self-test bits - if set these represent a failure during hardware initialisation
-#define TEST_TIMER_INIT				0x0001		//! XPS Timer init.
-#define TEST_TIMER_CALIB			0x0002		//! Timer calibration
-#define TEST_INTC_INIT				0x0004		//! Interrupt controller init.
-#define TEST_INTC_START				0x0008		//! Interrupt controller start
-#define TEST_INTC_BIST				0x0010		//! Interrupt controller self-test
-#define TEST_RDMA_UART_BIST			0x0020		//! RDMA UART self-test (loopback test)
-#define TEST_SYSACE_INIT			0x0040		//! SystemACE init.
-#define TEST_SYSACE_BIST			0x0080		//! SystemACE self-test
-#define TEST_EEPROM_CFG_READ		0x0100		//! Config EEPROM read
-// 0x0200
-// 0x0400
-// 0x0800
-#define TEST_INTC_CON_LM82			0x1000		//! Interrupt controller LM82 interrupt connect
-#define TEST_INTC_CON_EEPROM		0x2000		//! Interrupt controller EEPROM interrupt connect
-#define TEST_INTC_CON_PWR_RHS		0x4000		//! Interrupt controller PWR_RHS interrupt connect
-#define TEST_INTC_CON_PWR_LHS		0x8000		//! Interrupt controller PWR_LHS interrupt connect
+// Hardware initialisation bits - if set these signal errors occurred
+// ****************************************************************************
+// Timer
+#define TEST_TIMER_INIT				0x00000001		//! XPS Timer init.
+#define TEST_TIMER_CALIB			0x00000002		//! Timer calibration
+
+// Interrupt controller
+#define TEST_INTC_INIT				0x00000004		//! Interrupt controller init.
+#define TEST_INTC_START				0x00000008		//! Interrupt controller start
+#define TEST_INTC_BIST				0x00000010		//! Interrupt controller self-test
+#define TEST_INTC_CON_LM82			0x00000020		//! Interrupt controller LM82 interrupt connect
+#define TEST_INTC_CON_EEPROM		0x00000040		//! Interrupt controller EEPROM interrupt connect
+#define TEST_INTC_CON_PWR_RHS		0x00000080		//! Interrupt controller PWR_RHS interrupt connect
+#define TEST_INTC_CON_PWR_LHS		0x00000100		//! Interrupt controller PWR_LHS interrupt connect
+
+// RDMA / RDMA MUX / UART
+#define TEST_RDMA_UART_BIST			0x00000200		//! RDMA UART self-test (loopback test)
+#define TEST_GPIO_MUX_INIT			0x00000400		//! RDMA MUX init.
+
+// SystemACE
+#define TEST_SYSACE_INIT			0x00000800		//! SystemACE init.
+#define TEST_SYSACE_BIST			0x00001000		//! SystemACE self-test
+#define TEST_SYSACE_FILESYSTEM		0x00002000		//! SystemACE filesystem test
+
+// Mailbox
+#define TEST_MBOX_INIT				0x00004000		//! Mailbox init.
+
+// I2C
+#define TEST_I2C_INIT				0x00008000		//! I2C init.
+#define TEST_I2C_LM82_INIT			0x00010000		//! LM82 init.
+#define TEST_I2C_LM82_EXT_T_READ	0x00020000		//! LM82 external (V5) temp. read
+#define TEST_I2C_LM82_INT_T_READ	0x00040000		//! LM82 internal (LM82 device) temp. read
+#define TEST_I2C_EEPROM_CFG_READ	0x00080000		//! Config EEPROM read
+
+// Frontend Personality Module (FPM)
+#define TEST_FPM_INIT				0x00100000		//! FPM hardware init.
+// ****************************************************************************
 
 #endif /* FEM_H_ */
 

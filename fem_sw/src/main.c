@@ -127,14 +127,8 @@ XTmrCtr				timer;
 XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 #else
 XSysAce				sysace;
-XGpio gpioMux;
+XGpio 				gpioMux;
 #endif
-
-// For I2C (not in i2c.h)s
-volatile int waitingRead  = 0;
-volatile int waitingWrite = 0;
-volatile int waitingBusy  = 0;
-volatile int iicDataSize = 0;
 
 u32 femErrorState;
 
@@ -144,19 +138,30 @@ u32 femErrorState;
 
 int main()
 {
+	// Platform initialisation
     init_platform();
-    //usleep(1000000);		// 1 second delay - TEMAC has still hung using this delay :(
 
-    //DBGOUT("main: init_platform() complete.\r\n");
+	// Flush serial console
+	int clr;
+	for (clr=0; clr<100; clr++)
+	{
+		DBGOUT("\r\n");
+	}
+
+	// Initialise hardware
     initHardware();
-    //DBGOUT("main: initHardware() complete.\r\n");
-    xilkernel_init();
-    //DBGOUT("main: xilkernel_init() complete.\r\n");
-    xmk_add_static_thread(masterThread, 0);			// Create the master thread
-    //DBGOUT("main: xmk_add_static complete.\r\n");
-    xilkernel_start();
-    cleanup_platform();								// Never reached
 
+    // Initialise xilkernel
+    xilkernel_init();
+
+    // Create the master thread
+    xmk_add_static_thread(masterThread, 0);
+
+    // Start kilkernel
+    xilkernel_start();
+
+    // Never reached!
+    cleanup_platform();
     return 0;
 }
 
@@ -262,7 +267,7 @@ void networkInitThread(void *p)
 /*
  * Initialises FEM hardware
  *
- * @return XST_SUCCESS if all hardware initialised OK, otherwise error code
+ * @return XST_SUCCESS if all hardware initialised OK, or XST_FAILURE if there were any errors
  *
  */
 int initHardware(void)
@@ -270,14 +275,9 @@ int initHardware(void)
 
 	int status = 0;
 	int fpgaTemp,lmTemp = 0;
-	femErrorState = 0;
 
-	// Clear serial console
-	int foo;
-	for (foo=0; foo<100; foo++)
-	{
-		DBGOUT("\r\n");
-	}
+	// Clear FEM error state
+	femErrorState = 0;
 
 	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
 	DBGOUT("initHardware: System alive!\r\n");
@@ -297,22 +297,25 @@ int initHardware(void)
 #endif
 
     // Show memory and cache information
-    DBGOUT("initHardware: DDR2 @ 0x%08x, size 0x%08x ", FEM_DDR2_START, FEM_DDR2_SIZE);
+    DBGOUT("initHardware: DDR2: 0x%08x - 0x%08x ", FEM_DDR2_START, FEM_DDR2_START+FEM_DDR2_SIZE);
 #ifdef USE_CACHE
     DBGOUT(" cache ENABLED\r\n");
 #else
     DBGOUT(" cache DISABLED\r\n");
 #endif
 
+    // ****************************************************************************
     // Initialise timer
     // Timer will give results in CPU ticks, so use XPAR_CPU_PPC440_CORE_CLOCK_FREQ_HZ in calculations!
-    status = XTmrCtr_Initialize(&timer, XPAR_XPS_TIMER_0_DEVICE_ID);
+    status = XTmrCtr_Initialize(&timer, TIMER_ID);
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise timer.\r\n");
     	femErrorState |= TEST_TIMER_INIT;
     }
+    // ****************************************************************************
 
+    // ****************************************************************************
     // Calibrate usleep
     // On PPC usleep is implemented using the CPU time base register but on
     // MicroBlaze we need to do this ourselves using the timer.
@@ -322,7 +325,9 @@ int initHardware(void)
     	DBGOUT("initHardware: Failed to calibrate sleep.\r\n");
     	femErrorState |= TEST_TIMER_CALIB;
     }
+    // ****************************************************************************
 
+    // ****************************************************************************
     // Initialise and configure interrupt controller
     status = XIntc_Initialize(&intc, XINTC_ID);
     if (status != XST_SUCCESS)
@@ -330,9 +335,8 @@ int initHardware(void)
     	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
     	femErrorState |= TEST_INTC_INIT;
     }
-
-    // Not sure this is needed but set anyway
     XIntc_SetOptions(&intc, XIN_SVC_ALL_ISRS_OPTION);
+    // ****************************************************************************
 
     // This fails on anything other than the first boot as (I assume) buy then it's already started..?
     // Hardware reset fixes this.
@@ -341,86 +345,91 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Interrupt controller failed self test!\r\n");
-    	// TODO: FEM error state
+    	femErrorState |= TEST_INTC_BIST;
     }
     */
 
+    // ****************************************************************************
     // Enable I2C interrupts
-    //XIntc_Enable(&intc, XPAR_INTC_0_IIC_0_VEC_ID);
-    XIntc_Enable(&intc, XPAR_INTC_0_IIC_1_VEC_ID);
-    //XIntc_Enable(&intc, XPAR_INTC_0_IIC_2_VEC_ID);
-    //XIntc_Enable(&intc, XPAR_INTC_0_IIC_3_VEC_ID);
+    //XIntc_Enable(&intc, I2C_INT_ID_EEPROM);
+    XIntc_Enable(&intc, I2C_INT_ID_LM82);
+    //XIntc_Enable(&intc, I2C_INT_ID_PWR_RHS);
+    //XIntc_Enable(&intc, I2C_INT_ID_PWR_LHS);
 
     // Register callback for I2C interrupts
     /*
-    status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_0_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
+    status = XIntc_Connect(&intc, I2C_INT_ID_EEPROM, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
     if (status != XST_SUCCESS)
 	{
 		DBGOUT("initHardware: Failed to connect I2C ISR (EEPROM).\r\n");
-		// TODO: Fem error state
+		femErrorState |= TEST_INTC_CON_EEPROM;
 	}
     */
 
-	status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_1_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
+	status = XIntc_Connect(&intc, I2C_INT_ID_LM82, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
     if (status != XST_SUCCESS)
 	{
 		DBGOUT("initHardware: Failed to connect I2C ISR (LM82).\r\n");
-		// TODO: Fem error state
+		femErrorState |= TEST_INTC_CON_LM82;
 	}
 
     /*
-    status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_2_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicRhs);
+    status = XIntc_Connect(&intc, I2C_INT_ID_PWR_RHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicRhs);
     if (status != XST_SUCCESS)
 	{
 		DBGOUT("initHardware: Failed to connect I2C ISR (POWER_RHS).\r\n");
-		// TODO: Fem error state
+		femErrorState |= TEST_INTC_CON_PWR_RHS;
 	}
 
-	status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_3_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
+	status = XIntc_Connect(&intc, I2C_INT_ID_PWR_LHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
     if (status != XST_SUCCESS)
 	{
 		DBGOUT("initHardware: Failed to connect I2C ISR (POWER_LHS).\r\n");
-		// TODO: Fem error state
+		femErrorState |= TEST_INTC_CON_PWR_LHS;
 	}
 	*/
+    // ****************************************************************************
 
+    // ****************************************************************************
     // Start I2C controllers
     status = initI2C();
     if (status != XST_SUCCESS)
 	{
-		DBGOUT("initHardware: Failed to start I2C controllers.\r\n");
-		// TODO: FEM error state
+		DBGOUT("initHardware: Failed to initialise I2C controllers.\r\n");
+		femErrorState |= TEST_I2C_INIT;
 	}
+    // ****************************************************************************
 
+    // ****************************************************************************
     // Start interrupt controller
     status = XIntc_Start(&intc, XIN_REAL_MODE);
     if (status != XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
+    	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
     	femErrorState |= TEST_INTC_START;
     }
+    // ****************************************************************************
 
-    // Get config structure from EEPROM or use failsafe
+    // ****************************************************************************
+    // Get config structure from EEPROM or use failsafe defaults
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
     	DBGOUT("initHardware: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
-    	femErrorState |= TEST_EEPROM_CFG_READ;		// Not really an error but client might like to know...
+    	femErrorState |= TEST_I2C_EEPROM_CFG_READ;		// Not critical but should be reported
     	createFailsafeConfig(&femConfig);
     }
-    else
-    {
-    	DBGOUT("initHardware: Got EEPROM configuration OK.\r\n");
-    }
+    // ****************************************************************************
 
+    // ****************************************************************************
     // Show LM82 setpoints, and set them
     DBGOUT("initHardware: LM82 overheat limit %dc, shutdown limit %dc\r\n", femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint);
     if(initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint)==-1)
     {
-    	DBGOUT("initHardware: ERROR: Failed to init LM82 device!\r\n");
-    	// TODO: FEM error state
+    	DBGOUT("initHardware: ERROR: Failed to initialise LM82.\r\n");
+    	femErrorState |= TEST_I2C_LM82_INIT;
     }
 
-    	/*
+    /*
     // Read FPGA temp
     fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
     lmTemp = readTemp(LM82_REG_READ_LOCAL_TEMP);
@@ -431,60 +440,45 @@ int initHardware(void)
     else if (fpgaTemp==-1)
     {
     	DBGOUT("initHardware: ERROR - FPGA temperature read error!\r\n");
-    	// TODO: FEM error state
+    	femErrorState |= TEST_I2C_LM82_EXT_T_READ;
     }
     else if (lmTemp==-1)
     {
     	DBGOUT("initHardware: ERROR - LM82 temperature read error!\r\n");
-    	// TODO: FEM error state
+    	femErrorState |= TEST_I2C_LM82_INT_T_READ;
     }
     else
     {
     	DBGOUT("initHardware: WARNING - I2C accesses don't seem to be working, can't read system temperature!\r\n");
-    	// TODO: FEM error state
+    	femErrorState |= TEST_I2C_LM82_EXT_T_READ;
+    	femErrorState |= TEST_I2C_LM82_INT_T_READ;
     }
-
 	*/
+    // ****************************************************************************
 
-
+    // ****************************************************************************
     // Initialise RDMA block(s) and run selftest
     status = initRdma();
     if (status!=XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Failed to start RDMA controller.\r\n");
+    	DBGOUT("initHardware: Failed to initialise RDMA controller.\r\n");
     	// TODO: FEM error state
     }
-    DBGOUT("initHardware: Running RDMA self-test... ");
     status = rdmaSelftest();
     if (status == XST_UART_TEST_FAIL)
     {
-    	DBGOUT("FAILED - UART loopback test failed.\r\n");
+    	DBGOUT("initHardware: RDMA UART loopback test failed.\r\n");
     	femErrorState |= TEST_RDMA_UART_BIST;
-    	return status;
     }
-    else
-    {
-    	DBGOUT("OK.\r\n");
-    }
+    // ****************************************************************************
 
-    // SystemACE disabled until I know how the SA/SP3N/V5 interact....
-    /*
-     * Things I need to know:
-     * 		How can I instruct the management spartan to allow the V5 to aquire MPU lock to SystemACE?
-     *
-     */
-
+    // ****************************************************************************
     // Initialise SystemACE
     status = XSysAce_Initialize(&sysace, XSYSACE_ID);
     if (status!=XST_SUCCESS)
     {
-    	DBGOUT("initHardware: SystemACE failed initialisation.\r\n");
+    	DBGOUT("initHardware: Failed to initialise SystemACE.\r\n");
     	femErrorState |= TEST_SYSACE_INIT;
-    	//return status;
-    }
-    else
-    {
-    	DBGOUT("initHardware: SystemACE initialised.\r\n");
     }
 
     // Self-test on SystemACE
@@ -492,52 +486,58 @@ int initHardware(void)
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: SystemACE failed self-test.\r\n");
-    	DBGOUT("initHardware: Ignoring SystemACE failed self-test...\r\n");
+    	DBGOUT("initHardware: Ignoring SystemACE failed self-test.\r\n");
     	femErrorState |= TEST_SYSACE_BIST;
-    	//return status;
     }
     else
     {
         // Test file write
-        //testCF();
+        // TODO: Do CF test, set TEST_SYSACE_FILESYSTEM if fails
     }
+    // ****************************************************************************
 
+    // ****************************************************************************
+    // Initialise mailbox
     status = initMailbox();
     if (status!=XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Failed to configure mailbox...\r\n");
-    	// TODO: FEM error state
+    	DBGOUT("initHardware: Failed to initialise mailbox.\r\n");
+    	femErrorState |= TEST_MBOX_INIT;
     }
-    else
-    {
-    	DBGOUT("initHardware: Configured mailbox\r\n");
-    }
+    // ****************************************************************************
 
+    // ****************************************************************************
     // Initialise GPIO mux controller
 	#ifndef HW_PLATFORM_DEVBOARD
 	status = XGpio_Initialize(&gpioMux, GPIO_ID);
 	if (status!=XST_SUCCESS)
 	{
-		DBGOUT("initHardware: Failed to initialise GPIO mux.!\r\n");
-		return -1;
+		DBGOUT("initHardware: Failed to initialise GPIO mux.\r\n");
+		femErrorState |= TEST_GPIO_MUX_INIT;
 	}
 	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
 	XGpio_DiscreteWrite(&gpioMux, 1, 0);		// Set to 0
     #endif
+	// ****************************************************************************
 
+	// ****************************************************************************
     // Call FEM personality module hardware init
     status = fpmInitHardware();
     if (status!=XST_SUCCESS)
     {
-    	DBGOUT("initHardware: Personality module hardware initialisation failed...\r\n");
-    	// TODO: FEM error state
+    	DBGOUT("initHardware: Failed to initialise FPM hardwares.\r\n");
+    	femErrorState |= TEST_FPM_INIT;
+    }
+    // ****************************************************************************
+
+
+
+    if (femErrorState==0) {
+    	return XST_SUCCESS;
     }
     else
     {
-    	DBGOUT("initHardware: Personality module hardware initialisation OK!\r\n");
+    	return XST_FAILURE;
     }
-
-    // All is well
-    return XST_SUCCESS;
 
 }
