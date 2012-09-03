@@ -323,6 +323,20 @@ int initHardware(void)
     	femErrorState |= TEST_XINTC_INIT;
     }
 
+    // Not sure this is needed but set anyway
+    XIntc_SetOptions(&intc, XIN_SVC_ALL_ISRS_OPTION);
+
+    // This fails on anything other than the first boot as (I assume) buy then it's already started..?
+    // Hardware reset fixes this.
+    /*
+    status = XIntc_SelfTest(&intc);
+    if (status != XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Interrupt controller failed self test!\r\n");
+    	// TODO: FEM error state
+    }
+    */
+
     // Enable I2C interrupts
     //XIntc_Enable(&intc, XPAR_INTC_0_IIC_0_VEC_ID);
     XIntc_Enable(&intc, XPAR_INTC_0_IIC_1_VEC_ID);
@@ -337,7 +351,7 @@ int initHardware(void)
 		DBGOUT("initHardware: Failed to connect I2C ISR (EEPROM).\r\n");
 		// TODO: Fem error state
 	}
-	*/
+    */
 
 	status = XIntc_Connect(&intc, XPAR_INTC_0_IIC_1_VEC_ID, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
     if (status != XST_SUCCESS)
@@ -362,14 +376,6 @@ int initHardware(void)
 	}
 	*/
 
-    // Start interrupt controller
-    status = XIntc_Start(&intc, XIN_REAL_MODE);
-    if (status != XST_SUCCESS)
-    {
-    	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
-    	femErrorState |= TEST_XINTC_START;
-    }
-
     // Start I2C controllers
     status = initI2C();
     if (status != XST_SUCCESS)
@@ -377,6 +383,14 @@ int initHardware(void)
 		DBGOUT("initHardware: Failed to start I2C controllers.\r\n");
 		// TODO: FEM error state
 	}
+
+    // Start interrupt controller
+    status = XIntc_Start(&intc, XIN_REAL_MODE);
+    if (status != XST_SUCCESS)
+    {
+    	DBGOUT("initHardware: Failed to start interrupt controller.\r\n");
+    	femErrorState |= TEST_XINTC_START;
+    }
 
     // Get config structure from EEPROM or use failsafe
     if (readConfigFromEEPROM(0, &femConfig) == -1)
@@ -398,6 +412,7 @@ int initHardware(void)
     	// TODO: FEM error state
     }
 
+    	/*
     // Read FPGA temp
     fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
     lmTemp = readTemp(LM82_REG_READ_LOCAL_TEMP);
@@ -420,6 +435,9 @@ int initHardware(void)
     	DBGOUT("initHardware: WARNING - I2C accesses don't seem to be working, can't read system temperature!\r\n");
     	// TODO: FEM error state
     }
+
+	*/
+
 
     // Initialise RDMA block(s) and run selftest
     status = initRdma();

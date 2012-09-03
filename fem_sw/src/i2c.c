@@ -135,6 +135,7 @@ int stopI2C(void)
 
 /**
  *Resets all I2C engines
+ * NOTE: THIS CALL CAN BLOCK!
  */
 void resetI2C(void)
 {
@@ -208,7 +209,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	volatile int *pVal;
 	XIic *pI;
 
-	xil_printf("I2C: idx=%d, op=%d, addr=0x%08x\r\n", interfaceIdx, opMode, slaveAddr);
+	xil_printf("I2C: idx=%d, op=%d, addr=0x%08x, bytes=%d\r\n", interfaceIdx, opMode, slaveAddr, dataLen);
 
 	// Make sure all flags are cleared
 	sendComplete = 0;
@@ -236,7 +237,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	}
 
 	// Set slave address
-	status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, 0x18);
+	status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, slaveAddr);
 	if (status!=XST_SUCCESS) { return status; }
 
 	xil_printf("I2C: Address set OK\r\n");
@@ -244,14 +245,17 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	// Do operation
 	switch(opMode)
 	{
+	// NOTE: XIic_MasterXXXX functions require dataLen + 1 (address byte!)
+
 	case IIC_OPERATION_READ:
-		status = XIic_MasterRecv(pI, pData, dataLen);
-		xil_printf("I2C: XIix_MasterRecv complete\r\n");
+		status = XIic_MasterRecv(pI, pData, dataLen+1);
+		xil_printf("I2C: XIic_MasterRecv complete\r\n");
 		pVal = &recvComplete;
 		break;
 	case IIC_OPERATION_WRITE:
-		status = XIic_MasterSend(pI, pData, dataLen);
-		xil_printf("I2C: XIix_MasterSend complete\r\n");
+		xil_printf("I2C: Writing 0x%02x, 0x%02x\r\n", (u8*)pData[0], (u8*)pData[1]);
+		status = XIic_MasterSend(pI, pData, dataLen+1);
+		xil_printf("I2C: XIic_MasterSend complete\r\n");
 		pVal = &sendComplete;
 		break;
 	default:
@@ -267,6 +271,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	else if (status==XST_IIC_BUS_BUSY)
 	{
 		// This will generate a callback to the function registered with XIic_SetStatusHandler
+		xil_printf("I2C: LAST OPERATION BUS BUSY!\r\n");
 		pVal = &busNotBusy;
 	}
 
@@ -311,7 +316,6 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		{
 			// Always seems to trigger!
 			xil_printf("I2C: Bus was busy while stopping\r\n");
-			//resetI2C();
 			//startI2C();
 		}
 		else
@@ -341,7 +345,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
  */
 int writeI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
-	return doI2COperation(0, IIC_OPERATION_READ, slaveAddr, pData, dataLen);
+	return doI2COperation(0, IIC_OPERATION_WRITE, slaveAddr, pData, dataLen);
 }
 
 
@@ -356,5 +360,5 @@ int writeI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen)
  */
 int readI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
-	return doI2COperation(0, IIC_OPERATION_WRITE, slaveAddr, pData, dataLen);
+	return doI2COperation(0, IIC_OPERATION_READ, slaveAddr, pData, dataLen);
 }

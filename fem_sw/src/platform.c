@@ -55,7 +55,7 @@ init_platform()
 
     /* if we have a uart 16550, then that needs to be initialized */
 #ifdef STDOUT_IS_16550
-    XUartNs550_SetBaud(STDOUT_BASEADDR, XPAR_XUARTNS550_CLOCK_HZ, 9600);
+    XUartNs550_SetBaud(STDOUT_BASEADDR, XPAR_XUARTNS550_CLOCK_HZ, 115200);
     XUartNs550_SetLineControlReg(STDOUT_BASEADDR, XUN_LCR_8_DATA_BITS);
 #endif
 }
