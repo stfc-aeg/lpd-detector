@@ -88,6 +88,7 @@
 // EDK hardware includes
 #include "xintc.h"
 #include "xtmrctr.h"
+#include "xexception_l.h"
 
 // Xilinx mailbox
 #ifndef HW_PLATFORM_DEVBOARD
@@ -411,6 +412,11 @@ int initHardware(void)
     // ****************************************************************************
 
     // ****************************************************************************
+    // Enable interrupts (PPC)
+    XExc_mEnableExceptions(XEXC_ALL);
+    // ****************************************************************************
+
+    // ****************************************************************************
     // Get config structure from EEPROM or use failsafe defaults
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
@@ -537,6 +543,7 @@ int initHardware(void)
     }
     else
     {
+    	DBGOUT("ERROR: Hardware initialisation failed - error code 0x%08x\r\n", femErrorState);
     	return XST_FAILURE;
     }
 
