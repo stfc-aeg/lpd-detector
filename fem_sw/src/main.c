@@ -88,8 +88,8 @@
 // EDK hardware includes
 #include "xintc.h"
 #include "xtmrctr.h"
-//#include "xexception_l.h"
-#include "xil_exception.h"
+#include "xexception_l.h"
+//#include "xil_exception.h"
 
 // Xilinx mailbox
 #ifndef HW_PLATFORM_DEVBOARD
@@ -150,11 +150,15 @@ int main()
 		DBGOUT("\r\n");
 	}
 
+    // Initialise xilkernel
+    xilkernel_init();
+    DBGOUT("XilKernel started.\r\n");
+
 	// Initialise hardware
     initHardware();
 
     // Initialise xilkernel
-    xilkernel_init();
+//    xilkernel_init();
 
     // Create the master thread
     xmk_add_static_thread(masterThread, 0);
@@ -281,7 +285,6 @@ int initHardware(void)
 	// Clear FEM error state
 	femErrorState = 0;
 
-	DBGOUT("\r\n\r\n----------------------------------------------------------------------\r\n");
 	DBGOUT("initHardware: System alive!\r\n");
 
 #ifdef HW_PLATFORM_DEVBOARD
@@ -301,9 +304,9 @@ int initHardware(void)
     // Show memory and cache information
     DBGOUT("initHardware: DDR2: 0x%08x - 0x%08x ", FEM_DDR2_START, FEM_DDR2_START+FEM_DDR2_SIZE);
 #ifdef USE_CACHE
-    DBGOUT(" cache ENABLED\r\n");
+    DBGOUT("(caching ENABLED)\r\n");
 #else
-    DBGOUT(" cache DISABLED\r\n");
+    DBGOUT("(caching DISABLED)\r\n");
 #endif
 
     // ****************************************************************************
@@ -330,70 +333,7 @@ int initHardware(void)
     // ****************************************************************************
 
     // ****************************************************************************
-    // Initialise and configure interrupt controller
-    status = XIntc_Initialize(&intc, XINTC_ID);
-    if (status != XST_SUCCESS)
-    {
-    	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
-    	femErrorState |= TEST_INTC_INIT;
-    }
-    XIntc_SetOptions(&intc, XIN_SVC_ALL_ISRS_OPTION);
-    // ****************************************************************************
-
-    // This fails on anything other than the first boot as (I assume) buy then it's already started..?
-    // Hardware reset fixes this.
-    /*
-    status = XIntc_SelfTest(&intc);
-    if (status != XST_SUCCESS)
-    {
-    	DBGOUT("initHardware: Interrupt controller failed self test!\r\n");
-    	femErrorState |= TEST_INTC_BIST;
-    }
-    */
-
-    // ****************************************************************************
-    // Enable I2C interrupts
-    //XIntc_Enable(&intc, I2C_INT_ID_EEPROM);
-    XIntc_Enable(&intc, I2C_INT_ID_LM82);
-    //XIntc_Enable(&intc, I2C_INT_ID_PWR_RHS);
-    //XIntc_Enable(&intc, I2C_INT_ID_PWR_LHS);
-
-    // Register callback for I2C interrupts
-    /*
-    status = XIntc_Connect(&intc, I2C_INT_ID_EEPROM, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
-    if (status != XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to connect I2C ISR (EEPROM).\r\n");
-		femErrorState |= TEST_INTC_CON_EEPROM;
-	}
-    */
-
-	status = XIntc_Connect(&intc, I2C_INT_ID_LM82, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
-    if (status != XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to connect I2C ISR (LM82).\r\n");
-		femErrorState |= TEST_INTC_CON_LM82;
-	}
-
-    /*
-    status = XIntc_Connect(&intc, I2C_INT_ID_PWR_RHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicRhs);
-    if (status != XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to connect I2C ISR (POWER_RHS).\r\n");
-		femErrorState |= TEST_INTC_CON_PWR_RHS;
-	}
-
-	status = XIntc_Connect(&intc, I2C_INT_ID_PWR_LHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
-    if (status != XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to connect I2C ISR (POWER_LHS).\r\n");
-		femErrorState |= TEST_INTC_CON_PWR_LHS;
-	}
-	*/
-    // ****************************************************************************
-
-    // ****************************************************************************
-    // Start I2C controllers
+    // Initialise I2C controllers
     status = initI2C();
     if (status != XST_SUCCESS)
 	{
@@ -403,19 +343,15 @@ int initHardware(void)
     // ****************************************************************************
 
     // ****************************************************************************
-    // Start interrupt controller
-    status = XIntc_Start(&intc, XIN_REAL_MODE);
-    if (status != XST_SUCCESS)
-    {
-    	DBGOUT("initHardware: Failed to initialise interrupt controller.\r\n");
-    	femErrorState |= TEST_INTC_START;
-    }
-    // ****************************************************************************
-
-    // ****************************************************************************
-    // Enable interrupts (PPC)
-    //XExc_mEnableExceptions(XEXC_ALL);
-    Xil_ExceptionEnable();
+    // Register ISRs for I2C devices and enable
+    register_int_handler(I2C_INT_ID_LM82, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
+    register_int_handler(I2C_INT_ID_EEPROM, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
+    register_int_handler(I2C_INT_ID_PWR_LHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
+    register_int_handler(I2C_INT_ID_PWR_RHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicRhs);
+    enable_interrupt(I2C_INT_ID_LM82);
+    enable_interrupt(I2C_INT_ID_EEPROM);
+    enable_interrupt(I2C_INT_ID_PWR_LHS);
+    enable_interrupt(I2C_INT_ID_PWR_RHS);
     // ****************************************************************************
 
     // ****************************************************************************
@@ -430,14 +366,15 @@ int initHardware(void)
 
     // ****************************************************************************
     // Show LM82 setpoints, and set them
+    /*
     DBGOUT("initHardware: LM82 overheat limit %dc, shutdown limit %dc\r\n", femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint);
     if(initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint)==-1)
     {
     	DBGOUT("initHardware: ERROR: Failed to initialise LM82.\r\n");
     	femErrorState |= TEST_I2C_LM82_INIT;
     }
+    */
 
-    /*
     // Read FPGA temp
     fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
     lmTemp = readTemp(LM82_REG_READ_LOCAL_TEMP);
@@ -461,7 +398,6 @@ int initHardware(void)
     	femErrorState |= TEST_I2C_LM82_EXT_T_READ;
     	femErrorState |= TEST_I2C_LM82_INT_T_READ;
     }
-	*/
     // ****************************************************************************
 
     // ****************************************************************************
@@ -538,8 +474,6 @@ int initHardware(void)
     }
     // ****************************************************************************
 
-
-
     if (femErrorState==0) {
     	return XST_SUCCESS;
     }
@@ -548,5 +482,4 @@ int initHardware(void)
     	DBGOUT("ERROR: Hardware initialisation failed - error code 0x%08x\r\n", femErrorState);
     	return XST_FAILURE;
     }
-
 }
