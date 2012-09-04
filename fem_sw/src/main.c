@@ -88,7 +88,8 @@
 // EDK hardware includes
 #include "xintc.h"
 #include "xtmrctr.h"
-#include "xexception_l.h"
+//#include "xexception_l.h"
+#include "xil_exception.h"
 
 // Xilinx mailbox
 #ifndef HW_PLATFORM_DEVBOARD
@@ -413,7 +414,8 @@ int initHardware(void)
 
     // ****************************************************************************
     // Enable interrupts (PPC)
-    XExc_mEnableExceptions(XEXC_ALL);
+    //XExc_mEnableExceptions(XEXC_ALL);
+    Xil_ExceptionEnable();
     // ****************************************************************************
 
     // ****************************************************************************
