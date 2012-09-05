@@ -549,6 +549,7 @@ class ExtractSlowControlParamsFromFile():
     
     def convertListIntoXmlFile(self, scList):
         """ Convert the formatted scList into an xml file """
+        
         filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/SlowControlMachined.xml'
         try:
             xml_file = open(filename, 'w')
@@ -790,6 +791,75 @@ class ExtractSlowControlParamsFromFile():
         except Exception as errNo:
             print "creatingPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", errNo
 
+    def createBiasControlDictKeysAndLookupTable(self):
+        """ this function produces the lookup table required for the daq_bias tags
+            there are 512 these (not counting the master one) and this function is only likely to be run 1-2 times at most
+        """
+        
+        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scBiasDictKeys.txt'
+        try:
+            lookup_file = open(filename, 'w')
+        except Exception as errNo:
+            print "createBiasControlDictKeysAndLookupTable: Couldn't open file because: ", errNo
+        
+        # Create number in order for daq_bias 
+        numberList = [47, 46, 21, 15, 9, 36, 45, 19, 14, 8, 44, 32, 18, 12, 5, 43, 30, 17, 11, 2, 42, 24, 16, 10, 1, 
+                      41, 37, 28, 23, 7, 35, 33, 27, 22, 6, 40, 31, 26, 20, 4, 39, 29, 25, 13, 3, 38, 34]
+        
+        lookupTableList = []
+        bias_offset = 0x05
+        pixels = 512
+        
+        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
+        for idx in range(pixels):
+            lookupTableList.append( """                         'daq_bias %i'""" % numberList[idx] + """        : 0x%03x,\n""" % (bias_offset + idx*3) )
+        
+        # Each line should look similar to this:
+        """                         'daq_bias 512'        : 0x03,"""
+        
+        # Write these dictionary keys to file
+        for idx in range(pixels):
+            lookup_file.write( lookupTableList[idx] )
+        
+        try:
+            lookup_file.close()
+        except Exception as errNo:
+            print "createdbiasDecoderTable: Couldn't close file because: ", errNo
+
+    
+        """ create the lookup table for bias Decoder settings that will be used inside this script """
+
+        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scbiasLookupTable.txt'
+        try:
+            lookup_file = open(filename, 'w')
+        except Exception as errNo:
+            print "createBiasControlDictKeysAndLookupTable: Couldn't open 2nd file because: ", errNo
+        
+        # Preamble..
+        lookup_file.write("biasDecoderLookupTable = [")
+        
+        ''' Extract 'daq_bias ' section from each key name.. '''
+        for idx in range(pixels):    # Remove leading whitespaces
+            noPreSpaces = lookupTableList[idx].strip()
+            # Select key name
+            keyName = noPreSpaces[0:24]
+            # Remove apostrophies
+            noApos = keyName.replace("'", "")
+            # Remove remaining whitespaces
+            noSpaces = noApos.replace(" ", "")
+            # Write keyname to file
+            lookup_file.write( "\"" + noSpaces + "\", ")
+        # Close list with ] ..
+        lookup_file.write("]")    
+        
+        # The list should similar to this:
+        '''["daq_bias 512", "daq_bias 496",...'''
+        
+        try:
+            lookup_file.close()
+        except Exception as errNo:
+            print "createBiasControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", errNo
+
 
 if __name__ == "__main__":
     slowControlParams = ExtractSlowControlParamsFromFile()
@@ -798,14 +868,6 @@ if __name__ == "__main__":
     # Display section by section the slow control values extracted from the file above
 #    slowControlParams.displayFormattedList(slow_ctrl_data, list_length)
 #
-    ''' Convert these into an XML file - work in progress - Currently only handles:
-        * Mux Control
-        * Bias Control 
-    
-    '''
-    print "Calling convertListIntoXmlFile().."
-    slowControlParams.convertListIntoXmlFile(slow_ctrl_data)
-    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
 
     ''' Create dictionary keys / lookup table required for Pixel Self Test and Feedback Control
@@ -837,4 +899,14 @@ if __name__ == "__main__":
 #    
 #    for i in range(110,list_length):
 #        print "slow_ctrl_data[", i, "]: %X " % slow_ctrl_data[i]
+
+
+    ''' Convert these into an XML file - work in progress - Currently only handles:
+        * Mux Control
+        * Pixel Self Test and Feedback Control 
+        * Bias Control
+    '''
+    print "Calling convertListIntoXmlFile().."
+    slowControlParams.convertListIntoXmlFile(slow_ctrl_data)
+    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
         
