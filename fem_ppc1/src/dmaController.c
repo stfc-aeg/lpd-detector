@@ -214,6 +214,7 @@ int main()
 	unsigned short doRx = 0;			// RX control flag for main loop
 	unsigned short doTx = 0;			// TX control flag for main loop
     unsigned short ackOK = 0;
+    unsigned short sendStopAck = 0;
 
 	// Data counters
     unsigned short numUploadTx = 0;		// Number of configuration upload BDs
@@ -288,6 +289,8 @@ int main()
     {
 
     	//print("[INFO ] Waiting for mailbox message...\r\n");
+
+    	sendStopAck = 1;
 
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
@@ -710,6 +713,7 @@ int main()
 								if (pStatusBlock->numAcq==(pStatusBlock->totalSent/2))
 								{
 									//print("[DEBUG] Burst mode halting...\r\n");
+									sendStopAck = 0;
 									pStatusBlock->state = STATE_ACQ_STOPPING;
 								}
 							}
@@ -860,7 +864,10 @@ int main()
 			break;
 		case CMD_ACQ_STOP:
     	    // TODO: Parse result from sendAcquireAckMessage
-    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+			if (sendStopAck!=0)
+			{
+				sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+			}
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			//printf("[INFO ] Not doing anything with stop acquire command.\r\n");
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
