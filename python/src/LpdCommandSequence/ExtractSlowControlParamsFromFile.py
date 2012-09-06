@@ -250,34 +250,27 @@ class ExtractSlowControlParamsFromFile():
         lines = slow_ctrl_file.readlines()
         slow_ctrl_file.close()    
         
+        # List where each index is a five index list;
+        #    Used to save serial control data from five column file structure
         data = []
         for line in lines:
-            # Create a list of values contained in lines
+            # Create a list of values contained in 'lines'
             ivals = [int(val) for val in split(strip(line))]
             # Append ivals list to data list
             data.append(ivals)
             
-        i_max = len(data)
+        slow_ctrl_length = len(data)
         
-        no_words = i_max
-        if i_max%32:
-            no_words = no_words + 1
-            
-        slow_ctrl_data = [0] * no_words
-    
-        lsb = 0
-        k = 0
-        nbits = 0
+        # Variables used to construct variable length words from slow control data
         data_word = 0
         current_bit = 0
-
-#        print data[3585:3585+16]
+        # List for saving slow control words
+        slow_ctrl_data = []
 
         # Process all 3904 bits
-        for i in range(i_max):
+        for i in range(slow_ctrl_length):
             # Only process if Slow Control Enable(d) [ second column ]
             if data[i][1] == 1:
-                nbits = nbits + 1
                 
                 # Mux Control
                 if 0 <= i <= 1535:
@@ -290,9 +283,8 @@ class ExtractSlowControlParamsFromFile():
                     # Msb in five bit word between 3585-3589 is located at 3585
                     #    because 3585 % 5 = 0, check when % 5 = 4 to find lsb
                     if (i % 3) == 2:
-                        slow_ctrl_data[k] = data_word
+                        slow_ctrl_data.append(data_word)
                         data_word = 0
-                        k = k +1
                         
                 # Pixel Self Test and Feedback Control
                 elif 1536 <= i <= 3583:
@@ -301,8 +293,8 @@ class ExtractSlowControlParamsFromFile():
                     bit_position = i % 4
                     if bit_position == 0:
                         # Feedback select for pixel X:
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
+                        slow_ctrl_data.append( data[i][2] )
+                        
                     else:
                         # Self test decoder for pixel X:
                         
@@ -315,14 +307,13 @@ class ExtractSlowControlParamsFromFile():
                         # Msb in five bit word between 3585-3589 is located at 3585
                         #    because 3585 % 5 = 0, check when % 5 = 4 to find lsb
                         if bit_position == 3:
-                            slow_ctrl_data[k] = data_word
+                            slow_ctrl_data.append(data_word)
                             data_word = 0
-                            k = k +1
                             
                 # Self Test Enable
                 elif i == 3584:
-                    slow_ctrl_data[k] = data[i][2]
-                    k = k +1
+                    slow_ctrl_data.append( data[i][2] )
+                    
                 # Bias Control
                 elif 3585 <= i <= 3819:
 
@@ -335,64 +326,108 @@ class ExtractSlowControlParamsFromFile():
                     # Msb in five bit word between 3585-3589 is located at 3585
                     #    because 3585 % 5 = 0, check when % 5 = 4 to find lsb
                     if (i % 5) == 4:
-                        slow_ctrl_data[k] = data_word
+                        slow_ctrl_data.append(data_word)
                         data_word = 0
-                        k = k +1
+                        
                 # Spare Bits
                 elif 3820 <= i <= 3824:
-                    if i <= 3821:
-                        # Spare bits: no current use
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
-                    elif i <= 3822:
-                        # Gain Switching Mode
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
-                    elif i <= 3823:
-                        # Calibration Pad Vcalib Buff input switch
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
-                    else:# i <= 3824:
-                        # Adc Alternative Pad Input Switch
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
+                    # Save current bit
+                    current_bit = data[i][2]
+                    # Bit shift data_word before adding current_bit
+                    data_word = data_word << 1
+                    # Append current_bit to current data_word
+                    data_word += current_bit
+                    # Lsb in 5 bit word between 3820-3824 is located at 3824
+                    #    because 3824 % 5 = 4, that's the condition to find lsb and save that 5 bit word
+                    if (i % 5) == 4:
+                        slow_ctrl_data.append(data_word)
+                        data_word = 0
+                        
+#                    if i <= 3821:
+#                        # Spare bits: no current use
+#                        slow_ctrl_data.append( data[i][2] )
+#                        
+#                    elif i <= 3822:
+#                        # Gain Switching Mode
+#                        slow_ctrl_data.append( data[i][2] )
+#                        
+#                    elif i <= 3823:
+#                        # Calibration Pad Vcalib Buff input switch
+#                        slow_ctrl_data.append( data[i][2] )
+#                        
+#                    else:# i <= 3824:
+#                        # Adc Alternative Pad Input Switch
+#                        slow_ctrl_data.append( data[i][2] )
+#                        
                 # 100x Filter Control
                 elif 3825 <= i <= 3844:
-                    if i < 3844:
-                        # 19 unused bits
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
-                    else:
-                        # Filter Enable
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
+                    # Save current bit
+                    current_bit = data[i][2]
+                    # Bit shift data_word before adding current_bit
+                    data_word = data_word << 1
+                    # Append current_bit to current data_word
+                    data_word += current_bit
+                    # The first 19 bits are reserved (unused), it's only the lsb bit that is Filter Enable
+                    if i == 3844:
+                        slow_ctrl_data.append(data_word)
+                        data_word = 0
+                        
+#                    if i < 3844:
+#                        # 19 unused bits
+#                        slow_ctrl_data.append( data[i][2] )
+#                        
+#                    else:
+#                        # Filter Enable
+#                        slow_ctrl_data.append( data[i][2] )
+#                        
 
                 # ADC Delay Adjust
                 elif 3845 <= i <= 3864:
-                    if i < 3862:
-                        # 17 unused bits
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
-                    else:
-                        # Delay Adjust
+                    # Save current bit
+                    current_bit = data[i][2]
+                    # Bit shift data_word before adding current_bit
+                    data_word = data_word << 1
+                    # Append current_bit to current data_word
+                    data_word += current_bit
+                    # The first 17 bits are reserved (unused), it's only the 3 lsb bits that is ADC Delay Adjust
+                    if i == 3864:
+                        slow_ctrl_data.append(data_word)
+                        data_word = 0
+                        
+#                    if i < 3862:
+#                        # 17 unused bits
+#                        slow_ctrl_data.append( data[i][2] )
+#                        
+#                    else:
+#                        # Delay Adjust
+#                        # Save current bit
+#                        current_bit = data[i][2]
+#                        # Bit shift data_word before adding current_bit
+#                        data_word = data_word << 1
+#                        # Append current_bit to current data_word
+#                        data_word += current_bit
+#                        # Lsb in 3 bit word between 3862-3864 is located at 3864
+#                        #    because 3864 % 3 = 0, that's the condition to find lsb and save that 3 bit word
+#                        if (i % 3) == 0:
+#                            slow_ctrl_data.append(data_word)
+#                            data_word = 0
+#                # Digital Control
+                elif 3865 <= i <= 3904:
+
+                    if i < 3869:
+                        # Reserved
                         # Save current bit
                         current_bit = data[i][2]
                         # Bit shift data_word before adding current_bit
                         data_word = data_word << 1
                         # Append current_bit to current data_word
                         data_word += current_bit
-                        # Lsb in 3 bit word between 3862-3864 is located at 3864
-                        #    because 3864 % 3 = 0, that's the condition to find lsb and save that 3 bit word
-                        if (i % 3) == 0:
-                            slow_ctrl_data[k] = data_word
+                        # Lsb in 7 bit word between 3865-3868 is located at 3868
+                        #    because 3868 % 4 = 0, that's the condition to find lsb and save that 4 bit word
+                        if (i % 4) == 0:
+                            slow_ctrl_data.append(data_word)
                             data_word = 0
-                            k = k +1
-                # Digital Control
-                elif 3865 <= i <= 3904:
-                    if i < 3869:
-                        # Reserved
-                        slow_ctrl_data[k] = data[i][2]
-                        k = k +1
+
                     elif i < 3876:
                         # Reset 3 (gain stage 2)
                         # Save current bit
@@ -404,9 +439,8 @@ class ExtractSlowControlParamsFromFile():
                         # Lsb in 7 bit word between 3869-3875 is located at 3875
                         #    because 3875 % 7 = 4, that's the condition to find lsb and save that 7 bit word
                         if (i % 7) == 4:
-                            slow_ctrl_data[k] = data_word
+                            slow_ctrl_data.append(data_word)
                             data_word = 0
-                            k = k +1
 
                     elif i < 3883:
                         # Reset 2 (gain stage 1)
@@ -418,9 +452,8 @@ class ExtractSlowControlParamsFromFile():
                         # Lsb in 7 bit word between 3876-3882 is located at 3882
                         #    because 3882 % 7 = 4, that's the condition to find lsb and save that 7 bit word
                         if (i % 7) == 4:
-                            slow_ctrl_data[k] = data_word
+                            slow_ctrl_data.append(data_word)
                             data_word = 0
-                            k = k +1
                         
                     elif i < 3890:
                         # Reset 1 (pre-amp)
@@ -432,9 +465,8 @@ class ExtractSlowControlParamsFromFile():
                         # Lsb in 7 bit word between 3883-3889 is located at 3889
                         #    because 3889 % 7 = 4, that's the condition to find lsb and save that 7 bit word
                         if (i % 7) == 4:
-                            slow_ctrl_data[k] = data_word
+                            slow_ctrl_data.append(data_word)
                             data_word = 0
-                            k = k +1
 
                     elif i < 3897:
                         # Clock counter offset
@@ -446,9 +478,8 @@ class ExtractSlowControlParamsFromFile():
                         # Lsb in 7 bit word between 3890-3897 is located at 3897
                         #    because 3897 % 7 = 4, that's the condition to find lsb and save that 7 bit word
                         if (i % 7) == 4:
-                            slow_ctrl_data[k] = data_word
+                            slow_ctrl_data.append(data_word)
                             data_word = 0
-                            k = k +1
 
                     else:
                         # Clock select
@@ -460,12 +491,10 @@ class ExtractSlowControlParamsFromFile():
                         # Lsb in 7 bit word between 3904-3904 is located at 3904
                         #    because 3904 % 7 = 4, that's the condition to find lsb and save that 7 bit word
                         if (i % 7) == 4:
-                            slow_ctrl_data[k] = data_word
+                            slow_ctrl_data.append(data_word)
                             data_word = 0
-                            k = k +1
-
-                
-        return slow_ctrl_data, k
+        
+        return slow_ctrl_data, len(slow_ctrl_data)
     
     
     
@@ -622,15 +651,16 @@ class ExtractSlowControlParamsFromFile():
         """ display section by section the values already extracted from slow control configuration file (not an XML file!) """
         
         print "list_length ", list_length
+        print "actual length ", len(scList)
         print "scList:"
 #        print "MuxControl: \t",     scList[0:512]
 #        print "PxlSelfTest:\t",     scList[512:1536]
         print "SelfTest:\t",        scList[1536:1537]
         print "BiasControl:\t",     scList[1537:1584]
-        print "SpareBits:\t",       scList[1584:1589]
-        print "100xFilter:\t",      scList[1589:1609]
-        print "ADCclockDelay:\t",   scList[1609:1629]
-        print "DigitalCtrl:\t",     scList[1629:1669]
+        print "SpareBits:\t",       scList[1584:1585]
+        print "100xFilter:\t",      scList[1585:1586]
+        print "ADCclockDelay:\t",   scList[1586:1587]
+        print "DigitalCtrl:\t",     scList[1587:1593]
         
     def createMuxDecoderDictKeysAndLookupTable(self):
         """ this function is used to produce the lookup table required for the mux_decoder_pixel_XX tags
