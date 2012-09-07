@@ -118,7 +118,8 @@ int stopI2C(void)
 
 
 /**
- *Resets all I2C engines
+ * Resets all I2C engines
+ *
  * NOTE: THIS CALL CAN BLOCK!
  */
 void resetI2C(void)
@@ -375,7 +376,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 
 /**
  * Performs a write transaction to an I2C slave device.
- * @param slaveAddr I2C slave address
+ * @param interfaceIdx I2C device index
  * @param pData pointer to data buffer to write from
  * @param dataLen length of data (in bytes) to write
  *
@@ -383,13 +384,13 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
  */
 int writeI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
-	return doI2COperation(0, IIC_OPERATION_WRITE, slaveAddr, pData, dataLen);
+	return doI2COperation(interfaceIdx, IIC_OPERATION_WRITE, slaveAddr, pData, dataLen);
 }
 
 
 /**
  * Performs a read transaction from an I2C slave device.
- * @param slaveAddr I2C slave address
+ * @param interfaceIdx I2C device index
  * @param pData pointer to data buffer to read to
  * @param dataLen length of data (in bytes) to read
  * @param bAddr hardware base address of I2C controller to use
@@ -398,5 +399,5 @@ int writeI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen)
  */
 int readI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
-	return doI2COperation(0, IIC_OPERATION_READ, slaveAddr, pData, dataLen);
+	return doI2COperation(interfaceIdx, IIC_OPERATION_READ, slaveAddr, pData, dataLen);
 }

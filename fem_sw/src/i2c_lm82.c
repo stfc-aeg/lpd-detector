@@ -24,7 +24,7 @@ int initLM82(int highTemp, int critTemp)
 	data[0] = LM82_REG_WRITE_CONFIG;
 	data[1] = 0x28;	// D3 - remote T_CRIT mask, D5 - local T_CRIT mask
 	payloadSize = 2;
-	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
+	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
 		return -1;
@@ -39,7 +39,7 @@ int initLM82(int highTemp, int critTemp)
 		data[1] = critTemp;
 	}
 	payloadSize = 2;
-	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
+	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
 		return -1;
@@ -49,7 +49,7 @@ int initLM82(int highTemp, int critTemp)
 	data[0] = LM82_REG_WRITE_REMOTE_SP;
 	data[1] = highTemp;
 	payloadSize = 2;
-	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
+	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
 		return -1;
@@ -70,8 +70,8 @@ u8 readStatus(void)
 	u8 cmd = LM82_REG_READ_STATUS;
 	u8 stat = 0;
 
-	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, &cmd, 1);
-	numBytes = readI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, &stat, 1);
+	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, &cmd, 1);
+	numBytes = readI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, &stat, 1);
 	return stat;
 }
 
@@ -88,14 +88,14 @@ int readTemp(u8 tempRegCmd)
 	u8 rawVal = 0;
 
 	// Send read command to slave
-	numBytes = writeI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, &tempRegCmd, 1);
+	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, &tempRegCmd, 1);
 	if (numBytes<1)
 	{
 		return -1;
 	}
 
 	// Grab data byte from slave
-	numBytes = readI2C(BADDR_I2C_LM82, IIC_ADDRESS_TEMP, &rawVal, 1);
+	numBytes = readI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, &rawVal, 1);
 	if (numBytes<1)
 	{
 		return -1;
