@@ -143,6 +143,20 @@ class FemClient(object):
         width = FemTransaction.WIDTH_LONG
         values = self.read(bus, width, theAddr, theReadLen)
         return values
+ 
+    def rawWrite(self, theAddr, thePayload):
+                
+        bus   = FemTransaction.BUS_RAW_REG
+        width = FemTransaction.WIDTH_LONG
+        ack = self.write(bus, width, theAddr, thePayload)
+        #TODO: check if response is OK
+        return ack   
+    def rawRead(self, theAddr, theReadLen):
+        
+        bus = FemTransaction.BUS_RAW_REG
+        width = FemTransaction.WIDTH_LONG
+        values = self.read(bus, width, theAddr, theReadLen)
+        return values
     
     def i2cWrite(self, theAddr, thePayload):
         
