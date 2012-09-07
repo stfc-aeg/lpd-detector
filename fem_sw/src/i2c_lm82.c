@@ -16,7 +16,7 @@
  */
 int initLM82(int highTemp, int critTemp)
 {
-	unsigned int numBytes = 0;
+	int numBytes = 0;
 	unsigned int payloadSize = 0;
 	u8 data[2] = {0,0};
 
@@ -84,7 +84,7 @@ u8 readStatus(void)
  */
 int readTemp(u8 tempRegCmd)
 {
-	unsigned int numBytes;
+	int numBytes;
 	u8 rawVal = 0;
 
 	// Send read command to slave
