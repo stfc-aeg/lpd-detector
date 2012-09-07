@@ -87,14 +87,6 @@ int startI2C(void)
 	status = XIic_Start(&iicLhs);
 	*/
 
-	// Enable interrupts
-	XIic_IntrGlobalEnable(XPAR_IIC_LM82_BASEADDR);
-	/*
-	XIic_IntrGlobalEnable(XPAR_IIC_EEPROM_BASEADDR);
-	XIic_IntrGlobalEnable(XPAR_IIC_POWER_LHS_BASEADDR);
-	XIic_IntrGlobalEnable(XPAR_IIC_POWER_RHS_BASEADDR);
-	*/
-
 	return status;
 }
 
@@ -108,14 +100,6 @@ int startI2C(void)
 int stopI2C(void)
 {
 	int status;
-
-	// Disable interrupts
-	XIic_IntrGlobalDisable(XPAR_IIC_LM82_BASEADDR);
-	/*
-	XIic_IntrGlobalDisable(XPAR_IIC_EEPROM_BASEADDR);
-	XIic_IntrGlobalDisable(XPAR_IIC_POWER_LHS_BASEADDR);
-	XIic_IntrGlobalDisable(XPAR_IIC_POWER_RHS_BASEADDR);
-	*/
 
 	// Stop engines
 	status = XIic_Stop(&iicLm82);
@@ -159,6 +143,8 @@ static void statusHandler(XIic* pIic, int event)
 	{
 	case XII_BUS_NOT_BUSY_EVENT:
 		// Bus transitioned to not busy
+		// NOTE: Due to a bug in 2.01a (xiic_intr.c) the XIic_BusNotBusyFuncPtr will assert
+		//       so it is important to ensure the bus is not busy before reading / writing!
 		busNotBusy = 0;
 		break;
 
@@ -224,7 +210,7 @@ static void recvHandler(XIic* pIic, int byteCount)
  * @param pData pointer to data payload
  * @param dataLen length of payload in bytes
  *
- * @return operation status (XST_SUCCESS or error)
+ * @return number of data bytes sent / received or -1 on an error
  **/
 int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
@@ -232,6 +218,12 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	int status;
 	volatile int *pVal;
 	XIic *pI;
+
+	u32 iicSR = 0;
+	u8 busBusy = 1;
+
+	int count = 0;
+	int max = 10000;
 
 	// Clear status flags
 	numBytes = 0;
@@ -268,6 +260,23 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	// Store which IIC instance this is for
 	pIic = pI;
 
+	// Wait for not busy (as XIic_BusNotBusyFuncPtr is invalid in Xilinx driver and will cause assert!)
+	// TODO: Timeout
+	count = 0;
+	while(busBusy==1 && count<max)
+	{
+		iicSR = XIic_ReadReg(pI->BaseAddress, XIIC_SR_REG_OFFSET);
+		if (iicSR & XIIC_SR_BUS_BUSY_MASK) {
+			busBusy = 0;
+		}
+	}
+
+	if (busBusy==1)
+	{
+		// Bus not ready for operation so return
+		return -1;
+	}
+
 	// Set slave address
 	status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, slaveAddr);
 	if (status!=XST_SUCCESS) { return -1; }
@@ -277,7 +286,6 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	{
 
 	// NOTE: XIic_MasterXXXX functions require dataLen + 1 (address byte!)
-
 	case IIC_OPERATION_READ:
 		pVal = &recvComplete;
 		*pVal = 1;		// Flag operation in progress
@@ -303,9 +311,11 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	else if (status==XST_IIC_BUS_BUSY)
 	{
 		// This will generate a callback to the function registered with XIic_SetStatusHandler
+
+		// NOTE: As we check for busy before doing operation this should never happen
+		//       (because it will crash the FEM!)
 		pVal = &busNotBusy;
 		*pVal = 1;
-		xil_printf("^I2C: LAST OPERATION BUS BUSY!\r\n");
 	}
 
 	//xil_printf("I2C: Entering interrupt loop\r\n");
@@ -327,14 +337,18 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 
 	// Rubbish loop-based timeout
 	// TODO: Replace with above
-	int count = 0;
-	int max   = 5000;
-	while (*pVal!=0 && count<max)
+	count = 0;
+	while ((*pVal!=0 && count<max) || slaveNoAck==1)
 	{
 		count++;
 	}
 
 	xil_printf("I2C: Out of interrupt loop (%d)\r\n", count);
+
+	if (slaveNoAck==1)
+	{
+		return -1;
+	}
 
 	// Did we timeout?
 	if (*pVal!=0)
@@ -342,20 +356,18 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		status = stopI2C();
 		if (status==XST_IIC_BUS_BUSY)
 		{
-			xil_printf("AI2C: Bus was busy while stopping\r\n");
+			xil_printf("I2C: Bus was busy while stopping\r\n");
 			//startI2C();
 		}
 		else
 		{
-			xil_printf("BI2C: Stop OK\r\n");
+			xil_printf("I2C: Stop OK\r\n");
 			startI2C();
 		}
 
-		xil_printf("CI2C: Timed out\r\n");
+		xil_printf("I2C: Timed out\r\n");
 		return -1;
 	}
-
-	//xil_printf("I2C: Operation OK!\r\n");
 
 	return numBytes-1;		// Take 1 byte off for address!
 }
