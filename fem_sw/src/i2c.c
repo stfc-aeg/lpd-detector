@@ -225,7 +225,6 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	busNotBusy = 0;
 
 	// Determine XIic instance to use
-	xil_printf("I2C: busIdx=%d\r\n", interfaceIdx);
 	switch(interfaceIdx)
 	{
 	case IIC_IDX_LM82:
@@ -246,7 +245,6 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 
 	default:
 		// Invalid index
-		xil_printf("Invalid index\r\n");
 		return -1;
 	}
 
@@ -267,7 +265,6 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	if (busBusy==1)
 	{
 		// Bus not ready for operation so return
-		xil_printf("Bus still busy :(\r\n");
 		return -1;
 	}
 
