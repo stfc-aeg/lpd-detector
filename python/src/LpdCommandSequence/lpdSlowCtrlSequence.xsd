@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+    <xs:element name="lpd_slow_ctrl_sequence">
+        <xs:complexType>
+            <xs:choice maxOccurs="unbounded">
+		<! -- Mux Control [bit 0-1535] >
+		<xs:element ref="mux_decoder_pixel_master"/>
+		<xs:element ref="mux_decoder_pixel_512"/>
+                <xs:element ref="mux_decoder_pixel_496"/>
+                <xs:element ref="mux_decoder_pixel_480"/>
+                <xs:element ref="mux_decoder_pixel_464"/>
+                <xs:element ref="mux_decoder_pixel_448"/>
+		<xs:element ref="mux_decoder_pixel_432"/>
+                <xs:element ref="mux_decoder_pixel_416"/>
+		<xs:element ref="mux_decoder_pixel_400"/>
+                <xs:element ref="mux_decoder_pixel_384"/>
+		<xs:element ref="mux_decoder_pixel_368"/>
+                <xs:element ref="mux_decoder_pixel_352"/>
+		<xs:element ref="mux_decoder_pixel_336"/>
+                <xs:element ref="mux_decoder_pixel_320"/>
+		<xs:element ref="mux_decoder_pixel_304"/>
+                <xs:element ref="mux_decoder_pixel_288"/>
+                <xs:element ref="mux_decoder_pixel_272"/>
+		<xs:element ref="mux_decoder_pixel_256"/>
+		<xs:element ref="mux_decoder_pixel_240"/>
+		<xs:element ref="mux_decoder_pixel_224"/>
+                <xs:element ref="mux_decoder_pixel_208"/>
+		<xs:element ref="mux_decoder_pixel_192"/>
+                <xs:element ref="mux_decoder_pixel_176"/>
+                <xs:element ref="mux_decoder_pixel_160"/>
+                <xs:element ref="mux_decoder_pixel_144"/>
+		<xs:element ref="mux_decoder_pixel_128"/>
+                <xs:element ref="mux_decoder_pixel_112"/>
+		<xs:element ref="mux_decoder_pixel_98"/>
+                <xs:element ref="mux_decoder_pixel_82"/>
+                <xs:element ref="mux_decoder_pixel_66"/>
+		<xs:element ref="mux_decoder_pixel_50"/>
+                <xs:element ref="mux_decoder_pixel_34"/>
+                <xs:element ref="mux_decoder_pixel_18"/>
+                <xs:element ref="mux_decoder_pixel_2"/>
+                <xs:element ref="mux_decoder_pixel_511"/>
+                <xs:element ref="mux_decoder_pixel_495"/>
+		<!-- Etc.. >
+		<!-->
+		<!-- Pixel Self Test and Feedback Control [1536-3583] >
+                <xs:element ref="feedback_select_pixel_497"/>
+                <xs:element ref="self_test_pixel_497"/>
+		<!-- Etc >
+		<xs:element ref="feedback_select_pixel_1"/>
+                <xs:element ref="self_test_pixel_1"/>
+		<!-->
+		<!-- Self Test Enable [3584] >
+                <xs:element ref="self_test_enable"/>
+		<!-->
+		<!-- Bias Control [3585-3819] >
+                <xs:element ref="daq_bias_47"/>
+		<xs:element ref="daq_bias_46"/>
+		<xs:element ref="daq_bias_21"/>
+                <xs:element ref="daq_bias_15"/>
+		<xs:element ref="daq_bias_9"/>
+		<xs:element ref="daq_bias_36"/>
+                <xs:element ref="daq_bias_45"/>
+		<xs:element ref="daq_bias_19"/>
+		<xs:element ref="daq_bias_14"/>
+		<xs:element ref="daq_bias_8"/>
+                <xs:element ref="daq_bias_44"/>
+		<xs:element ref="daq_bias_32"/>
+		<xs:element ref="daq_bias_18"/>
+		<xs:element ref="daq_bias_12"/>
+                <xs:element ref="daq_bias_5"/>
+		<xs:element ref="daq_bias_43"/>
+		<xs:element ref="daq_bias_30"/>
+		<xs:element ref="daq_bias_17"/>
+                <xs:element ref="daq_bias_11"/>
+		<xs:element ref="daq_bias_2"/>
+		<xs:element ref="daq_bias_42"/>
+		<xs:element ref="daq_bias_24"/>
+                <xs:element ref="daq_bias_16"/>
+		<xs:element ref="daq_bias_10"/>
+		<xs:element ref="daq_bias_1"/>
+		<xs:element ref="daq_bias_41"/>
+                <xs:element ref="daq_bias_37"/>
+		<xs:element ref="daq_bias_28"/>
+		<xs:element ref="daq_bias_23"/>
+		<xs:element ref="daq_bias_7"/>
+                <xs:element ref="daq_bias_35"/>
+		<xs:element ref="daq_bias_33"/>
+		<xs:element ref="daq_bias_27"/>
+		<xs:element ref="daq_bias_22"/>
+                <xs:element ref="daq_bias_6"/>
+		<xs:element ref="daq_bias_40"/>
+		<xs:element ref="daq_bias_31"/>
+		<xs:element ref="daq_bias_26"/>
+                <xs:element ref="daq_bias_20"/>
+		<xs:element ref="daq_bias_4"/>
+		<xs:element ref="daq_bias_39"/>
+		<xs:element ref="daq_bias_29"/>
+                <xs:element ref="daq_bias_25"/>
+		<xs:element ref="daq_bias_13"/>
+		<xs:element ref="daq_bias_3"/>
+		<xs:element ref="daq_bias_38"/>
+                <xs:element ref="daq_bias_34"/>
+		<!-->
+		<!-- Spare Bits [(3820-3821), 3822-3824]>
+                <xs:element ref="gain_switching_mode"/>
+		<!-- .. >
+		<!-->
+		<!-- 100x Filter Control [3825-3844]>
+                <xs:element ref="100x_reserved"/>
+                <xs:element ref="100x_filter_enable"/>
+		<!-->
+		<!-- ADC Delay Adjust [3845-3864] >
+                <xs:element ref="adc_reserved"/>
+                <xs:element ref="adc_delay_adjust"/>
+		<!-->
+		<!-- Digital Control [3865-3904] >
+                <xs:element ref="digital_control_reserved"/>
+                <xs:element ref="reset_3"/>
+                <xs:element ref="reset_2"/>
+                <xs:element ref="reset_1"/>
+                <xs:element ref="clock_counter_offset"/>
+		<xs:element ref="clock_select"/>
+            </xs:choice>
+            <xs:attribute name="name" use="required"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="clear_skip_register">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="nop">
+        <xs:complexType>
+                <xs:choice maxOccurs="unbounded">
+                <xs:element ref="clear_skip_register"/>
+                <xs:element ref="nop"/>
+                <xs:element ref="on_chip_reset_disable"/>
+                <xs:element ref="read_out_data"/>
+                <xs:element ref="reset_gain_back"/>
+                <xs:element ref="reset_gain_front"/>
+                <xs:element ref="reset_pre_amp"/>
+                <xs:element ref="reset_state_machine"/>
+                <xs:element ref="reset_trigger_pointer"/>
+                <xs:element ref="reset_write_pointer"/>
+                <xs:element ref="stand_by"/>
+                <xs:element ref="start_trigger_pointer"/>
+                <xs:element ref="start_write_pointer"/>
+                <xs:element ref="stop_read_out"/>
+                <xs:element ref="stop_readout"/>
+                <xs:element ref="sync_reset"/>
+                <xs:element ref="trigger_flag_set"/>
+                <xs:element ref="loop"/>
+            </xs:choice>
+            <xs:attribute name="count" type="xs:integer"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="on_chip_reset_disable">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="read_out_data">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="reset_gain_back">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="reset_gain_front">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="reset_pre_amp">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="reset_state_machine">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="reset_trigger_pointer">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="reset_write_pointer">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="stand_by">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="start_trigger_pointer">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="start_write_pointer">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="stop_read_out">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="stop_readout">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="sync_reset">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="trigger_flag_set">
+        <xs:complexType/>
+    </xs:element>
+    <xs:element name="loop">
+    	<xs:complexType/>
+    </xs:element>
+</xs:schema>
