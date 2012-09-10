@@ -24,8 +24,8 @@
 //! I2C controller indexes
 #define IIC_IDX_LM82			0
 #define IIC_IDX_EEPROM			1
-#define IIC_IDX_PWR_RHS			2
-#define IIC_IDX_PWR_LHS			3
+#define IIC_IDX_PWR_LHS			2
+#define IIC_IDX_PWR_RHS			3
 
 // I2C management functions
 int initI2C(void);
@@ -50,7 +50,7 @@ XIic iicLm82, iicEeprom, iicLhs, iicRhs;
 
 // Flags used by interrupt handlers
 static volatile int iicInstanceIdx, sendComplete, recvComplete, busNotBusy, slaveNoAck, iicError;
-static volatile int numBytes;
+static volatile int numBytesRemaining;
 static XIic* pIic;
 
 #endif /* I2C_H_ */

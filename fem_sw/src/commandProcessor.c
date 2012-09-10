@@ -785,6 +785,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 					 */
 					u8 slaveAddress = (pRxHeader->address & 0xFF);
 					u8 busIndex = (pRxHeader->address & 0xFF00) >> 8;
+
+					/*
 					u32 baseAddr = 0;
 
 					// Map of I2C bus base addresses
@@ -808,13 +810,13 @@ void commandHandler(struct protocol_header* pRxHeader,
 					else
 					{
 						baseAddr = i2cAddr[busIndex];
-					}
+					}*/
 
 					//DBGOUT("CmdDisp: Processing I2C operation...\r\n");
 
 					if (CMPBIT(state, STATE_READ))
 					{
-						i = readI2C(baseAddr, slaveAddress, (u8*)pTxPayload_32, *pRxPayload_32);
+						i = readI2C(busIndex, slaveAddress, (u8*)pTxPayload_32, *pRxPayload_32);
 						if (i != *pRxPayload_32)
 						{
 							// I2C operation failed, set NACK
@@ -833,7 +835,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 					}
 					else if (CMPBIT(state, STATE_WRITE))
 					{
-						i = writeI2C(baseAddr, slaveAddress, pRxPayload, pRxHeader->payload_sz);
+						i = writeI2C(busIndex, slaveAddress, pRxPayload, pRxHeader->payload_sz);
 						if (i != pRxHeader->payload_sz)
 						{
 							// I2C operation failed, set NACK

@@ -20,9 +20,9 @@ int initLM82(int highTemp, int critTemp)
 	unsigned int payloadSize = 0;
 	u8 data[2] = {0,0};
 
-	// Set config register
+	// Set config register - enable interrupts by setting D3 and D5
 	data[0] = LM82_REG_WRITE_CONFIG;
-	data[1] = 0x28;	// D3 - remote T_CRIT mask, D5 - local T_CRIT mask
+	data[1] = 0x28;
 	payloadSize = 2;
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
@@ -38,6 +38,7 @@ int initLM82(int highTemp, int critTemp)
 	else {
 		data[1] = critTemp;
 	}
+	data[1] = 0x43;		// TODO: REMOVE!
 	payloadSize = 2;
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
@@ -48,6 +49,7 @@ int initLM82(int highTemp, int critTemp)
 	// Set HIGH setpoint
 	data[0] = LM82_REG_WRITE_REMOTE_SP;
 	data[1] = highTemp;
+	data[1] = 0x43;		// TODO: REMOVE!
 	payloadSize = 2;
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)

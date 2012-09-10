@@ -366,14 +366,12 @@ int initHardware(void)
 
     // ****************************************************************************
     // Show LM82 setpoints, and set them
-    /*
     DBGOUT("initHardware: LM82 overheat limit %dc, shutdown limit %dc\r\n", femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint);
     if(initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint)==-1)
     {
     	DBGOUT("initHardware: ERROR: Failed to initialise LM82.\r\n");
     	femErrorState |= TEST_I2C_LM82_INIT;
     }
-    */
 
     // Read FPGA temp
     fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
