@@ -5,19 +5,19 @@ class SlowCtrlParams(object):
  
     numPixels = 3
 #   paramsDict = {'dictKey'                     : [width, posn, value(s)}    
-    paramsDict = {'mux_decoder'                 : [3, 0, [-1] * 512 ],
-                  'mux_decoder_default'         : [3, -1, -1],
-                  'feedback_select'             : [1, 1536, [-1] * 512],
+    paramsDict = {'mux_decoder_default'         : [3, -1, -1],
+                  'mux_decoder'                 : [3, 0, [-1] * 512 ],
                   'feedback_select_default'     : [1, -1, -1],
-                  'self_test_decoder'           : [3, 1537, [-1] * 512 ],
+                  'feedback_select'             : [1, 1536, [-1] * 512],
                   'self_test_decoder_default'   : [3, -1, -1],
+                  'self_test_decoder'           : [3, 1537, [-1] * 512 ],
                   'self_test_enable'            : [1, 3584, -1],
-                  'daq_bias'                    : [5, 3585, [-1] * 512],
                   'daq_bias_default'            : [5, -1, -1],
-                  'spare_bits'                  : [5, 3280, [-1] * 4],  # Special Case
-                  '100x_filter_control'         : [20, 3825, -1],       # Special Case
-                  'adc_clock_delay'             : [20, 3845, -1],       # Special Case
-                  'digital_control'             : [8, 3865, [-1] * 6],  # Special Case - variable lengths
+                  'daq_bias'                    : [5, 3585, [-1] * 47],
+                  'spare_bits'                  : [5, 3820, [-1] * 4],  # Special Case: 5 bits cover everything
+                  '100x_filter_control'         : [20, 3825, -1],       # Special Case: 20 bits cover everything
+                  'adc_clock_delay'             : [20, 3845, -1],       # Special Case: 20 bits cover everything
+                  'digital_control'             : [20, 3865, [-1] * 6], # Special Case: 40 bits cover everything
                   }
      
     def __init__(self):
