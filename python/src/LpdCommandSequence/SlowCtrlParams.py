@@ -153,6 +153,49 @@ class SlowCtrlParams(object):
                     else:
                         # Default values set, update the mux decoder settings for the 512 pixels accordingly
                         
+                        # Define slow control word width
+                        scWordWidth = 3
+                        # Track whether it's an edge case (i.e. 32 not evenly divisible by 3)
+                        edgeCase = 0
+                        # Save the contents of one 32 bit word
+                        seqIndex = 0
+                        # Track relative position inside the 32-bit word
+                        bitCount = 0
+                        # Save excess of any slow control word that spans the 32 bit word boundary
+                        bitRemainder = 0
+                        while bitCount < 32:
+                            # How far away from the 32-bit word boundary are we?
+                            edgeCase = 32 - bitCount
+                            if edgeCase < scWordWidth:
+                                # TODO: HANDLE THE EDGE CASES AND UPDATE encodingSeq
+                                if edgeCase == 2:
+                                    # Save the first 2 bits
+                                    currentVal = cmdParam[2] & 3
+                                    # Bit shift by bitCount and add
+                                    seqIndex += currentVal << bitCount
+                                    # Save the remainder
+                                    bitRemainder = cmdParam[2] >> 2
+                                    # Clear the 32 bit word
+                                    seqIndex = 0
+                                else:
+                                    # Save the first bit
+                                    currentVal = cmdParam[2] & 1
+                                    # Bit shift by bitCount and add
+                                    seqIndex += currentVal << bitCount
+                                    # Save the remainder
+                                    bitRemainder = cmdParam[2] >> 1
+                                    # Clear the 32 bit word
+                                    seqIndex = 0
+                            elif 0 < bitCount < 3:
+                                # Edge case: 1 or 2 bits remain from previous 32-bit word 
+                                pass
+                            else:
+                                # Bit shift running sum by relative position within 32-bit word
+                                currentVal = cmdParam[2] << bitCount
+                                # Add the current 3-bit word
+                                seqIndex += currentVal
+                                # Increment counter by 3 (bits)
+                                bitCount += scWordWidth
 #                else:
                 cmdWord = (self.sync << self.sync_pos) | (self.cmdDict[cmd] << self.cmd_pos)
             
