@@ -18,17 +18,14 @@
  */
 int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len)
 {
-	//XIic_Send(BADDR_I2C_EEPROM, slaveAddr, &addr, 1, XIIC_STOP);
-	//return XIic_Recv(BADDR_I2C_EEPROM, slaveAddr, pData, len, XIIC_STOP);
-
 	int numBytes = 0;
 
 	// Send EEPROM read request to $addr
-	numBytes = writeI2C(IIC_IDX_LM82, slaveAddr, &addr, 1);
+	numBytes = writeI2C(IIC_IDX_EEPROM, slaveAddr, &addr, 1);
 	if (numBytes!=1) { return numBytes; }
 
 	// Do read operation
-	return readI2C(IIC_IDX_LM82, slaveAddr, pData, len);
+	return readI2C(IIC_IDX_EEPROM, slaveAddr, pData, len);
 }
 
 
