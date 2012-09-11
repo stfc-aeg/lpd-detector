@@ -781,36 +781,10 @@ void commandHandler(struct protocol_header* pRxHeader,
 					/*
 					 * Decode address field
 					 * Least significant word (lower byte) = I2C slave address
-					 * Most significant word (lower byte)  = Bus index (0=LM82, 1=EEPROM, 2=SP3_TOP, 3=SP3_BOT)
+					 * Most significant word (lower byte)  = Bus index (0=LM82, 1=EEPROM, 2=PWR_RHS, 3=PWR_LHS)
 					 */
 					u8 slaveAddress = (pRxHeader->address & 0xFF);
 					u8 busIndex = (pRxHeader->address & 0xFF00) >> 8;
-
-					/*
-					u32 baseAddr = 0;
-
-					// Map of I2C bus base addresses
-					u32 i2cAddr[] =			{
-												BADDR_I2C_LM82,
-												BADDR_I2C_EEPROM,
-												BADDR_I2C_SP3_TOP,
-												BADDR_I2C_SP3_BOT
-											};
-					u8 i2cMaxAddr = (sizeof(i2cAddr)/sizeof(u32));
-
-					// Verify bus index is valid, if so lookup associated base address
-					if (busIndex >= i2cMaxAddr )
-					{
-						// I2C bus index invalid, set NACK
-						//DBGOUT("CmdDisp: Invalid I2C bus index %d (maximum index is %d)\r\n", busIndex, i2cMaxAddr);
-						SBIT(state, STATE_NACK);
-						// TODO: Set FEM error state
-						break;
-					}
-					else
-					{
-						baseAddr = i2cAddr[busIndex];
-					}*/
 
 					//DBGOUT("CmdDisp: Processing I2C operation...\r\n");
 
