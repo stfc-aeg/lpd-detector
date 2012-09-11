@@ -12,26 +12,53 @@ class SlowCtrlParamsInvalidRangeError(Exception):
 
 class SlowCtrlParams(object):
  
-    numPixels = 3
-#   paramsDict = {'dictKey'                     : [width, posn, value(s)}    
-    paramsDict = {'mux_decoder_default'         : [3, -1, -1],
-                  'mux_decoder'                 : [3, 0, [-1] * 512 ],
-                  'feedback_select_default'     : [1, -1, -1],
-                  'feedback_select'             : [1, 1536, [-1] * 512],
-                  'self_test_decoder_default'   : [3, -1, -1],
-                  'self_test_decoder'           : [3, 1537, [-1] * 512 ],
-                  'self_test_enable'            : [1, 3584, -1],
-                  'daq_bias_default'            : [5, -1, -1],
-                  'daq_bias'                    : [5, 3585, [-1] * 47],
-                  'spare_bits'                  : [5, 3820, -1],        # Special Case: 5 bits cover everything
-                  '100x_filter_control'         : [20, 3825, -1],       # Special Case: 20 bits cover everything
-                  'adc_clock_delay'             : [20, 3845, -1],       # Special Case: 20 bits cover everything
-                  'digital_control'             : [40, 3865, -1],       # Special Case: 40 bits cover everything
-                  }
-     
     def __init__(self):
+#    def __init__(self, xmlObject, fromFile=False, strict=True):
+        #TODO: Sort out argument list - will have implications wherever objects are created of this class
+        strict = True
+        # Set the strict syntax flag to specified value (defaults to true)
+        self.strict = strict
+    
+    #   paramsDict = {'dictKey'                     : [width, posn, value(s)}    
+        self.paramsDict = {'mux_decoder_default'         : [3, -1, -1],
+                           'mux_decoder'                 : [3, 0, [-1] * 512 ],
+                           'feedback_select_default'     : [1, -1, -1],
+                           'feedback_select'             : [1, 1536, [-1] * 512],
+                           'self_test_decoder_default'   : [3, -1, -1],
+                           'self_test_decoder'           : [3, 1537, [-1] * 512 ],
+                           'self_test_enable'            : [1, 3584, -1],
+                           'daq_bias_default'            : [5, -1, -1],
+                           'daq_bias'                    : [5, 3585, [-1] * 47],
+                           'spare_bits'                  : [5, 3820, -1],        # Special Case: 5 bits cover everything
+                           '100x_filter_control'         : [20, 3825, -1],       # Special Case: 20 bits cover everything
+                           'adc_clock_delay'             : [20, 3845, -1],       # Special Case: 20 bits cover everything
+                           'digital_control'             : [40, 3865, -1],       # Special Case: 40 bits cover everything
+                           }
+        # Definition of position of fast command fields in BRAM words
+        self.sync = 1
+        self.sync_pos = 21
+        self.nop_pos  = 22
+        self.cmd_pos  = 12
+        self.sync_reset_pos = 2
+
+        # Count total number of nops
+        self.total_number_nops = 0
         
-        pass
+        # Count total number of words
+        self.total_number_words = 0
+                
+        # Parse the XML specified, either from a file if the fromFile flag
+        # was set or from the string passed
+        if fromFile == True:
+            self.tree = ElementTree.parse(xmlObject)
+            self.root = self.tree.getroot()
+        else:
+            self.tree = None 
+            self.root = ElementTree.fromstring(xmlObject)
+        
+        # Get the root of the tree and verify it is an lpd_command_sequence
+        if self.root.tag != 'lpd_command_sequence':
+            raise LpdCommandSequenceError('Root element is not an LPD command sequence')
 
     def getParamValue(self, dictKey):
         """ Obtains the three variables associated with the dictionary key 'dictKey' 
@@ -85,6 +112,85 @@ class SlowCtrlParams(object):
 
         else:
             print "\"" + dictKey + "\" doesn't exist."
+            
+    def parseElement(self, theElement):
+        '''
+        Parses an element (partial tree) of the XML command sequence, encoding commands
+        into the appropriate values and returning them. Note that slow control is more complicated
+        because each parameter  is inserted into the slow control bitstream according to its relative position.
+        '''
+        
+        # Initialise empty list to contain binary command values for this part of the tree
+        encodedSequence = [0] * 122
+        
+        # Track number of nops counted locally
+        localNopsSum = 0
+        
+        # Increment tree depth counter
+        self.depth = self.depth + 1
+        
+        # Loop over child nodes of the current element
+        for child in theElement:
+
+            # Get the command name (tag) for the current element
+            cmd = child.tag
+                         
+            # Check this command is in the syntax dictionary and process
+            # accordingly. Raise an exception if the command is not recognised and
+            # strict syntax checking is enabled
+            if cmd in self.cmdDict:
+            
+                # Get count and NOP attributes    
+                count = self.getCountAttrib(child)
+                
+                # Pack command and number of NOPs into binary word with sync bits etc. sync_reset
+                # commands are treated as a special case and packed differently. 
+                if cmd == 'mux_decoder_default':
+                    # This is a default value, unless it is still -1 (not set)
+                    cmdParams = self.getParamValue(cmd)
+                    if cmdParams[2] == -1:
+                        pass
+                    else:
+                        # Default values set, update the mux decoder settings for the 512 pixels accordingly
+                        
+#                else:
+                cmdWord = (self.sync << self.sync_pos) | (self.cmdDict[cmd] << self.cmd_pos)
+            
+                    
+                # Add in the NOPs to the command word. If the command itself is a NOP, use
+                # the count attribute to specify how many NOPs to add. Also reset count to
+                # 1 to avoid injecting repeated individual NOPs into the encoded sequence
+                #TODO: nop is redundant, remove this:
+                if cmd == 'nop':
+                    if nops > 0:
+                        raise LpdCommandSequenceError('NOPs atttribute specified for NOP command, use count attribute instead')
+                    
+                    cmdWord = (count - 1 << self.nop_pos) | cmdWord
+                    # Count number of nops
+                    localNopsSum += count
+                    count = 1
+                    
+                else:
+                    cmdWord = (nops << self.nop_pos) | cmdWord
+                    # Count number of nops if specified
+                    if nops > 0:
+                        localNopsSum += nops
+            
+                
+                # Append packed command word to the encoded sequence the number of times
+                # specified by the count attribute
+                encodedSequence.extend([cmdWord] * count)
+                                                            
+            else:
+                if self.strict:
+                    raise LpdCommandSequenceError('Illegal command %s specified' % (child.tag))
+            
+        # Back up one level in the tree              
+        self.depth = self.depth - 1
+        
+        # Return the encoded sequence for this (partial) tree
+        return localNopsSum, encodedSequence
+ 
 
 import unittest
     
