@@ -72,10 +72,8 @@ class SlowCtrlParams(object):
             else:
                 # Is the third variable a list or an integer?
                 if isinstance(currentValue[2], types.ListType):
-                    # it's a list; Remove the old value
-                    currentValue[2].pop(index)
-                    # Insert the new value
-                    currentValue[2].insert(index, value)
+                    # it's a list; Update the new value
+                    currentValue[2][index] = value
                     
                 elif isinstance(currentValue[2], types.IntType):
                     currentValue[2] = value
@@ -103,11 +101,10 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # setParamValue(dictKey, index, value)
         dictKey = "self_test_decoder_default"
         index = 0
-        value = 5
-
+        value = 7
 
         # Expected encoded values
-        expectedVals = [3, -1, 5]
+        expectedVals = [3, -1, value]
     
         # Parse XML and encode
         paramsObj = SlowCtrlParams()
@@ -121,7 +118,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # 'daq_bias'                    : [5, 3585, [-1] * 47],
         dictKey = 'daq_bias'
         index = 5
-        value = 22
+        value = 31
         
         expectedVals = paramsObj.getParamValue(dictKey)
         expectedVals[2][index] = value
