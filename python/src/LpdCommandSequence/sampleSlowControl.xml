@@ -5,10 +5,10 @@
    <!-- This file is is a mockup for a sample slow control XML file -->
 
    <!-- Set Mux Control to setting "all to memory" for all 512 pixels: -->
-   <mux_decoder_default value="0"/>
+   <mux_decoder_default value="3"/>
 
    <!-- Override the individual setting for pixel 125: -->
-   <mux_decoder pixel="125" value="7>
+   <mux_decoder pixel="125" value="7/>
 
    <!-- Set default feedback capacitor to 50 pF; overwrite pixel 497 to 10 pF -->
    <feedback_select_default value="0"/>
