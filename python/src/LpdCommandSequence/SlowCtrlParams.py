@@ -1,6 +1,9 @@
 # Check in setParaValue() for list/integer type 
 import types
 
+from xml.etree.ElementInclude import ElementTree
+from xml.etree.ElementTree import ParseError
+
 # Define Exception Class
 class SlowCtrlParamsInvalidRangeError(Exception):
     
@@ -10,10 +13,18 @@ class SlowCtrlParamsInvalidRangeError(Exception):
     def __str__(self):
         return repr(self.msg)
 
+class SlowCtrlParamsError(Exception):
+    
+    def __init__(self, msg):
+        self.msg = msg
+        
+    def __str__(self):
+        return repr(self.msg)
+
 class SlowCtrlParams(object):
  
-    def __init__(self):
-#    def __init__(self, xmlObject, fromFile=False, strict=True):
+#    def __init__(self):
+    def __init__(self, xmlObject, fromFile=False, strict=True):
         #TODO: Sort out argument list - will have implications wherever objects are created of this class
         strict = True
         # Set the strict syntax flag to specified value (defaults to true)
@@ -46,7 +57,8 @@ class SlowCtrlParams(object):
         
         # Count total number of words
         self.total_number_words = 0
-                
+        
+        #TODO: Implemented this:
         # Parse the XML specified, either from a file if the fromFile flag
         # was set or from the string passed
         if fromFile == True:
@@ -57,8 +69,10 @@ class SlowCtrlParams(object):
             self.root = ElementTree.fromstring(xmlObject)
         
         # Get the root of the tree and verify it is an lpd_command_sequence
-        if self.root.tag != 'lpd_command_sequence':
-            raise LpdCommandSequenceError('Root element is not an LPD command sequence')
+        if self.root.tag != 'lpd_slow_ctrl_sequence':
+            raise SlowCtrlParamsError('Root element is not an LPD slow control command')
+
+        
 
     def getParamValue(self, dictKey):
         """ Obtains the three variables associated with the dictionary key 'dictKey' 
@@ -113,6 +127,24 @@ class SlowCtrlParams(object):
         else:
             print "\"" + dictKey + "\" doesn't exist."
             
+    def encode(self):
+        '''
+        Encodes the  slow control command(s)..
+        '''
+
+        # Intialise tree depth (used for debugging only)
+        self.depth = 0
+        
+        # Parse the tree, starting at the root element, obtaining the packed
+        # binary command sequence as a list
+        sequence  = self.parseElement(self.root)
+        
+        # Count the total number of words
+        self.total_number_words = len(sequence)
+        
+        # Return the command sequence
+        return sequence
+        
     def parseElement(self, theElement):
         '''
         Parses an element (partial tree) of the XML command sequence, encoding commands
@@ -122,6 +154,8 @@ class SlowCtrlParams(object):
         
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * 122
+        # Track position within encodedSequence list
+        seqPosition = 0
         
         # Track number of nops counted locally
         localNopsSum = 0
@@ -138,10 +172,10 @@ class SlowCtrlParams(object):
             # Check this command is in the syntax dictionary and process
             # accordingly. Raise an exception if the command is not recognised and
             # strict syntax checking is enabled
-            if cmd in self.cmdDict:
+            if cmd in self.paramsDict:
             
-                # Get count and NOP attributes    
-                count = self.getCountAttrib(child)
+#                # Get count and NOP attributes    
+#                count = self.getCountAttrib(child)
                 
                 # Pack command and number of NOPs into binary word with sync bits etc. sync_reset
                 # commands are treated as a special case and packed differently. 
@@ -149,80 +183,82 @@ class SlowCtrlParams(object):
                     # This is a default value, unless it is still -1 (not set)
                     cmdParams = self.getParamValue(cmd)
                     if cmdParams[2] == -1:
-                        pass
+                        print "The value of key %s was not set." % cmdParams[0]
+                        print "This should not be possible?"
                     else:
-                        # Default values set, update the mux decoder settings for the 512 pixels accordingly
+                        # Default value set, update the mux decoder settings for the 512 pixels accordingly
+                        # The default value is:
+                        
+                        print cmdParams
+                        print "Key %s default value = " % cmdParams[2]
                         
                         # Define slow control word width
                         scWordWidth = 3
-                        # Track whether it's an edge case (i.e. 32 not evenly divisible by 3)
-                        edgeCase = 0
+                        # Track bit position relative to 32 bit word boundary (since 32 not evenly divisible by 3)
+                        relativeBit = 0
                         # Save the contents of one 32 bit word
                         seqIndex = 0
-                        # Track relative position inside the 32-bit word
-                        bitCount = 0
                         # Save excess of any slow control word that spans the 32 bit word boundary
                         bitRemainder = 0
-                        while bitCount < 32:
+                        scBitTracker = 0
+                        while scBitTracker < 1536:
                             # How far away from the 32-bit word boundary are we?
-                            edgeCase = 32 - bitCount
-                            if edgeCase < scWordWidth:
-                                # TODO: HANDLE THE EDGE CASES AND UPDATE encodingSeq
-                                if edgeCase == 2:
-                                    # Save the first 2 bits
-                                    currentVal = cmdParam[2] & 3
-                                    # Bit shift by bitCount and add
-                                    seqIndex += currentVal << bitCount
-                                    # Save the remainder
-                                    bitRemainder = cmdParam[2] >> 2
-                                    # Clear the 32 bit word
-                                    seqIndex = 0
-                                else:
-                                    # Save the first bit
-                                    currentVal = cmdParam[2] & 1
-                                    # Bit shift by bitCount and add
-                                    seqIndex += currentVal << bitCount
-                                    # Save the remainder
-                                    bitRemainder = cmdParam[2] >> 1
-                                    # Clear the 32 bit word
-                                    seqIndex = 0
-                            elif 0 < bitCount < 3:
-                                # Edge case: 1 or 2 bits remain from previous 32-bit word 
+                            relativeBit = scBitTracker % 32
+                            # If relativeBit > 29 (i.e. 30 or 31) then the current slow control word straddles the 32-bit word boundary 
+                            if relativeBit > 29:
+                                # TODO: HANDLE THE EDGE CASES AND UPDATE encodedSequence
+                                # Determine how many bits on each side of the boundary
+                                endNumBits = 32 - relativeBit
+                                startNumBits = scWordWidth - endNumBits
+
+                                # Calculate how many LSB(s) to save (to the current 32-bit word)
+                                bitMask = (2**endNumBits) - 1
+                                # Save the LSB(s), discarding the MSB(s)
+                                currentVal = cmdParams[2] & bitMask
+                                # Bit shift by relativeBit and add to 32 bit word
+                                seqIndex += currentVal << relativeBit
+                                # Save the remaining MSB(s)
+                                bitRemainder = cmdParams[2] >> endNumBits
+                                # Save 32 bit word to sequence
+                                encodedSequence[seqPosition] = seqIndex
+                                seqPosition += 1
+                                # Save remaining MSB(s) to the next 32 bit word
+                                seqIndex = endNumBits
+#                                # Increment scBitTracker by scWordWidth
+#                                scBitTracker += scWordWidth
+                            
+                            elif 0 < relativeBit < 3:
+                                ''' Need not to do anything in this case - because it has
+                                        already been dealt with in the previous case '''
                                 pass
+                                # Edge case: 1 or 2 bits remain from previous 32-bit word
+                                # The MSB(s) from the last slow control word was added at the end of the previous if statement
+                                # We need only to update 
+                                # Increment scBitTracker by scWordWidth
+#                                scBitTracker += scWordWith
                             else:
-                                # Bit shift running sum by relative position within 32-bit word
-                                currentVal = cmdParam[2] << bitCount
-                                # Add the current 3-bit word
+                                # Is this a 32 bit boundary (and not the very first loop iteration)?
+                                if (relativeBit == 0) and (scBitTracker > 0):
+                                    # Save 32 bit word to sequence
+                                    encodedSequence[seqPosition] = seqIndex
+                                    seqPosition += 1
+                                    # Clear the 32 bit word before proceeding                                    
+                                    seqIndex = 0
+#                                    print ".",
+                                # Bit shift slow control word by relative position within 32-bit word
+                                currentVal = cmdParams[2] << relativeBit
+                                # Add the current 3-bit word to the 32-bit word
                                 seqIndex += currentVal
-                                # Increment counter by 3 (bits)
-                                bitCount += scWordWidth
-#                else:
-                cmdWord = (self.sync << self.sync_pos) | (self.cmdDict[cmd] << self.cmd_pos)
+                                
+                                
+                            # Increment loop counter (by 3 bits)
+                            scBitTracker += scWordWidth
             
-                    
-                # Add in the NOPs to the command word. If the command itself is a NOP, use
-                # the count attribute to specify how many NOPs to add. Also reset count to
-                # 1 to avoid injecting repeated individual NOPs into the encoded sequence
-                #TODO: nop is redundant, remove this:
-                if cmd == 'nop':
-                    if nops > 0:
-                        raise LpdCommandSequenceError('NOPs atttribute specified for NOP command, use count attribute instead')
-                    
-                    cmdWord = (count - 1 << self.nop_pos) | cmdWord
-                    # Count number of nops
-                    localNopsSum += count
-                    count = 1
-                    
-                else:
-                    cmdWord = (nops << self.nop_pos) | cmdWord
-                    # Count number of nops if specified
-                    if nops > 0:
-                        localNopsSum += nops
-            
+
                 
-                # Append packed command word to the encoded sequence the number of times
-                # specified by the count attribute
-                encodedSequence.extend([cmdWord] * count)
+#                # Append packed command word to the encoded sequence the number of times
+#                # specified by the count attribute
+#                encodedSequence.extend([cmdWord] * count)
                                                             
             else:
                 if self.strict:
@@ -232,7 +268,8 @@ class SlowCtrlParams(object):
         self.depth = self.depth - 1
         
         # Return the encoded sequence for this (partial) tree
-        return localNopsSum, encodedSequence
+        return encodedSequence
+#        return localNopsSum, encodedSequence
  
 
 import unittest
@@ -352,21 +389,29 @@ if __name__ == '__main__':
     
     
     # Execute unit testing
-    unittest.main()
+#    unittest.main()
     
     ''' Manual testing '''
-#    theParams = SlowCtrlParams()
-#    
-##    theParams.getParamValue("mux_decoder_default")
-#    width, posn, val = theParams.getParamValue("self_test_decoder_default")
-#    print "Before: ", width, posn, val, "...", 
-#    
-#    print "Changing self_test_decoder_default.."
-#    theParams.setParamValue("self_test_decoder_default", 1, 56)
-#     
-#    width, posn, val = theParams.getParamValue("self_test_decoder_default")
-#    print "After: ", width, posn, val
-#
+    theParams = SlowCtrlParams('simple.xml', fromFile=True)
+    
+#    theParams.getParamValue("mux_decoder_default")
+    width, posn, val = theParams.getParamValue("mux_decoder_default")
+    print "Before: ", width, posn, val, "...", 
+    
+    print "Changing self_test_decoder_default.."
+    theParams.setParamValue("mux_decoder_default", 1, 3)
+     
+    width, posn, val = theParams.getParamValue("mux_decoder_default")
+    print "After: ", width, posn, val
+
+    theElement = "mux_decoder_default"
+    print "\n"
+     
+    result = theParams.encode()  #(theElement)
+    
+    for idx in range(10):
+        print "%x" %result[idx]
+    
 #    print "-=-=-=-=-=-"
 #    
 #    width, posn, val = theParams.getParamValue("daq_bias")
