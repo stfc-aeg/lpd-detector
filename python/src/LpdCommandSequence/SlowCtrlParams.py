@@ -190,7 +190,7 @@ class SlowCtrlParams(object):
                         # The default value is:
                         
                         print cmdParams
-                        print "Key %s default value = " % cmdParams[2]
+                        print "Key %s has value = " % cmd, cmdParams[2]
                         
                         # Define slow control word width
                         scWordWidth = 3
@@ -200,7 +200,12 @@ class SlowCtrlParams(object):
                         seqIndex = 0
                         # Save excess of any slow control word that spans the 32 bit word boundary
                         bitRemainder = 0
+                        # Track relative position within the slow control bitstream
                         scBitTracker = 0
+                        # Number of bit(s) before a 32 bit word boundary
+                        endNumBits = 0
+                        # Number of bit(s) after a 32 bit word boundary
+                        startNumBits = 0
                         while scBitTracker < 1536:
                             # How far away from the 32-bit word boundary are we?
                             relativeBit = scBitTracker % 32
@@ -223,22 +228,29 @@ class SlowCtrlParams(object):
                                 encodedSequence[seqPosition] = seqIndex
                                 seqPosition += 1
                                 # Save remaining MSB(s) to the next 32 bit word
-                                seqIndex = endNumBits
+                                seqIndex = bitRemainder #endNumBits
 #                                # Increment scBitTracker by scWordWidth
 #                                scBitTracker += scWordWidth
                             
-                            elif 0 < relativeBit < 3:
-                                ''' Need not to do anything in this case - because it has
-                                        already been dealt with in the previous case '''
-                                pass
+#                            elif 0 < relativeBit < 3:
+#                                ''' Need not to do anything in this case - because it has
+#                                        already been dealt with in the previous case '''
+#                                pass
                                 # Edge case: 1 or 2 bits remain from previous 32-bit word
                                 # The MSB(s) from the last slow control word was added at the end of the previous if statement
                                 # We need only to update 
                                 # Increment scBitTracker by scWordWidth
 #                                scBitTracker += scWordWith
                             else:
+                                # Did the last slow control word span the 32 bit word boundary?
+#                                if 0 < relativeBit < 3:
+#                                    if scBitTracker < 1200:
+#                                        print scBitTracker, ":", relativeBit, "  ", 
                                 # Is this a 32 bit boundary (and not the very first loop iteration)?
                                 if (relativeBit == 0) and (scBitTracker > 0):
+                                    ''' testing.. '''
+#                                    if scBitTracker < 400:
+#                                        print "\nscBitTracker: ", scBitTracker, " seqIndex: %x" % seqIndex
                                     # Save 32 bit word to sequence
                                     encodedSequence[seqPosition] = seqIndex
                                     seqPosition += 1
