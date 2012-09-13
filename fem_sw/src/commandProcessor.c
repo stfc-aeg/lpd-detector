@@ -24,7 +24,10 @@ void commandProcessorThread(void* arg)
 	struct timeval tv;
 	u8 numConnectedClients = 0;
 
-	XGpio *pGpio = (XGpio*)arg;
+	// Get variable bundle from main
+	cpBundle *pBundle = (cpBundle*)arg;
+	XGpio* pGpio = pBundle->pGpio;
+	u8* pMux = pBundle->pMux;
 
 	// Setup and initialise client statuses to idle
 	struct clientStatus state[NET_MAX_CLIENTS];
@@ -461,7 +464,7 @@ void commandProcessorThread(void* arg)
 						PRTDBG("CmdProc: Received entire packet...\r\n");
 
 						// Generate response
-						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pGpio);
+						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pMux, pGpio);
 
 						PRTDBG("CmdProc: Packet decoded, sending response...\r\n");
 
@@ -576,6 +579,7 @@ void commandHandler(struct protocol_header* pRxHeader,
                         struct protocol_header* pTxHeader,
                         u8* pRxPayload,
                         u8* pTxPayload,
+                        u8* pMux,
                         XGpio* pGpio)
 {
 
@@ -588,6 +592,9 @@ void commandHandler(struct protocol_header* pRxHeader,
 	// Native size pointers for various data widths
 	u32* pTxPayload_32  = NULL;
 	u32* pRxPayload_32  = NULL;
+
+	// For RDMA address mangling
+	u32 rdmaAddrOriginal, rdmaAddrNew;
 
 	// Copy original header to response packet, take a local copy of the status byte to update
 	memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
@@ -888,68 +895,69 @@ void commandHandler(struct protocol_header* pRxHeader,
 					dataWidth = sizeof(u32);
 					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
 
+					// Set RDMA MUX if necessary
+					if (((pRxHeader->address & 0x70000000) >> 28) != *pMux)
+					{
+						*pMux = (pRxHeader->address & 0x80000000) >> 28;
+						XGpio_DiscreteWrite(pGpio, 1, *pMux);
+						DBGOUT("CmdDisp: MUX set to %d\r\n", *pMux);
+					}
+
+					// Mangle RDMA address
+					rdmaAddrOriginal = pRxHeader->address & 0x0FFFFFFF;		// Mask out MSB 4 bits as MUX
+					rdmaAddrNew = ((rdmaAddrOriginal & 0x0F000000) << 4) | rdmaAddrOriginal;
+					DBGOUT("CmdDisp: RDMA mux addr 0x%08x -> 0x%08x\r\n", pRxHeader->address, rdmaAddrNew);
+
+					// RDMA READ operation
 					if (CMPBIT(state, STATE_READ))
 					{
-
 						pRxPayload_32 = (u32*)pRxPayload;
+						SBIT(state, STATE_ACK);
 						for (i=0; i<*pRxPayload_32; i++)
 						{
 							//DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
-							status = readRdma( (pRxHeader->address+i) , (pTxPayload_32+i) );
+							status = readRdma( (rdmaAddrNew+i) , (pTxPayload_32+i) );
 							if (status==XST_FAILURE)
 							{
-								// TODO: Proper error handling!
 								DBGOUT("CmdDisp: Error reading RDMA, aborting!\r\n");
-							}
-							//DBGOUT(" VALUE 0x%x\r\n", readRdma(pRxHeader->address + i));
-							responseSize += dataWidth;
-							numOps++;
-						}
-						SBIT(state, STATE_ACK);
-
-					}
-					else if (CMPBIT(state, STATE_WRITE))
-					{
-
-						if ( (pRxHeader->address&0xFF000000) == 0xFF000000 )
-						{
-							// Set RDMA MUX address
-
-							if ( (pRxHeader->address & 0xFF) < 4)
-							{
-								// Set RDMA MUX
-								// TODO: Remove debug statement once tested
-								DBGOUT("CmdDisp: Setting RDMA MUX -> %d\r\n", (pRxHeader->address & 0xFF));
-								XGpio_DiscreteWrite(pGpio, 1, (pRxHeader->address & 0xFF));
-								numOps++;
-								SBIT(state, STATE_ACK);
+								numOps = 0;
+								SBIT(state, STATE_NACK);
+								// TODO: Set FEM error state
+								i = *pRxPayload_32;						// Skip any further processing
 							}
 							else
 							{
-								// MUX address invalid so return error
-								DBGOUT("CmdDisp: RDMA MUX of %d is invalid!/r/n", (pRxHeader->address & 0xFF) );
-								SBIT(state, STATE_NACK);
-								// TODO: FEM error state
-							}
-						}
-						else
-						{
-							// Do normal RDMA write
-
-							for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
-							{
-								pRxPayload_32 = (u32*)pRxPayload;
-								//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
-								status = writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
-								if (status==XST_FAILURE)
-								{
-									// TODO: Proper error handling!
-									DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
-								}
+								//DBGOUT(" VALUE 0x%x\r\n", readRdma(pRxHeader->address + i));
+								responseSize += dataWidth;
 								numOps++;
 							}
-							SBIT(state, STATE_ACK);
 						}
+
+					}
+
+					// RDMA WRITE operation
+					else if (CMPBIT(state, STATE_WRITE))
+					{
+						SBIT(state, STATE_ACK);
+						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+						{
+							pRxPayload_32 = (u32*)pRxPayload;
+							//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
+							status = writeRdma(rdmaAddrNew + i, *(pRxPayload_32+i));
+							if (status==XST_FAILURE)
+							{
+								DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
+								numOps = 0;
+								SBIT(state, STATE_NACK);
+								// TODO: Set FEM error state
+								i = ((pRxHeader->payload_sz)/dataWidth);	// Skip any further processing
+							}
+							else
+							{
+								numOps++;
+							}
+						}
+
 					}
 					else
 					{
@@ -1102,7 +1110,6 @@ int validateHeaderContents(struct protocol_header *pHeader)
 			break;
 
 		case CMD_INTERNAL:
-			// TODO: Implement or remove!
 			//DBGOUT("validateHeader: CMD_INTERNAL not yet supported!\r\n");
 			return 0;
 			break;

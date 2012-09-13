@@ -129,6 +129,7 @@ XTmrCtr				timer;
 XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 #else
 XSysAce				sysace;
+u8					mux;
 XGpio 				gpioMux;
 #endif
 
@@ -248,7 +249,10 @@ void networkInitThread(void *p)
     }
 
     // Launch application thread (pass GPIO instance for RDMA MUX setting)
-    t = sys_thread_new("cmd", commandProcessorThread, &gpioMux, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    cpBundle bundle;
+    bundle.pGpio = &gpioMux;
+    bundle.pMux = &mux;
+    t = sys_thread_new("cmd", commandProcessorThread, &bundle, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 
@@ -457,8 +461,9 @@ int initHardware(void)
 		DBGOUT("initHardware: Failed to initialise GPIO mux.\r\n");
 		femErrorState |= TEST_GPIO_MUX_INIT;
 	}
+	mux = 0;
 	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
-	XGpio_DiscreteWrite(&gpioMux, 1, 0);		// Set to 0
+	XGpio_DiscreteWrite(&gpioMux, 1, mux);
     #endif
 	// ****************************************************************************
 
