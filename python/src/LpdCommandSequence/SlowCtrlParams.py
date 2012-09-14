@@ -144,21 +144,40 @@ class SlowCtrlParams(object):
         
         # Return the command sequence
         return sequence
+
+    def getAttrib(self, theElement, theAttrib):
+        '''
+        Returns the value of the theAttrib attribute of the specified element if it exists,
+        or a default value of 1 if not. Can also throw an exception if a non-integer
+        attribute is detected
+        '''
+
+        # Get the count attribute or a default value of -2 (differentiate from unspecified value which is -1)
+        countAttrib = theElement.get(theAttrib, default='-2')
+        
+        # Convert count to integer or raise an exception if this failed
+        try:
+            attrib = int(countAttrib)
+        except ValueError:
+            raise LpdCommandSequenceError('Non-integer attribute specified')
+        
+        # Return integer attrib value    
+        return attrib
+
         
     def parseElement(self, theElement):
         '''
         Parses an element (partial tree) of the XML command sequence, encoding commands
         into the appropriate values and returning them. Note that slow control is more complicated
-        because each parameter  is inserted into the slow control bitstream according to its relative position.
+        because each parameter is inserted into the slow control bitstream according to its relative position.
+        NOTE: pixels run 1-512, index 1-47 put corresponding Python lists run 0-511, 0-46.
+            Therefore, when they are updated, their actual values are subtracted by one
         '''
         
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * 122
         # Track position within encodedSequence list
         seqPosition = 0
-        
-        # Track number of nops counted locally
-        localNopsSum = 0
         
         # Increment tree depth counter
         self.depth = self.depth + 1
@@ -173,38 +192,31 @@ class SlowCtrlParams(object):
             # accordingly. Raise an exception if the command is not recognised and
             # strict syntax checking is enabled
             if cmd in self.paramsDict:
-            
-                # Get XML attribute(s)
+                
+                print "found: ", cmd,
+
+                # There are 13 dictionary keys
+                # Every single one will have a value tag
+                
+                # Get value attribute
                 value = self.getAttrib(child, 'value')
-                print "%s value = " % cmd, value
-                pixelOrIndex = 0
+                # Three will have a pixel tag
                 # Get pixel if present..
                 pixel = self.getAttrib(child, 'pixel')
-                # Is pixel present?
-                if pixel == -2:
-                    print "attribute pixel not specified"
-                    # pixel wasn't defined; look for index..
-                    index = self.getAttrib(theElement, 'index')
-                    if index == -2:
-                        # index wasn't defined either
-                        print "attribute index not specified"
-                    else:
-                        # index is defined
-                        print "attribute index defined"
-                        pixelOrIndex = index
-                else:
-                    # pixel is defined
-                    print "attribute pixel defined"
-                    pixelOrIndex = pixel
                 
-                # Update dictionary key with the new value
-                #    Note pixel 1-512 but Python list 0-511 (pixelOrIndex)
-#                try:
-                self.setParamValue(cmd, pixelOrIndex-1, value)
-#                except:
-#                    print "IndexError occurred at: ", value, pixelOrIndex
-
-
+                print "val,  %i pxl: %i" % (value, pixel)
+                # Is pixel present?
+                if pixel != -2:
+                    print "pixel detected"
+                    # pixel is defined; Updated dictionary key
+                    self.setParamValue(cmd, pixel-1, value)
+                else:
+                    # pixel not present; of the remaining 10 keys 2 will have an index tag
+                    index = self.getAttrib(theElement, 'index')
+                    if index != -2:
+                        print "index detected"
+                        # update dictionary key value
+                        self.setParamValue(cmd, index-1, value)
             else:
                 if self.strict:
                     raise LpdCommandSequenceError('Illegal command %s specified' % (child.tag))
