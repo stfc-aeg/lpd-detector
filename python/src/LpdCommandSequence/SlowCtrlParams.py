@@ -216,7 +216,7 @@ class SlowCtrlParams(object):
         return encodedSequence
 #        return localNopsSum, encodedSequence
  
-     def buildBitstream(self):
+    def buildBitstream(self):
         '''
         loop over dictionary keys and building the word bitstream programmatically
         '''
