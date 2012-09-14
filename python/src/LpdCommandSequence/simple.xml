@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<lpd_slow_ctrl_sequence name="simple tests"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="lpdSlowCtrlSequence.xsd">
+   <!-- This file is is a mockup for a sample slow control XML file -->
+
+
+   <!-- <mux_decoder pixel="1" value="5"/> -->
+   <!-- Set Mux Control to setting "all to memory" for all 512 pixels: -->
+   <mux_decoder_default value="3"/>
+
+   <!-- Override the individual setting for pixel 125: -->
+   <mux_decoder pixel="2" value="7"/>
+</lpd_slow_ctrl_sequence>
+
