@@ -532,22 +532,12 @@ if __name__ == '__main__':
 
     theElement = "mux_decoder_default"
     print "\n"
-     
-    result = theParams.encode()  #(theElement)
     
-    for idx in range(122):
-        print "%X\t" % result[idx],
-        if (idx % 6) == 5:
-            print ""
-    print ""
-#    print "-=-=-=-=-=-"
-#    
-#    width, posn, val = theParams.getParamValue("daq_bias")
-#    print "Before: ", width, posn, val, "...", 
-#    
-#    print "Changing daq_bias.."
-#    theParams.setParamValue("daq_bias", 11, 28)
-#    
-#    width, posn, val = theParams.getParamValue("daq_bias")
-#    print "After:  ", width, posn, val
-
+    """ to be continued """
+    result = theParams.encode()
+    
+#    for idx in range(122):
+#        print "%X\t" % result[idx],
+#        if (idx % 6) == 5:
+#            print ""
+#    print ""
