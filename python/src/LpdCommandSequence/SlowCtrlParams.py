@@ -398,6 +398,41 @@ class SlowCtrlParams(object):
                     seqPosition += 1
  
 
+    def displayDictionaryValues(self):
+        '''
+            Debug function, used to display the dictionary values
+        '''
+        
+        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+        for cmd in self.paramsDict:
+            # Get dictionary key's values
+            dictKey = self.getParamValue(cmd)
+            
+            print "dictKey: ", cmd,
+            if len(cmd) < 12:
+                print "\t",
+            print " \tpos'n: ", dictKey[1], "\t [",
+            # Is the third variable a list or an integer?
+            if isinstance(dictKey[2], types.ListType):
+                # it's a list
+                for idx in range(11):
+                    if (idx < 5):
+                        # Print the first five values
+                        print dictKey[2][idx],
+                    elif idx == 5:
+                        print ", .., ",
+                    else:
+                        # Print the last five values
+                        print dictKey[2][-1*(11-idx)],
+
+            elif isinstance(dictKey[2], types.IntType):
+               # it's just an integer
+               print dictKey[2],
+            else:
+                print "displayDictionaryValues() Error: dictKey[2] is neither a list nor an integer!"
+
+            print "]"
+
 import unittest
     
 class SlowCtrlParamsTest(unittest.TestCase):
@@ -417,9 +452,18 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # Expected encoded values
         expectedVals = [3, -1, value]
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <self_test_decoder_default value="7"/>
+                                <mux_decoder_default value="3"/>
+                                <daq_bias index="47" value="11"/>
+                                <digital_control index="3" value="18"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams()
+        paramsObj = SlowCtrlParams(stringCmdXml)
         paramsObj.setParamValue(dictKey, index, value)
         
         newVals = paramsObj.getParamValue(dictKey)
@@ -515,27 +559,32 @@ if __name__ == '__main__':
     
     
     # Execute unit testing
-#    unittest.main()
+    unittest.main()
     
+    sys.exit()
     ''' Manual testing '''
-    theParams = SlowCtrlParams('simple.xml', fromFile=True)
+    theParams = SlowCtrlParams('sampleSlowControl.xml', fromFile=True)
+#    theParams = SlowCtrlParams('simple.xml', fromFile=True)
     
 #    theParams.getParamValue("mux_decoder_default")
     width, posn, val = theParams.getParamValue("mux_decoder_default")
-    print "Before: ", width, posn, val, "...", 
+#    print "Before: ", width, posn, val, "...", 
     
-    print "Changing self_test_decoder_default.."
-    theParams.setParamValue("mux_decoder_default", 1, 3)
+#    print "Changing self_test_decoder_default.."
+#    theParams.setParamValue("mux_decoder_default", 1, 3)
      
-    width, posn, val = theParams.getParamValue("mux_decoder_default")
-    print "After: ", width, posn, val
+#    width, posn, val = theParams.getParamValue("mux_decoder_default")
+#    print "After: ", width, posn, val
 
     theElement = "mux_decoder_default"
     print "\n"
     
-    """ to be continued """
-    result = theParams.encode()
+    theParams.displayDictionaryValues()
     
+    """ Encode XML file into dictionary """
+    result = theParams.encode()
+
+    theParams.displayDictionaryValues()
 #    for idx in range(122):
 #        print "%X\t" % result[idx],
 #        if (idx % 6) == 5:
