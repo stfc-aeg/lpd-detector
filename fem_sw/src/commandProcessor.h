@@ -31,10 +31,9 @@ enum packetStatus {
 	STATE_COMPLETE = 4
 };
 
-typedef struct bundle {
-	XGpio *pGpio;					//! Pointer to RDMA GPIO MUX object
-	u8 *pMux;						//! Pointer to MUX setting
-} cpBundle;
+extern u8 mux;
+extern XGpio gpioMux;
+extern XSysAce sysace;
 
 struct clientStatus {
 	int state;						//! State machine status, of packetStatus
@@ -48,7 +47,7 @@ struct clientStatus {
 	int busDirectSize;				//! Bytes received in BUS_DIRECT mode
 };
 
-void commandProcessorThread();
+void commandProcessorThread(void* arg);
 void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients);
 void commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload, u8* pMux, XGpio *pGpio);
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes);

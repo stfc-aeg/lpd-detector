@@ -25,9 +25,12 @@ void commandProcessorThread(void* arg)
 	u8 numConnectedClients = 0;
 
 	// Get variable bundle from main
-	cpBundle *pBundle = (cpBundle*)arg;
-	XGpio* pGpio = pBundle->pGpio;
-	u8* pMux = pBundle->pMux;
+	//struct cpBundle* pBundle = (struct cpBundle*)arg;
+	//XGpio* pGpio = pBundle->pGpio;
+	//u8* pMux = pBundle->pMux;
+
+	XGpio *pGpio = &gpioMux;
+	u8* pMux = &mux;
 
 	// Setup and initialise client statuses to idle
 	struct clientStatus state[NET_MAX_CLIENTS];

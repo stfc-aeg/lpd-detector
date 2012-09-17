@@ -249,10 +249,7 @@ void networkInitThread(void *p)
     }
 
     // Launch application thread (pass GPIO instance for RDMA MUX setting)
-    cpBundle bundle;
-    bundle.pGpio = &gpioMux;
-    bundle.pMux = &mux;
-    t = sys_thread_new("cmd", commandProcessorThread, &bundle, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    t = sys_thread_new("cmd", commandProcessorThread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     // - OR -
 
