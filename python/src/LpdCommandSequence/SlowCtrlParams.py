@@ -103,17 +103,19 @@ class SlowCtrlParams(object):
                         
             # Save the current key's values that we (may) want to retain
             currentValue = self.paramsDict[dictKey]
+#            print "setParamValue() '%s' " % dictKey, " = ", currentValue
             
 #            print "\trange check: ", 0, " value: ", value, " max: ", (2**currentValue[0])
             # Check that the new value is within valid range
             if not (0 <= value <= ( (2**currentValue[0]) -1) ):
-                raise SlowCtrlParamsInvalidRangeError("Key %s's new value outside valid range" % dictKey)
+                raise SlowCtrlParamsInvalidRangeError("Key %s's new value outside valid range" % dictKey )
 #                print "\tnew value is outside valid range!"
             
             else:
                 # Is the third variable a list or an integer?
                 if isinstance(currentValue[2], types.ListType):
                     # it's a list; Update the new value
+#                    print "setPar..() value = ", value, "index: ", index
                     currentValue[2][index] = value
                     
                 elif isinstance(currentValue[2], types.IntType):
@@ -217,10 +219,33 @@ class SlowCtrlParams(object):
                         print "index detected"
                         # update dictionary key value
                         self.setParamValue(cmd, index-1, value)
+                    else:
+                        # Neither a pixel nor index defined; update value (integer)
+                        self.setParamValue(cmd, index, value)
             else:
                 if self.strict:
                     raise LpdCommandSequenceError('Illegal command %s specified' % (child.tag))
-            
+        
+        # Dictionary now updated, check keys XX_default and if they are not -1 
+        # then their corresponding keys should be updated with whatever value the XX_default key has
+        for key in self.paramsDict:
+            # Is this a _default key?
+            if key.endswith("_default"):
+                print "Found _default key: ", key, ", = ", 
+                # has its value been changed from -1?
+                keyValue = self.getParamValue(key)
+                print keyValue
+                if keyValue[2] > -1:
+                    print " is greater than -1, updating corresponding key.."
+                    # Derived corresponding key's name
+                    pairedKey = key.replace("_default", "")
+                    pairedKeyValue = self.getParamValue(pairedKey)
+                    length = len(pairedKeyValue[2])
+                    print "length: ", length
+                    for idx in range(length):
+#                        print "pairedKey, idx, keyValue = ", pairedKey, idx, keyValue[2]
+                        self.setParamValue(pairedKey, idx, keyValue[2])
+        
         # Back up one level in the tree              
         self.depth = self.depth - 1
         
@@ -449,7 +474,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         dictKey = "self_test_decoder_default"
         index = 0
         value = 7
-
+        
         # Expected encoded values
         expectedVals = [3, -1, value]
         
@@ -464,10 +489,16 @@ class SlowCtrlParamsTest(unittest.TestCase):
     
         # Parse XML and encode
         paramsObj = SlowCtrlParams(stringCmdXml)
-        paramsObj.setParamValue(dictKey, index, value)
         
+        print "Before: "
+        paramsObj.displayDictionaryValues()
+        
+        paramsObj.encode()
+#        paramsObj.setParamValue(dictKey, index, value)
+        paramsObj.displayDictionaryValues()
         newVals = paramsObj.getParamValue(dictKey)
 
+        print newVals, expectedVals
         # Test that intended value matches expected
         self.assertEqual(newVals, expectedVals, 'testStringParse() failed to update key as expected')
 
@@ -488,14 +519,20 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
         Tests that updating a parameter will fail if value exceeds valid range
         '''
-        
+
+        # Strictly not necessary except for the class constructor requiring a XML file or string
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <self_test_decoder_default value="7"/>
+                            </lpd_slow_ctrl_sequence>
+        '''        
         # setParamValue(dictKey, index, value)
         dictKey = "self_test_decoder_default"
         index = 0
         value = 8
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams()
+        paramsObj = SlowCtrlParams(stringCmdXml)
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
 
