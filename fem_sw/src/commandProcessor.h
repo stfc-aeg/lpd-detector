@@ -19,6 +19,10 @@
 #include "xgpio.h"
 #include "mailbox.h"
 
+#ifndef HW_PLATFORM_DEVBOARD
+#include "sysace.h"
+#endif
+
 #include "lwip/sockets.h"
 
 #include "personality.h"
@@ -31,9 +35,11 @@ enum packetStatus {
 	STATE_COMPLETE = 4
 };
 
+#ifndef HW_PLATFORM_DEVBOARD
 extern u8 mux;
 extern XGpio gpioMux;
 extern XSysAce sysace;
+#endif
 
 struct clientStatus {
 	int state;						//! State machine status, of packetStatus
