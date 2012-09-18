@@ -30,20 +30,20 @@ class SlowCtrlParams(object):
         # Set the strict syntax flag to specified value (defaults to true)
         self.strict = strict
     
-    #   paramsDict = {'dictKey'                     : [width, posn, value(s)}    
-        self.paramsDict = {'mux_decoder_default'         : [3, -1, -1],
-                           'mux_decoder'                 : [3, 0, [-1] * 512 ],
-                           'feedback_select_default'     : [1, -1, -1],
-                           'feedback_select'             : [1, 1536, [-1] * 512],
-                           'self_test_decoder_default'   : [3, -1, -1],
-                           'self_test_decoder'           : [3, 1537, [-1] * 512 ],
-                           'self_test_enable'            : [1, 3584, -1],
-                           'daq_bias_default'            : [5, -1, -1],
-                           'daq_bias'                    : [5, 3585, [-1] * 47],
-                           'spare_bits'                  : [5, 3820, -1],        # Special Case: 5 bits cover everything
-                           '100x_filter_control'         : [20, 3825, -1],       # Special Case: 20 bits cover everything
-                           'adc_clock_delay'             : [20, 3845, -1],       # Special Case: 20 bits cover everything
-                           'digital_control'             : [40, 3865, -1],       # Special Case: 40 bits cover everything
+    #   paramsDict = {'dictKey'                     : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
+        self.paramsDict = {'mux_decoder_default'         : [3,  -1,     -1,         [False, True, False]],
+                           'mux_decoder'                 : [3,  0,      [-1] * 512, [True,  True, False]],
+                           'feedback_select_default'     : [1,  -1,     -1,         [False, True, False]],
+                           'feedback_select'             : [1,  1536,   [-1] * 512, [True,  True, False]],
+                           'self_test_decoder_default'   : [3,  -1,     -1,         [False, True, False]],
+                           'self_test_decoder'           : [3,  1537,   [-1] * 512, [True,  True, False]],
+                           'self_test_enable'            : [1,  3584,   -1,         [False, True, False]],
+                           'daq_bias_default'            : [5,  -1,     -1,         [False, True, False]],
+                           'daq_bias'                    : [5,  3585,   [-1] * 47,  [False, True, True]],
+                           'spare_bits'                  : [5,  3820,   -1,         [False, True, False]],        # Special Case: 5 bits cover everything
+                           '100x_filter_control'         : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
+                           'adc_clock_delay'             : [20, 3845,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
+                           'digital_control'             : [40, 3865,   -1,         [False, True, True]],       # Special Case: 40 bits cover everything
                            }
         # Definition of position of fast command fields in BRAM words
         self.sync = 1
@@ -59,7 +59,8 @@ class SlowCtrlParams(object):
         self.total_number_words = 0
         
         ''' Debug information '''
-        print "Class initialising, reading file or string = ", xmlObject
+        print "Class initialising, reading file or string = "
+        print xmlObject
         #TODO: Implemented this:
         # Parse the XML specified, either from a file if the fromFile flag
         # was set or from the string passed
@@ -91,10 +92,11 @@ class SlowCtrlParams(object):
             width = result[0]
             posn = result[1]
             val = result[2]
+            tags = result[3]
         else:
             print "\"" + dictKey + "\" doesn't exist."
         
-        return [width, posn, val]
+        return [width, posn, val, tags]
  
     def setParamValue(self, dictKey, index, value):
         """ updates the dictionary key 'dictKey' with the new value in 'value', 
@@ -190,6 +192,10 @@ class SlowCtrlParams(object):
         
         # Increment tree depth counter
         self.depth = self.depth + 1
+
+        # The structure of the parameters to dictionary is:
+        # paramsDict = {'dictKey' : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
+        #     where values(s) is an integer or a list and the nested list of booleans defines which tags that are required
         
         # Loop over child nodes of the current element
         for child in theElement:
@@ -202,36 +208,54 @@ class SlowCtrlParams(object):
             # strict syntax checking is enabled
             if cmd in self.paramsDict:
                 
-                print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-"
+                print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
                 print "found: ", cmd,
+                
+                # get parameter values
+                pmValues = self.getParamValue(cmd)
 
-                # There are 13 dictionary keys
-                # Every single one will have a value tag
+                # Extract required tags
+                bPixel = pmValues[3][0]
+                bValue = pmValues[3][1]
+                bIndex = pmValues[3][2]
                 
-                # Get value attribute
+                # Fail if there is no bValue present
+                # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
-                # Three will have a pixel tag
-                # Get pixel if present..
-                pixel = self.getAttrib(child, 'pixel')
+                print "value = ", value,
                 
-                print "val,  %i pxl: %i" % (value, pixel)
-                # Is pixel present?
-                if pixel != -2:
-                    print "pixel detected, updating = ", cmd, pixel-1, value
-                    # pixel is defined; Updated dictionary key
+                # is there a pixel tag?
+                if bPixel:
+                    # Get pixel
+                    pixel = self.getAttrib(child, 'pixel')
+                    print " pixel = ", pixel,
+                    # Update pixel entry of the dictionary key
                     self.setParamValue(cmd, pixel-1, value)
-                else:
-                    # pixel not present; of the remaining 10 keys 2 will have an index tag
+                    
+                # Is there a index tag?
+                if bIndex:
                     index = self.getAttrib(child, 'index')
-                    if index != -2:
-                        print "index detected, updating = ", cmd, index-1, value
-                        # update dictionary key value
-                        self.setParamValue(cmd, index-1, value)
-                    else:
-                        index = 0
-                        print "neither pixel nor index detected, updating = ", cmd, index, value
-                        # Neither a pixel nor index defined; update value (integer)
-                        self.setParamValue(cmd, index, value)
+                    print " index = ", index
+                    # Update index entry of the dictionary key
+                    self.setParamValue(cmd, index-1, value)
+                    
+#                # Is pixel present?
+#                if pixel != -2:
+#                    print "pixel detected, updating = ", cmd, pixel-1, value
+#                    # pixel is defined; Updated dictionary key
+#                    self.setParamValue(cmd, pixel-1, value)
+#                else:
+#                    # pixel not present; of the remaining 10 keys 2 will have an index tag
+#
+#                    if index != -2:
+#                        print "index detected, updating = ", cmd, index-1, value
+#                        # update dictionary key value
+#                        self.setParamValue(cmd, index-1, value)
+#                    else:
+#                        index = 0
+#                        print "neither pixel nor index detected, updating = ", cmd, index, value
+#                        # Neither a pixel nor index defined; update value (integer)
+#                        self.setParamValue(cmd, index, value)
             else:
                 if self.strict:
                     raise LpdCommandSequenceError('Illegal command %s specified' % (child.tag))
@@ -242,11 +266,15 @@ class SlowCtrlParams(object):
         for key in self.paramsDict:
             # Is this a _default key?
             if key.endswith("_default"):
-                print "Found _default key: ", key, ", = ", 
+                print "Found _default key: ", key, " = ",
                 # has its value been changed from -1?
                 keyValue = self.getParamValue(key)
                 print keyValue
-                if keyValue[2] > -1:
+                # This is a key that ends with _default, but has it been set?
+                if keyValue[2] == -1:
+                    # _default not set, therefore nothing to do
+                    pass
+                else:
                     print " is greater than -1, updating corresponding key.."
                     # Derived corresponding key's name
                     pairedKey = key.replace("_default", "")
@@ -259,7 +287,7 @@ class SlowCtrlParams(object):
                         if pairedKeyValue[2][idx] == -1:
                             # -1 denotes pixel hasn't been explicitly set; go ahead and update it
                             self.setParamValue(pairedKey, idx, keyValue[2])
-        
+    
         # Back up one level in the tree              
         self.depth = self.depth - 1
         
