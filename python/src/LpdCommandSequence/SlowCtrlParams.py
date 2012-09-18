@@ -115,13 +115,10 @@ class SlowCtrlParams(object):
                         
             # Save the current key's values that we (may) want to retain
             currentValue = self.paramsDict[dictKey]
-#            print "setParamValue() '%s' " % dictKey, " = ", currentValue
-            
-#            print "\trange check: ", 0, " value: ", value, " max: ", (2**currentValue[0])
+
             # Check that the new value is within valid range
             if not (0 <= value <= ( (2**currentValue[0]) -1) ):
                 raise SlowCtrlParamsInvalidRangeError("Key %s's new value outside valid range" % dictKey )
-#                print "\tnew value is outside valid range!"
             
             else:
                 # Is the third variable a list or an integer?
@@ -150,7 +147,7 @@ class SlowCtrlParams(object):
         self.depth = 0
         
         # Parse the tree, starting at the root element, obtaining the packed
-        # binary command sequence as a list
+        #     binary command sequence as a list
         sequence  = self.parseElement(self.root)
         
         # Count the total number of words
@@ -177,7 +174,7 @@ class SlowCtrlParams(object):
         try:
             attrib = int(intAttrib)
         except ValueError:
-            raise LpdCommandSequenceError('Non-integer attribute specified')
+            raise SlowCtrlParamsError('Non-integer attribute specified')
         
         # Return integer attrib value    
         return attrib
@@ -230,6 +227,9 @@ class SlowCtrlParams(object):
                 # Fail if there is no bValue present
                 # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
+                if value == -2:
+                    raise SlowCtrlParamsError("Unable to find the required value tag!")
+                
                 if self.bDebug:
                     print "value = ", value,
                 
