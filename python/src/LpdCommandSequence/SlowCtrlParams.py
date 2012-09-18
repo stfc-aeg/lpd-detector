@@ -29,7 +29,13 @@ class SlowCtrlParams(object):
         strict = True
         # Set the strict syntax flag to specified value (defaults to true)
         self.strict = strict
-    
+        
+        ''' Debug info: '''
+        self.bDebug = False
+
+        if self.bDebug:
+            print "debugging enabled."
+
     #   paramsDict = {'dictKey'                     : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
         self.paramsDict = {'mux_decoder_default'         : [3,  -1,     -1,         [False, True, False]],
                            'mux_decoder'                 : [3,  0,      [-1] * 512, [True,  True, False]],
@@ -59,8 +65,10 @@ class SlowCtrlParams(object):
         self.total_number_words = 0
         
         ''' Debug information '''
-        print "Class initialising, reading file or string = "
-        print xmlObject
+        if self.bDebug:
+            print "Class initialising, reading file or string = "
+            print xmlObject
+            
         #TODO: Implemented this:
         # Parse the XML specified, either from a file if the fromFile flag
         # was set or from the string passed
@@ -157,15 +165,14 @@ class SlowCtrlParams(object):
         or a default value of 1 if not. Can also throw an exception if a non-integer
         attribute is detected
         '''
-#        if theAttrib == 'index':
-#            print type(theElement), "\t", type(theAttrib)
-#            print theElement.__str__(), "\n\n"
-        print "getAttrib() theAttrib: '" + theAttrib + "'",
+        if self.bDebug:
+            print "attrib: '" + theAttrib + "'",
         
         # Get the attribute or a default value of -2 (differentiate from unspecified value which is -1)
         intAttrib = theElement.get(theAttrib, default='-2')
         
-        print " received: ", intAttrib
+        if self.bDebug:
+            print " is: ", intAttrib + ".",
         # Convert count to integer or raise an exception if this failed
         try:
             attrib = int(intAttrib)
@@ -207,9 +214,10 @@ class SlowCtrlParams(object):
             # accordingly. Raise an exception if the command is not recognised and
             # strict syntax checking is enabled
             if cmd in self.paramsDict:
-                
-                print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-                print "found: ", cmd,
+
+                if self.bDebug:
+                    print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+                    print "found: ", cmd,
                 
                 # get parameter values
                 pmValues = self.getParamValue(cmd)
@@ -222,67 +230,57 @@ class SlowCtrlParams(object):
                 # Fail if there is no bValue present
                 # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
-                print "value = ", value,
+                if self.bDebug:
+                    print "value = ", value,
                 
                 # is there a pixel tag?
                 if bPixel:
                     # Get pixel
                     pixel = self.getAttrib(child, 'pixel')
-                    print " pixel = ", pixel,
+                    if self.bDebug:
+                        print " pixel = ", pixel,
                     # Update pixel entry of the dictionary key
                     self.setParamValue(cmd, pixel-1, value)
-                    
-                # Is there a index tag?
-                if bIndex:
-                    index = self.getAttrib(child, 'index')
-                    print " index = ", index
-                    # Update index entry of the dictionary key
-                    self.setParamValue(cmd, index-1, value)
-                    
-#                # Is pixel present?
-#                if pixel != -2:
-#                    print "pixel detected, updating = ", cmd, pixel-1, value
-#                    # pixel is defined; Updated dictionary key
-#                    self.setParamValue(cmd, pixel-1, value)
-#                else:
-#                    # pixel not present; of the remaining 10 keys 2 will have an index tag
-#
-#                    if index != -2:
-#                        print "index detected, updating = ", cmd, index-1, value
-#                        # update dictionary key value
-#                        self.setParamValue(cmd, index-1, value)
-#                    else:
-#                        index = 0
-#                        print "neither pixel nor index detected, updating = ", cmd, index, value
-#                        # Neither a pixel nor index defined; update value (integer)
-#                        self.setParamValue(cmd, index, value)
+                else:
+                    # Is there a index tag?
+                    if bIndex:
+                        index = self.getAttrib(child, 'index')
+                        if self.bDebug:
+                            print " index = ", index
+                        # Update index entry of the dictionary key
+                        self.setParamValue(cmd, index-1, value)
+                    else:
+                        # No pixel, no index tags: therefore the key value
+                        #     is a simple integer to update
+                        self.setParamValue(cmd, 0, value)
+                
             else:
                 if self.strict:
                     raise LpdCommandSequenceError('Illegal command %s specified' % (child.tag))
         
-        print "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
+        if self.bDebug:
+            print "\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
         # Dictionary now updated, check keys XX_default and if they are not -1 
         # then their corresponding keys should be updated with whatever value the XX_default key has
         for key in self.paramsDict:
             # Is this a _default key?
             if key.endswith("_default"):
-                print "Found _default key: ", key, " = ",
+                if self.bDebug:
+                    print "Found _default key: ", key, " = ",
                 # has its value been changed from -1?
                 keyValue = self.getParamValue(key)
-                print keyValue
+                if self.bDebug:
+                    print keyValue
                 # This is a key that ends with _default, but has it been set?
                 if keyValue[2] == -1:
                     # _default not set, therefore nothing to do
                     pass
                 else:
-                    print " is greater than -1, updating corresponding key.."
                     # Derived corresponding key's name
                     pairedKey = key.replace("_default", "")
                     pairedKeyValue = self.getParamValue(pairedKey)
                     length = len(pairedKeyValue[2])
-                    print "length: ", length
                     for idx in range(length):
-#                        print "pairedKey, idx, keyValue = ", pairedKey, idx, keyValue[2]
                         # Update only if pixel not explicitly set
                         if pairedKeyValue[2][idx] == -1:
                             # -1 denotes pixel hasn't been explicitly set; go ahead and update it
@@ -469,36 +467,37 @@ class SlowCtrlParams(object):
         '''
             Debug function, used to display the dictionary values
         '''
-        
-        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-        for cmd in self.paramsDict:
-            # Get dictionary key's values
-            dictKey = self.getParamValue(cmd)
-            
-            print "dictKey: ", cmd,
-            if len(cmd) < 12:
-                print "\t",
-            print " \tpos'n: ", dictKey[1], "\t [",
-            # Is the third variable a list or an integer?
-            if isinstance(dictKey[2], types.ListType):
-                # it's a list
-                for idx in range(11):
-                    if (idx < 5):
-                        # Print the first five values
-                        print dictKey[2][idx],
-                    elif idx == 5:
-                        print ", .., ",
-                    else:
-                        # Print the last five values
-                        print dictKey[2][-1*(11-idx)],
+        if self.bDebug:
+            print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            for cmd in self.paramsDict:
+                # Get dictionary key's values
+                dictKey = self.getParamValue(cmd)
+                
+                print "dictKey: ", cmd,
+                if len(cmd) < 12:
+                    print "\t",
+                print " \tpos'n: ", dictKey[1], "\t [",
+                # Is the third variable a list or an integer?
+                if isinstance(dictKey[2], types.ListType):
+                    # it's a list
+                    for idx in range(11):
+                        if (idx < 5):
+                            # Print the first five values
+                            print dictKey[2][idx],
+                        elif idx == 5:
+                            print ", .., ",
+                        else:
+                            # Print the last five values
+                            print dictKey[2][-1*(11-idx)],
+    
+                elif isinstance(dictKey[2], types.IntType):
+                   # it's just an integer
+                   print dictKey[2],
+                else:
+                    print "displayDictionaryValues() Error: dictKey[2] is neither a list nor an integer!"
+    
+                print "]"
 
-            elif isinstance(dictKey[2], types.IntType):
-               # it's just an integer
-               print dictKey[2],
-            else:
-                print "displayDictionaryValues() Error: dictKey[2] is neither a list nor an integer!"
-
-            print "]"
 
 import unittest
     
@@ -512,138 +511,175 @@ class SlowCtrlParamsTest(unittest.TestCase):
         Tests that updating a parameter works as expected
         '''
         
-        # setParamValue(dictKey, index, value)
-        dictKey = "self_test_decoder_default"
-        index = 0
-        value = 7
-        
-        # Expected encoded values
-        expectedVals = [3, -1, value]
-        
-#        stringCmdXml = '''<?xml version="1.0"?>
-#                            <lpd_slow_ctrl_sequence name="TestString">
-#                                <self_test_decoder pixel="1" value="5"/>
-#                                <self_test_decoder_default value="7"/>
-#                                <mux_decoder pixel="2" value="0"/>
-#                                <mux_decoder_default value="3"/>
-#                                <daq_bias index="47" value="11"/>
-#                                <daq_bias_default value="31"/>
-#                                <daq_bias index="2" value="0"/>
-#                                <digital_control index="3" value="18"/>
-#                            </lpd_slow_ctrl_sequence>
-#        '''
+        daqBiasIdx47 = 11
+        daqBiasDefault = 31
+        selfTestDecoderDefault = 7
+        digitalControlIdx3 = 18
+
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
-                                <mux_decoder pixel="3" value="4"/>
-                                <daq_bias_default value="31"/>
-                                <daq_bias index="2" value="7"/>
+                                <self_test_decoder pixel="1" value="5"/>
+                                <self_test_decoder_default value="%i"/>
+                                <mux_decoder pixel="2" value="0"/>
+                                <mux_decoder_default value="3"/>
+                                <daq_bias index="47" value="%i"/>
+                                <daq_bias_default value="%i"/>
+                                <daq_bias index="2" value="0"/>
+                                <digital_control index="3" value="18"/>
+                                <spare_bits value="%i"/>
                             </lpd_slow_ctrl_sequence>
-        '''
-    
+        ''' % (selfTestDecoderDefault, daqBiasIdx47, daqBiasDefault, digitalControlIdx3)
+
+  
         # Parse XML and encode
         paramsObj = SlowCtrlParams(stringCmdXml)
-        
-        print "Before: "
-#        paramsObj.displayDictionaryValues()
-        
         paramsObj.encode()
-#        paramsObj.setParamValue(dictKey, index, value)
+
+        # Display an excerp of each dictionary key's value:
         paramsObj.displayDictionaryValues()
-        newVals = paramsObj.getParamValue(dictKey)
+  
+        # Setup and compare the unit tests..        
+        dictKey = "self_test_decoder_default"
+        index = 0
+        value = selfTestDecoderDefault
+        
+        # Expected encoded values
+        expectedVals = [3, -1, value, [False, True, False]]
+        # The actual values
+        selfTestDecoderDefaultVals = paramsObj.getParamValue(dictKey)
 
-        print newVals, expectedVals
-        # Test that intended value matches expected
-        self.assertEqual(newVals, expectedVals, 'testStringParse() failed to update key as expected')
+#        print selfTestDecoderDefaultVals, "\n", expectedVals
+        self.assertEqual(selfTestDecoderDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
+        # 'self_test_decoder'                    : [5, 3585, [-1] * 47],
+        dictKey = 'self_test_decoder'
+        index = 1
+        value = 5
+        
+        expectedVals = [3, 1537, [selfTestDecoderDefault] * 512, [True, True, False]]
+        expectedVals[2][index-1] = value
+        
+        self_test_decoderVals = paramsObj.getParamValue(dictKey)
+        
+#        print self_test_decoderVals, "\n", expectedVals
+        self.assertEqual(self_test_decoderVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+        
+
+        # daq_bias_default
+        dictKey = "daq_bias_default"
+        index = 0
+        value = daqBiasDefault
+        
+        expectedVals = [5, -1, value, [False, True, False]]
+        
+        daqBiasDefaultVals = paramsObj.getParamValue(dictKey)
+        
+#        print daqBiasDefaultVals, "\n", expectedVals
+        self.assertEqual(daqBiasDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+        
         # 'daq_bias'                    : [5, 3585, [-1] * 47],
         dictKey = 'daq_bias'
         index = 5
-        value = 31
+        value = daqBiasIdx47
         
-        expectedVals = paramsObj.getParamValue(dictKey)
-        expectedVals[2][index] = value
+        expectedVals = [5, 3585, [daqBiasDefault] * 47, [False, True, True]]
+        expectedVals[2][2-1] = 0
+        expectedVals[2][47-1] = value
         
-        paramsObj.setParamValue(dictKey, index, value)
-        newVals = paramsObj.getParamValue(dictKey)
+        daq_biasVals = paramsObj.getParamValue(dictKey)
 
-        self.assertEqual(newVals, expectedVals, 'testStringParse() failed to update key as expected')
+#        print daq_biasVals, "\n", expectedVals
+        self.assertEqual(daq_biasVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
-#    def testOutOfRangeKeyValueFails(self):
-#        '''
-#        Tests that updating a parameter will fail if value exceeds valid range
-#        '''
-#
-#        # Strictly not necessary except for the class constructor requiring a XML file or string
-#        stringCmdXml = '''<?xml version="1.0"?>
-#                            <lpd_slow_ctrl_sequence name="testOutOfRangeKeyValueFails">
-#                                <self_test_decoder_default value="7"/>
-#                            </lpd_slow_ctrl_sequence>
-#        '''        
-#        # setParamValue(dictKey, index, value)
-#        dictKey = "self_test_decoder_default"
-#        index = 0
-#        value = 8
-#    
-#        # Parse XML and encode
-#        paramsObj = SlowCtrlParams(stringCmdXml)
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        dictKey = "self_test_decoder"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        dictKey = "mux_decoder_default"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        dictKey = "mux_decoder"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#        
-#        # Test 1 bit widths
-#        dictKey = "feedback_select_default"
-#        value = 2
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        dictKey = "feedback_select"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        dictKey = "self_test_enable"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        # Test 5 bit widths
-#        dictKey = "daq_bias_default"
-#        value = 32
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        dictKey = "daq_bias"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        dictKey = "spare_bits"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        # Test 20 bit width
-#        dictKey = "100x_filter_control"
-#        value = 1048575+1
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#        
-#        dictKey = "adc_clock_delay"
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
-#
-#        # Test 40 bit width
-#        dictKey = "digital_control"
-#        value = 1099511627776
-#        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
-#            paramsObj.setParamValue(dictKey, index, value)
+        # 'digital_control'
+        dictKey = 'digital_control'
+        index = 3
+        value = digitalControlIdx3
+        
+        expectedVals = [40, 3865, value, [False, True, True]]
+        expectedVals[2] = value
+
+        digitalControlVals = paramsObj.getParamValue(dictKey)
+        
+#        print digitalControlVals, "\n", expectedVals
+        self.assertEqual(digitalControlVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+
+    def testOutOfRangeKeyValueFails(self):
+        '''
+        Tests that updating a parameter will fail if value exceeds valid range
+        '''
+
+        # Strictly not necessary except for the class constructor requiring a XML file or string
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="testOutOfRangeKeyValueFails">
+                                <self_test_decoder_default value="7"/>
+                            </lpd_slow_ctrl_sequence>
+        '''        
+        # setParamValue(dictKey, index, value)
+        dictKey = "self_test_decoder_default"
+        index = 0
+        value = 8
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        dictKey = "self_test_decoder"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        dictKey = "mux_decoder_default"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        dictKey = "mux_decoder"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+        
+        # Test 1 bit widths
+        dictKey = "feedback_select_default"
+        value = 2
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        dictKey = "feedback_select"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        dictKey = "self_test_enable"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        # Test 5 bit widths
+        dictKey = "daq_bias_default"
+        value = 32
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        dictKey = "daq_bias"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        dictKey = "spare_bits"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        # Test 20 bit width
+        dictKey = "100x_filter_control"
+        value = 1048575+1
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+        
+        dictKey = "adc_clock_delay"
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
+
+        # Test 40 bit width
+        dictKey = "digital_control"
+        value = 1099511627776
+        with self.assertRaises(SlowCtrlParamsInvalidRangeError):
+            paramsObj.setParamValue(dictKey, index, value)
         
 if __name__ == '__main__':
     
