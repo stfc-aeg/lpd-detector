@@ -899,17 +899,16 @@ void commandHandler(struct protocol_header* pRxHeader,
 					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
 
 					// Set RDMA MUX if necessary
-					if (((pRxHeader->address & 0x70000000) >> 28) != *pMux)
+					if (((pRxHeader->address & 0x30000000) >> 28) != *pMux)
 					{
-						*pMux = (pRxHeader->address & 0x80000000) >> 28;
+						*pMux = (u8)((pRxHeader->address & 0x30000000) >> 28);
 						XGpio_DiscreteWrite(pGpio, 1, *pMux);
 						DBGOUT("CmdDisp: MUX set to %d\r\n", *pMux);
 					}
 
 					// Mangle RDMA address
 					rdmaAddrOriginal = pRxHeader->address & 0x0FFFFFFF;		// Mask out MSB 4 bits as MUX
-					rdmaAddrNew = ((rdmaAddrOriginal & 0x0F000000) << 4) | rdmaAddrOriginal;
-					DBGOUT("CmdDisp: RDMA mux addr 0x%08x -> 0x%08x\r\n", pRxHeader->address, rdmaAddrNew);
+					rdmaAddrNew = ((rdmaAddrOriginal & 0x0F000000) << 4) | (rdmaAddrOriginal&0x00FFFFFF);
 
 					// RDMA READ operation
 					if (CMPBIT(state, STATE_READ))
