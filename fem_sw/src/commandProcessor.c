@@ -647,9 +647,20 @@ void commandHandler(struct protocol_header* pRxHeader,
 
 		case CMD_INTERNAL:
 
+			/*
 			numOps = 0;
 			SBIT(state, STATE_NACK);
 			DBGOUT("CmdDisp: No CMD_INTERNAL commands supported at this time!\r\n");
+			break;
+			*/
+
+			// TODO: Remove this / implement properly
+			// Debugging hooks for SysAce config reload commands
+			DBGOUT("CMD_INTERNAL: bus=0x%08x, width=0x%08x, state=0x%02x, addr=0x%08x\r\n");
+			SBIT(state, STATE_ACK);
+			DBGOUT("CMD_INTERNAL: Forcing SystemACE reboot to image 2...\r\n");
+			reloadChain(&sysace, 2);
+			numOps = 0;
 			break;
 
 		case CMD_ACQUIRE:
