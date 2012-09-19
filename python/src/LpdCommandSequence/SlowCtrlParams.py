@@ -693,7 +693,7 @@ if __name__ == '__main__':
 #    theParams = SlowCtrlParams('simple.xml', fromFile=True)
     
 #    theParams.getParamValue("mux_decoder_default")
-    width, posn, val = theParams.getParamValue("mux_decoder_default")
+    width, posn, val, tags = theParams.getParamValue("mux_decoder_default")
 #    print "Before: ", width, posn, val, "...", 
     
 #    print "Changing self_test_decoder_default.."
