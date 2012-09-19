@@ -15,6 +15,9 @@
  * the reception / validation / response generation of
  * packets.
  *
+ * Flag reloadRequested when non zero causes main event loop to drop out and
+ * wait a number of seconds before reloading the requested firmware index from the systemace.
+ *
  */
 void commandProcessorThread(void* arg)
 {
@@ -23,12 +26,9 @@ void commandProcessorThread(void* arg)
 	fd_set readSet, masterSet;
 	struct timeval tv;
 	u8 numConnectedClients = 0;
+	u8 reloadRequested = 0;
 
-	// Get variable bundle from main
-	//struct cpBundle* pBundle = (struct cpBundle*)arg;
-	//XGpio* pGpio = pBundle->pGpio;
-	//u8* pMux = pBundle->pMux;
-
+	// extern from main.c
 	XGpio *pGpio = &gpioMux;
 	u8* pMux = &mux;
 
@@ -105,7 +105,7 @@ void commandProcessorThread(void* arg)
 	DBGOUT("CmdProc: Socket on port %d ready, awaiting clients (max. clients = %d).\r\n", NET_CMD_PORT, NET_MAX_CLIENTS);
 
 	// ************************************************** MAIN SERVER LOOP ********************************************************
-	while (1) {
+	while (reloadRequested==0) {
 
 		// Show our tick over
 		//DBGOUT(".");
@@ -467,7 +467,7 @@ void commandProcessorThread(void* arg)
 						PRTDBG("CmdProc: Received entire packet...\r\n");
 
 						// Generate response
-						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pMux, pGpio);
+						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pMux, pGpio, &reloadRequested);
 
 						PRTDBG("CmdProc: Packet decoded, sending response...\r\n");
 
@@ -521,11 +521,29 @@ void commandProcessorThread(void* arg)
 
 
 
-	}	// END while(1)
+	}	// END while(reloadRequested==0)
 	// ************************************************ END MAIN SERVER LOOP ******************************************************
 
-	// Code below here will never run...  but just in case output debug message
-	DBGOUT("CmdProc: Exiting thread! [SHOULD NEVER EXECUTE!]\r\n");
+	DBGOUT("CmdProc: Triggering firmware reload to index %d...\r\n", reloadRequested);
+
+	// Cleanly disconnect all clients
+	i = 0;
+	do
+	{
+		disconnectClient(&state[i], &i, &masterSet, &numConnectedClients);
+		i++;
+	} while (numConnectedClients>0);
+
+	// Wait n seconds
+	sleep(3);
+
+	// Do SysAce reload
+	DBGOUT("CmdProc: SystemACE rebooting to image %d...\r\n", reloadRequested);
+	reloadChain(&sysace, reloadRequested);
+
+	// Do emergency SysAce reload to image 0, will only execute if above image can't be found
+	DBGOUT("CmdProc: SystemACE failsafe boot initiated, booting to image 0...\r\n");
+	reloadChain(&sysace, 0);
 
 }
 
@@ -577,13 +595,15 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
  * @param pRxPayload pointer to payload buffer of received packet
  * @param pTxPayload pointer to payload buffer for outbound packet
  * @param pGpio pointer to RDMA MUX GPIO instance
+ * @param pReloadRequested pointer to firmware reload index in main event loop
  */
 void commandHandler(struct protocol_header* pRxHeader,
                         struct protocol_header* pTxHeader,
                         u8* pRxPayload,
                         u8* pTxPayload,
                         u8* pMux,
-                        XGpio* pGpio)
+                        XGpio* pGpio,
+                        u8* pReloadRequested)
 {
 
 	int i;					// General use variable
@@ -654,13 +674,26 @@ void commandHandler(struct protocol_header* pRxHeader,
 			break;
 			*/
 
-			// TODO: Remove this / implement properly
-			// Debugging hooks for SysAce config reload commands
-			DBGOUT("CMD_INTERNAL: bus=0x%08x, width=0x%08x, state=0x%02x, addr=0x%08x\r\n");
-			SBIT(state, STATE_ACK);
-			DBGOUT("CMD_INTERNAL: Forcing SystemACE reboot to image 2...\r\n");
-			reloadChain(&sysace, 2);
-			numOps = 0;
+			// Determine operation type
+			// TODO: Replace literals with defines / enum
+			switch(pRxHeader->address)
+			{
+			case 0:
+				// Reload firmware via Sysace
+				DBGOUT("CmdDisp: Requested systemACE firmware reload, image %d\r\n", pRxHeader->bus_target);
+				// we assume pRxHeader->bus >-1 <8 already checked by validatePacket
+				SBIT(state, STATE_ACK);
+				numOps = 0;
+				//reloadChain(&sysace, pRxHeader->bus_target);
+				*pReloadRequested = pRxHeader->bus_target;
+				break;
+
+			default:
+				// Unknown CMD_INTERNAL command!
+				SBIT(state, STATE_NACK);
+				numOps = 0;
+				break;
+			}
 			break;
 
 		case CMD_ACQUIRE:
@@ -1124,7 +1157,15 @@ int validateHeaderContents(struct protocol_header *pHeader)
 
 		case CMD_INTERNAL:
 			//DBGOUT("validateHeader: CMD_INTERNAL not yet supported!\r\n");
-			return 0;
+			if ((pHeader->address==0) && (pHeader->bus_target > -1 && pHeader->bus_target < 8))
+			{
+				// Firmware reload request
+				return 0;
+			}
+			else
+			{
+				return -1;
+			}
 			break;
 
 		case CMD_PERSONALITY:
