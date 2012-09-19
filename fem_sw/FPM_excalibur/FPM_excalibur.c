@@ -19,9 +19,11 @@ int fpmInitHardware()
 
 	int status;
 
+	// This assumes mux defaults to 0!
+
 	// Reset ASIC block (bit 22) and ASICs (bit 23), then clear those bits
 	DBGOUT("fpmInitHardware: Resetting ASIC control block / ASICs\r\n");
-	status = writeRdma(0x48000001, 0xC00000);
+	status = writeRdma(0x90000001, 0xC00000);
 	if (status!=XST_SUCCESS)
 	{
 		// Don't skip reset as if the command DID work we leave ASICs held in reset
@@ -29,7 +31,7 @@ int fpmInitHardware()
 		//return status;
 	}
 
-	status = writeRdma(0x48000001, 0x0);
+	status = writeRdma(0x90000001, 0x0);
 
 	// Initialise static variables
 	currentThreadType = 0;
