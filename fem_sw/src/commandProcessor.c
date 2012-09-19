@@ -329,8 +329,9 @@ void commandProcessorThread(void* arg)
 						else
 						{
 							// Header NOT valid
-							//DBGOUT("CmdProc: Header received but is invalid.\r\n");
+							PRTDBG("CmdProc: Header received but is invalid.\r\n");
 							//DUMPHDR(pState->pHdr);
+							generateBadPacketResponse(pTxHeader, clientSocket);
 							pState->state = STATE_COMPLETE;
 						}
 
