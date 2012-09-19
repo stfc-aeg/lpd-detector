@@ -8,7 +8,7 @@
    <mux_decoder_default value="3"/>
 
    <!-- Override the individual setting for pixel 125: -->
-   <mux_decoder pixel="125" value="7/>
+   <mux_decoder pixel="125" value="7"/>
 
    <!-- Set default feedback capacitor to 50 pF; overwrite pixel 497 to 10 pF -->
    <feedback_select_default value="0"/>
@@ -16,7 +16,7 @@
 
    <!-- Disable Self Test for all pixels; Enable Self Test for pixel 75 (Cap 1 active) -->
    <self_test_decoder_default value="0"/>
-   <self_test_decoder pixel="75" value="2"/>
+   <self_test_decoder pixel="1" value="2"/>
 
    <!-- Self Test Enable (bit 3584) -->
    <self_test_enable value="0"/>
@@ -26,20 +26,20 @@
    <daq_bias_default value="7"/>
    <daq_bias index="47" value="11"/>
   
-  <!-- Set Gain Switching Mode and Calibration Switch (contained inside Spare Bits section) -->
-  <spare_bits value="6"/>
+   <!-- Set Gain Switching Mode and Calibration Switch (contained inside Spare Bits section) -->
+   <spare_bits value="6"/>
   
-  <!-- Set the 100x Filter Control Filter Enable -->
-  <100x_filter_control value="557056"/>
+   <!-- Set the 100x Filter Control Filter Enable -->
+   <!-- <100x_filter_control value="557056"/> this tag breaks the parser somehow? -->
   
-  <!-- Set ADC Clock Delay Adjust -->
-  <adc_clock_delay value="0"/>
+   <!-- Set ADC Clock Delay Adjust -->
+   <adc_clock_delay value="0"/>
   
-  <!-- Set Digital Control -->
-  <digital_control index="3" value="18"/>
-  <digital_control index="4" value="14"/>
-  <digital_control index="5" value="14"/>
-  <digital_control index="6" value="2"/>
+   <!-- Set Digital Control -->
+   <digital_control index="3" value="18"/>
+   <digital_control index="4" value="14"/>
+   <digital_control index="5" value="14"/>
+   <digital_control index="6" value="2"/>
 
 </lpd_slow_ctrl_sequence>
 
