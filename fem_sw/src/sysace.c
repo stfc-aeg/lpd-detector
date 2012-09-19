@@ -11,17 +11,13 @@
  * Triggers the SystemACE controller to reconfigure the chain of JTAG devices.
  * It is assumed that the SystemACE controller is already initialised.
  * @param pAce pointer to XSysAce device
- * @param idx index of image to use (0-7)
+ * @param idx index of image to use (must be 0-7)
  */
 void reloadChain(XSysAce *pAce, unsigned int idx)
 {
-	// Sanitise inputs
-	if (idx<0) { idx = 0; }
-	if (idx>7) { idx = 7; }
-
 	// Configure SystemACE to reload specified image on reset, then assert reset
 	 XSysAce_SetCfgAddr(pAce, idx);
-	 XSysAce_SetStartMode(pAce, TRUE, FALSE);
+	 XSysAce_SetStartMode(pAce, FALSE, TRUE);
 	 XSysAce_ResetCfg(pAce);
 }
 
