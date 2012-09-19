@@ -26,7 +26,7 @@ void commandProcessorThread(void* arg)
 	fd_set readSet, masterSet;
 	struct timeval tv;
 	u8 numConnectedClients = 0;
-	u8 reloadRequested = 0;
+	int reloadRequested = -1;
 
 	// extern from main.c
 	XGpio *pGpio = &gpioMux;
@@ -105,7 +105,7 @@ void commandProcessorThread(void* arg)
 	DBGOUT("CmdProc: Socket on port %d ready, awaiting clients (max. clients = %d).\r\n", NET_CMD_PORT, NET_MAX_CLIENTS);
 
 	// ************************************************** MAIN SERVER LOOP ********************************************************
-	while (reloadRequested==0) {
+	while (reloadRequested==-1) {
 
 		// Show our tick over
 		//DBGOUT(".");
@@ -521,7 +521,7 @@ void commandProcessorThread(void* arg)
 
 
 
-	}	// END while(reloadRequested==0)
+	}	// END while(reloadRequested==-1)
 	// ************************************************ END MAIN SERVER LOOP ******************************************************
 
 	DBGOUT("CmdProc: Triggering firmware reload to index %d...\r\n", reloadRequested);
@@ -534,12 +534,14 @@ void commandProcessorThread(void* arg)
 		i++;
 	} while (numConnectedClients>0);
 
-	// Wait n seconds
-	sleep(3);
+	// Wait some time
+	sleep(10000);
 
 	// Do SysAce reload
 	DBGOUT("CmdProc: SystemACE rebooting to image %d...\r\n", reloadRequested);
 	reloadChain(&sysace, reloadRequested);
+
+	sleep(10000);
 
 	// Do emergency SysAce reload to image 0, will only execute if above image can't be found
 	DBGOUT("CmdProc: SystemACE failsafe boot initiated, booting to image 0...\r\n");
@@ -603,7 +605,7 @@ void commandHandler(struct protocol_header* pRxHeader,
                         u8* pTxPayload,
                         u8* pMux,
                         XGpio* pGpio,
-                        u8* pReloadRequested)
+                        int* pReloadRequested)
 {
 
 	int i;					// General use variable
@@ -666,14 +668,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 			break;
 
 		case CMD_INTERNAL:
-
-			/*
-			numOps = 0;
-			SBIT(state, STATE_NACK);
-			DBGOUT("CmdDisp: No CMD_INTERNAL commands supported at this time!\r\n");
-			break;
-			*/
-
 			// Determine operation type
 			// TODO: Replace literals with defines / enum
 			switch(pRxHeader->address)
@@ -681,10 +675,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 			case 0:
 				// Reload firmware via Sysace
 				DBGOUT("CmdDisp: Requested systemACE firmware reload, image %d\r\n", pRxHeader->bus_target);
-				// we assume pRxHeader->bus >-1 <8 already checked by validatePacket
 				SBIT(state, STATE_ACK);
 				numOps = 0;
-				//reloadChain(&sysace, pRxHeader->bus_target);
 				*pReloadRequested = pRxHeader->bus_target;
 				break;
 
@@ -1157,7 +1149,7 @@ int validateHeaderContents(struct protocol_header *pHeader)
 
 		case CMD_INTERNAL:
 			//DBGOUT("validateHeader: CMD_INTERNAL not yet supported!\r\n");
-			if ((pHeader->address==0) && (pHeader->bus_target > -1 && pHeader->bus_target < 8))
+			if ((pHeader->address==0) && (pHeader->bus_target < 8))
 			{
 				// Firmware reload request
 				return 0;
