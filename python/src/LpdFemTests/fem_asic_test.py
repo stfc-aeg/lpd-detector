@@ -356,18 +356,19 @@ class FemAsicTest():
         if currentSlowCtrlDir.find("LpdFemTests") == -1:
             # Script was executed from parent folder; append '/LpdFemTests'
             currentSlowCtrlDir += "/LpdFemTests" 
+            
             # Because we are in the parent folder and not in the subfolder,
-            # the fast control path is straightforward to construct:
+            # the fast control path is straightforward to construct from slow control's:
             currentFastCmdDir = currentSlowCtrlDir
             # Append "/LpdCommandSequence"
             currentFastCmdDir += "/LpdCommandSequence"
         else:
-            # fem_asic_test executed from the same folder so currentSlowCtrlDir is fine
+            # fem_asic_test executed from the same folder so we can use the parent folder of currentSlowCtrlDir 
             # however, fast command reside in a different folder:
             currentFastCmdDir = currentSlowCtrlDir.replace("/LpdFemTests", "") + "/LpdCommandSequence"
             
-        print currentSlowCtrlDir, "\n", currentFastCmdDir
-#        asic_pseudo_random = 1
+#        print currentSlowCtrlDir, "\n", currentFastCmdDir
+
         # if the data source is 'direct from asic'
         if data_source_to_10g == 1:
             
