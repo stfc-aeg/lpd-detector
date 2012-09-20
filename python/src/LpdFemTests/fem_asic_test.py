@@ -173,13 +173,14 @@ class FemAsicTest():
             # real data
             if asic_module_type == 2:
                 # 2-Tile box selected
-                asic_rx_start_delay = 1360  #1364
+                asic_rx_start_delay = 1361  #1360
             else:
                 # single asic module
+                # 20/09/2012: Presume this should be 1363?
                 asic_rx_start_delay = 1362  #uint32(1362)
         
         
-        num_ll_frames = 1  # nr of local link frames to generate
+        num_ll_frames = 2  # nr of local link frames to generate
         
         if (data_source_to_10g == 0 or data_source_to_10g == 2):
             trigger_type = 'a'
