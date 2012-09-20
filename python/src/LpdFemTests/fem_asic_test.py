@@ -381,17 +381,16 @@ class FemAsicTest():
                     # Yes,' fast_random_gaps.txt' really does reside within the "slow control" directory:
                     [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new( currentSlowCtrlDir + '/fast_random_gaps.txt', fast_cmd_reg_size)
                 else:
-#                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/xfel_workspace/LpdFemTests/fast_readout_4f_gaps.txt',fast_cmd_reg_size)
-                    
-                    ''' XML implementation '''
+                    # Real ASIC data selected, load slow control configuration from file
                     fileCmdSeq = LpdCommandSequenceParser( currentFastCmdDir + '/fast_readout_replacement_commands.xml', fromFile=True)
                     fast_cmd_data = fileCmdSeq.encode() 
                     
                     no_of_words = fileCmdSeq.getTotalNumberWords()
                     no_of_nops = fileCmdSeq.getTotalNumberNops()
                                 
-                #set up the fast command block
-                if fast_ctrl_dynamic == 1:   # new design with dynamic vetos
+                # set up the fast command block
+                if fast_ctrl_dynamic == 1:
+                    # new design with dynamic vetos
                     myLpdFemClient.fem_fast_bram_setup(fast_cmd_data, no_of_words)
                     myLpdFemClient.fem_fast_cmd_setup_new(no_of_words+no_of_nops)
                 else:
@@ -402,11 +401,11 @@ class FemAsicTest():
                     #set up the slow control IP block
                     myLpdFemClient.fem_slow_ctrl_setup(slow_ctrl_data, no_of_bits)
 
-                # load mode = 0 for common (use this for 2-tile)    jac
+                # load mode = 0 for common (2-tile system)    jac
                 # load mode = 2 for daisy chain
                 myLpdFemClient.select_slow_ctrl_load_mode(0, 0)
 
-            #set up the ASIC RX IP block
+            # set up the ASIC RX IP block
             myLpdFemClient.fem_asic_rx_setup(mask_list, no_asic_cols+1, no_asic_cols_per_frm+1)
             
             # data source - self test
@@ -448,15 +447,17 @@ class FemAsicTest():
             # trigger just the fast cmd block
             print "You selected 'f'"
             myLpdFemClient.toggle_bits(7, 2)
-        elif trigger_type is 'x':   # trigger fastand asic rx  (not slow)
+        elif trigger_type is 'x':
+            # trigger fastand asic rx  (not slow)
             myLpdFemClient.toggle_bits(7, 2)
             myLpdFemClient.toggle_bits(3, 1)
         else:
             print "No case matching variable trigger_type = ", trigger_type
         #--------------------------------------------------------------------
         
+        # Send data via 10g UDP block
         if enable_10g == 1:
-            #Check local link frame statistics
+            # Check local link frame statistics
             myLpdFemClient.read_ll_monitor()        
         
         # check contents of slow control read back BRAM
@@ -464,7 +465,7 @@ class FemAsicTest():
         #rdma_block_read(slow_ctr_2, 4, 'Read Back Slow Ctrl RAM');
         
         
-        # allow time to trigger ppc dma transfer in sdk app
+        # if data source is PPC, allow time to trigger ppc dma transfer in sdk app
         if data_source_to_10g == 2:
             print " paused waiting 2 seconds allowing time to trigger ppc dma transfer in sdk app"
             time.sleep(2)
@@ -476,7 +477,7 @@ class FemAsicTest():
         # receive the image data from 10g link
         
         
-        #check how much data has arrived
+        # check how much data has arrived - Function call does nothing, redundant
         myLpdFemClient.check_how_much_data_arrived(udp_frm_sze)
         
         
@@ -487,9 +488,12 @@ class FemAsicTest():
         
         print "Receiving the image data from 10g link.."
         
-        if  readout_mode is "packet":     
+        # Neither of the two functions actually do anything
+        if  readout_mode is "packet":
+            # Currently redundant:
             dudp = myLpdFemClient.recv_image_data_as_packet(udp_pkt_num, dudp, packet_size)
         elif readout_mode is "frame":
+            # Currently redundant:
             dudp = myLpdFemClient.recv_image_data_as_frame(dudp)            
         else:
             pass
@@ -497,8 +501,9 @@ class FemAsicTest():
         
         print ""
         
+        # Send data via 10g UDP block
         if enable_10g == 1:
-            #Check local link frame statistics
+            # Check local link frame statistics
             myLpdFemClient.read_ll_monitor()    
         
         # Close down Fem connection
@@ -525,7 +530,7 @@ class FemAsicTest():
         # rotate to match ivan's display (isn't matlab clever :) )
         #image_data = rot90(image_data_raw);                        # Redundant?
         
-        """                        Plot Data - Use Matlab plot library             """
+        """                        Plot Data - See Python script: receiveTengTest.py             """
         #frame_nr = 1;
         ## plot the data from the asic
         #colormap gray;
