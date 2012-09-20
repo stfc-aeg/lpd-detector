@@ -64,7 +64,7 @@ class FemAsicTest():
         return x10g_0, x10g_1
     
     def mac_addr_to_uint64(self, mac_addr_str):
-        #convert hex MAC address 'u-v-w-x-y-z' string to integer
+        """ convert hex MAC address 'u-v-w-x-y-z' string to integer """
         # Convert MAC address into list of 6 elements (and removing the - characters)
         mac_addr_list = mac_addr_str.split('-')   
         # Convert hexadecimal values into the decimals
@@ -153,10 +153,13 @@ class FemAsicTest():
         asic_pseudo_random = 0
         
         # steer loading of brams for asic slow and fast configuration data
+        # if data_source_to_10g is llink frame generator (0) or PPC (2), set to 0
         if (data_source_to_10g == 0 or data_source_to_10g == 2):
             load_asic_config_brams = 0 
         else:
+            # data source is 'direct from asic'; is it real or dummy data? 
             if (asic_rx_counting_data == 0):
+                # real data; want to load slow control
                 load_asic_config_brams = 1  
             else: # skip brams if using asic rx internal data generator
                 load_asic_config_brams = 0
@@ -165,12 +168,14 @@ class FemAsicTest():
         # tuned for various data runs to capture 1st data bit in stream
         # will be replaced later by signal from asic fast block to asic rx
         if asic_pseudo_random:
-            #asic_rx_start_delay = 59   #uint32(59)
             asic_rx_start_delay = 61    # 58
         else:
+            # real data
             if asic_module_type == 2:
+                # 2-Tile box selected
                 asic_rx_start_delay = 1360  #1364
             else:
+                # single asic module
                 asic_rx_start_delay = 1362  #uint32(1362)
         
         
@@ -337,16 +342,16 @@ class FemAsicTest():
             
             if load_asic_config_brams == 1:  # only load brams if sending data from asics
                 # slow data
-                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file('/u/ckd27546/workspace/lpd/src/LpdFemTests/SlowControlDefault-1A.txt')
+                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file('/u/ckd27546/workspace/xfel_workspace/LpdFemTests/SlowControlDefault-1A.txt')
                 # fast data
                 if asic_pseudo_random:
-                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_random_gaps.txt',fast_cmd_reg_size)
+                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/xfel_workspace/LpdFemTests/fast_random_gaps.txt',fast_cmd_reg_size)
                 else:
-#                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_readout_4f_gaps.txt',fast_cmd_reg_size)
+#                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/xfel_workspace/LpdFemTests/fast_readout_4f_gaps.txt',fast_cmd_reg_size)
                     
                     ''' XML implementation '''
-                    fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/lpd/src/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
-                    fast_cmd_data = fileCmdSeq.encode()
+                    fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/xfel_workspace/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
+                    fast_cmd_data = fileCmdSeq.encode() 
                     
                     no_of_words = fileCmdSeq.getTotalNumberWords()
                     no_of_nops = fileCmdSeq.getTotalNumberNops()
@@ -388,8 +393,7 @@ class FemAsicTest():
     
         #--------------------------------------------------------------------
         # send triggers to data generators
-        #--------------------------------------------------------------------
-        # send triggers to data generators
+        
         if trigger_type is 'all':
             # start asic seq  = reset, slow, fast & asic rx
             print "You selected 'all'"
@@ -429,26 +433,14 @@ class FemAsicTest():
         # allow time to trigger ppc dma transfer in sdk app
         if data_source_to_10g == 2:
             print " paused waiting 2 seconds allowing time to trigger ppc dma transfer in sdk app"
-            time.sleep(2)   # waits for keyboard input
+            time.sleep(2)
         
         
         print " ...continuing"
 
-#        #--------------------------------------------------------------------
-#        # Resetting the PPC start the DMA test
-#        # need to get the timing right or add handshaking
-#                
-#        if send_ppc_reset == 1:
-#            # Resets dma engines
-#            myLpdFemClient.toggle_bits(9, 1)
-
         #--------------------------------------------------------------------
         # receive the image data from 10g link
         
-
-  
-  
-
         
         #check how much data has arrived
         myLpdFemClient.check_how_much_data_arrived(udp_frm_sze)
