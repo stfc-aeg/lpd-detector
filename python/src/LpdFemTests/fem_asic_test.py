@@ -180,7 +180,7 @@ class FemAsicTest():
                 asic_rx_start_delay = 1362  #uint32(1362)
         
         
-        num_ll_frames = 2  # nr of local link frames to generate
+        num_ll_frames = 1  # nr of local link frames to generate
         
         if (data_source_to_10g == 0 or data_source_to_10g == 2):
             trigger_type = 'a'
