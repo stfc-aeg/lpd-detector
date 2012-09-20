@@ -5,7 +5,7 @@ Created on 18 Apr 2012
 '''
 
 # Import Python standard modules
-import sys
+import sys, os
 import socket
 
 # Import Fem modules
@@ -182,6 +182,12 @@ class FemAsicTest():
         
         num_ll_frames = 1  # nr of local link frames to generate
         
+        # trigger_type, 'a'=trigger local link frame generator,
+        # 'all'=start asic seq, 'b'=trigger of asic rx block, 
+        # 's'=trigger only the slow control IP block, 'f'=trigger the fast cmd block,
+        # 'x'=trigger fast and asic rx (not slow)
+        
+        # if data source is 'llink frame generator' or 'PPC'
         if (data_source_to_10g == 0 or data_source_to_10g == 2):
             trigger_type = 'a'
         else:
@@ -213,31 +219,31 @@ class FemAsicTest():
         
         # Asic Rx 128 bit channel enable masks
         
-        # Use list instead of array
+        # mask_list - which asics to be enabled (1) or disabled (0)
         mask_list = [0, 0, 0, 0]
-        if asic_rx_counting_data == 1:    # enable all channels for dummy data from asic rx    
+        if asic_rx_counting_data == 1:
+            # enable all channels for dummy data from asic rx    
             mask_list[0] = 0xffffffff
             mask_list[1] = 0xffffffff
             mask_list[2] = 0xffffffff
             mask_list[3] = 0xffffffff
-        else: # Enable only relevant channel for single ASIC test module
-            if asic_module_type == 1: # Enable 2 channel for single ASIC test module
+        else: 
+            # Enable only relevant channel for single ASIC test module
+            if asic_module_type == 1: 
+                # Enable 2 channel for single ASIC test module
                 mask_list[0] = 0x00000001
-            elif asic_module_type == 2: #Enable 16 channels for single ASIC test module
+            elif asic_module_type == 2: 
+                #Enable 16 channels for single ASIC test module
                 mask_list[0] = 0x00ff0000
                 mask_list[1] = 0x00000000
                 mask_list[2] = 0x0000ff00
                 mask_list[3] = 0x00000000
-#                mask_list[0] = 0xffffffff
-#                mask_list[1] = 0xffffffff
-#                mask_list[2] = 0xffffffff
-#                mask_list[3] = 0xffffffff
-            else:       # Enable all channels for supermodule
+            else:
+                # Enable all channels for supermodule
                 mask_list[0] = 0xffffffff
                 mask_list[1] = 0xffffffff
                 mask_list[2] = 0xffffffff
                 mask_list[3] = 0xffffffff
-                
         
         
         #set asic receiver readout size & frame allocation
@@ -289,30 +295,31 @@ class FemAsicTest():
         #robs_udp_packet_hdr = 0
         # Generate header with 10g data
         robs_udp_packet_hdr = 4
-        
-        if (data_source_to_10g == 0): # frame generator
+
+        # if data source is 'llink frame generator'        
+        if (data_source_to_10g == 0):
             udp_pkt_len = 8000  #1000
             udp_pkt_num = 1
 #            udp_frm_sze = 1024*1024*8
             udp_frm_sze = 262144
             udp_in_buf_size =1024*1024*1024*1
             
+            # if data source is 'PPC':
         elif (data_source_to_10g == 2):
-            # skip following and by default use same values as asic rx
+            # Default to use same values as asic rx
             pass
         
-        
+        # Setup the UDP IP blocks sending data via 10g udp block
         if (enable_10g == 1):
             
-            #set up the UDP IP blocks
-#            x10g_0, x10g_1 = self.set_10g_structs_variables_te2bank()
+            # Set up the UDP IP blocks
             x10g_0, x10g_1 = self.set_10g_structs_variables_te7burntoak()
             
-            #set up the UDP IP blocks
+            # Set up the UDP IP blocks
             myLpdFemClient.fem_10g_udp_set_up_block0(udp_pkt_len, udp_frm_sze, eth_ifg)
             myLpdFemClient.fem_10g_udp_set_up_block1(udp_pkt_len, udp_frm_sze, eth_ifg)
             
-            #set MAC, IP Port addresses
+            # Set MAC, IP Port addresses
             myLpdFemClient.fem_10g_udp_net_set_up_block0(x10g_0)
             myLpdFemClient.fem_10g_udp_net_set_up_block1(x10g_1)
                 
@@ -329,6 +336,7 @@ class FemAsicTest():
         myLpdFemClient.frame_generator_set_up_10g(2, num_ll_frames+1)
         
         print ""
+        # Send data via 10g 
         if (enable_10g == 1):
             myLpdFemClient.clear_ll_monitor()
             print ""
@@ -339,19 +347,43 @@ class FemAsicTest():
         #--------------------------------------------------------------------
         # configure the ASICs
         
+        # Obtain current working directory for the slow control
+        # The two folders in question are related like this:
+        #    workspace/LpdFemTests
+        #    workspace/LpdCommandSequence
+        currentSlowCtrlDir = os.getcwd()
+        # Is this script executed from the folder containing it or its parent folder?
+        if currentSlowCtrlDir.find("LpdFemTests") == -1:
+            # Script was executed from parent folder; append '/LpdFemTests'
+            currentSlowCtrlDir += "/LpdFemTests" 
+            # Because we are in the parent folder and not in the subfolder,
+            # the fast control path is straightforward to construct:
+            currentFastCmdDir = currentSlowCtrlDir
+            # Append "/LpdCommandSequence"
+            currentFastCmdDir += "/LpdCommandSequence"
+        else:
+            # fem_asic_test executed from the same folder so currentSlowCtrlDir is fine
+            # however, fast command reside in a different folder:
+            currentFastCmdDir = currentSlowCtrlDir.replace("/LpdFemTests", "") + "/LpdCommandSequence"
+            
+        print currentSlowCtrlDir, "\n", currentFastCmdDir
+#        asic_pseudo_random = 1
+        # if the data source is 'direct from asic'
         if data_source_to_10g == 1:
             
+            # Load slow control and potentially fast control commands?
             if load_asic_config_brams == 1:  # only load brams if sending data from asics
                 # slow data
-                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file('/u/ckd27546/workspace/xfel_workspace/LpdFemTests/SlowControlDefault-1A.txt')
+                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file( currentSlowCtrlDir + '/SlowControlDefault-1A.txt')
                 # fast data
                 if asic_pseudo_random:
-                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/xfel_workspace/LpdFemTests/fast_random_gaps.txt',fast_cmd_reg_size)
+                    # Yes,' fast_random_gaps.txt' really does reside within the "slow control" directory:
+                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new( currentSlowCtrlDir + '/fast_random_gaps.txt', fast_cmd_reg_size)
                 else:
 #                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/xfel_workspace/LpdFemTests/fast_readout_4f_gaps.txt',fast_cmd_reg_size)
                     
                     ''' XML implementation '''
-                    fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/xfel_workspace/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
+                    fileCmdSeq = LpdCommandSequenceParser( currentFastCmdDir + '/fast_readout_replacement_commands.xml', fromFile=True)
                     fast_cmd_data = fileCmdSeq.encode() 
                     
                     no_of_words = fileCmdSeq.getTotalNumberWords()
