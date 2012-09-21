@@ -233,10 +233,10 @@ class BlitQT(FigureCanvas):
             _32BitWordArray = np.fromstring(self.rawImageData, dtype=_32BitLittleEndianType)
             
             """ DEBUG INFO: """
-            # Display array content 32 bit integers
-            print "Array contents structured into 32 bit elements [byte swapped!]:"
-            self.display32BitArrayInHex(_32BitWordArray)
-            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+#            # Display array content 32 bit integers
+#            print "Array contents structured into 32 bit elements [byte swapped!]:"
+#            self.display32BitArrayInHex(_32BitWordArray)
+#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             # Calculate length of 32 bit array
             _32BitArrayLen = len(_32BitWordArray)
@@ -259,10 +259,10 @@ class BlitQT(FigureCanvas):
                 
 
             """ DEBUG INFO: """ 
-            # Display array contenting 16 bit elements:
-            print "Array contents re-structured into 16 bit elements:"
-            self.display16BitArrayInHex(_16BitWordArray)
-            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+#            # Display array contenting 16 bit elements:
+#            print "Array contents re-structured into 16 bit elements:"
+#            self.display16BitArrayInHex(_16BitWordArray)
+#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
             
             # Extract the 16 ASICs image data from the full Quadrant data
             completeDataArray = self.convertAsicDataIntoImage(_16BitWordArray)
@@ -288,7 +288,7 @@ class BlitQT(FigureCanvas):
                         exit()
                         
                     # Display debug information..
-                    print "currentPlot: ", currentPlot, " data left: ", len(_16BitWordArray), " image data: \n", self.data
+                    print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len(_16BitWordArray), " image data: \n", self.data                    
                     
                     # Set title as frame number, current image number
                     self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
