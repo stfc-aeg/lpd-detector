@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_slow_ctrl_sequence name="simple tests"
+<lpd_slow_ctrl_sequence name="simple.xml"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
    xsi:noNamespaceSchemaLocation="lpdSlowCtrlSequence.xsd">
    <!-- This file is is a mockup for a sample slow control XML file -->
