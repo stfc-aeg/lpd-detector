@@ -345,8 +345,6 @@ void commandProcessorThread(void* arg)
 
 						//DUMPHDR(pState->pHdr);
 
-						// TODO: Check address is in valid range FEM_DDR2_START => addr => (FEM_DDR2_END-payload_sz)
-
 						// Note that lwip will reject addresses of 0 as NULL pointers
 
 						// Check if this is a direct memory receive, if so handle it
@@ -390,7 +388,7 @@ void commandProcessorThread(void* arg)
 								// Too big to receive so flush it's data and NACK client
 								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", pState->pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
 								flushSocket(i, (void*)pState->pPayload, pState->payloadBufferSz);
-								// TODO: Send NACK
+								generateBadPacketResponse(pTxHeader, clientSocket);
 								pState->state = STATE_COMPLETE;
 							}
 							else
@@ -405,7 +403,7 @@ void commandProcessorThread(void* arg)
 									{
 										DBGOUT("CmdProc: Error - can't realloc. RX buffer!\r\n");
 										flushSocket(i, (void*)pState->pPayload, pState->payloadBufferSz);
-										// TODO: Send NACK
+										generateBadPacketResponse(pTxHeader, clientSocket);
 										pState->state = STATE_COMPLETE;
 									}
 									DBGOUT("CmdProc: Resized payload buffer to %d numBytesToRead=%d\r\n", pState->payloadBufferSz, numBytesToRead);
@@ -504,7 +502,7 @@ void commandProcessorThread(void* arg)
 		j=0;
 		do
 		{
-			if (state[j].state!=STATE_COMPLETE && !state[j].gotData)		// TODO: Test gotData timeout inhibit!
+			if (state[j].state!=STATE_COMPLETE && !state[j].gotData)
 			{
 				//DBGOUT("T");
 				state[j].timeoutCount++;
