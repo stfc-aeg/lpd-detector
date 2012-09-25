@@ -810,12 +810,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 						}
 
 					}
-					else
-					{
-						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_EEPROM operation mode, status was 0x%x\r\n", state);
-						// TODO: Set FEM error state
-					}
 					break; // BUS_EEPROM
 
 				// --------------------------------------------------------------------
@@ -869,13 +863,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 							numOps = i;
 						}
 					}
-					else
-					{
-						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_I2C operation mode, status was 0x%x\r\n", state);
-						// TODO: Set FEM error state
-					}
-
 					break; // BUS_I2C
 
 				// --------------------------------------------------------------------
@@ -917,14 +904,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 						}
 						SBIT(state, STATE_ACK);
 					}
-					else
-					{
-						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_RAW_REG operation mode, status was 0x%x\r\n", state);
-						SBIT(state, STATE_NACK);
-						// TODO: Set FEM error state
-					}
-
 					break; // BUS_RAW_REG
 
 				// --------------------------------------------------------------------
@@ -995,14 +974,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 							}
 						}
 
-					}
-					else
-					{
-						// Neither R or W bits set, can't process request
-						DBGOUT("CmdDisp: Error, can't determine BUS_RDMA operation mode, status was 0x%x\r\n", state);
-
-						SBIT(state, STATE_NACK);
-						// TODO: Set FEM error state
 					}
 					break; // BUS_RDMA
 
