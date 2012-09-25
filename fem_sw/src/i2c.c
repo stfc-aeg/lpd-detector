@@ -200,7 +200,7 @@ static void recvHandler(XIic* pIic, int byteCount)
  * @param pData pointer to data payload
  * @param dataLen length of payload in bytes
  *
- * @return number of data bytes sent / received or -1 on an error
+ * @return number of data bytes sent / received or IIC_ERR_* error code (negative integers)
  **/
 int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
@@ -244,7 +244,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 
 	default:
 		// Invalid index
-		return -1;
+		return IIC_ERR_INVALID_INDEX;
 	}
 
 	// Wait for not busy (as XIic_BusNotBusyFuncPtr is invalid in Xilinx driver and will cause assert!)
@@ -260,7 +260,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	if (busBusy==1)
 	{
 		// Bus not ready for operation so return
-		return -1;
+		return IIC_ERR_BUS_BUSY;
 	}
 
 	// Set slave address if it's a write operation
@@ -268,7 +268,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	{
 		status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, slaveAddr);
 		if (status!=XST_SUCCESS) {
-			return -1;
+			return IIC_ERR_SET_ADDR;
 		}
 	}
 
@@ -289,14 +289,14 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		break;
 
 	default:
-		return -1;
+		return IIC_ERR_INVALID_OP_MODE;
 	}
 
 	// Check operation status
 	if (status==XST_IIC_GENERAL_CALL_ADDRESS)
 	{
 		// This error should never happen but if it does just return and exit
-		return -1;
+		return IIC_ERR_GENERAL_CALL_ADDR;
 	}
 	else if (status==XST_IIC_BUS_BUSY)
 	{
@@ -313,7 +313,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	while (*pVal!=0 && count<max)
 	{
 		count++;
-		if (slaveNoAck==1) { return -1; }
+		if (slaveNoAck==1) { return IIC_ERR_SLAVE_NACK; }
 	}
 
 	// Did we timeout?
@@ -335,7 +335,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		}
 
 		xil_printf("I2C: Timed out\r\n");
-		return -1;
+		return IIC_ERR_TIMEOUT;
 	}
 	// -----------------------------------------------------------------------------------
 

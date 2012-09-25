@@ -27,6 +27,16 @@
 #define IIC_IDX_PWR_RHS			2
 #define IIC_IDX_PWR_LHS			3
 
+//! I2C error codes
+#define IIC_ERR_INVALID_INDEX		-1
+#define IIC_ERR_SLAVE_NACK			-2
+#define IIC_ERR_TIMEOUT				-3
+#define IIC_ERR_BUS_BUSY			-4
+#define IIC_ERR_SET_ADDR			-5
+#define IIC_ERR_INVALID_OP_MODE		-6
+#define IIC_ERR_GENERAL_CALL_ADDR	-7
+
+
 // I2C management functions
 int initI2C(void);
 int startI2C(void);
