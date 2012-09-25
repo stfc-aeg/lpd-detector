@@ -38,7 +38,6 @@ int initLM82(int highTemp, int critTemp)
 	else {
 		data[1] = critTemp;
 	}
-	data[1] = 0x43;		// TODO: REMOVE!
 	payloadSize = 2;
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
@@ -49,7 +48,6 @@ int initLM82(int highTemp, int critTemp)
 	// Set HIGH setpoint
 	data[0] = LM82_REG_WRITE_REMOTE_SP;
 	data[1] = highTemp;
-	data[1] = 0x43;		// TODO: REMOVE!
 	payloadSize = 2;
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
