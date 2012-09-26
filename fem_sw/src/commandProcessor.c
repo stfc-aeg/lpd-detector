@@ -479,17 +479,19 @@ void commandProcessorThread(void* arg)
 							generateErrorResponse(pTxBuffer, clientSocket, pState);
 
 						}
-
-						// Send response
-						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
-						{
-							// Error occurred during response
-							DBGOUT("CmdProc: Error sending response packet! (has client disconnected?)\r\n");
-						}
 						else
 						{
-							// Everything OK!
-							PRTDBG("CmdProc: Sent response OK.\r\n");
+							// Send response
+							if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
+							{
+								// Error occurred during response
+								DBGOUT("CmdProc: Error sending response packet! (has client disconnected?)\r\n");
+							}
+							else
+							{
+								// Everything OK!
+								PRTDBG("CmdProc: Sent response OK.\r\n");
+							}
 						}
 						pState->state = STATE_COMPLETE;
 
@@ -1221,4 +1223,9 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 	payload_sz += i;
 
 	pHeader->payload_sz = payload_sz;
+
+	if (lwip_send(clientSocket, pTxPayload, sizeof(struct protocol_header) + payload_sz, 0) == -1)
+	{
+		// ??
+	}
 }
