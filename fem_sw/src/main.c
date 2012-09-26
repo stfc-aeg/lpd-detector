@@ -317,7 +317,7 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise timer.\r\n");
-    	femErrorState |= TEST_TIMER_INIT;
+    	femErrorState |= (1<<TEST_TIMER_INIT);
     }
     // ****************************************************************************
 
@@ -329,7 +329,7 @@ int initHardware(void)
     if (status != XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to calibrate sleep.\r\n");
-    	femErrorState |= TEST_TIMER_CALIB;
+    	femErrorState |= (1<<TEST_TIMER_CALIB);
     }
     // ****************************************************************************
 
@@ -339,7 +339,7 @@ int initHardware(void)
     if (status != XST_SUCCESS)
 	{
 		DBGOUT("initHardware: Failed to initialise I2C controllers.\r\n");
-		femErrorState |= TEST_I2C_INIT;
+		femErrorState |= (1<<TEST_I2C_INIT);
 	}
     // ****************************************************************************
 
@@ -360,7 +360,7 @@ int initHardware(void)
     if (readConfigFromEEPROM(0, &femConfig) == -1)
     {
     	DBGOUT("initHardware: Can't get configuration from EEPROM, using failsafe defaults...\r\n");
-    	femErrorState |= TEST_I2C_EEPROM_CFG_READ;		// Not critical but should be reported
+    	femErrorState |= (1<<TEST_I2C_EEPROM_CFG_READ);		// Not critical but should be reported
     	createFailsafeConfig(&femConfig);
     }
     // ****************************************************************************
@@ -371,7 +371,7 @@ int initHardware(void)
     if(initLM82(femConfig.temp_high_setpoint, femConfig.temp_crit_setpoint)==-1)
     {
     	DBGOUT("initHardware: ERROR: Failed to initialise LM82.\r\n");
-    	femErrorState |= TEST_I2C_LM82_INIT;
+    	femErrorState |= (1<<TEST_I2C_LM82_INIT);
     }
 
     // Read FPGA temp
@@ -384,18 +384,18 @@ int initHardware(void)
     else if (fpgaTemp==-1)
     {
     	DBGOUT("initHardware: ERROR - FPGA temperature read error!\r\n");
-    	femErrorState |= TEST_I2C_LM82_EXT_T_READ;
+    	femErrorState |= (1<<TEST_I2C_LM82_EXT_T_READ);
     }
     else if (lmTemp==-1)
     {
     	DBGOUT("initHardware: ERROR - LM82 temperature read error!\r\n");
-    	femErrorState |= TEST_I2C_LM82_INT_T_READ;
+    	femErrorState |= (1<<TEST_I2C_LM82_INT_T_READ);
     }
     else
     {
     	DBGOUT("initHardware: WARNING - I2C accesses don't seem to be working, can't read system temperature!\r\n");
-    	femErrorState |= TEST_I2C_LM82_EXT_T_READ;
-    	femErrorState |= TEST_I2C_LM82_INT_T_READ;
+    	femErrorState |= (1<<TEST_I2C_LM82_EXT_T_READ);
+    	femErrorState |= (1<<TEST_I2C_LM82_INT_T_READ);
     }
     // ****************************************************************************
 
@@ -411,7 +411,7 @@ int initHardware(void)
     if (status == XST_UART_TEST_FAIL)
     {
     	DBGOUT("initHardware: RDMA UART loopback test failed.\r\n");
-    	femErrorState |= TEST_RDMA_UART_BIST;
+    	femErrorState |= (1<<TEST_RDMA_UART_BIST);
     }
     // ****************************************************************************
 
@@ -421,7 +421,7 @@ int initHardware(void)
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise SystemACE.\r\n");
-    	femErrorState |= TEST_SYSACE_INIT;
+    	femErrorState |= (1<<TEST_SYSACE_INIT);
     }
 
     // Self-test on SystemACE
@@ -430,7 +430,7 @@ int initHardware(void)
     {
     	DBGOUT("initHardware: SystemACE failed self-test.\r\n");
     	DBGOUT("initHardware: Ignoring SystemACE failed self-test.\r\n");
-    	femErrorState |= TEST_SYSACE_BIST;
+    	femErrorState |= (1<<TEST_SYSACE_BIST);
     }
     else
     {
@@ -445,7 +445,7 @@ int initHardware(void)
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise mailbox.\r\n");
-    	femErrorState |= TEST_MBOX_INIT;
+    	femErrorState |= (1<<TEST_MBOX_INIT);
     }
     // ****************************************************************************
 
@@ -456,7 +456,7 @@ int initHardware(void)
 	if (status!=XST_SUCCESS)
 	{
 		DBGOUT("initHardware: Failed to initialise GPIO mux.\r\n");
-		femErrorState |= TEST_GPIO_MUX_INIT;
+		femErrorState |= (1<<TEST_GPIO_MUX_INIT);
 	}
 	mux = 0;
 	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
@@ -470,7 +470,7 @@ int initHardware(void)
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise FPM hardwares.\r\n");
-    	femErrorState |= TEST_FPM_INIT;
+    	femErrorState |= (1<<TEST_FPM_INIT);
     }
     // ****************************************************************************
 

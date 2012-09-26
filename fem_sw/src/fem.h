@@ -118,44 +118,31 @@
 #define NET_DEFAULT_TICK_USEC		0
 #define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
 
-// Hardware initialisation bits - if set these signal errors occurred
-// TODO: Refactor as enum
-// ****************************************************************************
-// Timer
-#define TEST_TIMER_INIT				0x00000001		//! XPS Timer init.
-#define TEST_TIMER_CALIB			0x00000002		//! Timer calibration
-
-// Interrupt controller
-#define TEST_INTC_INIT				0x00000004		//! Interrupt controller init.
-#define TEST_INTC_START				0x00000008		//! Interrupt controller start
-#define TEST_INTC_BIST				0x00000010		//! Interrupt controller self-test
-#define TEST_INTC_CON_LM82			0x00000020		//! Interrupt controller LM82 interrupt connect
-#define TEST_INTC_CON_EEPROM		0x00000040		//! Interrupt controller EEPROM interrupt connect
-#define TEST_INTC_CON_PWR_RHS		0x00000080		//! Interrupt controller PWR_RHS interrupt connect
-#define TEST_INTC_CON_PWR_LHS		0x00000100		//! Interrupt controller PWR_LHS interrupt connect
-
-// RDMA / RDMA MUX / UART
-#define TEST_RDMA_UART_BIST			0x00000200		//! RDMA UART self-test (loopback test)
-#define TEST_GPIO_MUX_INIT			0x00000400		//! RDMA MUX init.
-
-// SystemACE
-#define TEST_SYSACE_INIT			0x00000800		//! SystemACE init.
-#define TEST_SYSACE_BIST			0x00001000		//! SystemACE self-test
-#define TEST_SYSACE_FILESYSTEM		0x00002000		//! SystemACE filesystem test
-
-// Mailbox
-#define TEST_MBOX_INIT				0x00004000		//! Mailbox init.
-
-// I2C
-#define TEST_I2C_INIT				0x00008000		//! I2C init.
-#define TEST_I2C_LM82_INIT			0x00010000		//! LM82 init.
-#define TEST_I2C_LM82_EXT_T_READ	0x00020000		//! LM82 external (V5) temp. read
-#define TEST_I2C_LM82_INT_T_READ	0x00040000		//! LM82 internal (LM82 device) temp. read
-#define TEST_I2C_EEPROM_CFG_READ	0x00080000		//! Config EEPROM read
-
-// Frontend Personality Module (FPM)
-#define TEST_FPM_INIT				0x00100000		//! FPM hardware init.
-// ****************************************************************************
+//! Hardware initialisation bits - if set these signal errors occurred
+enum femHardwareErrorBits
+{
+	TEST_TIMER_INIT = 1,
+	TEST_TIMER_CALIB,
+	TEST_INTC_INIT,
+	TEST_INTC_START,
+	TEST_INTC_BIST,
+	TEST_INTC_CON_LM82,
+	TEST_INTC_CON_EEPROM,
+	TEST_INTC_CON_PWR_RHS,
+	TEST_INTC_CON_PWR_LHS,
+	TEST_RDMA_UART_BIST,
+	TEST_GPIO_MUX_INIT,
+	TEST_SYSACE_INIT,
+	TEST_SYSACE_BIST,
+	TEST_SYSACE_FILESYSTEM,
+	TEST_MBOX_INIT,
+	TEST_I2C_INIT,
+	TEST_I2C_LM82_INIT,
+	TEST_I2C_LM82_EXT_T_READ,
+	TEST_I2C_LM82_INT_T_READ,
+	TEST_I2C_EEPROM_CFG_READ,
+	TEST_FPM_INIT
+};
 
 #define ERR_STRING_MAX_LENGTH		80				//! Buffer for error messages (per client)
 
