@@ -161,22 +161,17 @@
 
 //! Error code offsets
 #define ERR_CODE_NETWORK_OFFSET		100
-#define ERR_CODE_RAW_OFFSET			200
-#define ERR_CODE_RDMA_OFFSET		300
-#define ERR_CODE_I2C_OFFSET			400
-#define ERR_CODE_EEPROM_OFFSET		500
-#define ERR_CODE_INTERNAL_OFFSET	600
+#define ERR_CODE_RDMA_OFFSET		200
+#define ERR_CODE_I2C_OFFSET			300
+#define ERR_CODE_EEPROM_OFFSET		400
+#define ERR_CODE_INTERNAL_OFFSET	500
 #define ERR_CODE_FPM_OFFSET			900
 
 //! Global error codes
 enum errorCodes {
 	// Protocol errors
-	ERR_INVALID_HEADER = 			ERR_CODE_NETWORK_OFFSET,		// TODO: Too vague, remove
-	ERR_PAYLOAD_TOO_BIG,
+	ERR_PAYLOAD_TOO_BIG= 			ERR_CODE_NETWORK_OFFSET,		// TODO: Too vague, remove
 	ERR_CLIENT_RESPONSE_TOO_BIG,
-	ERR_CANT_SEND_RESPONSE,			// Does this even make sense??
-
-	// For validateHeaderContents
 	ERR_HDR_INVALID_MAGIC,
 	ERR_HDR_INVALID_PAYLOAD_SZ,
 	ERR_HDR_INVALID_DATA_WIDTH,
@@ -185,13 +180,8 @@ enum errorCodes {
 	ERR_HDR_INVALID_BUS,
 	ERR_HDR_INVALID_COMMAND,
 
-	// RAW errors
-	// Don't have any!
-	//ERR_RAW_READ =					ERR_CODE_RAW_OFFSET,
-	//ERR_RAW_WRITE,
-
 	// RDMA errors
-	ERR_RDMA_READ = 				ERR_CODE_RAW_OFFSET,
+	ERR_RDMA_READ = 				ERR_CODE_RDMA_OFFSET,
 	ERR_RDMA_WRITE,
 
 	// I2C errors
@@ -206,15 +196,13 @@ enum errorCodes {
 
 	// EEPROM errors
 	ERR_EEPROM_BAD_CHECKSUM =		ERR_CODE_EEPROM_OFFSET,
-	// For others use I2C errors?
 
-	ERR_ACQ_CONFIG_NACK =		ERR_CODE_INTERNAL_OFFSET,
+	// Internal errors
+	ERR_ACQ_CONFIG_NACK =			ERR_CODE_INTERNAL_OFFSET,
 	ERR_ACQ_CONFIG_BAD_ACK,
 	ERR_ACQ_OP_NACK,
 	ERR_ACQ_OP_BACK_ACK,
 	ERR_RX_MALLOC_FAILED
-
-
 };
 
 #endif /* FEM_H_ */

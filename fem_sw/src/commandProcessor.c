@@ -980,7 +980,6 @@ int commandHandler(struct protocol_header* pRxHeader,
 					if (CMPBIT(state, STATE_WRITE))
 					{
 						XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
-
 					}
 #endif
 
