@@ -1014,7 +1014,6 @@ int commandHandler(struct protocol_header* pRxHeader,
 		case IIC_ERR_GENERAL_CALL_ADDR:
 			SETERR(pClient, ERR_I2C_GENERAL_CALL, "I2C controller reported general call address (internal error).");
 			break;
-		// TODO : EEPROM checksum error case
 		default:
 			SETERR(pClient, ERR_I2C_UNKNOWN_ERROR, "An unknown I2C error occurred.");
 			break;

@@ -27,7 +27,7 @@ int initLM82(int highTemp, int critTemp)
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
-		return -1;
+		return numBytes;
 	}
 
 	// Set T_CRIT setpoint to something sensible (power-on default is 127c!)
@@ -42,7 +42,7 @@ int initLM82(int highTemp, int critTemp)
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
-		return -1;
+		return numBytes;
 	}
 
 	// Set HIGH setpoint
@@ -52,7 +52,7 @@ int initLM82(int highTemp, int critTemp)
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, data, payloadSize);
 	if (numBytes<payloadSize)
 	{
-		return -1;
+		return numBytes;
 	}
 
 	// All OK!
@@ -91,14 +91,14 @@ int readTemp(u8 tempRegCmd)
 	numBytes = writeI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, &tempRegCmd, 1);
 	if (numBytes<1)
 	{
-		return -1;
+		return numBytes;
 	}
 
 	// Grab data byte from slave
 	numBytes = readI2C(IIC_IDX_LM82, IIC_ADDRESS_TEMP, &rawVal, 1);
 	if (numBytes<1)
 	{
-		return -1;
+		return numBytes;
 	}
 
 	return convertTemperature(rawVal);
