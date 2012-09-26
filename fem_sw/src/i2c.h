@@ -36,7 +36,6 @@
 #define IIC_ERR_INVALID_OP_MODE		-6
 #define IIC_ERR_GENERAL_CALL_ADDR	-7
 
-
 // I2C management functions
 int initI2C(void);
 int startI2C(void);

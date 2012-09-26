@@ -51,15 +51,21 @@ struct clientStatus {
 	int timeoutCount;				//! Counter for timeouts
 	u8 *pBusDirect;					//! Pointer for BUS_DIRECT writes
 	int busDirectSize;				//! Bytes received in BUS_DIRECT mode
+	int errorCode;					//! Error code
+	char errorString[ERR_STRING_MAX_LENGTH];	//! Error string
 };
 
 void commandProcessorThread(void* arg);
 void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients);
-void commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload, u8* pMux, XGpio *pGpio, int* pReloadRequested);
+int commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload, u8* pMux, XGpio *pGpio, int* pReloadRequested, struct clientStatus *pClient);
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes);
-int validateHeaderContents(struct protocol_header *pHeader);
+int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClient);
 void flushSocket(int sock, void *mem, int len);
-void generateBadPacketResponse(struct protocol_header *pHeader, int clientSocket);
+void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus *pClient);
+
+// Macro for setting errorString and errorCode on clientStatus
+#define SETERR(client, code, ...)			client->errorCode=code; \
+											snprintf(client->errorString, ERR_STRING_MAX_LENGTH, __VA_ARGS__);
 
 #endif /* COMMANDPROCESSOR_H_ */
 

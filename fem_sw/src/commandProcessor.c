@@ -42,6 +42,8 @@ void commandProcessorThread(void* arg)
 		state[j].timeoutCount = 0;
 		state[j].payloadBufferSz = 0;
 		state[j].gotData = 0;
+		state[j].errorCode = 0;
+		state[j].errorString[0] = 0;
 		j++;
 	} while (j<NET_MAX_CLIENTS);
 
@@ -53,6 +55,7 @@ void commandProcessorThread(void* arg)
 	{
 		DBGOUT("CmdProc: Could not malloc main TX buffer!\r\n");
 		DBGOUT("Terminating thread...\r\n");
+		// TODO: Handle critical error!
 		return;
 	}
 
@@ -311,7 +314,7 @@ void commandProcessorThread(void* arg)
 						// Validate header
 						PRTDBG("IN STATE_GOT_HEADER\r\n");
 
-						if(validateHeaderContents(pState->pHdr)==0)
+						if(validateRequest(pState->pHdr, pState)==0)
 						{
 							// Header is valid!
 
@@ -331,7 +334,7 @@ void commandProcessorThread(void* arg)
 							// Header NOT valid
 							PRTDBG("CmdProc: Header received but is invalid.\r\n");
 							//DUMPHDR(pState->pHdr);
-							generateBadPacketResponse(pTxHeader, clientSocket);
+							generateErrorResponse(pTxBuffer, clientSocket, pState);
 							pState->state = STATE_COMPLETE;
 						}
 
@@ -386,9 +389,11 @@ void commandProcessorThread(void* arg)
 							if (pState->pHdr->payload_sz > NET_LRG_RX_BUFFER_SZ)
 							{
 								// Too big to receive so flush it's data and NACK client
+								// TODO: Move this to validateRequest?
 								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", pState->pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
 								flushSocket(i, (void*)pState->pPayload, pState->payloadBufferSz);
-								generateBadPacketResponse(pTxHeader, clientSocket);
+								SETERR(pState, ERR_PAYLOAD_TOO_BIG, "Payload %d exceeds maximum of %d, cannot process.", (int)pState->pHdr->payload_sz, NET_LRG_RX_BUFFER_SZ);
+								generateErrorResponse(pTxBuffer, clientSocket, pState);
 								pState->state = STATE_COMPLETE;
 							}
 							else
@@ -403,7 +408,8 @@ void commandProcessorThread(void* arg)
 									{
 										DBGOUT("CmdProc: Error - can't realloc. RX buffer!\r\n");
 										flushSocket(i, (void*)pState->pPayload, pState->payloadBufferSz);
-										generateBadPacketResponse(pTxHeader, clientSocket);
+										SETERR(pState, ERR_RX_MALLOC_FAILED, "Cannot realloc RX payload buffer to %d.", NET_LRG_RX_BUFFER_SZ);
+										generateErrorResponse(pTxBuffer, clientSocket, pState);
 										pState->state = STATE_COMPLETE;
 									}
 									DBGOUT("CmdProc: Resized payload buffer to %d numBytesToRead=%d\r\n", pState->payloadBufferSz, numBytesToRead);
@@ -417,7 +423,7 @@ void commandProcessorThread(void* arg)
 								}
 								else
 								{
-									numBytesToRead = pState->pHdr->payload_sz;;
+									numBytesToRead = pState->pHdr->payload_sz;
 								}
 
 								if (numBytesToRead != 0)
@@ -466,22 +472,26 @@ void commandProcessorThread(void* arg)
 						PRTDBG("CmdProc: Received entire packet...\r\n");
 
 						// Generate response
-						commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pMux, pGpio, &reloadRequested);
+						if (!commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pMux, pGpio, &reloadRequested, pState))
+						{
 
-						PRTDBG("CmdProc: Packet decoded, sending response...\r\n");
+							// An error occured handling request
+							generateErrorResponse(pTxBuffer, clientSocket, pState);
 
+						}
+
+						// Send response
 						if (lwip_send(clientSocket, pTxBuffer, sizeof(struct protocol_header) + pTxHeader->payload_sz, 0) == -1)
 						{
 							// Error occurred during response
 							DBGOUT("CmdProc: Error sending response packet! (has client disconnected?)\r\n");
-							// TODO: Set FEM error state
 						}
 						else
 						{
 							// Everything OK!
 							PRTDBG("CmdProc: Sent response OK.\r\n");
-							pState->state = STATE_COMPLETE;
 						}
+						pState->state = STATE_COMPLETE;
 
 					} // END if state == STATE_GOT_PYLD
 
@@ -597,14 +607,17 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
  * @param pTxPayload pointer to payload buffer for outbound packet
  * @param pGpio pointer to RDMA MUX GPIO instance
  * @param pReloadRequested pointer to firmware reload index in main event loop
+ *
+ * @return 0 if request completed successfully, -1 if an error occured.
  */
-void commandHandler(struct protocol_header* pRxHeader,
+int commandHandler(struct protocol_header* pRxHeader,
                         struct protocol_header* pTxHeader,
                         u8* pRxPayload,
                         u8* pTxPayload,
                         u8* pMux,
                         XGpio* pGpio,
-                        int* pReloadRequested)
+                        int* pReloadRequested,
+                        struct clientStatus *pClient)
 {
 
 	int i;					// General use variable
@@ -612,6 +625,10 @@ void commandHandler(struct protocol_header* pRxHeader,
 	int responseSize = 0;	// Payload size for response packet in bytes
 	u32 numOps = 0;			// Number of requested operations performed
 	u8 state = 0;			// Status byte
+
+	int i2cError = 0;			// Flag used to tell if I2C error handler routine needs to run, non 0 represents error code
+	u8 slaveAddress = 0;
+	u8 busIndex = 0;
 
 	// Native size pointers for various data widths
 	u32* pTxPayload_32  = NULL;
@@ -623,18 +640,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 	// Copy original header to response packet, take a local copy of the status byte to update
 	memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
 	state = pRxHeader->state;
-
-	// Verify operation mode is sane, exit if not
-	if (!CMPBIT(state, STATE_READ) && !CMPBIT(state, STATE_WRITE))
-	{
-		// Neither write nor read requested, can't process so just return error response
-		DBGOUT("CmdDisp: Invalid operation\r\n");
-		SBIT(state, STATE_NACK);
-		// TODO: Set FEM error state
-		pTxHeader->state = state;
-		pTxHeader->payload_sz = 0;
-		return;
-	}
 
 	// Pointers to received and outgoing packet payloads
 	pRxPayload_32 = (u32*)pRxPayload;
@@ -663,6 +668,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 			else
 			{
 				SBIT(state, STATE_NACK);
+				// TODO: Set FEM error state
 			}
 			break;
 
@@ -677,12 +683,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 				SBIT(state, STATE_ACK);
 				numOps = 0;
 				*pReloadRequested = pRxHeader->bus_target;
-				break;
-
-			default:
-				// Unknown CMD_INTERNAL command!
-				SBIT(state, STATE_NACK);
-				numOps = 0;
 				break;
 			}
 			break;
@@ -722,15 +722,13 @@ void commandHandler(struct protocol_header* pRxHeader,
 					}
 					else if (configAck==0)
 					{
-						DBGOUT("CmdDisp: WARNING - Failed to get ACK from PPC1 for acquire config. request!\r\n");
 						SBIT(state, STATE_NACK);
-						// TODO: FEM error state
+						SETERR(pClient, ERR_ACQ_CONFIG_NACK, "Failed to get ACK from PPC1 for acquire configure request.");
 					}
 					else
 					{
-						DBGOUT("CmdDisp: WARNING - ACK from PPC1 for acquire config. request had error or timeout!\r\n");
 						SBIT(state, STATE_NACK);
-						// TODO: FEM error state
+						SETERR(pClient, ERR_ACQ_CONFIG_BAD_ACK, "ACK from PPC1 for acquire configure request had error or timeout.");
 					}
 
 					break;
@@ -745,12 +743,12 @@ void commandHandler(struct protocol_header* pRxHeader,
 					else if (configAck==0)
 					{
 						SBIT(state, STATE_NACK);
-						// TODO: FEM error state
+						SETERR(pClient, ERR_ACQ_OP_NACK, "Failed to get ACK from PPC1 for acquire start / stop request.");
 					}
 					else
 					{
 						SBIT(state, STATE_NACK);
-						// TODO: FEM error state
+						SETERR(pClient, ERR_ACQ_OP_BACK_ACK, "ACK from PPC1 for acquire start / stop request had error or timeout.");
 					}
 					break;
 
@@ -784,9 +782,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 						i = readFromEEPROM(pRxHeader->address, pTxPayload + 4, *pRxPayload_32);
 						if (i != *pRxPayload_32)
 						{
-							// EEPROM read failed, set NACK
-							SBIT(state, STATE_NACK);
-							// TODO: Set FEM error state
+							// EEPROM read failed
+							i2cError = i;
 						}
 						else
 						{
@@ -801,8 +798,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 						i = writeToEEPROM(pRxHeader->address, pRxPayload, pRxHeader->payload_sz);
 						if (i != pRxHeader->payload_sz)
 						{
-							SBIT(state, STATE_NACK);
-							// TODO: Set FEM error state
+							// EEPROM write failed
+							i2cError = i;
 						} else
 						{
 							SBIT(state, STATE_ACK);
@@ -822,20 +819,16 @@ void commandHandler(struct protocol_header* pRxHeader,
 					 * Least significant word (lower byte) = I2C slave address
 					 * Most significant word (lower byte)  = Bus index (0=LM82, 1=EEPROM, 2=PWR_RHS, 3=PWR_LHS)
 					 */
-					u8 slaveAddress = (pRxHeader->address & 0xFF);
-					u8 busIndex = (pRxHeader->address & 0xFF00) >> 8;
-
-					//DBGOUT("CmdDisp: Processing I2C operation...\r\n");
+					slaveAddress = (pRxHeader->address & 0xFF);
+					busIndex = (pRxHeader->address & 0xFF00) >> 8;
 
 					if (CMPBIT(state, STATE_READ))
 					{
 						i = readI2C(busIndex, slaveAddress, (u8*)pTxPayload_32, *pRxPayload_32);
 						if (i != *pRxPayload_32)
 						{
-							// I2C operation failed, set NACK
-							//DBGOUT("I2C_R - only got %d bytes instead of %d!\r\n", i, *pRxPayload_32);
-							SBIT(state, STATE_NACK);
-							// TODO: Set FEM error state
+							// I2C operation failed
+							i2cError = i;
 						}
 						else
 						{
@@ -851,10 +844,8 @@ void commandHandler(struct protocol_header* pRxHeader,
 						i = writeI2C(busIndex, slaveAddress, pRxPayload, pRxHeader->payload_sz);
 						if (i != pRxHeader->payload_sz)
 						{
-							// I2C operation failed, set NACK
-							//DBGOUT("I2C_W - only sent %d bytes instead of %d!\r\n", i, pRxHeader->payload_sz);
-							SBIT(state, STATE_NACK);
-							// TODO: Set FEM error state
+							// I2C operation failed
+							i2cError = i;
 						}
 						else
 						{
@@ -876,7 +867,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 						{
 							DBGOUT("CmdDisp: Response would be too large! (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->state, pRxHeader->payload_sz);
 							SBIT(state, STATE_NACK);
-							// TODO: Set FEM error state
+							// TODO: Set FEM error state - MOVE TO validateRequest()!
 							break;
 						}
 					}
@@ -886,7 +877,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 						for (i=0; i<*pRxPayload_32; i++)
 						{
 							*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*dataWidth));
-							//DBGOUT(" VALUE 0x%x\r\n", readRegister_32(pRxHeader->address + (i*dataWidth)));
 							responseSize += dataWidth;
 							numOps++;
 						}
@@ -898,7 +888,6 @@ void commandHandler(struct protocol_header* pRxHeader,
 						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
 						{
 							pRxPayload_32 = (u32*)pRxPayload;
-							//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i));
 							writeRegister_32( pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i) );
 							numOps++;
 						}
@@ -920,7 +909,7 @@ void commandHandler(struct protocol_header* pRxHeader,
 						DBGOUT("CmdDisp: MUX set to %d\r\n", *pMux);
 					}
 
-					// Mangle RDMA address
+					// Process RDMA address
 					rdmaAddrOriginal = pRxHeader->address & 0x0FFFFFFF;		// Mask out MSB 4 bits as MUX
 					rdmaAddrNew = ((rdmaAddrOriginal & 0x0F000000) << 4) | (rdmaAddrOriginal&0x00FFFFFF);
 
@@ -935,11 +924,11 @@ void commandHandler(struct protocol_header* pRxHeader,
 							status = readRdma( (rdmaAddrNew+i) , (pTxPayload_32+i) );
 							if (status==XST_FAILURE)
 							{
-								DBGOUT("CmdDisp: Error reading RDMA, aborting!\r\n");
+								//DBGOUT("CmdDisp: Error reading RDMA, aborting!\r\n");
 								numOps = 0;
 								SBIT(state, STATE_NACK);
-								// TODO: Set FEM error state
-								i = *pRxPayload_32;						// Skip any further processing
+								SETERR(pClient, ERR_RDMA_READ, "Error occurred during RDMA read.");
+								i = *pRxPayload_32;						// Skip any further processing in this loop
 							}
 							else
 							{
@@ -962,10 +951,10 @@ void commandHandler(struct protocol_header* pRxHeader,
 							status = writeRdma(rdmaAddrNew + i, *(pRxPayload_32+i));
 							if (status==XST_FAILURE)
 							{
-								DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
+								//DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
 								numOps = 0;
 								SBIT(state, STATE_NACK);
-								// TODO: Set FEM error state
+								SETERR(pClient, ERR_RDMA_WRITE, "Error occurred during RDMA write.");
 								i = ((pRxHeader->payload_sz)/dataWidth);	// Skip any further processing
 							}
 							else
@@ -984,47 +973,70 @@ void commandHandler(struct protocol_header* pRxHeader,
 					case WIDTH_BYTE: dataWidth = 1; break;
 					case WIDTH_WORD: dataWidth = 2; break;
 					case WIDTH_LONG: dataWidth = 4; break;
-					default:
-						DBGOUT("CmdDisp: Unsupported data width %d in BUS_DIRECT access\r\n", pRxHeader->data_width);
-						dataWidth = 0;
-						break;
 					}
-					if (dataWidth==0)
-					{
-						// Invalid
-						SBIT(state, STATE_NACK);
-					}
-					else
-					{
-						numOps = pRxHeader->payload_sz/dataWidth;
-						SBIT(state, STATE_ACK);
-					}
+					numOps = pRxHeader->payload_sz/dataWidth;
+					SBIT(state, STATE_ACK);
 					break;
 
 #ifdef USE_CACHE
 					XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
 #endif
 
-
-				// --------------------------------------------------------------------
-				case BUS_UNSUPPORTED:
-				default:
-					SBIT(state, STATE_NACK);
-					// TODO: Set FEM error state
-					break;
-
 			} // END switch(bus)
 
 	} // END switch(command)
 
-	// Build response header (all fields other status byte stay same as received packet)
-	pTxHeader->state = state;
-	pTxHeader->payload_sz = responseSize;
+	// Error handler for I2C (common to BUS_I2C and BUS_EEPROM)
+	if (i2cError<0)
+	{
+		SBIT(state, STATE_NACK);
 
-	// Update number of operations in payload
-	pTxPayload_32 = (u32*)pTxPayload;
-	*pTxPayload_32 = numOps;
+		switch(i2cError)
+		{
+		case IIC_ERR_INVALID_INDEX:
+			SETERR(pClient, ERR_I2C_INVALID_BUS_INDEX, "Invalid I2C bus index %d.", busIndex);
+			break;
+		case IIC_ERR_SLAVE_NACK:
+			SETERR(pClient, ERR_I2C_SLAVE_NACK, "I2C slave 0x%08x on bus %d NACKed .", slaveAddress, busIndex);
+			break;
+		case IIC_ERR_TIMEOUT:
+			SETERR(pClient, ERR_I2C_TIMEOUT, "I2C operation timed for slave address 0x%08x.", slaveAddress);
+			break;
+		case IIC_ERR_BUS_BUSY:
+			SETERR(pClient, ERR_I2C_BUSY, "I2C bus index %d is busy.", busIndex);
+			break;
+		case IIC_ERR_SET_ADDR:
+			SETERR(pClient, ERR_I2C_ADDRESS_ERROR, "Can't assert I2C address 0x%08x on bus index %d.", slaveAddress, busIndex);
+			break;
+		case IIC_ERR_INVALID_OP_MODE:
+			SETERR(pClient, ERR_I2C_INVALID_OPMODE, "Invalid operation mode (internal error).");
+			break;
+		case IIC_ERR_GENERAL_CALL_ADDR:
+			SETERR(pClient, ERR_I2C_GENERAL_CALL, "I2C controller reported general call address (internal error).");
+			break;
+		// TODO : EEPROM checksum error case
+		default:
+			SETERR(pClient, ERR_I2C_UNKNOWN_ERROR, "An unknown I2C error occurred.");
+			break;
+		}
 
+	}
+
+	// If ACK bit is set update the response packet header
+	if (CMPBIT(state, STATE_ACK))
+	{
+		// Build response header (all fields other status byte stay same as received packet)
+		pTxHeader->state = state;
+		pTxHeader->payload_sz = responseSize;
+
+		// Update number of operations in payload
+		pTxPayload_32 = (u32*)pTxPayload;
+		*pTxPayload_32 = numOps;
+
+		return 0;
+	}
+
+	return -1;
 }
 
 
@@ -1033,14 +1045,22 @@ void commandHandler(struct protocol_header* pRxHeader,
  * Validates the fields of a header for consistency
  * @param pHeader pointer to header
  *
- * @return 0 if header logically correct, -1 if not
+ * @return 0 if header logically correct, -1 and sets errorString / errorCode in pClient if incorrect
  */
-int validateHeaderContents(struct protocol_header *pHeader)
+int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClient)
 {
 
 	// Verify magic
 	if (pHeader->magic != PROTOCOL_MAGIC_WORD)
 	{
+		SETERR(pClient, ERR_HDR_INVALID_MAGIC, "Header magic word 0x%08x is invalid.", (unsigned int)pHeader->magic)
+		return -1;
+	}
+
+	// Data width should never be 0
+	if (pHeader->data_width==0)
+	{
+		SETERR(pClient, ERR_HDR_INVALID_DATA_WIDTH, "Data width should never be 0.");
 		return -1;
 	}
 
@@ -1055,14 +1075,14 @@ int validateHeaderContents(struct protocol_header *pHeader)
 				// CMD_ACCESS must always specify an operation type, read/write...
 				if ( (pHeader->state!=STATE_READ) && (pHeader->state=STATE_WRITE) )
 				{
-					DBGOUT("validateHeader: No R/W operation specified for CMD_ACCESS!\r\n");
+					SETERR(pClient, ERR_HDR_INVALID_RW_STATE, "Neither R or W bit (0x%02x) specified for command %d.", pHeader->state, pHeader->command);
 					return -1;
 				}
 
 				// CMD_ACCESS + STATE_READ must always have a payload_sz of sizeof(u32)
 				if ( (pHeader->state == STATE_READ) && (pHeader->payload_sz!=sizeof(u32)) )
 				{
-					DBGOUT("validateHeader: payload_sz must always equal 4 on CMD_ACCESS READ operation!\r\n");
+					SETERR(pClient, ERR_HDR_INVALID_PAYLOAD_SZ, "Payload size must always be 4 (got %d) for CMD_ACCESS read operation.", (unsigned int)pHeader->payload_sz);
 					return -1;
 				}
 
@@ -1070,7 +1090,7 @@ int validateHeaderContents(struct protocol_header *pHeader)
 					// Data width must always be 8bit
 					if (pHeader->data_width!=WIDTH_BYTE)
 					{
-						DBGOUT("validateHeader: Data width must always be 8bit for EEPROM access!\r\n");
+						SETERR(pClient, ERR_HDR_INVALID_DATA_WIDTH, "Invalid data width of %d for CMD_ACCESS, BUS_EEPROM (should be 1).", pHeader->data_width);
 						return -1;
 					}
 					break;
@@ -1079,13 +1099,13 @@ int validateHeaderContents(struct protocol_header *pHeader)
 					// Data width must always be 8bit
 					if (pHeader->data_width!=WIDTH_BYTE)
 					{
-						DBGOUT("validateHeader: Data width must always be 8bit for I2C access!\r\n");
+						SETERR(pClient, ERR_HDR_INVALID_DATA_WIDTH, "Invalid data width of %d for CMD_ACCESS, BUS_I2C (should be 1).", pHeader->data_width);
 						return -1;
 					}
-					// Address most significant byte must be 0-4 only
-					if ( (((pHeader->address & 0xF00) >> 16)<0) && (((pHeader->address & 0xF00) >> 16)>4) )
+					// Address most significant byte must be 0-3 only
+					if ( (((pHeader->address & 0xF00) >> 16)<0) && (((pHeader->address & 0xF00) >> 16)>3) )
 					{
-						DBGOUT("validateHeader: Address most significant byte must be 0-4 only for I2C access!\r\n");
+						SETERR(pClient, ERR_HDR_INVALID_ADDRESS, "Invalid address for BUS_I2C, MSB should be in the range 0-3 (got %d).", (int)((pHeader->address & 0xF00) >> 16));
 						return -1;
 					}
 					break;
@@ -1095,7 +1115,7 @@ int validateHeaderContents(struct protocol_header *pHeader)
 					// Data width must always be 32bit
 					if (pHeader->data_width!=WIDTH_LONG)
 					{
-						DBGOUT("validateHeader: Data width should always be 32bit for RAW or RDMA access! (%d)\r\n",pHeader->data_width);
+						SETERR(pClient, ERR_HDR_INVALID_DATA_WIDTH, "Invalid data witdh of %d for CMD_ACCESS, BUS_RDMA (should be 3).", pHeader->data_width);
 						return -1;
 					}
 					break;
@@ -1103,29 +1123,24 @@ int validateHeaderContents(struct protocol_header *pHeader)
 					// Only write operations make sense here
 					if (pHeader->state!=STATE_WRITE)
 					{
-						DBGOUT("validateHeader: BUS_DIRECT mode only supports STATE_WRITE! (Was %d)\r\n", pHeader->state);
+						SETERR(pClient, ERR_HDR_INVALID_RW_STATE, "Only W bit should be set on CMD_ACCESS, BUS_DIRECT (got 0x%02x).", pHeader->state);
 						return -1;
 					}
 					break;
 
 				case BUS_UNSUPPORTED:
-					// Never valid!
+					SETERR(pClient, ERR_HDR_INVALID_BUS, "Invalid bus for CMD_ACCESS (%d).", pHeader->bus_target);
 					return -1;
-					DBGOUT("validateHeader: Unsupported bus target!\r\n");
 					break;
 			}
 
 			break;
 
 		case CMD_INTERNAL:
-			//DBGOUT("validateHeader: CMD_INTERNAL not yet supported!\r\n");
-			if ((pHeader->address==0) && (pHeader->bus_target < 8))
+			// TODO: complete this
+			if ( !((pHeader->address==0) && (pHeader->bus_target < 8)) )
 			{
-				// Firmware reload request
-				return 0;
-			}
-			else
-			{
+				SETERR(pClient, ERR_HDR_INVALID_COMMAND, "Invalid command %d.", pHeader->command);
 				return -1;
 			}
 			break;
@@ -1135,11 +1150,10 @@ int validateHeaderContents(struct protocol_header *pHeader)
 			break;
 
 		case CMD_UNSUPPORTED:
-			DBGOUT("validateHeader: Unsupported command!\r\n");
+			SETERR(pClient, ERR_HDR_INVALID_COMMAND, "Unsupported command %d.", pHeader->command);
 			return -1;
 			break;
 	}
-
 
 	// ...otherwise, header is valid!
 	return 0;
@@ -1156,7 +1170,6 @@ int validateHeaderContents(struct protocol_header *pHeader)
  */
 void flushSocket(int sock, void *mem, int len)
 {
-	//DBGOUT("flushSocket: Starting flush...\r\n");
 	int numBytesRead = len;
 	int totalBytes = 0;
 	while (len==numBytesRead)
@@ -1169,25 +1182,44 @@ void flushSocket(int sock, void *mem, int len)
 
 
 
-/* Generates and sends a BADPKT response packet which signals
- * to a client that the last packet received was not
- * well formed or it was not possible to decode it correctly.
+/* Generates and an error packet to the provided client socket
  *
- * @param pHeader pointer to header object
+ * @param pHeader pointer to header to send
+ * @param pTxPayload pointer to payload to send (assumed to have a protocol_header struct at this pointer!)
  * @param clientSocket socket identifier for client
+ * @param pClient pointer to clientStatus struct for client
  */
-void generateBadPacketResponse(struct protocol_header *pHeader, int clientSocket)
+void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus *pClient)
 {
+	int payload_sz = 0;
+	int i = 0;
+	struct protocol_header *pHeader = (struct protocol_header*)pTxPayload;
+
+	// First 32-bit word in payload is the error code
+	u32* pPayload_32 = (u32*)(pTxPayload+sizeof(struct protocol_header));
+	*pPayload_32 = pClient->errorCode;
+	payload_sz += 4;
+
 	pHeader->address = 0;
 	pHeader->bus_target = 0;
 	pHeader->command = 0;
 	pHeader->data_width = 0;
 	pHeader->magic = PROTOCOL_MAGIC_WORD;
-	pHeader->payload_sz = 0;
-	pHeader->state = 0xF8;
+	// TODO: Set E3-E0 to 1 for now
+	pHeader->state = 0xF8;					// Set all error bits and NACK
 
-	if (lwip_send(clientSocket, pHeader, sizeof(struct protocol_header), 0) == -1)
+	// Calculate length of errorString by finding the null terminator
+	for (i=0; i<ERR_STRING_MAX_LENGTH; i++)
 	{
-		DBGOUT("gBPR: Error sending BADPKT response packet!\r\n");
+		if (pClient->errorString[i] == 0)
+		{
+			break;
+		}
 	}
+
+	// Copy errorString to payload
+	memcpy(pTxPayload + sizeof(struct protocol_header) + payload_sz, pClient->errorString, i);
+	payload_sz += i;
+
+	pHeader->payload_sz = payload_sz;
 }
