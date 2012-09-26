@@ -55,6 +55,13 @@ enum protocol_commands
 	CMD_PERSONALITY	= 4		//! Personality command (handed off to FPM)
 };
 
+// CMD_INTERNAL supported commands
+enum internal_commands
+{
+	CMD_INT_FIRMWARE			= 0,
+	CMD_INT_GET_HW_INIT_STATE	= 1
+};
+
 // Target bus for commands
 enum protocol_bus_type
 {

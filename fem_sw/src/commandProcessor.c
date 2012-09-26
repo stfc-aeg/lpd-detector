@@ -1147,10 +1147,21 @@ int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClien
 			break;
 
 		case CMD_INTERNAL:
-			// TODO: complete this
-			if ( !((pHeader->address==0) && (pHeader->bus_target < 8)) )
+			switch(pHeader->address)
 			{
-				SETERR(pClient, ERR_HDR_INVALID_COMMAND, "Invalid command %d.", pHeader->command);
+			case CMD_INT_FIRMWARE:		// address = CMD_INT_FIRMWARE, bus_target = 0-7 (firmware ID for systemAce)
+				if (pHeader->bus_target > 7)
+				{
+					SETERR(pClient, ERR_HDR_INVALID_COMMAND, "CMD_INTERNAL to reboot to systemAce image must have bus_target value of 0-7 (got %d).", pHeader->bus_target);
+					return -1;
+				}
+				break;
+			case CMD_INT_GET_HW_INIT_STATE:
+				// Rest of header is ignored, this case only here to avoid running the default case!
+				break;
+			default:
+				// For CMD_INTERNAL the address field holds the command type...
+				SETERR(pClient, ERR_HDR_INVALID_COMMAND, "Invalid CMD_INTERNAL command %d.", (int)pHeader->address);
 				return -1;
 			}
 			break;
