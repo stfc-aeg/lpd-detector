@@ -388,8 +388,7 @@ void commandProcessorThread(void* arg)
 
 							if (pState->pHdr->payload_sz > NET_LRG_RX_BUFFER_SZ)
 							{
-								// Too big to receive so flush it's data and NACK client
-								// TODO: Move this to validateRequest?
+								// Too big to receive so flush it's data and send the client an error
 								DBGOUT("CmdProc: payload_sz %d exceeds maximum (%d), stopping processing packet.\r\n", pState->pHdr->payload_sz, NET_MAX_PAYLOAD_SZ);
 								flushSocket(i, (void*)pState->pPayload, pState->payloadBufferSz);
 								SETERR(pState, ERR_PAYLOAD_TOO_BIG, "Payload %d exceeds maximum of %d, cannot process.", (int)pState->pHdr->payload_sz, NET_LRG_RX_BUFFER_SZ);
@@ -579,7 +578,6 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
 	(*pNumConnectedClients)--;
 
 	// If payload buffer exceeds nominal size, reduce it
-	// TODO: Move this to a new method?
 	if (pState->payloadBufferSz > NET_NOMINAL_RX_BUFFER_SZ)
 	{
 		free(pState->pPayload);
@@ -588,6 +586,7 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
 		{
 			// Can't allocate payload space
 			DBGOUT("DiscClient: Can't re-malloc payload buffer for client after large packet!\r\n");
+			// TODO: HANDLE THIS ERROR
 		}
 		else
 		{
@@ -657,6 +656,16 @@ int commandHandler(struct protocol_header* pRxHeader,
 	int status;
 	int configAck = 0;
 
+	// Make sure response payload doesn't exceed maximum
+	if (CMPBIT(state, STATE_READ))
+	{
+		if ((sizeof(u32) + (dataWidth * numRequestedReads)) > MAX_PAYLOAD_SIZE)
+		{
+			SETERR(pClient, ERR_CLIENT_RESPONSE_TOO_BIG, "Response to read request would exceed maximum payload size (%d > %d).", (int)(sizeof(u32) + (dataWidth * numRequestedReads)), MAX_PAYLOAD_SIZE);
+			pRxHeader->command = 0;		// Hack to bypass packet processing
+		}
+	}
+
 	// Determine operation type
 	switch(pRxHeader->command)
 	{
@@ -676,7 +685,6 @@ int commandHandler(struct protocol_header* pRxHeader,
 
 		case CMD_INTERNAL:
 			// Determine operation type
-			// TODO: Replace literals with defines / enum
 			switch(pRxHeader->address)
 			{
 			case 0:
@@ -862,18 +870,6 @@ int commandHandler(struct protocol_header* pRxHeader,
 				case BUS_RAW_REG:
 
 					dataWidth = sizeof(u32);
-
-					// Make sure return packet will not violate MAX_PAYLOAD_SIZE (write operations should never be too long if MAX_PAYLOAD_SIZE => 4!)
-					if (CMPBIT(state, STATE_READ)) {
-						if ( (sizeof(u32) + (dataWidth * numRequestedReads)) > MAX_PAYLOAD_SIZE )
-						{
-							DBGOUT("CmdDisp: Response would be too large! (BUS=0x%x, WDTH=0x%x, STAT=0x%x, PYLDSZ=0x%x)\r\n", pRxHeader->bus_target, pRxHeader->data_width, pRxHeader->state, pRxHeader->payload_sz);
-							SBIT(state, STATE_NACK);
-							// TODO: Set FEM error state - MOVE TO validateRequest()!
-							break;
-						}
-					}
-
 					if (CMPBIT(state, STATE_READ)) // READ OPERATION
 					{
 						for (i=0; i<*pRxPayload_32; i++)
@@ -1051,7 +1047,9 @@ int commandHandler(struct protocol_header* pRxHeader,
 int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClient)
 {
 
-	// Verify magic
+	// Common checks
+
+	// Verify magic is correct
 	if (pHeader->magic != PROTOCOL_MAGIC_WORD)
 	{
 		SETERR(pClient, ERR_HDR_INVALID_MAGIC, "Header magic word 0x%08x is invalid.", (unsigned int)pHeader->magic)
@@ -1062,6 +1060,14 @@ int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClien
 	if (pHeader->data_width==0)
 	{
 		SETERR(pClient, ERR_HDR_INVALID_DATA_WIDTH, "Data width should never be 0.");
+		return -1;
+	}
+
+	// Ensure response payload size does not exceed maximum
+	int numRequestedOps = 0;
+	int responseSize = (sizeof(u32) + (pHeader->data_width * numRequestedOps));
+	if ( responseSize > MAX_PAYLOAD_SIZE )
+	{
 		return -1;
 	}
 
