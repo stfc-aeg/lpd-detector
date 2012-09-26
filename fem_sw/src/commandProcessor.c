@@ -1210,13 +1210,9 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 	*pPayload_32 = pClient->errorCode;
 	payload_sz += 4;
 
-	pHeader->address = 0;
-	pHeader->bus_target = 0;
-	pHeader->command = 0;
-	pHeader->data_width = 0;
-	pHeader->magic = PROTOCOL_MAGIC_WORD;
-	// TODO: Set E3-E0 to 1 for now
-	pHeader->state = 0xF8;					// Set all error bits and NACK
+	// Copy original header to TX header, set NACK bit
+	memcpy(pTxPayload, pClient->pHdr, sizeof(struct protocol_header));
+	pHeader->state |= (1<<STATE_NACK);
 
 	// Calculate length of errorString by finding the null terminator
 	for (i=0; i<ERR_STRING_MAX_LENGTH; i++)
@@ -1235,6 +1231,6 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 
 	if (lwip_send(clientSocket, pTxPayload, sizeof(struct protocol_header) + payload_sz, 0) == -1)
 	{
-		// ??
+		// TODO: Do anything here?
 	}
 }
