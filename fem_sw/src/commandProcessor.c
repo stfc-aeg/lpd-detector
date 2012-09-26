@@ -687,12 +687,19 @@ int commandHandler(struct protocol_header* pRxHeader,
 			// Determine operation type
 			switch(pRxHeader->address)
 			{
-			case 0:
+			case CMD_INT_FIRMWARE:
 				// Reload firmware via Sysace
 				DBGOUT("CmdDisp: Requested systemACE firmware reload, image %d\r\n", pRxHeader->bus_target);
 				SBIT(state, STATE_ACK);
 				numOps = 0;
 				*pReloadRequested = pRxHeader->bus_target;
+				break;
+			case CMD_INT_GET_HW_INIT_STATE:
+				SBIT(state, STATE_ACK);
+				numOps = 1;
+				responseSize = 4;
+				// TODO: Fix scope of femErrorState!
+				//*(pTxPayload_32) = femErrorState;
 				break;
 			}
 			break;
