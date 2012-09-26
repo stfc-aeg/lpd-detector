@@ -977,7 +977,11 @@ int commandHandler(struct protocol_header* pRxHeader,
 					break;
 
 #ifdef USE_CACHE
-					XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
+					if (CMPBIT(state, STATE_WRITE))
+					{
+						XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
+
+					}
 #endif
 
 			} // END switch(bus)
