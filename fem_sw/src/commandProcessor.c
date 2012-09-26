@@ -698,8 +698,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 				SBIT(state, STATE_ACK);
 				numOps = 1;
 				responseSize = 4;
-				// TODO: Fix scope of femErrorState!
-				//*(pTxPayload_32) = femErrorState;
+				*(pTxPayload_32) = femErrorState;
 				break;
 			}
 			break;

@@ -41,6 +41,8 @@ extern XGpio gpioMux;
 extern XSysAce sysace;
 #endif
 
+extern u32 femErrorState;
+
 struct clientStatus {
 	int state;						//! State machine status, of packetStatus
 	int size;						//! Total number of bytes received on current packet
