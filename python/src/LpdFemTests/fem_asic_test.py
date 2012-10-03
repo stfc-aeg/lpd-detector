@@ -28,12 +28,6 @@ class FemAsicTest():
                   'dst_ip'  : self.ip_addr_to_uint32('192.168.0.13'),
                   'dst_prt' : self.prt_addr_to_uint16('0000')}
         
-#        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-#                  'src_ip'  : self.ip_addr_to_uint32('192.168.0.1'),
-#                  'src_prt' : self.prt_addr_to_uint16('0000'),
-#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
-#                  'dst_ip'  : self.ip_addr_to_uint32('192.168.0.13'),
-#                  'dst_prt' : self.prt_addr_to_uint16('0000')}
         x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-09'),
                   'src_ip'  : self.ip_addr_to_uint32('192.168.0.100'),
                   'src_prt' : self.prt_addr_to_uint16('0000'),
@@ -205,7 +199,6 @@ class FemAsicTest():
             # Resets dma engines
             myLpdFemClient.toggle_bits(9, 1)
         
-#        theDelay = 5
         theDelay = 1
         print "Waiting %s seconds.." % theDelay
         time.sleep(theDelay)
@@ -252,10 +245,10 @@ class FemAsicTest():
         #  2,2 = 3 triggers with 3 triggers per ll frame ; ie 1 frame
         #  1,1 = 2 triggers with 2 triggers per ll frame ; ie 1 frame
         # see labbook #19 p191  jac
-        no_asic_cols         = 3   # no_asic_cols = nr triggers or time slices/images
+        no_asic_cols         = 3   # no_asic_cols = nr triggers or images per train
         no_asic_cols_per_frm = 3   # no images per local link frame
-#        no_asic_cols         = 0   # set to zero means 1 time slice per trigger (because +1 added wherever no_asic_cols used)
-#        no_asic_cols_per_frm = 0   # set to zero means 1 time slice per trigger (because +1 added wherever no_asic_cols used)
+#        no_asic_cols         = 0   # set to zero means 1 image per trigger (because +1 added wherever no_asic_cols used)
+#        no_asic_cols_per_frm = 0   # set to zero means 1 image per trigger (because +1 added wherever no_asic_cols_per_frm used)
 
         
         
@@ -367,8 +360,7 @@ class FemAsicTest():
             # however, fast command reside in a different folder:
             currentFastCmdDir = currentSlowCtrlDir.replace("/LpdFemTests", "") + "/LpdCommandSequence"
             
-#        print currentSlowCtrlDir, "\n", currentFastCmdDir
-
+            
         # if the data source is 'direct from asic'
         if data_source_to_10g == 1:
             
