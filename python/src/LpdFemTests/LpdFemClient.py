@@ -74,34 +74,34 @@ class LpdFemClient(FemClient):
         #    for debugging purposes.
         self.rdmaReadBackFlag = False
 
-
-    def extract_asic_data(self, asic_no, column_no, asic_data):
-        # Rob Halsall 12-04-2011
-        # Extract Image data from 1 ASIC, 1 time slice
-        # extract for specified time slice = column_no  jac
-        
-        start = asic_no + ((column_no-1) * 128 * 511);
-        stop = (asic_no + 128 * 511) + ((column_no-1) * 128 * 511);
-        
-        #image_data = reshape(asic_data(start:128:stop), 16, 32); # rob's
-        # reshape(A, rows, columns) = Turn matrix matrix (rows*columns) sized matrix
-        
-        # Matlab matrix: matrix = [3 4 5 6 7 8]
-        # display all elements:   matrix(1:6)
-        # Python List:   List =   [3, 4, 5, 6, 7, 8]
-        # display all elements:   List[0:6]
-        
-        # Copy sub list of asic_data,
-        # starting from (including) start until stop =    
-        # asic_data[(start-1):stop]
-        
-        counter = start
-        image_data = []
-        while counter < stop:
-            image_data.append(asic_data[counter-1])
-            counter += 128
-                            
-        return image_data
+#
+#    def extract_asic_data(self, asic_no, column_no, asic_data):
+#        # Rob Halsall 12-04-2011
+#        # Extract Image data from 1 ASIC, 1 time slice
+#        # extract for specified time slice = column_no  jac
+#        
+#        start = asic_no + ((column_no-1) * 128 * 511);
+#        stop = (asic_no + 128 * 511) + ((column_no-1) * 128 * 511);
+#        
+#        #image_data = reshape(asic_data(start:128:stop), 16, 32); # rob's
+#        # reshape(A, rows, columns) = Turn matrix matrix (rows*columns) sized matrix
+#        
+#        # Matlab matrix: matrix = [3 4 5 6 7 8]
+#        # display all elements:   matrix(1:6)
+#        # Python List:   List =   [3, 4, 5, 6, 7, 8]
+#        # display all elements:   List[0:6]
+#        
+#        # Copy sub list of asic_data,
+#        # starting from (including) start until stop =    
+#        # asic_data[(start-1):stop]
+#        
+#        counter = start
+#        image_data = []
+#        while counter < stop:
+#            image_data.append(asic_data[counter-1])
+#            counter += 128
+#                            
+#        return image_data
     
     def clear_ll_monitor(self):
         """ readout a local link monitor block
