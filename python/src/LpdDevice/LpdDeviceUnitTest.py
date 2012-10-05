@@ -19,22 +19,22 @@ class Test(unittest.TestCase):
         self.lpdDevice.close()
 
     def testLegalParamSet(self):
-        rc = self.lpdDevice.paramSet('detectorBias', 127.3) 
-        self.assertEqual(rc, LpdDevice.ERROR_OK, 'legal parameter set failed')
+        rc = self.lpdDevice.paramSet('sensorBias', 127.3) 
+        self.assertEqual(rc, LpdDevice.ERROR_OK, 'legal parameter set failed, error code %d: %s' % (rc, self.lpdDevice.errorStringGet()))
         
     def testIllegalParamSet(self):
         rc =self.lpdDevice.paramSet('wibbleWobble', 3.14)
         self.assertEqual(rc, LpdDevice.ERROR_PARAM_UNKNOWN, 'illegal parameter set did not fail correctly')
         
     def testIllegalParamTypeSet(self):
-        rc = self.lpdDevice.paramSet('detectorBias', 'illegalStringVal')
+        rc = self.lpdDevice.paramSet('sensorBias', 'illegalStringVal')
         self.assertEqual(rc, LpdDevice.ERROR_PARAM_ILLEGAL_TYPE, 'illegal parameter value type did not fail correctly')
         
     def testParamSetAndGet(self):
         testVal = 343.134
-        rc = self.lpdDevice.paramSet('detectorBias', testVal)
+        rc = self.lpdDevice.paramSet('sensorBias', testVal)
         self.assertEqual(rc, LpdDevice.ERROR_OK, 'legal parameter set failed')
-        (rc, result) = self.lpdDevice.paramGet('detectorBias')
+        (rc, result) = self.lpdDevice.paramGet('sensorBias')
         self.assertEqual(rc, LpdDevice.ERROR_OK, 'legal parameter get failed')
         self.assertEqual(result, testVal, 'mismatch between set and get values')
         

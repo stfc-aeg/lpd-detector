@@ -1,9 +1,12 @@
 '''
+LpdDevice - XFEL LPD device API class
+
 Created on 18 Sep 2012
 
 @author: Tim Nicholls, STFC Application Engineering Group
 '''
-from LpdFemTests.LpdFemClient import LpdFemClient, FemClientError
+
+#from LpdFemTests.LpdFemClient import LpdFemClient, FemClientError
 from LpdDeviceParameters import *
 
 class LpdDevice(object):
@@ -39,7 +42,7 @@ class LpdDevice(object):
         self.simulateFemClient = simulateFemClient
         
         self.femClient = None
-        self.errorString = ""
+        self.errorString = ''
         
         # allowedParams is a dictionary of allowed parameters, with a camelCase key and data in the form of
         # a tuple that specifies everything in Sergei's 'Karabo Parameter Templates' document, namely:
@@ -82,6 +85,8 @@ class LpdDevice(object):
         '''
         Closes the client connection to the FEM. All subsequent transactions to
         the device will fail until open() is called again.
+        
+        @return LpdDevice error code, ERROR_OK or other error condition
         '''
         if self.femClient:
             self.femClient.close()
@@ -93,6 +98,9 @@ class LpdDevice(object):
         '''
         Commands the API to upload parameters to the FEM and ASICS and configure
         the system for running.
+        
+        @return LpdDevice error code, ERROR_OK or other error condition
+
         '''
         
         return LpdDevice.ERROR_OK
@@ -101,6 +109,8 @@ class LpdDevice(object):
         '''
         Starts an acquisition sequence - prepares the FEM and ASICs to receive
         triggers and read out
+
+        @return LpdDevice error code, ERROR_OK or other error condition
         '''
         
         return LpdDevice.ERROR_OK
@@ -110,18 +120,33 @@ class LpdDevice(object):
         Stops an acquisition sequence - stops readout of the FEM and ASICS. May be called
         once triggers have stopped to cleanly terminate acquisition, or during acquisition
         to abort cleanly
+
+        @return LpdDevice error code, ERROR_OK or other error condition
         '''
         
         return LpdDevice.ERROR_OK
         
     def paramSet(self, param, value, **kwargs):
         '''
-        Sets a parameter
+        Sets a parameter - sets the parameter specified by name to a given value. This is
+        done by resolving the parameter name into a '<paramName>Set' method call in the underlying
+        FemClient object. The value is validated for type and length against the allowed 
+        parameters. Keyword arguments are accepted to specify ASIC and pixel indices for the
+        parameter.
+        
+        In simulation mode, the parameter value is cached locally in this object to allow it to
+        be retrieved by paramGet() calls
+        
+        @param param - parameter name to be set (string)
+        @param value - value (or vector of values) to be set
+        @param kwargs - optional keyword argument list
+        @return LpdDevice error code, ERROR_OK or other error condition
         '''
         
         rc = LpdDevice.ERROR_OK
         
-        # Check if ASIC and/or pixel keyword arguments have been passed
+        # Check if ASIC and/or pixel keyword arguments have been passed. 
+        # TODO enforce these for parameters if required, or fall-back to defaults if not?
         if 'asic' in kwargs:
             asic = kwargs['asic']
         else:
@@ -131,7 +156,7 @@ class LpdDevice(object):
         else:
             pixel = None        
             
-        # Check if parameter specified is allowed
+        # Check if parameter specified is allowed for this device
         if param in self.allowedParams:
             
             # Test if parameter value can be converted to required type, otherwise trap as an illegal
@@ -169,17 +194,17 @@ class LpdDevice(object):
                     if self.allowedParams[param].possVals != None:
                         if entry not in self.allowedParams[param].possVals:
                             rc = LpdDevice.ERROR_PARAM_ILLEGAL_VALUE
-                            self.errorString = "Illegal value set %s for parameter %s" % (repr(entry), param)
+                            self.errorString = 'Illegal value set %s for parameter %s' % (repr(entry), param)
                             break
                             
                     else:
                         if self.allowedParams[param].minValue != None and entry < self.allowedParams[param].minValue:
                             rc = LpdDevice.ERROR_PARAM_ILLEGAL_VALUE
-                            self.errorString = "Illegal value set %s for parameter %s" % (repr(entry), param)
+                            self.errorString = 'Illegal value set %s for parameter %s' % (repr(entry), param)
                             break
                         if self.allowedParams[param].maxValue != None and entry > self.allowedParams[param].maxValue:
                             rc = LpdDevice.ERROR_PARAM_ILLEGAL_VALUE
-                            self.errorString = "Illegal value set %s for parameter %s" % (repr(entry), param)
+                            self.errorString = 'Illegal value set %s for parameter %s' % (repr(entry), param)
                             break
                             
                 # Only proceed if all values are legal
@@ -210,7 +235,7 @@ class LpdDevice(object):
                         
                     else:                    
                         
-                        # Cache the value locally so subsequent gets return the same value
+                        # In simulation mode, cache the value locally so subsequent gets return the same value
                         paramName = '%s_%s_%s' % (param, asic, pixel)
                         setattr(self, paramName, value)
                     
@@ -221,12 +246,22 @@ class LpdDevice(object):
     
     def paramGet(self, param, **kwargs):
         '''
-        Gets a parameter
+        Gets a parameter - retrieves the value of a given parameter specified by name in 
+        the arguments. This is done by resolving the parameter name into a '<param>Get' call
+        to the underlying FemClient object. A return code for the success/failure of the call
+        and the value are returned as a tuple to the caller. Keyword arguments are accepted to
+        specify the ASIC and pixel if relevant to the parameter.
+        
+        In simulation mode, the locally-cached value is returned if already set, otherwise an
+        error is thrown.
+        
+        @param param parameter name to get
+        @param kwargs optional keyword argument list
+        @return LpdDeviceerror code and retrieved value(s) as tuple 
         '''
         
         rc = LpdDevice.ERROR_OK
         value = None
-        
  
         # Check if ASIC and/or pixel keyword arguments have been passed
         if 'asic' in kwargs:
@@ -238,14 +273,20 @@ class LpdDevice(object):
         else:
             pixel = None        
 
+        # Check if the requested parameter is allowed for this device
         if param in self.allowedParams:
             
+            # If not in simulation mode, resolve the getter method in the
+            # underlying FemClient object and call it to retrieve the parameter
             if not self.simulateFemClient:
 
                 getMethod = getattr(self.femClient, '%sGet' % param)
                 (rc, value) =  getMethod(**kwargs)
 
             else:
+                
+                # In simulation mode, resolve the parameter name including pixel and asic 
+                # retrieve the locally-cached value
                 try:
                     
                     paramName = '%s_%s_%s' % (param, asic, pixel)
@@ -254,13 +295,63 @@ class LpdDevice(object):
                 except AttributeError:
                     rc = LpdDevice.ERROR_PARAM_UNSET
                     self.errorString = 'Attempt to get unset parameter \'%s\'' % param
+                    
         else:
             rc = LpdDevice.ERROR_PARAM_UNKNOWN
             
         return (rc, value)
     
-
-    def testCall(self, param, value, **kwargs):
-        print param, ":", value
-        for key in kwargs:
-            print key, ":", kwargs[key]
+    
+if __name__ == '__main__':
+    '''
+    Test main entry point to illustrate simulated use of LpdDevice API
+    '''
+    
+    # Instantiate the device
+    theDevice = LpdDevice(simulateFemClient=True)
+    
+    # Open client connection to the FEM - IP address and port are ignored in
+    # simulation mode
+    rc = theDevice.open('127.0.0.1', '6969', timeout=30)
+    print 'Open device, rc =', rc
+    
+    # Set the sensor bias parameter
+    sensorBias = 130.3
+    rc = theDevice.paramSet('sensorBias', 130.3)
+    print 'Sensor bias set, rc =', rc
+    
+    # Read it back and verify value
+    (rc, value) = theDevice.paramGet('sensorBias')
+    print 'Sensor bias get, rc =', rc, 'value =', value
+    if value != sensorBias:
+        print 'ERROR, mismatch in sensor bias set and get values'
+    
+    # Set a pixel and asic specific parameter. ASIC and pixel values are specified by
+    # keyword arguments as shown below    
+    asic = 37
+    pixel = 149
+    selfTest = 1
+    rc = theDevice.paramSet('femAsicPixelSelfTestOverride', selfTest, asic=asic, pixel=pixel)
+    print 'Pixel self test override set, rc = ', rc
+    
+    # Read the same value back and verify
+    (rc, value) = theDevice.paramGet('femAsicPixelSelfTestOverride', asic=asic, pixel=pixel)
+    print 'Pixel self test override, rc = ', rc, 'value =', value
+    if value != selfTest:
+        print "ERROR, mismatch in pixel self-test override set and get values"
+     
+    # Send a configure command to load parameters into FEM and ASICs    
+    rc = theDevice.configure()
+    print 'Device configure, rc =', rc
+    
+    # Start acquisition
+    rc = theDevice.start()
+    print 'Device start, rc =', rc
+    
+    # Stop acquisition
+    rc = theDevice.stop()
+    print 'Device stop, rc =', rc
+    
+    # Close the client connection
+    theDevice.close()
+    
