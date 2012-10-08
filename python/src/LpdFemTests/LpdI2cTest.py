@@ -1,7 +1,14 @@
-import time
+import time, types
 from FemClient.FemClient import  *
 from FemApi.FemTransaction import FemTransaction
 
+class LpdI2cError(Exception):
+    
+    def __init__(self, msg):
+        self.msg = msg
+        
+    def __str__(self):
+        return repr(self.msg)
 
 # -=-=-=~=~=~=-=-=- #
 """
@@ -69,7 +76,6 @@ class LpdI2cTest(FemClient):
     OFF = 1
     ON  = 0
     
-    
     # Bit numbers for status bits
     FEM_STATUS_BIT = 2
     EXT_TRIP_BIT   = 3
@@ -102,11 +108,11 @@ class LpdI2cTest(FemClient):
     def read_dac(self):
         ''' Read 2 bytes from ad5321 device 
         '''
-        readLen = 2
+        
         addr = LpdI2cTest.i2cInternalBusOffset + 0x0C
         readback = -1
         
-        readback = self.i2cRead(addr, readLen)
+        readback = self.i2cRead(addr, 2)
         high = (readback[4] & 15) << 8
         low = readback[5]
         return high + low
@@ -120,6 +126,9 @@ class LpdI2cTest(FemClient):
                   ad7998 must receive the channel number (write operation)
                   before channel value can be read back (read operation)
         '''
+        # Check input within valid range
+        if (0 > deviceId) or (deviceId > 31):
+            raise LpdI2cError("Read_adc() deviceId argument outside valid range (0 - 31)")
         
         addr = LpdI2cTest.i2cInternalBusOffset + LpdI2cTest.adc_chip_address[deviceId >> 3]
         adcChannel = 0x80 + ((deviceId & 7) << 4)
@@ -136,8 +145,17 @@ class LpdI2cTest(FemClient):
         return high + low
 
     def read_bit(self, id):
-        ''' Read one byte from PCF7485 device and determine if bit 'id' is set 
+        ''' Read one byte from PCF7485 device and determine if bit 'id' is set.
+        
+            Note: bit 1 = 0, 2 = 1,  3 = 2, 4 = 4, 
+                      5 = 8, 6 = 16, 7 = 32 8 = 64
+            Therefore, id must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
         '''
+        # Check input within valid range
+        validInput = [0, 1, 2, 4, 8, 16, 32, 64]
+        #if (0 > id) or (id > 31):
+        if not id in validInput:
+            raise LpdI2cError("Read_bit() id argument outside valid list [0, 1, 2, 4, 8, 16, 32, 64]")
         
         addr = LpdI2cTest.i2cInternalBusOffset + 0x38 
         
@@ -157,6 +175,13 @@ class LpdI2cTest(FemClient):
     def write_bit(self, id, value):
         ''' Change bit 'id' to 'value' in PCF7485 device
         '''
+        # Check input within valid range
+        validInput = [0, 1, 2, 4, 8, 16, 32, 64]
+        
+        if not id in validInput:
+            raise LpdI2cError("Write_bit() id argument outside valid list [0, 1, 2, 4, 8, 16, 32, 64]")
+        if (0 > value or value > 1):
+            raise LpdI2cError("Write_bit() value argument must be either 0 or 1")
         
         # Read PCF7485's current value
         bit_register = self.read_all_bits()
@@ -169,9 +194,18 @@ class LpdI2cTest(FemClient):
         #TODO: Check the acknowledgement? (response)
 
     
-    def  write_electrical_value(self, value, scale, unit):
+    def write_electrical_value(self, value, scale, unit):
         ''' Display argument value, formatted by scale, post fixing 'unit'
         '''
+        # Check argument types
+        if not type(value) is types.IntType:
+            raise LpdI2cError("Write_electrical_value() value argument not integer type")
+        if not type(scale) is types.IntType:
+            raise LpdI2cError("Write_electrical_value() scale argument not integer type")
+        if not type(unit) is types.StringType:
+            raise LpdI2cError("Write_electrical_value() unit argument not string type")
+        
+#        print "value, scale, unit = ", type(value), type(scale), type(unit)
         try:
             print " ",
             print round( float(value * scale / 4095.0), 2),
@@ -193,8 +227,8 @@ class LpdI2cTest(FemClient):
             print " [",
             print value,
             print "]",
-        except Exception as errStr:
-            print "write_temperature_value Exception: ", errStr
+        except Exception as e:
+            print "write_temperature_value Exception: ", e
 
     def show_outputs(self):
         ''' Display the output voltages and currents (Fem, Digital, Sensor, Bias)
@@ -363,6 +397,9 @@ if __name__ == "__main__":
     # Test switching the low voltage on..
     print "Switching low voltage on.."
     thisClass.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
+#    print "Switching high-voltage too!"
+#    thisClass.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
+
     print "Low voltage now on!"
     time.sleep(5)
 
@@ -371,6 +408,8 @@ if __name__ == "__main__":
     
     print "Switching low voltage off.. "
     thisClass.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+#    print "Switching off high-voltage too"
+#    thisClass.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
     print "Low voltage now switched off!"
 
     # Close down the connection
