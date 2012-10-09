@@ -1,4 +1,10 @@
-import time, types
+'''
+
+@author: ckd
+'''
+
+import time, types, sys
+
 from FemClient.FemClient import  *
 from FemApi.FemTransaction import FemTransaction
 
@@ -204,8 +210,7 @@ class LpdI2cTest(FemClient):
             raise LpdI2cError("Write_electrical_value() scale argument not integer type")
         if not type(unit) is types.StringType:
             raise LpdI2cError("Write_electrical_value() unit argument not string type")
-        
-#        print "value, scale, unit = ", type(value), type(scale), type(unit)
+
         try:
             print " ",
             print round( float(value * scale / 4095.0), 2),
@@ -220,6 +225,14 @@ class LpdI2cTest(FemClient):
     def write_temperature_value(self, value, scale, unit):
         ''' Display argument value, formatted according to argument scale
         '''
+        # Check argument types
+        if not type(value) is types.IntType:
+            raise LpdI2cError("Write_temperature_value() value argument not integer type")
+        if not type(scale) is types.IntType:
+            raise LpdI2cError("Write_temperature_value() scale argument not integer type")
+        if not type(unit) is types.StringType:
+            raise LpdI2cError("Write_temperature_value() unit argument not string type")
+
         try:
             print " ",
             print round( float(value * scale / 4095.0), 2),
@@ -383,36 +396,55 @@ class LpdI2cTest(FemClient):
 
 # -=-=-=~=~=~=-=-=- #
 
+
+    
 if __name__ == "__main__":
     
     # Define FEM IP address and port
     host = '192.168.2.2'
     port = 6969
     
-    thisClass = LpdI2cTest((host, port))
+    thisFem = LpdI2cTest((host, port))
 
     # Test reading out the voltages on current first, then these ones:
-    thisClass.displayAll()
+    thisFem.displayAll()
 
     # Test switching the low voltage on..
     print "Switching low voltage on.."
-    thisClass.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
+    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
+    time.sleep(1)
 #    print "Switching high-voltage too!"
-#    thisClass.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
+#    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
+#    time.sleep(1)
 
     print "Low voltage now on!"
-    time.sleep(5)
+    time.sleep(2)
 
+    print "Let's check the (lv) status now:\n"
+    thisFem.show_lv_status()
+#    thisFem.show_hv_status()
+    
+    print "\nSwitching low voltage off.. "
+    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+    time.sleep(1)
+#    print "Switching off high-voltage too"
+#    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+#    time.sleep(1)
+    print "Low voltage now switched off:\n"
+
+    thisFem.show_lv_status()
     print "Let's check the status now:"
-    thisClass.displayAll()
+    thisFem.displayAll()
     
     print "Switching low voltage off.. "
-    thisClass.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+    time.sleep(1)
 #    print "Switching off high-voltage too"
-#    thisClass.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+#    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+#    time.sleep(1)
     print "Low voltage now switched off!"
 
+    print "\nClosing down Fem connection.."
     # Close down the connection
-    thisClass.close()
-    
+    thisFem.close()
     
