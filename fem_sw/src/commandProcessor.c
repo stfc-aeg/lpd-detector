@@ -332,7 +332,7 @@ void commandProcessorThread(void* arg)
 						else
 						{
 							// Header NOT valid
-							PRTDBG("CmdProc: Header received but is invalid.\r\n");
+							DBGOUT("CmdProc: Header received but is invalid.\r\n");
 							//DUMPHDR(pState->pHdr);
 							generateErrorResponse(pTxBuffer, clientSocket, pState);
 							pState->state = STATE_COMPLETE;
@@ -661,6 +661,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 	{
 		if ((sizeof(u32) + (dataWidth * numRequestedReads)) > MAX_PAYLOAD_SIZE)
 		{
+			DBGOUT("Response packet too large\r\n");
 			SETERR(pClient, ERR_CLIENT_RESPONSE_TOO_BIG, "Response to read request would exceed maximum payload size (%d > %d).", (int)(sizeof(u32) + (dataWidth * numRequestedReads)), MAX_PAYLOAD_SIZE);
 			pRxHeader->command = 0;		// Hack to bypass packet processing
 		}
@@ -910,7 +911,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 					{
 						*pMux = (u8)((pRxHeader->address & 0x30000000) >> 28);
 						XGpio_DiscreteWrite(pGpio, 1, *pMux);
-						DBGOUT("CmdDisp: MUX set to %d\r\n", *pMux);
+						//DBGOUT("CmdDisp: MUX set to %d\r\n", *pMux);
 					}
 
 					// Process RDMA address
@@ -1039,10 +1040,10 @@ int commandHandler(struct protocol_header* pRxHeader,
 		pTxPayload_32 = (u32*)pTxPayload;
 		*pTxPayload_32 = numOps;
 
-		return 0;
+		return 1;
 	}
 
-	return -1;
+	return 0;
 }
 
 
@@ -1218,6 +1219,10 @@ void flushSocket(int sock, void *mem, int len)
  */
 void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus *pClient)
 {
+	DBGOUT("ERROR: ");
+	DBGOUT(pClient->errorString);
+	DBGOUT("\r\n");
+
 	int payload_sz = 0;
 	int i = 0;
 	struct protocol_header *pHeader = (struct protocol_header*)pTxPayload;
