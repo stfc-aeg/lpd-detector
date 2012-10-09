@@ -263,14 +263,9 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		return IIC_ERR_BUS_BUSY;
 	}
 
-	// Set slave address if it's a write operation
-	if (opMode==IIC_OPERATION_WRITE)
-	{
-		status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, slaveAddr);
-		if (status!=XST_SUCCESS) {
-			return IIC_ERR_SET_ADDR;
-		}
-	}
+	// Set slave address
+	status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, slaveAddr);
+	if (status!=XST_SUCCESS) { return IIC_ERR_SET_ADDR; }
 
 	// Do I2C transaction(s)
 	switch(opMode)
