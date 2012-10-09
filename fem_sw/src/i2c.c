@@ -15,6 +15,7 @@
 int initI2C(void)
 {
 	int status;
+	u8 dummy;
 
 	// Initialise I2C drivers
 	status = XIic_Initialize(&iicLm82, IIC_LM82_ID);
@@ -48,13 +49,13 @@ int initI2C(void)
 	XIic_SetRecvHandler(&iicLhs, &iicLhs, (XIic_Handler)recvHandler);
 
 	// Start controllers
-	status = XIic_Start(&iicLm82);
-	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Start(&iicEeprom);
-	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Start(&iicRhs);
-	if (status!=XST_SUCCESS) { return status; }
-	status = XIic_Start(&iicLhs);
+	startI2C();
+
+    // Fix for I2C fail on SystemACE boot - dummy operation on all I2C busses
+    doI2COperation(0, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
+    doI2COperation(1, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
+    doI2COperation(2, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
+    doI2COperation(3, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
 
 	return status;
 }
