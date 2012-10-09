@@ -318,6 +318,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	// NOTE: Because of above this code should never execute!
 	if (*pVal!=0)
 	{
+		/*
 		status = stopI2C();
 		if (status==XST_IIC_BUS_BUSY)
 		{
@@ -329,8 +330,8 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 			xil_printf("I2C: Stop OK\r\n");
 			startI2C();
 		}
-
 		xil_printf("I2C: Timed out\r\n");
+		*/
 		return IIC_ERR_TIMEOUT;
 	}
 	// -----------------------------------------------------------------------------------
