@@ -172,7 +172,6 @@ if __name__ == "__main__":
     # Create object and connect to Fem
     thisPrototype = LpdProtoTest((host , port))
     
-    (device, channel) =(-1, -1)
     print "Sensor B Temp: ", 
     thisPrototype.SensorBTempGet()
     
@@ -181,14 +180,14 @@ if __name__ == "__main__":
     thisPrototype.PowerCardTempGet()
     
     
-    print ""
+    print "\n"
     print "Low voltage: ", 
     if (thisPrototype.AsicPowerEnableGet()):
         print "off."
     else:
         print "on."
         
-    print "Switch on the low voltage"
+    print "Switching on the low voltage.."
     thisPrototype.AsicPowerEnabledSet(LpdProtoTest.ON)
     
     print ""
@@ -198,6 +197,6 @@ if __name__ == "__main__":
     else:
         print "on."
         
-    print "Switch off the low voltage"
+    print "Switching off the low voltage..\n"
     thisPrototype.AsicPowerEnabledSet(LpdProtoTest.OFF)
     

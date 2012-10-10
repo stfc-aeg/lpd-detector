@@ -104,7 +104,6 @@ class LpdI2cTest(FemClient):
     # Fem has three internal i2c buses, power card uses bus 0x300
     i2cInternalBusOffset = 0x300
     
-    #def __init__(self):
     def __init__(self, hostAddr=None, timeout=None):
         
         # Call superclass initialising function
