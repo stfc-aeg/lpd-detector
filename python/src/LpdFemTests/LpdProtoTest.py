@@ -32,8 +32,7 @@ class LpdProtoTest(FemClient):
     # Fem has three internal i2c buses, power card uses bus 0x300
     i2cInternalBusOffset = 0x300
 
-    # ad7998 device addresses
-    adc_chip_address = [0x22, 0x21, 0x24, 0x23]
+    # ad7998 device addresses = [0x22, 0x21, 0x24, 0x23]
     
     
     def __init__(self, hostAddr=None, timeout=None):
@@ -45,7 +44,7 @@ class LpdProtoTest(FemClient):
         super(LpdProtoTest, self).__init__(hostAddr, timeout)
         
 
-    def SensorBTempGet(self, device, channel):
+    def SensorBTempGet(self):
         '''
         Get temperature value (in ADC counts) of channel in device
         '''
@@ -58,7 +57,7 @@ class LpdProtoTest(FemClient):
         unit = "V"
         tempValue = self.adcToTemp(adcValue, scale, unit)
         
-    def PowerCardTempGet(self, device, channel):
+    def PowerCardTempGet(self):
         '''
         Get temperature value from power card
         '''
@@ -78,6 +77,7 @@ class LpdProtoTest(FemClient):
         
         If low voltage is off, returns True; If low voltage is on, returns False
         '''
+        
         return self.pcf7485ReadOneBit(LpdProtoTest.LV_CTRL_BIT)
     
     def AsicPowerEnabledSet(self, aValue):
@@ -99,11 +99,10 @@ class LpdProtoTest(FemClient):
         Read two bytes from 'channel' in ad7998 at address 'device'
         '''
 
-        # Construct i2c address and target ADC channel
+        # Construct i2c address and ADC channel to be read
         addr = LpdProtoTest.i2cInternalBusOffset + device
         adcChannel = 0x80 + ((channel & 7) << 4)
-#        print "addr: ", self.debugDisplay(addr), "adcChannel: ", self.debugDisplay(adcChannel)
-        
+
         # Write operation, select ADC channel
         ack = self.i2cWrite(addr, adcChannel)
         
@@ -117,7 +116,7 @@ class LpdProtoTest(FemClient):
 #        return high + low
         
     def pcf7485ReadOneBit(self, id):
-        ''' Read one byte from PCF7485 device and determine if bit 'id' is set.
+        ''' Read one byte from PCF7485 device and determine if set.
         
             Note: bit 1 = 0, 2 = 1,  3 = 2, 4 = 4, 
                       5 = 8, 6 = 16, 7 = 32 8 = 64
@@ -154,6 +153,7 @@ class LpdProtoTest(FemClient):
         '''
         Convert ADC value into temperature according to arguments scale.
         '''
+        #TODO:Cap change scale from voltage to degrees Celsius
 
         try:
             print " ", round( float(adcValue * scale / 4095.0), 2),
@@ -162,15 +162,6 @@ class LpdProtoTest(FemClient):
             print "adcToTemp() Exception: ", e
 
 
-    def tempToAdc(self, value):
-        '''
-        '''
-        pass
-
-    def ad7998write(self, device, channel, adcValue):
-        '''
-        '''
-        pass
 
 if __name__ == "__main__":
 
@@ -178,15 +169,16 @@ if __name__ == "__main__":
     host = '192.168.2.2'
     port = 6969
     
+    # Create object and connect to Fem
     thisPrototype = LpdProtoTest((host , port))
     
     (device, channel) =(-1, -1)
     print "Sensor B Temp: ", 
-    thisPrototype.SensorBTempGet(device, channel)
+    thisPrototype.SensorBTempGet()
     
     print ""
     print "PSU Card Temp: ",
-    thisPrototype.PowerCardTempGet(device, channel)
+    thisPrototype.PowerCardTempGet()
     
     
     print ""
