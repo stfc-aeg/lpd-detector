@@ -1234,7 +1234,7 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 
 	// Copy original header to TX header, set NACK bit
 	memcpy(pTxPayload, pClient->pHdr, sizeof(struct protocol_header));
-	pHeader->state |= (1<<STATE_NACK);
+	SBIT(pClient->state, STATE_NACK);
 
 	// Calculate length of errorString by finding the null terminator
 	for (i=0; i<ERR_STRING_MAX_LENGTH; i++)
