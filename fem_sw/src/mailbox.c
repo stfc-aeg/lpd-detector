@@ -114,9 +114,8 @@ int acquireConfigAckReceive(void)
 	u32 recBytes;
 	int status = XST_NO_DATA;
 	u32 count = 0;
-	u32 countMax = 10000;
 
-	while (count<countMax && status==XST_NO_DATA)
+	while (count<MBOX_ACK_LOOP_MAX && status==XST_NO_DATA)
 	{
 		status = XMbox_Read(&mbox, &buf, 4, &recBytes);
 		count++;
