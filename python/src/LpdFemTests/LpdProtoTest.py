@@ -8,6 +8,8 @@ Created 09 October 2012
 @Author: ckd
 '''
 
+import sys
+
 from FemClient.FemClient import *
 from FemApi.FemTransaction import FemTransaction
 
@@ -34,11 +36,27 @@ class LpdProtoTest(FemClient):
     # Values for control bits
     OFF = 1
     ON  = 0
+
+    # Bit numbers for status bits
+    FEM_STATUS_BIT = 2
+    EXT_TRIP_BIT   = 3
+    FAULT_FLAG_BIT = 4
+    OVERCURRENT_BIT =5
+    HIGH_TEMP_BIT  = 6
+    LOW_TEMP_BIT   = 7
     
+    # Values for status bits
+    TRIPPED = 1
+    FAULT   = 1
+    NORMAL  = 0
+    
+    # Enumarate fault flag as either cleared (0) or tripped (1) 
+    flag_message = ["No", "Yes"]
+
     # Fem has three internal i2c buses, power card uses bus 0x300
     i2cInternalBusOffset = 0x300
 
-    # ad7998 device addresses = [0x22, 0x21, 0x24, 0x23]
+    AD7998ADDRESS = [0x22, 0x21, 0x24, 0x23]
     
     
     def __init__(self, hostAddr=None, timeout=None):
@@ -55,28 +73,28 @@ class LpdProtoTest(FemClient):
             Get temperature from sensor A
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSA_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSA_TEMP_CHAN)
 
     def sensorBTempGet(self):
         '''
             Get temperature from sensor B
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSB_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSB_TEMP_CHAN)
     
     def sensorCTempGet(self):
         '''
             Get temperature from Sensor C
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSC_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSC_TEMP_CHAN)
     
     def sensorDTempGet(self):
         '''
             Get temperature from Sensor D
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSD_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSD_TEMP_CHAN)
     
     
     def sensorETempGet(self):
@@ -84,7 +102,7 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor E
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSE_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSE_TEMP_CHAN)
 
     
     def sensorFTempGet(self):
@@ -92,7 +110,7 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor F
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSF_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSF_TEMP_CHAN)
 
     
     def sensorGTempGet(self):
@@ -100,7 +118,7 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor G
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSG_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSG_TEMP_CHAN)
 
     
     def sensorHTempGet(self):
@@ -108,7 +126,7 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor H
         '''
         
-        return self.sensorTempRead(0x23, LpdProtoTest.SENSH_TEMP_CHAN)
+        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSH_TEMP_CHAN)
 
     def powerCardTempGet(self):
         '''
@@ -133,7 +151,49 @@ class LpdProtoTest(FemClient):
         
         self.pcf7485WriteOneBit(LpdProtoTest.LV_CTRL_BIT, aValue)
 
+    def powerCardFemStatusGet(self):
+        '''
+            Get power card Fem status
+        '''
+        value = thisPrototype.pcf7485ReadAllBits()
+        return LpdProtoTest.flag_message[ (value & (1 << LpdProtoTest.FEM_STATUS_BIT)) != 0]
     
+    def powerCardExtStatusGet(self):
+        '''
+            Get power card External status
+        '''
+        value = thisPrototype.pcf7485ReadAllBits()
+        return LpdProtoTest.flag_message[ (value & (1 << LpdProtoTest.EXT_TRIP_BIT)) != 0]
+    
+    def powerCardFaultStatusGet(self):
+        '''
+            Get power card Fault status
+        '''
+        value = thisPrototype.pcf7485ReadAllBits()
+        return LpdProtoTest.flag_message[ (value & (1 << LpdProtoTest.FAULT_FLAG_BIT)) != 0]
+    
+    def powerCardOverCurrentStatusGet(self):
+        '''
+            Get power card Over Current status
+        '''
+        value = thisPrototype.pcf7485ReadAllBits()
+        return LpdProtoTest.flag_message[ (value & (1 << LpdProtoTest.OVERCURRENT_BIT)) != 0]
+    
+    def powerCardOvertempStatusGet(self):
+        '''
+            Get power card Over Temp status
+        '''
+        value = thisPrototype.pcf7485ReadAllBits()
+        return LpdProtoTest.flag_message[ (value & (1 << LpdProtoTest.HIGH_TEMP_BIT)) != 0]
+    
+    def powerCardUndertempStatusGet(self):
+        '''
+            Get power card Under Temp status
+        '''
+        value = thisPrototype.pcf7485ReadAllBits()
+        return LpdProtoTest.flag_message[ (value & (1 << LpdProtoTest.LOW_TEMP_BIT)) != 0]
+    
+
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
     
     def debugDisplay(self, var):
@@ -189,10 +249,19 @@ class LpdProtoTest(FemClient):
     def pcf7485ReadAllBits(self):
         ''' 
             Read and return one byte from PCF7485 device
+            
+            If a bit is set that represents: 
+                bit 0-1:    Disabled (HV, LV)
+                bit 2-7:    A fault  (Fem Status, Ext trip, fault, etc)
+                e.g.    
+                    131:    Hv (1) & Lv (2) disabled, low temperature (128) alert
+
+                Beware      bit 0 = 1, bit 1 = 2, bit 2 = 4, etc !!
+                therefore   131 = 128 + 2 + 1 (bits: 7, 1, 0)
         '''
         addr = LpdProtoTest.i2cInternalBusOffset + 0x38
         response = self.i2cRead(addr, 1)
-
+#        print "pcf7485ReadAllBits() response = ", self.debugDisplay(response[4])
         return response[4]
 
     def pcf7485WriteOneBit(self, id, value):
@@ -232,33 +301,46 @@ if __name__ == "__main__":
     
     # Create object and connect to Fem
     thisPrototype = LpdProtoTest((host , port))
-    
-    sensorATemp = thisPrototype.sensorATempGet()
-    print "Sensor A Temp: %.2f" % sensorATemp 
-    
-    sensorBTemp = thisPrototype.sensorBTempGet()
-    print "Sensor B Temp: %.2f" % sensorBTemp 
 
-    sensorCTemp = thisPrototype.sensorCTempGet()
-    print "Sensor C Temp: %.2f " % sensorCTemp
+        
+    print "Flags:" 
+    print "    Fault Flag `      = ", thisPrototype.powerCardFaultStatusGet() 
+    print "    Fem Status   Trip = ", thisPrototype.powerCardFemStatusGet() 
+    print "    External     Trip = ", thisPrototype.powerCardExtStatusGet()
+    print "    Over current Trip = ", thisPrototype.powerCardOverCurrentStatusGet()
+    print "    Over temp    Trip = ", thisPrototype.powerCardOvertempStatusGet()
+    print "    Undertemp    Trip = ", thisPrototype.powerCardUndertempStatusGet()
+    print ".\n"
     
-    sensorDTemp = thisPrototype.sensorDTempGet()
-    print "Sensor D Temp: %.2f" % sensorDTemp 
-    
-    sensorETemp = thisPrototype.sensorETempGet()
-    print "Sensor E Temp: %.2f" % sensorETemp 
-    
-    sensorFTemp = thisPrototype.sensorFTempGet()
-    print "Sensor F Temp: %.2f" % sensorFTemp 
-    
-    sensorGTemp = thisPrototype.sensorGTempGet()
-    print "Sensor G Temp: %.2f" % sensorGTemp 
-    
-    sensorHTemp = thisPrototype.sensorHTempGet()
-    print "Sensor H Temp: %.2f" % sensorHTemp 
+    sys.exit()
+    print "Temperature readings: "
 
     powerCardTemp = thisPrototype.powerCardTempGet()
-    print "PSU Card Temp: %.2f" % powerCardTemp
+    print "   PSU Card Temp: %.2f" % powerCardTemp
+
+    sensorATemp = thisPrototype.sensorATempGet()
+    print "   Sensor A Temp: %.2f" % sensorATemp 
+    
+    sensorBTemp = thisPrototype.sensorBTempGet()
+    print "   Sensor B Temp: %.2f" % sensorBTemp 
+
+    sensorCTemp = thisPrototype.sensorCTempGet()
+    print "   Sensor C Temp: %.2f " % sensorCTemp
+    
+    sensorDTemp = thisPrototype.sensorDTempGet()
+    print "   Sensor D Temp: %.2f" % sensorDTemp 
+    
+    sensorETemp = thisPrototype.sensorETempGet()
+    print "   Sensor E Temp: %.2f" % sensorETemp 
+    
+    sensorFTemp = thisPrototype.sensorFTempGet()
+    print "   Sensor F Temp: %.2f" % sensorFTemp 
+    
+    sensorGTemp = thisPrototype.sensorGTempGet()
+    print "   Sensor G Temp: %.2f" % sensorGTemp 
+    
+    sensorHTemp = thisPrototype.sensorHTempGet()
+    print "   Sensor H Temp: %.2f" % sensorHTemp 
     
     print "\n"
     print "Low voltage: ", 
@@ -279,4 +361,5 @@ if __name__ == "__main__":
         
     print "Switching off the low voltage..\n"
     thisPrototype.asicPowerEnableSet(LpdProtoTest.OFF)
+    
     
