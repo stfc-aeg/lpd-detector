@@ -20,7 +20,7 @@ class LpdProtoTest(FemClient):
     PSU_TEMP_CHAN =      6
     SENSB_TEMP_CHAN =   25
     SENSC_TEMP_CHAN =   26
-
+    
     # Bit numbers for control bits
     HV_CTRL_BIT    = 0
     LV_CTRL_BIT    = 1
@@ -37,52 +37,47 @@ class LpdProtoTest(FemClient):
     
     def __init__(self, hostAddr=None, timeout=None):
         '''
-        Constructor for LpdProtoTest
+            Constructor for LpdProtoTest class
         '''
         
         # Call superclass initialising function
         super(LpdProtoTest, self).__init__(hostAddr, timeout)
         
 
-    def SensorBTempGet(self):
+    def sensorBTempGet(self):
         '''
-        Get temperature value (in ADC counts) of channel in device
-        '''
-        
-        device = 0x23
-        channel = LpdProtoTest.SENSB_TEMP_CHAN
-        adcValue = self.ad7998Read(device, channel)
-        
-        scale = 3
-        unit = "V"
-        tempValue = self.adcToTemp(adcValue, scale, unit)
-        
-    def PowerCardTempGet(self):
-        '''
-        Get temperature value from power card
+            Get temperature from sensor B
         '''
         
-        device = 0x22
-        channel = LpdProtoTest.PSU_TEMP_CHAN
-        adcValue = self.ad7998Read(device, channel)
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSB_TEMP_CHAN)
+    
+    def sensorCTempGet(self):
+        '''
+            Get temperature from Sensor C
+        '''
         
-        scale = 3
-        unit = "V"
-        tempValue = self.adcToTemp(adcValue, scale, unit)
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSC_TEMP_CHAN)
+    
+        
+    def powerCardTempGet(self):
+        '''
+            Get temperature from power card
+        '''
+        return self.sensorTempRead(0x22, LpdProtoTest.PSU_TEMP_CHAN)
     
 
-    def AsicPowerEnableGet(self):
+    def asicPowerEnableGet(self):
         '''
-        Get the status of 'ASIC LV Power Enable'
+            Get the status of 'ASIC LV Power Enable'
         
-        If low voltage is off, returns True; If low voltage is on, returns False
+            Returns True if OFF; False if ON
         '''
         
         return self.pcf7485ReadOneBit(LpdProtoTest.LV_CTRL_BIT)
     
-    def AsicPowerEnabledSet(self, aValue):
+    def asicPowerEnableSet(self, aValue):
         '''
-        Set 'ASIC LV Power Enable' (0/1 = on/off)
+            Set 'ASIC LV Power Enable' (0/1 = on/off)
         '''
         
         self.pcf7485WriteOneBit(LpdProtoTest.LV_CTRL_BIT, aValue)
@@ -91,12 +86,25 @@ class LpdProtoTest(FemClient):
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
     
     def debugDisplay(self, var):
-        
+        '''
+            Debug function to display decimal and hexadecimal value of 'var'.
+        '''
         return var, "0x%X" % var,
         
+    def sensorTempRead(self, device, channel):
+        '''
+            Generic function: Reads sensor temperature at 'channel' in  address 'device',
+        '''
+        adcVal = self.ad7998Read(device, channel)
+        
+        scale = 3.0
+        tempVal = (adcVal * scale / 4095.0)
+        
+        return tempVal
+
     def ad7998Read(self, device, channel):
         '''
-        Read two bytes from 'channel' in ad7998 at address 'device'
+            Read two bytes from 'channel' in ad7998 at address 'device'
         '''
 
         # Construct i2c address and ADC channel to be read
@@ -111,12 +119,10 @@ class LpdProtoTest(FemClient):
         
         # Extract the received two bytes and return one integer
         return (int((response[4] & 15) << 8) + int(response[5]))
-#        high = (response[4] & 15) << 8
-#        low = response[5]
-#        return high + low
         
     def pcf7485ReadOneBit(self, id):
-        ''' Read one byte from PCF7485 device and determine if set.
+        ''' 
+            Read one byte from PCF7485 device and determine if set.
         
             Note: bit 1 = 0, 2 = 1,  3 = 2, 4 = 4, 
                       5 = 8, 6 = 16, 7 = 32 8 = 64
@@ -129,9 +135,9 @@ class LpdProtoTest(FemClient):
         value = response[4]
         return (value & (1 << id)) != 0
         
-
     def pcf7485ReadAllBits(self):
-        ''' Read and return one byte from PCF7485 device
+        ''' 
+            Read and return one byte from PCF7485 device
         '''
         addr = LpdProtoTest.i2cInternalBusOffset + 0x38
         response = self.i2cRead(addr, 1)
@@ -139,7 +145,8 @@ class LpdProtoTest(FemClient):
         return response[4]
 
     def pcf7485WriteOneBit(self, id, value):
-        ''' Change bit 'id' to 'value' in PCF7485 device
+        ''' 
+            Change bit 'id' to 'value' in PCF7485 device
         '''        
         # Read PCF7485's current value
         bit_register = self.pcf7485ReadAllBits()
@@ -148,19 +155,22 @@ class LpdProtoTest(FemClient):
 
         addr = LpdProtoTest.i2cInternalBusOffset + 0x38
         response = self.i2cWrite(addr, bit_register)
+        
+        #TODO: Check ack (i.e.'response') to verify successful write
     
-    def adcToTemp(self, adcValue, scale, unit):
+    def adcToTemp(self, adcValue):
         '''
-        Convert ADC value into temperature according to arguments scale.
+            Convert ADC value into temperature - Redundant?
         '''
-        #TODO:Cap change scale from voltage to degrees Celsius
-
+        #TODO:Change scale from voltage to degrees Celsius
+        scale = 3
         try:
-            print " ", round( float(adcValue * scale / 4095.0), 2),
-            print unit, " [", adcValue, "]",
+            tempVal = float(adcValue * scale / 4095.0)
         except Exception as e:
+            tempVal = -1.0
             print "adcToTemp() Exception: ", e
 
+        return tempVal
 
 
 if __name__ == "__main__":
@@ -172,31 +182,29 @@ if __name__ == "__main__":
     # Create object and connect to Fem
     thisPrototype = LpdProtoTest((host , port))
     
-    print "Sensor B Temp: ", 
-    thisPrototype.SensorBTempGet()
-    
-    print ""
-    print "PSU Card Temp: ",
-    thisPrototype.PowerCardTempGet()
-    
+    sensorBTemp = thisPrototype.sensorBTempGet()
+    print "Sensor B Temp: %.2f" % sensorBTemp 
+
+    powerCardTemp = thisPrototype.powerCardTempGet()
+    print "PSU Card Temp: %.2f" % powerCardTemp
     
     print "\n"
     print "Low voltage: ", 
-    if (thisPrototype.AsicPowerEnableGet()):
+    if (thisPrototype.asicPowerEnableGet()):
         print "off."
     else:
         print "on."
         
     print "Switching on the low voltage.."
-    thisPrototype.AsicPowerEnabledSet(LpdProtoTest.ON)
+    thisPrototype.asicPowerEnableSet(LpdProtoTest.ON)
     
     print ""
     print "Low voltage: ", 
-    if (thisPrototype.AsicPowerEnableGet()):
+    if (thisPrototype.asicPowerEnableGet()):
         print "off."
     else:
         print "on."
         
     print "Switching off the low voltage..\n"
-    thisPrototype.AsicPowerEnabledSet(LpdProtoTest.OFF)
+    thisPrototype.asicPowerEnableSet(LpdProtoTest.OFF)
     
