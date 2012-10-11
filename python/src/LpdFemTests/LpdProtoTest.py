@@ -18,8 +18,14 @@ class LpdProtoTest(FemClient):
 
     # ADC channel numbers
     PSU_TEMP_CHAN =      6
+    SENSA_TEMP_CHAN =   24
     SENSB_TEMP_CHAN =   25
     SENSC_TEMP_CHAN =   26
+    SENSD_TEMP_CHAN =   27
+    SENSE_TEMP_CHAN =   28
+    SENSF_TEMP_CHAN =   29
+    SENSG_TEMP_CHAN =   30
+    SENSH_TEMP_CHAN =   31
     
     # Bit numbers for control bits
     HV_CTRL_BIT    = 0
@@ -44,6 +50,13 @@ class LpdProtoTest(FemClient):
         super(LpdProtoTest, self).__init__(hostAddr, timeout)
         
 
+    def sensorATempGet(self):
+        '''
+            Get temperature from sensor A
+        '''
+        
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSA_TEMP_CHAN)
+
     def sensorBTempGet(self):
         '''
             Get temperature from sensor B
@@ -58,7 +71,45 @@ class LpdProtoTest(FemClient):
         
         return self.sensorTempRead(0x23, LpdProtoTest.SENSC_TEMP_CHAN)
     
+    def sensorDTempGet(self):
+        '''
+            Get temperature from Sensor D
+        '''
         
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSD_TEMP_CHAN)
+    
+    
+    def sensorETempGet(self):
+        '''
+            Get temperature from Sensor E
+        '''
+        
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSE_TEMP_CHAN)
+
+    
+    def sensorFTempGet(self):
+        '''
+            Get temperature from Sensor F
+        '''
+        
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSF_TEMP_CHAN)
+
+    
+    def sensorGTempGet(self):
+        '''
+            Get temperature from Sensor G
+        '''
+        
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSG_TEMP_CHAN)
+
+    
+    def sensorHTempGet(self):
+        '''
+            Get temperature from Sensor H
+        '''
+        
+        return self.sensorTempRead(0x23, LpdProtoTest.SENSH_TEMP_CHAN)
+
     def powerCardTempGet(self):
         '''
             Get temperature from power card
@@ -182,12 +233,30 @@ if __name__ == "__main__":
     # Create object and connect to Fem
     thisPrototype = LpdProtoTest((host , port))
     
+    sensorATemp = thisPrototype.sensorATempGet()
+    print "Sensor A Temp: %.2f" % sensorATemp 
+    
     sensorBTemp = thisPrototype.sensorBTempGet()
     print "Sensor B Temp: %.2f" % sensorBTemp 
 
     sensorCTemp = thisPrototype.sensorCTempGet()
     print "Sensor C Temp: %.2f " % sensorCTemp
     
+    sensorDTemp = thisPrototype.sensorDTempGet()
+    print "Sensor D Temp: %.2f" % sensorDTemp 
+    
+    sensorETemp = thisPrototype.sensorETempGet()
+    print "Sensor E Temp: %.2f" % sensorETemp 
+    
+    sensorFTemp = thisPrototype.sensorFTempGet()
+    print "Sensor F Temp: %.2f" % sensorFTemp 
+    
+    sensorGTemp = thisPrototype.sensorGTempGet()
+    print "Sensor G Temp: %.2f" % sensorGTemp 
+    
+    sensorHTemp = thisPrototype.sensorHTempGet()
+    print "Sensor H Temp: %.2f" % sensorHTemp 
+
     powerCardTemp = thisPrototype.powerCardTempGet()
     print "PSU Card Temp: %.2f" % powerCardTemp
     
