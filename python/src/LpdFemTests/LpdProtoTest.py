@@ -185,6 +185,9 @@ if __name__ == "__main__":
     sensorBTemp = thisPrototype.sensorBTempGet()
     print "Sensor B Temp: %.2f" % sensorBTemp 
 
+    sensorCTemp = thisPrototype.sensorCTempGet()
+    print "Sensor C Temp: %.2f " % sensorCTemp
+    
     powerCardTemp = thisPrototype.powerCardTempGet()
     print "PSU Card Temp: %.2f" % powerCardTemp
     
