@@ -119,15 +119,15 @@ class LpdDeviceParameters(object):
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardOverCurrent'] = AttributeContainer(bool, 'PowerCardOvercurrent', 'Power Card Overcurrent Flag',
+        self.parameters['powerCardOverCurrent'] = AttributeContainer(bool, 'PowerCardOverCurrent', 'Power Card Overcurrent Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardOvertemp']    = AttributeContainer(bool, 'PowerCardOverTemp', 'Power Card Over Temperature Flag',
+        self.parameters['powerCardOverTemp']    = AttributeContainer(bool, 'PowerCardOverTemp', 'Power Card Over Temperature Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardUndertemp']   = AttributeContainer(bool, 'PowerCardUnderTemp', 'Power Card Under Temperature Flag',
+        self.parameters['powerCardUnderTemp']   = AttributeContainer(bool, 'PowerCardUnderTemp', 'Power Card Under Temperature Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None)
         
