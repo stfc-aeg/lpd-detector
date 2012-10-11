@@ -96,8 +96,7 @@ int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 m
 		}
 	}
 
-	// Timed out, so NACK
-	// TODO: Another return code, -1 for timeout?
+	// Timed out
 	return -1;
 
 }
