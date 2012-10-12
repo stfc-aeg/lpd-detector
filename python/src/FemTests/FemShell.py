@@ -299,10 +299,10 @@ Example:
 
         try:
             if self.timerEnabled: t0 = time.time()        
-            ack = self.__class__.connectedFem.write(bus, width, addr, values)
-            if self.timerEnabled: deltaT = time.time() - t0
-            print "Got ack: ", ['0x{:X}'.format(result) for result in ack]
-            if self.timerEnabled: print "Transaction took %.3f secs" % deltaT 
+            self.__class__.connectedFem.write(bus, width, addr, values)
+            if self.timerEnabled: 
+                deltaT = time.time() - t0
+                print "Transaction took %.3f secs" % deltaT 
 
         except FemClientError as e:
             if e.errno == FemClientError.ERRNO_SOCK_CLOSED:
@@ -367,7 +367,7 @@ Example:
             try: 
                 print "Got results:", ['0x{:X}'.format(result) for result in values]
             except TypeError:
-                print "Can't decode results", values
+                print "Can't decode results"
                 
             if self.timerEnabled: print "Transaction took %.3f secs" % deltaT
             
@@ -379,7 +379,7 @@ Example:
                 print "*** Socket error on FEM connection:", e.msg
                 self.do_close(None)
             else:
-                print "*** FEM Exception:", e, 'errno=', e.errno
+                print "*** FEM Exception: %s (errno=%d)" % (e, e.errno)
       
         
     def help_read(self):
@@ -608,10 +608,11 @@ Example:
  
     def do_cmd(self, s):
         '''
-        Sends command transaction to FEM
+        Sends command transaction to FEM 
+        Syntax: cmd <command> <arg>
         '''
         params = s.split()
-        if len(params) < 1:
+        if len(params) < 2:
             print "*** Invalid number of arguments"
             return
         
@@ -619,12 +620,18 @@ Example:
         try:
             theCmd = int(params[0])
         except ValueError:
-            print "*** Cmmand parameter must be integer (for now!)"
+            print "*** Command parameter must be integer (for now!)"
+            return
+        
+        try:
+            theArg = int(params[1])
+        except ValueError:
+            print "*** Argument parameter must be integer"
             return
         
         try:
             if self.timerEnabled: t0 = time.time()
-            ack = self.__class__.connectedFem.commandSend(theCmd)
+            ack = self.__class__.connectedFem.commandSend(theCmd, theArg)
             if self.timerEnabled: deltaT = time.time() - t0
             #print "Got ack: ", ['0x{:X}'.format(result) for result in ack]  
            

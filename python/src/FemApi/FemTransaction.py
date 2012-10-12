@@ -85,18 +85,20 @@ class FemTransaction():
             
             #TODO: sanity check decoded headerStruct
             
-            # If this is a read transaction then we have a fixed length payload, which is the read length
-            if (self.command == FemTransaction.CMD_ACCESS) and (self.state == FemTransaction.STATE_READ):
-
-                (payloadMult, self.payloadFormatStr) = FemTransaction.widthEncoding[FemTransaction.WIDTH_LONG]
+            # If this is an encoded access command, i.e. a read or write transaction, then the payload has a fixed
+            # integer length field at the start specifying the transaction length
+            payloadInitLen = 0                    
+            if self.command == FemTransaction.CMD_ACCESS:
             
-            else:
-
-                if (self.payloadLen > 0):
-                    (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
-                    payloadItems = self.payloadLen / payloadMult   
-                    self.payloadFormatStr = str(payloadItems) + payloadFormat
-                            
+                (payloadMult, self.payloadFormatStr) = FemTransaction.widthEncoding[FemTransaction.WIDTH_LONG]
+                payloadInitLen = 4
+            
+            # Build the remaining payload format specifier
+            if (self.payloadLen -payloadInitLen) > 0:
+                (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
+                payloadItems = (self.payloadLen - payloadInitLen) / payloadMult
+                self.payloadFormatStr = self.payloadFormatStr + str(payloadItems) + payloadFormat
+                    
 
             # Calculate how much of the payload is not yet received
             self.payloadRemaining = self.payloadLen - (len(self.encoded) - headerStructLen)
@@ -191,6 +193,13 @@ class FemTransaction():
 
     def decode(self):
         return struct.unpack(self.formatStr, self.encoded)
+    
+    def decodeErrorResponse(self):
+        
+        (errNo,) = struct.unpack('!I', self.encoded[16:20])
+        errStr = "".join(self.encoded[20:])
+        
+        return (errNo, errStr)
     
     def __str__(self):
         

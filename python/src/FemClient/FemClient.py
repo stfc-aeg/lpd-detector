@@ -14,16 +14,18 @@ from types import *
 
 class FemClientError(Exception):
     
-    ERRNO_NO_ERROR    = 0
-    ERRNO_SOCK_CLOSED = 1
-    ERRNO_SOCK_ERROR  = 2
+    ERRNO_NO_ERROR       = 0
+    ERRNO_SOCK_CLOSED    = 1
+    ERRNO_SOCK_ERROR     = 2
+    ERRNO_WRITE_MISMATCH = 3
+    ERRNO_READ_MISMATCH  = 4
     
     def __init__(self, msg, errno=ERRNO_NO_ERROR):
         self.msg = msg
         self.errno = errno
         
     def __str__(self):
-        return repr(self.msg)
+        return str(self.msg)
     
 class FemClient(object):
     '''
@@ -88,14 +90,44 @@ class FemClient(object):
                  theWidth=theWidth, theState=FemTransaction.STATE_WRITE, 
                  theAddr=theAddr, thePayload=thePayload)
         response = self.recv()
-        return response.payload
-        
+
+        # Test if the read transaction was NACKed. If so, decode the error response
+        # from the FEM and raise a matching exception
+        if response.state & FemTransaction.STATE_NO_ACKNOWLEDGE:
+            (errorNo, errorStr) = response.decodeErrorResponse()
+            raise FemClientError("FEM write transaction failed: %s" % errorStr, errorNo)
+
+        # Determine payload length - len() only works on a sequence object so trap 
+        # any exception and then default length to 1
+        try:
+            payloadLen = len(thePayload)
+        except TypeError:
+            payloadLen = 1
+            
+        # Check that the write length acknowledged matches the length of the payload
+        if payloadLen != response.payload[0]:
+            raise FemClientError("FEM write transaction length mismatch: request %d, got %d" % (payloadLen, response.payload[0]), 
+                                 FemClientError.ERRNO_READ_MISMATCH)
+                    
     def read(self, theBus, theWidth, theAddr, theReadLen):
         self.send(theCmd=FemTransaction.CMD_ACCESS, theBus=theBus,
                   theWidth=theWidth, theState=FemTransaction.STATE_READ,
                   theAddr=theAddr, theReadLen=theReadLen)
         response = self.recv()
-        return response.payload
+        
+        # Test if the read transaction was NACKed. If so, decode the error response
+        # from the FEM and raise a matching exception
+        if response.state & FemTransaction.STATE_NO_ACKNOWLEDGE:
+            (errorNo, errorStr) = response.decodeErrorResponse()
+            raise FemClientError("FEM read transaction failed: %s" % errorStr, errorNo)
+
+        # Check if the read length requested matches that in the response payload
+        if theReadLen != response.payload[0]:
+            raise FemClientError("FEM read transaction length mismatch: request %d, got %d" % (theReadLen, response.payload[0]), 
+                                 FemClientError.ERRNO_READ_MISMATCH)
+            
+        # Return the read values excluding the read length
+        return response.payload[1:]
     
     def configRead(self):
         
@@ -104,7 +136,7 @@ class FemClient(object):
         address = FemConfig.configAddress
         length  = FemConfig.configSize()
         values = self.read(bus, width, address, length)
-        encoded = ''.join([chr(x) for x in values[4:]])
+        encoded = ''.join([chr(x) for x in values])
         theConfig = FemConfig(encoded=encoded)
         
         return theConfig
@@ -115,13 +147,12 @@ class FemClient(object):
         width   = FemTransaction.WIDTH_BYTE
         address = FemConfig.configAddress
         payload = bytearray(theConfig.encode())
-        response = self.write(bus, width, address, payload) 
-        return response
+        self.write(bus, width, address, payload) 
   
-    def commandSend(self, theCmd):
+    def commandSend(self, theCmd, theArg = 0):
         
         cmd   = FemTransaction.CMD_INTERNAL
-        bus   = FemTransaction.BUS_RAW_REG
+        bus   = theArg
         width = FemTransaction.WIDTH_LONG
         state = FemTransaction.STATE_WRITE
         addr  = theCmd
@@ -133,9 +164,7 @@ class FemClient(object):
                 
         bus   = FemTransaction.BUS_RDMA
         width = FemTransaction.WIDTH_LONG
-        ack = self.write(bus, width, theAddr, thePayload)
-        #TODO: check if response is OK
-        return ack
+        self.write(bus, width, theAddr, thePayload)
     
     def rdmaRead(self, theAddr, theReadLen):
         
@@ -148,9 +177,8 @@ class FemClient(object):
                 
         bus   = FemTransaction.BUS_RAW_REG
         width = FemTransaction.WIDTH_LONG
-        ack = self.write(bus, width, theAddr, thePayload)
-        #TODO: check if response is OK
-        return ack   
+        self.write(bus, width, theAddr, thePayload)
+       
     def rawRead(self, theAddr, theReadLen):
         
         bus = FemTransaction.BUS_RAW_REG
@@ -162,8 +190,7 @@ class FemClient(object):
         
         bus   = FemTransaction.BUS_I2C
         width = FemTransaction.WIDTH_BYTE
-        ack = self.write(bus, width, theAddr, thePayload)
-        return ack
+        self.write(bus, width, theAddr, thePayload)
     
     def i2cRead(self, theAddr, theReadLen):
         
