@@ -378,7 +378,7 @@ void commandProcessorThread(void* arg)
 							if (pState->busDirectSize == 0)
 							{
 								// Bypass normal reception of payload as we already have it
-								DBGOUT("CmdProc: Finished payload rx on BUS_DIRECT operation!\r\n");
+								//DBGOUT("CmdProc: Finished payload rx on BUS_DIRECT operation!\r\n");
 								pState->state = STATE_GOT_PYLD;
 							}
 
@@ -1005,7 +1005,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 			SETERR(pClient, ERR_I2C_INVALID_BUS_INDEX, "Invalid I2C bus index %d.", busIndex);
 			break;
 		case IIC_ERR_SLAVE_NACK:
-			SETERR(pClient, ERR_I2C_SLAVE_NACK, "I2C slave 0x%08x on bus %d NACKed .", slaveAddress, busIndex);
+			SETERR(pClient, ERR_I2C_SLAVE_NACK, "I2C slave 0x%08x on bus %d NACKed.", slaveAddress, busIndex);
 			break;
 		case IIC_ERR_TIMEOUT:
 			SETERR(pClient, ERR_I2C_TIMEOUT, "I2C operation timed for slave address 0x%08x.", slaveAddress);
@@ -1224,7 +1224,7 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 	DBGOUT("\r\n");
 
 	int payload_sz = 0;
-	int i = 0;
+	int slen = 0;
 	struct protocol_header *pHeader = (struct protocol_header*)pTxPayload;
 
 	// First 32-bit word in payload is the error code
@@ -1236,18 +1236,12 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 	memcpy(pTxPayload, pClient->pHdr, sizeof(struct protocol_header));
 	SBIT(pHeader->state, STATE_NACK);
 
-	// Calculate length of errorString by finding the null terminator
-	for (i=0; i<ERR_STRING_MAX_LENGTH; i++)
-	{
-		if (pClient->errorString[i] == 0)
-		{
-			break;
-		}
-	}
+	// Get length of error string
+	slen = strlen(pClient->errorString);
 
 	// Copy errorString to payload
-	memcpy(pTxPayload + sizeof(struct protocol_header) + payload_sz, pClient->errorString, i);
-	payload_sz += i;
+	memcpy(pTxPayload + sizeof(struct protocol_header) + payload_sz, pClient->errorString, slen);
+	payload_sz += slen;
 
 	pHeader->payload_sz = payload_sz;
 
