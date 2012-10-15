@@ -256,6 +256,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		if (!(iicSR & XIIC_SR_BUS_BUSY_MASK)) {
 			busBusy = 0;
 		}
+		count++;
 	}
 
 	if (busBusy==1)
