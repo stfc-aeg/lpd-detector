@@ -6,6 +6,27 @@ LpdProtoTest - XFEL LPD class sitting between the API and the FemC FemClient
 Created 09 October 2012
 
 @Author: ckd
+
+
+
+  ADC channels:
+    0 = HV volts    1 = 5V volts    2 = 1.2V volts
+    3 = HV current  4 = 5V current  5 = 1.2V current
+    6 = PSU temp    7 = not used
+    8-15  = 2.5V volts (A-H)
+    16-23 = 2.5V current (A-H)
+    24-31 = Sensor temp (A-H)
+
+  Bits:
+    0 = [out] LV control (0=on)
+    1 = [out] HV control (0=on)
+    2 = unused
+    3 = [in] External trip (1=tripped)
+    4 = [in] Fault flag (1=tripped)
+    5 = [in] Overcurrent (1=fault)
+    6 = [in] High temperature (1=fault)
+    7 = [in] Low temperature (1=fault)
+
 '''
 
 import sys
@@ -54,7 +75,7 @@ class LpdProtoTest(FemClient):
     flag_message = ["No", "Yes"]
 
     # Fem has three internal i2c buses, power card uses bus 0x300
-    i2cInternalBusOffset = 0x300
+    i2cPowerCardBus = 0x300
 
     AD7998ADDRESS = [0x22, 0x21, 0x24, 0x23]
     
@@ -151,6 +172,23 @@ class LpdProtoTest(FemClient):
         
         self.pcf7485WriteOneBit(LpdProtoTest.LV_CTRL_BIT, aValue)
 
+    def sensorBiasEnableGet(self):
+        '''
+            Get the status of 'Sensor HV Bias Enable'
+        
+            Returns True if OFF; False if ON
+        '''
+        
+        return self.pcf7485ReadOneBit(LpdProtoTest.HV_CTRL_BIT)
+    
+    def sensorBiasEnableSet(self, aValue):
+        '''
+            Set 'Sensor LV Bias Enable' (0/1 = on/off)
+        '''
+        
+        self.pcf7485WriteOneBit(LpdProtoTest.HV_CTRL_BIT, aValue)
+        
+        
     def powerCardFemStatusGet(self):
         '''
             Get power card Fem status
@@ -193,6 +231,19 @@ class LpdProtoTest(FemClient):
         value = thisPrototype.pcf7485ReadAllBits()
         return LpdProtoTest.flag_message[ (value & (1 << LpdProtoTest.LOW_TEMP_BIT)) != 0]
     
+    def sensorBiasGet(self):
+        '''
+            Get Sensor HV Bias Voltage [V]
+        '''
+        return self.ad5321Read()
+    
+    def sensorBiasSet(self, aValue):
+        '''
+            Set Sensor HV Bias Voltage [V]
+        '''
+        
+        self.ad55321Write(aValue)
+        
 
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
     
@@ -219,7 +270,7 @@ class LpdProtoTest(FemClient):
         '''
 
         # Construct i2c address and ADC channel to be read
-        addr = LpdProtoTest.i2cInternalBusOffset + device
+        addr = LpdProtoTest.i2cPowerCardBus + device
         adcChannel = 0x80 + ((channel & 7) << 4)
 
         # Write operation, select ADC channel
@@ -230,7 +281,40 @@ class LpdProtoTest(FemClient):
         
         # Extract the received two bytes and return one integer
         return (int((response[4] & 15) << 8) + int(response[5]))
+
+    def ad5321Read(self):
+        ''' 
+            Read 2 bytes from ad5321 device 
+        '''
         
+        addr = LpdProtoTest.i2cPowerCardBus + 0x0C
+        readback = -1
+        
+        readback = self.i2cRead(addr, 2)
+        high = (readback[4] & 15) << 8
+        low = readback[5]
+#        print "ad5321Read() readback = ", readback, " high, low = ", high, low
+        return high + low
+
+    def ad55321Write(self, aValue):
+        '''
+            Write 'aAValue' (2 bytes) to ad5321 device
+        '''
+    
+        readback = -1
+        # Construct address and payload
+        addr = LpdProtoTest.i2cPowerCardBus + 0x0C
+        payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
+        
+#        print "payload = ", payload
+
+        # Write new ADC value to device
+        ack = self.i2cWrite(addr, payload)
+        
+        # Verify write operation
+        readback = self.ad5321Read()
+        return readback
+    
     def pcf7485ReadOneBit(self, id):
         ''' 
             Read one byte from PCF7485 device and determine if set.
@@ -240,9 +324,12 @@ class LpdProtoTest(FemClient):
             Therefore, id must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
         '''
         
-        addr = LpdProtoTest.i2cInternalBusOffset + 0x38 
+        addr = LpdProtoTest.i2cPowerCardBus + 0x38 
         
         response = self.i2cRead(addr, 1)
+        
+#        print "pcf7485ReadOneBit() response = ", response
+      
         value = response[4]
         return (value & (1 << id)) != 0
         
@@ -259,7 +346,7 @@ class LpdProtoTest(FemClient):
                 Beware      bit 0 = 1, bit 1 = 2, bit 2 = 4, etc !!
                 therefore   131 = 128 + 2 + 1 (bits: 7, 1, 0)
         '''
-        addr = LpdProtoTest.i2cInternalBusOffset + 0x38
+        addr = LpdProtoTest.i2cPowerCardBus + 0x38
         response = self.i2cRead(addr, 1)
 #        print "pcf7485ReadAllBits() response = ", self.debugDisplay(response[4])
         return response[4]
@@ -273,7 +360,7 @@ class LpdProtoTest(FemClient):
         # Change bit 'id' to 'value'
         bit_register = (bit_register & ~(1 << id)) | (value << id) | 0xFC
 
-        addr = LpdProtoTest.i2cInternalBusOffset + 0x38
+        addr = LpdProtoTest.i2cPowerCardBus + 0x38
         response = self.i2cWrite(addr, bit_register)
         
         #TODO: Check ack (i.e.'response') to verify successful write
@@ -302,17 +389,45 @@ if __name__ == "__main__":
     # Create object and connect to Fem
     thisPrototype = LpdProtoTest((host , port))
 
-        
+    # Change the HV setting
+    thisPrototype.sensorBiasSet(0)
+
+#    # Switching on the low voltage
+#    thisPrototype.asicPowerEnableSet(LpdProtoTest.ON)
+#    # Switch on the high voltage
+#    thisPrototype.sensorBiasEnableSet(LpdProtoTest.ON)
+
+    # Switch off the high voltage
+    thisPrototype.sensorBiasEnableSet(LpdProtoTest.OFF)
+    # Switch off the low voltage.
+    thisPrototype.asicPowerEnableSet(LpdProtoTest.OFF)
+
+    print "-=-=-=-=-=-=-=-=-=-=-=-=-"
+
+    print "Status:"
+    print "    Low voltage: ", 
+    if (thisPrototype.asicPowerEnableGet()):
+        print "off."
+    else:
+        print "on."
+    
+    print "    High voltage: ", 
+    if (thisPrototype.sensorBiasEnableGet()):
+        print "off."
+    else:
+        print "on."
+    print "    HV setting: ", thisPrototype.sensorBiasGet()
+
     print "Flags:" 
-    print "    Fault Flag `      = ", thisPrototype.powerCardFaultStatusGet() 
+    print "    Fault Flag        = ", thisPrototype.powerCardFaultStatusGet() 
     print "    Fem Status   Trip = ", thisPrototype.powerCardFemStatusGet() 
     print "    External     Trip = ", thisPrototype.powerCardExtStatusGet()
     print "    Over current Trip = ", thisPrototype.powerCardOverCurrentStatusGet()
     print "    Over temp    Trip = ", thisPrototype.powerCardOvertempStatusGet()
     print "    Undertemp    Trip = ", thisPrototype.powerCardUndertempStatusGet()
     print ".\n"
+
     
-    sys.exit()
     print "Temperature readings: "
 
     powerCardTemp = thisPrototype.powerCardTempGet()
@@ -343,23 +458,7 @@ if __name__ == "__main__":
     print "   Sensor H Temp: %.2f" % sensorHTemp 
     
     print "\n"
-    print "Low voltage: ", 
-    if (thisPrototype.asicPowerEnableGet()):
-        print "off."
-    else:
-        print "on."
-        
-    print "Switching on the low voltage.."
-    thisPrototype.asicPowerEnableSet(LpdProtoTest.ON)
-    
-    print ""
-    print "Low voltage: ", 
-    if (thisPrototype.asicPowerEnableGet()):
-        print "off."
-    else:
-        print "on."
-        
-    print "Switching off the low voltage..\n"
-    thisPrototype.asicPowerEnableSet(LpdProtoTest.OFF)
     
     
+    print "Closing Fem connection.."
+    thisPrototype.close()
