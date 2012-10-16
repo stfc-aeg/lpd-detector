@@ -53,18 +53,22 @@
 #define BD_RING_TENGIG				2								//! 10GBe
 #define BD_RING_UPLOAD				3								//! Upstream configuration
 
-// TODO: Remove these once common protocol.h
-// TODO: Change to enum
-#define ACQ_MODE_NORMAL				1		// Sustained data taking mode (RX-TX cycle)
-#define ACQ_MODE_BURST				2		// Burst mode, RX only to fill DDR2 then switch to TX to flush to 10GBe
-#define ACQ_MODE_RX_ONLY			3		// Only RX (Debugging only)
-#define ACQ_MODE_TX_ONLY			4		// Only TX (Debugging only)
-#define ACQ_MODE_UPLOAD				5		// Configuration upload
+// TODO: Move to common protocol.h
+enum dmaModes {
+	ACQ_MODE_NORMAL = 1,					// Sustained data taking mode (RX-TX cycle)
+	ACQ_MODE_BURST,							// Burst mode, RX only to fill DDR2 then switch to TX to flush to 10GBe
+	ACQ_MODE_RX_ONLY,						// Only RX (Debugging only)
+	ACQ_MODE_TX_ONLY,						// Only TX (Debugging only)
+	ACQ_MODE_UPLOAD							// Configuration upload
+};
 
-#define CMD_ACQ_CONFIG				1
-#define CMD_ACQ_START				2
-#define CMD_ACQ_STOP				3
-#define CMD_ACQ_STATUS				4
+// TODO: Move to common protocol.h
+enum dmaCmds {
+	CMD_ACQ_CONFIG = 1,
+	CMD_ACQ_START,
+	CMD_ACQ_STOP,
+	CMD_ACQ_STATUS
+};
 
 //! Buffer type identifier for BDs (used by validateBuffer / recycleBuffer)
 typedef enum
