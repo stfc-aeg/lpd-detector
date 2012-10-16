@@ -718,6 +718,7 @@ if __name__ == "__main__":
 #    thisPrototype.asicPowerEnableSet(LpdProtoTest.OFF)
 
     print "-=-=-=-=-=-=-=-=-=-=-=-=-"
+    # Display all the i2c quantities
     thisPrototype.displayI2cOutputs(thisPrototype)
 
 
