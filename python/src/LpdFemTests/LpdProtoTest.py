@@ -266,25 +266,11 @@ class LpdProtoTest(FemClient):
         
         self.ad55321Write(aValue)
     
-    # This is a helper function really..
-    def sensorAmpereRead(self, device, channel):
-        '''
-            Helper function: Reads sensor temperature at 'channel' in  address 'device',
-                and converts adc account into 10 amp scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        
-        scale = 10.0
-        tempVal = (adcVal * scale / 4095.0)
-        
-        return tempVal
-
-    
     def femVoltageGet(self):
         '''
             Get Fem 5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.V5_VOLTS_CHAN)
+        return self.sensorSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.V5_VOLTS_CHAN)
         
     def femCurrentGet(self):
         '''
@@ -296,19 +282,19 @@ class LpdProtoTest(FemClient):
         '''
             Get ASIC 1.2 Digital Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.V12_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.V12_VOLTS_CHAN)
 
     def digitalCurrentGet(self):
         '''
             Get ASIC 1.2V Digital Supply Current [myA]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.V12_AMPS_CHAN)
+        return self.sensorSevenHundredMilliAmpsScaleRead(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.V12_AMPS_CHAN)
 
     def sensorAVoltageGet(self):
         '''
             Get Sensor A 2.5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25A_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25A_VOLTS_CHAN)
 
     def sensorACurrentGet(self):
         '''
@@ -320,7 +306,7 @@ class LpdProtoTest(FemClient):
         '''
             Get Sensor B 2.5V Supply Voltage [V] 
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25B_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25B_VOLTS_CHAN)
 
     def sensorBCurrentGet(self):
         '''
@@ -332,90 +318,142 @@ class LpdProtoTest(FemClient):
         '''
             Get Sensor C 2.5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25C_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25C_VOLTS_CHAN)
 
     def sensorCCurrentGet(self):
         '''
             Get Sensor C 2.5V Supply Current [A]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25C_AMPS_CHAN)
+        return self.sensorAmpereRead(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25C_AMPS_CHAN)
 
     def sensorDVoltageGet(self):
         '''
             Get Sensor D 2.5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25D_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25D_VOLTS_CHAN)
 
     def sensorDCurrentGet(self):
         '''
             Get Sensor D 2.5V Supply Current [A]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25D_AMPS_CHAN)
+        return self.sensorAmpereRead(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25D_AMPS_CHAN)
 
     def sensorEVoltageGet(self):
         '''
             Get Sensor E 2.5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25E_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25E_VOLTS_CHAN)
 
     def sensorECurrentGet(self):
         '''
             Get Sensor E 2.5V Supply Current [A]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25E_AMPS_CHAN)
+        return self.sensorAmpereRead(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25E_AMPS_CHAN)
 
     def sensorFVoltageGet(self):
         '''
             Get Sensor F 2.5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25F_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25F_VOLTS_CHAN)
 
     def sensorFCurrentGet(self):
         '''
             Get Sensor F 2.5V Supply Current [A]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25F_AMPS_CHAN)
+        return self.sensorAmpereRead(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25F_AMPS_CHAN)
 
     def sensorGVoltageGet(self):
         '''
             Get Sensor G 2.5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25G_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25G_VOLTS_CHAN)
 
     def sensorGCurrentGet(self):
         '''
             Get Sensor G 2.5V Supply Current [A]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25G_AMPS_CHAN)
+        return self.sensorAmpereRead(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25G_AMPS_CHAN)
 
     def sensorHVoltageGet(self):
         '''
             Get Sensor H 2.5V Supply Voltage [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25H_VOLTS_CHAN)
+        return self.sensorThreeVoltScaleRead(LpdProtoTest.AD7998ADDRESS[1], LpdProtoTest.V25H_VOLTS_CHAN)
 
     def sensorHCurrentGet(self):
         '''
             Get Sensor H 2.5V Supply Current [A]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25H_AMPS_CHAN)
+        return self.sensorAmpereRead(LpdProtoTest.AD7998ADDRESS[2], LpdProtoTest.V25H_AMPS_CHAN)
     
     
     def sensorBiasVoltageGet(self):
         '''
             Get Sensor bias voltage readback [V]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.HV_VOLTS_CHAN)
+        return self.sensorSixHundredMilliAmpsScaleRead(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.HV_VOLTS_CHAN)
     
     def sensorBiasCurrentGet(self): 
         '''
             Get Sensor bias current readback [uA]
         '''
-        return self.ad7998Read(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.HV_AMPS_CHAN)
+        return self.sensorSixHundredMilliAmpsScaleRead(LpdProtoTest.AD7998ADDRESS[0], LpdProtoTest.HV_AMPS_CHAN)
     
     
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
-    
+
+    def sensorAmpereRead(self, device, channel):
+        '''
+            Helper function: Reads sensor voltage at 'channel' in  address 'device',
+                and converts adc counts into 10 amp scale
+        '''
+        adcVal = self.ad7998Read(device, channel)
+        
+        scale = 10.0
+        tempVal = (adcVal * scale / 4095.0)
+        
+        return tempVal
+
+    def sensorSixVoltScaleRead(self, device, channel):
+        '''
+            Helper function: Reads sensor voltage at 'channel' in address 'address',
+                and converts adc counts into 6 V scale
+        '''
+        adcVal = self.ad7998Read(device, channel)
+        
+        scale = 6.0
+        return (adcVal * scale / 4095.0)
+
+    def sensorThreeVoltScaleRead(self, device, channel):
+        '''
+            Helper function: Reads sensor voltage at 'channel' in address 'address',
+                and converts adc counts into 3 V scale
+        '''
+        adcVal = self.ad7998Read(device, channel)
+        
+        scale = 3.0
+        return (adcVal * scale / 4095.0)
+
+    def sensorSevenHundredMilliAmpsScaleRead(self, device, channel):
+        '''
+            Helper function: Reads sensor  voltage at 'channel' in address 'address',
+                and converts adc counts into 700 milliamp scale
+        '''
+        adcVal = self.ad7998Read(device, channel)
+        
+        scale = 700.0
+        return (adcVal * scale / 4095.0)
+
+    def sensorSixHundredMilliAmpsScaleRead(self, device, channel):
+        '''
+            Helper function: Reads sensor voltage at 'channel' in address 'address',
+                and converts adc counts into 600 milliamp scale
+        '''
+        adcVal = self.ad7998Read(device, channel)
+        
+        scale = 700.0
+        return (adcVal * scale / 4095.0)
+
     def debugDisplay(self, var):
         '''
             Debug function to display decimal and hexadecimal value of 'var'.
@@ -449,7 +487,9 @@ class LpdProtoTest(FemClient):
         response = self.i2cRead(addr, 2)
         
         # Extract the received two bytes and return one integer
-        return (int((response[4] & 15) << 8) + int(response[5]))
+        value = (int((response[4] & 15) << 8) + int(response[5]))
+#        print "[%4i" % value, "]",
+        return value
 
     def ad5321Read(self):
         ''' 
@@ -462,7 +502,6 @@ class LpdProtoTest(FemClient):
         readback = self.i2cRead(addr, 2)
         high = (readback[4] & 15) << 8
         low = readback[5]
-#        print "ad5321Read() readback = ", readback, " high, low = ", high, low
         return high + low
 
     def ad55321Write(self, aValue):
@@ -471,11 +510,9 @@ class LpdProtoTest(FemClient):
         '''
     
         readback = -1
-        # Construct address and payload
+        # Construct address and payload (as a tuple)
         addr = LpdProtoTest.i2cPowerCardBus + 0x0C
         payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
-        
-#        print "payload = ", payload
 
         # Write new ADC value to device
         ack = self.i2cWrite(addr, payload)
@@ -497,8 +534,6 @@ class LpdProtoTest(FemClient):
         
         response = self.i2cRead(addr, 1)
         
-#        print "pcf7485ReadOneBit() response = ", response
-      
         value = response[4]
         return (value & (1 << id)) != 0
         
@@ -559,7 +594,7 @@ if __name__ == "__main__":
     thisPrototype = LpdProtoTest((host , port))
 
     # Change the HV setting
-    thisPrototype.sensorBiasSet(0)
+#    thisPrototype.sensorBiasSet(0)
 
 #    # Switching on the low voltage
 #    thisPrototype.asicPowerEnableSet(LpdProtoTest.ON)
@@ -567,9 +602,9 @@ if __name__ == "__main__":
 #    thisPrototype.sensorBiasEnableSet(LpdProtoTest.ON)
 
     # Switch off the high voltage
-    thisPrototype.sensorBiasEnableSet(LpdProtoTest.OFF)
+#    thisPrototype.sensorBiasEnableSet(LpdProtoTest.OFF)
     # Switch off the low voltage.
-    thisPrototype.asicPowerEnableSet(LpdProtoTest.OFF)
+#    thisPrototype.asicPowerEnableSet(LpdProtoTest.OFF)
 
     print "-=-=-=-=-=-=-=-=-=-=-=-=-"
 
@@ -587,92 +622,92 @@ if __name__ == "__main__":
         print "on."
     print "    HV setting: ", thisPrototype.sensorBiasGet()
 
-#    print "Flags:" 
-#    print "    Fault Flag        = ", thisPrototype.powerCardFaultStatusGet() 
-#    print "    Fem Status   Trip = ", thisPrototype.powerCardFemStatusGet() 
-#    print "    External     Trip = ", thisPrototype.powerCardExtStatusGet()
-#    print "    Over current Trip = ", thisPrototype.powerCardOverCurrentStatusGet()
-#    print "    Over temp    Trip = ", thisPrototype.powerCardOvertempStatusGet()
-#    print "    Undertemp    Trip = ", thisPrototype.powerCardUndertempStatusGet()
-#    print ".\n"
-#
-#    
-#    print "Temperature readings: "
-#
-#    powerCardTemp = thisPrototype.powerCardTempGet()
-#    print "   PSU Card Temp: %.2f" % powerCardTemp
-#
-#    sensorATemp = thisPrototype.sensorATempGet()
-#    print "   Sensor A Temp: %.2f" % sensorATemp 
-#    
-#    sensorBTemp = thisPrototype.sensorBTempGet()
-#    print "   Sensor B Temp: %.2f" % sensorBTemp 
-#
-#    sensorCTemp = thisPrototype.sensorCTempGet()
-#    print "   Sensor C Temp: %.2f " % sensorCTemp
-#    
-#    sensorDTemp = thisPrototype.sensorDTempGet()
-#    print "   Sensor D Temp: %.2f" % sensorDTemp 
-#    
-#    sensorETemp = thisPrototype.sensorETempGet()
-#    print "   Sensor E Temp: %.2f" % sensorETemp 
-#    
-#    sensorFTemp = thisPrototype.sensorFTempGet()
-#    print "   Sensor F Temp: %.2f" % sensorFTemp 
-#    
-#    sensorGTemp = thisPrototype.sensorGTempGet()
-#    print "   Sensor G Temp: %.2f" % sensorGTemp 
-#    
-#    sensorHTemp = thisPrototype.sensorHTempGet()
-#    print "   Sensor H Temp: %.2f" % sensorHTemp 
+    print "Flags:" 
+    print "    Fault Flag        = ", thisPrototype.powerCardFaultStatusGet() 
+    print "    Fem Status   Trip = ", thisPrototype.powerCardFemStatusGet() 
+    print "    External     Trip = ", thisPrototype.powerCardExtStatusGet()
+    print "    Over current Trip = ", thisPrototype.powerCardOverCurrentStatusGet()
+    print "    Over temp    Trip = ", thisPrototype.powerCardOvertempStatusGet()
+    print "    Undertemp    Trip = ", thisPrototype.powerCardUndertempStatusGet()
+    print ".\n"
+
+    
+    print "Temperature readings: "
+
+    powerCardTemp = thisPrototype.powerCardTempGet()
+    print "   PSU Card Temp: %.2f" % powerCardTemp, " V"
+
+    sensorATemp = thisPrototype.sensorATempGet()
+    print "   Sensor A Temp: %.2f" % sensorATemp, " V"
+    
+    sensorBTemp = thisPrototype.sensorBTempGet()
+    print "   Sensor B Temp: %.2f" % sensorBTemp, " V"
+
+    sensorCTemp = thisPrototype.sensorCTempGet()
+    print "   Sensor C Temp: %.2f" % sensorCTemp, " V"
+    
+    sensorDTemp = thisPrototype.sensorDTempGet()
+    print "   Sensor D Temp: %.2f" % sensorDTemp, " V"
+    
+    sensorETemp = thisPrototype.sensorETempGet()
+    print "   Sensor E Temp: %.2f" % sensorETemp, " V"
+    
+    sensorFTemp = thisPrototype.sensorFTempGet()
+    print "   Sensor F Temp: %.2f" % sensorFTemp, " V"
+    
+    sensorGTemp = thisPrototype.sensorGTempGet()
+    print "   Sensor G Temp: %.2f" % sensorGTemp, " V"
+    
+    sensorHTemp = thisPrototype.sensorHTempGet()
+    print "   Sensor H Temp: %.2f" % sensorHTemp, " V"
     print "\n"
     
     print "Outputs: "
     
     femVoltage = thisPrototype.femVoltageGet()
     femCurrent = thisPrototype.femCurrentGet()
-    print "   V FEM      : ", femVoltage, " V %.2f" % femCurrent, " A"
+    print "   V FEM      : %.2f" % femVoltage, " V %.2f" % femCurrent, " A"
     
     digitalVoltage = thisPrototype.digitalVoltageGet()
     digitalCurrent = thisPrototype.digitalCurrentGet()
-    print "   V Digital  : ", digitalVoltage, " V %i" % digitalCurrent, " A"
+    print "   V Digital  : %.2f" % digitalVoltage, " V %.2f" % digitalCurrent, " A\n"
     
     sensorAVoltage = thisPrototype.sensorAVoltageGet()
     sensorACurrent = thisPrototype.sensorACurrentGet()
-    print "   V Sensor A : ", sensorAVoltage, " V ", sensorACurrent, " A"
+    print "   V Sensor A : %.2f" % sensorAVoltage, " V %.2f" % sensorACurrent, " A"
 
     sensorBVoltage = thisPrototype.sensorBVoltageGet()
     sensorBCurrent = thisPrototype.sensorBCurrentGet()
-    print "   V Sensor B : ", sensorBVoltage, " V ", sensorBCurrent, " A"
+    print "   V Sensor B : %.2f" % sensorBVoltage, " V %.2f" % sensorBCurrent, " A"
 
     sensorCVoltage = thisPrototype.sensorCVoltageGet()
     sensorCCurrent = thisPrototype.sensorCCurrentGet()
-    print "   V Sensor C : ", sensorCVoltage, " V ", sensorCCurrent, " A"
+    print "   V Sensor C : %.2f" % sensorCVoltage, " V %.2f" % sensorCCurrent, " A"
 
     sensorDVoltage = thisPrototype.sensorDVoltageGet()
     sensorDCurrent = thisPrototype.sensorDCurrentGet()
-    print "   V Sensor D : ", sensorDVoltage, " V ", sensorDCurrent, " A"
+    print "   V Sensor D : %.2f" % sensorDVoltage, " V %.2f" % sensorDCurrent, " A"
 
     sensorEVoltage = thisPrototype.sensorEVoltageGet()
     sensorECurrent = thisPrototype.sensorECurrentGet()
-    print "   V Sensor E : ", sensorEVoltage, " V ", sensorECurrent, " A"
+    print "   V Sensor E : %.2f" % sensorEVoltage, " V %.2f" % sensorECurrent, " A"
 
     sensorFVoltage = thisPrototype.sensorFVoltageGet()
     sensorFCurrent = thisPrototype.sensorFCurrentGet()
-    print "   V Sensor F : ", sensorFVoltage, " V ", sensorFCurrent, " A"
+    print "   V Sensor F : %.2f" % sensorFVoltage, " V %.2f" % sensorFCurrent, " A"
 
     sensorGVoltage = thisPrototype.sensorGVoltageGet()
     sensorGCurrent = thisPrototype.sensorGCurrentGet()
-    print "   V Sensor G : ", sensorGVoltage, " V ", sensorGCurrent, " A"
+    print "   V Sensor G : %.2f" % sensorGVoltage, " V %.2f" % sensorGCurrent, " A"
 
     sensorHVoltage = thisPrototype.sensorHVoltageGet()
     sensorHCurrent = thisPrototype.sensorHCurrentGet()
-    print "   V Sensor H : ", sensorHVoltage, " V ", sensorHCurrent, " A"
-
+    print "   V Sensor H : %.2f" % sensorHVoltage, " V %.2f" % sensorHCurrent, " A"
+    print ""
 
     sensorBiasVoltage = thisPrototype.sensorBiasVoltageGet()
     sensorBiasCurrent = thisPrototype.sensorBiasCurrentGet()
-    print "   HV Bias    : ", sensorBiasVoltage, " V ", sensorBiasCurrent, " A"
+    print "   HV Bias    : %.2f" % sensorBiasVoltage, " V %.2f" % sensorBiasCurrent, " A"
 
-    print "Closing Fem connection.."
+    print "\nClosing Fem connection..\n"
     thisPrototype.close()
