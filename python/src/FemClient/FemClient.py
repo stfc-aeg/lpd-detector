@@ -78,11 +78,13 @@ class FemClient(object):
             raise FemClientError("FEM has closed socket connection", FemClientError.ERRNO_SOCK_CLOSED)
         
         response = FemTransaction(encoded=data)
+        print "Response payload length:", response.payloadLen
+        
         while response.incomplete:
             payloadRecvLen = response.payloadRemaining
             data = self.femSocket.recv(payloadRecvLen)
             response.append(data)
-
+                
         return response
        
     def write(self, theBus, theWidth, theAddr, thePayload):
@@ -216,6 +218,10 @@ class FemClient(object):
 
         self.send(theCmd=cmd, theBus=bus, theWidth=width, theState=state, theAddr=addr, thePayload=payload)
         response = self.recv()
+        if response.state & FemTransaction.STATE_NO_ACKNOWLEDGE:
+            (errorNo, errorStr) = response.decodeErrorResponse()
+            raise FemClientError("FEM acquire command send failed: %s" % errorStr, errorNo)
+
         return response.payload
     
     def personalitySend(self, thePersCmd, thePayload=None):

@@ -84,21 +84,28 @@ class FemTransaction():
              self.state, self.address, self.payloadLen) =  struct.unpack(self.formatStr, encoded[0:headerStructLen])
             
             #TODO: sanity check decoded headerStruct
-            
-            # If this is an encoded access command, i.e. a read or write transaction, then the payload has a fixed
-            # integer length field at the start specifying the transaction length
-            payloadInitLen = 0                    
-            if self.command == FemTransaction.CMD_ACCESS:
-            
-                (payloadMult, self.payloadFormatStr) = FemTransaction.widthEncoding[FemTransaction.WIDTH_LONG]
-                payloadInitLen = 4
-            
-            # Build the remaining payload format specifier
-            if (self.payloadLen -payloadInitLen) > 0:
+
+            # If the transaction has a NACK bit set in the header, then the payload is an error response,
+            # which is a byte error code followed by an error message string
+            if self.state & FemTransaction.STATE_NO_ACKNOWLEDGE:
                 (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
-                payloadItems = (self.payloadLen - payloadInitLen) / payloadMult
-                self.payloadFormatStr = self.payloadFormatStr + str(payloadItems) + payloadFormat
+                self.payloadFormatStr = str(self.payloadLen) + payloadFormat 
+                
+            else:
+            
+                # If this is an encoded access command, i.e. a read or write transaction, then the payload has a fixed
+                # integer length field at the start specifying the transaction length
+                payloadInitLen = 0                    
+                if self.command == FemTransaction.CMD_ACCESS:
+                
+                    (payloadMult, self.payloadFormatStr) = FemTransaction.widthEncoding[FemTransaction.WIDTH_LONG]
+                    payloadInitLen = 4
                     
+                # Build the remaining payload format specifier
+                if (self.payloadLen -payloadInitLen) > 0:
+                    (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
+                    payloadItems = (self.payloadLen - payloadInitLen) / payloadMult
+                    self.payloadFormatStr = self.payloadFormatStr + str(payloadItems) + payloadFormat
 
             # Calculate how much of the payload is not yet received
             self.payloadRemaining = self.payloadLen - (len(self.encoded) - headerStructLen)
@@ -196,8 +203,8 @@ class FemTransaction():
     
     def decodeErrorResponse(self):
         
-        (errNo,) = struct.unpack('!I', self.encoded[16:20])
-        errStr = "".join(self.encoded[20:])
+        (errNo,) = struct.unpack('!b', self.encoded[FemTransaction.headerSize()])
+        errStr = "".join(self.encoded[FemTransaction.headerSize()+1:])
         
         return (errNo, errStr)
     
