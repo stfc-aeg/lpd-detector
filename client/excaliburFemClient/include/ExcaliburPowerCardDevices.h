@@ -17,7 +17,7 @@ const unsigned int kPwrCardPCF8574LowVoltageEnableBit = 5;
 
 const unsigned int kPwrCardAD5301Address  = 0x20c;
 
-const unsigned int kPwrCardBiasFullScale = 200;
+const unsigned int kPwrCardBiasFullScale = 120;
 const unsigned int kPwrCardBiasMaxDacCode = 255;
 
 const unsigned int kPwrCardAD7998Address[]  = { 0x222, 0x220, 0x221 };

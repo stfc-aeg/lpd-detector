@@ -79,7 +79,7 @@ typedef enum {
 
 	unknownPolarity = -1,
 	electronPolarity,
-	holesPolarity
+	holePolarity
 
 } mpx3Polarity;
 

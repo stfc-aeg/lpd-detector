@@ -46,7 +46,8 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 		// Initialise default values for some standard parameters used in all
 		// OMR transactions
 		mMpx3OmrParams[iChip].readWriteMode         = sequentialReadWriteMode;
-		mMpx3OmrParams[iChip].polarity              = electronPolarity;
+//		mMpx3OmrParams[iChip].polarity              = electronPolarity;
+		mMpx3OmrParams[iChip].polarity              = holePolarity;
 		mMpx3OmrParams[iChip].readoutWidth          = readoutWidth8;
 		mMpx3OmrParams[iChip].unusedPTEnable        = 0;
 		mMpx3OmrParams[iChip].testPulseEnable       = 0;
@@ -363,7 +364,7 @@ void ExcaliburFemClient::startAcquisition(void)
 	this->asicControlCounterDepthSet(mMpx3OmrParams[0].counterDepth);
 
 	// Set ASIC data reordering mode
-	this->rdmaWrite(0x30000001, mAsicDataReorderMode);
+	this->rdmaWrite(kExcaliburDataReorderMode, mAsicDataReorderMode);
 
 	// Set up the readout length in clock cycles for the ASIC control block
 	unsigned int readoutLengthCycles = this->asicReadoutLengthCycles();
@@ -438,6 +439,22 @@ void ExcaliburFemClient::startAcquisition(void)
 void ExcaliburFemClient::stopAcquisition(void)
 {
 
+	// Check if acquisition is active in data receiver. If so
+	// send stop command to ASIC control block to terminate after
+	// current ASIC transfer
+	if (mFemDataReceiver != 0)
+	{
+		if (mFemDataReceiver->acqusitionActive())
+		{
+			std::cout << "ACQ active, sending stop" << std::endl;
+			this->asicControlCommandExecute(asicStopAcquisition);
+
+			usleep(10000);
+			u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
+			std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
+
+		}
+	}
 	// Send ACQUIRE stop command to the FEM
 	// TODO check if stopped already?
 	this->acquireStop();

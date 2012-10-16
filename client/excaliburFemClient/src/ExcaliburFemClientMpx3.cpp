@@ -370,6 +370,19 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 						(configThB1 << 10) | (maskBit << 9) | (configThB2 << 8) | (configThA3 << 7) | (configThB0 << 6) |
 						(configThA0 << 5) | (configThB3 << 4) | (testBit << 3);
 
+//#define PIXEL_COUNTER_PACKING_DEBUG
+#ifdef PIXEL_COUNTER_PACKING_DEBUG
+				if ((iRow == 0) && (iCol == 0)) {
+
+					std::cout << "Chip=" << aChipId << " Row=" << iRow << " Col=" << iCol
+							  << " ThreshAConfig=" << mMpx3PixelConfigCache[chipIdx][pixelThresholdAConfig][pixelCacheIdx]
+					          << " ConfigTHA4=" << configThA4
+					          << " Counter0=0x" << std::hex << pixelConfigCounter0[iRow][iCol] << std::dec
+					          << " ThreshBConfig=" << mMpx3PixelConfigCache[chipIdx][pixelThresholdBConfig][pixelCacheIdx]
+							  << " ConfigTHB4=" << configThB4
+							  << " Counter1=0x" << std::hex << pixelConfigCounter1[iRow][iCol] << std::dec << std::endl;
+				}
+#endif
 				// If any columns have test pulses enabled, enable the test pulse flag in the OMR parameters and set the
 				// appropriate bits in the column test pulse cache
 				if (testBit == 1)
@@ -454,19 +467,17 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		this->mpx3CtprWrite(aChipId);
 
 		// Upload pixel configuration to FEM memory
-		// TODO: address calculations for this need resolving
-		unsigned int configBaseAddr = 0x30000000;
 
 		// Write counter 0 configuration into the FEM memory
-		this->memoryWrite(configBaseAddr, (u32*)&pixelConfigCounter0Buffer, kPixelConfigBufferSizeWords);
+		this->memoryWrite(kPixelConfigBaseAddr, (u32*)&pixelConfigCounter0Buffer, kPixelConfigBufferSizeWords);
 
 		// Write counter 1 configuration into the FEM memory
-		this->memoryWrite(configBaseAddr + kPixelConfigBufferSizeBytes, (u32*)&pixelConfigCounter1Buffer, kPixelConfigBufferSizeWords);
+		this->memoryWrite(kPixelConfigBaseAddr + kPixelConfigBufferSizeBytes, (u32*)&pixelConfigCounter1Buffer, kPixelConfigBufferSizeWords);
 
 		clock_gettime(CLOCK_REALTIME, &writeTime);
 
 		// Set up the PPC1 DMA engine for upload mode for two configurations
-		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 2, configBaseAddr, 1);
+		this->acquireConfig(ACQ_MODE_UPLOAD, kPixelConfigBufferSizeBytes, 2, kPixelConfigBaseAddr, 1);
 
 		// TODO poll config completion
 		this->acquireStart();
@@ -496,7 +507,7 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		std::cout << "ACQ state=" << acqStatus.state << std::endl;
 
 		int retries = 0;
-		while  ((retries < 10) && (acqStatus.state != acquireIdle))
+		while  ((retries < 100) && (acqStatus.state != acquireIdle))
 		{
 			usleep(10000);
 			acqStatus = this->acquireStatus();
