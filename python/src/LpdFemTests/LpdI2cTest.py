@@ -115,11 +115,11 @@ class LpdI2cTest(FemClient):
         '''
         
         addr = LpdI2cTest.i2cInternalBusOffset + 0x0C
-        readback = -1
+        response = -1
         
-        readback = self.i2cRead(addr, 2)
-        high = (readback[4] & 15) << 8
-        low = readback[5]
+        response = self.i2cRead(addr, 2)
+        high = (response[1] & 15) << 8
+        low = response[2]
         return high + low
 
 
@@ -145,8 +145,8 @@ class LpdI2cTest(FemClient):
         response = self.i2cRead(addr, 2)
         
         # Extract the received two bytes and return as integer
-        high = (response[4] & 15) << 8
-        low = response[5]
+        high = (response[1] & 15) << 8
+        low = response[2]
         return high + low
 
     def read_bit(self, id):
@@ -165,7 +165,7 @@ class LpdI2cTest(FemClient):
         addr = LpdI2cTest.i2cInternalBusOffset + 0x38 
         
         response = self.i2cRead(addr, 1)
-        value = response[4]
+        value = response[1]
         return (value & (1 << id)) != 0
         
 
@@ -175,7 +175,7 @@ class LpdI2cTest(FemClient):
         addr = LpdI2cTest.i2cInternalBusOffset + 0x38
         response = self.i2cRead(addr, 1)
 
-        return response[4]
+        return response[1]
 
     def write_bit(self, id, value):
         ''' Change bit 'id' to 'value' in PCF7485 device
@@ -409,39 +409,26 @@ if __name__ == "__main__":
     thisFem.displayAll()
 
     # Test switching the low voltage on..
-    print "Switching low voltage on.."
-    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
-    time.sleep(1)
+#    print "Switching low voltage on.."
+#    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
+#    time.sleep(1)
 #    print "Switching high-voltage too!"
 #    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
 #    time.sleep(1)
 
-    print "Low voltage now on!"
-    time.sleep(2)
 
-    print "Let's check the (lv) status now:\n"
-    thisFem.show_lv_status()
-#    thisFem.show_hv_status()
+#    print "Let's check the status now:"
+#    thisFem.displayAll()
     
-    print "\nSwitching low voltage off.. "
-    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
-    time.sleep(1)
+#    print "Switching low voltage off.. "
+#    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+#    time.sleep(1)
+#    print "Low voltage now switched off!"
+
 #    print "Switching off high-voltage too"
 #    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
 #    time.sleep(1)
-    print "Low voltage now switched off:\n"
 
-    thisFem.show_lv_status()
-    print "Let's check the status now:"
-    thisFem.displayAll()
-    
-    print "Switching low voltage off.. "
-    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
-    time.sleep(1)
-#    print "Switching off high-voltage too"
-#    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
-#    time.sleep(1)
-    print "Low voltage now switched off!"
 
     print "\nClosing down Fem connection.."
     # Close down the connection
