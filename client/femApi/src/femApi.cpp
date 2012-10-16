@@ -339,7 +339,7 @@ int femSetFloat(void* femHandle, int chipId, int id, std::size_t size, double* v
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femSetInt: " << e.what() << std::endl;
+			std::cerr << "Exception caught during femSetFloat: " << e.what() << std::endl;
 			rc = translateFemErrorCode(e.which());
 		}
 	}
@@ -824,6 +824,11 @@ int femCmd(void* femHandle, int chipId, int id)
 			std::cout << "   Total errors     : "   << acqStatus.totalErrors << std::endl;
 
 		}
+
+		case 11:
+			theFem->acquireConfig(1, 0x1000, 2, 0x30000000, 1);
+			break;
+
 		break;
 
 		default:
