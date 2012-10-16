@@ -53,7 +53,7 @@ struct clientStatus {
 	int timeoutCount;				//! Counter for timeouts
 	u8 *pBusDirect;					//! Pointer for BUS_DIRECT writes
 	int busDirectSize;				//! Bytes received in BUS_DIRECT mode
-	int errorCode;					//! Error code
+	u8 errorCode;					//! Error code
 	char errorString[ERR_STRING_MAX_LENGTH];	//! Error string
 };
 

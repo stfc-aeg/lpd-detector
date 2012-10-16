@@ -1227,14 +1227,16 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 	int slen = 0;
 	struct protocol_header *pHeader = (struct protocol_header*)pTxPayload;
 
-	// First 32-bit word in payload is the error code
-	u32* pPayload_32 = (u32*)(pTxPayload+sizeof(struct protocol_header));
-	*pPayload_32 = pClient->errorCode;
-	payload_sz += 4;
+	// First byte in payload is the error code
+	*(pTxPayload + sizeof(struct protocol_header)) = pClient->errorCode;
+	payload_sz++;
 
-	// Copy original header to TX header, set NACK bit
+	// Copy original header to TX header
 	memcpy(pTxPayload, pClient->pHdr, sizeof(struct protocol_header));
+
+	// Set NACK bit, reset the data width field to WIDTH_BYTE
 	SBIT(pHeader->state, STATE_NACK);
+	pHeader->data_width = WIDTH_BYTE;
 
 	// Get length of error string
 	slen = strlen(pClient->errorString);

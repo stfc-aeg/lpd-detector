@@ -147,12 +147,12 @@ enum femHardwareErrorBits
 #define ERR_STRING_MAX_LENGTH		80				//! Buffer for error messages (per client)
 
 //! Error code offsets
-#define ERR_CODE_NETWORK_OFFSET		100
-#define ERR_CODE_RDMA_OFFSET		200
-#define ERR_CODE_I2C_OFFSET			300
-#define ERR_CODE_EEPROM_OFFSET		400
-#define ERR_CODE_INTERNAL_OFFSET	500
-#define ERR_CODE_FPM_OFFSET			900
+#define ERR_CODE_NETWORK_OFFSET		10
+#define ERR_CODE_RDMA_OFFSET		20
+#define ERR_CODE_I2C_OFFSET			30
+#define ERR_CODE_EEPROM_OFFSET		40
+#define ERR_CODE_INTERNAL_OFFSET	50
+#define ERR_CODE_FPM_OFFSET			90
 
 //! Global error codes
 enum errorCodes {
