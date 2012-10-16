@@ -186,6 +186,12 @@ void FemDataReceiver::stopAcquisition(void)
 
 }
 
+bool FemDataReceiver::acqusitionActive(void)
+{
+	return mAcquiring;
+}
+
+
 void FemDataReceiver::setNumFrames(unsigned int aNumFrames)
 {
 	mNumFrames = aNumFrames;

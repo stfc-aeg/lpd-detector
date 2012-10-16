@@ -46,6 +46,9 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& aOut, const FemTransaction& aTrans);
 
+	int getErrorNum(void);
+	std::string getErrorString(void);
+
 	static std::size_t widthToSize(u8 aWidth);
 
 	// added for zero copy

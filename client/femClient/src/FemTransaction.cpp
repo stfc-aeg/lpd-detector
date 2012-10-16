@@ -379,6 +379,24 @@ std::ostream& operator<<(std::ostream& aOut, const FemTransaction &aTrans)
 
 }
 
+int FemTransaction::getErrorNum(void)
+{
+	int errorCode = -1;
+	if (mPayload.size() > 0) {
+		errorCode = (int)mPayload[0];
+	}
+	return errorCode;
+}
+
+std::string FemTransaction::getErrorString(void)
+{
+	if (mPayload.size() > 1) {
+		return std::string(mPayload.begin()+1, mPayload.end());
+	} else {
+		return std::string("No error string in transaction payload");
+	}
+}
+
 std::size_t FemTransaction::widthToSize(u8 aWidth)
 {
 	std::size_t widthSize;

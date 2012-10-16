@@ -162,6 +162,15 @@ std::vector<u8> FemClient::read(unsigned int aBus, unsigned int aWidth, unsigned
 	FemTransaction response = this->receive();
 	std::vector<u8> readPayload = response.getPayload();
 
+	// Check for an ACK and the absence of a NACK on the response
+	u8 responseState = response.getState();
+	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK))) {
+		std::ostringstream msg;
+		msg << "FEM read transaction to address 0x" << std::hex << aAddress << std::dec << " failed: "
+			<< response.getErrorString() << " (errno=" << response.getErrorNum() << ")";
+		throw FemClientException(femClientMissingAck, msg.str());
+	}
+
 	// First word of payload should match the read length parameter requested. If it doesn't
 	// return an exception
 	u32 responseReadLen = (u32)(readPayload[0]);
@@ -210,6 +219,15 @@ u32 FemClient::readNoCopy(unsigned int aBus, unsigned int aWidth, unsigned int a
 	// Receive the response and get the payload
 	FemTransaction response = this->receive(aPayload);
 
+	// Check for an ACK and the absence of a NACK on the response
+	u8 responseState = response.getState();
+	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK))) {
+		std::ostringstream msg;
+		msg << "FEM read transaction to address 0x" << std::hex << aAddress << std::dec << " failed: "
+			<< response.getErrorString() << " (errno=" << response.getErrorNum() << ")";
+		throw FemClientException(femClientMissingAck, msg.str());
+	}
+
 	// Read length parameter requested. If it doesn't return an exception
 	u32 responseReadLen = response.payloadLength();
 	if (responseReadLen != aLength)
@@ -257,7 +275,8 @@ u32 FemClient::write(unsigned int aBus, unsigned int aWidth, unsigned int aAddre
 	u8 responseState = response.getState();
 	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK))) {
 		std::ostringstream msg;
-		msg << "FEM response did not acknowledge write transaction to address " << aAddress;
+		msg << "FEM write transaction to address 0x" << std::hex << aAddress << std::dec << " failed: "
+			<< response.getErrorString() << " (errno=" << response.getErrorNum() << ")";
 		throw FemClientException(femClientMissingAck, msg.str());
 	}
 
@@ -314,7 +333,8 @@ u32 FemClient::write(unsigned int aBus, unsigned int aWidth, unsigned int aAddre
 
 	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK))) {
 		std::ostringstream msg;
-		msg << "FEM response did not acknowledge write transaction to address 0x" << std::hex << aAddress << std::dec;
+		msg << "FEM write transaction to address 0x" << std::hex << aAddress << std::dec << " failed: "
+			<< response.getErrorString() << " (errno=" << response.getErrorNum() << ")";
 		throw FemClientException(femClientMissingAck, msg.str());
 	}
 
@@ -371,7 +391,8 @@ void FemClient::command(unsigned int aCommand)
 	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK)))
 	{
 		std::ostringstream msg;
-		msg << "FEM response did not acknowledge command " << aCommand;
+		msg << "Command " << aCommand << " failed: " << response.getErrorString()
+			<< " (errno=" << response.getErrorNum() << ")";
 		throw FemClientException(femClientMissingAck, msg.str());
 	}
 
@@ -425,7 +446,7 @@ std::vector<u8> FemClient::commandAcquire(unsigned int aAcqCommand, FemAcquireCo
 	if (!(CMPBIT(responseState, STATE_ACK)) || (CMPBIT(responseState, STATE_NACK)))
 	{
 		std::ostringstream msg;
-		msg << "FEM response did not acknowledge acquire command " << aAcqCommand;
+		msg << "Acquire command " << aAcqCommand << " failed: " << response.getErrorString() << " (errno=" << response.getErrorNum() << ")" ;
 		throw FemClientException(femClientMissingAck, msg.str());
 	}
 

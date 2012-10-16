@@ -87,6 +87,8 @@ public:
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
 
+	bool acqusitionActive(void);
+
 private:
 
 	boost::asio::io_service   	      mIoService;
