@@ -451,7 +451,7 @@ class LpdProtoTest(FemClient):
         '''
         adcVal = self.ad7998Read(device, channel)
         
-        scale = 700.0
+        scale = 600.0
         return (adcVal * scale / 4095.0)
 
     def debugDisplay(self, var):
@@ -487,7 +487,7 @@ class LpdProtoTest(FemClient):
         response = self.i2cRead(addr, 2)
         
         # Extract the received two bytes and return one integer
-        value = (int((response[4] & 15) << 8) + int(response[5]))
+        value = (int((response[1] & 15) << 8) + int(response[2]))
 #        print "[%4i" % value, "]",
         return value
 
@@ -497,11 +497,11 @@ class LpdProtoTest(FemClient):
         '''
         
         addr = LpdProtoTest.i2cPowerCardBus + 0x0C
-        readback = -1
+        response = -1
         
-        readback = self.i2cRead(addr, 2)
-        high = (readback[4] & 15) << 8
-        low = readback[5]
+        response = self.i2cRead(addr, 2)
+        high = (response[1] & 15) << 8
+        low = response[2]
         return high + low
 
     def ad55321Write(self, aValue):
@@ -509,7 +509,7 @@ class LpdProtoTest(FemClient):
             Write 'aAValue' (2 bytes) to ad5321 device
         '''
     
-        readback = -1
+        response = -1
         # Construct address and payload (as a tuple)
         addr = LpdProtoTest.i2cPowerCardBus + 0x0C
         payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
@@ -518,8 +518,8 @@ class LpdProtoTest(FemClient):
         ack = self.i2cWrite(addr, payload)
         
         # Verify write operation
-        readback = self.ad5321Read()
-        return readback
+        response = self.ad5321Read()
+        return response
     
     def pcf7485ReadOneBit(self, id):
         ''' 
@@ -534,7 +534,8 @@ class LpdProtoTest(FemClient):
         
         response = self.i2cRead(addr, 1)
         
-        value = response[4]
+#        print "response = ", response, " type(response) = ", type(response)
+        value = response[1]
         return (value & (1 << id)) != 0
         
     def pcf7485ReadAllBits(self):
@@ -552,8 +553,8 @@ class LpdProtoTest(FemClient):
         '''
         addr = LpdProtoTest.i2cPowerCardBus + 0x38
         response = self.i2cRead(addr, 1)
-#        print "pcf7485ReadAllBits() response = ", self.debugDisplay(response[4])
-        return response[4]
+#        print "pcf7485ReadAllBits() response = ", self.debugDisplay(response[1])
+        return response[1]
 
     def pcf7485WriteOneBit(self, id, value):
         ''' 
@@ -594,7 +595,7 @@ if __name__ == "__main__":
     thisPrototype = LpdProtoTest((host , port))
 
     # Change the HV setting
-#    thisPrototype.sensorBiasSet(0)
+#    thisPrototype.sensorBiasSet(1)
 
 #    # Switching on the low voltage
 #    thisPrototype.asicPowerEnableSet(LpdProtoTest.ON)
@@ -670,7 +671,7 @@ if __name__ == "__main__":
     
     digitalVoltage = thisPrototype.digitalVoltageGet()
     digitalCurrent = thisPrototype.digitalCurrentGet()
-    print "   V Digital  : %.2f" % digitalVoltage, " V %.2f" % digitalCurrent, " A\n"
+    print "   V Digital  : %.2f" % digitalVoltage, " V %.2f" % digitalCurrent, " mA\n"
     
     sensorAVoltage = thisPrototype.sensorAVoltageGet()
     sensorACurrent = thisPrototype.sensorACurrentGet()
@@ -707,7 +708,7 @@ if __name__ == "__main__":
 
     sensorBiasVoltage = thisPrototype.sensorBiasVoltageGet()
     sensorBiasCurrent = thisPrototype.sensorBiasCurrentGet()
-    print "   HV Bias    : %.2f" % sensorBiasVoltage, " V %.2f" % sensorBiasCurrent, " A"
+    print "   HV Bias    : %.2f" % sensorBiasVoltage, " V %.2f" % sensorBiasCurrent, " uA"
 
     print "\nClosing Fem connection..\n"
     thisPrototype.close()
