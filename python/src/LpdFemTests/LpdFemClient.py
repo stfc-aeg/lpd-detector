@@ -227,6 +227,26 @@ class LpdFemClient(FemClient):
     
         self.rdmaRead(base_addr+9, 1)    
     
+    def fem_10g_udp_common(self, net, udp_10g_id):
+        '''
+            Set up MAC address for source and destination;
+            This function replaces the following two functions:
+           
+            fem_10g_udp_net_set_up_block0
+            fem_10g_udp_net_set_up_block1
+        '''
+        
+        # Check that udp_10g_id is either a 0 or 1
+        if not ((udp_10g_id == 0) or (udp_10g_id == 1)):
+            print "fem_10g_udp_common() Error: arguments udp_10g_id expected 0 or 1. Received:", udp_10g_id
+            return -1
+        elif udp_10g_id == 0:
+            base_addr = LpdFemClient.udp_10g_0
+        else:
+            base_addr = LpdFemClient.udp_10g_1
+            
+            
+                 
     def fem_local_link_mux_setup(self, output_data_source):
         # set up local link mux
         base_addr = LpdFemClient.fem_ctrl_0
