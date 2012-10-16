@@ -116,28 +116,28 @@ class LpdProtoTest(FemClient):
             Get temperature from sensor A
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSA_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSA_TEMP_CHAN)
 
     def sensorBTempGet(self):
         '''
             Get temperature from sensor B
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSB_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSB_TEMP_CHAN)
     
     def sensorCTempGet(self):
         '''
             Get temperature from Sensor C
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSC_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSC_TEMP_CHAN)
     
     def sensorDTempGet(self):
         '''
             Get temperature from Sensor D
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSD_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSD_TEMP_CHAN)
     
     
     def sensorETempGet(self):
@@ -145,7 +145,7 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor E
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSE_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSE_TEMP_CHAN)
 
     
     def sensorFTempGet(self):
@@ -153,7 +153,7 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor F
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSF_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSF_TEMP_CHAN)
 
     
     def sensorGTempGet(self):
@@ -161,7 +161,7 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor G
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSG_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSG_TEMP_CHAN)
 
     
     def sensorHTempGet(self):
@@ -169,13 +169,13 @@ class LpdProtoTest(FemClient):
             Get temperature from Sensor H
         '''
         
-        return self.sensorTempRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSH_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(LpdProtoTest.AD7998ADDRESS[3], LpdProtoTest.SENSH_TEMP_CHAN)
 
     def powerCardTempGet(self):
         '''
             Get temperature from power card
         '''
-        return self.sensorTempRead(0x22, LpdProtoTest.PSU_TEMP_CHAN)
+        return self.sensorTempSixVoltScaleRead(0x22, LpdProtoTest.PSU_TEMP_CHAN)
     
 
     def asicPowerEnableGet(self):
@@ -460,9 +460,13 @@ class LpdProtoTest(FemClient):
         '''
         return var, "0x%X" % var,
         
-    def sensorTempRead(self, device, channel):
+    def sensorTempSixVoltScaleRead(self, device, channel):
         '''
-            Generic function: Reads sensor temperature at 'channel' in  address 'device',
+            Helper function: Reads sensor temperature at 'channel' in  address 'device',
+                and converts adc counts into six volts scale.
+            Note: This function will become different from
+                    sensorThreeVoltScaleRead(device, channel)
+            because this function will later convert into degrees centigrade
         '''
         adcVal = self.ad7998Read(device, channel)
         
