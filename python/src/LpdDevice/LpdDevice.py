@@ -6,7 +6,7 @@ Created on 18 Sep 2012
 @author: Tim Nicholls, STFC Application Engineering Group
 '''
 
-#from LpdFemTests.LpdFemClient import LpdFemClient, FemClientError
+from LpdFemClient.LpdFemClient import LpdFemClient, FemClientError
 from LpdDeviceParameters import *
 
 class LpdDevice(object):
@@ -262,7 +262,7 @@ class LpdDevice(object):
         
         rc = LpdDevice.ERROR_OK
         value = None
- 
+        
         # Check if ASIC and/or pixel keyword arguments have been passed
         if 'asic' in kwargs:
             asic = kwargs['asic']
@@ -281,8 +281,16 @@ class LpdDevice(object):
             if not self.simulateFemClient:
 
                 getMethod = getattr(self.femClient, '%sGet' % param)
-                (rc, value) =  getMethod(**kwargs)
-
+                #(rc, value) =  getMethod(**kwargs)
+                try:
+                    value = getMethod(**kwargs)
+                except FemClientError as e:
+                    rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
+                    self.errorString = 'Get of parameter %s failed: %s' % (param, e.msg)
+                except AttributeError:
+                    rc = LpdDevice.ERROR_PARAM_NO_METHOD
+                    self.errorString = 'No get method for parameter %s' % (param)
+                
             else:
                 
                 # In simulation mode, resolve the parameter name including pixel and asic 
