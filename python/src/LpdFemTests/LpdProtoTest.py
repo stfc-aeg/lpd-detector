@@ -588,110 +588,110 @@ class LpdProtoTest(FemClient):
 
         return tempVal
 
-    def displayI2cOutputs(self, thisFem):
+    def displayI2cOutputs(self):
         '''
              Displays all the i2c quantities
         '''
         
         print "Status:"
         print "    Low voltage: ", 
-        if (thisFem.asicPowerEnableGet()):
+        if (self.asicPowerEnableGet()):
             print "off."
         else:
             print "on."
         
         print "    High voltage: ", 
-        if (thisFem.sensorBiasEnableGet()):
+        if (self.sensorBiasEnableGet()):
             print "off."
         else:
             print "on."
-        print "    HV setting: ", thisFem.sensorBiasGet()
+        print "    HV setting: ", self.sensorBiasGet()
     
         print "Flags:" 
-        print "    Fault Flag        = ", thisFem.powerCardFaultStatusGet() 
-        print "    Fem Status   Trip = ", thisFem.powerCardFemStatusGet() 
-        print "    External     Trip = ", thisFem.powerCardExtStatusGet()
-        print "    Over current Trip = ", thisFem.powerCardOverCurrentStatusGet()
-        print "    Over temp    Trip = ", thisFem.powerCardOvertempStatusGet()
-        print "    Undertemp    Trip = ", thisFem.powerCardUndertempStatusGet()
+        print "    Fault Flag        = ", self.powerCardFaultStatusGet() 
+        print "    Fem Status   Trip = ", self.powerCardFemStatusGet() 
+        print "    External     Trip = ", self.powerCardExtStatusGet()
+        print "    Over current Trip = ", self.powerCardOverCurrentStatusGet()
+        print "    Over temp    Trip = ", self.powerCardOvertempStatusGet()
+        print "    Undertemp    Trip = ", self.powerCardUndertempStatusGet()
         print ".\n"
     
         
         print "Temperature readings: "
     
-        powerCardTemp = thisFem.powerCardTempGet()
+        powerCardTemp = self.powerCardTempGet()
         print "   PSU Card Temp: %.2f" % powerCardTemp, " V"
     
-        sensorATemp = thisFem.sensorATempGet()
+        sensorATemp = self.sensorATempGet()
         print "   Sensor A Temp: %.2f" % sensorATemp, " V"
         
-        sensorBTemp = thisFem.sensorBTempGet()
+        sensorBTemp = self.sensorBTempGet()
         print "   Sensor B Temp: %.2f" % sensorBTemp, " V"
     
-        sensorCTemp = thisFem.sensorCTempGet()
+        sensorCTemp = self.sensorCTempGet()
         print "   Sensor C Temp: %.2f" % sensorCTemp, " V"
         
-        sensorDTemp = thisFem.sensorDTempGet()
+        sensorDTemp = self.sensorDTempGet()
         print "   Sensor D Temp: %.2f" % sensorDTemp, " V"
         
-        sensorETemp = thisFem.sensorETempGet()
+        sensorETemp = self.sensorETempGet()
         print "   Sensor E Temp: %.2f" % sensorETemp, " V"
         
-        sensorFTemp = thisFem.sensorFTempGet()
+        sensorFTemp = self.sensorFTempGet()
         print "   Sensor F Temp: %.2f" % sensorFTemp, " V"
         
-        sensorGTemp = thisFem.sensorGTempGet()
+        sensorGTemp = self.sensorGTempGet()
         print "   Sensor G Temp: %.2f" % sensorGTemp, " V"
         
-        sensorHTemp = thisFem.sensorHTempGet()
+        sensorHTemp = self.sensorHTempGet()
         print "   Sensor H Temp: %.2f" % sensorHTemp, " V"
         print "\n"
         
         print "Outputs: "
         
-        femVoltage = thisFem.femVoltageGet()
-        femCurrent = thisFem.femCurrentGet()
+        femVoltage = self.femVoltageGet()
+        femCurrent = self.femCurrentGet()
         print "   V FEM      : %.2f" % femVoltage, " V %.2f" % femCurrent, " A"
         
-        digitalVoltage = thisFem.digitalVoltageGet()
-        digitalCurrent = thisFem.digitalCurrentGet()
+        digitalVoltage = self.digitalVoltageGet()
+        digitalCurrent = self.digitalCurrentGet()
         print "   V Digital  : %.2f" % digitalVoltage, " V %.2f" % digitalCurrent, " mA\n"
         
-        sensorAVoltage = thisFem.sensorAVoltageGet()
-        sensorACurrent = thisFem.sensorACurrentGet()
+        sensorAVoltage = self.sensorAVoltageGet()
+        sensorACurrent = self.sensorACurrentGet()
         print "   V Sensor A : %.2f" % sensorAVoltage, " V %.2f" % sensorACurrent, " A"
     
-        sensorBVoltage = thisFem.sensorBVoltageGet()
-        sensorBCurrent = thisFem.sensorBCurrentGet()
+        sensorBVoltage = self.sensorBVoltageGet()
+        sensorBCurrent = self.sensorBCurrentGet()
         print "   V Sensor B : %.2f" % sensorBVoltage, " V %.2f" % sensorBCurrent, " A"
     
-        sensorCVoltage = thisFem.sensorCVoltageGet()
-        sensorCCurrent = thisFem.sensorCCurrentGet()
+        sensorCVoltage = self.sensorCVoltageGet()
+        sensorCCurrent = self.sensorCCurrentGet()
         print "   V Sensor C : %.2f" % sensorCVoltage, " V %.2f" % sensorCCurrent, " A"
     
-        sensorDVoltage = thisFem.sensorDVoltageGet()
-        sensorDCurrent = thisFem.sensorDCurrentGet()
+        sensorDVoltage = self.sensorDVoltageGet()
+        sensorDCurrent = self.sensorDCurrentGet()
         print "   V Sensor D : %.2f" % sensorDVoltage, " V %.2f" % sensorDCurrent, " A"
     
-        sensorEVoltage = thisFem.sensorEVoltageGet()
-        sensorECurrent = thisFem.sensorECurrentGet()
+        sensorEVoltage = self.sensorEVoltageGet()
+        sensorECurrent = self.sensorECurrentGet()
         print "   V Sensor E : %.2f" % sensorEVoltage, " V %.2f" % sensorECurrent, " A"
     
-        sensorFVoltage = thisFem.sensorFVoltageGet()
-        sensorFCurrent = thisFem.sensorFCurrentGet()
+        sensorFVoltage = self.sensorFVoltageGet()
+        sensorFCurrent = self.sensorFCurrentGet()
         print "   V Sensor F : %.2f" % sensorFVoltage, " V %.2f" % sensorFCurrent, " A"
     
-        sensorGVoltage = thisFem.sensorGVoltageGet()
-        sensorGCurrent = thisFem.sensorGCurrentGet()
+        sensorGVoltage = self.sensorGVoltageGet()
+        sensorGCurrent = self.sensorGCurrentGet()
         print "   V Sensor G : %.2f" % sensorGVoltage, " V %.2f" % sensorGCurrent, " A"
     
-        sensorHVoltage = thisFem.sensorHVoltageGet()
-        sensorHCurrent = thisFem.sensorHCurrentGet()
+        sensorHVoltage = self.sensorHVoltageGet()
+        sensorHCurrent = self.sensorHCurrentGet()
         print "   V Sensor H : %.2f" % sensorHVoltage, " V %.2f" % sensorHCurrent, " A"
         print ""
     
-        sensorBiasVoltage = thisFem.sensorBiasVoltageGet()
-        sensorBiasCurrent = thisFem.sensorBiasCurrentGet()
+        sensorBiasVoltage = self.sensorBiasVoltageGet()
+        sensorBiasCurrent = self.sensorBiasCurrentGet()
         print "   HV Bias    : %.2f" % sensorBiasVoltage, " V %.2f" % sensorBiasCurrent, " uA"
 
 
@@ -719,7 +719,7 @@ if __name__ == "__main__":
 
     print "-=-=-=-=-=-=-=-=-=-=-=-=-"
     # Display all the i2c quantities
-    thisPrototype.displayI2cOutputs(thisPrototype)
+    thisPrototype.displayI2cOutputs()
 
 
     print "\nClosing Fem connection..\n"
