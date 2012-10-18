@@ -149,6 +149,10 @@ class SlowCtrlParams(object):
         # Parse the tree, starting at the root element, obtaining the packed
         #     binary command sequence as a list
         sequence  = self.parseElement(self.root)
+#        self.parseElement(self.root)
+        
+        #TODO: sort this out; sequence should come from the buildBitstream() function ??
+#        sequence  = self.buildBitstream()
         
         # Count the total number of words
         self.total_number_words = len(sequence)
@@ -260,6 +264,7 @@ class SlowCtrlParams(object):
         
         if self.bDebug:
             print "\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
+        
         # Dictionary now updated, check keys XX_default and if they are not -1 
         # then their corresponding keys should be updated with whatever value the XX_default key has
         for key in self.paramsDict:
@@ -290,18 +295,65 @@ class SlowCtrlParams(object):
         self.depth = self.depth - 1
         
         # Return the encoded sequence for this (partial) tree
+        
+        ''' THIS is empty though! '''
+        
         return encodedSequence
-#        return localNopsSum, encodedSequence
  
     def buildBitstream(self):
         '''
-        loop over dictionary keys and building the word bitstream programmatically
+            Loop over dictionary keys and building the word bitstream programmatically
         '''
-        
+
+        # Initialise empty list to contain binary command values for this part of the tree
+        encodedSequence = [0] * 122
+        # Track position within encodedSequence list
+        seqPosition = 0
         
         """ Condense all of the following down into looping over dictionary keys and building the word bitstream programmatically """
-        test = False
-        if test:
+        
+        # Loop over dictionary entries 
+        for dictKey in self.paramsDict:
+            
+            # If it is a XX_default key, do not process it
+            if dictKey.endswith("_default"):
+                continue
+            else:
+                print "Dictionary key %20s" % dictKey, "\t",
+                
+                # Get dictionary key values
+                cmdParams = self.getParamValue(dictKey)
+                # Display the first two entries of the list
+                print cmdParams[0], cmdParams[1],
+                # Is this a scaler quantity?
+                if isinstance(cmdParams[2], types.ListType):
+                    # it's a list; display first and last couple of values
+                    print  " [", cmdParams[2][0], cmdParams[2][1], "..", cmdParams[2][-2], cmdParams[2][-1], "]"
+                    # How many elements in the third entry?
+                    print "\t len = ", len(cmdParams[2])
+
+                
+                    # word width over this key?
+                    keyWidth = cmdParams[0]
+                    # Where does current key reside within the (122 * word) sequence?
+                    wordPosition = cmdParams[1] / 32
+                    # Determine number of entries in the nested list
+                    listLength = len(cmdParams[2])
+                    # Loop over all the elements of the nested list
+                    for idx in range(listLength):
+                        # Calculate which is in the current index of the encoded sequence
+                        index = wordPosition + ( (idx * keyWidth) / 32 )
+                        # Update the current index of the encoded sequence
+                        encodedSequence[index] = encodedSequence[index] | (cmdParams[2][idx] << (cmdParams[0] * idx))
+                else:
+                    # it's just an integer
+                    print cmdParams[2]
+                
+                '''  This Needs to Be Replicated on Both Side of the if isinstance() parts ? '''
+
+                
+                continue
+                
             # Pack command into 32 bit words 
             #  
             if cmd == 'mux_decoder':
@@ -462,6 +514,8 @@ class SlowCtrlParams(object):
                     encodedSequence[seqPosition] = seqIndex
                     seqPosition += 1
  
+        # Return the encoded sequence for this (partial) tree
+        return encodedSequence
 
     def displayDictionaryValues(self):
         '''
@@ -680,7 +734,57 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 1099511627776
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
+
+
+    
+    def testBuildBitstream(self):
+        '''
+            Test the buildBitstream function
+        '''
         
+        daqBiasIdx47 = 11
+        daqBiasDefault = 31
+        selfTestDecoderDefault = 7
+        digitalControlIdx3 = 18
+
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <self_test_decoder pixel="1" value="5"/>
+                                <self_test_decoder_default value="%i"/>
+                                <mux_decoder pixel="2" value="0"/>
+                                <mux_decoder_default value="3"/>
+                                <daq_bias index="47" value="%i"/>
+                                <daq_bias_default value="%i"/>
+                                <daq_bias index="2" value="0"/>
+                                <digital_control index="3" value="18"/>
+                                <spare_bits value="%i"/>
+                            </lpd_slow_ctrl_sequence>
+        ''' % (selfTestDecoderDefault, daqBiasIdx47, daqBiasDefault, digitalControlIdx3)
+
+  
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj.encode()
+
+        # Display an excerp of each dictionary key's value:
+        paramsObj.displayDictionaryValues()
+  
+        # Setup and compare the unit tests..        
+        dictKey = "self_test_decoder_default"
+        index = 0
+        value = selfTestDecoderDefault
+        
+        
+        print "Executing the buildBitstream() function: "
+        encSeq = paramsObj.buildBitstream()
+
+
+        print "\n\n encSeq: "
+        print "%16X" % encSeq[0]
+        print "%16X" % encSeq[1]
+        print "%16X" % encSeq[2]
+        print "%16X" % encSeq[3]
+
 if __name__ == '__main__':
     
     
