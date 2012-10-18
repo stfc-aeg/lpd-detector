@@ -136,97 +136,7 @@ class LpdFemClientLegacy(FemClient):
             print [hex(val) for val in ack]
         
         return ack
-
         
-    def fem_10g_udp_net_set_up_block0(self, net):
-        #set up MAC address for SRC & destination
-        base_addr = LpdFemClientLegacy.udp_10g_0
-        
-        reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
-    
-        reg2b = ((net['src_mac'] & 0x0000FFFF00000000) >> 32)
-        reg2t = ((net['dst_mac'] & 0x000000000000FFFF) << 16)
-        reg2 = (reg2b | reg2t)
-    
-        reg3 = (net['dst_mac'] >> 16)
-
-        print "# src_mac_lower_32"
-        self.rdmaWrite(base_addr+0, reg1)
-        print "# dst_mac_lower_16 & src_mac_upper_16"
-        self.rdmaWrite(base_addr+1, reg2)
-        print "# dst_mac_upper_32"
-        self.rdmaWrite(base_addr+2, reg3)
-        
-        #set up IP address for SRC & destination
-        print "Reading IP address for Src & destination.."
-        reg6b = self.rdmaRead(base_addr+6, 1)[1]
-#        reg6b = 0xA1B2C3D4
-        reg6b = (reg6b & 0x0000FFFF)
-        reg6 =  ( (net['dst_ip'] << 16)  & 0xFFFFFFFF )
-        reg6 =  (reg6 | reg6b)
-    
-        reg7 =  (net['dst_ip'] >> 16)
-        reg7 = ( (reg7 | (net['src_ip'] << 16)) & 0xFFFFFFFF )
-        
-        reg8t = self.rdmaRead(base_addr+8, 1)[1]    # 1 = one 32 bit unsigned integer
-#        reg8t = 0x9F8E7D6C
-        reg8t = (reg8t & 0xFFFF0000)
-        reg8b =  (net['src_ip'] >> 16)
-        reg8 =  (reg8t | reg8b)
-
-#        print hex(reg6), "\n", hex(reg7), "\n", hex(reg8)        
-        print "Writing to reg6, reg7 & reg8.."
-        self.rdmaWrite(base_addr+6, reg6)    
-        self.rdmaWrite(base_addr+7, reg7)
-        self.rdmaWrite(base_addr+8, reg8)
-    
-        self.rdmaRead(base_addr+9, 1)    
-
-    def fem_10g_udp_net_set_up_block1(self, net):
-        #set up MAC address for SRC & destination
-        base_addr = LpdFemClientLegacy.udp_10g_1
-        
-        reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
-    
-        reg2b = ((net['src_mac'] & 0x0000FFFF00000000) >> 32)
-        reg2t = ((net['dst_mac'] & 0x000000000000FFFF) << 16)
-        reg2 = (reg2b | reg2t)
-    
-        reg3 = (net['dst_mac'] >> 16)
-
-        print "# src_mac_lower_32"
-        self.rdmaWrite(base_addr+0, reg1)
-        print "# dst_mac_lower_16 & src_mac_upper_16"
-        self.rdmaWrite(base_addr+1, reg2)
-        print "# dst_mac_upper_32"
-        self.rdmaWrite(base_addr+2, reg3)
-        
-        #set up IP address for SRC & destination
-        print "Reading IP address for Src & destination.."
-        reg6b = self.rdmaRead(base_addr+6, 1)[1]
-#        reg6b = 0xA1B2C3D4
-    
-        reg6b = (reg6b & 0x0000FFFF)
-        reg6 =  ( (net['dst_ip'] << 16) & 0xFFFFFFFF )
-        reg6 =  (reg6 | reg6b)
-    
-        reg7 =  (net['dst_ip'] >> 16)
-        reg7 =  ( (reg7 | (net['src_ip'] << 16)) & 0xFFFFFFFF )
-        
-        reg8t = self.rdmaRead(base_addr+8, 1)[1]    # 1 = one 32 bit unsigned integer
-#        reg8t = 0x9F8E7D6C
-        reg8t = (reg8t & 0xFFFF0000)
-        reg8b = (net['src_ip'] >> 16)
-        reg8 =  (reg8t | reg8b)        
-    
-#        print hex(reg6), "\n", hex(reg7), "\n", hex(reg8)
-        print "Writing to reg6, reg7 & reg8.."
-        self.rdmaWrite(base_addr+6, reg6)    
-        self.rdmaWrite(base_addr+7, reg7)
-        self.rdmaWrite(base_addr+8, reg8)
-    
-        self.rdmaRead(base_addr+9, 1)    
-    
     def fem_10g_udp_common(self, net, udp_10g_id):
         '''
             Set up MAC address for source and destination;
@@ -238,14 +148,51 @@ class LpdFemClientLegacy(FemClient):
         
         # Check that udp_10g_id is either a 0 or 1
         if not ((udp_10g_id == 0) or (udp_10g_id == 1)):
-            print "fem_10g_udp_common() Error: arguments udp_10g_id expected 0 or 1. Received:", udp_10g_id
-            return -1
+            print "fem_10g_udp_common() Error: argument udp_10g_id expected 0 or 1. Received:", udp_10g_id
+            return 1
         elif udp_10g_id == 0:
             base_addr = LpdFemClientLegacy.udp_10g_0
         else:
             base_addr = LpdFemClientLegacy.udp_10g_1
             
-            
+        reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
+    
+        reg2b = ((net['src_mac'] & 0x0000FFFF00000000) >> 32)
+        reg2t = ((net['dst_mac'] & 0x000000000000FFFF) << 16)
+        reg2 = (reg2b | reg2t)
+    
+        reg3 = (net['dst_mac'] >> 16)
+
+        print "# src_mac_lower_32"
+        self.rdmaWrite(base_addr+0, reg1)
+        print "# dst_mac_lower_16 & src_mac_upper_16"
+        self.rdmaWrite(base_addr+1, reg2)
+        print "# dst_mac_upper_32"
+        self.rdmaWrite(base_addr+2, reg3)
+        
+        #set up IP address for SRC & destination
+        print "Reading IP address for Src & destination.."
+        reg6b = self.rdmaRead(base_addr+6, 1)[1]
+    
+        reg6b = (reg6b & 0x0000FFFF)
+        reg6 =  ( (net['dst_ip'] << 16) & 0xFFFFFFFF )
+        reg6 =  (reg6 | reg6b)
+    
+        reg7 =  (net['dst_ip'] >> 16)
+        reg7 =  ( (reg7 | (net['src_ip'] << 16)) & 0xFFFFFFFF )
+        
+        reg8t = self.rdmaRead(base_addr+8, 1)[1]    # 1 = one 32 bit unsigned integer
+
+        reg8t = (reg8t & 0xFFFF0000)
+        reg8b = (net['src_ip'] >> 16)
+        reg8 =  (reg8t | reg8b)        
+    
+        print "Writing to reg6, reg7 & reg8.."
+        self.rdmaWrite(base_addr+6, reg6)    
+        self.rdmaWrite(base_addr+7, reg7)
+        self.rdmaWrite(base_addr+8, reg8)
+    
+        self.rdmaRead(base_addr+9, 1)    
                  
     def fem_local_link_mux_setup(self, output_data_source):
         # set up local link mux

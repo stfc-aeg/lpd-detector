@@ -313,15 +313,12 @@ class FemAsicTest():
             myLpdFemClient.fem_10g_udp_set_up_block1(udp_pkt_len, udp_frm_sze, eth_ifg)
             
             # Set MAC, IP Port addresses
-            myLpdFemClient.fem_10g_udp_net_set_up_block0(x10g_0)
-            myLpdFemClient.fem_10g_udp_net_set_up_block1(x10g_1)
-            
-            print "Testing common function..:"
-            response = myLpdFemClient.fem_10g_udp_common(x10g_0, 2)
-            if response == -1:
-                print "++++++++++++++++++++++++++++++++++++++++ FAIL"
-            else:
-                print "++++++++++++++++++++++++++++++++++++++++ FINE"
+            if myLpdFemClient.fem_10g_udp_common(x10g_0, 0):
+                # Failed, exiting..
+                sys.exit()
+            if myLpdFemClient.fem_10g_udp_common(x10g_1, 1):
+                # Failed, exiting..
+                sys.exit()                
                 
             myLpdFemClient.robs_udp_packet_header_10g(robs_udp_packet_hdr)
         
