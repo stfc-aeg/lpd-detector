@@ -68,7 +68,7 @@ class LpdFemClientLegacy(FemClient):
     def __init__(self, hostAddr=None, timeout=None):
         
         # Call superclass initialising function   
-        super(LpdFemClient, self).__init__(hostAddr, timeout)
+        super(LpdFemClientLegacy, self).__init__(hostAddr, timeout)
 
         # Flag governing if each rdmaWrite should immediately follow a confirming rdmaRead
         #    for debugging purposes.
@@ -106,7 +106,7 @@ class LpdFemClientLegacy(FemClient):
     def clear_ll_monitor(self):
         """ readout a local link monitor block
             Rob Halsall 08-04-2011    """
-        base_addr = LpdFemClient.llink_mon_0
+        base_addr = LpdFemClientLegacy.llink_mon_0
         #input monitor registers are offset from base address by 16
         
         print "Local Link Monitor Counter Reset"
@@ -118,7 +118,7 @@ class LpdFemClientLegacy(FemClient):
 
     def rdmaWrite(self, theAddr, thePayload):
         
-        ack = super(LpdFemClient, self).rdmaWrite(theAddr,thePayload)
+        ack = super(LpdFemClientLegacy, self).rdmaWrite(theAddr,thePayload)
         
         if self.rdmaReadBackFlag:
             playloadLength = 0
@@ -140,7 +140,7 @@ class LpdFemClientLegacy(FemClient):
         
     def fem_10g_udp_net_set_up_block0(self, net):
         #set up MAC address for SRC & destination
-        base_addr = LpdFemClient.udp_10g_0
+        base_addr = LpdFemClientLegacy.udp_10g_0
         
         reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
     
@@ -184,7 +184,7 @@ class LpdFemClientLegacy(FemClient):
 
     def fem_10g_udp_net_set_up_block1(self, net):
         #set up MAC address for SRC & destination
-        base_addr = LpdFemClient.udp_10g_1
+        base_addr = LpdFemClientLegacy.udp_10g_1
         
         reg1 = (net['src_mac'] & 0x00000000FFFFFFFF)
     
@@ -241,15 +241,15 @@ class LpdFemClientLegacy(FemClient):
             print "fem_10g_udp_common() Error: arguments udp_10g_id expected 0 or 1. Received:", udp_10g_id
             return -1
         elif udp_10g_id == 0:
-            base_addr = LpdFemClient.udp_10g_0
+            base_addr = LpdFemClientLegacy.udp_10g_0
         else:
-            base_addr = LpdFemClient.udp_10g_1
+            base_addr = LpdFemClientLegacy.udp_10g_1
             
             
                  
     def fem_local_link_mux_setup(self, output_data_source):
         # set up local link mux
-        base_addr = LpdFemClient.fem_ctrl_0
+        base_addr = LpdFemClientLegacy.fem_ctrl_0
     
         reg1 = 0x00000001 | base_addr
     
@@ -265,7 +265,7 @@ class LpdFemClientLegacy(FemClient):
     
     def toggle_bits(self, reg_addr, bit_pat):
         """ toggle_bits() """
-        address= LpdFemClient.fem_ctrl_0 + reg_addr
+        address= LpdFemClientLegacy.fem_ctrl_0 + reg_addr
         
         bits_off = 0
         bits_on  = bit_pat
@@ -283,7 +283,7 @@ class LpdFemClientLegacy(FemClient):
         """ readout a local link monitor block """
         
         #input monitor registers are offset from base address by 16
-        mon_addr = LpdFemClient.llink_mon_0 + 16
+        mon_addr = LpdFemClientLegacy.llink_mon_0 + 16
 
         print "frm_last_length:\t",         hex( self.rdmaRead(mon_addr+0, 1)[1])
         print "frm_max_length: \t",         hex( self.rdmaRead(mon_addr+1, 1)[1])
@@ -317,7 +317,7 @@ class LpdFemClientLegacy(FemClient):
     def ll_frm_gen_setup(self, length, data_type):
         """ This function sets up the data Generator & resets """
     
-        base_address = LpdFemClient.data_gen_0
+        base_address = LpdFemClientLegacy.data_gen_0
         # frm gen - n.b. top nibble/2 - move to data gen setup
         reg_length = length - 2
         print "DATA GEN Data Length"
@@ -357,7 +357,7 @@ class LpdFemClientLegacy(FemClient):
     
     def fem_10g_udp_set_up_block0(self, udp_pkt_len, udp_frm_sze, eth_ifg):
     
-        base_addr = LpdFemClient.udp_10g_0
+        base_addr = LpdFemClientLegacy.udp_10g_0
         fixed_length = 0
         
         # set up header lengths
@@ -409,7 +409,7 @@ class LpdFemClientLegacy(FemClient):
     
     def fem_10g_udp_set_up_block1(self, udp_pkt_len, udp_frm_sze, eth_ifg):
     
-        base_addr = LpdFemClient.udp_10g_1
+        base_addr = LpdFemClientLegacy.udp_10g_1
         fixed_length = 0
         
         # set up header lengths
@@ -463,8 +463,8 @@ class LpdFemClientLegacy(FemClient):
 
     def robs_udp_packet_header_10g(self, robs_udp_packet_hdr):
         # rob's udp packet headers
-        packet_header_10g_0 = (LpdFemClient.udp_10g_0 + 0xb)
-        packet_header_10g_1 = (LpdFemClient.udp_10g_1 + 0xb)
+        packet_header_10g_0 = (LpdFemClientLegacy.udp_10g_0 + 0xb)
+        packet_header_10g_1 = (LpdFemClientLegacy.udp_10g_1 + 0xb)
         
         print "robs udp packet header 10g_0", hex(packet_header_10g_0)
         self.rdmaWrite(packet_header_10g_0, robs_udp_packet_hdr)
@@ -474,17 +474,17 @@ class LpdFemClientLegacy(FemClient):
     def frame_generator_set_up_10g(self, data_gen_0_offset, num_ll_frames):
         # Original Matlab instruction:
         #rdma_write(    data_gen_0+2, num_ll_frames+1,'rw','DATA GEN Nr Frames');
-        # data_gen_0 = LpdFemClient.data_gen_0
+        # data_gen_0 = LpdFemClientLegacy.data_gen_0
         # num_ll_frames = defined in fem_asic_test; +1 added to num_ ll_frame argument when this function is called
         print "DATA GEN Nr Frames"
         #rdma_write(    data_gen_0+data_gen_0_offset, num_ll_frames)
-        self.rdmaWrite(LpdFemClient.data_gen_0+data_gen_0_offset, num_ll_frames)
+        self.rdmaWrite(LpdFemClientLegacy.data_gen_0+data_gen_0_offset, num_ll_frames)
 
     def recv_image_data_as_packet(self, udp_pkt_num, dudp, packet_size): 
         # loop to read udp frame packet by packet
 #        for i in range(0,udp_pkt_num-1, 1):
 #             TODO: Will next packet overwrite previous packet?
-#            dudp = LpdFemClient.recv()
+#            dudp = LpdFemClientLegacy.recv()
 #             Or use read() function:  ->   #dudp = myFemClient.read(theBus, theWidth, theAddr, theReadLen)    ??
 #            print "%4i %8X %8X %8X %8X" % (i, dudp(1),dudp(2),dudp(3),dudp(packet_size))
 #            dudp = uint32(fread(u, packet_size, 'uint16'));
@@ -494,7 +494,7 @@ class LpdFemClientLegacy(FemClient):
         return dudp
     
     def recv_image_data_as_frame(self, dudp):
-#        dudp = LpdFemClient.recv()
+#        dudp = LpdFemClientLegacy.recv()
 #        return dudp
 #        return self.recv()
         dudp = []
@@ -626,7 +626,7 @@ class LpdFemClientLegacy(FemClient):
         # Func name:    fem_fast_cmd_setup (!!! function name inside fem_fast_bram_setup.m !!!)
         # fem_asic_test.m calls function:    fem_fast_bram_setup(s, fast_cmd_1, fast_cmd_data, no_of_words);
         #                                    Line:258
-        base_addr_1 = LpdFemClient.fast_cmd_1
+        base_addr_1 = LpdFemClientLegacy.fast_cmd_1
         #fast cmd set up function blank
         
         max_block_length = 1024
@@ -651,7 +651,7 @@ class LpdFemClientLegacy(FemClient):
         # filename:    fem_fast_cmd_setup_new.m
         # func name:    fem_fast_cmd_setup(s, base_addr_0, no_of_words)
         
-        base_addr_0 = LpdFemClient.fast_cmd_0
+        base_addr_0 = LpdFemClientLegacy.fast_cmd_0
         
         #fast cmd set up function blank
     
@@ -674,8 +674,8 @@ class LpdFemClientLegacy(FemClient):
         
     def fem_fast_cmd_setup(self, fast_cmd_data, no_of_words):
     
-        base_addr_0 = LpdFemClient.fast_cmd_0
-        base_addr_1 = LpdFemClient.fast_cmd_1
+        base_addr_0 = LpdFemClientLegacy.fast_cmd_0
+        base_addr_1 = LpdFemClientLegacy.fast_cmd_1
             
         #fast cmd set up function blank
     
@@ -701,8 +701,8 @@ class LpdFemClientLegacy(FemClient):
         
     def fem_slow_ctrl_setup(self, slow_ctrl_data, no_of_bits):
     
-        base_addr_0 = LpdFemClient.slow_ctr_0
-        base_addr_1 = LpdFemClient.slow_ctr_1
+        base_addr_0 = LpdFemClientLegacy.slow_ctr_0
+        base_addr_1 = LpdFemClientLegacy.slow_ctr_1
         
         #slow control set up function blank
         
@@ -740,14 +740,14 @@ class LpdFemClientLegacy(FemClient):
         # select slow control load mode  jac
         
         print "asic load mode"
-        self.rdmaWrite(LpdFemClient.slow_ctr_0+address_offset, slow_ctrl_load_mode)
+        self.rdmaWrite(LpdFemClientLegacy.slow_ctr_0+address_offset, slow_ctrl_load_mode)
         
     def fem_asic_rx_setup(self, mask_array, no_asic_cols, no_cols_frm):
         
         # called from script as:    fem_asic_rx_setup(s, asic_srx_0, mask_array, no_asic_cols+1,no_asic_cols_per_frm+1)
         # defined in script as:     fem_asic_rx_setup(s, base_addr, mask_array,no_asic_cols,no_cols_frm)
         
-        base_addr = LpdFemClient.asic_srx_0        
+        base_addr = LpdFemClientLegacy.asic_srx_0        
 
         #Set up the XFEL FEM ASIC RX IP Block
          
@@ -804,7 +804,7 @@ class LpdFemClientLegacy(FemClient):
   
     def data_source_self_test(self, asic_data_source):
         # data source - self test
-        data_source_reg           = (0x00000001 | LpdFemClient.asic_srx_0)
+        data_source_reg           = (0x00000001 | LpdFemClientLegacy.asic_srx_0)
         print "asic rx counting data" # 0 = real data ; 1 = test data
         self.rdmaWrite(data_source_reg,asic_data_source)
         
@@ -823,7 +823,7 @@ class LpdFemClientLegacy(FemClient):
         #    \\te9files\ESDGshr\SDG\drop\for_christian\lpd_matlab_for_christian\matlab\matlab\fem_asic_rx_setup.m
         # However, the actual implementation is presumed to be inside:
         #    fem_asic_test.m line 278    (rdma_write(s,gain_override_reg,..))
-        gain_override_reg = (0x0000000 | LpdFemClient.asic_srx_0)
+        gain_override_reg = (0x0000000 | LpdFemClientLegacy.asic_srx_0)
         print "asic rx gain override"
         self.rdmaWrite(gain_override_reg,asic_gain_override)
         
@@ -831,13 +831,13 @@ class LpdFemClientLegacy(FemClient):
     def top_level_steering(self, asic_rx_start_delay):
         # turn fast & slow buffers on
         print "ENABLE asic Tristate output buffers"
-        self.rdmaWrite(LpdFemClient.fem_ctrl_0+5, 0)
+        self.rdmaWrite(LpdFemClientLegacy.fem_ctrl_0+5, 0)
         
         print "asic serial out readback is from bot sp3 i/o"
-        self.rdmaWrite(LpdFemClient.fem_ctrl_0+2, 1)
+        self.rdmaWrite(LpdFemClientLegacy.fem_ctrl_0+2, 1)
         
         print "asic start readout delay wrt fast cmd"
-        self.rdmaWrite(LpdFemClient.fem_ctrl_0+4, asic_rx_start_delay)
+        self.rdmaWrite(LpdFemClientLegacy.fem_ctrl_0+4, asic_rx_start_delay)
         
         
     def check_how_much_data_arrived(self, udp_frm_sze):

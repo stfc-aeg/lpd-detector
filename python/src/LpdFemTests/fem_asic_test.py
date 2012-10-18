@@ -10,7 +10,7 @@ import socket
 
 # Import Fem modules
 #from FemClient import FemClient
-from LpdFemClient import *  #LpdFemClient
+from LpdFemClientLegacy import *  #LpdFemClientLegacy
 
 # Import library for parsing XML fast command files
 from LpdCommandSequence.LpdCommandSequenceParser import LpdCommandSequenceParser
@@ -99,7 +99,7 @@ class FemAsicTest():
         femPort = 6969
         
         try:
-            myLpdFemClient = LpdFemClient((femHost, femPort), timeout=10)
+            myLpdFemClient = LpdFemClientLegacy((femHost, femPort), timeout=10)
         except FemClientError as errString:
             print "Error: FEM connection failed:", errString
             sys.exit(1)
