@@ -294,7 +294,7 @@ int main()
 
     	//print("[INFO ] Waiting for mailbox message...\r\n");
 
-    	sendStopAck = 1;
+    	//sendStopAck = 1;
 
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
@@ -717,7 +717,7 @@ int main()
 								if (pStatusBlock->numAcq==(pStatusBlock->totalSent/2))
 								{
 									//print("[DEBUG] Burst mode halting...\r\n");
-									sendStopAck = 0;
+									//sendStopAck = 0;
 									pStatusBlock->state = STATE_ACQ_STOPPING;
 								}
 							}
@@ -747,7 +747,10 @@ int main()
 							acquireRunning = 0;
 
 				    	    // TODO: Parse result from sendAcquireAckMessage
-				    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+							if (sendStopAck == 1) {
+								sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+								sendStopAck = 0;
+							}
 
 							// *****************************************************
 							// Debugging - dump loop counters
@@ -796,6 +799,7 @@ int main()
 							// Triggers a stop next cycle of event loop
 							//print("[INFO ] Got stop acquire message, trying to stop...\r\n");
 							pStatusBlock->state = STATE_ACQ_STOPPING;
+							sendStopAck = 1;
 							break;
 
 						default:
@@ -868,10 +872,7 @@ int main()
 			break;
 		case CMD_ACQ_STOP:
     	    // TODO: Parse result from sendAcquireAckMessage
-			if (sendStopAck!=0)
-			{
-				sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
-			}
+			sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			//printf("[INFO ] Not doing anything with stop acquire command.\r\n");
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
