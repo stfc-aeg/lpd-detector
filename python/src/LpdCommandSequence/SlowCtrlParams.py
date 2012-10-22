@@ -108,8 +108,12 @@ class SlowCtrlParams(object):
  
     def setParamValue(self, dictKey, index, value):
         """ updates the dictionary key 'dictKey' with the new value in 'value', 
-            overwriting whatever used to be at position 'index' """
+            overwriting whatever used to be at position 'index'
             
+            Note: Python starts any list with 0, therefore first pixel = 0, second pixel = 1, etc.
+                (Slow Control documentation states pixel 1 is the first, but disregard that)
+        """
+                        
         # Does dictKey exist in the dictionary?
         if dictKey in self.paramsDict:
                         
@@ -118,13 +122,12 @@ class SlowCtrlParams(object):
 
             # Check that the new value is within valid range
             if not (0 <= value <= ( (2**currentValue[0]) -1) ):
-                raise SlowCtrlParamsInvalidRangeError("Key %s's new value outside valid range" % dictKey )
+                raise SlowCtrlParamsInvalidRangeError("%s's value outside valid range, max: %i received: %i" % (dictKey, 2**currentValue[0]-1, value) )
             
             else:
                 # Is the third variable a list or an integer?
                 if isinstance(currentValue[2], types.ListType):
                     # it's a list; Update the new value
-#                    print "setPar..() value = ", value, "index: ", index
                     currentValue[2][index] = value
                     
                 elif isinstance(currentValue[2], types.IntType):
@@ -244,7 +247,7 @@ class SlowCtrlParams(object):
                     if self.bDebug:
                         print " pixel = ", pixel,
                     # Update pixel entry of the dictionary key
-                    self.setParamValue(cmd, pixel-1, value)
+                    self.setParamValue(cmd, pixel, value)
                 else:
                     # Is there a index tag?
                     if bIndex:
@@ -252,7 +255,7 @@ class SlowCtrlParams(object):
                         if self.bDebug:
                             print " index = ", index
                         # Update index entry of the dictionary key
-                        self.setParamValue(cmd, index-1, value)
+                        self.setParamValue(cmd, index, value)
                     else:
                         # No pixel, no index tags: therefore the key value
                         #     is a simple integer to update
@@ -340,13 +343,15 @@ class SlowCtrlParams(object):
                     # Determine number of entries in the nested list
                     listLength = len(cmdParams[2])
                     
+                    ''' Debug variable '''
+                    debugIdx = 5
                     # Initialise bitwiseOffset
                     bitwiseOffset = 0
                     # Loop over all the elements of the nested list
                     for idx in range(listLength):
                         
                         # Check if the current slow control value spans 2 indexes of encodedSequence
-                        if (bitwiseOffset > (32 - keyWidth)) and (bitwiseOffset < 32):
+                        if (bitwiseOffset > (32 - keyWidth)) and (bitwiseOffset <= 32):
                             # It does span 2 indexes
 
                             # Number of bits within the current index
@@ -358,36 +363,25 @@ class SlowCtrlParams(object):
                             # Save the value of the LSB(s) for the current index
                             currentFraction = cmdParams[2][idx] & self.generateBitMask( currentIdxNumBits )
                             
-#
-#                            print bitwiseOffset, keyWidth
-#                            print (bitwiseOffset > (32 - keyWidth))
-#                            print (bitwiseOffset < 32), "\n"
-#                            
-#                            print currentIdxNumBits, nextIdxNumBits
-#                            print currentFraction, cmdParams[2][idx], " & ", self.generateBitMask( currentIdxNumBits )
-#                            sys.exit()
                             
                             # Save the value of the MSB(s) for the next index (by discarding the LSB(s))
                             nextFraction = cmdParams[2][idx] >> currentIdxNumBits
 
-                            if dictKey == "mux_decoder":
-                                if idx < 12:
-                                    print "idx = ", idx, "    encSeq: %8X" % encodedSequence[index], ", Adding: %8X" % currentFraction
-                                    print "  next index ", " encSeq: %8X" % encodedSequence[index+1], ", Adding: %8X" % nextFraction
-                                    print "   current and next Fraction derived from: ", cmdParams[2][idx]
+#                            if dictKey == "mux_decoder":
+#                                if idx < debugIdx:
+#                                    print "."
+#                                    print "idx = ", idx, "    encSeq: %8X" % encodedSequence[index], 
+#                                    print ",  currFr: %8X" % currentFraction, " bitwiseOffset: ", bitwiseOffset
+#                                    print " next index ", " encSeq: %8X" % encodedSequence[index+1],
+#                                    print ",  nextFr: %8X" % nextFraction
 
-                                    print "self.generateBitMask( currentIdxNumBits ): ", self.generateBitMask( currentIdxNumBits )
-                                    print "cmdParams[2][idx]                        : ", cmdParams[2][idx]
 
                             # Add the currentFraction to the current index
-                            encodedSequence[index] = encodedSequence[index] | currentFraction
+                            encodedSequence[index] = encodedSequence[index] | (currentFraction << bitwiseOffset)
                             
                             # Add the nextFraction to the next index
                             encodedSequence[index+1] = encodedSequence[index+1] | nextFraction
                             
-                            if dictKey == "mux_decoder":
-                                
-                                print "   Became: ", encodedSequence[index], encodedSequence[index +1]
                             
                             # Adjust bitwiseOffset according to the number of bits that has been occupied in the next word
                             bitwiseOffset = nextIdxNumBits
@@ -396,9 +390,10 @@ class SlowCtrlParams(object):
                             # Calculate which is the current index of the encoded sequence
                             index = wordPosition + ( (idx * keyWidth) / 32 )
                             
-                            if dictKey == "mux_decoder":
-                                if idx < 12:
-                                    print "idx = ", idx, "     encSeq: %8X" % encodedSequence[index], ", Adding: %8X" % (cmdParams[2][idx] << bitwiseOffset)
+#                            if dictKey == "mux_decoder":
+#                                if idx < debugIdx:
+#                                    print "idx = ", idx, "     encSeq: %8X" % encodedSequence[index], ", Adding: %8X" % (cmdParams[2][idx] << bitwiseOffset), " bitwiseOffset: ", bitwiseOffset
+                                    
                             # Update the current index of the encoded sequence
                             encodedSequence[index] = encodedSequence[index] | (cmdParams[2][idx] << bitwiseOffset)
 
@@ -661,7 +656,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
                                 <self_test_decoder_default value="%i"/>
                                 <mux_decoder pixel="2" value="0"/>
                                 <mux_decoder_default value="3"/>
-                                <daq_bias index="47" value="%i"/>
+                                <daq_bias index="46" value="%i"/>
                                 <daq_bias_default value="%i"/>
                                 <daq_bias index="2" value="0"/>
                                 <digital_control index="3" value="18"/>
@@ -696,7 +691,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 5
         
         expectedVals = [3, 1537, [selfTestDecoderDefault] * 512, [True, True, False]]
-        expectedVals[2][index-1] = value
+        expectedVals[2][index] = value
         
         self_test_decoderVals = paramsObj.getParamValue(dictKey)
         
@@ -722,7 +717,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = daqBiasIdx47
         
         expectedVals = [5, 3585, [daqBiasDefault] * 47, [False, True, True]]
-        expectedVals[2][2-1] = 0
+        expectedVals[2][2] = 0
         expectedVals[2][47-1] = value
         
         daq_biasVals = paramsObj.getParamValue(dictKey)
@@ -829,16 +824,16 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         daqBiasIdx47 = 11
         daqBiasDefault = 31
-        selfTestDecoderDefault = 7
+        selfTestDecoderDefault = 15
         digitalControlIdx3 = 18
 
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
                                 <self_test_decoder pixel="1" value="5"/>
                                 <self_test_decoder_default value="%i"/>
-                                <mux_decoder pixel="2" value="0"/>
-                                <mux_decoder_default value="3"/>
-                                <daq_bias index="47" value="%i"/>
+                                <mux_decoder_default value="5"/>
+                                <mux_decoder pixel="0" value="0"/>
+                                <daq_bias index="46" value="%i"/>
                                 <daq_bias_default value="%i"/>
                                 <daq_bias index="2" value="0"/>
                                 <digital_control index="3" value="18"/>
@@ -864,14 +859,16 @@ class SlowCtrlParamsTest(unittest.TestCase):
         encSeq = paramsObj.buildBitstream()
 
 
-        print "\n\nencSeq: "
-        print "%9X" % encSeq[0]
-        print "%9X" % encSeq[1]
-        print "%9X" % encSeq[2]
-        print "%9X" % encSeq[3]
-        print "%9X" % encSeq[4]
-        
-        print " 1234567890"
+        print "\n\nEncoded Sequence: "
+
+        for idx in range(len(encSeq)):
+#        for idx in range(49):
+            
+            if (idx % 8 == 0):
+                print ""
+            print "%9X" % encSeq[idx],
+
+        print "\n -=-=-=-=-=-=-"
         print "\n"
 
 if __name__ == '__main__':
