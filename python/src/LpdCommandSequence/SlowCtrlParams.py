@@ -313,8 +313,6 @@ class SlowCtrlParams(object):
         # Track position within encodedSequence list
         seqPosition = 0
         
-        """ Condense all of the following down into looping over dictionary keys and building the word bitstream programmatically """
-        
         # Loop over dictionary entries 
         for dictKey in self.paramsDict:
             
@@ -421,165 +419,7 @@ class SlowCtrlParams(object):
                 
                 continue
                 
-#            # Pack command into 32 bit words 
-#            #  
-#            if cmd == 'mux_decoder':
-#                # Get dictionary key values
-#                cmdParams = self.getParamValue(cmd)
-#                print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-#                print "mux_decoder detected: ", cmdParams[0], cmdParams[1], " [",
-#                for idx in range(512):
-#                    if (idx < 5) | (idx > 506):
-#                        print cmdParams[2][idx],
-#                    elif idx == 500:
-#                        print ", .., ",
-#                print "]"
-#                # Find where in slow control bitstream the current section begins
-#                #    Note: variable pixel determines the offset on added on to position
-#                position = cmdParams[1]         # Redundant?
-#                scWordWidth = cmdParams[0]
-#                # Update this pixel...
-#                # Obtain the corresponding 32-bit word
-#                
-#                # Determine where within the current section of the slow control bitstream we are
-#                # Note pixel = 1-512, Python list = 0-511
-#                bitstreamPosition = (pixel-1) * scWordWidth
-#                # Determine which 32 bit word that is
-#                wordPosition = bitstreamPosition / 32
-#                print "encodedSequence[...] = [%X, %X, %X]" % (encodedSequence[0], encodedSequence[1], encodedSequence[2])
-#                print "wordPosition = ", wordPosition
-#                # Copy contents of 32-bit word
-#                thisWord = encodedSequence[wordPosition]
-#                # Determine offset inside 32 bit word
-#                indexOffset = bitstreamPosition % 32
-#                # Calculate bit mask to clear the bits corresponding to the width of the slow control word
-#                mask = (2**32-1) - (7 << indexOffset)
-#                print "indexOffset: ", indexOffset, " value: %X " % value, " -> ",
-#                # Move slow control word into its relative position within the 32-bit word
-#                scWord = value << indexOffset
-#                print " %X" % scWord
-#                print "bitstreamPosition: ", bitstreamPosition, " wordPosition: ", wordPosition
-#                print "123456789123456789123456789123456789"
-#                print "Before: %x %x %x" % (thisWord, mask, scWord)
-#                # Update 32-bit word with the individual slow control word in the correct position
-#                thisWord = thisWord & mask | scWord
-#                print "After:  %x %x %x" % (thisWord, mask, scWord)
-#                # Update encodedSequence
-#                encodedSequence[wordPosition] = thisWord
-#                 
-#                
-#            elif cmd == 'mux_decoder_default':
-#                # This is a default value, unless it is still -1 (not set)
-#                cmdParams = self.getParamValue(cmd)
-#                if cmdParams[2] == -1:
-#                    print "The value of key %s was not set." % cmdParams[0]
-#                    print "This should not be possible?"
-#                else:
-#                    # Default value set, update the mux decoder settings for the 512 pixels accordingly
-#                    # The default value is:
-#                    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-##                        print type(cmdParams)
-#                    print "Key %s has value = " % cmd, cmdParams
-#
-#                    # Obtain all the slow control values this section
-#                    # Start by deriving the section name from the default key name (remove '_default')
-#                    sectionName = cmd.replace("_default", "")
-#                    scSectionValues = self.getParamValue(sectionName)
-#                    
-#                    print "mux Section: ", scSectionValues[0], scSectionValues[1], " [",
-#                    for idx in range(512):
-#                        if (idx < 5) | (idx > 506):
-#                            print scSectionValues[2][idx],
-#                        elif idx == 500:
-#                            print ", .., ",
-#                    print "]"
-#                    
-#                    # Define variables used to process flow control words into 32 bit words
-#                    # Define slow control word width
-#                    scWordWidth = cmdParams[0]
-#                    # Track bit position relative to 32 bit word boundary (since 32 not evenly divisible by scWordWidth)
-#                    relativeBit = 0
-#                    # Save the contents of one 32 bit word
-#                    seqIndex = 0
-#                    # Save excess of any slow control word that spans the 32 bit word boundary
-#                    bitRemainder = 0
-#                    # Track relative position within the slow control bitstream
-#                    scBitTracker = 0
-#                    # Number of bit(s) before a 32 bit word boundary
-#                    endNumBits = 0
-#                    # Number of bit(s) after a 32 bit word boundary
-#                    startNumBits = 0
-#                    while scBitTracker < 1536:
-#                        # Calculate slow control word position relative to section
-#                        currentSlowCtrlWord = scBitTracker / scWordWidth
-#                        # Because we need to include the last bit of the section in order to save the very last 32 bit word, 
-#                        # the last value of variable currentSlowCtrlWord will become 1 bigger than the nested list of scSectionValues[2]
-#
-#                        # Check that the current pixel has not been explicitly set already
-#                        # Obtain pixel value (-1 means that it has not been explicitly that already)
-#                        
-#                        if currentSlowCtrlWord == 512:
-#                            # currentSlowCtrlWord runs from 0-512; obviously 512 doesn't exist
-#                            # Increment loop counter and continue
-#                            print "Yes - I think that checking this value for 512 must be redundant..??"
-#                            scBitTracker += scWordWidth
-#                            continue
-#                            
-#                        currentPixelVal = scSectionValues[2][ currentSlowCtrlWord ]
-#                        # if it's -1, it's fine to overwrite the old value
-#                        if currentPixelVal == -1:
-#                            
-#                            # How far away from the 32-bit word boundary are we?
-#                            relativeBit = scBitTracker % 32
-#                            # If relativeBit > 29 (i.e. 30 or 31) then the current slow control word straddles the 32-bit word boundary 
-#                            if relativeBit > 29:
-#                                # Determine how many bits on each side of the boundary
-#                                endNumBits = 32 - relativeBit
-#                                startNumBits = scWordWidth - endNumBits
-#
-#                                # Calculate how many LSB(s) to save (to the current 32-bit word)
-#                                bitMask = (2**endNumBits) - 1
-#                                # Save the LSB(s), discarding the MSB(s)
-#                                currentVal = cmdParams[2] & bitMask
-#                                # Bit shift by relativeBit and add to 32 bit word
-#                                seqIndex += currentVal << relativeBit
-#                                # Save the remaining MSB(s)
-#                                bitRemainder = cmdParams[2] >> endNumBits
-#                                # Save 32 bit word to sequence
-#                                encodedSequence[seqPosition] = seqIndex
-#                                seqPosition += 1
-#                                # Save remaining MSB(s) to the next 32 bit word
-#                                seqIndex = bitRemainder #endNumBits
-#                            else:
-#                                # Is this a 32 bit boundary (and not the very first loop iteration)?
-#                                if (relativeBit == 0) and (scBitTracker > 0):
-#                                    # Save 32 bit word to sequence
-#                                    encodedSequence[seqPosition] = seqIndex
-#                                    seqPosition += 1
-#                                    # Clear the 32 bit word before proceeding                                    
-#                                    seqIndex = 0
-#
-#                                # Bit shift slow control word by relative position within 32-bit word
-#                                currentVal = cmdParams[2] << relativeBit
-#                                # Add the current scWordWidth bits long word to the 32-bit word
-#                                seqIndex += currentVal
-#                                
-#                            # Increment loop counter (by scWordWidth bits)
-#                            scBitTracker += scWordWidth
-#                        else:
-#                            # This pixel has already been set explicitly, do not overwrite
-#                            #    Note: pixel = 1-512, Python list = 0-511
-#                            print "Detected pixel no %i already set" % (currentSlowCtrlWord+1)
-#                            
-#                            ''' Note: Still need to save the 32 bit word if the slow control word is located at the word boundary '''
-#                            # 
-#                            # Increment loop counter (by scWordWidth bits)
-#                            scBitTracker += scWordWidth
-#        
-##                        if (relativeBit == 0) and (scBitTracker > 0):
-#                    # Save the last 32 bit word to sequence
-#                    encodedSequence[seqPosition] = seqIndex
-#                    seqPosition += 1
+
  
         # Return the encoded sequence for this (partial) tree
         return encodedSequence
@@ -824,22 +664,31 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         daqBiasIdx47 = 11
         daqBiasDefault = 31
-        selfTestDecoderDefault = 15
+        selfTestDecoderDefault = 6
         digitalControlIdx3 = 18
 
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
-                                <self_test_decoder pixel="1" value="5"/>
+#                                <feedback_select_default value="1"/>
+#                                <feedback_select pixel="2" value="1"/>
                                 <self_test_decoder_default value="%i"/>
-                                <mux_decoder_default value="5"/>
-                                <mux_decoder pixel="0" value="0"/>
-                                <daq_bias index="46" value="%i"/>
-                                <daq_bias_default value="%i"/>
-                                <daq_bias index="2" value="0"/>
-                                <digital_control index="3" value="18"/>
-                                <spare_bits value="%i"/>
                             </lpd_slow_ctrl_sequence>
-        ''' % (selfTestDecoderDefault, daqBiasIdx47, daqBiasDefault, digitalControlIdx3)
+        ''' % (selfTestDecoderDefault)
+
+#        stringCmdXml = '''<?xml version="1.0"?>
+#                            <lpd_slow_ctrl_sequence name="TestString">
+#                                <self_test_decoder_default value="%i"/>
+#                                <mux_decoder_default value="5"/>
+#                                <mux_decoder pixel="0" value="0"/>
+#                                <daq_bias index="46" value="%i"/>
+#                                <daq_bias_default value="%i"/>
+#                                <daq_bias index="2" value="0"/>
+#                                <digital_control index="3" value="18"/>
+#                                <spare_bits value="%i"/>
+#                            </lpd_slow_ctrl_sequence>
+#        ''' % (selfTestDecoderDefault, daqBiasIdx47, daqBiasDefault, digitalControlIdx3)
+#                                <self_test_decoder pixel="1" value="5"/>
+#                                <feedback_select_default value="0"/>
 
   
         # Parse XML and encode
