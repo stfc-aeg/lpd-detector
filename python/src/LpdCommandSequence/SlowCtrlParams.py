@@ -322,8 +322,8 @@ class SlowCtrlParams(object):
         print "   -=-=-                                    12345678  -=-=-    12345678"
 
         ''' Debug variables '''
-        debugIdx = -1
-        debugComparisonKey = "feedback_select" 
+        debugIdx = 33
+        debugComparisonKey = "daq_bias" 
 #                    debugComparisonKey = "self_test_decoder"
 
         # Initialise empty list to contain binary command values for this part of the tree
@@ -359,10 +359,12 @@ class SlowCtrlParams(object):
                     listLength = len(cmdParams[2])
                     
                     # bitPosition tracks the bit position within the 3904 bits long bitstream
-#                    bitPosition = 
+                    bitPosition = cmdParams[1] % 32
                     
                     # Initialise bitwiseOffset
-                    bitwiseOffset = 0
+#                    bitwiseOffset = 0
+                    bitwiseOffset = bitPosition
+                    
                     # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
                     #    therefore they become a special case (set to 0 for all other keys)
                     specialCaseOffset = 0
@@ -381,91 +383,20 @@ class SlowCtrlParams(object):
                             print cmdParams[2][idx],
                         print  " .. ]"
                         specialCaseOffset = 1
-                        # 
-                        bitwiseOffset = specialCaseOffset
+                        # REDUNDANT?
+#                        bitwiseOffset = specialCaseOffset
                     
-                    # Loop over all the elements of the nested list
+                    bitBucket = [0] * (keyWidth * listLength)
+            
+                    print dictKey + "'s len(bitBucket): ", len(bitBucket)
+            
+                    # Loop over all the elements of the nested list and produce a "bit bucket"
                     for idx in range(listLength):
                         
-                        # Check if the current value is set
-                        if cmdParams[2][idx] == -1:
-                            # This value is not set; Do nothing
-                            pass
-                        else:
-                            # This value is set; Process it
+                        pass
 
-                            # Determine which index of the sequence of the current slow control word belongs to
-                            index = wordPosition + ( ( idx * (keyWidth+specialCaseOffset) ) / 32 )
-                        
-                            # Check if the current slow control value spans 2 indexes of encodedSequence
-                            if (bitwiseOffset > (32 - (keyWidth + specialCaseOffset) )) and (bitwiseOffset < 32):
-                                # It DOES span 2 indexes
-                                
-                                ''' Debug Information '''
-                                if dictKey == debugComparisonKey:
-                                    if idx < debugIdx:
-                                        print ".",
-
-                                # Number of bits within the current index
-                                currentIdxNumBits = 32 - bitwiseOffset
-    
-                                # Number of bits within the next index
-                                nextIdxNumBits = (keyWidth+specialCaseOffset) - currentIdxNumBits
-    
-                                # Save the value of the LSB(s) for the current index
-                                currentFraction = cmdParams[2][idx] & self.generateBitMask( currentIdxNumBits )
-                                
-                                # Save the value of the MSB(s) for the next index (by discarding the LSB(s))
-                                nextFraction = cmdParams[2][idx] >> currentIdxNumBits
-    
-                                # Add the currentFraction to the current index
-                                encodedSequence[index] = encodedSequence[index] | (currentFraction << bitwiseOffset)
-                                
-                                # Add the nextFraction to the next index
-                                encodedSequence[index+1] = encodedSequence[index+1] | nextFraction
-
-                                ''' Debug Information '''
-                                if dictKey == debugComparisonKey:
-                                    if idx < debugIdx:
-                                        print "idx = %2i" % idx, "  bitwiseOffset: %2i" % bitwiseOffset, "     encSeq: %8X" % encodedSequence[index], " (Added: %9X)." % (currentFraction << bitwiseOffset), " ie (%3i" % currentFraction, " << %2i)." % bitwiseOffset
-                                
-                                # Adjust bitwiseOffset according to the number of bits that has been occupied in the next word
-                                bitwiseOffset = nextIdxNumBits
-    
-                            else:
-                                # It DOES NOT span two indexes
-                                
-                                ''' Debug Information '''
-                                if dictKey == debugComparisonKey:
-                                    if idx < debugIdx:
-                                        print ",",
-
-                                # Update the current index of the encoded sequence
-                                encodedSequence[index] = encodedSequence[index] | (cmdParams[2][idx] << bitwiseOffset)
-
-                                ''' Debug Information '''
-                                if dictKey == debugComparisonKey:
-                                    if idx < debugIdx:
-                                        print "idx = %2i" % idx, "  bitwiseOffset: %2i" % bitwiseOffset, "     encSeq: %8X" % encodedSequence[index], " (Added: %9X)." % (cmdParams[2][idx] << bitwiseOffset), " ie (%3i" % cmdParams[2][idx], " << %2i)." % bitwiseOffset
-
-                                # Is this the last value that fits snugly into the 32-bit word?
-                                if (bitwiseOffset + keyWidth + specialCaseOffset) == 32:
-                                    # Yes, this value fits snugly as the last value into the current 32-bit word
-                                    if dictKey == debugComparisonKey:
-                                        if idx < debugIdx:
-                                            print "!",
-#                                    # Reset bitwiseOffset 
-                                    if dictKey.startswith("self_test_decoder"):
-                                        # self test decoder is a special case; reset to 1
-                                        bitwiseOffset = 1
-                                    else:
-                                        # For all other keys, reset to 0
-                                        bitwiseOffset = 0
-#                                    bitwiseOffset = 0
-                                else:
-                                    # Nope, we are not at the end of a 32-bit word (continue as normal)
-                                    # Calculate offset within current index
-                                    bitwiseOffset += (keyWidth+specialCaseOffset)
+                    
+                    # Loop over this new list and chop each 32 bits into the encoded sequence
     
 
 
@@ -717,7 +648,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             paramsObj.setParamValue(dictKey, index, value)
     
     """
-
+    """
     def testSelfTestDecoderDefaultSetValueSeven(self):
         '''
             Test that the key self_test_decoder_default works
@@ -886,6 +817,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         self.assertEqual(encSeq, expectedSequence, 'testMuxDecoderDefault() failed !')
 
+    """
+    
     def testDaqBiasDefault(self):
         '''
             Test that the key daq_bias_default works
@@ -912,8 +845,10 @@ class SlowCtrlParamsTest(unittest.TestCase):
             else:
                 expectedSequence[idx] = 0xB6DB6DB6
         
+        print "You are actually running the function: testDaqBiasDefault() "
+        
         # Toggle display debug information
-        if True:
+        if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
             
             for idx in range(len(encSeq)):
@@ -970,7 +905,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 #            print "\n"
         
 #        self.assertEqual(encSeq, expectedSequence, 'testSelfTestEnable() failed !')
-    """
+
 
     def testBuildBitstream(self):
         '''
@@ -1040,6 +975,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 #        print "\n"
 #        print "       12345678"
 #        print "\n"
+
+    """
 
 if __name__ == '__main__':
     
