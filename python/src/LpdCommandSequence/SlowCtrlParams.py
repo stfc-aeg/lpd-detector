@@ -151,11 +151,11 @@ class SlowCtrlParams(object):
         
         # Parse the tree, starting at the root element, obtaining the packed
         #     binary command sequence as a list
-        sequence  = self.parseElement(self.root)
-#        self.parseElement(self.root)
+#        sequence  = self.parseElement(self.root)
+        self.parseElement(self.root)
         
         #TODO: sort this out; sequence should come from the buildBitstream() function ??
-#        sequence  = self.buildBitstream()
+        sequence  = self.buildBitstream()
         
         # Count the total number of words
         self.total_number_words = len(sequence)
@@ -189,17 +189,17 @@ class SlowCtrlParams(object):
         
     def parseElement(self, theElement):
         '''
-        Parses an element (partial tree) of the XML command sequence, encoding commands
-        into the appropriate values and returning them. Note that slow control is more complicated
-        because each parameter is inserted into the slow control bitstream according to its relative position.
-        NOTE: pixels run 1-512, index 1-47 put corresponding Python lists run 0-511, 0-46.
-            Therefore, when they are updated, their actual values are subtracted by one
+            Parses an element (partial tree) of the XML command sequence, encoding commands
+            into the appropriate values and returning them. Note that slow control is more complicated
+            because each parameter is inserted into the slow control bitstream according to its relative position.
+            
+            NOTE: pixels run 1-512, index 1-47 but to match Python's lists they're numbered 0-511, 0-46.
         '''
         
         # Initialise empty list to contain binary command values for this part of the tree
-        encodedSequence = [0] * 122
+#        encodedSequence = [0] * 122
         # Track position within encodedSequence list
-        seqPosition = 0
+#        seqPosition = 0
         
         # Increment tree depth counter
         self.depth = self.depth + 1
@@ -263,7 +263,7 @@ class SlowCtrlParams(object):
                 
             else:
                 if self.strict:
-                    raise LpdCommandSequenceError('Illegal command %s specified' % (child.tag))
+                    raise SlowCtrlParamsError('Illegal command %s specified' % (child.tag))
         
         if self.bDebug:
             print "\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
@@ -280,14 +280,23 @@ class SlowCtrlParams(object):
                 if self.bDebug:
                     print keyValue
                 # This is a key that ends with _default, but has it been set?
+                
+                # Derive corresponding key's name
+                pairedKey = key.replace("_default", "")
+                pairedKeyValue = self.getParamValue(pairedKey)
+                length = len(pairedKeyValue[2])
+
+                # Is XXX_default not specified ?
                 if keyValue[2] == -1:
-                    # _default not set, therefore nothing to do
-                    pass
+                    # Not set, set it to 0
+                    for idx in range(length):
+                        # Update only if pixel not explicitly set
+                        if pairedKeyValue[2][idx] == -1:
+                            # -1 denotes pixel hasn't been explicitly set; update it to 0
+                            self.setParamValue(pairedKey, idx, 0)
+                    
                 else:
-                    # Derived corresponding key's name
-                    pairedKey = key.replace("_default", "")
-                    pairedKeyValue = self.getParamValue(pairedKey)
-                    length = len(pairedKeyValue[2])
+                    # It is set; Update any entry not already explicitly set
                     for idx in range(length):
                         # Update only if pixel not explicitly set
                         if pairedKeyValue[2][idx] == -1:
@@ -301,7 +310,7 @@ class SlowCtrlParams(object):
         
         ''' THIS is empty though! '''
         
-        return encodedSequence
+#        return encodedSequence
  
     def buildBitstream(self):
         '''
@@ -312,6 +321,10 @@ class SlowCtrlParams(object):
         ''' Debug '''
         print "   -=-=-                                    12345678  -=-=-    12345678"
 
+        ''' Debug variables '''
+        debugIdx = -1
+        debugComparisonKey = "feedback_select" 
+#                    debugComparisonKey = "self_test_decoder"
 
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * 122
@@ -345,30 +358,31 @@ class SlowCtrlParams(object):
                     # Determine number of entries in the nested list
                     listLength = len(cmdParams[2])
                     
-                    ''' Debug variables '''
-                    debugIdx = 33
-#                    debugComparisonKey = "feedback_select" 
-                    debugComparisonKey = "self_test_decoder"
+                    # bitPosition tracks the bit position within the 3904 bits long bitstream
+#                    bitPosition = 
                     
                     # Initialise bitwiseOffset
                     bitwiseOffset = 0
+                    # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
+                    #    therefore they become a special case (set to 0 for all other keys)
                     specialCaseOffset = 0
-                    # self_test_decoder and feedback_select share a 4 bit slow control word
-                    #    therefore they become a special case
-#                    if dictKey.startswith("feedback_select"):
-#                        print "(feedback)  I think this is: ", dictKey, " = [", cmdParams[2][0], cmdParams[2][1], cmdParams[2][2], " ..]"
-##                        print "and contains: ", cmdParams[2]
-#                        specialCaseOffset = 3
-#                    elif dictKey.startswith("self_test_decoder"):
-#                        # Because the feedback_select bit sits before the self_test_decoder 3 bits,
-#                        #    bitwiseOffset must start from the 1 and not 0
-#                        print "(self test) I think this is: ", dictKey, " = [", cmdParams[2][0], cmdParams[2][1], cmdParams[2][2], " ..]"
-#                        specialCaseOffset = 1
-#                        bitwiseOffset = specialCaseOffset
-#                    else:
-#                        # no offset for any of the other keys
-#                        specialCaseOffset = 0
-##                        print dictKey, " is neither; specialCaseOffset: ", specialCaseOffset
+                    # Is this key either of the two special cases?
+                    if dictKey.startswith("feedback_select"):
+                        print "This is: %25s" % dictKey, " = [", 
+                        for idx in range(9):
+                            print cmdParams[2][idx],
+                        print  " .. ]"
+                        specialCaseOffset = 3
+                    elif dictKey.startswith("self_test_decoder"):
+                        # Because the feedback_select bit sits before the self_test_decoder 3 bits,
+                        #    bitwiseOffset must start from the 1 and not 0
+                        print "This is: %25s" % dictKey, " = [",
+                        for idx in range(9):
+                            print cmdParams[2][idx],
+                        print  " .. ]"
+                        specialCaseOffset = 1
+                        # 
+                        bitwiseOffset = specialCaseOffset
                     
                     # Loop over all the elements of the nested list
                     for idx in range(listLength):
@@ -381,11 +395,11 @@ class SlowCtrlParams(object):
                             # This value is set; Process it
 
                             # Determine which index of the sequence of the current slow control word belongs to
-                            index = wordPosition + ( (idx * keyWidth) / 32 )
+                            index = wordPosition + ( ( idx * (keyWidth+specialCaseOffset) ) / 32 )
                         
                             # Check if the current slow control value spans 2 indexes of encodedSequence
                             if (bitwiseOffset > (32 - (keyWidth + specialCaseOffset) )) and (bitwiseOffset < 32):
-                                # It does span 2 indexes
+                                # It DOES span 2 indexes
                                 
                                 ''' Debug Information '''
                                 if dictKey == debugComparisonKey:
@@ -419,19 +433,13 @@ class SlowCtrlParams(object):
                                 bitwiseOffset = nextIdxNumBits
     
                             else:
+                                # It DOES NOT span two indexes
+                                
                                 ''' Debug Information '''
                                 if dictKey == debugComparisonKey:
                                     if idx < debugIdx:
                                         print ",",
-                                
-                                # Calculate which is the current index of the encoded sequence
-                                if dictKey.startswith("feedback_select") or dictKey.startswith("self_test_decoder"):
-                                    pass
-#                                    index = wordPosition + ( (idx * 4) / 32 )
-                                else:
-                                    # For all other keys
-                                    index = wordPosition + ( (idx * keyWidth) / 32 )
-                                
+
                                 # Update the current index of the encoded sequence
                                 encodedSequence[index] = encodedSequence[index] | (cmdParams[2][idx] << bitwiseOffset)
 
@@ -441,19 +449,19 @@ class SlowCtrlParams(object):
                                         print "idx = %2i" % idx, "  bitwiseOffset: %2i" % bitwiseOffset, "     encSeq: %8X" % encodedSequence[index], " (Added: %9X)." % (cmdParams[2][idx] << bitwiseOffset), " ie (%3i" % cmdParams[2][idx], " << %2i)." % bitwiseOffset
 
                                 # Is this the last value that fits snugly into the 32-bit word?
-                                if (bitwiseOffset + keyWidth == 32):
+                                if (bitwiseOffset + keyWidth + specialCaseOffset) == 32:
                                     # Yes, this value fits snugly as the last value into the current 32-bit word
                                     if dictKey == debugComparisonKey:
                                         if idx < debugIdx:
                                             print "!",
 #                                    # Reset bitwiseOffset 
-#                                    if dictKey.startswith("self_test_decoder"):
-#                                        # self test decoder is a special case; reset to 1
-#                                        bitwiseOffset = 1
-#                                    else:
-#                                        # For all other keys, reset to 0
-#                                        bitwiseOffset = 0
-                                    bitwiseOffset = 0
+                                    if dictKey.startswith("self_test_decoder"):
+                                        # self test decoder is a special case; reset to 1
+                                        bitwiseOffset = 1
+                                    else:
+                                        # For all other keys, reset to 0
+                                        bitwiseOffset = 0
+#                                    bitwiseOffset = 0
                                 else:
                                     # Nope, we are not at the end of a 32-bit word (continue as normal)
                                     # Calculate offset within current index
@@ -531,7 +539,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
     '''
     Unit test class for SlowCtrlParams.
     '''
-    
+
+    """    
     def testStringParse(self):
         '''
         Tests that updating a parameter works as expected
@@ -706,9 +715,263 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 1099511627776
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
-
-
     
+    """
+
+    def testSelfTestDecoderDefaultSetValueSeven(self):
+        '''
+            Test that the key self_test_decoder_default works
+        '''
+            
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <self_test_decoder_default value="7"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        encSeq = paramsObj.encode()
+
+        # Display an excerp of each dictionary key's value:
+        paramsObj.displayDictionaryValues()        
+
+        # Construct a list of how sequence should look like
+        expectedSequence = [0] * 122
+        for idx in range(48,112):
+            expectedSequence[idx] = 0xEEEEEEEE
+
+        # Toggle display of debug information
+        if False:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            
+            for idx in range(len(encSeq)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % encSeq[idx],
+            print "\n"
+    
+    
+            print "expectedSequence: (len)", len(expectedSequence)
+            
+            for idx in range(len(expectedSequence)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % expectedSequence[idx],
+            print "\n"
+        
+        self.assertEqual(encSeq, expectedSequence, 'testSelfTestDecoderDefaultSetValueSeven() failed !')
+
+    def testFeedbackSelectDefaultSetValueOne(self):
+        '''
+            Test that the key feedback_select_default works
+        '''
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <feedback_select_default value="1"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        encSeq = paramsObj.encode()
+
+        # How the sequence should end up looking
+        expectedSequence = [0] * 122
+        for idx in range(48,112):
+            expectedSequence[idx] = 0x11111111
+        
+        # Toggle display debug information
+        if False:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            
+            for idx in range(len(encSeq)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % encSeq[idx],
+    
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+
+            for idx in range(len(expectedSequence)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % expectedSequence[idx],
+            print "\n"
+        
+        self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectDefaultSetValueOne() failed !')
+
+    def testFeedbackSelectAndSelfTestDecoderDefaultsCombined(self):
+        '''
+            Test that the keys feedback_select_default and self_test_decoder_default work together
+        '''
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <feedback_select_default value="1"/>
+                                <self_test_decoder_default value="2"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        encSeq = paramsObj.encode()
+
+        # How the sequence should end up looking
+        expectedSequence = [0] * 122
+        for idx in range(48,112):
+            expectedSequence[idx] = 0x55555555
+        
+        # Toggle display debug information
+        if False:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            
+            for idx in range(len(encSeq)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % encSeq[idx],
+    
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+
+            for idx in range(len(expectedSequence)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % expectedSequence[idx],
+            print "\n"
+        
+        self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectAndSelfTestDecoderDefaultsCombined() failed !')
+
+    def testMuxDecoderDefault(self):
+        '''
+            Test that the key mux_decoder_default works
+        '''
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <mux_decoder_default value="5"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        encSeq = paramsObj.encode()
+
+        # How the sequence should end up looking
+        expectedSequence = [0] * 122
+        for idx in range(48):
+            indexNo = idx % 3
+            if indexNo == 0:
+                expectedSequence[idx] = 0x6DB6DB6D
+            elif indexNo == 1:
+                expectedSequence[idx] = 0xDB6DB6DB
+            else:
+                expectedSequence[idx] = 0xB6DB6DB6
+        
+        # Toggle display debug information
+        if False:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            
+            for idx in range(len(encSeq)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % encSeq[idx],
+    
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+
+            for idx in range(len(expectedSequence)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % expectedSequence[idx],
+            print "\n"
+        
+        self.assertEqual(encSeq, expectedSequence, 'testMuxDecoderDefault() failed !')
+
+    def testDaqBiasDefault(self):
+        '''
+            Test that the key daq_bias_default works
+        '''
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <daq_bias_default value="31"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        encSeq = paramsObj.encode()
+
+        # How the sequence should end up looking
+        expectedSequence = [0] * 122
+        for idx in range(48):
+            indexNo = idx % 3
+            if indexNo == 0:
+                expectedSequence[idx] = 0x6DB6DB6D
+            elif indexNo == 1:
+                expectedSequence[idx] = 0xDB6DB6DB
+            else:
+                expectedSequence[idx] = 0xB6DB6DB6
+        
+        # Toggle display debug information
+        if True:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            
+            for idx in range(len(encSeq)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % encSeq[idx],
+            print "\n"
+#            print "\nExpected Sequence: (len)", len(expectedSequence)
+#
+#            for idx in range(len(expectedSequence)):
+#                if (idx % 8 == 0):
+#                    print "\n%3i: " % idx,
+#                print "%9X" % expectedSequence[idx],
+#            print "\n"
+        
+#        self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() failed !')
+
+
+    """
+    def testSelfTestEnable(self):
+        '''
+            Test that the key self_test_enable works
+        '''
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <self_test_enable value="1"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        encSeq = paramsObj.encode()
+
+        # How the sequence should end up looking
+        expectedSequence = [0] * 122
+        expectedSequence[112] = 0x1
+
+        # Toggle display debug information
+        if True:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            
+            for idx in range(len(encSeq)):
+                if (idx % 8 == 0):
+                    print "\n%3i: " % idx,
+                print "%9X" % encSeq[idx],
+            print "\n"
+#            print "\nExpected Sequence: (len)", len(expectedSequence)
+#
+#            for idx in range(len(expectedSequence)):
+#                if (idx % 8 == 0):
+#                    print "\n%3i: " % idx,
+#                print "%9X" % expectedSequence[idx],
+#            print "\n"
+        
+#        self.assertEqual(encSeq, expectedSequence, 'testSelfTestEnable() failed !')
+    """
+
     def testBuildBitstream(self):
         '''
             Test the buildBitstream function
@@ -716,20 +979,24 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         daqBiasIdx47 = 11
         daqBiasDefault = 31
-        selfTestDecoderDefault = 5
+        selfTestDecoderDefault = 7
         digitalControlIdx3 = 18
 
+        # ONLY feedback_select
 #        stringCmdXml = '''<?xml version="1.0"?>
 #                            <lpd_slow_ctrl_sequence name="TestString">
-#                                <feedback_select_default value="1"/>
+#                                <feedback_select pixel="0" value="1"/>
+#                                <feedback_select pixel="2" value="1"/>
 #                            </lpd_slow_ctrl_sequence>
 #        '''
 
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
-                                <self_test_decoder_default value="%i"/>
-                            </lpd_slow_ctrl_sequence>
-        ''' % (selfTestDecoderDefault)
+        # BOTH feedback_select and self_test_decoder
+#        stringCmdXml = '''<?xml version="1.0"?>
+#                            <lpd_slow_ctrl_sequence name="TestString">
+#                                <self_test_decoder_default value="%i"/>
+#                                <feedback_select pixel="1" value="1"/>
+#                            </lpd_slow_ctrl_sequence>
+#        ''' % (selfTestDecoderDefault)
 
 #        stringCmdXml = '''<?xml version="1.0"?>
 #                            <lpd_slow_ctrl_sequence name="TestString">
@@ -746,37 +1013,33 @@ class SlowCtrlParamsTest(unittest.TestCase):
 #                                <self_test_decoder pixel="1" value="5"/>
 #                                <feedback_select_default value="0"/>
 
-  
-        # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
-        paramsObj.encode()
 
-        # Display an excerp of each dictionary key's value:
-        paramsObj.displayDictionaryValues()
-  
-        # Setup and compare the unit tests..        
-        dictKey = "self_test_decoder_default"
-        index = 0
-        value = selfTestDecoderDefault
-        
-        
-        print "Executing the buildBitstream() function: "
-        encSeq = paramsObj.buildBitstream()
-
-
-        print "\n\nEncoded Sequence: (len)", len(encSeq)
-        print "      123456789"
-        
-        for idx in range(len(encSeq)):
-#        for idx in range(49):
-            
-            if (idx % 8 == 0):
-                print "\n%3i: " % idx,
-            print "%9X" % encSeq[idx],
-
-        print "\n"
-        print "      123456789"
-        print "\n"
+#        # Parse XML and encode
+#        paramsObj = SlowCtrlParams(stringCmdXml)
+#        encSeq = paramsObj.encode()
+#
+#        # Display an excerp of each dictionary key's value:
+#        paramsObj.displayDictionaryValues()
+#  
+#        # Setup and compare the unit tests..        
+#        dictKey = "self_test_decoder_default"
+#        index = 0
+#        value = selfTestDecoderDefault
+#        
+#
+#
+#        print "\n\nEncoded Sequence: (len)", len(encSeq)
+#        print "       12345678"
+#        
+#        for idx in range(len(encSeq)):
+#            
+#            if (idx % 8 == 0):
+#                print "\n%3i: " % idx,
+#            print "%9X" % encSeq[idx],
+#
+#        print "\n"
+#        print "       12345678"
+#        print "\n"
 
 if __name__ == '__main__':
     
