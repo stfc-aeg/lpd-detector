@@ -25,7 +25,13 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 	mCallbacks(aCallbacks),
 	mConfig(aConfig),
 	mAsicDataReorderMode(reorderedDataMode),
-	mNumSubFrames(2)
+	mNumSubFrames(2),
+	mBurstModeSubmitPeriod(0),
+	mEnableDeferredBufferRelease(false),
+	mDacScanDac(0),
+	mDacScanStart(0),
+	mDacScanStop(0),
+	mDacScanStep(0)
 {
 
 	// Initialize MPX3 DAC settings, values and pixel config caches to zero
@@ -131,10 +137,22 @@ BufferInfo ExcaliburFemClient::allocateCallback(void)
 {
 
 	BufferInfo buffer;
+	CtlFrame* frame;
 
-	CtlFrame* frame = mCallbacks->ctlAllocate(mCtlHandle);
-	mFrameQueue.push_back(frame);
+	// If the frame queue is empty (i.e. no pre-allocated frame buffers), request
+	// a frame via the callback, otherwise use the front-most frame in the queue
 
+	if (mFrameQueue.empty())
+	{
+		frame = mCallbacks->ctlAllocate(mCtlHandle);
+		mFrameQueue.push_back(frame);
+	}
+	else
+	{
+		frame = mFrameQueue.front();
+	}
+
+	// Map the frame information into the buffer to return
 	buffer.addr    = (u8*)(frame->buffer);
 	buffer.length = (frame->bufferLength);
 
@@ -154,15 +172,24 @@ void ExcaliburFemClient::freeCallback(int aVal)
 void ExcaliburFemClient::receiveCallback(int aFrameCounter, time_t aRecvTime)
 {
 
-	// Get the first frame on our queu
+	// Get the first frame on our queue
 	CtlFrame* frame = mFrameQueue.front();
 
 	// Fill fields into frame metadata
 	frame->frameCounter = aFrameCounter;
 	frame->timeStamp    = aRecvTime;
 
-	// Call the receive callback
-	mCallbacks->ctlReceive(mCtlHandle,frame);
+	// If deferred buffer release is enabled, queue the completed
+	// frame on the release queue, otherwise call the receive callback
+	// to release the frame
+	if (mEnableDeferredBufferRelease)
+	{
+		mReleaseQueue.push_back(frame);
+	}
+	else
+	{
+		mCallbacks->ctlReceive(mCtlHandle,frame);
+	}
 
 	// Pop the frame off the queue
 	mFrameQueue.pop_front();
@@ -184,6 +211,13 @@ void ExcaliburFemClient::signalCallback(int aSignal)
 		std::cout << "Got acquisition complete signal" << std::endl;
 		//this->acquireStop();
 		//this->stopAcquisition();
+
+		// If deferred buffer release is enabled, drain the release queue
+		// out through the receive callback at the requested rate
+		if (mEnableDeferredBufferRelease)
+		{
+			this->releaseAllFrames();
+		}
 		break;
 
 	case FemDataReceiverSignal::femAcquisitionCorruptImage:
@@ -201,6 +235,59 @@ void ExcaliburFemClient::signalCallback(int aSignal)
 
 }
 
+void ExcaliburFemClient::preallocateFrames(unsigned int aNumFrames)
+{
+	for (unsigned int i = 0; i < aNumFrames; i++)
+	{
+		CtlFrame* frame = mCallbacks->ctlAllocate(mCtlHandle);
+		if (frame != NULL)
+		{
+			mFrameQueue.push_back(frame);
+		}
+		else
+		{
+			throw FemClientException((FemClientErrorCode)excaliburFemClientBufferAllocateFailed, "Buffer allocation callback failed");
+		}
+	}
+	std::cout << "Preallocate complete - frame queue size is now " << mFrameQueue.size() << std::endl;
+}
+
+void ExcaliburFemClient::releaseAllFrames(void)
+{
+	int numFramesToRelease = mReleaseQueue.size();
+	std::cout << "Deferred buffer release - draining release queue of "
+			  << numFramesToRelease << " frames" << std::endl;
+
+	// Build a timespec for the release period
+	time_t releaseSecs = (time_t)((int)mBurstModeSubmitPeriod);
+	long   releaseNsecs = (long)((mBurstModeSubmitPeriod - releaseSecs)*1E9);
+	struct timespec releasePeriod = {releaseSecs, releaseNsecs};
+
+	struct timespec startTime, endTime;
+	clock_gettime(CLOCK_REALTIME, &startTime);
+
+	while (mReleaseQueue.size() > 0)
+	{
+		CtlFrame* frame = mReleaseQueue.front();
+		mCallbacks->ctlReceive(mCtlHandle, frame);
+		mReleaseQueue.pop_front();
+		if (mBurstModeSubmitPeriod > 0.0)
+		{
+			nanosleep((const struct timespec *)&releasePeriod, NULL);
+		}
+	}
+
+	clock_gettime(CLOCK_REALTIME, &endTime);
+	double startSecs = startTime.tv_sec  + ((double)startTime.tv_nsec / 1.0E9);
+	double endSecs   = endTime.tv_sec  + ((double)endTime.tv_nsec / 1.0E9);
+	double elapsedSecs = endSecs - startSecs;
+	double elapsedRate = (double)numFramesToRelease / elapsedSecs;
+
+	std::cout << "Release completed: " << numFramesToRelease << " frames released in "
+			  << elapsedSecs << " secs, rate: " << elapsedRate << " Hz"
+			  << std::endl;
+
+}
 
 void ExcaliburFemClient::freeAllFrames(void)
 {
@@ -257,6 +344,53 @@ void ExcaliburFemClient::startAcquisition(void)
 	struct timespec startTime, endTime, recvInitTime, acqInitTime;
 
 	clock_gettime(CLOCK_REALTIME, &startTime);
+
+	// Select various parameters based on operation mode
+	u32 acqMode, numAcq, bdCoalesce = 0;
+	bool bufferPreAllocate = false;
+
+	switch (mOperationMode)
+	{
+
+	case excaliburOperationModeNormal:
+		acqMode = ACQ_MODE_NORMAL;
+		numAcq = 0; // Let the acquire config command configure all buffers in this mode
+		bdCoalesce = 1;
+		mEnableDeferredBufferRelease = false;
+		break;
+
+	case excaliburOperationModeBurst:
+		acqMode = ACQ_MODE_BURST;
+		numAcq = mNumFrames;
+		bdCoalesce = 1;
+		mEnableDeferredBufferRelease = true;
+		bufferPreAllocate = true;
+		break;
+
+	case excaliburOperationModeDacScan:
+		acqMode = ACQ_MODE_NORMAL;
+		numAcq = 0;
+		bdCoalesce = 1;
+		mEnableDeferredBufferRelease = false;
+		break;
+
+	case excaliburOperationModeHistogram:
+		// Deliberate fall-thru as histogram mode not yet supported
+
+	default:
+		{
+			std::ostringstream msg;
+			msg << "Cannot start acquisition, illegal operation mode specified: " << mOperationMode;
+			throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalOperationMode, msg.str());
+		}
+		break;
+	}
+
+	// Pre-allocate frame buffers for data receiver if necessary
+	if (bufferPreAllocate)
+	{
+		this->preallocateFrames(mNumFrames);
+	}
 
 	// Register callbacks for data receiver
 	mFemDataReceiver->registerCallbacks(&mCallbackBundle);
@@ -327,34 +461,6 @@ void ExcaliburFemClient::startAcquisition(void)
 
 	// Set up the acquisition DMA controller and arm it, based on operation mode
 	unsigned int dmaSize = this->asicReadoutDmaSize();
-	u32 acqMode, numAcq, bdCoalesce = 0;
-	switch (mOperationMode)
-	{
-
-	case excaliburOperationModeNormal:
-		acqMode = ACQ_MODE_NORMAL;
-		numAcq = 0; // Let the acquire config command configure all buffers in this mode
-		bdCoalesce = 1;
-		break;
-
-	case excaliburOperationModeBurst:
-		acqMode = ACQ_MODE_BURST;
-		numAcq = mNumFrames;
-		bdCoalesce = 1;
-		break;
-
-	case excaliburOperationModeHistogram:
-		// Deliberate fall-thru as histogram mode not yet supported
-
-	default:
-		{
-			std::ostringstream msg;
-			msg << "Cannot start acquisition, illegal operation mode specified: " << mOperationMode;
-			throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalOperationMode, msg.str());
-		}
-		break;
-	}
-
 	this->acquireConfig(acqMode, dmaSize, 0, numAcq, bdCoalesce);
 	this->acquireStart();
 
@@ -503,6 +609,15 @@ void ExcaliburFemClient::acquisitionTimeSet(unsigned int aTimeMs)
 {
 	// Store acquisition time for use during acquisition start
 	mAcquisitionTimeMs = aTimeMs;
+}
+
+void ExcaliburFemClient::burstModeSubmitPeriodSet(double aPeriod)
+{
+
+	// Store burst mode submit period for use during acquisition
+	mBurstModeSubmitPeriod = aPeriod;
+	std::cout << "Set burst mode submit period to " << aPeriod << std::endl;
+
 }
 
 void ExcaliburFemClient::numTestPulsesSet(unsigned int aNumTestPulses)

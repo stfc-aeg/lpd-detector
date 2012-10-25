@@ -38,7 +38,8 @@ typedef enum
 	excaliburFemClientUdpSetupFailed,
 	excaliburFemClientDataReceviverSetupFailed,
 	excaliburFemClientIllegalOperationMode,
-	excaliburFemClientIllegalCounterSelect
+	excaliburFemClientIllegalCounterSelect,
+	excaliburFemClientBufferAllocateFailed
 
 } ExcaliburFemClientErrorCode;
 
@@ -92,9 +93,10 @@ typedef enum
 typedef enum
 {
 
-	excaliburOperationModeNormal = 0,
-	excaliburOperationModeBurst  = 1,
-	excaliburOperationModeHistogram = 2
+	excaliburOperationModeNormal    = 0,
+	excaliburOperationModeBurst     = 1,
+	excaliburOperationModeHistogram = 2,
+	excaliburOperationModeDacScan   = 3
 
 } excaliburOperationMode;
 
@@ -122,7 +124,10 @@ public:
 	void numFramesSet(unsigned int aNumFrames);
 	void acquisitionPeriodSet(unsigned int aPeriodMs);
 	void acquisitionTimeSet(unsigned int aTimeMs);
+	void burstModeSubmitPeriodSet(double aPeriod);
 	void numTestPulsesSet(unsigned int aNumTestPulses);
+	void preallocateFrames(unsigned int aNumFrames);
+	void releaseAllFrames(void);
 	void freeAllFrames();
 	void frontEndInitialise(void);
 
@@ -159,6 +164,12 @@ public:
 	void  powerCardBiasLevelWrite(float aBiasLevel);
 	int   powerCardStatusRead(excaliburPowerCardStatus aStatus);
 	float powerCardMonitorRead(excaliburPowerCardMonitor aMonitor);
+
+	// EXCALIBUR autonomous scanning functions in ExcaliburFemClientScan.cpp
+	void dacScanDacSet(unsigned int aDac);
+	void dacScanStartSet(unsigned int aDacStart);
+	void dacScanStopSet(unsigned int aDacStop);
+	void dacScanStepSet(unsigned int aDacStep);
 
 private:
 
@@ -224,13 +235,22 @@ private:
 	asicDataReorderMode   mAsicDataReorderMode;
 	unsigned int          mNumSubFrames;
 
-	std::list<CtlFrame*> mFrameQueue;
+	std::list<CtlFrame*>  mFrameQueue;
+	std::list<CtlFrame*>  mReleaseQueue;
 
 	unsigned int          mExternalTrigger;
 	excaliburOperationMode mOperationMode;
 	unsigned int          mNumFrames;
 	unsigned int          mAcquisitionPeriodMs;
 	unsigned int          mAcquisitionTimeMs;
+	double                mBurstModeSubmitPeriod;
+
+	bool				  mEnableDeferredBufferRelease;
+
+	unsigned int		  mDacScanDac;
+	unsigned int		  mDacScanStart;
+	unsigned int		  mDacScanStop;
+	unsigned int		  mDacScanStep;
 
 };
 
