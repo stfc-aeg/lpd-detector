@@ -120,6 +120,7 @@ void femClose(void* femHandle);
 #define FEM_OPMODE_NORMAL 0
 #define FEM_OPMODE_BURST 1
 #define FEM_OPMODE_HISTOGRAM 2
+#define FEM_OPMODE_DACSCAN 3
 
 /* Counter select constants
  */
@@ -228,6 +229,11 @@ void femClose(void* femHandle);
 #define FEM_OP_REMOTE_DIODE_TEMP 4046
 #define FEM_OP_MOLY_HUMIDITY 4047
 #define FEM_OP_MEDIPIX_CHIP_DISABLE 4048
+#define FEM_OP_SCAN_DAC 4049
+#define FEM_OP_SCAN_START 4050
+#define FEM_OP_SCAN_STOP 4051
+#define FEM_OP_SCAN_STEP 4052
+#define FEM_OP_BURST_SUBMIT_PERIOD 4053
 
 /* Ids 5000..5999 are signals */
 #define FEM_OP_ACQUISITIONCOMPLETE 5000

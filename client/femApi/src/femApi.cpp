@@ -242,6 +242,26 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 				}
 				break;
 
+			case FEM_OP_SCAN_DAC:
+
+				theFem->dacScanDacSet((unsigned int)*value);
+				break;
+
+			case FEM_OP_SCAN_START:
+
+				theFem->dacScanStartSet((unsigned int)*value);
+				break;
+
+			case FEM_OP_SCAN_STOP:
+
+				theFem->dacScanStopSet((unsigned int)*value);
+				break;
+
+			case FEM_OP_SCAN_STEP:
+
+				theFem->dacScanStepSet((unsigned int)*value);
+				break;
+
 			default:
 				rc = FEM_RTN_UNKNOWNOPID;
 				break;
@@ -330,6 +350,11 @@ int femSetFloat(void* femHandle, int chipId, int id, std::size_t size, double* v
 			case FEM_OP_BIAS_LEVEL:
 
 				theFem->powerCardBiasLevelWrite(*value);
+				break;
+
+			case FEM_OP_BURST_SUBMIT_PERIOD:
+
+				theFem->burstModeSubmitPeriodSet(*value);
 				break;
 
 			default:
