@@ -109,8 +109,8 @@ public:
 
 	u32 configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort, char* hostIPaddress, u32 hostPort);
 
-	u32 personalityWrite(unsigned int aBus, unsigned int aWidth, unsigned int aAddress,
-						u8* aPayload, std::size_t size);
+	u32 personalityWrite(unsigned int aCommand, unsigned int aWidth, u8* aPayload, std::size_t size);
+	FemTransaction personalityCommand(unsigned int aCommand, unsigned int aWidth, u8* aPayload, std::size_t size);
 
 private:
 
