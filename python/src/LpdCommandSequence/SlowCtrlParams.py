@@ -328,7 +328,6 @@ class SlowCtrlParams(object):
 
         ''' Debug variables '''
         debugIdx = 33
-#        debugComparisonKey = "daq_bias" 
         debugComparisonKey = "self_test_enable"
 
         # Initialise empty list to contain binary command values for this part of the tree
@@ -341,35 +340,33 @@ class SlowCtrlParams(object):
             if dictKey.endswith("_default"):
                 continue
             else:
+                ''' DEBUG INFO '''
+#                print "This is: %25s" % dictKey#, " = [", 
+
                 # Get dictionary key values
                 cmdParams = self.getParamValue(dictKey)
 
-                ''' DEBUG INFO '''
-                print "This is: %25s" % dictKey#, " = [", 
-#                for idx in range(9):
-#                    print cmdParams[2][idx],
-#                print  " .. ]"
+                # word width of this key?
+                keyWidth = cmdParams[0]
+                # Where does current key reside within the (122 * word) sequence?
+                wordPosition = cmdParams[1] / 32
+                # Slow Control Value(s)
+                slowControlWordContent = cmdParams[2]
+                # bitPosition tracks the bit position within the 3904 bits long bitstream
+                bitPosition = cmdParams[1] % 32
 
                 # Is this a list?
-                if isinstance(cmdParams[2], types.ListType):
+                if isinstance(slowControlWordContent, types.ListType):
 
-                    # word width of this key?
-                    keyWidth = cmdParams[0]
-                    # Where does current key reside within the (122 * word) sequence?
-                    wordPosition = cmdParams[1] / 32
                     # Determine number of entries in the nested list
-                    numBitsRequired = len(cmdParams[2])
+                    numBitsRequired = len(slowControlWordContent)
 
-#                    
-#                    # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
-#                    #    therefore they become a special case (set to 0 for all other keys)
+                    # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
+                    #    therefore they become a special case (set to 0 for all other keys)
                     specialCaseOffset = 0
-#                    # Is this key either of the two special cases?
+                    
+                    # Is this key either of the two special cases?
                     if dictKey.startswith("feedback_select"):
-#                        print "This is: %25s" % dictKey, " = [", 
-#                        for idx in range(9):
-#                            print cmdParams[2][idx],
-#                        print  " .. ]"
                         specialCaseOffset = 3
                     if dictKey.startswith("self_test_decoder"):
                         # Because the feedback_select bit sits before the self_test_decoder 3 bits,
@@ -380,10 +377,9 @@ class SlowCtrlParams(object):
                     # Create a bit array to save each bit individually from each slow control word
                     bitwiseArray = [0] * (keyWidth * numBitsRequired)
 
-                    ''' DEBUG INFO '''
-#                    if dictKey == debugComparisonKey:
-#                        print dictKey + "'s len(bitwiseArray): ", len(bitwiseArray)
-
+                    ''' 
+                        LIST TYPE: FIRST LOOP
+                    '''
                     # Loop over all the elements of the nested list and produce bitwiseArray
                     #    e.g.: if keyWidth = 5, list = [1, 17, 15,..]
                     #        then bitwiseOffset = [ (1, 0, 0, 0, 0,) (1, 0, 0, 0, 1,) (0, 1, 1, 1, 1,) ..]
@@ -392,17 +388,18 @@ class SlowCtrlParams(object):
                         bitMask = 1
                         # Iterate over each bit of each slow control word
                         for bitIdx in range(keyWidth):
-                            bitwiseArray[ idx*keyWidth + bitIdx ] = ( (cmdParams[2][idx] & bitMask) >> bitIdx)
+                            bitwiseArray[ idx*keyWidth + bitIdx ] = ( (slowControlWordContent[idx] & bitMask) >> bitIdx)
                             bitMask = bitMask << 1
                     
                     ''' DEBUG INFO '''
 #                    if dictKey == debugComparisonKey:
 #                        print "First loop finished:\n", bitwiseArray
                     
-                    # bitPosition tracks the bit position within the 3904 bits long bitstream
-                    bitPosition = cmdParams[1] % 32
                     wordTotal = 0
                     
+                    '''
+                        LIST TYPE: SECOND LOOP
+                    '''
                     # Loop over this new list and chop each 32 bits into the encoded sequence
                     for idx in range(len(bitwiseArray)):
                         ''' DEBUG INFO '''
@@ -425,79 +422,41 @@ class SlowCtrlParams(object):
                             bitPosition += 1
 
                 else:
-                    ''' if isinstance(cmdParams[2], types.ListType): '''
+                    '''
+                        INTEGER TYPE
+                    '''
                     
-                    # word width of this key?
-                    keyWidth = cmdParams[0]
-                    # Where does current key reside within the (122 * word) sequence?
-                    wordPosition = cmdParams[1] / 32
-                    # Contents of the slow control word
-                    scWord = cmdParams[2]
-                    
-                    # Is the slow control word empty?
-                    if scWord == 0:
-                        # This key is zero, therefore no need to modify the encoded sequence on its behalf
-#                        print dictKey, "is empty; ignoring it.."
+                    # Need not update encoded sequence if slow control word empty
+                    if slowControlWordContent == 0:
                         continue
+
+                    # Split the integer into bitwise array
+                    numBitsRequired = cmdParams[0]
                     
-                    # bitPosition tracks the bit position within the 3904 bits long bitstream
-                    bitPosition = cmdParams[1] % 32
+                    # Create a bit array to save each bit individually from the slow control word
+                    bitwiseArray = [0] * numBitsRequired                    
+                    bitMask = 1
                     
-                    ''' DEBUG INFO '''
-#                    #TODO: REMOVE THE FOLLOWING LINE WHEN YOU HAVE FINISHED!
-#                    if dictKey != "filter_control":
-#                        continue
-
-                    
-
-                    # Does the current slow control word  span 2 indexes?
-                    if (bitPosition + keyWidth) > 32:
-#                        print "------------------------------------\n", dictKey, " covers more than one index!"
-                        
-                        # Split the integer into bitwise array
-                        numBitsRequired = cmdParams[0]
-                        print "numBitsRequired: ", numBitsRequired
-                        
-                        # Create a bit array to save each bit individually from the slow control word
-                        bitwiseArray = [0] * numBitsRequired
-                        
-                        bitMask = 1
-                        # Loop over all the bits in the slow control word
-                        for idx in range(numBitsRequired):
-#                            print "idx = %2i, scWord = %6X, bitMask = %6X,  scWord & bitMask = %6X,( (%6X & %6X) >> idx) = " % (idx, scWord, bitMask, scWord & bitMask, scWord, bitMask), ( (scWord & bitMask) >> idx)
-                            bitwiseArray[idx] = ( (scWord & bitMask) >> idx)
-                            bitMask = bitMask << 1
-                        
-
-                    else:
-                        # The current slow control word DOES NOT span two indexes
-                        
-#                        print "------------------------------------\n", dictKey, " covers just the one index"
-                        
-                        # Split the integer into bitwise array
-                        numBitsRequired = cmdParams[0]
-#                        print "numBitsRequired: ", numBitsRequired
-                        
-                        # Create a bit array to save each bit individually from the slow control word
-                        bitwiseArray = [0] * numBitsRequired
-                        
-                        bitMask = 1
-                        # Loop over all the bits in the slow control word
-                        for idx in range(numBitsRequired):
-#                            print "idx = %2i, scWord = %6X, bitMask = %6X,  scWord & bitMask = %6X,( (%6X & %6X) >> idx) = " % (idx, scWord, bitMask, scWord & bitMask, scWord, bitMask), ( (scWord & bitMask) >> idx)
-                            bitwiseArray[idx] = ( (scWord & bitMask) >> idx)
-                            bitMask = bitMask << 1
-                        
-
+                    '''
+                        INTEGER TYPE: FIRST LOOP
+                    '''
+                    # Loop over all the bits in the slow control word
+                    for idx in range(numBitsRequired):
+#                            print "idx = %2i, slowControlWordContent = %6X, bitMask = %6X,  slowControlWordContent & bitMask = %6X,( (%6X & %6X) >> idx) = " % (idx, slowControlWordContent, bitMask, slowControlWordContent & bitMask, slowControlWordContent, bitMask), ( (slowControlWordContent & bitMask) >> idx)
+                        bitwiseArray[idx] = ( (slowControlWordContent & bitMask) >> idx)
+                        bitMask = bitMask << 1
 
                     # Sum total of a 32 bit word
                     wordTotal = 0
                     
+                    '''
+                        INTEGER TYPE: SECOND LOOP
+                    '''
                     # Loop over this new list and chop each 32 bits into the encoded sequence
                     for idx in range(len(bitwiseArray)):
-                        ''' DEBUG INFO '''
-                        print "idx=%3i, bitPosn=%2i, wordTotal:%9X" % (idx, bitPosition, wordTotal), " (%i << %2i) " % (bitwiseArray[idx], bitPosition), "= %9X" % (bitwiseArray[idx] << bitPosition),
-                        print " encSeq[%3i] = %9X, encSeq[%3i] = %9X, " % (wordPosition, encodedSequence[wordPosition], wordPosition+1, encodedSequence[wordPosition+1])
+#                        ''' DEBUG INFO '''
+#                        print "idx=%3i, bitPosn=%2i, wordTotal:%9X" % (idx, bitPosition, wordTotal), " (%i << %2i) " % (bitwiseArray[idx], bitPosition), "= %9X" % (bitwiseArray[idx] << bitPosition),
+#                        print " encSeq[%3i] = %9X, encSeq[%3i] = %9X, " % (wordPosition, encodedSequence[wordPosition], wordPosition+1, encodedSequence[wordPosition+1])
                         
                         # Add the current bit to the running total of the current 32 bit word
                         wordTotal = wordTotal | (bitwiseArray[idx] << bitPosition)
@@ -515,22 +474,6 @@ class SlowCtrlParams(object):
                             bitPosition += 1
 
                         
-                        #  Determine how many bits to go into each index (this and the next one)
-#                        thisBits = 32 - bitPosition
-#                        nextBits = (bitPosition + keyWidth) - 32
-#                        print "thisBits, nextBits: ", thisBits, nextBits
-#                        thisIndexMask = self.generateBitMask(thisBits)
-#                        nextIndexMask = self.generateBitMask(nextBits)
-#                        
-#                        print "thisIndexMask = %8X, nextIndexMask = %8X." % (thisIndexMask, nextIndexMask)
-#                        
-#                        print "---------------------"
-#                    print "Before: encodedSequence[%3i] = %8X" % (wordPosition, encodedSequence[wordPosition]), " (Adding:  %8X)." % (cmdParams[2] << bitPosition)
-                    #  Add slow control word into the right index at the right point
-#                    encodedSequence[wordPosition] = encodedSequence[wordPosition] | (cmdParams[2] << bitPosition)
-
-#                    print " After: encodedSequence[%3i] = %8X" % (wordPosition, encodedSequence[wordPosition])
-
         # Return the encoded sequence for this (partial) tree
         return encodedSequence
 
