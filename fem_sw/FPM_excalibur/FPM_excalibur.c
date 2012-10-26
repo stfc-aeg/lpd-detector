@@ -83,10 +83,10 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 	int retVal;
 
 	// Debugging, print header information
-	DUMPHDR(pRxHeader);
+	//DUMPHDR(pRxHeader);
 
 	// TODO: Remove debugging
-	xil_printf("FPM_Excalibur: Opmode %d\r\n", pRxHeader->address);
+	//xil_printf("FPM_Excalibur: Opmode %d\r\n", pRxHeader->address);
 
 	// For personality module address is overloaded to be command
 	switch(pRxHeader->address)
@@ -99,12 +99,13 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 			// Transfer threadState to payload, increment payload size
 			memcpy(pTxPayload, &state, sizeof(threadState));
 			pTxHeader->payload_sz += sizeof(threadState);
+			pTxHeader->data_width = WIDTH_LONG;
 			retVal = 1;
 
-			xil_printf("FPM_Excalibur: state.state   = %d\r\n", state.state);
-			xil_printf("FPM_Excalibur: state.numOps  = %d\r\n", state.numOps);
-			xil_printf("FPM_Excalibur: state.compOps = %d\r\n", state.compOps);
-			xil_printf("FPM_Excalibur: state.error   = %d\r\n", state.error);
+//			xil_printf("FPM_Excalibur: state.state   = %d\r\n", state.state);
+//			xil_printf("FPM_Excalibur: state.numOps  = %d\r\n", state.numOps);
+//			xil_printf("FPM_Excalibur: state.compOps = %d\r\n", state.compOps);
+//			xil_printf("FPM_Excalibur: state.error   = %d\r\n", state.error);
 
 			break;
 
@@ -128,7 +129,7 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 	}
 
 	// TODO: Remove debugging
-	xil_printf("FPM_Excalibur: TX payload sz =%d\r\n", pTxHeader->payload_sz);
+	//xil_printf("FPM_Excalibur: TX payload sz =%d\r\n", pTxHeader->payload_sz);
 
 	return retVal;
 }
@@ -142,7 +143,7 @@ int prepareDACScan(u8 *pRxPayload)
 	pthread_t t;
 	int tid;
 
-	int dataSize = 12;	// TODO: What payload will we receive for DACscan?  (sizeof(u32) x 3)?
+	int dataSize = sizeof(dacScanParams);
 
 	if (currentThreadType!=0) {
 		// Already a thread running!
@@ -161,7 +162,13 @@ int prepareDACScan(u8 *pRxPayload)
 	state.error = 0;
 
 	// Copy payload to static variable
-	realloc(pInput, (size_t)dataSize);
+	if (pInput == NULL)
+	{
+		pInput = malloc((size_t)dataSize);
+	}
+	else {
+		realloc(pInput, (size_t)dataSize);
+	}
 	memcpy(pInput, pRxPayload, (size_t)dataSize);
 
 	// Launch thread
@@ -187,6 +194,8 @@ int prepareDACScan(u8 *pRxPayload)
  */
 void *doDACScanThread(void *pArg)
 {
+	unsigned int scanDacVal;
+	unsigned int iAsic;
 
 	// Flag as busy
 	state.state = 1;
@@ -197,9 +206,51 @@ void *doDACScanThread(void *pArg)
 
 	xil_printf("FPM_Excalibur [DACscan]: Thread active!\r\n");
 
+	// Decode scan parameters from input payload
+	dacScanParams* scanParams = (dacScanParams*)pInput;
+
+
+//	xil_printf("scan params: %d %d %d %d\r\n", scanParams->scanDac, scanParams->dacStart,
+//			  scanParams->dacStop, scanParams->dacStep);
+//	xil_printf("asic mask; %d\r\n", scanParams->asicMask);
+//	xil_printf("C7 thresh 0: %d, C1 thresh 1: %d\r\n",
+//			   scanParams->dacCache[7][0], scanParams->dacCache[1][1]);
+//	xil_printf("DAC set OMR: 0x%x%08x  ACQ OMR: 0x%x%08x Execute: %d\r\n",
+//				scanParams->omrDacSet.top, scanParams->omrDacSet.bottom,
+//				scanParams->omrAcquire.top, scanParams->omrAcquire.bottom,
+//				scanParams->executeCommand);
+
+	// Loop over scan parameters and execute scan
+	int rc = 0;
+	for (scanDacVal = scanParams->dacStart; scanDacVal <= scanParams->dacStop; scanDacVal += scanParams->dacStep)
+	{
+
+		xil_printf("Scanning DAC %d val %d\r\n", scanParams->scanDac, scanDacVal);
+
+		// Iterate over ASICs that are enabled in ASIC mask
+		for (iAsic = 0; iAsic < kNumAsicsPerFem; iAsic++)
+		{
+			if ((scanParams->asicMask & ((u32)1<<(7-iAsic))) != 0)
+			{
+				// Update scanned DAC cache value for relevant ASIC
+				scanParams->dacCache[iAsic][scanParams->scanDac] = scanDacVal;
+				// Load DACs into the ASC
+				rc = loadDacs(iAsic, scanParams);
+			}
+			if (rc != 0) {
+				break;
+			}
+		}
+		if (rc != 0) {
+			break;
+		}
+
+		// Trigger an image acquisition
+	}
+
 	// TODO: Do actual DAC scan here!!
-	// Sleep 20s
-	usleep(20000000);
+	// Sleep 2s
+	usleep(2000000);
 
 	// Flag as idle
 	state.state = 0;
@@ -217,4 +268,138 @@ void *doDACScanThread(void *pArg)
 	return 0;
 }
 
+int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
+{
+	int rc = 0;
+	int status;
+	u32 dacWords[kNumAsicDpmWords];
+	unsigned int iWord;
+	xil_printf("Loading DACs for ASIC %d\r\n", iAsic);
+
+	// Zero out packed DAC values to be loaded into FEM
+	for (iWord = 0; iWord < kNumAsicDpmWords; iWord++)
+	{
+		dacWords[iWord] = 0;
+	}
+
+	// Pack DACs values into the words to be loaded into FEM
+    dacWords[0] |= (u32)(scanParams->dacCache[iAsic][tpRefBDac]      & 0x1FF) << 23;
+    dacWords[0] |= (u32)(scanParams->dacCache[iAsic][tpRefADac]      & 0x1FF) << 14;
+    dacWords[0] |= (u32)(scanParams->dacCache[iAsic][casDac]         & 0x0FF) << 6;
+    dacWords[0] |= (u32)(scanParams->dacCache[iAsic][fbkDac]         & 0x0FC) >> 2;
+
+    dacWords[1] |= (u32)(scanParams->dacCache[iAsic][fbkDac]         & 0x003) << 30;
+    dacWords[1] |= (u32)(scanParams->dacCache[iAsic][tpRefDac]       & 0x0FF) << 22;
+    dacWords[1] |= (u32)(scanParams->dacCache[iAsic][gndDac]         & 0x0FF) << 14;
+    dacWords[1] |= (u32)(scanParams->dacCache[iAsic][rpzDac]         & 0x0FF) << 6;
+    dacWords[1] |= (u32)(scanParams->dacCache[iAsic][tpBufferOutDac] & 0x0FC) >> 2;
+
+    dacWords[2] |= (u32)(scanParams->dacCache[iAsic][tpBufferOutDac] & 0x003) << 30;
+    dacWords[2] |= (u32)(scanParams->dacCache[iAsic][tpBufferInDac]  & 0x0FF) << 22;
+    dacWords[2] |= (u32)(scanParams->dacCache[iAsic][delayDac]       & 0x0FF) << 14;
+    dacWords[2] |= (u32)(scanParams->dacCache[iAsic][dacPixelDac]    & 0x0FF) << 6;
+    dacWords[2] |= (u32)(scanParams->dacCache[iAsic][thresholdNDac]  & 0x0FC) >> 2;
+
+    dacWords[3] |= (u32)(scanParams->dacCache[iAsic][thresholdNDac]  & 0x003) << 30;
+    dacWords[3] |= (u32)(scanParams->dacCache[iAsic][discLsDac]      & 0x0FF) << 22;
+    dacWords[3] |= (u32)(scanParams->dacCache[iAsic][discDac]        & 0x0FF) << 14;
+    dacWords[3] |= (u32)(scanParams->dacCache[iAsic][shaperDac]      & 0x0FF) << 6;
+    dacWords[3] |= (u32)(scanParams->dacCache[iAsic][ikrumDac]       & 0x0FC) >> 2;
+
+    dacWords[4] |= (u32)(scanParams->dacCache[iAsic][ikrumDac]       & 0x003) << 30;
+    dacWords[4] |= (u32)(scanParams->dacCache[iAsic][preampDac]      & 0x0FF) << 22;
+    dacWords[4] |= (u32)(scanParams->dacCache[iAsic][threshold7Dac]  & 0x1FF) << 13;
+    dacWords[4] |= (u32)(scanParams->dacCache[iAsic][threshold6Dac]  & 0x1FF) << 4;
+    dacWords[4] |= (u32)(scanParams->dacCache[iAsic][threshold5Dac]  & 0x1E0) >> 5;
+
+    dacWords[5] |= (u32)(scanParams->dacCache[iAsic][threshold5Dac]  & 0x01F) << 27;
+    dacWords[5] |= (u32)(scanParams->dacCache[iAsic][threshold4Dac]  & 0x1FF) << 18;
+    dacWords[5] |= (u32)(scanParams->dacCache[iAsic][threshold3Dac]  & 0x1DF) << 9;
+    dacWords[5] |= (u32)(scanParams->dacCache[iAsic][threshold2Dac]  & 0x1FF) << 0;
+
+    dacWords[6] |= (u32)(scanParams->dacCache[iAsic][threshold1Dac]  & 0x1FF) << 23;
+    dacWords[6] |= (u32)(scanParams->dacCache[iAsic][threshold0Dac]  & 0x1FF) << 14;
+
+    xil_printf("DAC words: ");
+    for (iWord = 0; iWord < kNumAsicDpmWords; iWord++)
+    {
+    	xil_printf("0x%08x ", dacWords[iWord]);
+    }
+    xil_printf("\r\n");
+
+    // Load the DAC words into the FEM (DPM area accessed via RDMA)
+    for (iWord = 0; iWord < kNumAsicDpmWords; iWord++)
+    {
+    	status = writeRdma(kExcaliburAsicDpmRdmaAddress + iWord, dacWords[iWord]);
+    	if (status != XST_SUCCESS)
+    	{
+    		// TODO: flag error
+    		xil_printf("RDMA write of DAC words to BRAM failed on word %d status %d\r\n", iWord, status);
+    		rc = 1;
+    		break;
+    	}
+    }
+    if (rc != 0) {
+    	return rc;
+    }
+
+    // Set the ASIC MUX register
+    u32 muxSelect = ((u32)1 << (7- iAsic));
+    status = writeRdma(kExcaliburAsicMuxSelect, muxSelect);
+    if (status != XST_SUCCESS)
+    {
+    	xil_printf("RDMA write of ASIC mux select failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+
+    // Set up the OMR registers for DAC write
+    status = setOmr(scanParams->omrDacSet);
+    if (status != XST_SUCCESS)
+    {
+    	xil_printf("RDMA write of DAC set OMR failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+
+    // Trigger DAC write transaction to ASIC
+    status = writeRdma(kExcaliburAsicControlReg, 0x23);
+    if (status != XST_SUCCESS)
+    {
+    	xil_printf("RDMA write to trigger DAC load failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+
+    // Read back control state register and check write transaction completed
+    u32 ctrlState;
+    status = readRdma(kExcaliburAsicCtrlState1, &ctrlState);
+    if (status != XST_SUCCESS)
+    {
+    	xil_printf("RDMA read of ASIC ctrlState1 register failed, status %s", status);
+    	rc = 1;
+    	return rc;
+    }
+    if (ctrlState != 0x80000000)
+    {
+    	xil_printf("DAC load transaction to ASIC failed to complete, state=0x%08x", ctrlState);
+    	rc = 1;
+    	return rc;
+    }
+
+	return rc;
+}
+
+int setOmr(alignedOmr omr)
+{
+	int status;
+
+	status = writeRdma(kExcaliburAsicOmrBottom, omr.bottom);
+    if (status != XST_SUCCESS) {
+    	return status;
+    }
+    status = writeRdma(kExcaliburAsicOmrTop, omr.top);
+
+    return status;
+}
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
