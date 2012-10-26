@@ -10,6 +10,8 @@
 
 #include "dataTypes.h"
 
+const unsigned int kNumAsicsPerFem = 8;
+
 // Enumeration of DAC IDs, matching the definition in the MPX3 manual
 typedef enum {
 

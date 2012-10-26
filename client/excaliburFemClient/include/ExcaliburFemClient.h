@@ -15,8 +15,8 @@
 #include <time.h>
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
+#include "ExcaliburPersonality.h"
 
-const unsigned int kNumAsicsPerFem = 8;
 const unsigned int kNumAsicDpmWords = 8;
 const unsigned int kNumPixelsPerAsic = FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y;
 const unsigned int kNumColsPerAsic = FEM_PIXELS_PER_CHIP_X;
@@ -39,7 +39,8 @@ typedef enum
 	excaliburFemClientDataReceviverSetupFailed,
 	excaliburFemClientIllegalOperationMode,
 	excaliburFemClientIllegalCounterSelect,
-	excaliburFemClientBufferAllocateFailed
+	excaliburFemClientBufferAllocateFailed,
+	excaliburFemClientPersonalityStatusError
 
 } ExcaliburFemClientErrorCode;
 
@@ -99,6 +100,14 @@ typedef enum
 	excaliburOperationModeDacScan   = 3
 
 } excaliburOperationMode;
+
+typedef enum
+{
+	excaliburPersonalityCommandDacScan = 1,
+	excaliburPersonalityCommandStatus  = 20,
+	excaliburPersonaliutyCommandResult = 21
+
+} excaliburPersonalityCommand;
 
 class ExcaliburFemClient: public FemClient {
 public:
@@ -165,11 +174,15 @@ public:
 	int   powerCardStatusRead(excaliburPowerCardStatus aStatus);
 	float powerCardMonitorRead(excaliburPowerCardMonitor aMonitor);
 
+	// EXCALIBUR FEM personality module functions in ExcaliburFemClientPersonality.cpp
+	personalityCommandStatus personalityCommandStatusGet(void);
+
 	// EXCALIBUR autonomous scanning functions in ExcaliburFemClientScan.cpp
 	void dacScanDacSet(unsigned int aDac);
 	void dacScanStartSet(unsigned int aDacStart);
 	void dacScanStopSet(unsigned int aDacStop);
 	void dacScanStepSet(unsigned int aDacStep);
+	void dacScanExecute(void);
 
 private:
 
