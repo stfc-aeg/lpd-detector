@@ -23,6 +23,7 @@ int testPixelConfig(void* femHandle);
 int testReadEfuseIds(void* femHandle);
 int testAcquisitionLoop(void* femHandle, unsigned int numFrames);
 int testAcquireStatus(void* femHandle);
+int testDacScan(void* femHandle);
 int testPowerCardStatus(void* femHandle);
 
 // Forward declaration of callback functions to simulate WP5 callbacks
@@ -90,8 +91,8 @@ int main(int argc, char* argv[]) {
 //	numPassed += testReadEfuseIds(femHandle);
 //	numPassed += testAcquisitionLoop(femHandle, numFrames);
 //	numPassed += testAcquireStatus(femHandle);
-	numPassed += testPowerCardStatus(femHandle);
-
+//	numPassed += testPowerCardStatus(femHandle);
+	numPassed += testDacScan(femHandle);
 	printf("Hit return to quit ... ");
 	getchar();
 
@@ -691,13 +692,54 @@ int testPowerCardStatus(void* femHandle)
 		printf("Power card fan fault status           : %d\n", fanFaultStatus);
 	}
 
+	double externalDac = 0;
+	rc = femGetFloat(femHandle, 1, FEM_OP_DAC_OUT_FROM_MEDIPIX, 1, &externalDac);
+	if (rc != FEM_RTN_OK)
+	{
+		printf("Got error retreiving external DAC value\n");
+	}
+
 	return passed;
 }
 
 int testAcquireStatus(void* femHandle)
 {
 	int rc;
-	rc = femCmd(femHandle, 0, 10);
+	printf("About to call femCmd\n");
+	rc = femCmd(femHandle, 0, 11);
+
+	return 1;
+}
+
+int testDacScan(void* femHandle)
+{
+	int rc;
+
+	int theDac = 1;
+	int theStart = 50;
+	int theStop = 200;
+	int theStep = 50;
+
+	printf("Testing DAC scan...");
+
+	rc = femSetInt(femHandle, 0, FEM_OP_SCAN_DAC, 1, &theDac);
+	rc = femSetInt(femHandle, 0, FEM_OP_SCAN_START, 1, &theStart);
+	rc = femSetInt(femHandle, 0, FEM_OP_SCAN_STOP, 1, &theStop);
+	rc = femSetInt(femHandle, 0, FEM_OP_SCAN_STEP, 1, &theStep);
+	int thresh0 = 123;
+	rc = femSetInt(femHandle, 0, FEM_OP_MPXIII_THRESHOLD0DAC, 1, &thresh0);
+	int thresh1 = 456;
+	rc = femSetInt(femHandle, 2, FEM_OP_MPXIII_THRESHOLD1DAC, 1, &thresh1);
+	int tpRefB = 255;
+	rc = femSetInt(femHandle, 1, FEM_OP_MPXIII_TPREFBDAC, 1, &tpRefB);
+
+//	int disable = 1;
+//	int iAsic;
+//	for (iAsic = 2; iAsic <= 8; iAsic++)
+//	{
+//		rc = femSetInt(femHandle, iAsic, FEM_OP_MEDIPIX_CHIP_DISABLE, 1, &disable);
+//	}
+	rc = femCmd(femHandle, 0, 12);
 
 	return 1;
 }
