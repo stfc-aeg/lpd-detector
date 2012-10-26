@@ -47,7 +47,7 @@ class SlowCtrlParams(object):
                            'daq_bias_default'            : [5,  -1,     -1,         [False, True, False]],
                            'daq_bias'                    : [5,  3585,   [-1] * 47,  [False, True, True]],
                            'spare_bits'                  : [5,  3820,   -1,         [False, True, False]],        # Special Case: 5 bits cover everything
-                           '100x_filter_control'         : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
+                           'filter_control'         : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
                            'adc_clock_delay'             : [20, 3845,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
                            'digital_control'             : [40, 3865,   -1,         [False, True, True]],       # Special Case: 40 bits cover everything
                            }
@@ -345,7 +345,7 @@ class SlowCtrlParams(object):
                 cmdParams = self.getParamValue(dictKey)
 
                 ''' DEBUG INFO '''
-#                print "This is: %25s" % dictKey, " = [", 
+                print "This is: %25s" % dictKey#, " = [", 
 #                for idx in range(9):
 #                    print cmdParams[2][idx],
 #                print  " .. ]"
@@ -358,7 +358,7 @@ class SlowCtrlParams(object):
                     # Where does current key reside within the (122 * word) sequence?
                     wordPosition = cmdParams[1] / 32
                     # Determine number of entries in the nested list
-                    listLength = len(cmdParams[2])
+                    numBitsRequired = len(cmdParams[2])
 
 #                    
 #                    # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
@@ -378,7 +378,7 @@ class SlowCtrlParams(object):
                 
                     keyWidth = keyWidth + specialCaseOffset
                     # Create a bit array to save each bit individually from each slow control word
-                    bitwiseArray = [0] * (keyWidth * listLength)
+                    bitwiseArray = [0] * (keyWidth * numBitsRequired)
 
                     ''' DEBUG INFO '''
 #                    if dictKey == debugComparisonKey:
@@ -387,7 +387,7 @@ class SlowCtrlParams(object):
                     # Loop over all the elements of the nested list and produce bitwiseArray
                     #    e.g.: if keyWidth = 5, list = [1, 17, 15,..]
                     #        then bitwiseOffset = [ (1, 0, 0, 0, 0,) (1, 0, 0, 0, 1,) (0, 1, 1, 1, 1,) ..]
-                    for idx in range(listLength):
+                    for idx in range(numBitsRequired):
                         
                         bitMask = 1
                         # Iterate over each bit of each slow control word
@@ -427,19 +427,107 @@ class SlowCtrlParams(object):
                 else:
                     ''' if isinstance(cmdParams[2], types.ListType): '''
                     
-#                    print "%25s" % dictKey, " is an integer - not processed"
-                    
                     # word width of this key?
                     keyWidth = cmdParams[0]
                     # Where does current key reside within the (122 * word) sequence?
                     wordPosition = cmdParams[1] / 32
-                
+                    # Contents of the slow control word
+                    scWord = cmdParams[2]
+                    
+                    # Is the slow control word empty?
+                    if scWord == 0:
+                        # This key is zero, therefore no need to modify the encoded sequence on its behalf
+#                        print dictKey, "is empty; ignoring it.."
+                        continue
+                    
                     # bitPosition tracks the bit position within the 3904 bits long bitstream
                     bitPosition = cmdParams[1] % 32
+                    
+                    ''' DEBUG INFO '''
+#                    #TODO: REMOVE THE FOLLOWING LINE WHEN YOU HAVE FINISHED!
+#                    if dictKey != "filter_control":
+#                        continue
 
+                    
+
+                    # Does the current slow control word  span 2 indexes?
+                    if (bitPosition + keyWidth) > 32:
+#                        print "------------------------------------\n", dictKey, " covers more than one index!"
+                        
+                        # Split the integer into bitwise array
+                        numBitsRequired = cmdParams[0]
+                        print "numBitsRequired: ", numBitsRequired
+                        
+                        # Create a bit array to save each bit individually from the slow control word
+                        bitwiseArray = [0] * numBitsRequired
+                        
+                        bitMask = 1
+                        # Loop over all the bits in the slow control word
+                        for idx in range(numBitsRequired):
+#                            print "idx = %2i, scWord = %6X, bitMask = %6X,  scWord & bitMask = %6X,( (%6X & %6X) >> idx) = " % (idx, scWord, bitMask, scWord & bitMask, scWord, bitMask), ( (scWord & bitMask) >> idx)
+                            bitwiseArray[idx] = ( (scWord & bitMask) >> idx)
+                            bitMask = bitMask << 1
+                        
+
+                    else:
+                        # The current slow control word DOES NOT span two indexes
+                        
+#                        print "------------------------------------\n", dictKey, " covers just the one index"
+                        
+                        # Split the integer into bitwise array
+                        numBitsRequired = cmdParams[0]
+#                        print "numBitsRequired: ", numBitsRequired
+                        
+                        # Create a bit array to save each bit individually from the slow control word
+                        bitwiseArray = [0] * numBitsRequired
+                        
+                        bitMask = 1
+                        # Loop over all the bits in the slow control word
+                        for idx in range(numBitsRequired):
+#                            print "idx = %2i, scWord = %6X, bitMask = %6X,  scWord & bitMask = %6X,( (%6X & %6X) >> idx) = " % (idx, scWord, bitMask, scWord & bitMask, scWord, bitMask), ( (scWord & bitMask) >> idx)
+                            bitwiseArray[idx] = ( (scWord & bitMask) >> idx)
+                            bitMask = bitMask << 1
+                        
+
+
+                    # Sum total of a 32 bit word
+                    wordTotal = 0
+                    
+                    # Loop over this new list and chop each 32 bits into the encoded sequence
+                    for idx in range(len(bitwiseArray)):
+                        ''' DEBUG INFO '''
+                        print "idx=%3i, bitPosn=%2i, wordTotal:%9X" % (idx, bitPosition, wordTotal), " (%i << %2i) " % (bitwiseArray[idx], bitPosition), "= %9X" % (bitwiseArray[idx] << bitPosition),
+                        print " encSeq[%3i] = %9X, encSeq[%3i] = %9X, " % (wordPosition, encodedSequence[wordPosition], wordPosition+1, encodedSequence[wordPosition+1])
+                        
+                        # Add the current bit to the running total of the current 32 bit word
+                        wordTotal = wordTotal | (bitwiseArray[idx] << bitPosition)
+                        # Add running total to sequence 
+                        encodedSequence[wordPosition] = encodedSequence[wordPosition]  | wordTotal
+
+                        # Is this the end of the current encoded sequence's index?
+                        if (bitPosition > 0) and (bitPosition % 31 == 0):
+                            # Yes; clear wordTotal, increment wordPosition and reset bitPosition
+                            wordTotal = 0
+                            wordPosition += 1
+                            bitPosition = 0
+                        else:
+                            # Not the last bit within the 32 bit word; Increment bitPosition
+                            bitPosition += 1
+
+                        
+                        #  Determine how many bits to go into each index (this and the next one)
+#                        thisBits = 32 - bitPosition
+#                        nextBits = (bitPosition + keyWidth) - 32
+#                        print "thisBits, nextBits: ", thisBits, nextBits
+#                        thisIndexMask = self.generateBitMask(thisBits)
+#                        nextIndexMask = self.generateBitMask(nextBits)
+#                        
+#                        print "thisIndexMask = %8X, nextIndexMask = %8X." % (thisIndexMask, nextIndexMask)
+#                        
+#                        print "---------------------"
 #                    print "Before: encodedSequence[%3i] = %8X" % (wordPosition, encodedSequence[wordPosition]), " (Adding:  %8X)." % (cmdParams[2] << bitPosition)
                     #  Add slow control word into the right index at the right point
-                    encodedSequence[wordPosition] = encodedSequence[wordPosition] | (cmdParams[2] << bitPosition)
+#                    encodedSequence[wordPosition] = encodedSequence[wordPosition] | (cmdParams[2] << bitPosition)
 
 #                    print " After: encodedSequence[%3i] = %8X" % (wordPosition, encodedSequence[wordPosition])
 
@@ -502,7 +590,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
     Unit test class for SlowCtrlParams.
     '''
 
-    
+    """
     def testStringParse(self):
         '''
             Tests that updating a parameter works as expected
@@ -601,7 +689,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 #        print digitalControlVals, "\n", expectedVals
         self.assertEqual(digitalControlVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
-    
+    """
     def testOutOfRangeKeyValueFails(self):
         '''
         Tests that updating a parameter will fail if value exceeds valid range
@@ -664,7 +752,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             paramsObj.setParamValue(dictKey, index, value)
 
         # Test 20 bit width
-        dictKey = "100x_filter_control"
+        dictKey = "filter_control"
         value = 1048575+1
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
@@ -1015,15 +1103,15 @@ class SlowCtrlParamsTest(unittest.TestCase):
         self.assertEqual(encSeq, expectedSequence, 'testSpareBits() failed !')
 
     
-    def test100xFilterControl(self):
+    def testFilterControl(self):
         '''
-            Test that the key 100x_filter_control works
+            Test that the key filter_control works
         '''
         
         filterValue = 1048575
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
-                                <100x_filter_control value="%i"/>
+                                <filter_control value="%i"/>
                             </lpd_slow_ctrl_sequence>
         ''' % filterValue
     
@@ -1032,42 +1120,49 @@ class SlowCtrlParamsTest(unittest.TestCase):
         encSeq = paramsObj.encode()
 
         thisIndex = paramsObj.generateBitMask(15)
-        nextIndex = paramsObj.generateBitMask(5)
         
+        overflow = ( filterValue >> (32 - 17))
+
         # How the sequence should end up looking
         expectedSequence = [0] * 122
         # 3825 / 32 = 119; 3825 % 32 = 17
-        expectedSequence[119] = (filterValue & thisIndex) << 17
-        expectedSequence[120] = filterValue & (nextIndex << 17)
+        expectedSequence[119] = ( (filterValue & thisIndex) << 17)
+        expectedSequence[120] = overflow
+
+#        print "\nthisIndex = ", thisIndex
+#        print "( (%6X" % filterValue, " &  %4X" % thisIndex, ") << 17) = %9X " % ( (filterValue & thisIndex) << 17)
+#        print "  (%6X" % filterValue, " >> (32 - 17) = %9X " % overflow
         
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
             
             for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
+                if idx > 103:
+                    if (idx % 8 == 0):
+                        print "\n%3i: " % idx,
+                    print "%9X" % encSeq[idx],
     
             print "\nExpected Sequence: (len)", len(expectedSequence)
 
             for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
+                if idx > 103:
+                    if (idx % 8 == 0):
+                        print "\n%3i: " % idx,
+                    print "%9X" % expectedSequence[idx],
             print "\n"
         
-        self.assertEqual(encSeq, expectedSequence, 'test100xFilterControl() failed !')
+        self.assertEqual(encSeq, expectedSequence, 'testFilterControl() failed !')
 
-    def testBuildBitstream(self):
-        '''
-            Test the buildBitstream function
-        '''
-        
-        daqBiasIdx47 = 11
-        daqBiasDefault = 31
-        selfTestDecoderDefault = 7
-        digitalControlIdx3 = 18
+#    def testBuildBitstream(self):
+#        '''
+#            Test the buildBitstream function
+#        '''
+#        
+#        daqBiasIdx47 = 11
+#        daqBiasDefault = 31
+#        selfTestDecoderDefault = 7
+#        digitalControlIdx3 = 18
 
         # ONLY feedback_select
 #        stringCmdXml = '''<?xml version="1.0"?>
@@ -1100,7 +1195,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 #                                <self_test_decoder pixel="1" value="5"/>
 #                                <feedback_select_default value="0"/>
 
-
+#"""
     
 
 if __name__ == '__main__':
