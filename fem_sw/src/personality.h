@@ -27,12 +27,18 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 								int* pResponseSize
 							);
 
+#define PERS_ERROR_STRING_MAX_LENGTH 80
+#define SETPERSERR(code, ...) state.error=code; \
+							  snprintf(state.errorString, ERR_STRING_MAX_LENGTH, __VA_ARGS__); \
+							  if (code != 0) { xil_printf("%s\r\n", state.errorString); }
+
 typedef struct
 {
-	u32 state;		//! Thread state (0=idle, 1=working)
-	u32 numOps;		//! Number of requested operations / steps
-	u32 compOps;	//! Number of completed operations
-	u32 error;		//! Error code, non zero denotes error!
+	u32 state;		                                //! Thread state (0=idle, 1=working)
+	u32 numOps;		                                //! Number of requested operations / steps
+	u32 compOps;	                                //! Number of completed operations
+	u32 error;		                                //! Error code, non zero denotes error!
+	char errorString[PERS_ERROR_STRING_MAX_LENGTH]; //! Error string
 } threadState;
 
 // Static (thread global) variables
