@@ -36,6 +36,7 @@ typedef struct
 	alignedOmr omrDacSet;
 	alignedOmr omrAcquire;
 	u32        executeCommand;
+	u32		   acquisitionTimeMs;
 } dacScanParams;
 
 typedef enum

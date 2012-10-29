@@ -40,7 +40,9 @@ typedef enum
 	excaliburFemClientIllegalOperationMode,
 	excaliburFemClientIllegalCounterSelect,
 	excaliburFemClientBufferAllocateFailed,
-	excaliburFemClientPersonalityStatusError
+	excaliburFemClientPersonalityStatusError,
+	excaliburFemClientBadDacScanParameters,
+	excaliburFemClientMissingScanFunction
 
 } ExcaliburFemClientErrorCode;
 
@@ -182,6 +184,7 @@ public:
 	void dacScanStartSet(unsigned int aDacStart);
 	void dacScanStopSet(unsigned int aDacStop);
 	void dacScanStepSet(unsigned int aDacStep);
+	unsigned int dacScanNumSteps(void);
 	void dacScanExecute(void);
 
 private:
