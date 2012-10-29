@@ -86,6 +86,7 @@ public:
 
 	void setAcquisitionPeriod(unsigned int aPeriodMs);
 	void setAcquisitionTime(unsigned int aTimeMs);
+	void enableFrameCounterCheck(bool aEnable);
 
 	bool acqusitionActive(void);
 
@@ -112,6 +113,7 @@ private:
 	unsigned int                      mAcquisitionTime;
 	unsigned int                      mNumSubFrames;
 	unsigned int                      mSubFrameLength;
+	bool                              mEnableFrameCounterCheck;
 
 	PacketHeader                      mPacketHeader;
 	BufferInfo                        mCurrentBuffer;

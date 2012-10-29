@@ -25,6 +25,7 @@ FemDataReceiver::FemDataReceiver(unsigned int aRecvPort)
 	  mAcquisitionTime(0),
 	  mNumSubFrames(1),
 	  mSubFrameLength(0),
+	  mEnableFrameCounterCheck(true),
 	  mFrameTotalBytesReceived(0),
 	  mFramePayloadBytesReceived(0)
 {
@@ -227,6 +228,11 @@ void FemDataReceiver::setNumSubFrames(unsigned int aNumSubFrames)
 	mNumSubFrames = aNumSubFrames;
 }
 
+void FemDataReceiver::enableFrameCounterCheck(bool aEnable)
+{
+	mEnableFrameCounterCheck = aEnable;
+}
+
 
 void FemDataReceiver::registerCallbacks(CallbackBundle* aBundle)
 {
@@ -375,23 +381,29 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 				// frame, otherwise check that they agree across subframes
 				if (mSubFramesReceived == 0)
 				{
-					if (mCurrentFrameNumber != (mLatchedFrameNumber+1))
-					{
-						std::cout << "Incorrect frame counter on first subframe, got: " << mCurrentFrameNumber
-								  << " expected: " << mLatchedFrameNumber+1 << std::endl;
-						errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+					if (mEnableFrameCounterCheck) {
+						if (mCurrentFrameNumber != (mLatchedFrameNumber+1))
+						{
+							std::cout << "Incorrect frame counter on first subframe, got: " << mCurrentFrameNumber
+									  << " expected: " << mLatchedFrameNumber+1 << std::endl;
+							errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 
+						}
+					} else {
+						mCurrentFrameNumber = mLatchedFrameNumber+1;
 					}
 					mLatchedFrameNumber = mCurrentFrameNumber;
 				}
 				else
 				{
-					if (mCurrentFrameNumber != mLatchedFrameNumber)
-					{
-						std::cout << "Incorrect frame counter in subframe, got: " << mCurrentFrameNumber
-								  << " expected: " << mLatchedFrameNumber << std::endl;
-						errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+					if (mEnableFrameCounterCheck) {
+						if (mCurrentFrameNumber != mLatchedFrameNumber)
+						{
+							std::cout << "Incorrect frame counter in subframe, got: " << mCurrentFrameNumber
+									  << " expected: " << mLatchedFrameNumber << std::endl;
+							errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 
+						}
 					}
 				}
 
