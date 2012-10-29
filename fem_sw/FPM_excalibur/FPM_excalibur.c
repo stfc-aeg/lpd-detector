@@ -102,11 +102,11 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 			pTxHeader->data_width = WIDTH_LONG;
 			retVal = 1;
 
-//			xil_printf("FPM_Excalibur: state.state   = %d\r\n", state.state);
-//			xil_printf("FPM_Excalibur: state.numOps  = %d\r\n", state.numOps);
-//			xil_printf("FPM_Excalibur: state.compOps = %d\r\n", state.compOps);
-//			xil_printf("FPM_Excalibur: state.error   = %d\r\n", state.error);
-
+			xil_printf("FPM_Excalibur: state.state   = %d\r\n", state.state);
+			xil_printf("FPM_Excalibur: state.numOps  = %d\r\n", state.numOps);
+			xil_printf("FPM_Excalibur: state.compOps = %d\r\n", state.compOps);
+			xil_printf("FPM_Excalibur: state.error   = %d\r\n", state.error);
+			xil_printf("FPM_Excalibur: error msg     = %s\r\n", state.errorString);
 			break;
 
 		case FPM_GET_RESULT:
@@ -196,61 +196,68 @@ void *doDACScanThread(void *pArg)
 {
 	unsigned int scanDacVal;
 	unsigned int iAsic;
+	int rc = 0;
+
+	xil_printf("FPM_Excalibur [DACscan]: Thread active!\r\n");
 
 	// Flag as busy
 	state.state = 1;
+
+	// Clear error state
+	SETPERSERR(FPM_EXCALIBUR_NO_ERROR, "No error");
 
 	// This won't return any data but if it were to do so, something like this would happen:
 	// malloc(pOutput, (size_t)n)
 	// outputSz = n;
 
-	xil_printf("FPM_Excalibur [DACscan]: Thread active!\r\n");
-
 	// Decode scan parameters from input payload
 	dacScanParams* scanParams = (dacScanParams*)pInput;
 
+	// Calculate number of operations and load into thread state
+	state.numOps = ((scanParams->dacStop - scanParams->dacStart) / scanParams->dacStep) + 1;
+	state.compOps = 0;
 
-//	xil_printf("scan params: %d %d %d %d\r\n", scanParams->scanDac, scanParams->dacStart,
-//			  scanParams->dacStop, scanParams->dacStep);
-//	xil_printf("asic mask; %d\r\n", scanParams->asicMask);
-//	xil_printf("C7 thresh 0: %d, C1 thresh 1: %d\r\n",
-//			   scanParams->dacCache[7][0], scanParams->dacCache[1][1]);
-//	xil_printf("DAC set OMR: 0x%x%08x  ACQ OMR: 0x%x%08x Execute: %d\r\n",
-//				scanParams->omrDacSet.top, scanParams->omrDacSet.bottom,
-//				scanParams->omrAcquire.top, scanParams->omrAcquire.bottom,
-//				scanParams->executeCommand);
+	// Set up scan in system
+	rc = setupScan(scanParams);
 
-	// Loop over scan parameters and execute scan
-	int rc = 0;
-	for (scanDacVal = scanParams->dacStart; scanDacVal <= scanParams->dacStop; scanDacVal += scanParams->dacStep)
+	// Only execute scan if setup succeeded
+	if (rc == 0)
 	{
+		// Loop over scan parameters and execute scan
 
-		xil_printf("Scanning DAC %d val %d\r\n", scanParams->scanDac, scanDacVal);
-
-		// Iterate over ASICs that are enabled in ASIC mask
-		for (iAsic = 0; iAsic < kNumAsicsPerFem; iAsic++)
+		for (scanDacVal = scanParams->dacStart; scanDacVal <= scanParams->dacStop; scanDacVal += scanParams->dacStep)
 		{
-			if ((scanParams->asicMask & ((u32)1<<(7-iAsic))) != 0)
+
+			//xil_printf("Scanning DAC %d val %d\r\n", scanParams->scanDac, scanDacVal);
+
+			// Iterate over ASICs that are enabled in ASIC mask
+			for (iAsic = 0; iAsic < kNumAsicsPerFem; iAsic++)
 			{
-				// Update scanned DAC cache value for relevant ASIC
-				scanParams->dacCache[iAsic][scanParams->scanDac] = scanDacVal;
-				// Load DACs into the ASC
-				rc = loadDacs(iAsic, scanParams);
+				if ((scanParams->asicMask & ((u32)1<<(7-iAsic))) != 0)
+				{
+					// Update scanned DAC cache value for relevant ASIC
+					scanParams->dacCache[iAsic][scanParams->scanDac] = scanDacVal;
+					// Load DACs into the ASC
+					rc = loadDacs(iAsic, scanParams);
+				}
+				// Stop ASIC loop if failure
+				if (rc != 0) {
+					break;
+				}
 			}
+			// Stop scan if failure
 			if (rc != 0) {
 				break;
 			}
-		}
-		if (rc != 0) {
-			break;
-		}
 
-		// Trigger an image acquisition
+			// Acquire an image
+			rc = acquireImage(scanParams);
+			if (rc != 0) {
+				break;
+			}
+			state.compOps++;
+		}
 	}
-
-	// TODO: Do actual DAC scan here!!
-	// Sleep 2s
-	usleep(2000000);
 
 	// Flag as idle
 	state.state = 0;
@@ -261,11 +268,61 @@ void *doDACScanThread(void *pArg)
 
 	// TODO: free(pInput)
 
+	xil_printf("FPM_Excalibur [DACscan]: Thread complete\r\n");
+
 	// Terminate
 	pthread_exit(NULL);
 
 	// This statement never executes but suppresses warning on compiler
 	return 0;
+}
+
+int setupScan(dacScanParams* scanParams)
+{
+	int rc = 0;
+	int status;
+	u32 shutterCounter;
+
+	// Set number of frames to be triggered in ASIC control block - single frame at a time
+	status = writeRdma(kExcaliburAsicFrameCounter, 1);
+	if (status != XST_SUCCESS)
+	{
+		SETPERSERR(FPM_EXCALIBUR_SETUP_FAILED,
+				"Failed to set up ASIC control frame counter, status=%d", status);
+		rc = 1;
+		return rc;
+	}
+
+	// Set shutter resolution to 500ns (register value 0x64)
+	status = writeRdma(kExcaliburAsicShutterResolution, 0x64);
+	if (status != XST_SUCCESS)
+	{
+		SETPERSERR(FPM_EXCALIBUR_SETUP_FAILED,
+				"Failed to set ASIC shutter resolution register, status=%d", status);
+		rc =1 ;
+		return rc;
+	}
+
+	// Set up the acquisition time in the ASIC shutter duration registers based on 500ns resolution
+	shutterCounter = scanParams->acquisitionTimeMs * 2000;
+	status = writeRdma(kExcaliburAsicShutter0Counter, shutterCounter);
+	if (status != XST_SUCCESS)
+	{
+		SETPERSERR(FPM_EXCALIBUR_SETUP_FAILED,
+				"Failed to set ASIC shutter 0 counter register, status=%d", status);
+		rc =1 ;
+		return rc;
+	}
+	status = writeRdma(kExcaliburAsicShutter1Counter, shutterCounter);
+	if (status != XST_SUCCESS)
+	{
+		SETPERSERR(FPM_EXCALIBUR_SETUP_FAILED,
+				"Failed to set ASIC shutter 1 counter register, status=%d", status);
+		rc =1 ;
+		return rc;
+	}
+
+	return rc;
 }
 
 int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
@@ -274,7 +331,7 @@ int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
 	int status;
 	u32 dacWords[kNumAsicDpmWords];
 	unsigned int iWord;
-	xil_printf("Loading DACs for ASIC %d\r\n", iAsic);
+	//xil_printf("Loading DACs for ASIC %d\r\n", iAsic);
 
 	// Zero out packed DAC values to be loaded into FEM
 	for (iWord = 0; iWord < kNumAsicDpmWords; iWord++)
@@ -320,12 +377,12 @@ int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
     dacWords[6] |= (u32)(scanParams->dacCache[iAsic][threshold1Dac]  & 0x1FF) << 23;
     dacWords[6] |= (u32)(scanParams->dacCache[iAsic][threshold0Dac]  & 0x1FF) << 14;
 
-    xil_printf("DAC words: ");
-    for (iWord = 0; iWord < kNumAsicDpmWords; iWord++)
-    {
-    	xil_printf("0x%08x ", dacWords[iWord]);
-    }
-    xil_printf("\r\n");
+//    xil_printf("DAC words: ");
+//    for (iWord = 0; iWord < kNumAsicDpmWords; iWord++)
+//    {
+//    	xil_printf("0x%08x ", dacWords[iWord]);
+//    }
+//    xil_printf("\r\n");
 
     // Load the DAC words into the FEM (DPM area accessed via RDMA)
     for (iWord = 0; iWord < kNumAsicDpmWords; iWord++)
@@ -333,8 +390,8 @@ int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
     	status = writeRdma(kExcaliburAsicDpmRdmaAddress + iWord, dacWords[iWord]);
     	if (status != XST_SUCCESS)
     	{
-    		// TODO: flag error
-    		xil_printf("RDMA write of DAC words to BRAM failed on word %d status %d\r\n", iWord, status);
+    		SETPERSERR(FPM_EXCALIBUR_DAC_LOAD_FAILED,
+    				"RDMA write of DAC words for ASIC %d failed on word %d status %d", iAsic, iWord, status);
     		rc = 1;
     		break;
     	}
@@ -348,7 +405,8 @@ int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
     status = writeRdma(kExcaliburAsicMuxSelect, muxSelect);
     if (status != XST_SUCCESS)
     {
-    	xil_printf("RDMA write of ASIC mux select failed, status %d", status);
+    	SETPERSERR(FPM_EXCALIBUR_DAC_LOAD_FAILED,
+    			"RDMA write of ASIC mux select for ASIC %d failed, status %d", iAsic, status);
     	rc = 1;
     	return rc;
     }
@@ -357,7 +415,8 @@ int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
     status = setOmr(scanParams->omrDacSet);
     if (status != XST_SUCCESS)
     {
-    	xil_printf("RDMA write of DAC set OMR failed, status %d", status);
+    	SETPERSERR(FPM_EXCALIBUR_DAC_LOAD_FAILED,
+    			"RDMA write of DAC set OMR for ASIC %d failed, status %d", iAsic, status);
     	rc = 1;
     	return rc;
     }
@@ -366,28 +425,153 @@ int loadDacs(unsigned int iAsic, dacScanParams* scanParams)
     status = writeRdma(kExcaliburAsicControlReg, 0x23);
     if (status != XST_SUCCESS)
     {
-    	xil_printf("RDMA write to trigger DAC load failed, status %d", status);
+    	SETPERSERR(FPM_EXCALIBUR_DAC_LOAD_FAILED,
+    			"RDMA write to trigger DAC load for ASIC %d failed, status %d", iAsic, status);
     	rc = 1;
     	return rc;
     }
+
+    // Wait for transaction to finish
+    usleep(50);
 
     // Read back control state register and check write transaction completed
     u32 ctrlState;
     status = readRdma(kExcaliburAsicCtrlState1, &ctrlState);
     if (status != XST_SUCCESS)
     {
-    	xil_printf("RDMA read of ASIC ctrlState1 register failed, status %s", status);
+    	SETPERSERR(FPM_EXCALIBUR_DAC_LOAD_FAILED,
+    			"RDMA read of ASIC ctrlState1 register for ASIC %d failed, status %d", iAsic, status);
     	rc = 1;
     	return rc;
     }
     if (ctrlState != 0x80000000)
     {
-    	xil_printf("DAC load transaction to ASIC failed to complete, state=0x%08x", ctrlState);
+    	SETPERSERR(FPM_EXCALIBUR_DAC_LOAD_FAILED,
+    			"DAC load transaction to ASIC %d failed to complete, state=0x%08x", iAsic, (unsigned int)ctrlState);
     	rc = 1;
     	return rc;
     }
 
 	return rc;
+}
+
+int acquireImage(dacScanParams* scanParams)
+{
+	int rc = 0;
+	int status;
+    u32 ctrlState;
+    unsigned int completionRetries = 0;
+    unsigned int completionRetrySleep = 100; // 100us
+    unsigned int completionMaxRetries = (scanParams->acquisitionTimeMs * 1000 * 10) / completionRetrySleep;
+    u32 completionState = 0x81000000;
+
+	// Set up ASIC mux select register based on active ASICS
+	status = writeRdma(kExcaliburAsicMuxSelect, scanParams->asicMask);
+	if (status != XST_SUCCESS)
+	{
+		SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+				"RDMA write to ASIC MUX select for image acquisition failed, status=%d", status);
+		rc = 1;
+		return rc;
+	}
+
+	// Set up the OMR transaction for an image acquisition
+	status = setOmr(scanParams->omrAcquire);
+	if (status != XST_SUCCESS)
+	{
+		SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+				"RDMA write of ASIC OMR for image acquisition failed, status=%d", status);
+		rc = 1 ;
+		return rc;
+	}
+
+	// Trigger image acquisition
+	status = writeRdma(kExcaliburAsicControlReg, scanParams->executeCommand);
+	if (status != XST_SUCCESS)
+	{
+		SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+				"RDMA write to trigger image acquisition failed, status=%d", status);
+		rc = 1 ;
+		return rc;
+	}
+
+	// Sleep for the duration of the image acquisition
+	usleep(scanParams->acquisitionTimeMs * 1000);
+
+    // Read back control state register and check image acquisition completed
+    status = readRdma(kExcaliburAsicCtrlState1, &ctrlState);
+    if (status != XST_SUCCESS)
+    {
+    	SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+    			"RDMA read of ASIC ctrlState1 register during image acq failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+
+    while ((completionRetries < completionMaxRetries) && (ctrlState != completionState))
+    {
+    	usleep(completionRetrySleep);
+        status = readRdma(kExcaliburAsicCtrlState1, &ctrlState);
+        if (status != XST_SUCCESS)
+        {
+        	SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+        			"RDMA read of ASIC ctrlState1 register during image acq failed, status %d", status);
+        	rc = 1;
+        	return rc;
+        }
+        completionRetries++;
+    }
+    if (ctrlState != 0x81000000)
+    {
+    	SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+    			"Image acquisition failed to complete, state=0x%08x", (unsigned int)ctrlState);
+    	rc = 1;
+    	return rc;
+    }
+
+    // Poll the DMA controller ACQUIRE status block to determine how many images have
+    // been transferred to TenGigE. Wait until this matches the number of completed operations
+    // in the scan (i.e. this image is complete) before continuing. This avoids any DMA
+    // contention between ASIC readout and image transfer off the FEM.
+    unsigned int numImagesTransferred = getNumImagesTransferred();
+    unsigned int numImageRetries = 0;
+    unsigned int maxImageRetries = 100;
+    unsigned int imageRetrySleep = 100;
+
+    while ((numImageRetries < maxImageRetries) && (numImagesTransferred != (state.compOps+1)))
+    {
+    	usleep(imageRetrySleep);
+    	numImagesTransferred = getNumImagesTransferred();
+    	numImageRetries++;
+    }
+
+    if (numImagesTransferred != (state.compOps+1))
+    {
+    	SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+    			"DMA of image %ld failed to complete", (state.compOps+1));
+    	rc = 1;
+    	return rc;
+
+    }
+    // Send ASIC control block reset
+    status = writeRdma(kExcaliburAsicControlReg, 0x400000);
+    if (status != XST_SUCCESS)
+    {
+    	SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+    			"RDMA write to reset ASIC control during image acq failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+    status = writeRdma(kExcaliburAsicControlReg, 0x0);
+    if (status != XST_SUCCESS)
+    {
+    	SETPERSERR(FPM_IMAGE_ACQUIRE_FAILED,
+    			"RDMA write to clear ASIC ctrl register during image acq failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+
+    return rc;
 }
 
 int setOmr(alignedOmr omr)
@@ -401,5 +585,11 @@ int setOmr(alignedOmr omr)
     status = writeRdma(kExcaliburAsicOmrTop, omr.top);
 
     return status;
+}
+
+unsigned int getNumImagesTransferred(void)
+{
+	acqStatus* theStatus = (acqStatus*)BADDR_BRAM;
+	return (unsigned int)(theStatus->totalSent / 2);
 }
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-

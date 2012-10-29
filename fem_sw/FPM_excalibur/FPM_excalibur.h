@@ -25,6 +25,14 @@ enum personality_commands
 	FPM_GET_RESULT	= 21
 };
 
+enum personality_errors
+{
+	FPM_EXCALIBUR_NO_ERROR         = 0,
+	FPM_EXCALIBUR_SETUP_FAILED,
+	FPM_EXCALIBUR_DAC_LOAD_FAILED,
+	FPM_IMAGE_ACQUIRE_FAILED,
+};
+
 const unsigned int kNumAsicsPerFem = 8;
 const unsigned int kNumExcaliburDacs = 25;
 const unsigned int kNumAsicDpmWords = 8;
@@ -34,13 +42,18 @@ const unsigned int kNumAsicDpmWords = 8;
 #define ASIC_DPM_RDMA_ADDR 0xA0000000
 #define ASIC_CONTROL_ADDR 0x90000000
 
-const u32 kExcaliburAsicDpmRdmaAddress = ASIC_DPM_RDMA_ADDR;
-const u32 kExcaliburAsicControlAddr    = ASIC_CONTROL_ADDR;
-const u32 kExcaliburAsicMuxSelect      = ASIC_CONTROL_ADDR + 0;
-const u32 kExcaliburAsicControlReg     = ASIC_CONTROL_ADDR + 1;
-const u32 kExcaliburAsicOmrBottom      = ASIC_CONTROL_ADDR + 2;
-const u32 kExcaliburAsicOmrTop         = ASIC_CONTROL_ADDR + 3;
-const u32 kExcaliburAsicCtrlState1     = ASIC_CONTROL_ADDR + 17;
+const u32 kExcaliburAsicDpmRdmaAddress    = ASIC_DPM_RDMA_ADDR;
+const u32 kExcaliburAsicControlAddr       = ASIC_CONTROL_ADDR;
+const u32 kExcaliburAsicMuxSelect         = ASIC_CONTROL_ADDR + 0;
+const u32 kExcaliburAsicControlReg        = ASIC_CONTROL_ADDR + 1;
+const u32 kExcaliburAsicOmrBottom         = ASIC_CONTROL_ADDR + 2;
+const u32 kExcaliburAsicOmrTop            = ASIC_CONTROL_ADDR + 3;
+const u32 kExcaliburAsicConfig1Reg        = ASIC_CONTROL_ADDR + 4;
+const u32 kExcaliburAsicShutter0Counter   = ASIC_CONTROL_ADDR + 6;
+const u32 kExcaliburAsicShutter1Counter   = ASIC_CONTROL_ADDR + 7;
+const u32 kExcaliburAsicFrameCounter      = ASIC_CONTROL_ADDR + 8;
+const u32 kExcaliburAsicShutterResolution = ASIC_CONTROL_ADDR + 10;
+const u32 kExcaliburAsicCtrlState1        = ASIC_CONTROL_ADDR + 17;
 
 typedef struct
 {
@@ -59,6 +72,7 @@ typedef struct
 	alignedOmr omrDacSet;
 	alignedOmr omrAcquire;
 	u32        executeCommand;
+	u32        acquisitionTimeMs;
 } dacScanParams;
 
 typedef enum
@@ -92,10 +106,29 @@ typedef enum
 	numExcaliburDacs
 } mpx3Dac;
 
+typedef struct
+{
+	u32 state;			//! Acquisition state
+	u32 bufferCnt;		//! Number of buffers allocated
+	u32 bufferSize;		//! Size of buffers
+	u32 bufferDirty;	//! If non-zero a problem occurred last run and the buffers / engines need to be reconfigured
+	u32 readPtr;		//! Read pointer
+	u32 writePtr;		//! Write pointer
+	u32 numAcq;			//! Number of acquisitions in this run
+	u32 numConfigBds;	//! Number of configuration BDs set
+	u32 totalRecvTop;	//! Total number of BDs received from top ASIC
+	u32 totalRecvBot;	//! Total number of BDs received from bot ASIC
+	u32 totalSent;		//! Total number of BDs sent to 10GBe block
+	u32 totalErrors;	//! Total number of DMA errors (do we need to track for each channel?)
+} acqStatus;
+
 // DAQ scan
 int prepareDACScan(u8 *pRxPayload);
 void* doDACScanThread(void *pArg);
+int setupScan(dacScanParams *scanParams);
 int loadDacs(unsigned int iAsic, dacScanParams* scanParams);
+int acquireImage(dacScanParams *scanParams);
 int setOmr(alignedOmr omr);
+unsigned int getNumImagesTransferred(void);
 
 #endif /* FPM_EXCALIBUR_H_ */
