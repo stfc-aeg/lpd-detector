@@ -330,7 +330,7 @@ class SlowCtrlParams(object):
 
         ''' Debug variables '''
         debugIdx = 33
-        debugComparisonKey = ""    # "self_test_decoder"    # "mux_decoder"    # "digital_control"
+        debugComparisonKey = ""    # "spare_bits"    # "self_test_decoder"    # "mux_decoder"    # "digital_control"
 
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * SlowCtrlParams.SEQLENGTH
@@ -342,8 +342,6 @@ class SlowCtrlParams(object):
             if dictKey.endswith("_default"):
                 continue
             else:
-                ''' DEBUG INFO '''
-#                print "This is: %25s" % dictKey#, " = [", 
 
                 # Get dictionary values for this key
                 cmdParams = self.getParamValue(dictKey)
@@ -405,19 +403,8 @@ class SlowCtrlParams(object):
                                 print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
                                 print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]) 
                         
-                        # Add the current bit to the running total of the current 32 bit word
-                        indexTotal = indexTotal | (bitwiseArray[idx] << bitPosition)
-                        # Add running total to sequence 
-                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition%32))  # indexTotal
-
-#                        # Is this the end of the current encoded sequence's index?
-#                        if (bitPosition > 0) and (bitPosition % 31 == 0):
-#                            # Yes; clear indexTotal, increment wordPosition and reset bitPosition
-#                            indexTotal = 0
-#                            wordPosition += 1
-#                            bitPosition = 0
-#                        else:
-#                            # Not the last bit within the 32 bit word; Increment bitPosition
+                        # Add running total to sequence; increment bitPosition and check wordPosition 
+                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition%32))
                         bitPosition += 1
                         wordPosition = bitPosition / 32
                 else:
@@ -449,34 +436,33 @@ class SlowCtrlParams(object):
                     '''
                         INTEGER TYPE: SECOND LOOP
                     '''
+                    print "bitposition = ", bitPosition
                     # Loop over this new list and chop each 32 bits into the encoded sequence
                     for idx in range(len(bitwiseArray)):
                         ''' DEBUG INFO '''
                         if dictKey == debugComparisonKey:
-                            print "idx=%3i, bitPosn=%2i, indexTotal:%9X" % (idx, bitPosition, indexTotal), " (%i << %2i) " % (bitwiseArray[idx], bitPosition), "= %9X" % (bitwiseArray[idx] << bitPosition),
+                            print "idx=%3i, bitPosn=%2i, indexTotal:%9X" % (idx, bitPosition%32, bitwiseArray[idx] << (bitPosition%32)),
+                            print " (%i << %2i) " % (bitwiseArray[idx], (bitPosition%32)),
+                            print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
                             print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]),
-                            if wordPosition < (SlowCtrlParams.SEQLENGTH-1):
-                                print ", encSeq[%3i] = %9X, " % (wordPosition+1, encodedSequence[wordPosition+1])
-                            else:
-                                print ""
-                        
-                        # Add the current bit to the running total of the current 32 bit word
-                        indexTotal = indexTotal | (bitwiseArray[idx] << bitPosition)
-                        # Add running total to sequence 
-                        encodedSequence[wordPosition] = encodedSequence[wordPosition]  | indexTotal
 
-                        # Is this the end of the current encoded sequence's index?
-                        if (bitPosition > 0) and (bitPosition % 31 == 0):
-#                            if wordPosition == 121:
-#                                print "--> Array exceeded: bitPosition = ", bitPosition
-#                                return encodedSequence
-                            # Yes; clear indexTotal, increment wordPosition and reset bitPosition
-                            indexTotal = 0
-                            wordPosition += 1
-                            bitPosition = 0
-                        else:
-                            # Not the last bit within the 32 bit word; Increment bitPosition
-                            bitPosition += 1
+                        
+                        # Add running total to sequence 
+                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition % 32) )  # indexTotal
+                        bitPosition += 1
+                        wordPosition = bitPosition / 32
+                        
+#                        # Is this the end of the current encoded sequence's index?
+#                        if (bitPosition > 0) and (bitPosition % 31 == 0):
+##                            if wordPosition == 121:
+##                                print "--> Array exceeded: bitPosition = ", bitPosition
+##                                return encodedSequence
+#                            # Yes; clear indexTotal, increment wordPosition and reset bitPosition
+#                            indexTotal = 0
+#                            wordPosition += 1
+#                            bitPosition = 0
+#                        else:
+#                            # Not the last bit within the 32 bit word; Increment bitPosition
 
         # Return the encoded sequence for this (partial) tree
         return encodedSequence
@@ -537,7 +523,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
     Unit test class for SlowCtrlParams.
     '''
 
-    """
+    
     def testStringParse(self):
         '''
             Tests that updating a parameter works as expected
@@ -713,7 +699,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 1099511627776
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
-    """
+
     def testSelfTestDecoderDefaultSetValueSeven(self):
         '''
             Test that the key self_test_decoder_default works
@@ -971,7 +957,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 31) failed !')
 
     
-    """
+    
     def testSelfTestEnable(self):
         '''
             Test that the key self_test_enable works
@@ -1201,7 +1187,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             print "\n"
         
 #        self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
-    """
+    
 #    def testBuildBitstream(self):
 #        '''
 #            Test the buildBitstream function
