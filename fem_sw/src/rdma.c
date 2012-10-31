@@ -110,12 +110,12 @@ int initRdma(void)
 
 	// Initialise GPIO mux, set to 0
 #ifndef HW_PLATFORM_DEVBOARD
+	mux = 0;
 	status = XGpio_Initialize(&gpioMux, GPIO_ID);
 	if (status!=XST_SUCCESS)
 	{
 		return status;
 	}
-	mux = 0;
 	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
 	XGpio_DiscreteWrite(&gpioMux, 1, mux);
 #endif
@@ -270,16 +270,19 @@ int writeRdma(u32 addr, u32 value)
  */
 void setMux(u32 *pAddr)
 {
+	u32 thisMux = (((*pAddr) & 0x30000000) >> 28);
+
 	// Do mux, if necessary
-	if (((*pAddr) & 0x30000000) >> 28 != mux) {
-		XGpio_DiscreteWrite(&gpioMux, 1, mux);
-		DBGOUT("setMux(): Setting mux to %d\r\n", mux);		// TODO: Remove debugging
+	if (thisMux != mux) {
+		DBGOUT("setMux(): Mux was %d, setting to %d\r\n", mux, thisMux);		// TODO: Remove debugging
+		XGpio_DiscreteWrite(&gpioMux, 1, thisMux);
+		mux = thisMux;
 	}
 
 	// Unmangle address
-	DBGOUT("setMux(): Input RDMA address: 0x%8x\r\n", *pAddr);		// TODO: Remove debugging
+	DBGOUT("setMux(): Input RDMA address: 0x%08x\r\n", *pAddr);		// TODO: Remove debugging
 	*pAddr = (((*pAddr & 0x0FFFFFFF) & 0x0F000000) << 4) | ((*pAddr & 0x0FFFFFFF) & 0x00FFFFFF);
-	DBGOUT("setMux(): Output RDMA address: 0x%8x\r\n", *pAddr);		// TODO: Remove debugging
+	DBGOUT("setMux(): Output RDMA address: 0x%08x\r\n", *pAddr);		// TODO: Remove debugging
 }
 
 #endif
