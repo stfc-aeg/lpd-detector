@@ -11,11 +11,13 @@
 #include "xil_types.h"
 #include "xparameters.h"
 #include "fem.h"
+#include <stdio.h>
 #ifdef HW_PLATFORM_DEVBOARD
 #include "xuartlite_l.h"
 #include "xstatus.h"
 #else
 #include "xuartns550.h"
+#include "xgpio.h"
 #endif
 
 #ifndef RDMA2_H_
@@ -45,5 +47,6 @@ int initRdma(void);
 int rdmaSelftest(void);
 int readRdma(u32 addr, u32 *pVal);
 int writeRdma(u32 addr, u32 value);
+void setMux(u32 *pAddr);
 
 #endif /* RDMA2_H_ */

@@ -36,8 +36,6 @@ enum packetStatus {
 };
 
 #ifndef HW_PLATFORM_DEVBOARD
-extern u8 mux;
-extern XGpio gpioMux;
 extern XSysAce sysace;
 #endif
 
@@ -59,7 +57,7 @@ struct clientStatus {
 
 void commandProcessorThread(void* arg);
 void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients);
-int commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload, u8* pMux, XGpio *pGpio, int* pReloadRequested, struct clientStatus *pClient);
+int commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload, int* pReloadRequested, struct clientStatus *pClient);
 int socketRead(int sock, u8* pBuffer, unsigned int numBytes);
 int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClient);
 void flushSocket(int sock, void *mem, int len);

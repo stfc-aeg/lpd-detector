@@ -59,7 +59,8 @@ enum protocol_commands
 enum internal_commands
 {
 	CMD_INT_FIRMWARE			= 0,
-	CMD_INT_GET_HW_INIT_STATE	= 1
+	CMD_INT_GET_HW_INIT_STATE	= 1,
+	CMD_INT_WRITE_TO_SYSACE		= 2
 };
 
 // Target bus for commands

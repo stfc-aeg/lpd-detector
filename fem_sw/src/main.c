@@ -129,8 +129,6 @@ XTmrCtr				timer;
 XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 #else
 XSysAce				sysace;
-u8					mux;
-XGpio 				gpioMux;
 #endif
 
 u32 femErrorState;
@@ -345,6 +343,7 @@ int initHardware(void)
 
     // ****************************************************************************
     // Register ISRs for I2C devices and enable
+    /*
     register_int_handler(I2C_INT_ID_LM82, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
     register_int_handler(I2C_INT_ID_EEPROM, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
     register_int_handler(I2C_INT_ID_PWR_LHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
@@ -353,6 +352,7 @@ int initHardware(void)
     enable_interrupt(I2C_INT_ID_EEPROM);
     enable_interrupt(I2C_INT_ID_PWR_LHS);
     enable_interrupt(I2C_INT_ID_PWR_RHS);
+    */
     // ****************************************************************************
 
     // ****************************************************************************
@@ -448,21 +448,6 @@ int initHardware(void)
     	femErrorState |= (1<<TEST_MBOX_INIT);
     }
     // ****************************************************************************
-
-    // ****************************************************************************
-    // Initialise GPIO mux controller
-	#ifndef HW_PLATFORM_DEVBOARD
-	status = XGpio_Initialize(&gpioMux, GPIO_ID);
-	if (status!=XST_SUCCESS)
-	{
-		DBGOUT("initHardware: Failed to initialise GPIO mux.\r\n");
-		femErrorState |= (1<<TEST_GPIO_MUX_INIT);
-	}
-	mux = 0;
-	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
-	XGpio_DiscreteWrite(&gpioMux, 1, mux);
-    #endif
-	// ****************************************************************************
 
 	// ****************************************************************************
     // Call FEM personality module hardware init

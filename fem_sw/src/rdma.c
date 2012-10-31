@@ -19,6 +19,11 @@
 
 #include "rdma.h"
 
+#ifndef HW_PLATFORM_DEVBOARD
+u32 mux;
+XGpio gpioMux;
+#endif
+
 // Separate implementations for both UART types
 #ifdef HW_PLATFORM_DEVBOARD
 
@@ -51,6 +56,11 @@ u32 readRdma(u32 addr)
 void writeRdma(u32 addr, u32 value)
 {
 	// Use BADDR_RDMA !
+	return;
+}
+
+void setMux(u8 mux)
+{
 	return;
 }
 
@@ -98,6 +108,18 @@ int initRdma(void)
 		return status;
 	}
 
+	// Initialise GPIO mux, set to 0
+#ifndef HW_PLATFORM_DEVBOARD
+	status = XGpio_Initialize(&gpioMux, GPIO_ID);
+	if (status!=XST_SUCCESS)
+	{
+		return status;
+	}
+	mux = 0;
+	XGpio_SetDataDirection(&gpioMux, 1, 0x00);	// All outputs
+	XGpio_DiscreteWrite(&gpioMux, 1, mux);
+#endif
+
 	return XST_SUCCESS;
 }
 
@@ -137,6 +159,9 @@ int readRdma(u32 addr, u32 *pVal)
 
 	thisByte = RDMA_CMD_READ;
 	numLoops = 0;
+
+	setMux(&addr);
+
 	while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 	{
 		numBytes = XUartNs550_Send(&uart, &thisByte, 1);
@@ -195,6 +220,9 @@ int writeRdma(u32 addr, u32 value)
 	int numLoops = 0;
 
 	thisByte = RDMA_CMD_WRITE;
+
+	setMux(&addr);
+
 	while ((numBytes==0) & (numLoops<RDMA_MAX_RETRIES))
 	{
 		numBytes = XUartNs550_Send(&uart, &thisByte, 1);
@@ -234,6 +262,24 @@ int writeRdma(u32 addr, u32 value)
 
 	// All OK
 	return XST_SUCCESS;
+}
+
+
+/**
+ * Sets RDMA GPIO mux (if necessary)
+ */
+void setMux(u32 *pAddr)
+{
+	// Do mux, if necessary
+	if (((*pAddr) & 0x30000000) >> 28 != mux) {
+		XGpio_DiscreteWrite(&gpioMux, 1, mux);
+		DBGOUT("setMux(): Setting mux to %d\r\n", mux);		// TODO: Remove debugging
+	}
+
+	// Unmangle address
+	DBGOUT("setMux(): Input RDMA address: 0x%8x\r\n", *pAddr);		// TODO: Remove debugging
+	*pAddr = (((*pAddr & 0x0FFFFFFF) & 0x0F000000) << 4) | ((*pAddr & 0x0FFFFFFF) & 0x00FFFFFF);
+	DBGOUT("setMux(): Output RDMA address: 0x%8x\r\n", *pAddr);		// TODO: Remove debugging
 }
 
 #endif

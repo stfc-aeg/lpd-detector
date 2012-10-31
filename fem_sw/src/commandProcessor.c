@@ -29,8 +29,8 @@ void commandProcessorThread(void* arg)
 	int reloadRequested = -1;
 
 	// extern from main.c
-	XGpio *pGpio = &gpioMux;
-	u8* pMux = &mux;
+	//XGpio *pGpio = &gpioMux;
+	//u8* pMux = &mux;
 
 	// Setup and initialise client statuses to idle
 	struct clientStatus state[NET_MAX_CLIENTS];
@@ -471,7 +471,8 @@ void commandProcessorThread(void* arg)
 						PRTDBG("CmdProc: Received entire packet...\r\n");
 
 						// Generate response
-						if (!commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pMux, pGpio, &reloadRequested, pState))
+						//if (!commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), pMux, pGpio, &reloadRequested, pState))
+						if (!commandHandler(pState->pHdr, pTxHeader, pState->pPayload, pTxBuffer+sizeof(struct protocol_header), &reloadRequested, pState))
 						{
 
 							// An error occured handling request
@@ -615,8 +616,6 @@ int commandHandler(struct protocol_header* pRxHeader,
                         struct protocol_header* pTxHeader,
                         u8* pRxPayload,
                         u8* pTxPayload,
-                        u8* pMux,
-                        XGpio* pGpio,
                         int* pReloadRequested,
                         struct clientStatus *pClient)
 {
@@ -636,7 +635,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 	u32* pRxPayload_32  = NULL;
 
 	// For RDMA address mangling
-	u32 rdmaAddrOriginal, rdmaAddrNew;
+	//u32 rdmaAddrOriginal, rdmaAddrNew;
 
 	// Copy original header to response packet, take a local copy of the status byte to update
 	memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
@@ -692,14 +691,17 @@ int commandHandler(struct protocol_header* pRxHeader,
 				// Reload firmware via Sysace
 				DBGOUT("CmdDisp: Requested systemACE firmware reload, image %d\r\n", pRxHeader->bus_target);
 				SBIT(state, STATE_ACK);
-				numOps = 0;
 				*pReloadRequested = pRxHeader->bus_target;
 				break;
 			case CMD_INT_GET_HW_INIT_STATE:
 				SBIT(state, STATE_ACK);
-				numOps = 1;
 				responseSize = 4;
 				*(pTxPayload_32) = femErrorState;
+				break;
+			case CMD_INT_WRITE_TO_SYSACE:
+				DBGOUT("CmdDisp: Requested SystemACE file write, doing dummy write of 8 bytes from 0x40000000...\r\n");
+				writeImage(1, 0x40000000, 8);
+				SBIT(state, STATE_ACK);
 				break;
 			}
 			break;
@@ -906,6 +908,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 					dataWidth = sizeof(u32);
 					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
 
+					/*
 					// Set RDMA MUX if necessary
 					if (((pRxHeader->address & 0x30000000) >> 28) != *pMux)
 					{
@@ -917,6 +920,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 					// Process RDMA address
 					rdmaAddrOriginal = pRxHeader->address & 0x0FFFFFFF;		// Mask out MSB 4 bits as MUX
 					rdmaAddrNew = ((rdmaAddrOriginal & 0x0F000000) << 4) | (rdmaAddrOriginal&0x00FFFFFF);
+					*/
 
 					// RDMA READ operation
 					if (CMPBIT(state, STATE_READ))
@@ -926,7 +930,8 @@ int commandHandler(struct protocol_header* pRxHeader,
 						for (i=0; i<*pRxPayload_32; i++)
 						{
 							//DBGOUT("CmdDisp: Read ADDR 0x%x", pRxHeader->address + (i*dataWidth));
-							status = readRdma( (rdmaAddrNew+i) , (pTxPayload_32+i) );
+							//status = readRdma( (rdmaAddrNew+i) , (pTxPayload_32+i) );
+							status = readRdma( (pRxHeader->address + i) , (pTxPayload_32+i) );
 							if (status==XST_FAILURE)
 							{
 								//DBGOUT("CmdDisp: Error reading RDMA, aborting!\r\n");
@@ -953,7 +958,8 @@ int commandHandler(struct protocol_header* pRxHeader,
 						{
 							pRxPayload_32 = (u32*)pRxPayload;
 							//DBGOUT("CmdDisp: Write ADDR 0x%x VALUE 0x%x\r\n", pRxHeader->address + i, *(pRxPayload_32+i));
-							status = writeRdma(rdmaAddrNew + i, *(pRxPayload_32+i));
+							//status = writeRdma(rdmaAddrNew + i, *(pRxPayload_32+i));
+							status = writeRdma(pRxHeader->address + i, *(pRxPayload_32+i));
 							if (status==XST_FAILURE)
 							{
 								//DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
@@ -989,6 +995,13 @@ int commandHandler(struct protocol_header* pRxHeader,
 						XCache_FlushDCacheRange((unsigned int)(pRxHeader->address), pRxHeader->payload_sz);
 					}
 #endif
+
+					if (CMPBIT(state, STATE_ACK))
+					{
+						// Update number of operations in payload
+						pTxPayload_32 = (u32*)pTxPayload;
+						*pTxPayload_32 = numOps;
+					}
 
 			} // END switch(bus)
 
@@ -1037,8 +1050,8 @@ int commandHandler(struct protocol_header* pRxHeader,
 		pTxHeader->payload_sz = responseSize;
 
 		// Update number of operations in payload
-		pTxPayload_32 = (u32*)pTxPayload;
-		*pTxPayload_32 = numOps;
+		//pTxPayload_32 = (u32*)pTxPayload;
+		//*pTxPayload_32 = numOps;
 
 		return 1;
 	}
