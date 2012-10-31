@@ -73,24 +73,49 @@ void ExcaliburFemClient::dacScanExecute(void)
 	// Build OMR values for DAC set and acquire commands and copy into parameter
 	// block. Note that this currently hard codes DAQ scan to use counter 0 at all
 	// times
+	// Set up OMR mode and execute command based on which counter is selected
+	mpx3OMRMode omrMode = (mpx3OMRMode)0;
+	unsigned int executeCmd = 0;
+	switch (mMpx3CounterSelect)
+	{
+	case mpx3Counter0:
+		omrMode    = readPixelMatrixC0;
+		executeCmd = asicRunSequentialC0;
+		break;
+
+	case mpx3Counter1:
+		omrMode    = readPixelMatrixC1;
+		executeCmd = asicRunSequentialC1;
+		break;
+
+	default:
+		{
+			std::ostringstream msg;
+			msg << "Cannot set up DAC can parameters, illegal counter select specified: " << mMpx3CounterSelect;
+			throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalCounterSelect, msg.str());
+		}
+
+		break;
+	}
+
 	mpx3Omr omrDacSet = this->mpx3OMRBuild(firstActiveAsic, setDacs);
-	mpx3Omr omrAcquire = this->mpx3OMRBuild(firstActiveAsic, readPixelMatrixC0);
+	mpx3Omr omrAcquire = this->mpx3OMRBuild(firstActiveAsic, omrMode);
 	scanParams.omrDacSet.bottom  = omrDacSet.fields.bottom;
 	scanParams.omrDacSet.top     = omrDacSet.fields.top;
 	scanParams.omrAcquire.bottom = omrAcquire.fields.bottom;
 	scanParams.omrAcquire.top    = omrAcquire.fields.top;
-	scanParams.executeCommand    = asicRunSequentialC0;
+	scanParams.executeCommand    = executeCmd;
 	scanParams.acquisitionTimeMs = mAcquisitionTimeMs;
 
-//	std::cout << "DAC     : " << scanParams.scanDac  << std::endl
-//			  << "Start   : " << scanParams.dacStart << std::endl
-//			  << "Stop    : " << scanParams.dacStop  << std::endl
-//			  << "Step    : " << scanParams.dacStep  << std::endl;
-// 	std::cout << "Mask    : " << scanParams.asicMask << std::endl;
-//	std::cout << "DAC OMR : " << std::hex << scanParams.omrDacSet.top << " " << scanParams.omrDacSet.bottom << std::endl;
-//	std::cout << "ACQ OMR : " << std::hex << scanParams.omrAcquire.top << " " << scanParams.omrAcquire.bottom << std::endl;
-//	std::cout << "Exec    : " << std::dec << scanParams.executeCommand << std::endl;
-//	std::cout << "Acq time: " << std::dec << scanParams.acquisitionTimeMs << std::endl;
+	std::cout << "DAC     : " << scanParams.scanDac  << std::endl
+			  << "Start   : " << scanParams.dacStart << std::endl
+			  << "Stop    : " << scanParams.dacStop  << std::endl
+			  << "Step    : " << scanParams.dacStep  << std::endl;
+ 	std::cout << "Mask    : " << scanParams.asicMask << std::endl;
+	std::cout << "DAC OMR : " << std::hex << scanParams.omrDacSet.top << " " << scanParams.omrDacSet.bottom << std::endl;
+	std::cout << "ACQ OMR : " << std::hex << scanParams.omrAcquire.top << " " << scanParams.omrAcquire.bottom << std::endl;
+	std::cout << "Exec    : " << std::dec << scanParams.executeCommand << std::endl;
+	std::cout << "Acq time: " << std::dec << scanParams.acquisitionTimeMs << std::endl;
 
 	this->personalityCommand(excaliburPersonalityCommandDacScan, WIDTH_LONG, (u8*)&scanParams, sizeof(scanParams));
 
