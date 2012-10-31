@@ -330,7 +330,7 @@ class SlowCtrlParams(object):
 
         ''' Debug variables '''
         debugIdx = 33
-        debugComparisonKey = ""    # "digital_control"
+        debugComparisonKey = ""    # "self_test_decoder"    # "mux_decoder"    # "digital_control"
 
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * SlowCtrlParams.SEQLENGTH
@@ -354,8 +354,9 @@ class SlowCtrlParams(object):
                 # Slow Control Value(s)
                 slowControlWordContent = cmdParams[2]
                 # bitPosition tracks the bit position within the current sequence's index
-                bitPosition = cmdParams[1] % 32
-
+#                bitPosition = cmdParams[1] % 32
+                bitPosition = cmdParams[1]
+                
                 # Is this a list?
                 if isinstance(slowControlWordContent, types.ListType):
 
@@ -388,11 +389,7 @@ class SlowCtrlParams(object):
                         for bitIdx in range(keyWidth):
                             bitwiseArray[ idx*keyWidth + bitIdx ] = ( (slowControlWordContent[idx] & bitMask) >> bitIdx)
                             bitMask = bitMask << 1
-                    
-                    ''' DEBUG INFO '''
-                    if dictKey == debugComparisonKey:
-                        print "First loop finished:\n", bitwiseArray
-                    
+                                        
                     indexTotal = 0
                     
                     '''
@@ -402,27 +399,27 @@ class SlowCtrlParams(object):
                     for idx in range(len(bitwiseArray)):
                         ''' DEBUG INFO '''
                         if dictKey == debugComparisonKey:
-                            print "idx=%3i, bitPosn=%2i, indexTotal:%9X" % (idx, bitPosition, indexTotal), " (%i << %2i) " % (bitwiseArray[idx], bitPosition), "= %9X" % (bitwiseArray[idx] << bitPosition), " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]), 
-                            if wordPosition < SlowCtrlParams.SEQLENGTH:
-                                print ", encSeq[%3i] = %9X, " % (wordPosition+1, encodedSequence[wordPosition+1])
-                            else:
-                                print ""
+                            if idx < 42:
+                                print "idx=%3i, bitPosn=%2i, indexTotal:%9X" % (idx, bitPosition%32, bitwiseArray[idx] << (bitPosition%32)),
+                                print " (%i << %2i) " % (bitwiseArray[idx], (bitPosition%32)),
+                                print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
+                                print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]) 
                         
                         # Add the current bit to the running total of the current 32 bit word
                         indexTotal = indexTotal | (bitwiseArray[idx] << bitPosition)
                         # Add running total to sequence 
-                        encodedSequence[wordPosition] = encodedSequence[wordPosition]  | indexTotal
+                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition%32))  # indexTotal
 
-                        # Is this the end of the current encoded sequence's index?
-                        if (bitPosition > 0) and (bitPosition % 31 == 0):
-                            # Yes; clear indexTotal, increment wordPosition and reset bitPosition
-                            indexTotal = 0
-                            wordPosition += 1
-                            bitPosition = 0
-                        else:
-                            # Not the last bit within the 32 bit word; Increment bitPosition
-                            bitPosition += 1
-
+#                        # Is this the end of the current encoded sequence's index?
+#                        if (bitPosition > 0) and (bitPosition % 31 == 0):
+#                            # Yes; clear indexTotal, increment wordPosition and reset bitPosition
+#                            indexTotal = 0
+#                            wordPosition += 1
+#                            bitPosition = 0
+#                        else:
+#                            # Not the last bit within the 32 bit word; Increment bitPosition
+                        bitPosition += 1
+                        wordPosition = bitPosition / 32
                 else:
                     '''
                         INTEGER TYPE
@@ -639,7 +636,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 #        print digitalControlVals, "\n", expectedVals
         self.assertEqual(digitalControlVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
-    """
+    
     def testOutOfRangeKeyValueFails(self):
         '''
         Tests that updating a parameter will fail if value exceeds valid range
@@ -716,7 +713,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 1099511627776
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
-    
+    """
     def testSelfTestDecoderDefaultSetValueSeven(self):
         '''
             Test that the key self_test_decoder_default works
@@ -840,7 +837,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             print "\n"
         
         self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectAndSelfTestDecoderDefaultsCombined() failed !')
-    
+
     def testMuxDecoderDefault(self):
         '''
             Test that the key mux_decoder_default works
@@ -886,7 +883,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         self.assertEqual(encSeq, expectedSequence, 'testMuxDecoderDefault() failed !')
 
-
+    
     def testDaqBiasDefault(self):
         '''
             Test that the key daq_bias_default works
@@ -974,7 +971,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 31) failed !')
 
     
-    
+    """
     def testSelfTestEnable(self):
         '''
             Test that the key self_test_enable works
@@ -1204,7 +1201,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             print "\n"
         
 #        self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
-
+    """
 #    def testBuildBitstream(self):
 #        '''
 #            Test the buildBitstream function
