@@ -31,7 +31,7 @@ void createFailsafeConfig(struct fem_config* pConfig)
 	pConfig->net_ip[0]			= 192;
 	pConfig->net_ip[1]			= 168;
 	pConfig->net_ip[2]			= 0;
-	pConfig->net_ip[3]			= 14;
+	pConfig->net_ip[3]			= 199;
 
 	// Netmask
 	pConfig->net_nm[0]			= 255;
