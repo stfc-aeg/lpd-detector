@@ -16,32 +16,65 @@
 void reloadChain(XSysAce *pAce, unsigned int idx)
 {
 	// Configure SystemACE to reload specified image on reset, then assert reset
-	 XSysAce_SetCfgAddr(pAce, idx);
-	 XSysAce_SetStartMode(pAce, FALSE, TRUE);
-	 XSysAce_ResetCfg(pAce);
-}
-
-/**
- * Deletes the configuration image
- * @param idx index of image to delete (0-7)
- * @return 0 for success, -1 for failure
- */
-int deleteImage(unsigned int idx)
-{
-	// Can we do this with xilfatfs??
-	return 42;
+	XSysAce_SetCfgAddr(pAce, idx);
+	XSysAce_SetStartMode(pAce, FALSE, TRUE);
+	XSysAce_ResetCfg(pAce);
 }
 
 /*
- * Writes a data buffer to the SystemACE Compact Flash as a set of image files
- * @param idx index of image to write (0-7)
+ * Writes a data buffer containing a SystemACE image to the Compact Flash card
+ * @param idx index of image to write between 1-7, 0 is reserved as a failsafe boot image
+ * @param addr base address in DDR of sysace image
+ * @param len length of sysace image in bytes
  *
  * @return 0 for success, -1 for failure
  */
-int writeImage(unsigned int idx)
+int writeImage(unsigned int idx, u32 addr, u32 len)
 {
-	// sysace_fwrite, _fclose, _chdir etc
-	return 42;
+	char fname[] = "a:\\Ver_1\\revX\\revX.ace";
+	void *pHandle;
+	int retVal;
+
+	// Sanitise idx
+	if (idx>7 || idx==0)
+	{
+		return -1;
+	}
+
+	// Insert sysace image number into path and filename
+	fname[14] = (char)(48+idx);
+	fname[20] = (char)(48+idx);
+
+	// Dump filename
+	// TODO: Remove DBGOUT
+	DBGOUT("SystemACE filename (idx=%d): '", idx);
+	DBGOUT(fname);
+	DBGOUT("'/r/n");
+
+	// Open file for writing (w option discards any existing file, or creates it if not present)
+	//pHandle = sysace_fopen(fname, "w");
+	pHandle = sysace_fopen("a:\\test.txt", "w");		// TODO: DUMMY FILENAME FOR TESTING, REMOVE!
+	if (pHandle==NULL)
+	{
+		DBGOUT("SysACE: Cannot open file '");
+		DBGOUT(fname);
+		DBGOUT("' for writing!/r/n");
+		return -1;
+	}
+
+	// Write data to file
+	retVal = sysace_fwrite((void*)addr, 1, len, pHandle);
+	if (retVal==-1)
+	{
+		// TODOL Remove DBGOUT
+		DBGOUT("SysACE: Error writing data to file/r/n");
+		sysace_fclose(pHandle);
+		return -1;
+	}
+
+	// Close file (flush data to disk), exit
+	retVal = sysace_fclose(pHandle);
+	return retVal;
 }
 
 /**
@@ -49,6 +82,7 @@ int writeImage(unsigned int idx)
  */
 void testCF(void)
 {
+	// TODO: Remove this function
 
 	char data[] = {'H','e','l','l','o',' ','w','o','r','l','d','!',13,10 };
 	void *pHandle;

@@ -13,8 +13,7 @@
 #include "sysace_stdio.h"
 
 void reloadChain(XSysAce *pAce, unsigned int idx);
-int deleteImage(unsigned int idx);
-int writeImage(unsigned int idx);
+int writeImage(unsigned int idx, u32 addr, u32 len);
 
 void testCF(void);
 
