@@ -1050,8 +1050,8 @@ int commandHandler(struct protocol_header* pRxHeader,
 		pTxHeader->payload_sz = responseSize;
 
 		// Update number of operations in payload
-		//pTxPayload_32 = (u32*)pTxPayload;
-		//*pTxPayload_32 = numOps;
+		pTxPayload_32 = (u32*)pTxPayload;
+		*pTxPayload_32 = numOps;
 
 		return 1;
 	}
