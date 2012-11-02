@@ -166,7 +166,7 @@ class SlowCtrlParams(object):
                            'spare_bits'                  : [5,  3820,   -1,         [False, True, False]],        # Special Case: 5 bits cover everything
                            'filter_control'              : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
                            'adc_clock_delay'             : [20, 3845,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
-                           'digital_control'             : [40, 3865,   -1,         [False, True, True]],       # Special Case: 40 bits cover everything
+                           'digital_control'             : [40, 3865,   -1,         [False, True, False]],       # Special Case: 40 bits cover everything
                            }
         # Definition of position of fast command fields in BRAM words
 #        self.sync = 1
@@ -176,10 +176,10 @@ class SlowCtrlParams(object):
 #        self.sync_reset_pos = 2
 
         # Count total number of nops
-        self.total_number_nops = 0
+#        self.total_number_nops = 0
         
         # Count total number of words
-        self.total_number_words = 0
+#        self.total_number_words = 0
         
         ''' Debug information '''
         if self.bDebug:
@@ -269,14 +269,13 @@ class SlowCtrlParams(object):
         
         # Parse the tree, starting at the root element, obtaining the packed
         #     binary command sequence as a list
-#        sequence  = self.parseElement(self.root)
         self.parseElement(self.root)
         
         #TODO: sort this out; sequence should come from the buildBitstream() function ??
         sequence  = self.buildBitstream()
         
         # Count the total number of words
-        self.total_number_words = len(sequence)
+#        self.total_number_words = len(sequence)
         
         # Return the command sequence
         return sequence
@@ -310,10 +309,7 @@ class SlowCtrlParams(object):
         '''
         # Does dictKey have an associated lookup table?
         if dictKey == "mux_decoder":
-            val = (SlowCtrlParams.muxDecoderLookupTable[idx] - 0)
-#            if idx < 35:
-#                print "%3i -> %3i" % (idx, val)
-            return val- 1
+            return (SlowCtrlParams.muxDecoderLookupTable[idx] - 1)
         elif dictKey == "feedback_select":
             return (SlowCtrlParams.pixelSelfTestLookupTable[idx] - 1)
         elif dictKey == "self_test_decoder":
@@ -339,7 +335,10 @@ class SlowCtrlParams(object):
         # The structure of the parameters to dictionary is:
         # paramsDict = {'dictKey' : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
         #     where values(s) is an integer or a list and the nested list of booleans defines which tags that are required
-        
+
+#        print "mux_decoder_default: ", self.paramsDict['mux_decoder_default'], "\n"
+#        print "mux_decoder: ", self.paramsDict['mux_decoder']
+
         # Loop over child nodes of the current element
         for child in theElement:
 
@@ -352,8 +351,7 @@ class SlowCtrlParams(object):
             if cmd in self.paramsDict:
 
                 if self.bDebug:
-                    print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-                    print cmd,
+                    print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n", cmd,
                 
                 # get parameter values
                 pmValues = self.getParamValue(cmd)
@@ -363,11 +361,11 @@ class SlowCtrlParams(object):
                 bValue = pmValues[3][1]
                 bIndex = pmValues[3][2]
                 
-                # Fail if there is no bValue present
                 # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
                 if value == -2:
-                    raise SlowCtrlParamsError("Unable to find the required 'value' tag!")
+                    # Fail if there is no value present
+                    raise SlowCtrlParamsError("Unable to find the required 'value' tag for key '%s'!" % cmd)
                 
                 if self.bDebug:
                     print "value = ", value,
@@ -376,24 +374,34 @@ class SlowCtrlParams(object):
                 if bPixel:
                     # Get pixel
                     pixel = self.getAttrib(child, 'pixel')
+                    
                     # Use pixel number to obtain pixel order using the lookup table function (where applicable)
                     orderedPxl = self.doLookupTableCheck(cmd, pixel)
+                    
                     if self.bDebug:
                         print " pixel, orderedPxl = %3i, %3i" % (pixel, orderedPxl),
                     # Update pixel entry of the dictionary key
                     self.setParamValue(cmd, orderedPxl, value)
+                    ''' DO NOT UPDATED THE ASSOCIATED KEY! '''
+#                    # Does the current key have an associated _default key?
+#                    if (cmd+"_default") in self.paramsDict:
+#                        # Yes it does, update pixel in associated key
+#                        self.setParamValue( (cmd+"_default"), orderedPxl, value)
+#                        #print "Yes, %s has an associated key: %s." % (cmd, cmd) 
                 else:
                     # Is there a index tag?
                     if bIndex:
                         index = self.getAttrib(child, 'index')
+                        
                         # Use index to obtain index order using the lookup table function (where applicable)
                         orderedIdx = self.doLookupTableCheck(cmd, index)
+                        
                         if self.bDebug:
                             print " index, orderedIdx = %3i, %3i" % (index, orderedIdx)
                         # Update index entry of the dictionary key
                         self.setParamValue(cmd, orderedIdx, value)
                     else:
-                        # No pixel, no index tags: therefore the key value
+                        # No pixel, no index tags: therefore the key's value
                         #     is a simple integer to update
                         self.setParamValue(cmd, 0, value)
                 
@@ -402,55 +410,126 @@ class SlowCtrlParams(object):
                     raise SlowCtrlParamsError('Illegal command %s specified' % (child.tag))
         
         if self.bDebug:
-            print "\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
+            print "\n\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
         
-        # Dictionary now updated, check keys XX_default and if they are not -1 
-        # then their corresponding keys should be updated with whatever value the XX_default key has
+#        print "mux_decoder_default: ", self.paramsDict['mux_decoder_default'], "\n"
+#        print "mux_decoder: ", self.paramsDict['mux_decoder']
+
+        # Pass through XXX_default keys and change their value from -1 to 0 unless already set
         for key in self.paramsDict:
-            # Is this a _default key?
+            # Is this a XXX_default key?
             if key.endswith("_default"):
                 if self.bDebug:
-                    print "Found _default key: ", key, " = ",
-                # Has its value been changed from -1?
-                keyValue = self.getParamValue(key)
+                    print "1st: Found _default key: ", key, " = ",
+
+                # Obtain its value
+                defaultKeyValue = self.getParamValue(key)
                 if self.bDebug:
-                    print keyValue
-                
-                # This is a key that ends with _default, but has it been set?
-                
-                # Derive corresponding key's name
-                pairedKey = key.replace("_default", "")
-                pairedKeyValue = self.getParamValue(pairedKey)
-                length = len(pairedKeyValue[2])
+                    print defaultKeyValue,
 
                 # Is XXX_default not specified ?
-                if keyValue[2] == -1:
-                    # Not set, set it to 0
-                    for idx in range(length):
-                        # Update only if pixel not explicitly set
-                        if pairedKeyValue[2][idx] == -1:
-                            # -1 denotes pixel hasn't been explicitly set; set it to 0
-                            self.setParamValue(pairedKey, idx, 0)
-                    
+                if defaultKeyValue[2] == -1:
+                    # Default not set; set the _default key's value to 0
+                    self.setParamValue(key, 0, 0)
+                    if self.bDebug:
+                        print " now = ", self.getParamValue(key)[2]
                 else:
-                    # It is set; Update any entry not already explicitly set
-                    for idx in range(length):
-                        # Update only if pixel not explicitly set
-                        if pairedKeyValue[2][idx] == -1:
-                            # -1 denotes pixel hasn't been explicitly set; go ahead and update it
-                            self.setParamValue(pairedKey, idx, keyValue[2])
+                    if self.bDebug:
+                        print " (no change)"
+                    
+        if self.bDebug:
+            print "- - - - - - - - - - - - - - - - - - - - -"
+        
+        # Check _default keys and updated the corresponding keys unless they have been explicitly set
+        #    e.g. if daq_bias_default = 4 them all values of daq_bias will become 4 (unless set explicitly)
+
+        for key in self.paramsDict:
+            # Is this a XXX_default key?
+            if key.endswith("_default"):
+
+                if self.bDebug:
+                    print "2nd: Found _default key: ", key, " = ",
+
+                # Obtain its value
+                defaultKeyValue = self.getParamValue(key)
+                if self.bDebug:
+                    print defaultKeyValue
+                
+                # Derive corresponding key's name
+                #    e.g. key = "mux_decoder_default"; sectionKey = "mux_decoder"
+                sectionKey = key.replace("_default", "")
+                sectionKeyValue = self.getParamValue(sectionKey)
+                sectionKeyLength = len(sectionKeyValue[2])
+
+#                # Is XXX_default not specified ?
+#                if defaultKeyValue[2] == -1:
+#                    # Default not set; set the _default key's value to 0
+#                    self.setParamValue(key, 0, 0)
+#                    # Check the section key values and update any index that is still -1
+#                    for idx in range(sectionKeyLength):
+#                        # Update only if pixel not already explicitly set
+#                        if sectionKeyValue[2][idx] == -1:
+#                            # -1 denotes pixel hasn't been explicitly set; set it to 0
+#                            self.setParamValue(sectionKey, idx, 0)
+#                    
+#                else:
+#                    # Default is set; Update any entry not explicitly set with default value
+#                    print "Dead END!"
+#                    print "_______________________________________________________________________________________________________________________________________________"
+#                    print "Just about to hit the following values: ", sectionKeyValue[2]
+
+                # Updates all values of the key except any that have already been explicitly set
+                for idx in range(sectionKeyLength):
+                    # Update only if pixel not explicitly set
+                    if sectionKeyValue[2][idx] == -1:
+                        # -1 denotes pixel hasn't been explicitly set; go ahead and update it
+                        self.setParamValue(sectionKey, idx, defaultKeyValue[2])
+
+
             else:
                 # All keys that does not end with "_default"
-                keyValue = self.getParamValue(key)
+                #    Of of these keys, 5 have single integer value, 4 have nested list of values
+                #    The 4 that had nested lists of values can be ignored (already covered in the if statement above)
                 
-                # Has the value been set?
-                if keyValue[2] == -1:
-                    # Not set; Set it to 0
-                    self.setParamValue(key, 0, 0)
+                # 
+                keyValue = self.getParamValue(key)
+#                print "Going to check this type: ", keyValue[2]
+                if isinstance(keyValue[2], types.IntType):
+                    if self.bDebug:
+                        print "%21s: It's an integer type" % key
+                    
+                    # Has the value been set?
+                    if keyValue[2] == -1:
+                        # Not set; Set it to 0
+                        self.setParamValue(key, 0, 0)
+
+
+                
                     
         # Back up one level in the tree              
         self.depth = self.depth - 1
+
+        if self.bDebug:
+            print "______________________________________________________________________________________"
+            print "                FINISHED"
+            print "______________________________________________________________________________________"
+#        print "mux_decoder_default: ", self.paramsDict['mux_decoder_default'], "\n"
+#        print "mux_decoder: ", self.paramsDict['mux_decoder']
         
+#        print self.paramsDict['mux_decoder_default']
+#        print self.paramsDict['mux_decoder']             
+#        print self.paramsDict['feedback_select_default'] 
+#        print self.paramsDict['feedback_select']         
+#        print self.paramsDict['self_test_decoder_default']
+#        print self.paramsDict['self_test_decoder']       
+#        print self.paramsDict['self_test_enable']        
+#        print self.paramsDict['daq_bias_default']        
+#        print self.paramsDict['daq_bias']                
+#        print self.paramsDict['spare_bits']              
+#        print self.paramsDict['filter_control']          
+#        print self.paramsDict['adc_clock_delay']         
+#        print self.paramsDict['digital_control']         
+
  
     def buildBitstream(self):
         '''
@@ -837,22 +916,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display of debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
-            
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-            print "\n"
-    
-    
-            print "expectedSequence: (len)", len(expectedSequence)
-            
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
-        
+            self.displaySequence(encSeq)
+
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
+
         self.assertEqual(encSeq, expectedSequence, 'testSelfTestDecoderDefaultSetValueSeven() failed !')
     
     
@@ -879,19 +947,10 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
-            
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-    
-            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(encSeq)
 
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
         
         self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectDefaultSetValueOne() failed !')
     
@@ -919,19 +978,10 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
-            
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-    
-            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(encSeq)
 
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
         
         self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectAndSelfTestDecoderDefaultsCombined() failed !')
 
@@ -964,20 +1014,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
-            
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-    
-            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(encSeq)
 
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
-        
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
+
         self.assertEqual(encSeq, expectedSequence, 'testMuxDecoderDefault() failed !')
 
     
@@ -1194,24 +1235,29 @@ class SlowCtrlParamsTest(unittest.TestCase):
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
                                 <mux_decoder pixel="511" value="5"/>
-                                <mux_decoder pixel="479" value="7"/>
-                                <mux_decoder pixel="447" value="7"/>
-                                <mux_decoder pixel="415" value="7"/>
-                                <mux_decoder pixel="351" value="7"/>
-                                <mux_decoder pixel="0" value="7"/>
-                                <mux_decoder pixel="32" value="7"/>
-                                <mux_decoder pixel="64" value="7"/>
+                                <mux_decoder pixel="479" value="1"/>
+                                <mux_decoder pixel="447" value="1"/>
+                                <mux_decoder pixel="415" value="1"/>
+                                <mux_decoder pixel="0" value="1"/>
+                                <mux_decoder pixel="32" value="1"/>
+                                <mux_decoder pixel="64" value="1"/>
+                                <mux_decoder pixel="96" value="1"/>
+                                <mux_decoder_default value="7"/>
                             </lpd_slow_ctrl_sequence>
         '''
+
     
         # Parse XML and encode
         paramsObj = SlowCtrlParams(stringCmdXml)
         encSeq = paramsObj.encode()
 
+
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[0] = 0x38FFD
-        expectedSequence[47] = 0xFF800000
+        for idx in range(48):
+            expectedSequence[idx] = 0xFFFFFFFF
+        expectedSequence[0] =  0xFFFFF24D
+        expectedSequence[47] = 0x249FFFFF
 
         # Toggle display debug information
         if False:
