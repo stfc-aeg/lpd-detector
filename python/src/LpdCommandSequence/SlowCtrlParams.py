@@ -21,11 +21,126 @@ class SlowCtrlParamsError(Exception):
     def __str__(self):
         return repr(self.msg)
 
+
 class SlowCtrlParams(object):
  
-
+    # Class Constants
     SEQLENGTH = 123
+
+    # xml lookup tables
+    '''
+                !
+        NOTE: these are based upon a slow control numbering of pixels 1-512, index 1-47
+                but whenever they are used they are subtracted by one to match 
+                Python numbering of pixel 0-512, index 0-46
+                
+                !
+    '''
+    biasCtrlLookupTable = [ 47, 46, 21, 15,  9, 36, 45, 19, 14,  8, 44, 
+                            32, 18, 12,  5, 43, 30, 17, 11,  2, 42, 24, 
+                            16, 10,  1, 41, 37, 28, 23,  7, 35, 33, 27, 
+                            22,  6, 40, 31, 26, 20,  4, 39, 29, 25, 13, 
+                             3, 38, 34]
     
+    muxDecoderLookupTable = [512, 496, 480, 464, 448, 432, 416, 400, 
+                             384, 368, 352, 336, 320, 304, 288, 272, 
+                             256, 240, 224, 208, 192, 176, 160, 144, 
+                             128, 112,  96,  80,  64,  48,  32,  16, 
+                             511, 495, 479, 463, 447, 431, 415, 399, 
+                             383, 367, 351, 335, 319, 303, 287, 271, 
+                             255, 239, 223, 207, 191, 175, 159, 143, 
+                             127, 111,  95,  79,  63,  47,  31,  15, 
+                             510, 494, 478, 462, 446, 430, 414, 398, 
+                             382, 366, 350, 334, 318, 302, 286, 270, 
+                             254, 238, 222, 206, 190, 174, 158, 142, 
+                             126, 110,  94,  78,  62,  46,  30,  14, 
+                             509, 493, 477, 461, 445, 429, 413, 397, 
+                             381, 365, 349, 333, 317, 301, 285, 269, 
+                             253, 237, 221, 205, 189, 173, 157, 141, 
+                             125, 109,  93,  77,  61,  45,  29,  13, 
+                             508, 492, 476, 460, 444, 428, 412, 396, 
+                             380, 364, 348, 332, 316, 300, 284, 268, 
+                             252, 236, 220, 204, 188, 172, 156, 140, 
+                             124, 108,  92,  76,  60,  44,  28,  12, 
+                             507, 491, 475, 459, 443, 427, 411, 395, 
+                             379, 363, 347, 331, 315, 299, 283, 267, 
+                             251, 235, 219, 203, 187, 171, 155, 139, 
+                             123, 107,  91,  75,  59,  43,  27,  11, 
+                             506, 490, 474, 458, 442, 426, 410, 394, 
+                             378, 362, 346, 330, 314, 298, 282, 266, 
+                             250, 234, 218, 202, 186, 170, 154, 138, 
+                             122, 106,  90,  74,  58,  42,  26,  10, 
+                             505, 489, 473, 457, 441, 425, 409, 393, 
+                             377, 361, 345, 329, 313, 297, 281, 265, 
+                             249, 233, 217, 201, 185, 169, 153, 137, 
+                             121, 105,  89,  73,  57,  41,  25,   9,
+                             504, 488, 472, 456, 440, 424, 408, 392, 
+                             376, 360, 344, 328, 312, 296, 280, 264, 
+                             248, 232, 216, 200, 184, 168, 152, 136, 
+                             120, 104,  88,  72,  56,  40,  24,   8, 
+                             503, 487, 471, 455, 439, 423, 407, 391, 
+                             375, 359, 343, 327, 311, 295, 279, 263, 
+                             247, 231, 215, 199, 183, 167, 151, 135, 
+                             119, 103,  87,  71,  55,  39,  23,   7, 
+                             502, 486, 470, 454, 438, 422, 406, 390, 
+                             374, 358, 342, 326, 310, 294, 278, 262, 
+                             246, 230, 214, 198, 182, 166, 150, 134, 
+                             118, 102,  86,  70,  54,  38,  22,   6, 
+                             501, 485, 469, 453, 437, 421, 405, 389, 
+                             373, 357, 341, 325, 309, 293, 277, 261, 
+                             245, 229, 213, 197, 181, 165, 149, 133, 
+                             117, 101,  85,  69,  53,  37,  21,   5,
+                             500, 484, 468, 452, 436, 420, 404, 388, 
+                             372, 356, 340, 324, 308, 292, 276, 260, 
+                             244, 228, 212, 196, 180, 164, 148, 132, 
+                             116, 100,  84,  68,  52,  36,  20,   4, 
+                             499, 483, 467, 451, 435, 419, 403, 387, 
+                             371, 355, 339, 323, 307, 291, 275, 259, 
+                             243, 227, 211, 195, 179, 163, 147, 131, 
+                             115,  99,  83,  67,  51,  35,  19,   3, 
+                             498, 482, 466, 450, 434, 418, 402, 386, 
+                             370, 354, 338, 322, 306, 290, 274, 258, 
+                             242, 226, 210, 194, 178, 162, 146, 130, 
+                             114,  98,  82,  66,  50,  34,  18,   2, 
+                             497, 481, 465, 449, 433, 417, 401, 385, 
+                             369, 353, 337, 321, 305, 289, 273, 257, 
+                             241, 225, 209, 193, 177, 161, 145, 129, 
+                             113,  97,  81,  65,  49,  33,  17,   1 ]
+
+    pixelSelfTestLookupTable = [497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 
+                                496, 495, 494, 493, 492, 491, 490, 489, 488, 487, 486, 485, 484, 483, 482, 481, 
+                                465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 
+                                464, 463, 462, 461, 460, 459, 458, 457, 456, 455, 454, 453, 452, 451, 450, 449, 
+                                433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 
+                                432, 431, 430, 429, 428, 427, 426, 425, 424, 423, 422, 421, 420, 419, 418, 417, 
+                                401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 
+                                400, 399, 398, 397, 396, 395, 394, 393, 392, 391, 390, 389, 388, 387, 386, 385, 
+                                369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 
+                                368, 367, 366, 365, 364, 363, 362, 361, 360, 359, 358, 357, 356, 355, 354, 353, 
+                                337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 
+                                336, 335, 334, 333, 332, 331, 330, 329, 328, 327, 326, 325, 324, 323, 322, 321, 
+                                305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 
+                                304, 303, 302, 301, 300, 299, 298, 297, 296, 295, 294, 293, 292, 291, 290, 289, 
+                                273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 
+                                272, 271, 270, 269, 268, 267, 266, 265, 264, 263, 262, 261, 260, 259, 258, 257, 
+                                241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 
+                                240, 239, 238, 237, 236, 235, 234, 233, 232, 231, 230, 229, 228, 227, 226, 225, 
+                                209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 
+                                208, 207, 206, 205, 204, 203, 202, 201, 200, 199, 198, 197, 196, 195, 194, 193, 
+                                177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 
+                                176, 175, 174, 173, 172, 171, 170, 169, 168, 167, 166, 165, 164, 163, 162, 161, 
+                                145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 
+                                144, 143, 142, 141, 140, 139, 138, 137, 136, 135, 134, 133, 132, 131, 130, 129, 
+                                113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 
+                                112, 111, 110, 109, 108, 107, 106, 105, 104, 103, 102, 101, 100,  99,  98,  97, 
+                                 81,  82,  83,  84,  85,  86,  87,  88,  89,  90,  91,  92,  93,  94,  95,  96, 
+                                 80,  79,  78,  77,  76,  75,  74,  73,  72,  71,  70,  69,  68,  67,  66,  65, 
+                                 49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,  64, 
+                                 48,  47,  46,  45,  44,  43,  42,  41,  40,  39,  38,  37,  36,  35,  34,  33, 
+                                 17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32, 
+                                 16,  15,  14,  13,  12,  11,  10,   9,   8,   7,   6,   5,   4,   3,   2,   1, ]
+
+
     def __init__(self, xmlObject, fromFile=False, strict=True):
         #TODO: Sort out argument list - will have implications wherever objects are created of this class
         strict = True
@@ -38,7 +153,7 @@ class SlowCtrlParams(object):
         if self.bDebug:
             print "debugging enabled."
 
-    #   paramsDict = {'dictKey'                     : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
+        #    paramsDict = {'dictKey'                     : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
         self.paramsDict = {'mux_decoder_default'         : [3,  -1,     -1,         [False, True, False]],
                            'mux_decoder'                 : [3,  0,      [-1] * 512, [True,  True, False]],
                            'feedback_select_default'     : [1,  -1,     -1,         [False, True, False]],
@@ -49,16 +164,16 @@ class SlowCtrlParams(object):
                            'daq_bias_default'            : [5,  -1,     -1,         [False, True, False]],
                            'daq_bias'                    : [5,  3585,   [-1] * 47,  [False, True, True]],
                            'spare_bits'                  : [5,  3820,   -1,         [False, True, False]],        # Special Case: 5 bits cover everything
-                           'filter_control'         : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
+                           'filter_control'              : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
                            'adc_clock_delay'             : [20, 3845,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
                            'digital_control'             : [40, 3865,   -1,         [False, True, True]],       # Special Case: 40 bits cover everything
                            }
         # Definition of position of fast command fields in BRAM words
-        self.sync = 1
-        self.sync_pos = 21
-        self.nop_pos  = 22
-        self.cmd_pos  = 12
-        self.sync_reset_pos = 2
+#        self.sync = 1
+#        self.sync_pos = 21
+#        self.nop_pos  = 22
+#        self.cmd_pos  = 12
+#        self.sync_reset_pos = 2
 
         # Count total number of nops
         self.total_number_nops = 0
@@ -179,7 +294,7 @@ class SlowCtrlParams(object):
         intAttrib = theElement.get(theAttrib, default='-2')
         
         if self.bDebug:
-            print " is: ", intAttrib + ".",
+            print " is: %3s" % intAttrib + ".",
         # Convert count to integer or raise an exception if this failed
         try:
             attrib = int(intAttrib)
@@ -189,6 +304,25 @@ class SlowCtrlParams(object):
         # Return integer attrib value    
         return attrib
 
+    def doLookupTableCheck(self, dictKey, idx):
+        '''
+            Accepts the dictionary key dictKey an and associated index 'idx'
+        '''
+        # Does dictKey have an associated lookup table?
+        if dictKey == "mux_decoder":
+            val = (SlowCtrlParams.muxDecoderLookupTable[idx] - 0)
+#            if idx < 35:
+#                print "%3i -> %3i" % (idx, val)
+            return val- 1
+        elif dictKey == "feedback_select":
+            return (SlowCtrlParams.pixelSelfTestLookupTable[idx] - 1)
+        elif dictKey == "self_test_decoder":
+            return (SlowCtrlParams.pixelSelfTestLookupTable[idx] - 1)
+        elif dictKey == "daq_bias":
+            return (SlowCtrlParams.biasCtrlLookupTable[idx] - 1)
+        else:
+#            raise SlowCtrlParamsError("Invalid execution: No lookup table for key '%s'!" % dictKey)
+            return idx             
         
     def parseElement(self, theElement):
         '''
@@ -198,11 +332,6 @@ class SlowCtrlParams(object):
             
             NOTE: pixels run 1-512, index 1-47 but to match Python's lists they're numbered 0-511, 0-46.
         '''
-        
-        # Initialise empty list to contain binary command values for this part of the tree
-#        encodedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        # Track position within encodedSequence list
-#        seqPosition = 0
         
         # Increment tree depth counter
         self.depth = self.depth + 1
@@ -224,7 +353,7 @@ class SlowCtrlParams(object):
 
                 if self.bDebug:
                     print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-                    print "found: ", cmd,
+                    print cmd,
                 
                 # get parameter values
                 pmValues = self.getParamValue(cmd)
@@ -238,7 +367,7 @@ class SlowCtrlParams(object):
                 # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
                 if value == -2:
-                    raise SlowCtrlParamsError("Unable to find the required value tag!")
+                    raise SlowCtrlParamsError("Unable to find the required 'value' tag!")
                 
                 if self.bDebug:
                     print "value = ", value,
@@ -247,18 +376,22 @@ class SlowCtrlParams(object):
                 if bPixel:
                     # Get pixel
                     pixel = self.getAttrib(child, 'pixel')
+                    # Use pixel number to obtain pixel order using the lookup table function (where applicable)
+                    orderedPxl = self.doLookupTableCheck(cmd, pixel)
                     if self.bDebug:
-                        print " pixel = ", pixel,
+                        print " pixel, orderedPxl = %3i, %3i" % (pixel, orderedPxl),
                     # Update pixel entry of the dictionary key
-                    self.setParamValue(cmd, pixel, value)
+                    self.setParamValue(cmd, orderedPxl, value)
                 else:
                     # Is there a index tag?
                     if bIndex:
                         index = self.getAttrib(child, 'index')
+                        # Use index to obtain index order using the lookup table function (where applicable)
+                        orderedIdx = self.doLookupTableCheck(cmd, index)
                         if self.bDebug:
-                            print " index = ", index
+                            print " index, orderedIdx = %3i, %3i" % (index, orderedIdx)
                         # Update index entry of the dictionary key
-                        self.setParamValue(cmd, index, value)
+                        self.setParamValue(cmd, orderedIdx, value)
                     else:
                         # No pixel, no index tags: therefore the key value
                         #     is a simple integer to update
@@ -278,10 +411,11 @@ class SlowCtrlParams(object):
             if key.endswith("_default"):
                 if self.bDebug:
                     print "Found _default key: ", key, " = ",
-                # has its value been changed from -1?
+                # Has its value been changed from -1?
                 keyValue = self.getParamValue(key)
                 if self.bDebug:
                     print keyValue
+                
                 # This is a key that ends with _default, but has it been set?
                 
                 # Derive corresponding key's name
@@ -317,11 +451,6 @@ class SlowCtrlParams(object):
         # Back up one level in the tree              
         self.depth = self.depth - 1
         
-        # Return the encoded sequence for this (partial) tree
-        
-        ''' THIS is empty though! '''
-        
-#        return encodedSequence
  
     def buildBitstream(self):
         '''
@@ -351,8 +480,7 @@ class SlowCtrlParams(object):
                 wordPosition = cmdParams[1] / 32
                 # Slow Control Value(s)
                 slowControlWordContent = cmdParams[2]
-                # bitPosition tracks the bit position within the current sequence's index
-#                bitPosition = cmdParams[1] % 32
+                # bitPosition tracks the current bit position relative to the entire length of sequence
                 bitPosition = cmdParams[1]
                 
                 # Is this a list?
@@ -363,14 +491,15 @@ class SlowCtrlParams(object):
 
                     # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
                     #    and therefore form a special case (set to 0 for all other keys)
-                    specialCaseOffset = 0
                     
                     # Is this key either of the two special cases?
                     if dictKey.startswith("feedback_select"):
                         specialCaseOffset = 3
-                    if dictKey.startswith("self_test_decoder"):
+                    elif dictKey.startswith("self_test_decoder"):
                         specialCaseOffset = 1
-                
+                    else:
+                        specialCaseOffset = 0
+                        
                     keyWidth = keyWidth + specialCaseOffset
                     # Create a bit array to save each slow control word bit by bit
                     bitwiseArray = [0] * (keyWidth * numBitsRequired)
@@ -388,20 +517,18 @@ class SlowCtrlParams(object):
                             bitwiseArray[ idx*keyWidth + bitIdx ] = ( (slowControlWordContent[idx] & bitMask) >> bitIdx)
                             bitMask = bitMask << 1
                                         
-                    indexTotal = 0
-                    
                     '''
                         LIST TYPE: SECOND LOOP
                     '''
                     # Loop over this new list and chop each 32 bits into the encoded sequence
                     for idx in range(len(bitwiseArray)):
-                        ''' DEBUG INFO '''
-                        if dictKey == debugComparisonKey:
-                            if idx < 42:
-                                print "idx=%3i, bitPosn=%2i, indexTotal:%9X" % (idx, bitPosition%32, bitwiseArray[idx] << (bitPosition%32)),
-                                print " (%i << %2i) " % (bitwiseArray[idx], (bitPosition%32)),
-                                print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
-                                print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]) 
+#                        ''' DEBUG INFO '''
+#                        if dictKey == debugComparisonKey:
+#                            if idx < 42:
+#                                print "idx=%3i, bitPosn=%2i, seqIdxTotal:%9X" % (idx, bitPosition%32, bitwiseArray[idx] << (bitPosition%32)),
+#                                print " (%i << %2i) " % (bitwiseArray[idx], (bitPosition%32)),
+#                                print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
+#                                print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]) 
                         
                         # Add running total to sequence; increment bitPosition and check wordPosition 
                         encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition%32))
@@ -419,54 +546,38 @@ class SlowCtrlParams(object):
                     numBitsRequired = cmdParams[0]
                     # Create a bit array to save each bit individually from the slow control word
                     bitwiseArray = [0] * numBitsRequired                    
-                    bitMask = 1
                     
                     '''
                         INTEGER TYPE: FIRST LOOP
                     '''
+                    bitMask = 1
                     # Loop over all the bits in the slow control word
                     for idx in range(numBitsRequired):
-#                            print "idx = %2i, slowControlWordContent = %6X, bitMask = %6X,  slowControlWordContent & bitMask = %6X,( (%6X & %6X) >> idx) = " % (idx, slowControlWordContent, bitMask, slowControlWordContent & bitMask, slowControlWordContent, bitMask), ( (slowControlWordContent & bitMask) >> idx)
                         bitwiseArray[idx] = ( (slowControlWordContent & bitMask) >> idx)
                         bitMask = bitMask << 1
-
-                    # Sum total of a 32 bit word
-                    indexTotal = 0
                     
                     '''
                         INTEGER TYPE: SECOND LOOP
                     '''
-                    print "bitposition = ", bitPosition
+                    
                     # Loop over this new list and chop each 32 bits into the encoded sequence
                     for idx in range(len(bitwiseArray)):
-                        ''' DEBUG INFO '''
-                        if dictKey == debugComparisonKey:
-                            print "idx=%3i, bitPosn=%2i, indexTotal:%9X" % (idx, bitPosition%32, bitwiseArray[idx] << (bitPosition%32)),
-                            print " (%i << %2i) " % (bitwiseArray[idx], (bitPosition%32)),
-                            print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
-                            print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]),
+#                        ''' DEBUG INFO '''
+#                        if dictKey == debugComparisonKey:
+#                            print "idx=%3i, bitPosn=%2i, seqIdxTotal:%9X" % (idx, bitPosition%32, bitwiseArray[idx] << (bitPosition%32)),
+#                            print " (%i << %2i) " % (bitwiseArray[idx], (bitPosition%32)),
+#                            print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
+#                            print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition])
 
-                        
-                        # Add running total to sequence 
-                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition % 32) )  # indexTotal
+                        # Add running total to sequence; Increment bitPosition and check wordPosition 
+                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition % 32) )
                         bitPosition += 1
                         wordPosition = bitPosition / 32
-                        
-#                        # Is this the end of the current encoded sequence's index?
-#                        if (bitPosition > 0) and (bitPosition % 31 == 0):
-##                            if wordPosition == 121:
-##                                print "--> Array exceeded: bitPosition = ", bitPosition
-##                                return encodedSequence
-#                            # Yes; clear indexTotal, increment wordPosition and reset bitPosition
-#                            indexTotal = 0
-#                            wordPosition += 1
-#                            bitPosition = 0
-#                        else:
-#                            # Not the last bit within the 32 bit word; Increment bitPosition
 
         # Return the encoded sequence for this (partial) tree
         return encodedSequence
 
+         
     def generateBitMask(self, numBits):
         '''
             Generates that bit mask to cover the number of bits supplied.
@@ -568,10 +679,10 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
 #        print selfTestDecoderDefaultVals, "\n", expectedVals
         self.assertEqual(selfTestDecoderDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
-
+        
         # 'self_test_decoder'                    : [5, 3585, [-1] * 47],
         dictKey = 'self_test_decoder'
-        index = 1
+        index = 497 # 1
         value = 5
         
         expectedVals = [3, 1537, [selfTestDecoderDefault] * 512, [True, True, False]]
@@ -601,8 +712,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = daqBiasIdx47
         
         expectedVals = [5, 3585, [daqBiasDefault] * 47, [False, True, True]]
-        expectedVals[2][2] = 0
-        expectedVals[2][47-1] = value
+        expectedVals[2][21-1] = 0
+        expectedVals[2][34-1] = value
         
         daq_biasVals = paramsObj.getParamValue(dictKey)
 
@@ -699,7 +810,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 1099511627776
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
-
+    
     def testSelfTestDecoderDefaultSetValueSeven(self):
         '''
             Test that the key self_test_decoder_default works
@@ -899,20 +1010,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
+            self.displaySequence(encSeq)
             
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-            print "\n"
             print "\nExpected Sequence: (len)", len(expectedSequence)
-
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
-        
+            self.displaySequence(expectedSequence)
+            
         self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 1) failed !')
 
 
@@ -940,23 +1042,12 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
+            self.displaySequence(encSeq)
             
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-            print "\n"
             print "\nExpected Sequence: (len)", len(expectedSequence)
-
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
-        
+            self.displaySequence(expectedSequence)
+            
         self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 31) failed !')
-
-    
     
     def testSelfTestEnable(self):
         '''
@@ -980,19 +1071,10 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
+            self.displaySequence(encSeq)
             
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-            print "\n"
             print "\nExpected Sequence: (len)", len(expectedSequence)
-
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
+            self.displaySequence(expectedSequence)
         
         self.assertEqual(encSeq, expectedSequence, 'testSelfTestEnable() failed !')
     
@@ -1019,20 +1101,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
+            self.displaySequence(encSeq)
             
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
-    
             print "\nExpected Sequence: (len)", len(expectedSequence)
-
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
-        
+            self.displaySequence(expectedSequence)
+            
         self.assertEqual(encSeq, expectedSequence, 'testSpareBits() failed !')
 
     
@@ -1062,28 +1135,13 @@ class SlowCtrlParamsTest(unittest.TestCase):
         expectedSequence[119] = ( (filterValue & thisIndex) << 17)
         expectedSequence[120] = overflow
 
-#        print "\nthisIndex = ", thisIndex
-#        print "( (%6X" % filterValue, " &  %4X" % thisIndex, ") << 17) = %9X " % ( (filterValue & thisIndex) << 17)
-#        print "  (%6X" % filterValue, " >> (32 - 17) = %9X " % overflow
-        
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
+            self.displaySequence(encSeq)
             
-            for idx in range(len(encSeq)):
-                if idx > 103:
-                    if (idx % 8 == 0):
-                        print "\n%3i: " % idx,
-                    print "%9X" % encSeq[idx],
-    
             print "\nExpected Sequence: (len)", len(expectedSequence)
-
-            for idx in range(len(expectedSequence)):
-                if idx > 103:
-                    if (idx % 8 == 0):
-                        print "\n%3i: " % idx,
-                    print "%9X" % expectedSequence[idx],
-            print "\n"
+            self.displaySequence(expectedSequence)
         
         self.assertEqual(encSeq, expectedSequence, 'testFilterControl() failed !')
     
@@ -1109,13 +1167,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
                                 <digital_control value="%i"/>
                             </lpd_slow_ctrl_sequence>
         ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
-#                                <mux_decoder pixel="0" value="0"/>
-#                                <mux_decoder pixel="511" value="0"/>
-#                                <feedback_select pixel="0" value="0"/>
-#                                <feedback_select pixel="511" value="0"/>
-#                                <daq_bias index="0" value="0"/>
-#                                <daq_bias index="46" value="0"/>
-    
+
         # Parse XML and encode
         paramsObj = SlowCtrlParams(stringCmdXml)
         encSeq = paramsObj.encode()
@@ -1127,22 +1179,13 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
-            
-            for idx in range(len(encSeq)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
+            self.displaySequence(encSeq)
 
             print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
 
-            for idx in range(len(expectedSequence)):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
-        
         self.assertEqual(encSeq, expectedSequence, 'testAllKeysAllValues() failed !')
-
+    
     def testSpecificMuxDecoderValues(self):
         '''
             Test all the keys
@@ -1150,12 +1193,14 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
-                                <mux_decoder pixel="0" value="1"/>
-                                <mux_decoder pixel="1" value="2"/>
-                                <mux_decoder pixel="2" value="3"/>
-                                <mux_decoder pixel="509" value="5"/>
-                                <mux_decoder pixel="510" value="6"/>
-                                <mux_decoder pixel="511" value="7"/>
+                                <mux_decoder pixel="511" value="5"/>
+                                <mux_decoder pixel="479" value="7"/>
+                                <mux_decoder pixel="447" value="7"/>
+                                <mux_decoder pixel="415" value="7"/>
+                                <mux_decoder pixel="351" value="7"/>
+                                <mux_decoder pixel="0" value="7"/>
+                                <mux_decoder pixel="32" value="7"/>
+                                <mux_decoder pixel="64" value="7"/>
                             </lpd_slow_ctrl_sequence>
         '''
     
@@ -1165,75 +1210,33 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] = 0
+        expectedSequence[0] = 0x38FFD
+        expectedSequence[47] = 0xFF800000
 
         # Toggle display debug information
-        if True:
+        if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
-            
-#            for idx in range(len(encSeq)):
-            for idx in range(56):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % encSeq[idx],
+            self.displaySequence(encSeq)
 
             print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
 
-#            for idx in range(len(expectedSequence)):
-            for idx in range(56):
-                if (idx % 8 == 0):
-                    print "\n%3i: " % idx,
-                print "%9X" % expectedSequence[idx],
-            print "\n"
+        self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
+
+    def displaySequence(self, seq):
+        '''
+            Helper function for unit testing, displays the contents of argument 'seq' sequence 
+        '''
+            
+        for idx in range(len(seq)):
+            if (idx % 8 == 0):
+                print "\n%3i: " % idx,
+            print "%9X" % seq[idx],
+        print "\n"
         
-#        self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
-    
-#    def testBuildBitstream(self):
-#        '''
-#            Test the buildBitstream function
-#        '''
-#        
-#        daqBiasIdx47 = 11
-#        daqBiasDefault = 31
-#        selfTestDecoderDefault = 7
-#        digitalControlIdx3 = 18
-
-        # ONLY feedback_select
-#        stringCmdXml = '''<?xml version="1.0"?>
-#                            <lpd_slow_ctrl_sequence name="TestString">
-#                                <feedback_select pixel="0" value="1"/>
-#                                <feedback_select pixel="2" value="1"/>
-#                            </lpd_slow_ctrl_sequence>
-#        '''
-
-        # BOTH feedback_select and self_test_decoder
-#        stringCmdXml = '''<?xml version="1.0"?>
-#                            <lpd_slow_ctrl_sequence name="TestString">
-#                                <self_test_decoder_default value="%i"/>
-#                                <feedback_select pixel="1" value="1"/>
-#                            </lpd_slow_ctrl_sequence>
-#        ''' % (selfTestDecoderDefault)
-
-#        stringCmdXml = '''<?xml version="1.0"?>
-#                            <lpd_slow_ctrl_sequence name="TestString">
-#                                <self_test_decoder_default value="%i"/>
-#                                <mux_decoder_default value="5"/>
-#                                <mux_decoder pixel="0" value="0"/>
-#                                <daq_bias index="46" value="%i"/>
-#                                <daq_bias_default value="%i"/>
-#                                <daq_bias index="2" value="0"/>
-#                                <digital_control index="3" value="18"/>
-#                                <spare_bits value="%i"/>
-#                            </lpd_slow_ctrl_sequence>
-#        ''' % (selfTestDecoderDefault, daqBiasIdx47, daqBiasDefault, digitalControlIdx3)
-#                                <self_test_decoder pixel="1" value="5"/>
-#                                <feedback_select_default value="0"/>
-
-#"""
-    
+        
 
 if __name__ == '__main__':
-    
     
     # Execute unit testing
     unittest.main()
@@ -1262,8 +1265,3 @@ if __name__ == '__main__':
     result = theParams.encode()
 
     theParams.displayDictionaryValues()
-#    for idx in range(122):
-#        print "%X\t" % result[idx],
-#        if (idx % 6) == 5:
-#            print ""
-#    print ""
