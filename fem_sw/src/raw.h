@@ -1,8 +1,9 @@
-/*
- * raw.h
+/**
+ * @file raw.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- * Abstraction layer for Xilinx register operations
- * Provides RDMA-like access to memory mapped peripheral address space
+ * Abstraction layer for Xilinx register operations.
+ * Provides RDMA-like access to memory mapped peripheral address space.
  *
  */
 

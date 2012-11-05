@@ -1,8 +1,8 @@
-/*
- * commandProcessor.h
+/**
+ * @file commandProcessor.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- * Manages the decoding of received packets and generation
- * of response packets using LwIP library
+ * Manages the decoding of received packets and generation of response packets using LwIP library
  *
  */
 

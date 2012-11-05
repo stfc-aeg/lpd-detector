@@ -1,10 +1,9 @@
-/*
- * calib_sleep.h
+/**
+ * @file calib_sleep.h
+ * @author Tim Nicholls, STFC Application Engineering Group
  *
  * Header file for calibrated sleep functions replicating usleep available on PPC
  *
- *  Created on: Aug 2, 2011
- *      Author: Tim Nicholls, STFC Application Engineering Group
  */
 
 #ifndef CALIB_TIMER_H_

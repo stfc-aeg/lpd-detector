@@ -1,5 +1,6 @@
-/*
- * fem.h
+/**
+ * @file fem.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
  * Main header file for FEM card
  * Includes all base address definitions from xparameters.h

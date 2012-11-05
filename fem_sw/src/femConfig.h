@@ -1,8 +1,9 @@
-/*
- * femConfig.h
+/**
+ * @file femConfig.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- *  Created on: Aug 3, 2011
- *      Author: mt47
+ * Configuration structure for FEM, intended to be stored on EEPROM
+ *
  */
 
 #ifndef FEMCONFIG_H_

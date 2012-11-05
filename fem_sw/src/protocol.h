@@ -1,7 +1,8 @@
-/*
- * protocol.h
+/**
+ * @file protocol.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- *  Basic protocol for FEM control and configuration over Ethernet
+ * TCP sockets protocol for FEM control and configuration
  *
  */
 

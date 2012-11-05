@@ -1,10 +1,8 @@
-/*
- * i2c_lm82.h
+/**
+ * @file i2c_lm82.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- *  Created on: 1 Apr 2011
- *      Author: mt47
- *
- * Support functions for LM82 I2C device
+ * Support library for LM82 I2C device
  *
  * --------------------------------------------------------
  *

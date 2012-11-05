@@ -1,8 +1,9 @@
-/*
- * mailbox.h
+/**
+ * @file mailbox.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- *  Created on: Feb 22, 2012
- *      Author: mt47
+ * Wrapper for Xilinx mailbox functions, used to provide inter-PPC communications.
+ *
  */
 
 #include "xmbox.h"

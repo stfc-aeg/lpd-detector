@@ -1,10 +1,7 @@
-/*
- * rdma.h
+/**
+ * @file rdma.h
  *
- * Provides access to ESDG group FPGA blocks via
- * RS232-RDMA link register set
- *
- * Only compatible with 16550 UART
+ * Provides access RDMA endpoints via an internal RS232 UART
  *
  */
 
@@ -24,23 +21,21 @@
 #define RDMA2_H_
 
 // Commands for RDMA block
-#define RDMA_CMD_READ			0
-#define RDMA_CMD_WRITE			1
+#define RDMA_CMD_READ			0			//!< RDMA command for read operation (issued as first byte to RDMA channel)
+#define RDMA_CMD_WRITE			1			//!< RDMA command for write operation (issued as first byte to RDMA channel)
 
 // Serial settings for RDMA block
-#define RDMA_DEF_BAUDRATE		9600						// Probably not needed!
-#define RDMA_BAUDRATE			115200
-#define RDMA_DATABITS			XUN_FORMAT_8_BITS
-#define RDMA_PARITY				XUN_FORMAT_NO_PARITY
-#define RDMA_STOPBITS			XUN_FORMAT_1_STOP_BIT
+#define RDMA_DEF_BAUDRATE		9600						//!< RDMA / RS232 controller default baudrate, probably not needed!
+#define RDMA_BAUDRATE			115200						//!< RDMA / RS232 controller baudrate (must match firmware!)
+#define RDMA_DATABITS			XUN_FORMAT_8_BITS			//!< RDMA / RS232 databits, always 8
+#define RDMA_PARITY				XUN_FORMAT_NO_PARITY		//!< RDMA / RS232 parity, always no parity
+#define RDMA_STOPBITS			XUN_FORMAT_1_STOP_BIT		//!< RDMA / RS232 stop bits, always 1
 
-// Register to use for readback self test
-#define RDMA_SELFTEST_REG		1
+#define RDMA_SELFTEST_REG		1							//!< RDMA register to use for readback self test
 
-// Maximum number of retries before UART gives up
-#define RDMA_MAX_RETRIES		1000
+#define RDMA_MAX_RETRIES		1000						//!< Number of retries before UART gives up trying to complete an RDMA command
 
-// Timeout check macro used in read/write functions
+//! Timeout check macro used in read/write functions
 #define RDMA_CHECK_TIMEOUT(n)	if (n==RDMA_MAX_RETRIES) { return XST_FAILURE; }
 
 int initRdma(void);

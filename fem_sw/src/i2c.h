@@ -1,10 +1,8 @@
-/*
- * i2c.h
+/**
+ * @file i2c.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- *  Created on: 29 Mar 2011
- *      Author: mt47
- *
- * I2C abstraction layer for Xilinx
+ * I2C abstraction layer.
  *
  */
 

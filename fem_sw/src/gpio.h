@@ -1,5 +1,6 @@
-/*
- * gpio.h
+/**
+ * @file gpio.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
  * Initialisation function for ML505/507 GPIO devices
  *

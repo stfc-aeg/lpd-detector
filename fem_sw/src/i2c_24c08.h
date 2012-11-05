@@ -1,7 +1,8 @@
-/*
- * i2c_24c08.h
+/**
+ * @file i2c_24c08.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
- * Support functions for M24C08 I2C device
+ * Support library for M24C08 I2C device
  *
  * --------------------------------------------------------
  *

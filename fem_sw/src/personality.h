@@ -1,8 +1,8 @@
-/*
- * personality.h
+/**
+ * @file personality.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
  * Generic header for FEM personality modules (FPMs)
- *
  * NOTE: All FPM_* directories should be tagged as 'Exclude from build' except the required module!
  *
  */
