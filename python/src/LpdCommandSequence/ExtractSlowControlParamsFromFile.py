@@ -584,7 +584,10 @@ class ExtractSlowControlParamsFromFile():
     def convertListIntoXmlFile(self, scList):
         """ Convert the formatted scList into an xml file """
 
-        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/SlowControlMachined.xml'
+        # Get path of current working directory
+        currentDir = os.getcwd()
+
+        filename = currentDir + '/LpdCommandSequence/SlowControlMachined.xml'
         try:
             xml_file = open(filename, 'w')
         except Exception as e:
@@ -666,7 +669,10 @@ class ExtractSlowControlParamsFromFile():
         """ this function is used to produce the lookup table required for the mux_decoder_pixel_XX tags
             there are 512 these (not counting the master one) and this function is only likely to be run 1-2 times at most
         """
-        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scMuxDictKeys.txt'
+        # Get path of current working directory
+        currentDir = os.getcwd()
+
+        filename = currentDir + '/LpdCommandSequence/scMuxDictKeys.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -701,7 +707,7 @@ class ExtractSlowControlParamsFromFile():
     
         """ create the lookup table for Mux Decoder settings that will be used inside this script """
 
-        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scMuxLookupTable.txt'
+        filename = currentDir + '/LpdCommandSequence/scMuxLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -769,8 +775,11 @@ class ExtractSlowControlParamsFromFile():
             pixelTestFeedback_offset += 3
             lookupTableList.append( """                         'self_test_pixel_%i'""" % pxlList[idx] + """          : pixelSelfTest + 0x%03x,\n""" % (pixelTestFeedback_offset) )
 
+        # Get path of current working directory
+        currentDir = os.getcwd()
+
         # Write dictionary keys and values to file
-        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scSelfTestDictKeys.txt'
+        filename = currentDir + '/LpdCommandSequence/scSelfTestDictKeys.txt'
         try:
             pixeltest_file = open(filename, 'w')
         except Exception as e:
@@ -788,7 +797,7 @@ class ExtractSlowControlParamsFromFile():
 
         """ create the lookup table for Mux Decoder settings that will be used inside this script """
 
-        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scSelfTestLookupTable.txt'
+        filename = currentDir + '/LpdCommandSequence/scSelfTestLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -892,8 +901,10 @@ class ExtractSlowControlParamsFromFile():
         """ this function produces the lookup table required for the daq_bias tags
             there are 512 these (not counting the master one) and this function is only likely to be run 1-2 times at most
         """
-        
-        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scBiasDictKeys.txt'
+        # Get path of current working directory
+        currentDir = os.getcwd()
+
+        filename = currentDir + '/LpdCommandSequence/scBiasDictKeys.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -926,7 +937,7 @@ class ExtractSlowControlParamsFromFile():
     
         """ create the lookup table for bias Decoder settings that will be used inside this script """
 
-        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scbiasLookupTable.txt'
+        filename = currentDir + '/LpdCommandSequence/scbiasLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -962,7 +973,7 @@ if __name__ == "__main__":
     
     # Get path of current working directory
     currentDir = os.getcwd()
-    
+
     slowControlParams = ExtractSlowControlParamsFromFile()
     slow_ctrl_data, list_length = slowControlParams.readSlowControlFileintoFormattedList( currentDir + '/LpdCommandSequence/SlowCtrlCmds.txt')
     
@@ -987,7 +998,7 @@ if __name__ == "__main__":
 #    print "%X" % slowControlParams.convertListInto32BitWord(slow_ctrl_data)
     
     ''' Testing reading in entire file into a list of 32-bit words '''
-#    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileIntoList('/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/SlowCtrlCmds.txt')
+#    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileIntoList( currentDir + '/LpdCommandSequence/SlowCtrlCmds.txt')
 #    
 #    print "Mux Control: \t\t\t\t", slow_ctrl_data[0:47]
 #    print "Pixel Self Test and Feedback Control: ", slow_ctrl_data[48:111]
