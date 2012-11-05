@@ -1,5 +1,6 @@
-/*
- * sysace.h
+/**
+ * @file sysace.h
+ * @author Matt Thorpe, STFC Application Engineering Group
  *
  * Wrapper for SystemACE functionality
  *
