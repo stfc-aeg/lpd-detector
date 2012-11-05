@@ -261,7 +261,7 @@ int main()
     		// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
         	// Send config request ACK (currently hardcoded as 0xA5A5FACE!)
-        	if (sendAcquireAckMessage(&mbox, 0xA5A5FACE)==0);
+        	if (sendAcquireAckMessage(&mbox, 0xA5A5FACE)==0)
         	{
         		print("[ERROR] Could not send config ACK to PPC1!\r\n");
         	}
@@ -704,7 +704,7 @@ int main()
 							acquireRunning = 0;
 
 							if (sendStopAck == 1) {
-								if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0);
+								if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
 								{
 									printf("[ERROR] Could not ACK PPC2 on CMD_ACQ_STOP (clean stop)\r\n");
 								}
@@ -844,6 +844,10 @@ int main()
 			if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
 			{
 				printf("[ERROR] Could not ACK PPC2 CMD_ACQ_STOP (while not acquiring)\r\n");
+			}
+			else
+			{
+				printf("DBG: ACKed stop while not running.\r\n");
 			}
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			//printf("[INFO ] Not doing anything with stop acquire command.\r\n");
@@ -1243,6 +1247,7 @@ unsigned short sendAcquireAckMessage(XMbox *pMailbox, u32 state)
 	}
 	else
 	{
+		printf("DBG: XMbox_Write returned %d\r\n", status);
 		return 0;
 	}
 }
