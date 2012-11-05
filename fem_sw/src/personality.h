@@ -41,11 +41,10 @@ typedef struct
 	char errorString[PERS_ERROR_STRING_MAX_LENGTH]; //!< Error string
 } threadState;
 
-// Static (thread global) variables
-int currentThreadType;		//! Non-zero if there is currently a thread running
-threadState state;
-u8 *pInput;
-u8 *pOutput;
-int outputSz;
+int currentThreadType;		//!< Thread global variable: Non-zero if there is currently a thread running
+threadState state;			//!< Thread global variable: Thread state
+u8 *pInput;					//!< Thread global variable: Pointer to input payload (passed to thread)
+u8 *pOutput;				//!< Thread global variable: Pointer to output payload (response from thread)
+int outputSz;				//!< Thread global variable: Size of output payload
 
 #endif /* PERSONALITY_H_ */

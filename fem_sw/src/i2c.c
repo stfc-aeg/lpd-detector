@@ -65,7 +65,7 @@ int initI2C(void)
 /**
  * Starts all I2C engines and enables interrupts
  *
- * @ return operation status (XST_SUCCESS or error)
+ * @return operation status (XST_SUCCESS or error)
  */
 int startI2C(void)
 {
@@ -87,7 +87,7 @@ int startI2C(void)
 /**
  * Stops all I2C engines and disables interrupts
  *
- * @ return operation status (XST_SUCCESS or error)
+ * @return operation status (XST_SUCCESS or error)
  */
 int stopI2C(void)
 {
@@ -202,7 +202,7 @@ static void recvHandler(XIic* pIic, int byteCount)
  * @param dataLen length of payload in bytes
  *
  * @return number of data bytes sent / received or IIC_ERR_* error code (negative integers)
- **/
+ */
 int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsigned dataLen)
 {
 
