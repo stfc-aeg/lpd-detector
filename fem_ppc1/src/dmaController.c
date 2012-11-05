@@ -117,39 +117,6 @@ typedef struct
 	u32 bdCoalesceCnt;
 } mailMsg;
 
-// ------- DCR Debugging -----------
-typedef enum
-{
-	DCR_TOP_ASIC_RX,
-	DCR_BOT_ASIC_RX,
-	DCR_GBE_TX,
-	DCR_UPLOAD_TX
-} dcrRegistersBase;
-
-typedef enum
-{
-	DCR_CHANNEL_RX,
-	DCR_CHANNEL_TX
-} dcrRegistersChannelType;
-
-//! Storage for DMA DCR registers
-// Note this can be for either an RX or TX channel!
-typedef struct
-{
-	dcrRegistersChannelType type;
-	u32 nxtDescPtr;
-	u32 curBufAddr;
-	u32 curBufLength;
-	u32 curDescPtr;
-	u32 tailDescPtr;
-	u32 channelCtrl;
-	u32 irqReg;
-	u32 statusReg;
-	u32 controlReg;
-} dcrRegisters;
-// ------- DCR Debugging -----------
-
-
 // FUNCTION PROTOTYPES
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
@@ -163,9 +130,6 @@ int checkRingConsistency(XLlDma_Bd *pTop, XLlDma_Bd *pBot, XLlDma_Bd *pTx);
 
 int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType);
 int recycleBuffer(XLlDma_BdRing *pBdRings, XLlDma_Bd *pBd, bufferType bType);
-
-int readDcrs(dcrRegistersBase type, dcrRegisters *pReg);
-void printDcr(dcrRegisters *pReg);
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -217,7 +181,6 @@ int main()
 	unsigned short acquireRunning = 0;	// Acquire control flag
 	unsigned short doRx = 0;			// RX control flag for main loop
 	unsigned short doTx = 0;			// TX control flag for main loop
-    unsigned short ackOK = 0;
     unsigned short sendStopAck = 0;
 
 	// Data counters
@@ -306,8 +269,7 @@ int main()
     		// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
         	// Send config request ACK (currently hardcoded as 0xA5A5FACE!)
-        	ackOK = sendAcquireAckMessage(&mbox, 0xA5A5FACE);
-        	if (!ackOK)
+        	if (sendAcquireAckMessage(&mbox, 0xA5A5FACE)==0);
         	{
         		print("[ERROR] Could not send config ACK to PPC1!\r\n");
         	}
@@ -433,8 +395,11 @@ int main()
 
 				acquireRunning = 1;
 
-	    	    // TODO: Parse result from sendAcquireAckMessage
-	    	    sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+				// All OK so ACK PPC2
+	    	    if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
+	    	    {
+	    	    	printf("[ERROR] Could not ACK PPC2 on CMD_ACQ_START!\r\n");
+	    	    }
 
 				while (acquireRunning)
 				{
@@ -746,9 +711,11 @@ int main()
 							pStatusBlock->state = STATE_IDLE;
 							acquireRunning = 0;
 
-				    	    // TODO: Parse result from sendAcquireAckMessage
 							if (sendStopAck == 1) {
-								sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+								if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0);
+								{
+									printf("[ERROR] Could not ACK PPC2 on CMD_ACQ_STOP (clean stop)\r\n");
+								}
 								sendStopAck = 0;
 							}
 
@@ -780,8 +747,15 @@ int main()
 								pStatusBlock->bufferDirty = 1;
 								acquireRunning = 0;
 
-								// TODO: Parse result from sendAcquireAckMessage
-								sendAcquireAckMessage(&mbox, 0);		// NACK because we didn't stop cleanly
+								if (sendStopAck==1)
+								{
+									// NACK because we didn't stop cleanly
+									if (sendAcquireAckMessage(&mbox, 0)==0)
+									{
+										printf("[ERROR] Could not ACK PPC2 on CMQ_ACQ_STOP (dirty stop)\r\n");
+									}
+									sendStopAck = 0;
+								}
 							}
 						}
 					}
@@ -830,7 +804,10 @@ int main()
 						printf("[ERROR] Could not commit %d upload BD(s) to hardware control!  Error code %d\r\n", (int)pStatusBlock->numConfigBds, status);
 					}
 
-					sendAcquireAckMessage(&mbox, 0xFFFFFFFF);
+					if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
+					{
+						printf("[ERROR] Could not ACK PPC2 ACQ_MODE_UPLOAD request\r\n");
+					}
 
 					numConfigBdsToProcess = pStatusBlock->numConfigBds;
 					while (numConfigBdsToProcess>0)
@@ -871,8 +848,11 @@ int main()
 			} // END switch(lastMode)
 			break;
 		case CMD_ACQ_STOP:
-    	    // TODO: Parse result from sendAcquireAckMessage
-			sendAcquireAckMessage(&mbox, 0xFFFFFFFF);		// All OK so ACK PPC2
+			// All OK so ACK PPC2
+			if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
+			{
+				printf("[ERROR] Could not ACK PPC2 CMD_ACQ_STOP (while not acquiring)\r\n");
+			}
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			//printf("[INFO ] Not doing anything with stop acquire command.\r\n");
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -1396,109 +1376,3 @@ int recycleBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 	return XST_SUCCESS;
 }
 
-
-
-/**
- * Reads DCR registers into a struct
- * @param type
- * @param pReg
- *
- * @return 1 if successful or 0 if type is invalid
- */
-int readDcrs(dcrRegistersBase type, dcrRegisters *pReg)
-{
-
-	// You cannot pass variables into mfdcr only constants, so we have to do this the long way!
-	switch(type)
-	{
-
-	case DCR_TOP_ASIC_RX:
-		pReg->type = DCR_CHANNEL_RX;
-		pReg->nxtDescPtr = mfdcr(0xB8);
-		pReg->curBufAddr = mfdcr(0xB9);
-		pReg->curBufLength = mfdcr(0xBA);
-		pReg->curDescPtr = mfdcr(0xBB);
-		pReg->tailDescPtr = mfdcr(0xBC);
-		pReg->channelCtrl = mfdcr(0xBD);
-		pReg->irqReg = mfdcr(0xBE);
-		pReg->statusReg = mfdcr(0xBF);
-		pReg->controlReg = mfdcr(0xC0);
-		break;
-
-	case DCR_BOT_ASIC_RX:
-		pReg->type = DCR_CHANNEL_RX;
-		pReg->nxtDescPtr = mfdcr(0x88);
-		pReg->curBufAddr = mfdcr(0x89);
-		pReg->curBufLength = mfdcr(0x8A);
-		pReg->curDescPtr = mfdcr(0x8B);
-		pReg->tailDescPtr = mfdcr(0x8C);
-		pReg->channelCtrl = mfdcr(0x8D);
-		pReg->irqReg = mfdcr(0x8E);
-		pReg->statusReg = mfdcr(0x8F);
-		pReg->controlReg = mfdcr(0x90);
-		break;
-
-	case DCR_GBE_TX:
-		pReg->type = DCR_CHANNEL_TX;
-		pReg->nxtDescPtr = mfdcr(0xC8);
-		pReg->curBufAddr = mfdcr(0xC9);
-		pReg->curBufLength = mfdcr(0xCA);
-		pReg->curDescPtr = mfdcr(0xCB);
-		pReg->tailDescPtr = mfdcr(0xCC);
-		pReg->channelCtrl = mfdcr(0xCD);
-		pReg->irqReg = mfdcr(0xCE);
-		pReg->statusReg = mfdcr(0xCF);
-		pReg->controlReg = mfdcr(0xD8);
-		break;
-
-	case DCR_UPLOAD_TX:
-		pReg->type = DCR_CHANNEL_TX;
-		pReg->nxtDescPtr = mfdcr(0x98);
-		pReg->curBufAddr = mfdcr(0x99);
-		pReg->curBufLength = mfdcr(0x9A);
-		pReg->curDescPtr = mfdcr(0x9B);
-		pReg->tailDescPtr = mfdcr(0x9C);
-		pReg->channelCtrl = mfdcr(0x9D);
-		pReg->irqReg = mfdcr(0x9E);
-		pReg->statusReg = mfdcr(0x9F);
-		pReg->controlReg = mfdcr(0xA8);
-		break;
-
-	default:
-		// Invalid DCR
-		return 0;
-
-	} // END switch(type)
-
-	return 1;
-}
-
-
-
-/**
- * Prints out a DCR struct
- * @param pReg pointer to DCR struct
- */
-void printDcr(dcrRegisters *pReg)
-{
-	char type;
-	if (pReg->type==DCR_CHANNEL_RX)
-	{
-		type = 'R';
-	}
-	else
-	{
-		type = 'T';
-	}
-
-	printf("[ DCR ] Channel is %cX\r\n", type);
-	printf("[ DCR ] %cX_NXTDESC_PTR    0x%08x\r\n", type, (unsigned int)pReg->nxtDescPtr);
-	printf("[ DCR ] %cX_CURBUF_ADDR    0x%08x\r\n", type, (unsigned int)pReg->curBufAddr);
-	printf("[ DCR ] %cX_CURBUF_LENGTH  0x%08x\r\n", type, (unsigned int)pReg->curBufLength);
-	printf("[ DCR ] %cX_CURDESC_PTR    0x%08x\r\n", type, (unsigned int)pReg->curDescPtr);
-	printf("[ DCR ] %cX_TAILDESC_PTR   0x%08x\r\n", type, (unsigned int)pReg->tailDescPtr);
-	printf("[ DCR ] %cX_CHANNEL_CTRL   0x%08x\r\n", type, (unsigned int)pReg->channelCtrl);
-	printf("[ DCR ] %cX_IRQ_REG        0x%08x\r\n", type, (unsigned int)pReg->irqReg);
-	printf("[ DCR ] %cX_STATUS_REG     0x%08x\r\n", type, (unsigned int)pReg->statusReg);
-	printf("[ DCR ] DMA_CONTROL_REG   0x%08x\r\n", (unsigned int)pReg->controlReg);
-}
