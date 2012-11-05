@@ -42,17 +42,17 @@ extern XSysAce sysace;
 extern u32 femErrorState;
 
 struct clientStatus {
-	int state;						//! State machine status, of packetStatus
-	int size;						//! Total number of bytes received on current packet
-	struct protocol_header *pHdr;	//! Pointer to protocol header buffer
-	u8 *pPayload;					//! Pointer to payload buffer
-	int payloadBufferSz;			//! Currently allocated size for pPayload
-	u8 gotData;						//! Whether we got data on this loop cycle or not
-	int timeoutCount;				//! Counter for timeouts
-	u8 *pBusDirect;					//! Pointer for BUS_DIRECT writes
-	int busDirectSize;				//! Bytes received in BUS_DIRECT mode
-	u8 errorCode;					//! Error code
-	char errorString[ERR_STRING_MAX_LENGTH];	//! Error string
+	int state;									//!< State machine status, of type packetStatus
+	int size;									//!< Total number of bytes received in current packet
+	struct protocol_header *pHdr;				//!< Pointer to protocol header buffer
+	u8 *pPayload;								//!< Pointer to payload buffer
+	int payloadBufferSz;						//!< Currently allocated size for pPayload
+	u8 gotData;									//!< Whether we received data on this loop cycle or not
+	int timeoutCount;							//!< Timeout counter
+	u8 *pBusDirect;								//!< Pointer for BUS_DIRECT writes
+	int busDirectSize;							//!< Bytes received in BUS_DIRECT mode
+	u8 errorCode;								//!< Error code
+	char errorString[ERR_STRING_MAX_LENGTH];	//!< Error string
 };
 
 void commandProcessorThread(void* arg);

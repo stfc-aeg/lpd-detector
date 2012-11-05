@@ -18,29 +18,29 @@
 struct fem_config
 {
 	// Header (2 bytes)
-	u16 header;
+	u16 header;					//!< Header: Structure header (to identify in EEPROM)
 
 	// Networking (18 bytes)
-	u8 net_mac[6];
-	u8 net_ip[4];
-	u8 net_nm[4];
-	u8 net_gw[4];
+	u8 net_mac[6];				//!< Networking: MAC address
+	u8 net_ip[4];				//!< Networking: IP address
+	u8 net_nm[4];				//!< Networking: Netmask
+	u8 net_gw[4];				//!< Networking: Default gateway
 
 	// For hardware monitoring (2 bytes)
-	u8 temp_high_setpoint;
-	u8 temp_crit_setpoint;
+	u8 temp_high_setpoint;		//!< SysMon: FPGA high (warning) temperature
+	u8 temp_crit_setpoint;		//!< SysMon: FPGA critical (shutdown) temperature
 
 	// Versioning information (8 bytes)
-	u8 sw_major_version;
-	u8 sw_minor_version;
-	u8 fw_major_version;
-	u8 fw_minor_version;
-	u8 hw_major_version;
-	u8 hw_minor_version;
-	u8 board_id;
-	u8 board_type;
+	u8 sw_major_version;		//!< Versioning: Software major version
+	u8 sw_minor_version;		//!< Versioning: Software minor version
+	u8 fw_major_version;		//!< Versioning: Firmware major version
+	u8 fw_minor_version;		//!< Versioning: Firmware minor version
+	u8 hw_major_version;		//!< Versioning: Hardware major version
+	u8 hw_minor_version;		//!< Versioning: Hardware minor version
+	u8 board_id;				//!< Versioning: Board ID
+	u8 board_type;				//!< Versioning: Board type
 
-	u8 xor_checksum;
+	u8 xor_checksum;			//!< Checksum: XOR checksum
 
 };
 

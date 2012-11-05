@@ -34,11 +34,11 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 
 typedef struct
 {
-	u32 state;		                                //! Thread state (0=idle, 1=working)
-	u32 numOps;		                                //! Number of requested operations / steps
-	u32 compOps;	                                //! Number of completed operations
-	u32 error;		                                //! Error code, non zero denotes error!
-	char errorString[PERS_ERROR_STRING_MAX_LENGTH]; //! Error string
+	u32 state;		                                //!< Thread state (0=idle, 1=working)
+	u32 numOps;		                                //!< Number of requested operations / steps
+	u32 compOps;	                                //!< Number of completed operations
+	u32 error;		                                //!< Error code, non zero denotes error!
+	char errorString[PERS_ERROR_STRING_MAX_LENGTH]; //!< Error string
 } threadState;
 
 // Static (thread global) variables
