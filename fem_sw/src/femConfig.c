@@ -8,8 +8,7 @@
 #include "fem.h"
 #include "femConfig.h"
 
-// Creates failsafe default config object, used in case EEPROM config is not valid or missing
-/*
+/**
  * Creates a failsafe FEM configuration structure to be used in case
  * a valid block is not found in EEPROM or for testing.
  *
@@ -70,12 +69,13 @@ void createFailsafeConfig(struct fem_config* pConfig)
 
 }
 
-/*
- * Reads FEM configuration block to EEPROM starting at addr.
+/**
+ * Reads FEM configuration block to EEPROM starting at given address
  *
  * @param addr EEPROM start address
  * @param pConfig pointer to fem_config structure to read to
- * @returns 0 on success, -1 on error
+ *
+ * @return 0 on success, -1 on error
  */
 int readConfigFromEEPROM(unsigned int addr, struct fem_config* pConfig)
 {
@@ -118,12 +118,13 @@ int readConfigFromEEPROM(unsigned int addr, struct fem_config* pConfig)
 }
 
 
-/*
- * Writes FEM configuration block to EEPROM starting at addr.
+/**
+ * Writes FEM configuration block to EEPROM starting at given address
  *
  * @param addr EEPROM start address
  * @param pConfig pointer to fem_config structure to write from
- * @returns 0 on success, -1 on error
+ *
+ * @return 0 on success, -1 on error
  */
 int writeConfigToEEPROM(unsigned int addr, struct fem_config* pConfig)
 {

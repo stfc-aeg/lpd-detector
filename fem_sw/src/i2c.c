@@ -344,6 +344,7 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 /**
  * Performs a write transaction to an I2C slave device.
  * @param interfaceIdx I2C device index
+ * @param slaveAddr I2C slave address
  * @param pData pointer to data buffer to write from
  * @param dataLen length of data (in bytes) to write
  *
@@ -358,9 +359,9 @@ int writeI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen)
 /**
  * Performs a read transaction from an I2C slave device.
  * @param interfaceIdx I2C device index
+ * @param slaveAddr I2C slave address
  * @param pData pointer to data buffer to read to
  * @param dataLen length of data (in bytes) to read
- * @param bAddr hardware base address of I2C controller to use
  *
  * @return number of bytes read
  */

@@ -11,12 +11,15 @@
 #include "xcache_l.h"
 #endif
 
-/* Manages the connection of clients to the FEM and
+/**
+ * Manages the connection of clients to the FEM and
  * the reception / validation / response generation of
  * packets.
  *
  * Flag reloadRequested when non zero causes main event loop to drop out and
  * wait a number of seconds before reloading the requested firmware index from the systemace.
+ *
+ * @param arg pointer to argument
  *
  */
 void commandProcessorThread(void* arg)
@@ -562,7 +565,7 @@ void commandProcessorThread(void* arg)
 
 
 
-/*
+/**
  * Cleanly disconnects a client and frees any payload buffers > NET_NOMINAL_RX_BUFFER_SZ
  *
  * @param pState pointer to client state struct of client that has disconnected
@@ -599,7 +602,7 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
 }
 
 
-/*
+/**
  * Processes received commands over LWIP.  It is assumed that packets are well formed
  * and have been checked before passing to this function.
  *
@@ -607,8 +610,8 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
  * @param pTxHeader pointer to protocol_header for outbound packet
  * @param pRxPayload pointer to payload buffer of received packet
  * @param pTxPayload pointer to payload buffer for outbound packet
- * @param pGpio pointer to RDMA MUX GPIO instance
  * @param pReloadRequested pointer to firmware reload index in main event loop
+ * @param pClient pointer to client status
  *
  * @return 0 if request completed successfully, -1 if an error occured.
  */
@@ -1061,9 +1064,10 @@ int commandHandler(struct protocol_header* pRxHeader,
 
 
 
-/*
+/**
  * Validates the fields of a header for consistency
  * @param pHeader pointer to header
+ * @param pClient pointer to client status
  *
  * @return 0 if header logically correct, -1 and sets errorString / errorCode in pClient if incorrect
  */
@@ -1202,9 +1206,11 @@ int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClien
 
 
 
-/* Flushes data on given socket.  Generally used after malformed packet or
+/**
+ * Flushes data on given socket.  Generally used after malformed packet or
  * packet exceeding maximum payload size received.
  * Will read in chunks to the specified buffer, overwriting the contents.
+ *
  * @param sock socket
  * @param mem pointer to memory buffer
  * @param len size of memory buffer
@@ -1223,9 +1229,9 @@ void flushSocket(int sock, void *mem, int len)
 
 
 
-/* Generates and an error packet to the provided client socket
+/**
+ * Generates and an error packet to the provided client socket
  *
- * @param pHeader pointer to header to send
  * @param pTxPayload pointer to payload to send (assumed to have a protocol_header struct at this pointer!)
  * @param clientSocket socket identifier for client
  * @param pClient pointer to clientStatus struct for client
