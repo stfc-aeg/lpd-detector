@@ -164,14 +164,6 @@ int main()
 	mailMsg msg;
     mailMsg *pMsg = &msg;
 
-    // DCR debugging
-    /*
-    dcrRegisters dcrTopAsic;
-    dcrRegisters dcrBotAsic;
-    dcrRegisters dcrGbe;
-    dcrRegisters dcrUpload;
-	*/
-
     // Coalescing count
     int numRxBDPerLoop;// = LL_DMA_RX_NUM_BD_PER_LOOP;
     int numTxBDPerLoop;// = LL_DMA_TX_NUM_BD_PER_LOOP;
