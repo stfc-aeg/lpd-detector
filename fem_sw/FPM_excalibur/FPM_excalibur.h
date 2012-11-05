@@ -39,8 +39,8 @@ const unsigned int kNumAsicDpmWords = 8;
 
 // RDMA address
 // TODO: these have top nibble tweaked to avoid MUX select 'feature'
-#define ASIC_DPM_RDMA_ADDR 0xA0000000
-#define ASIC_CONTROL_ADDR 0x90000000
+#define ASIC_DPM_RDMA_ADDR 0x0A000000
+#define ASIC_CONTROL_ADDR 0x09000000
 
 const u32 kExcaliburAsicDpmRdmaAddress    = ASIC_DPM_RDMA_ADDR;
 const u32 kExcaliburAsicControlAddr       = ASIC_CONTROL_ADDR;

@@ -283,6 +283,24 @@ int setupScan(dacScanParams* scanParams)
 	int status;
 	u32 shutterCounter;
 
+    // Send ASIC control block reset
+    status = writeRdma(kExcaliburAsicControlReg, 0x400000);
+    if (status != XST_SUCCESS)
+    {
+    	SETPERSERR(FPM_EXCALIBUR_SETUP_FAILED,
+    			"RDMA write to reset ASIC control failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+    status = writeRdma(kExcaliburAsicControlReg, 0x0);
+    if (status != XST_SUCCESS)
+    {
+    	SETPERSERR(FPM_EXCALIBUR_SETUP_FAILED,
+    			"RDMA write to clear ASIC ctrl register failed, status %d", status);
+    	rc = 1;
+    	return rc;
+    }
+
 	// Set number of frames to be triggered in ASIC control block - single frame at a time
 	status = writeRdma(kExcaliburAsicFrameCounter, 1);
 	if (status != XST_SUCCESS)
