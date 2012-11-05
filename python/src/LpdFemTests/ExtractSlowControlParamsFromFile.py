@@ -558,8 +558,10 @@ class ExtractSlowControlParamsFromFile():
 
         # Get path of current working directory
         currentDir = os.getcwd()
+        if not currentDir.endswith("LpdFemTests"):
+            thisFile = currentDir + "/LpdFemTests"
 
-        filename = currentDir + '/LpdFemTests/SlowControlMachined.xml'
+        filename = currentDir + '/SlowControlMachined.xml'
         try:
             xml_file = open(filename, 'w')
         except Exception as e:
@@ -672,8 +674,10 @@ class ExtractSlowControlParamsFromFile():
         """
         # Get path of current working directory
         currentDir = os.getcwd()
+        if not currentDir.endswith("LpdFemTests"):
+            thisFile = currentDir + "/LpdFemTests"
 
-        filename = currentDir + '/LpdFemTests/scMuxDictKeys.txt'
+        filename = currentDir + '/scMuxDictKeys.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -708,7 +712,7 @@ class ExtractSlowControlParamsFromFile():
     
         """ create the lookup table for Mux Decoder settings that will be used inside this script """
 
-        filename = currentDir + '/LpdFemTests/scMuxLookupTable.txt'
+        filename = currentDir + '/scMuxLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -778,9 +782,11 @@ class ExtractSlowControlParamsFromFile():
 
         # Get path of current working directory
         currentDir = os.getcwd()
+        if not currentDir.endswith("LpdFemTests"):
+            thisFile = currentDir + "/LpdFemTests"
 
         # Write dictionary keys and values to file
-        filename = currentDir + '/LpdFemTests/scSelfTestDictKeys.txt'
+        filename = currentDir + '/scSelfTestDictKeys.txt'
         try:
             pixeltest_file = open(filename, 'w')
         except Exception as e:
@@ -798,7 +804,7 @@ class ExtractSlowControlParamsFromFile():
 
         """ create the lookup table for Mux Decoder settings that will be used inside this script """
 
-        filename = currentDir + '/LpdFemTests/scSelfTestLookupTable.txt'
+        filename = currentDir + '/scSelfTestLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -904,8 +910,10 @@ class ExtractSlowControlParamsFromFile():
         """
         # Get path of current working directory
         currentDir = os.getcwd()
+        if not currentDir.endswith("LpdFemTests"):
+            thisFile = currentDir + "/LpdFemTests"
 
-        filename = currentDir + '/LpdFemTests/scBiasDictKeys.txt'
+        filename = currentDir + '/scBiasDictKeys.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -938,7 +946,7 @@ class ExtractSlowControlParamsFromFile():
     
         """ create the lookup table for bias Decoder settings that will be used inside this script """
 
-        filename = currentDir + '/LpdFemTests/scbiasLookupTable.txt'
+        filename = currentDir + '/scbiasLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -975,8 +983,11 @@ if __name__ == "__main__":
     # Get path of current working directory
     currentDir = os.getcwd()
 
+    if not currentDir.endswith("LpdFemTests"):
+        thisFile = currentDir + "/LpdFemTests"
+
     slowControlParams = ExtractSlowControlParamsFromFile()
-    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileintoFormattedList( currentDir + '/LpdFemTests/SlowCtrlCmds.txt')
+    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileintoFormattedList( thisFile + '/SlowCtrlCmds.txt')
     
     # Display section by section the slow control values extracted from the file above
     slowControlParams.displayFormattedList(slow_ctrl_data, list_length)
