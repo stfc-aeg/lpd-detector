@@ -21,7 +21,7 @@ void reloadChain(XSysAce *pAce, unsigned int idx)
 	XSysAce_ResetCfg(pAce);
 }
 
-/*
+/**
  * Writes a data buffer containing a SystemACE image to the Compact Flash card
  * @param idx index of image to write between 1-7, 0 is reserved as a failsafe boot image
  * @param addr base address in DDR of sysace image
