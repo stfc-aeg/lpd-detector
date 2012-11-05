@@ -1,5 +1,5 @@
 # Check in setParaValue() for list/integer type 
-import types, sys
+import types, sys, os
 
 from xml.etree.ElementInclude import ElementTree
 from xml.etree.ElementTree import ParseError
@@ -163,23 +163,12 @@ class SlowCtrlParams(object):
                            'self_test_enable'            : [1,  3584,   -1,         [False, True, False]],
                            'daq_bias_default'            : [5,  -1,     -1,         [False, True, False]],
                            'daq_bias'                    : [5,  3585,   [-1] * 47,  [False, True, True]],
-                           'spare_bits'                  : [5,  3820,   -1,         [False, True, False]],        # Special Case: 5 bits cover everything
+                           'spare_bits'                  : [5,  3820,   -1,         [False, True, False]],       # Special Case: 5 bits cover everything
                            'filter_control'              : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
                            'adc_clock_delay'             : [20, 3845,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
                            'digital_control'             : [40, 3865,   -1,         [False, True, False]],       # Special Case: 40 bits cover everything
                            }
-        # Definition of position of fast command fields in BRAM words
-#        self.sync = 1
-#        self.sync_pos = 21
-#        self.nop_pos  = 22
-#        self.cmd_pos  = 12
-#        self.sync_reset_pos = 2
 
-        # Count total number of nops
-#        self.total_number_nops = 0
-        
-        # Count total number of words
-#        self.total_number_words = 0
         
         ''' Debug information '''
         if self.bDebug:
@@ -274,9 +263,6 @@ class SlowCtrlParams(object):
         #TODO: sort this out; sequence should come from the buildBitstream() function ??
         sequence  = self.buildBitstream()
         
-        # Count the total number of words
-#        self.total_number_words = len(sequence)
-        
         # Return the command sequence
         return sequence
 
@@ -305,7 +291,9 @@ class SlowCtrlParams(object):
 
     def doLookupTableCheck(self, dictKey, idx):
         '''
-            Accepts the dictionary key dictKey an and associated index 'idx'
+            Accepts the dictionary key 'dictKey' and associated index 'idx' and performs the dictionary lookup for the four different keys that have a dictionary lookup table.
+            
+            'idx' returned unchanged for the other keys.
         '''
         # Does dictKey have an associated lookup table?
         if dictKey == "mux_decoder":
@@ -332,9 +320,9 @@ class SlowCtrlParams(object):
         # Increment tree depth counter
         self.depth = self.depth + 1
 
-        # The structure of the parameters to dictionary is:
+        # The structure of the parameters dictionary is:
         # paramsDict = {'dictKey' : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
-        #     where values(s) is an integer or a list and the nested list of booleans defines which tags that are required
+        #     where values(s) is an integer or a list, and the nested list of booleans defines which tags that are required
 
         # Loop over child nodes of the current element
         for child in theElement:
@@ -367,12 +355,12 @@ class SlowCtrlParams(object):
                 if self.bDebug:
                     print "value = ", value,
                 
-                # is there a pixel tag?
+                # Is there a pixel tag?
                 if bPixel:
                     # Get pixel
                     pixel = self.getAttrib(child, 'pixel')
                     
-                    # Use pixel number to obtain pixel order using the lookup table function (where applicable)
+                    # Use pixel number to obtain pixel order using the lookup table function
                     orderedPxl = self.doLookupTableCheck(cmd, pixel)
                     
                     if self.bDebug:
@@ -381,11 +369,11 @@ class SlowCtrlParams(object):
                     self.setParamValue(cmd, orderedPxl, value)
 
                 else:
-                    # Is there a index tag?
+                    # No pixel; Is there an index tag?
                     if bIndex:
                         index = self.getAttrib(child, 'index')
                         
-                        # Use index to obtain index order using the lookup table function (where applicable)
+                        # Use index to obtain index order using the lookup table function
                         orderedIdx = self.doLookupTableCheck(cmd, index)
                         
                         if self.bDebug:
@@ -404,7 +392,6 @@ class SlowCtrlParams(object):
         if self.bDebug:
             print "\n\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
             
-            
 
         # Pass through XXX_default keys and change their value from -1 to 0 unless already set
         for key in self.paramsDict:
@@ -413,14 +400,14 @@ class SlowCtrlParams(object):
                 if self.bDebug:
                     print "1st Pass: Found _default key: ", key, " = ",
 
-                # Obtain default value
+                # Obtain _default's value
                 defaultKeyValue = self.getParamValue(key)
                 if self.bDebug:
                     print defaultKeyValue,
 
-                # Is XXX_default not specified ?
+                # Is XXX_default's value not specified ?
                 if defaultKeyValue[2] == -1:
-                    # Default not set; set the _default key's value to 0
+                    # Default not set; set it's value to 0
                     self.setParamValue(key, 0, 0)
                     if self.bDebug:
                         print " now = ", self.getParamValue(key)[2]
@@ -455,15 +442,15 @@ class SlowCtrlParams(object):
 
                 # Updates all values of the key except any that have already been explicitly set
                 for idx in range(sectionKeyLength):
-                    # Update only if pixel not explicitly set
+                    # Update only if value not explicitly set
                     if sectionKeyValue[2][idx] == -1:
-                        # -1 denotes pixel hasn't been explicitly set; go ahead and update it
+                        # -1 denotes value hasn't been explicitly set; go ahead and update it
                         self.setParamValue(sectionKey, idx, defaultKeyValue[2])
             else:
                 # All keys that does not end with "_default", and that does not contain a list of values
                 #    eg:
                 #        self_test_enable, spare_bits, filter_control, adc_clock_delay, digital_control
-                #
+
                 keyValue = self.getParamValue(key)
 
                 if isinstance(keyValue[2], types.IntType):
@@ -474,15 +461,10 @@ class SlowCtrlParams(object):
                     if keyValue[2] == -1:
                         # Not set; Set it to 0
                         self.setParamValue(key, 0, 0)
-
                     
         # Back up one level in the tree              
         self.depth = self.depth - 1
 
-        if self.bDebug:
-            print "______________________________________________________________________________________"
-            print "                FINISHED"
-            print "______________________________________________________________________________________"
         
 #        print self.paramsDict['mux_decoder_default']
 #        print self.paramsDict['mux_decoder']             
@@ -521,13 +503,13 @@ class SlowCtrlParams(object):
 
                 # Get dictionary values for this key
                 cmdParams = self.getParamValue(dictKey)
-                # word width of this key?
+                # Word width (number of bits) of this key?
                 keyWidth = cmdParams[0]
                 # Where does current key reside within the sequence?
                 wordPosition = cmdParams[1] / 32
                 # Slow Control Value(s)
                 slowControlWordContent = cmdParams[2]
-                # bitPosition tracks the current bit position relative to the entire length of sequence
+                # bitPosition tracks the current bit position relative to the entire length of sequence (0 - 3904)
                 bitPosition = cmdParams[1]
                 
                 # Is this a list?
@@ -548,7 +530,7 @@ class SlowCtrlParams(object):
                         specialCaseOffset = 0
                         
                     keyWidth = keyWidth + specialCaseOffset
-                    # Create a bit array to save each slow control word bit by bit
+                    # Create a bit array to save each slow control word, bit by bit
                     bitwiseArray = [0] * (keyWidth * numBitsRequired)
 
                     ''' 
@@ -567,7 +549,7 @@ class SlowCtrlParams(object):
                     '''
                         LIST TYPE: SECOND LOOP
                     '''
-                    # Loop over this new list and chop each 32 bits into the encoded sequence
+                    # Loop over this new list and copy 32 bits at a time into the encoded sequence
                     for idx in range(len(bitwiseArray)):
 #                        ''' DEBUG INFO '''
 #                        if dictKey == debugComparisonKey:
@@ -585,11 +567,13 @@ class SlowCtrlParams(object):
                     '''
                         INTEGER TYPE
                     '''
+                    # Split the integer into bitwise array
+
                     # Need not update encoded sequence if slow control word empty
                     if slowControlWordContent == 0:
                         continue
 
-                    # Split the integer into bitwise array
+                    # How many bits to use
                     numBitsRequired = cmdParams[0]
                     # Create a bit array to save each bit individually from the slow control word
                     bitwiseArray = [0] * numBitsRequired                    
@@ -607,7 +591,7 @@ class SlowCtrlParams(object):
                         INTEGER TYPE: SECOND LOOP
                     '''
                     
-                    # Loop over this new list and chop each 32 bits into the encoded sequence
+                    # Loop over this new list and copy into the encoded sequence
                     for idx in range(len(bitwiseArray)):
 #                        ''' DEBUG INFO '''
 #                        if dictKey == debugComparisonKey:
@@ -1213,12 +1197,10 @@ class SlowCtrlParamsTest(unittest.TestCase):
                                 <mux_decoder_default value="7"/>
                             </lpd_slow_ctrl_sequence>
         '''
-
     
         # Parse XML and encode
         paramsObj = SlowCtrlParams(stringCmdXml)
         encSeq = paramsObj.encode()
-
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
@@ -1248,7 +1230,6 @@ class SlowCtrlParamsTest(unittest.TestCase):
             print "%9X" % seq[idx],
         print "\n"
         
-        
 
 if __name__ == '__main__':
     
@@ -1256,26 +1237,25 @@ if __name__ == '__main__':
     unittest.main()
     
     sys.exit()
-    ''' Manual testing '''
-    theParams = SlowCtrlParams('sampleSlowControl.xml', fromFile=True)
-#    theParams = SlowCtrlParams('simple.xml', fromFile=True)
-    
-#    theParams.getParamValue("mux_decoder_default")
-    width, posn, val, tags = theParams.getParamValue("mux_decoder_default")
-#    print "Before: ", width, posn, val, "...", 
-    
-#    print "Changing self_test_decoder_default.."
-#    theParams.setParamValue("mux_decoder_default", 1, 3)
-     
-#    width, posn, val = theParams.getParamValue("mux_decoder_default")
-#    print "After: ", width, posn, val
 
-    theElement = "mux_decoder_default"
+    ''' 
+        Manual testing - Turning the contents of the slow control file 
+                         into a 32 bit word sequence and print it
+    '''
+    
+    currentDir = os.getcwd()
+    thisFile = currentDir + "/LpdCommandSequence" + '/SlowControlMachined.xml'
+#    print thisFile
+
+    theParams = SlowCtrlParams(thisFile, fromFile=True)
+    encodedSequence = theParams.encode()
+
+    print "Processing '%s' produces the sequence: " % thisFile
+    for idx in range(len(encodedSequence)):
+        if (idx % 8 == 0):
+            print "\n%3i: " % idx,
+        print "%9X" % encodedSequence[idx],
     print "\n"
     
-    theParams.displayDictionaryValues()
-    
-    ''' Encode XML file into dictionary '''
-    result = theParams.encode()
 
     theParams.displayDictionaryValues()
