@@ -6,7 +6,7 @@ Created on Aug 29, 2012
 
 # Import Python standard modules
 from string import strip, split
-#import time
+import os
 
 class ExtractSlowControlParamsFromFile():
 
@@ -583,12 +583,12 @@ class ExtractSlowControlParamsFromFile():
     
     def convertListIntoXmlFile(self, scList):
         """ Convert the formatted scList into an xml file """
-        
-        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/SlowControlMachined.xml'
+
+        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/SlowControlMachined.xml'
         try:
             xml_file = open(filename, 'w')
-        except Exception as errNo:
-            print "convertListIntoXmlFile: Couldn't open file: ", errNo
+        except Exception as e:
+            print "convertListIntoXmlFile: Couldn't open file: ", e
 
         stringList = []
         # XML header information
@@ -639,8 +639,8 @@ class ExtractSlowControlParamsFromFile():
         
         try:
             xml_file.close()
-        except Exception as errNo:
-            print "convertListIntoXmlFile: Couldn't close file: ", errNo
+        except Exception as e:
+            print "convertListIntoXmlFile: Couldn't close file: ", e
             
         if xml_file.closed:
             pass
@@ -666,11 +666,11 @@ class ExtractSlowControlParamsFromFile():
         """ this function is used to produce the lookup table required for the mux_decoder_pixel_XX tags
             there are 512 these (not counting the master one) and this function is only likely to be run 1-2 times at most
         """
-        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scMuxDictKeys.txt'
+        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scMuxDictKeys.txt'
         try:
             lookup_file = open(filename, 'w')
-        except Exception as errNo:
-            print "createMuxDecoderDictKeysAndLookupTable: Couldn't open file because: ", errNo
+        except Exception as e:
+            print "createMuxDecoderDictKeysAndLookupTable: Couldn't open file because: ", e
         
         # Create number in order for mux decoder pixels
         numberList = []
@@ -695,17 +695,17 @@ class ExtractSlowControlParamsFromFile():
         
         try:
             lookup_file.close()
-        except Exception as errNo:
-            print "createdMuxDecoderTable: Couldn't close file because: ", errNo
+        except Exception as e:
+            print "createdMuxDecoderTable: Couldn't close file because: ", e
 
     
         """ create the lookup table for Mux Decoder settings that will be used inside this script """
 
-        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scMuxLookupTable.txt'
+        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scMuxLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
-        except Exception as errNo:
-            print "createMuxDecoderDictKeysAndLookupTable: Couldn't open 2nd file because: ", errNo
+        except Exception as e:
+            print "createMuxDecoderDictKeysAndLookupTable: Couldn't open 2nd file because: ", e
         
         # Preamble..
         lookup_file.write("muxDecoderLookupTable = [")
@@ -729,10 +729,10 @@ class ExtractSlowControlParamsFromFile():
         
         try:
             lookup_file.close()
-        except Exception as errNo:
-            print "createMuxDecoderDictKeysAndLookupTable: Couldn't close 2nd file because: ", errNo
+        except Exception as e:
+            print "createMuxDecoderDictKeysAndLookupTable: Couldn't close 2nd file because: ", e
         
-    def creatingPixelSelfTestAndFeedbackControlDictKeysAndLookupTable(self):
+    def createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable(self):
         """ Function to be used once or twice for creating the dictionary keys and lookup table """
         
         old_start = 497
@@ -768,16 +768,13 @@ class ExtractSlowControlParamsFromFile():
             lookupTableList.append( """                         'feedback_select_pixel_%i'""" % pxlList[idx] + """    : pixelSelfTest + 0x%03x,\n""" % (pixelTestFeedback_offset) )
             pixelTestFeedback_offset += 3
             lookupTableList.append( """                         'self_test_pixel_%i'""" % pxlList[idx] + """          : pixelSelfTest + 0x%03x,\n""" % (pixelTestFeedback_offset) )
-        
-#        for idx in range(6):
-#            print lookupTableList[idx]
-        
+
         # Write dictionary keys and values to file
-        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scSelfTestDictKeys.txt'
+        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scSelfTestDictKeys.txt'
         try:
             pixeltest_file = open(filename, 'w')
-        except Exception as errNo:
-            print "creatingPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open file because: ", errNo
+        except Exception as e:
+            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open file because: ", e
         
         # Write these dictionary keys to file; Note each pixel has two settings, ie 1024 or 512*2
         for idx in range(pixels*2):
@@ -785,17 +782,17 @@ class ExtractSlowControlParamsFromFile():
         
         try:
             pixeltest_file.close()
-        except Exception as errNo:
-            print "creatingPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close file because: ", errNo
+        except Exception as e:
+            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close file because: ", e
          
 
         """ create the lookup table for Mux Decoder settings that will be used inside this script """
 
-        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scSelfTestLookupTable.txt'
+        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scSelfTestLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
-        except Exception as errNo:
-            print "creatingPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open 2nd file because: ", errNo
+        except Exception as e:
+            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open 2nd file because: ", e
         
         # Preamble..
         lookup_file.write("pixelSelfTestLookupTable = [")
@@ -815,8 +812,7 @@ class ExtractSlowControlParamsFromFile():
             
             if idx % 7 == 6:
                 lookup_file.write("\n")
-#            if idx < 12:
-#                print noSpaces
+
         # Close list with ] ..
         lookup_file.write("]")    
         
@@ -825,19 +821,83 @@ class ExtractSlowControlParamsFromFile():
         
         try:
             lookup_file.close()
-        except Exception as errNo:
-            print "creatingPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", errNo
+        except Exception as e:
+            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", e
+
+    def new__createPixelSelfTestAndFeedbackLookupTable(self):
+        """ Function to be used once for creating feedback_select/self_test_decoder lookup table """
+        
+        old_start = 497
+        new_start = 497
+        # Pixel numbering from 1-512 is represented in Python by 0-511.
+        #    So in order to number from 1-512 in Python, we must run until 513
+        old_stop = 513
+        new_stop = 513
+        # Direction, positive = incremental, negative = decremental
+        dir = 1
+        pxlList = []
+        for i in range(32):
+            # Save start and stop values from previous iteration
+            old_start = new_start
+            old_stop = new_stop
+            for i in range(new_start, new_stop, dir):
+                pxlList.append(i)
+            # Calculate next iteration's start and stop that is based upon the previous.
+            #    Note that the distance fluctuates between either 17 or 15 from one row to the next
+        
+            new_start = old_stop-16-dir
+            new_stop = old_start-16-dir
+            dir = dir * (-1)
+
+        # Create dictionary lookup table  
+        lookupTableList = []
+        pixels = 512
+        
+        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
+        for idx in range(pixels):
+            lookupTableList.append("%3i" % pxlList[idx] )         
+
+        """ create the lookup table for Mux Decoder settings that will be used inside this script """
+
+        filename = '/u/ckd27546/workspace/filename2.txt'
+        try:
+            lookup_file = open(filename, 'w')
+        except Exception as e:
+            print "__new__...():  Couldn't open 2nd file because: ", e
+        
+        # Preamble..
+        lookup_file.write("pixelSelfTestLookupTable = [")
+        
+        ''' Extract 'feedback_select_pixel_' /'self_test_pixel_' section from each key name.. '''
+        for idx in range(pixels):    
+            if (idx % 16 == 0):
+                lookup_file.write("\n")
+
+            noSpaces = lookupTableList[idx]
+            # Write keyname to file
+            lookup_file.write( "" + noSpaces + ", ")
+            
+        # Close list with ] ..
+        lookup_file.write("]")    
+        
+        # The list should similar to this:
+        '''["feedback_select_pixel_497", "self_test_pixel_497", "feedback_select_pixel_498", ...'''
+        
+        try:
+            lookup_file.close()
+        except Exception as e:
+            print "__new__...():  Couldn't close 2nd file because: ", e
 
     def createBiasControlDictKeysAndLookupTable(self):
         """ this function produces the lookup table required for the daq_bias tags
             there are 512 these (not counting the master one) and this function is only likely to be run 1-2 times at most
         """
         
-        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scBiasDictKeys.txt'
+        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scBiasDictKeys.txt'
         try:
             lookup_file = open(filename, 'w')
-        except Exception as errNo:
-            print "createBiasControlDictKeysAndLookupTable: Couldn't open file because: ", errNo
+        except Exception as e:
+            print "createBiasControlDictKeysAndLookupTable: Couldn't open file because: ", e
         
         # Create number in order for daq_bias 
         numberList = [47, 46, 21, 15, 9, 36, 45, 19, 14, 8, 44, 32, 18, 12, 5, 43, 30, 17, 11, 2, 42, 24, 16, 10, 1, 
@@ -860,17 +920,17 @@ class ExtractSlowControlParamsFromFile():
         
         try:
             lookup_file.close()
-        except Exception as errNo:
-            print "createdbiasDecoderTable: Couldn't close file because: ", errNo
+        except Exception as e:
+            print "createdbiasDecoderTable: Couldn't close file because: ", e
 
     
         """ create the lookup table for bias Decoder settings that will be used inside this script """
 
-        filename = '/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/scbiasLookupTable.txt'
+        filename = '/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/scbiasLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
-        except Exception as errNo:
-            print "createBiasControlDictKeysAndLookupTable: Couldn't open 2nd file because: ", errNo
+        except Exception as e:
+            print "createBiasControlDictKeysAndLookupTable: Couldn't open 2nd file because: ", e
         
         # Preamble..
         lookup_file.write("biasDecoderLookupTable = [")
@@ -894,13 +954,17 @@ class ExtractSlowControlParamsFromFile():
         
         try:
             lookup_file.close()
-        except Exception as errNo:
-            print "createBiasControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", errNo
+        except Exception as e:
+            print "createBiasControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", e
 
 
 if __name__ == "__main__":
+    
+    # Get path of current working directory
+    currentDir = os.getcwd()
+    
     slowControlParams = ExtractSlowControlParamsFromFile()
-    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileintoFormattedList('/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/SlowCtrlCmds.txt')
+    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileintoFormattedList( currentDir + '/LpdCommandSequence/SlowCtrlCmds.txt')
     
     # Display section by section the slow control values extracted from the file above
     slowControlParams.displayFormattedList(slow_ctrl_data, list_length)
@@ -909,20 +973,21 @@ if __name__ == "__main__":
 
     ''' Create dictionary keys / lookup table required for Pixel Self Test and Feedback Control
         DONE '''
-#    slowControlParams.creatingPixelSelfTestAndFeedbackControlDictKeysAndLookupTable()
+#    slowControlParams.createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable()
 
     ''' Create dictionary keys and the lookup table required for mux_decoder_pixel_xxx (used by LpdSlowCtrlSequence.py and this script)
         DONE ''' 
 #    slowControlParams.createMuxDecoderDictKeysAndLookupTable()
     
-    
-    
+    ''' Create a unified lookup table for feedback_select/self_test_decoder '''
+    print "testing the new function.."
+    slowControlParams.new__createPixelSelfTestAndFeedbackLookupTable()
     
     # Print the first 32-bit word contained in the Bias Control:
 #    print "%X" % slowControlParams.convertListInto32BitWord(slow_ctrl_data)
     
     ''' Testing reading in entire file into a list of 32-bit words '''
-#    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileIntoList('/u/ckd27546/lpd_workspace/workspace_temp/LpdCommandSequence/SlowCtrlCmds.txt')
+#    slow_ctrl_data, list_length = slowControlParams.readSlowControlFileIntoList('/u/ckd27546/CorruptedEclipseWorkspaces/lpd_workspace/workspace_temp/LpdCommandSequence/SlowCtrlCmds.txt')
 #    
 #    print "Mux Control: \t\t\t\t", slow_ctrl_data[0:47]
 #    print "Pixel Self Test and Feedback Control: ", slow_ctrl_data[48:111]
