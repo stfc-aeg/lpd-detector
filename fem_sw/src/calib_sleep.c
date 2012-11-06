@@ -36,7 +36,7 @@ unsigned int usleep(unsigned int useconds);
 
 #endif
 
-/*
+/**
  * calibrateSleep - calibrates the sleep loop. This is a wrapper
  * function that has no effect except on MicroBlaze, where it calls
  * the specific calibration routine
