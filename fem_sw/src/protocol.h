@@ -11,10 +11,9 @@
 
 #include "xil_types.h"
 
-// TODO: Fix this for large payload/multi-packet data reception....
-#define MAX_PAYLOAD_SIZE          1024
-
-#define PROTOCOL_MAGIC_WORD       0xDEADBEEF
+// Defines
+#define MAX_PAYLOAD_SIZE          1024					//!< Maximum payload size (bytes)
+#define PROTOCOL_MAGIC_WORD       0xDEADBEEF			//!< Magic word, always the first word in a packet
 
 // Bit manipulation macros
 #define	CBIT(val,bit)		val &= ~(1 << (bit-1))
@@ -34,7 +33,7 @@
 #define DUMPHDR(hdr)
 #endif
 
-// Packet header
+//! Packet header
 struct protocol_header
 {
 	u32 magic;				//!< Magic word, always 0xDEADBEEF
@@ -46,7 +45,7 @@ struct protocol_header
 	u32 payload_sz;			//!< Size of payload on packet, 0 is valid
 };
 
-// Supported commands (v2)
+//! Supported commands (v2)
 enum protocol_commands
 {
 	CMD_UNSUPPORTED = 0,	//!< Unsupported command
@@ -56,15 +55,15 @@ enum protocol_commands
 	CMD_PERSONALITY	= 4		//!< Personality command (handed off to FPM)
 };
 
-// CMD_INTERNAL supported commands
+//! CMD_INTERNAL supported commands
 enum internal_commands
 {
-	CMD_INT_FIRMWARE			= 0,
-	CMD_INT_GET_HW_INIT_STATE	= 1,
-	CMD_INT_WRITE_TO_SYSACE		= 2
+	CMD_INT_FIRMWARE			= 0,		//!< Reboot to selected firmware
+	CMD_INT_GET_HW_INIT_STATE	= 1,		//!< Get hardware init. state
+	CMD_INT_WRITE_TO_SYSACE		= 2			//!< Write image to compact flash card via SystemACE
 };
 
-// Target bus for commands
+//! Target bus for commands
 enum protocol_bus_type
 {
 	BUS_UNSUPPORTED = 0,	//!< Unsupported
@@ -76,7 +75,7 @@ enum protocol_bus_type
 	BUS_DIRECT		= 6		//!< Direct DDR2 memory write
 };
 
-// Size of data
+//! Data sizes
 enum protocol_data_width
 {
     WIDTH_UNSUPPORTED = 0,	//!< Unsupported data width
@@ -85,7 +84,7 @@ enum protocol_data_width
     WIDTH_LONG        = 3	//!< 32-bit
 };
 
-// Status bit bank
+//! Status bit bank
 enum protocol_status
 {
 	STATE_UNSUPPORTED = 0,	//!< Unsupported status
@@ -96,6 +95,7 @@ enum protocol_status
 };
 
 // TODO: Make common
+//! Acquire mode commands
 enum protocol_acq_command
 {
 	CMD_ACQ_UNSUPPORTED		= 0,	//!< Unsupported command
@@ -106,6 +106,7 @@ enum protocol_acq_command
 };
 
 // TODO: Make common
+//! Acquire mode modes
 enum protocol_acq_mode
 {
 	ACQ_MODE_UNSUPPORTED	= 0,	//!< Unsupported acquisition mode
@@ -115,6 +116,7 @@ enum protocol_acq_mode
 	ACQ_MODE_UPLOAD			= 4		//!< Upload upstream configuration
 };
 
+//! Acquisition mode parameters
 typedef struct
 {
 	u32 acqMode;					//!< Acquisition mode
@@ -125,6 +127,7 @@ typedef struct
 } protocol_acq_config;
 
 // TODO: Make common
+//! Acquisition mode state (stored in shared BRAM)
 typedef struct
 {
 	u32 state;						//!< Current state
