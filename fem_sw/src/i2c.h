@@ -51,9 +51,9 @@ int stopI2C(void);
 void resetI2C(void);
 
 // I2C ISRs
-static void statusHandler(XIic* pIic, int event);
-static void sendHandler(XIic* pIic, int byteCount);
-static void recvHandler(XIic* pIic, int byteCount);
+static void statusHandler(XIic* pIic, int event);		//!< I2C status change ISR
+static void sendHandler(XIic* pIic, int byteCount);		//!< I2C send ISR
+static void recvHandler(XIic* pIic, int byteCount);		//!< I2C receive ISR
 
 // I2C operations
 int writeI2C(int interfaceIdx, u8 slaveAddr, u8* pData, unsigned dataLen);
