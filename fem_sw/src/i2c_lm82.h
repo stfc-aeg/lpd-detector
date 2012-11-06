@@ -6,9 +6,6 @@
  *
  * --------------------------------------------------------
  *
- * I2C Device: LM82
- * Address:    0x18
- *
  * Local / Remote 8-bit temperature monitoring system
  * with INT and T_CRIT_A interrupt outputs.
  * INT is triggered if a temp exceeds HIGH SP
@@ -37,33 +34,39 @@
 #include "i2c.h"
 #include <stdio.h>
 
-// Slave address
+//! Slave address
 #define IIC_ADDRESS_TEMP				0x18
 
-// LM82 registers
-#define LM82_REG_READ_LOCAL_TEMP		0x00
-#define LM82_REG_READ_REMOTE_TEMP		0x01
-#define LM82_REG_READ_STATUS			0x02
-#define LM82_REG_READ_CONFIG			0x03
-#define LM82_REG_READ_LOCAL_SP			0x05	// SP == SetPoint
-#define LM82_REG_READ_REMOTE_SP			0x07
-#define LM82_REG_WRITE_CONFIG			0x09
-#define LM82_REG_WRITE_LOCAL_SP			0x0B
-#define LM82_REG_WRITE_REMOTE_SP		0x0D
-#define LM82_REG_READ_TCRIT_SP			0x42
-#define LM82_REG_WRITE_TCRIT_SP			0x5A
+//! LM82 registers
+enum lm82_registers
+{
+	LM82_REG_READ_LOCAL_TEMP		= 0x00,
+	LM82_REG_READ_REMOTE_TEMP		= 0x01,
+	LM82_REG_READ_STATUS			= 0x02,
+	LM82_REG_READ_CONFIG			= 0x03,
+	LM82_REG_READ_LOCAL_SP			= 0x05,
+	LM82_REG_READ_REMOTE_SP			= 0x07,
+	LM82_REG_WRITE_CONFIG			= 0x09,
+	LM82_REG_WRITE_LOCAL_SP			= 0x0B,
+	LM82_REG_WRITE_REMOTE_SP		= 0x0D,
+	LM82_REG_READ_TCRIT_SP			= 0x42,
+	LM82_REG_WRITE_TCRIT_SP			= 0x5A
+};
 
-// LM82 status bits (LM82_REG_READ_STATUS)
-#define LM82_STATUS_LOCAL_CRIT			(1<<0)
-#define LM82_STATUS_REMOTE_CRIT			(1<<1)
-#define LM82_STATUS_LOCAL_HIGH			(1<<6)
-#define LM82_STATUS_REMOTE_HIGH			(1<<4)
-#define LM82_STATUS_REMOTE_DISCONNECT	(1<<2)
+//! LM82 status bits (from LM82_REG_READ_STATUS)
+enum lm82_status
+{
+	LM82_STATUS_LOCAL_CRIT			= (1<<0),
+	LM82_STATUS_REMOTE_CRIT			= (1<<1),
+	LM82_STATUS_LOCAL_HIGH			= (1<<6),
+	LM82_STATUS_REMOTE_HIGH			= (1<<4),
+	LM82_STATUS_REMOTE_DISCONNECT	= (1<<2)
+};
 
-// Overheat temperature (interrupt generated to Spartan config FPGA)
+//! Failsafe overheat temperature (interrupt generated to Spartan config FPGA)
 #define LM82_HIGH_TEMP					70
 
-// Critical temperature (hard power shutdown)
+//! Failsafe critical temperature (hard power shutdown)
 #define LM82_CRIT_TEMP					80
 
 // ----------------------------------------------------------------------------
