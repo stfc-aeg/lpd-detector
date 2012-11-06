@@ -41,52 +41,55 @@
 #define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
 
 #else
-// FEM hardware
+
+// FEM hardware parameters - DO NOT CHANGE!
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 // Base addresses
-#define BADDR_MAC					XPAR_LLTEMAC_0_BASEADDR
-#define BADDR_INTC					XPAR_XPS_INTC_2_BASEADDR
-#define BADDR_RDMA					XPAR_RS232_UART_PPC2_RDMA_BASEADDR
-#define BADDR_MBOX					XPAR_MAILBOX_0_IF_1_BASEADDR
-#define BADDR_BRAM					XPAR_SHARED_BRAM_IF_CNTLR_PPC_2_BASEADDR
+#define BADDR_MAC					XPAR_LLTEMAC_0_BASEADDR						//!< TEMAC base address
+#define BADDR_INTC					XPAR_XPS_INTC_2_BASEADDR					//!< Interrupt controller base address
+#define BADDR_RDMA					XPAR_RS232_UART_PPC2_RDMA_BASEADDR			//!< RDMA RS232 controller base address
+#define BADDR_MBOX					XPAR_MAILBOX_0_IF_1_BASEADDR				//!< Mailbox base address
+#define BADDR_BRAM					XPAR_SHARED_BRAM_IF_CNTLR_PPC_2_BASEADDR	//!< Shared BRAM base address
 
 // Device IDs
-#define XINTC_ID					XPAR_XPS_INTC_2_DEVICE_ID
-#define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID
-#define TIMER_ID					XPAR_XPS_TIMER_0_DEVICE_ID
-#define MBOX_ID						XPAR_MAILBOX_0_IF_1_DEVICE_ID
-#define RDMA_DEVICEID				XPAR_RS232_UART_PPC2_RDMA_DEVICE_ID
-#define GPIO_ID						XPAR_XPS_GPIO_0_DEVICE_ID
-#define IIC_LM82_ID					XPAR_IIC_1_DEVICE_ID
-#define IIC_EEPROM_ID				XPAR_IIC_0_DEVICE_ID
-#define IIC_PWR_RHS_ID				XPAR_IIC_3_DEVICE_ID
-#define IIC_PWR_LHS_ID				XPAR_IIC_2_DEVICE_ID
+#define XINTC_ID					XPAR_XPS_INTC_2_DEVICE_ID					//!< Interrupt controller device ID
+#define XSYSACE_ID					XPAR_SYSACE_0_DEVICE_ID						//!< SystemACE controller device ID
+#define TIMER_ID					XPAR_XPS_TIMER_0_DEVICE_ID					//!< Timer device ID
+#define MBOX_ID						XPAR_MAILBOX_0_IF_1_DEVICE_ID				//!< Mailbox device ID
+#define RDMA_DEVICEID				XPAR_RS232_UART_PPC2_RDMA_DEVICE_ID			//!< RDMA RS232 device ID
+#define GPIO_ID						XPAR_XPS_GPIO_0_DEVICE_ID					//!< GPIO device ID
+#define IIC_LM82_ID					XPAR_IIC_1_DEVICE_ID						//!< I2C (LM82) device ID
+#define IIC_EEPROM_ID				XPAR_IIC_0_DEVICE_ID						//!< I2C (EEPROM) device ID
+#define IIC_PWR_RHS_ID				XPAR_IIC_3_DEVICE_ID						//!< I2C (PWR_RHS) device ID
+#define IIC_PWR_LHS_ID				XPAR_IIC_2_DEVICE_ID						//!< I2C (PWR_LHS) device ID
 
 // Mailbox settings
-#define MBOX_RECV_ID				XPAR_MAILBOX_0_IF_1_RECV_FSL
-#define MBOX_SEND_ID				XPAR_MAILBOX_0_IF_1_SEND_FSL
-#define MBOX_USE_FSL				XPAR_MAILBOX_0_IF_1_USE_FSL
+#define MBOX_RECV_ID				XPAR_MAILBOX_0_IF_1_RECV_FSL				//!< Mailbox receive FSL ID
+#define MBOX_SEND_ID				XPAR_MAILBOX_0_IF_1_SEND_FSL				//!< Mailbox send FSL ID
+#define MBOX_USE_FSL				XPAR_MAILBOX_0_IF_1_USE_FSL					//!< Mailbox FSL mode (enabled)
 
 // RDMA settings
-#define RDMA_CLK					XPAR_RS232_UART_PPC2_CLOCK_FREQ_HZ
+#define RDMA_CLK					XPAR_RS232_UART_PPC2_CLOCK_FREQ_HZ			//!< RDMA RS232 base clock frequency (Hz)
 
 // I2C interrupt vector IDs
-#define I2C_INT_ID_EEPROM			XPAR_INTC_0_IIC_0_VEC_ID
-#define I2C_INT_ID_LM82				XPAR_INTC_0_IIC_1_VEC_ID
-#define I2C_INT_ID_PWR_LHS			XPAR_INTC_0_IIC_2_VEC_ID
-#define I2C_INT_ID_PWR_RHS			XPAR_INTC_0_IIC_3_VEC_ID
+#define I2C_INT_ID_EEPROM			XPAR_INTC_0_IIC_0_VEC_ID					//!< I2C (EEPROM) interrupt vector ID
+#define I2C_INT_ID_LM82				XPAR_INTC_0_IIC_1_VEC_ID					//!< I2C (LM82) interrupt vector ID
+#define I2C_INT_ID_PWR_LHS			XPAR_INTC_0_IIC_2_VEC_ID					//!< I2C (PWR_RHS) interrupt vector ID
+#define I2C_INT_ID_PWR_RHS			XPAR_INTC_0_IIC_3_VEC_ID					//!< I2C (PWR_LHS) interrupt vector ID
 #endif
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 // DDR2 memory size
-#define FEM_DDR2_START				0x40000000
-#define FEM_DDR2_SIZE				0x3FFFFFFF
+#define FEM_DDR2_START				0x40000000									//!< DDR2 memory base address
+#define FEM_DDR2_SIZE				0x3FFFFFFF									//!< DDR2 size
 
 // Uncomment this line if data caching enabled on PPC
 //#define USE_CACHE		1
 
-// UART baud rate
+//! UART baud rate
 #define FEM_UART_BAUD				115200
 
-// Enable / disable serial debugging output (comment to disable)
+//! Enable / disable serial debugging output (comment to disable)
 #define GLOBAL_DEBUG
 
 #ifdef  GLOBAL_DEBUG
@@ -103,21 +106,20 @@
 	#define PRTDBG(...)
 #endif
 
-// Define an absolute maximum temperature threshold for the LM82.
-// Overrides the value in EEPROM if (EEPROM_CRIT_TEMP > CRIT_TEMP_MAX)
+//! Define an absolute maximum temperature threshold for the LM82. (Overrides the value in EEPROM if EEPROM_CRIT_TEMP > CRIT_TEMP_MAX)
 #define CRIT_TEMP_MAX				90
 
 // FEM Networking parameters
-#define NET_CMD_PORT				6969
-#define NET_MAX_CLIENTS				8
-#define NET_THREAD_STACKSIZE 		1024
-#define NET_SOCK_BACKLOG			1					// Accept queue size for LWIP
-#define NET_NOMINAL_RX_BUFFER_SZ	8192				// Normal payload receive buffer size
-#define NET_LRG_RX_BUFFER_SZ		65536				// Large payload receive chunk size
-#define NET_MAX_PAYLOAD_SZ			1048576				// Maximum payload size permitted
-#define NET_DEFAULT_TICK_SEC		2
-#define NET_DEFAULT_TICK_USEC		0
-#define NET_DEFAULT_TIMEOUT_LIMIT	5					// In ticks
+#define NET_CMD_PORT				6969				//!< TCP socket number to listen on
+#define NET_MAX_CLIENTS				8					//!< Maximum number of concurrent clients
+#define NET_THREAD_STACKSIZE 		1024				//!< LWIP thread stack size (bytes)
+#define NET_SOCK_BACKLOG			1					//!< Accept queue size for LWIP
+#define NET_NOMINAL_RX_BUFFER_SZ	8192				//!< Normal payload receive buffer size
+#define NET_LRG_RX_BUFFER_SZ		65536				//!< Large payload receive chunk size
+#define NET_MAX_PAYLOAD_SZ			1048576				//!< Maximum payload size permitted
+#define NET_DEFAULT_TICK_SEC		2					//!< Main network loop tick rate (s)
+#define NET_DEFAULT_TICK_USEC		0					//!< Main network loop tick rate (us)
+#define NET_DEFAULT_TIMEOUT_LIMIT	5					//!< Timeout limit for idle clients (in ticks)
 
 //! Hardware initialisation bits - if set these signal errors occurred
 enum femHardwareErrorBits
@@ -145,15 +147,18 @@ enum femHardwareErrorBits
 	TEST_FPM_INIT
 };
 
-#define ERR_STRING_MAX_LENGTH		80				//! Buffer for error messages (per client)
+#define ERR_STRING_MAX_LENGTH		80				//!< Buffer for error messages (per client)
 
 //! Error code offsets
-#define ERR_CODE_NETWORK_OFFSET		10
-#define ERR_CODE_RDMA_OFFSET		20
-#define ERR_CODE_I2C_OFFSET			30
-#define ERR_CODE_EEPROM_OFFSET		40
-#define ERR_CODE_INTERNAL_OFFSET	50
-#define ERR_CODE_FPM_OFFSET			90
+enum errorOffsets
+{
+	ERR_CODE_NETWORK_OFFSET		= 10,
+	ERR_CODE_RDMA_OFFSET		= 20,
+	ERR_CODE_I2C_OFFSET			= 30,
+	ERR_CODE_EEPROM_OFFSET		= 40,
+	ERR_CODE_INTERNAL_OFFSET	= 50,
+	ERR_CODE_FPM_OFFSET			= 90
+};
 
 //! Global error codes
 enum errorCodes {
