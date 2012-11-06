@@ -12,7 +12,7 @@
 #ifndef MAILBOX_H_
 #define MAILBOX_H_
 
-#define MBOX_ACK_LOOP_MAX		50000		// 10000 was original and was too fast for DMA emergency stop loop...
+#define MBOX_ACK_LOOP_MAX		50000		//!< Maximum number of loops to wait for an ACK
 
 int initMailbox(void);
 int acquireConfigMsgSend(u32 cmd, u32 bufferSz, u32 bufferCnt, u32 numAcq, u32 mode, u32 coalesceCnt, int timeoutUs);
