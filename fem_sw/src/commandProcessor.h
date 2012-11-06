@@ -37,10 +37,10 @@ enum packetStatus {
 };
 
 #ifndef HW_PLATFORM_DEVBOARD
-extern XSysAce sysace;
+extern XSysAce sysace;			//!< SystemACE controller
 #endif
 
-extern u32 femErrorState;
+extern u32 femErrorState;		//!< FEM error state
 
 //! Client status bundle
 struct clientStatus {

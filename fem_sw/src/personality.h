@@ -18,14 +18,14 @@
 #include "xstatus.h"
 
 // Template header for FEM personality modules.  These methods must be implemented in the FPMs!
-int fpmInitHardware(void);
-int validatePersonalityHeaderContents(struct protocol_header *pHeader);
+int fpmInitHardware(void);												//!< Personality module hardware initialisation
+int validatePersonalityHeaderContents(struct protocol_header *pHeader);	//!< Validates header for personality commands
 int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 								struct protocol_header* pTxHeader,
 								u8* pRxPayload,
 								u8* pTxPayload,
 								int* pResponseSize
-							);
+							);											//!< Personality command handler, hands off requests to functions
 
 #define PERS_ERROR_STRING_MAX_LENGTH 80		//!< Maximum error string length
 
