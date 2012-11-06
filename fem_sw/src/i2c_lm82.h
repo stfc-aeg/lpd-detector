@@ -6,12 +6,11 @@
  *
  * --------------------------------------------------------
  *
- * Local / Remote 8-bit temperature monitoring system
- * with INT and T_CRIT_A interrupt outputs.
- * INT is triggered if a temp exceeds HIGH SP
- * T_CRIT_A is triggered if a temp exceeds T_CRIT SP
+ * Local / Remote 8-bit temperature monitoring device with INT and T_CRIT_A interrupt outputs.
+ * INT is triggered if a temperature exceeds HIGH SP. (This generates an interrupt to the V5)
+ * T_CRIT_A is triggered if a temp exceeds T_CRIT SP. (This causes a hard shutdown of the power reg.)
  *
- * Local then remote temp is converted, takes ~480ms for cycle
+ * Local then remote temperature is converted, takes ~480ms for conversion cycle.
  *
  * LM82 power on state:
  *
