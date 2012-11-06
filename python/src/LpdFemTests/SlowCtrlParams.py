@@ -1234,18 +1234,22 @@ class SlowCtrlParamsTest(unittest.TestCase):
 if __name__ == '__main__':
     
     # Execute unit testing
-    unittest.main()
-    
-    sys.exit()
+#    unittest.main()
+#    
+#    sys.exit()
 
     ''' 
         Manual testing - Turning the contents of the slow control file 
                          into a 32 bit word sequence and print it
+                         
+        'SlowControlMachined.xml' produced by the script: ExtractSlowControlParamsFromFile.py
     '''
     
     currentDir = os.getcwd()
-    thisFile = currentDir + "/LpdCommandSequence" + '/SlowControlMachined.xml'
-#    print thisFile
+    if currentDir.endswith("LpdFemTests"):
+        thisFile = currentDir + '/SlowControlMachined.xml'
+    else:
+        thisFile = currentDir + "/LpdFemTests" + '/SlowControlMachined.xml'
 
     theParams = SlowCtrlParams(thisFile, fromFile=True)
     encodedSequence = theParams.encode()

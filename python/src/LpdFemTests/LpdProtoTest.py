@@ -615,7 +615,7 @@ class LpdProtoTest(FemClient):
         print "    Over temp    Trip = ", self.powerCardOvertempStatusGet()
         print "    Undertemp    Trip = ", self.powerCardUndertempStatusGet()
         print ".\n"
-    
+
         
         print "Temperature readings: "
     
@@ -705,7 +705,7 @@ if __name__ == "__main__":
     thisPrototype = LpdProtoTest((host , port))
 
     # Change the HV setting
-    thisPrototype.sensorBiasSet(0)
+    #thisPrototype.sensorBiasSet(0)
 
 #    # Switching on the low voltage
     thisPrototype.asicPowerEnableSet(LpdProtoTest.ON)
