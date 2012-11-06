@@ -2,14 +2,7 @@
  * @file i2c_24c08.h
  * @author Matt Thorpe, STFC Application Engineering Group
  *
- * Support library for M24C08 I2C device
- *
- * --------------------------------------------------------
- *
- * Device:     M24C08
- * I2C addr:   0x50
- *
- * 8k EEPROM, 16 byte page, 512 pages
+ * Support library for M24C08 I2C EEPROM device
  *
  */
 
@@ -27,16 +20,10 @@
 #include <stdio.h>
 #include <string.h>
 
-// Slave address
-#define IIC_ADDRESS_EEPROM		0x50
-
-// M24C08 parameters
-#define EEPROM_PAGE_SIZE		16
-#define EEPROM_NUM_PAGES		512
-
-// Write delay between pages in ms at 100kHz mode taken from datasheet
-// (We could poll ACK to see when writes are completed but we just wait the maximum possible write time instead!)
-#define EEPROM_WRITE_DELAY_MS	5
+#define IIC_ADDRESS_EEPROM		0x50	//!< Slave address of EEPROM
+#define EEPROM_PAGE_SIZE		16		//!< Page size of EEPROM
+#define EEPROM_NUM_PAGES		512		//!< Number of pages in EEPROM
+#define EEPROM_WRITE_DELAY_MS	5		//!< Write delay between pages (ms) at 100kHz mode
 
 int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len);
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len);
