@@ -1,36 +1,15 @@
 /**
- * ----------------------------------------------------------------------------
+ * @file	main.c
+ *
  * @brief	FEM Embedded Acquisition Platform - Power PC #2 - C&C interface
  *
- * @author	Matt Thorpe (matt.thorpe@stfc.ac.uk), Application Engineering Department, STFC RAL
+ * @author	Matt Thorpe, STFC Application Engineering Group
  *
  * @details	Provides FEM command and control interface over TCP/IP socket using
  * 			Hard TEMAC and 1GBe interface.  Supports read / write operations on all
  * 			hardware busses and inter-PPC mailbox communications.
  * 			Functionality expandable by using FEM Personality Modules (FPM).
- * ----------------------------------------------------------------------------
- *
- * TO DO LIST: (in order of descending importance)
- *
- * HARDWARE:
- * TODO: Determine why execution halts sometimes after LWIP auto-negotiation - xlltemacif_hw.c -> Line 78?
- *
- * FUNCTIONALITY:
- * TODO: Move freeing large packet payload buffer and reallocing nominal size one to new method? (used both in disconnectClient and in STATE_HDR_VALID state...)
- * TODO: Implement FPM packet processing in commandHandler to prevent duplicated code
- * TODO: Re-enable BADPKT response sending where necessary (generateBadPacketResponse())
- * TODO: Clean up RDMA wrapper (was kludged into place and never fixed!)
- * TODO: Implement iperf server and some way to activate / deactivate it without rebooting or rebuilding
- *
- * GENERAL:
- * TODO: Profile memory usage
- * TODO: Tune thread stacksize
- * TODO: Check for memory leaks
- * TODO: Determine why LWIP hangs on init using priority based scheduler
- *
- * ----------------------------------------------------------------------------
  */
-
 
 
 // ----------------------------------------------------------------------------
@@ -111,16 +90,16 @@
 // ----------------------------------------------------------------------------
 
 void* masterThread(void *);			// Main thread launched by xilkernel
-void networkInitThread(void *);	// Sets up LWIP, spawned by master thread
+void networkInitThread(void *);		// Sets up LWIP, spawned by master thread
 int initHardware(void);
 
 // ----------------------------------------------------------------------------
 // Global Variable Definitions
 // ----------------------------------------------------------------------------
-struct netif		server_netif;
-struct fem_config	femConfig;
-XIntc				intc;
-XTmrCtr				timer;
+struct netif		server_netif;	//!< LWIP configuration struct.
+struct fem_config	femConfig;		//!< FEM configuration struct.
+XIntc				intc;			//!< Interrupt controller
+XTmrCtr				timer;			//!< Timer controller
 
 // Board specific objects
 #ifdef HW_PLATFORM_DEVBOARD
@@ -130,12 +109,16 @@ XGpio gpioLed8, gpioLed5, gpioDip, gpioSwitches;
 XSysAce				sysace;
 #endif
 
-u32 femErrorState;
+u32 femErrorState;					//!< FEM error state
 
 // ----------------------------------------------------------------------------
 // Functions
 // ----------------------------------------------------------------------------
 
+/**
+ * Platform initialisation function.  Will never exit.
+ * @return 0
+ */
 int main()
 {
 	// Platform initialisation
@@ -171,7 +154,10 @@ int main()
 
 
 
-// Master thread
+/**
+ * Master thread
+ * @param arg pointer to arguments
+ */
 void* masterThread(void *arg)
 {
 
@@ -205,9 +191,10 @@ void* masterThread(void *arg)
 
 
 
-// Network manager thread
-//
-// Configures LWIP and spawns thread to receive packets
+/**
+ * Network manager thread, configures LWIP and spawns thread to receive packets.
+ * @param p pointer to arguments
+ */
 void networkInitThread(void *p)
 {
 
@@ -263,16 +250,15 @@ void networkInitThread(void *p)
     	DBGOUT("NetMan: Can't spawn thread, aborting...\r\n");
     }
 
-    //DBGOUT("NetMan: Thread exiting\r\n");
+    DBGOUT("NetMan: Thread exiting\r\n");
 }
 
 
 
-/*
+/**
  * Initialises FEM hardware
  *
  * @return XST_SUCCESS if all hardware initialised OK, or XST_FAILURE if there were any errors
- *
  */
 int initHardware(void)
 {

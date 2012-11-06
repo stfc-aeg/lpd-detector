@@ -40,7 +40,7 @@ enum packetStatus {
 extern XSysAce sysace;			//!< SystemACE controller
 #endif
 
-extern u32 femErrorState;		//!< FEM error state
+extern u32 femErrorState;
 
 //! Client status bundle
 struct clientStatus {
