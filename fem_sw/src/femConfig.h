@@ -12,10 +12,10 @@
 #include "i2c_24c08.h"
 #include "xil_types.h"
 
-// Header for config structure, verified before it is used to configure FEM
+//! Header for config structure, verified before it is used to configure FEM
 #define CONFIG_MAGIC_WORD			0xFACE
 
-// Struct for storage of FEM parameters (normally kept in EEPROM)
+//! Struct for storage of FEM parameters (normally kept in EEPROM)
 struct fem_config
 {
 	// Header (2 bytes)
