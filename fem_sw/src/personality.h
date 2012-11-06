@@ -27,11 +27,13 @@ int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 								int* pResponseSize
 							);
 
-#define PERS_ERROR_STRING_MAX_LENGTH 80
+#define PERS_ERROR_STRING_MAX_LENGTH 80		//!< Maximum error string length
+
 #define SETPERSERR(code, ...) state.error=code; \
 							  snprintf(state.errorString, ERR_STRING_MAX_LENGTH, __VA_ARGS__); \
 							  if (code != 0) { xil_printf("%s\r\n", state.errorString); }
 
+//! Thread state bundle
 typedef struct
 {
 	u32 state;		                                //!< Thread state (0=idle, 1=working)
