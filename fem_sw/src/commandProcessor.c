@@ -31,10 +31,6 @@ void commandProcessorThread(void* arg)
 	u8 numConnectedClients = 0;
 	int reloadRequested = -1;
 
-	// extern from main.c
-	//XGpio *pGpio = &gpioMux;
-	//u8* pMux = &mux;
-
 	// Setup and initialise client statuses to idle
 	struct clientStatus state[NET_MAX_CLIENTS];
 	j=0;
@@ -637,9 +633,6 @@ int commandHandler(struct protocol_header* pRxHeader,
 	u32* pTxPayload_32  = NULL;
 	u32* pRxPayload_32  = NULL;
 
-	// For RDMA address mangling
-	//u32 rdmaAddrOriginal, rdmaAddrNew;
-
 	// Copy original header to response packet, take a local copy of the status byte to update
 	memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
 	state = pRxHeader->state;
@@ -910,20 +903,6 @@ int commandHandler(struct protocol_header* pRxHeader,
 
 					dataWidth = sizeof(u32);
 					pTxPayload_32 = (u32*)(pTxPayload+responseSize);
-
-					/*
-					// Set RDMA MUX if necessary
-					if (((pRxHeader->address & 0x30000000) >> 28) != *pMux)
-					{
-						*pMux = (u8)((pRxHeader->address & 0x30000000) >> 28);
-						XGpio_DiscreteWrite(pGpio, 1, *pMux);
-						//DBGOUT("CmdDisp: MUX set to %d\r\n", *pMux);
-					}
-
-					// Process RDMA address
-					rdmaAddrOriginal = pRxHeader->address & 0x0FFFFFFF;		// Mask out MSB 4 bits as MUX
-					rdmaAddrNew = ((rdmaAddrOriginal & 0x0F000000) << 4) | (rdmaAddrOriginal&0x00FFFFFF);
-					*/
 
 					// RDMA READ operation
 					if (CMPBIT(state, STATE_READ))

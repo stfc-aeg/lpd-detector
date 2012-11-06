@@ -27,12 +27,13 @@
 
 #include "personality.h"
 
+//! Packet status, used in packet processing state machine
 enum packetStatus {
-	STATE_START = 0,
-	STATE_GOT_HEADER = 1,
-	STATE_HDR_VALID = 2,
-	STATE_GOT_PYLD = 3,
-	STATE_COMPLETE = 4
+	STATE_START = 0,			//!< Packet reception has begun
+	STATE_GOT_HEADER = 1,		//!< Received a chunk of data the size of a header
+	STATE_HDR_VALID = 2,		//!< Validated header
+	STATE_GOT_PYLD = 3,			//!< Received header + stated payload
+	STATE_COMPLETE = 4			//!< Packet reception complete, now idle
 };
 
 #ifndef HW_PLATFORM_DEVBOARD
@@ -41,6 +42,7 @@ extern XSysAce sysace;
 
 extern u32 femErrorState;
 
+//! Client status bundle
 struct clientStatus {
 	int state;									//!< State machine status, of type packetStatus
 	int size;									//!< Total number of bytes received in current packet
@@ -58,7 +60,6 @@ struct clientStatus {
 void commandProcessorThread(void* arg);
 void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, u8 *pNumConnectedClients);
 int commandHandler(struct protocol_header* pRxHeader, struct protocol_header *pTxHeader, u8* pRxPayload, u8* pTxPayload, int* pReloadRequested, struct clientStatus *pClient);
-int socketRead(int sock, u8* pBuffer, unsigned int numBytes);
 int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClient);
 void flushSocket(int sock, void *mem, int len);
 void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus *pClient);
