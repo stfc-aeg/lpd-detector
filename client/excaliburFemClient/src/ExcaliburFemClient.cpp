@@ -122,6 +122,18 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 		msg << "Failed to create FEM data receiver: " << e.what();
 		throw FemClientException((FemClientErrorCode)excaliburFemClientDataReceviverSetupFailed, msg.str());
 	}
+
+	// Check DMA engine acquisition state and reset to IDLE if in a different state
+	FemAcquireStatus acqStatus = this->acquireStatus();
+	if (acqStatus.state != acquireIdle)
+	{
+		std::cout << "Acquisition state at startup is " << acqStatus.state << " sending stop to reset" << std::endl;
+		this->acquireStop();
+	}
+	else
+	{
+		std::cout << "Acquisition state is IDLE at startup" << std::endl;
+	}
 }
 
 
