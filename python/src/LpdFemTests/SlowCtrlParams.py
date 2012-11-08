@@ -295,6 +295,12 @@ class SlowCtrlParams(object):
             
             'idx' returned unchanged for the other keys.
         '''
+#        
+#
+#
+        return idx
+#    
+#    
         # Does dictKey have an associated lookup table?
         if dictKey == "mux_decoder":
             return (SlowCtrlParams.muxDecoderLookupTable[idx] - 1)
@@ -488,7 +494,7 @@ class SlowCtrlParams(object):
 
         ''' Debug variables '''
         debugIdx = 33
-        debugComparisonKey = ""    # "spare_bits"    # "self_test_decoder"    # "mux_decoder"    # "digital_control"
+        debugComparisonKey = "feedback_select"  # "mux_decoder"    # "digital_control"
 
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * SlowCtrlParams.SEQLENGTH
@@ -518,16 +524,19 @@ class SlowCtrlParams(object):
                     # Determine number of entries in the nested list
                     numBitsRequired = len(slowControlWordContent)
 
+#                    print " numBitsRequired: ", numBitsRequired
+                    bitMaximumPosn = (keyWidth*numBitsRequired) - 1
+                    
                     # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
                     #    and therefore form a special case (set to 0 for all other keys)
                     
-                    # Is this key either of the two special cases?
-                    if dictKey.startswith("feedback_select"):
-                        specialCaseOffset = 3
-                    elif dictKey.startswith("self_test_decoder"):
-                        specialCaseOffset = 1
-                    else:
-                        specialCaseOffset = 0
+#                    # Is this key either of the two special cases?
+#                    if dictKey.startswith("feedback_select"):
+#                        specialCaseOffset = 3
+#                    elif dictKey.startswith("self_test_decoder"):
+#                        specialCaseOffset = 1
+#                    else:
+                    specialCaseOffset = 0
                         
                     keyWidth = keyWidth + specialCaseOffset
                     # Create a bit array to save each slow control word, bit by bit
@@ -536,33 +545,82 @@ class SlowCtrlParams(object):
                     ''' 
                         LIST TYPE: FIRST LOOP
                     '''
-                    # Loop over all the elements of the nested list and produce bitwiseArray
-                    #    e.g.: if keyWidth = 3, list = [1, 3, 0, .] then bitwiseOffset = [ (1, 0, 0,) (1, 1, 1,) (0, 0, 0,) ..]
+                    if dictKey == debugComparisonKey:
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n     LIST TYPE: FIRST LOOP "
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\ndictKey:%15s       len(bitwiseArray): %4i" % (dictKey, len(bitwiseArray))
+                    indexMax = len(bitwiseArray) - 1
+                    # Loop over all the elements of the nested list and produce bitwiseArray (MSB first)
+                    #    e.g.: if keyWidth = 3, list = [1, 3, 6, .] then bitwiseOffset = [ (0, 0, 1,) (0, 1, 1,) (1, 1, 0,) ..]
                     for idx in range(numBitsRequired):
                         
+                        keyWidthMax = keyWidth-1
+                        bitIncrement = 0
                         bitMask = 1
                         # Iterate over each bit of each slow control word
-                        for bitIdx in range(keyWidth):
-                            bitwiseArray[ idx*keyWidth + bitIdx ] = ( (slowControlWordContent[idx] & bitMask) >> bitIdx)
-                            bitMask = bitMask << 1
-                                        
+                        for bitDecrement in range(keyWidthMax, -1, -1):
+#                            if dictKey == debugComparisonKey:
+
+                            bitIncrement = keyWidthMax - bitDecrement
+
+                            bitMask = 1 << bitDecrement
+                            baIndex = (idx*keyWidth + bitIncrement)
+                            bitwiseArray[ baIndex ] = ( (slowControlWordContent[idx] & bitMask) >> bitDecrement)
+                            
+                            ''' DEBUG INFO '''
+                            if dictKey == debugComparisonKey:
+                                if idx < 11:
+                                    print "bitwiseArray[ %4i * %2i + %2i ] = ( (slowControlWordContent[%4i] & %2X) >> %4i) => bit..[%4i] = %2i." % (idx, keyWidth, bitIncrement,
+                                                                                                                                                    idx, bitMask, bitDecrement,
+                                                                                                                                                    baIndex,
+                                                                                                                                                    ( (slowControlWordContent[idx] & bitMask) >> bitDecrement)
+                                                                                                                                                    )
+                            
+                    if dictKey == debugComparisonKey:
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n%15s       len(bitwiseArray): %4i, content: " % (dictKey, len(bitwiseArray)),
+                        for idx in range( len(bitwiseArray) ):
+                            if (idx % (keyWidth*10)) == 0:
+                                print "\n%4i: " % idx,
+                            print "%2i" % bitwiseArray[ idx ],
+                        print ""
+
                     '''
                         LIST TYPE: SECOND LOOP
                     '''
+                    if dictKey == debugComparisonKey:
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n     LIST TYPE: SECOND LOOP "
+                    
+                    stepSize = 0
+                    # feedback_select and self_test_decoder are special case, sharing a common four bit word
+                    if dictKey.startswith("feedback_select"):
+                        stepSize = 3
+                    elif dictKey.startswith("self_test_decoder"):
+                        #pass
+                        stepSize = 3
+                        continue
+                        #TODO: offset REQUIRED!?!
+                        
                     # Loop over this new list and copy 32 bits at a time into the encoded sequence
                     for idx in range(len(bitwiseArray)):
-#                        ''' DEBUG INFO '''
-#                        if dictKey == debugComparisonKey:
-#                            if idx < 42:
-#                                print "idx=%3i, bitPosn=%2i, seqIdxTotal:%9X" % (idx, bitPosition%32, bitwiseArray[idx] << (bitPosition%32)),
-#                                print " (%i << %2i) " % (bitwiseArray[idx], (bitPosition%32)),
-#                                print "= %9X" % (bitwiseArray[idx] << (bitPosition%32)),
-#                                print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition]) 
-                        
+#                    for idx in range(0, len(bitwiseArray), stepSize):
+                        ''' DEBUG INFO '''
+                        if dictKey == debugComparisonKey:
+                            if idx < 33:
+                                print "encSeq[%3i] | (bwArray[%3i] << (31-(%2i" % (wordPosition, idx, bitPosition), "% 32)) )",
+                                print "    =>    encSeq[] | (bA[%2i] << %8X" % ((31 - (bitPosition%32)), bitwiseArray[idx] << (31 - (bitPosition%32))),
+                                print "    =>    %8X | %8X = " % (  encodedSequence[wordPosition], (bitwiseArray[idx] << (31 - (bitPosition%32))) )
+
                         # Add running total to sequence; increment bitPosition and check wordPosition 
-                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition%32))
-                        bitPosition += 1
+                        try:
+                            encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (31 - (bitPosition%32)) )
+                        except:
+                            print "BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << (31 - (bitPosition%32)) ))
+                            return
+                        bitPosition += (1+stepSize)
                         wordPosition = bitPosition / 32
+                        ''' New Modification '''
+                        bitMaximumPosn -= 1
+
+                    print ""
                 else:
                     '''
                         INTEGER TYPE
@@ -581,12 +639,15 @@ class SlowCtrlParams(object):
                     '''
                         INTEGER TYPE: FIRST LOOP
                     '''
+                    indexMax = (numBitsRequired-1)
                     bitMask = 1
                     # Loop over all the bits in the slow control word
                     for idx in range(numBitsRequired):
-                        bitwiseArray[idx] = ( (slowControlWordContent & bitMask) >> idx)
+                        bitwiseArray[ indexMax - idx ] = ( (slowControlWordContent & bitMask) >> idx)
                         bitMask = bitMask << 1
                     
+#                        print indexMax-idx,
+#                    print ""
                     '''
                         INTEGER TYPE: SECOND LOOP
                     '''
@@ -601,7 +662,7 @@ class SlowCtrlParams(object):
 #                            print " encSeq[%3i] = %9X" % (wordPosition, encodedSequence[wordPosition])
 
                         # Add running total to sequence; Increment bitPosition and check wordPosition 
-                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (bitPosition % 32) )
+                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (31 - (bitPosition % 32)) )
                         bitPosition += 1
                         wordPosition = bitPosition / 32
 
@@ -1247,18 +1308,19 @@ if __name__ == '__main__':
     
     currentDir = os.getcwd()
     if currentDir.endswith("LpdFemTests"):
-        thisFile = currentDir + '/SlowControlMachined.xml'
+        thisFile = currentDir + '/experimentation.xml'
     else:
-        thisFile = currentDir + "/LpdFemTests" + '/SlowControlMachined.xml'
+        thisFile = currentDir + "/LpdFemTests" + '/experimentation.xml'
 
     theParams = SlowCtrlParams(thisFile, fromFile=True)
     encodedSequence = theParams.encode()
 
     print "Processing '%s' produces the sequence: " % thisFile
     for idx in range(len(encodedSequence)):
-        if (idx % 8 == 0):
-            print "\n%3i: " % idx,
-        print "%9X" % encodedSequence[idx],
+        if True: #idx > 103:
+            if (idx % 8 == 0):
+                print "\n%3i: " % idx,
+            print "%9X" % encodedSequence[idx],
     print "\n"
     
 
