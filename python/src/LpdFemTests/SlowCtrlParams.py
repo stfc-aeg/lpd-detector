@@ -153,20 +153,20 @@ class SlowCtrlParams(object):
         if self.bDebug:
             print "debugging enabled."
 
-        #    paramsDict = {'dictKey'                     : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
-        self.paramsDict = {'mux_decoder_default'         : [3,  -1,     -1,         [False, True, False]],
-                           'mux_decoder'                 : [3,  0,      [-1] * 512, [True,  True, False]],
-                           'feedback_select_default'     : [1,  -1,     -1,         [False, True, False]],
-                           'feedback_select'             : [1,  1536,   [-1] * 512, [True,  True, False]],
-                           'self_test_decoder_default'   : [3,  -1,     -1,         [False, True, False]],
-                           'self_test_decoder'           : [3,  1537,   [-1] * 512, [True,  True, False]],
-                           'self_test_enable'            : [1,  3584,   -1,         [False, True, False]],
-                           'daq_bias_default'            : [5,  -1,     -1,         [False, True, False]],
-                           'daq_bias'                    : [5,  3585,   [-1] * 47,  [False, True, True]],
-                           'spare_bits'                  : [5,  3820,   -1,         [False, True, False]],       # Special Case: 5 bits cover everything
-                           'filter_control'              : [20, 3825,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
-                           'adc_clock_delay'             : [20, 3845,   -1,         [False, True, False]],       # Special Case: 20 bits cover everything
-                           'digital_control'             : [40, 3865,   -1,         [False, True, False]],       # Special Case: 40 bits cover everything
+        #    paramsDict = {'dictKey'                     : [width, posn, value(s), skip, [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
+        self.paramsDict = {'mux_decoder_default'         : [3,  -1,     -1,         0, [False, True, False]],
+                           'mux_decoder'                 : [3,  0,      [-1] * 512, 0, [True,  True, False]],
+                           'feedback_select_default'     : [1,  -1,     -1,         0, [False, True, False]],
+                           'feedback_select'             : [1,  1536,   [-1] * 512, 3, [True,  True, False]],
+                           'self_test_decoder_default'   : [3,  -1,     -1,         0, [False, True, False]],
+                           'self_test_decoder'           : [3,  1537,   [-1] * 512, 1, [True,  True, False]],
+                           'self_test_enable'            : [1,  3584,   -1,         0, [False, True, False]],
+                           'daq_bias_default'            : [5,  -1,     -1,         0, [False, True, False]],
+                           'daq_bias'                    : [5,  3585,   [-1] * 47,  0, [False, True, True]],
+                           'spare_bits'                  : [5,  3820,   -1,         0, [False, True, False]],       # Special Case: 5 bits cover everything
+                           'filter_control'              : [20, 3825,   -1,         0, [False, True, False]],       # Special Case: 20 bits cover everything
+                           'adc_clock_delay'             : [20, 3845,   -1,         0, [False, True, False]],       # Special Case: 20 bits cover everything
+                           'digital_control'             : [40, 3865,   -1,         0, [False, True, False]],       # Special Case: 40 bits cover everything
                            }
 
         
@@ -206,11 +206,12 @@ class SlowCtrlParams(object):
             width = result[0]
             posn = result[1]
             val = result[2]
-            tags = result[3]
+            skip = result[3]
+            tags = result[4]
         else:
             print "\"" + dictKey + "\" doesn't exist."
         
-        return [width, posn, val, tags]
+        return [width, posn, val, skip, tags]
  
     def setParamValue(self, dictKey, index, value):
         ''' 
@@ -348,9 +349,9 @@ class SlowCtrlParams(object):
                 pmValues = self.getParamValue(cmd)
 
                 # Extract required tags
-                bPixel = pmValues[3][0]
-                bValue = pmValues[3][1]
-                bIndex = pmValues[3][2]
+                bPixel = pmValues[4][0]
+                bValue = pmValues[4][1]
+                bIndex = pmValues[4][2]
                 
                 # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
@@ -494,7 +495,11 @@ class SlowCtrlParams(object):
 
         ''' Debug variables '''
         debugIdx = 33
-        debugComparisonKey = "feedback_select"  # "mux_decoder"    # "digital_control"
+#        debugComparisonKey = "feedback_select"  
+        debugComparisonKey = "mux_decoder"
+#        debugComparisonKey = "daq_bias" 
+#        debugComparisonKey = "self_test_decoder"
+#        debugComparisonKey = "digital_control"
 
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * SlowCtrlParams.SEQLENGTH
@@ -517,6 +522,8 @@ class SlowCtrlParams(object):
                 slowControlWordContent = cmdParams[2]
                 # bitPosition tracks the current bit position relative to the entire length of sequence (0 - 3904)
                 bitPosition = cmdParams[1]
+                # Skip - distance between two slow control words within  the same section
+                wordSkip = cmdParams[3]
                 
                 # Is this a list?
                 if isinstance(slowControlWordContent, types.ListType):
@@ -524,23 +531,8 @@ class SlowCtrlParams(object):
                     # Determine number of entries in the nested list
                     numBitsRequired = len(slowControlWordContent)
 
-#                    print " numBitsRequired: ", numBitsRequired
-                    bitMaximumPosn = (keyWidth*numBitsRequired) - 1
-                    
-                    # Key: "self_test_decoder" and "feedback_select" share a 4 bit slow control word
-                    #    and therefore form a special case (set to 0 for all other keys)
-                    
-#                    # Is this key either of the two special cases?
-#                    if dictKey.startswith("feedback_select"):
-#                        specialCaseOffset = 3
-#                    elif dictKey.startswith("self_test_decoder"):
-#                        specialCaseOffset = 1
-#                    else:
-                    specialCaseOffset = 0
-                        
-                    keyWidth = keyWidth + specialCaseOffset
-                    # Create a bit array to save each slow control word, bit by bit
-                    bitwiseArray = [0] * (keyWidth * numBitsRequired)
+                    # Create a bit array to save all the slow control words, bit by bit
+                    bitwiseArray = [0] * 3905
 
                     ''' 
                         LIST TYPE: FIRST LOOP
@@ -552,33 +544,53 @@ class SlowCtrlParams(object):
                     # Loop over all the elements of the nested list and produce bitwiseArray (MSB first)
                     #    e.g.: if keyWidth = 3, list = [1, 3, 6, .] then bitwiseOffset = [ (0, 0, 1,) (0, 1, 1,) (1, 1, 0,) ..]
                     for idx in range(numBitsRequired):
-                        
-                        keyWidthMax = keyWidth-1
-                        bitIncrement = 0
-                        bitMask = 1
-                        # Iterate over each bit of each slow control word
-                        for bitDecrement in range(keyWidthMax, -1, -1):
-#                            if dictKey == debugComparisonKey:
 
-                            bitIncrement = keyWidthMax - bitDecrement
 
-                            bitMask = 1 << bitDecrement
-                            baIndex = (idx*keyWidth + bitIncrement)
-                            bitwiseArray[ baIndex ] = ( (slowControlWordContent[idx] & bitMask) >> bitDecrement)
-                            
+                        ''' SORT BIT ORDER !  '''
+                        bitMask = 2**(keyWidth-1)
+                        # Iterate over each slow control word for the current key
+                        for scIdx in range(keyWidth):
+
+                            # bitShiftOffset determines number of bits to shift within current slow control word
+                            bitShiftOffset = (keyWidth-1) - scIdx
+
                             ''' DEBUG INFO '''
                             if dictKey == debugComparisonKey:
-                                if idx < 11:
-                                    print "bitwiseArray[ %4i * %2i + %2i ] = ( (slowControlWordContent[%4i] & %2X) >> %4i) => bit..[%4i] = %2i." % (idx, keyWidth, bitIncrement,
-                                                                                                                                                    idx, bitMask, bitDecrement,
-                                                                                                                                                    baIndex,
-                                                                                                                                                    ( (slowControlWordContent[idx] & bitMask) >> bitDecrement)
-                                                                                                                                                    )
-                            
+                                if idx < 5:
+                                    if scIdx < keyWidth:#                                                                                                                    # bitwiseArray[%4i + %2i + %2i + %4i] =
+                                        print "bitwiseArray[%4i + %2i + %2i + %4i] = ( (scWordContent[%3i] & %2i) >> %4i) => b..[%4i] = ( (%4X & %2i) >> %2X)   =   %2i." % (bitPosition, keyWidth*idx, scIdx, wordSkip*idx,
+                                                                                                                                                                             # (scWordContent[%3i] & %2i) >> %4i
+                                                                                                                                                                             idx, bitMask, bitShiftOffset,
+                                                                                                                                                                             #  b..[%4i] = 
+                                                                                                                                                                             bitPosition + keyWidth*idx + scIdx + wordSkip*idx,
+                                                                                                                                                                             # ( (%4X & %2i) >> %2X)   = 
+                                                                                                                                                                             slowControlWordContent[idx], bitMask, bitShiftOffset,
+                                                                                                                                                                             # %2i."
+                                                                                                                                                                             ( (slowControlWordContent[idx] & bitMask) >> bitShiftOffset)
+                                                                                                                                                                             )
+                            #bitMask = 1 << scIdx
+                            bitwiseArray[bitPosition + keyWidth*idx + scIdx + wordSkip*idx] = ( (slowControlWordContent[idx] & bitMask) >> bitShiftOffset)
+                            bitMask = bitMask >> 1
+
+                    ''' DEBUG INFO '''
                     if dictKey == debugComparisonKey:
+                        if dictKey == "feedback_select":
+                            specialCase = 3
+                        elif dictKey == "self_test_decoder":
+                            specialCase = 1
+                        else:
+                            specialCase = 0
+                        outputWidth = (40/keyWidth) * keyWidth
+                        lowerLimit = bitPosition - (bitPosition % outputWidth)
+                        upperLimit = bitPosition + numBitsRequired*(keyWidth+ specialCase)
+#                        print "bitPosition + numBitsRequired*(keyWidth+ specialCase)   == >   %3i + %3i * (%2i+ %i) " % (bitPosition, numBitsRequired, keyWidth, specialCase)
                         print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n%15s       len(bitwiseArray): %4i, content: " % (dictKey, len(bitwiseArray)),
                         for idx in range( len(bitwiseArray) ):
-                            if (idx % (keyWidth*10)) == 0:
+                            if idx < lowerLimit:
+                                continue
+                            if idx > upperLimit:
+                                continue
+                            if (idx % (outputWidth)) == 0:
                                 print "\n%4i: " % idx,
                             print "%2i" % bitwiseArray[ idx ],
                         print ""
@@ -589,39 +601,50 @@ class SlowCtrlParams(object):
                     if dictKey == debugComparisonKey:
                         print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n     LIST TYPE: SECOND LOOP "
                     
-                    stepSize = 0
-                    # feedback_select and self_test_decoder are special case, sharing a common four bit word
-                    if dictKey.startswith("feedback_select"):
-                        stepSize = 3
-                    elif dictKey.startswith("self_test_decoder"):
-                        #pass
-                        stepSize = 3
-                        continue
-                        #TODO: offset REQUIRED!?!
                         
-                    # Loop over this new list and copy 32 bits at a time into the encoded sequence
-                    for idx in range(len(bitwiseArray)):
-#                    for idx in range(0, len(bitwiseArray), stepSize):
+                    # Loop over the bitwiseArray in reverse order and copy 32 bits at a time into the encoded sequence
+                    for idx in range( len(bitwiseArray) ): #for idx in range( len(bitwiseArray)-1, -1, -1):
+
+                        # Determine location inside sequence; Determine relative position within current index
+                        wordPosition = idx / 32
+                        bitOffset = idx % 32
+                        
                         ''' DEBUG INFO '''
                         if dictKey == debugComparisonKey:
-                            if idx < 33:
-                                print "encSeq[%3i] | (bwArray[%3i] << (31-(%2i" % (wordPosition, idx, bitPosition), "% 32)) )",
-                                print "    =>    encSeq[] | (bA[%2i] << %8X" % ((31 - (bitPosition%32)), bitwiseArray[idx] << (31 - (bitPosition%32))),
-                                print "    =>    %8X | %8X = " % (  encodedSequence[wordPosition], (bitwiseArray[idx] << (31 - (bitPosition%32))) )
+                            if idx < 33:#if idx > 3865:
+                                pass#print "idx, bit-Value, wordPosition, bitOffset = %3i, %1i, %3i, %2X" % (idx, bitwiseArray[idx], wordPosition, bitOffset)
 
                         # Add running total to sequence; increment bitPosition and check wordPosition 
                         try:
-                            encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (31 - (bitPosition%32)) )
+                            encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (idx%32))
                         except:
-                            print "BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << (31 - (bitPosition%32)) ))
+                            print "BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << (idx%32)) )
                             return
-                        bitPosition += (1+stepSize)
-                        wordPosition = bitPosition / 32
-                        ''' New Modification '''
-                        bitMaximumPosn -= 1
-
+                        
+                    ''' old implementation '''
+#                    for idx in range(len(bitwiseArray)):
+#                        ''' DEBUG INFO '''
+#                        if dictKey == debugComparisonKey:
+#                            if idx < 33:
+#                                print "encSeq[%3i] | (bwArray[%3i] << (31-(%2i" % (wordPosition, idx, bitPosition), "% 32)) )",
+#                                print "    =>    encSeq[] | (bA[%2i] << %8X" % ((31 - (bitPosition%32)), bitwiseArray[idx] << (31 - (bitPosition%32))),
+#                                print "    =>    %8X | %8X = " % (  encodedSequence[wordPosition], (bitwiseArray[idx] << (31 - (bitPosition%32))) )
+#
+#                        # Add running total to sequence; increment bitPosition and check wordPosition 
+#                        try:
+#                            encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (31 - (bitPosition%32)) )
+#                        except:
+#                            print "BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << (31 - (bitPosition%32)) ))
+#                            return
+#                        bitPosition += 1
+#                        wordPosition = bitPosition / 32
+#
                     print ""
                 else:
+                    
+                    #TODO: CONTINUED DEVELOPMENT HERE!
+                
+                    continue
                     '''
                         INTEGER TYPE
                     '''
