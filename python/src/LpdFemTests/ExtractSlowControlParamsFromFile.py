@@ -793,21 +793,15 @@ class ExtractSlowControlParamsFromFile():
             for i in range(new_start, new_stop, dir):
                 pxlList[i-1] = counter
                 counter += 1
-            print ""
+
             # Calculate next iteration's start and stop that is based upon the previous.
             #    Note that the distance fluctuates between either 17 or 15 from one row to the next
             new_start = old_stop-16-dir
             new_stop = old_start-16-dir
             dir = dir * (-1)
 
-        # Create dictionary lookup table  
-#        lookupTableList = []
         pixels = 512
         
-#        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
-#        for idx in range(pixels):
-#            lookupTableList.append("%3i" % pxlList[idx] )         
-
         """ create the lookup table for Pixel Self Test and Feedback settings that will be used inside this script """
 
         filename = ExtractSlowControlParamsFromFile.currentDir + '/scSelfTestLookupTable.txt'
@@ -819,7 +813,6 @@ class ExtractSlowControlParamsFromFile():
         # Preamble..
         lookup_file.write("pixelSelfTestLookupTable = [")
         
-        ''' Extract 'feedback_select_pixel_' /'self_test_pixel_' section from each key name.. '''
         for idx in range(pixels):
             # Write value to file
             lookup_file.write( "%3i, " % pxlList[idx] )
@@ -827,18 +820,11 @@ class ExtractSlowControlParamsFromFile():
             if ((idx % 16) == 15):
                 lookup_file.write("\n\t\t\t")
 
-#            if (idx % 16 == 0):
-#                lookup_file.write("\n")
-#
-#            noSpaces = lookupTableList[idx]
-#            # Write keyname to file
-#            lookup_file.write( "" + noSpaces + ", ")
-            
         # Close list with ] ..
         lookup_file.write("]")    
         
         # The list should similar to this:
-        '''[497, , 498, ...'''
+        '''[511, 510, 509, .., 496, 480, 481, .., 495, 479, 478, ...'''
         
         try:
             lookup_file.close()
@@ -850,40 +836,21 @@ class ExtractSlowControlParamsFromFile():
             there are 512 these (not counting the master one) and this function is only likely to be run 1-2 times at most
         """
 
-        filename = ExtractSlowControlParamsFromFile.currentDir + '/scBiasDictKeys.txt'
-        try:
-            lookup_file = open(filename, 'w')
-        except Exception as e:
-            print "createBiasControlDictKeysAndLookupTable: Couldn't open file because: ", e
-        
         # Create number in order for daq_bias 
         numberList = [47, 46, 21, 15, 9, 36, 45, 19, 14, 8, 44, 32, 18, 12, 5, 43, 30, 17, 11, 2, 42, 24, 16, 10, 1, 
                       41, 37, 28, 23, 7, 35, 33, 27, 22, 6, 40, 31, 26, 20, 4, 39, 29, 25, 13, 3, 38, 34]
-        
-        lookupTableList = []
-        bias_offset = 0x05
-        pixels = 512
-        
-        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
-        for idx in range(pixels):
-            lookupTableList.append( """                         'daq_bias %i'""" % numberList[idx] + """        : 0x%03x,\n""" % (bias_offset + idx*3) )
-        
-        # Each line should look similar to this:
-        """                         'daq_bias 512'        : 0x03,"""
-        
-        # Write these dictionary keys to file
-        for idx in range(pixels):
-            lookup_file.write( lookupTableList[idx] )
-        
-        try:
-            lookup_file.close()
-        except Exception as e:
-            print "createdbiasDecoderTable: Couldn't close file because: ", e
+                
+        counter = 0
+        lookupTableList = [0] * 47
+        # Generate corrected lookup table
+        for idx in range(len(numberList)):
+            lookupTableList[ numberList[idx]- 1 ] = counter
+            counter += 1
 
     
         """ create the lookup table for bias Decoder settings that will be used inside this script """
 
-        filename = ExtractSlowControlParamsFromFile.currentDir + '/sciasLookupTable.txt'
+        filename = ExtractSlowControlParamsFromFile.currentDir + '/scBiasLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -892,22 +859,16 @@ class ExtractSlowControlParamsFromFile():
         # Preamble..
         lookup_file.write("biasDecoderLookupTable = [")
         
-        ''' Extract 'daq_bias ' section from each key name.. '''
-        for idx in range(pixels):    # Remove leading whitespaces
-            noPreSpaces = lookupTableList[idx].strip()
-            # Select key name
-            keyName = noPreSpaces[0:24]
-            # Remove apostrophies
-            noApos = keyName.replace("'", "")
-            # Remove remaining whitespaces
-            noSpaces = noApos.replace(" ", "")
-            # Write keyname to file
-            lookup_file.write( "\"" + noSpaces + "\", ")
+        # Write lookup table to file
+        for idx in range( len(numberList)):
+            # Write value to file
+            lookup_file.write( "%3i, " % lookupTableList[idx] )
+            # Limit table to 16 entries per row
+            if ((idx % 16) == 15):
+                lookup_file.write("\n\t\t\t")
+
         # Close list with ] ..
-        lookup_file.write("]")    
-        
-        # The list should similar to this:
-        '''["daq_bias 512", "daq_bias 496",...'''
+        lookup_file.write("]")
         
         try:
             lookup_file.close()
@@ -936,7 +897,9 @@ if __name__ == "__main__":
     print "testing the new__createPixelSelfTestAndFeedbackLookupTable() function.."
     slowControlParams.new__createPixelSelfTestAndFeedbackLookupTable()
     
-
+    print "Generating at the corrected daq bias lookup table"
+    slowControlParams.createBiasControlDictKeysAndLookupTable()
+    
     ''' Convert these into an XML file - Should handle the lot '''
     
     print "Calling convertListIntoXmlFile().."
