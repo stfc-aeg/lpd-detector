@@ -660,7 +660,7 @@ class ExtractSlowControlParamsFromFile():
         
         ''' Extract 'mux_decoder_pixel_' section from each key name.. '''
         for idx in range(pixels): 
-            # Write keyname to file
+            # Write value to file
             lookup_file.write( "%3i, " % numberList[idx] )
             # Limit table to 16 entries per row
             if ((idx % 16) == 15):
@@ -677,96 +677,101 @@ class ExtractSlowControlParamsFromFile():
             print "createMuxDecoderDictKeysAndLookupTable: Couldn't close 2nd file because: ", e
         
     def createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable(self):
-        """ Function to be used once or twice for creating the dictionary keys and lookup table """
-        
-        old_start = 497
-        new_start = 497
-        # Pixel numbering from 1-512 is represented in Python by 0-511.
-        #    So in order to number from 1-512 in Python, we must run until 513
-        old_stop = 513
-        new_stop = 513
-        # Direction, positive = incremental, negative = decremental
-        dir = 1
-        pxlList = []
-        for i in range(32):
-            # Save start and stop values from previous iteration
-            old_start = new_start
-            old_stop = new_stop
-            for i in range(new_start, new_stop, dir):
-                pxlList.append(i)
-            # Calculate next iteration's start and stop that is based upon the previous.
-            #    Note that the distance fluctuates between either 17 or 15 from one row to the next
-        
-            new_start = old_stop-16-dir
-            new_stop = old_start-16-dir
-            dir = dir * (-1)
+        """ 
+            DUFF !
+            Function to be used once or twice for creating the dictionary keys and lookup table 
+        """
 
-        # Create dictionary lookup table  
-        lookupTableList = []
-        pixelTestFeedback_offset = 0x00 # This will be 1 for feedback and 3 for self test
-        pixels = 512
-        
-        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
-        for idx in range(pixels):
-            pixelTestFeedback_offset += 1
-            lookupTableList.append( """                         'feedback_select_pixel_%i'""" % pxlList[idx] + """    : pixelSelfTest + 0x%03x,\n""" % (pixelTestFeedback_offset) )
-            pixelTestFeedback_offset += 3
-            lookupTableList.append( """                         'self_test_pixel_%i'""" % pxlList[idx] + """          : pixelSelfTest + 0x%03x,\n""" % (pixelTestFeedback_offset) )
-
-        # Write dictionary keys and values to file
-        filename = ExtractSlowControlParamsFromFile.currentDir + '/scSelfTestDictKeys.txt'
-        try:
-            pixeltest_file = open(filename, 'w')
-        except Exception as e:
-            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open file because: ", e
-        
-        # Write these dictionary keys to file; Note each pixel has two settings, ie 1024 or 512*2
-        for idx in range(pixels*2):
-            pixeltest_file.write( lookupTableList[idx] )
-        
-        try:
-            pixeltest_file.close()
-        except Exception as e:
-            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close file because: ", e
-         
-
-        """ create the lookup table for Mux Decoder settings that will be used inside this script """
-
-        filename = ExtractSlowControlParamsFromFile.currentDir + '/scSelfTestLookupTable.txt'
-        try:
-            lookup_file = open(filename, 'w')
-        except Exception as e:
-            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open 2nd file because: ", e
-        
-        # Preamble..
-        lookup_file.write("pixelSelfTestLookupTable = [")
-        
-        ''' Extract 'feedback_select_pixel_' /'self_test_pixel_' section from each key name.. '''
-        for idx in range(pixels*2):    
-            # Remove leading whitespaces
-            noPreSpaces = lookupTableList[idx].strip()
-            # Select key name
-            keyName = noPreSpaces[0:26]
-            # Remove apostrophies
-            noApos = keyName.replace("'", "")
-            # Remove remaining whitespaces
-            noSpaces = noApos.replace(" ", "")
-            # Write keyname to file
-            lookup_file.write( "\"" + noSpaces + "\", ")
-            
-            if idx % 7 == 6:
-                lookup_file.write("\n")
-
-        # Close list with ] ..
-        lookup_file.write("]")    
-        
-        # The list should similar to this:
-        '''["feedback_select_pixel_497", "self_test_pixel_497", "feedback_select_pixel_498", ...'''
-        
-        try:
-            lookup_file.close()
-        except Exception as e:
-            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", e
+        ''' The old implementation which created an incorrect lookup table '''
+        pass
+#        old_start = 497
+#        new_start = 497
+#        # Pixel numbering from 1-512 is represented in Python by 0-511.
+#        #    So in order to number from 1-512 in Python, we must run until 513
+#        old_stop = 513
+#        new_stop = 513
+#        # Direction, positive = incremental, negative = decremental
+#        dir = 1
+#        pxlList = []
+#        for i in range(32):
+#            # Save start and stop values from previous iteration
+#            old_start = new_start
+#            old_stop = new_stop
+#            for i in range(new_start, new_stop, dir):
+#                pxlList.append(i)
+#            # Calculate next iteration's start and stop that is based upon the previous.
+#            #    Note that the distance fluctuates between either 17 or 15 from one row to the next
+#        
+#            new_start = old_stop-16-dir
+#            new_stop = old_start-16-dir
+#            dir = dir * (-1)
+#
+#        # Create dictionary lookup table  
+#        lookupTableList = []
+#        pixelTestFeedback_offset = 0x00 # This will be 1 for feedback and 3 for self test
+#        pixels = 512
+#        
+#        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
+#        for idx in range(pixels):
+#            pixelTestFeedback_offset += 1
+#            lookupTableList.append( """                         'feedback_select_pixel_%i'""" % pxlList[idx] + """    : pixelSelfTest + 0x%03x,\n""" % (pixelTestFeedback_offset) )
+#            pixelTestFeedback_offset += 3
+#            lookupTableList.append( """                         'self_test_pixel_%i'""" % pxlList[idx] + """          : pixelSelfTest + 0x%03x,\n""" % (pixelTestFeedback_offset) )
+#
+#        # Write dictionary keys and values to file
+#        filename = ExtractSlowControlParamsFromFile.currentDir + '/scSelfTestDictKeys.txt'
+#        try:
+#            pixeltest_file = open(filename, 'w')
+#        except Exception as e:
+#            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open file because: ", e
+#        
+#        # Write these dictionary keys to file; Note each pixel has two settings, ie 1024 or 512*2
+#        for idx in range(pixels*2):
+#            pixeltest_file.write( lookupTableList[idx] )
+#        
+#        try:
+#            pixeltest_file.close()
+#        except Exception as e:
+#            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close file because: ", e
+#         
+#
+#        """ create the lookup table for Mux Decoder settings that will be used inside this script """
+#
+#        filename = ExtractSlowControlParamsFromFile.currentDir + '/scSelfTestLookupTable.txt'
+#        try:
+#            lookup_file = open(filename, 'w')
+#        except Exception as e:
+#            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't open 2nd file because: ", e
+#        
+#        # Preamble..
+#        lookup_file.write("pixelSelfTestLookupTable = [")
+#        
+#        ''' Extract 'feedback_select_pixel_' /'self_test_pixel_' section from each key name.. '''
+#        for idx in range(pixels*2):    
+#            # Remove leading whitespaces
+#            noPreSpaces = lookupTableList[idx].strip()
+#            # Select key name
+#            keyName = noPreSpaces[0:26]
+#            # Remove apostrophies
+#            noApos = keyName.replace("'", "")
+#            # Remove remaining whitespaces
+#            noSpaces = noApos.replace(" ", "")
+#            # Write keyname to file
+#            lookup_file.write( "\"" + noSpaces + "\", ")
+#            
+#            if idx % 7 == 6:
+#                lookup_file.write("\n")
+#
+#        # Close list with ] ..
+#        lookup_file.write("]")    
+#        
+#        # The list should similar to this:
+#        '''["feedback_select_pixel_497", "self_test_pixel_497", "feedback_select_pixel_498", ...'''
+#        
+#        try:
+#            lookup_file.close()
+#        except Exception as e:
+#            print "createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable: Couldn't close 2nd file because: ", e
 
     def new__createPixelSelfTestAndFeedbackLookupTable(self):
         """ Function to be used once for creating feedback_select/self_test_decoder lookup table """
@@ -779,31 +784,33 @@ class ExtractSlowControlParamsFromFile():
         new_stop = 513
         # Direction, positive = incremental, negative = decremental
         dir = 1
-        pxlList = []
+        pxlList = [0] * 512
+        counter = 0
         for i in range(32):
             # Save start and stop values from previous iteration
             old_start = new_start
             old_stop = new_stop
             for i in range(new_start, new_stop, dir):
-                pxlList.append(i)
+                pxlList[i-1] = counter
+                counter += 1
+            print ""
             # Calculate next iteration's start and stop that is based upon the previous.
             #    Note that the distance fluctuates between either 17 or 15 from one row to the next
-        
             new_start = old_stop-16-dir
             new_stop = old_start-16-dir
             dir = dir * (-1)
 
         # Create dictionary lookup table  
-        lookupTableList = []
+#        lookupTableList = []
         pixels = 512
         
-        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
-        for idx in range(pixels):
-            lookupTableList.append("%3i" % pxlList[idx] )         
+#        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
+#        for idx in range(pixels):
+#            lookupTableList.append("%3i" % pxlList[idx] )         
 
-        """ create the lookup table for Mux Decoder settings that will be used inside this script """
+        """ create the lookup table for Pixel Self Test and Feedback settings that will be used inside this script """
 
-        filename = '/u/ckd27546/workspace/filename2.txt'
+        filename = ExtractSlowControlParamsFromFile.currentDir + '/scSelfTestLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -813,19 +820,25 @@ class ExtractSlowControlParamsFromFile():
         lookup_file.write("pixelSelfTestLookupTable = [")
         
         ''' Extract 'feedback_select_pixel_' /'self_test_pixel_' section from each key name.. '''
-        for idx in range(pixels):    
-            if (idx % 16 == 0):
-                lookup_file.write("\n")
+        for idx in range(pixels):
+            # Write value to file
+            lookup_file.write( "%3i, " % pxlList[idx] )
+            # Limit table to 16 entries per row
+            if ((idx % 16) == 15):
+                lookup_file.write("\n\t\t\t")
 
-            noSpaces = lookupTableList[idx]
-            # Write keyname to file
-            lookup_file.write( "" + noSpaces + ", ")
+#            if (idx % 16 == 0):
+#                lookup_file.write("\n")
+#
+#            noSpaces = lookupTableList[idx]
+#            # Write keyname to file
+#            lookup_file.write( "" + noSpaces + ", ")
             
         # Close list with ] ..
         lookup_file.write("]")    
         
         # The list should similar to this:
-        '''["feedback_select_pixel_497", "self_test_pixel_497", "feedback_select_pixel_498", ...'''
+        '''[497, , 498, ...'''
         
         try:
             lookup_file.close()
@@ -870,7 +883,7 @@ class ExtractSlowControlParamsFromFile():
     
         """ create the lookup table for bias Decoder settings that will be used inside this script """
 
-        filename = ExtractSlowControlParamsFromFile.currentDir + '/scbiasLookupTable.txt'
+        filename = ExtractSlowControlParamsFromFile.currentDir + '/sciasLookupTable.txt'
         try:
             lookup_file = open(filename, 'w')
         except Exception as e:
@@ -910,21 +923,17 @@ if __name__ == "__main__":
     slow_ctrl_data, list_length = slowControlParams.readSlowControlFileintoFormattedList( thisFile + '/SlowCtrlCmds.txt')
     
     # Display section by section the slow control values extracted from the file above
-    slowControlParams.displayFormattedList(slow_ctrl_data, list_length)
+#    slowControlParams.displayFormattedList(slow_ctrl_data, list_length)
 
-
-
-    ''' Create dictionary keys / lookup table required for Pixel Self Test and Feedback Control
-        DONE '''
-#    slowControlParams.createPixelSelfTestAndFeedbackControlDictKeysAndLookupTable()
 
     ''' Create dictionary keys and the lookup table required for mux_decoder_pixel_xxx (used by LpdSlowCtrlSequence.py and this script)
         DONE ''' 
     slowControlParams.createMuxDecoderDictKeysAndLookupTable()
     print "mux table generated."
-    sys.exit()
+    
     ''' Create a unified lookup table for feedback_select/self_test_decoder '''
-    print "testing the new function.."
+    ''' Create dictionary keys / lookup table required for Pixel Self Test and Feedback Control '''
+    print "testing the new__createPixelSelfTestAndFeedbackLookupTable() function.."
     slowControlParams.new__createPixelSelfTestAndFeedbackLookupTable()
     
 
