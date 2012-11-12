@@ -6,7 +6,7 @@ Created on Aug 29, 2012
 
 # Import Python standard modules
 from string import strip, split
-import os
+import os, sys
 
 class ExtractSlowControlParamsFromFile():
 
@@ -289,7 +289,6 @@ class ExtractSlowControlParamsFromFile():
                     # Msb in five bit word between 3585-3589 is located at 3585
                     #    because 3585 % 5 = 0, check when % 5 = 4 to find lsb
                     if (i % 3) == 2:
-#                        print "%4i: Adding word: %i" % (i, data_word)
                         slow_ctrl_data.append(data_word)
                         data_word = 0
                         
@@ -320,7 +319,7 @@ class ExtractSlowControlParamsFromFile():
                 # Self Test Enable
                 elif i == 3584:
                     slow_ctrl_data.append( data[i][2] )
-                    
+
                 # Bias Control
                 elif 3585 <= i <= 3819:
 
@@ -350,22 +349,6 @@ class ExtractSlowControlParamsFromFile():
                         slow_ctrl_data.append(data_word)
                         data_word = 0
                         
-#                    if i <= 3821:
-#                        # Spare bits: no current use
-#                        slow_ctrl_data.append( data[i][2] )
-#                        
-#                    elif i <= 3822:
-#                        # Gain Switching Mode
-#                        slow_ctrl_data.append( data[i][2] )
-#                        
-#                    elif i <= 3823:
-#                        # Calibration Pad Vcalib Buff input switch
-#                        slow_ctrl_data.append( data[i][2] )
-#                        
-#                    else:# i <= 3824:
-#                        # Adc Alternative Pad Input Switch
-#                        slow_ctrl_data.append( data[i][2] )
-#                        
                 # 100x Filter Control
                 elif 3825 <= i <= 3844:
                     # Save current bit
@@ -378,15 +361,6 @@ class ExtractSlowControlParamsFromFile():
                     if i == 3844:
                         slow_ctrl_data.append(data_word)
                         data_word = 0
-                        
-#                    if i < 3844:
-#                        # 19 unused bits
-#                        slow_ctrl_data.append( data[i][2] )
-#                        
-#                    else:
-#                        # Filter Enable
-#                        slow_ctrl_data.append( data[i][2] )
-#                        
 
                 # ADC Delay Adjust
                 elif 3845 <= i <= 3864:
@@ -401,24 +375,7 @@ class ExtractSlowControlParamsFromFile():
                         slow_ctrl_data.append(data_word)
                         data_word = 0
                         
-#                    if i < 3862:
-#                        # 17 unused bits
-#                        slow_ctrl_data.append( data[i][2] )
-#                        
-#                    else:
-#                        # Delay Adjust
-#                        # Save current bit
-#                        current_bit = data[i][2]
-#                        # Bit shift data_word before adding current_bit
-#                        data_word = data_word << 1
-#                        # Append current_bit to current data_word
-#                        data_word += current_bit
-#                        # Lsb in 3 bit word between 3862-3864 is located at 3864
-#                        #    because 3864 % 3 = 0, that's the condition to find lsb and save that 3 bit word
-#                        if (i % 3) == 0:
-#                            slow_ctrl_data.append(data_word)
-#                            data_word = 0
-#                # Digital Control
+                # Digital Control
                 elif 3865 <= i <= 3904:
 
                     if i < 3869:
@@ -635,12 +592,15 @@ class ExtractSlowControlParamsFromFile():
                 # Note that each pixel is listed twice in the list, ie [0, 0, 1, 1, 2, 2, .., Etc]
         
         # Self Test Enable
-        if scList[1536]:
-            ..
+        stringList.append( '''   <self_test_enable value="%i"/>''' % scList[1536] )
         
         # Bias Control configuration
         for idx in range(47):
             stringList.append( '''   <daq_bias index="%i"''' % (ExtractSlowControlParamsFromFile.biasCtrlLookupTable[idx]- 1) +''' value="%i"/>''' % scList[1537+idx] )
+        
+        # Spare bits
+        stringList.append( '''   <spare_bits value="%i"/>''' % scList[1584] )
+        
         
         # Write XML Tags to file
         for i in range(len(stringList)):
@@ -676,42 +636,17 @@ class ExtractSlowControlParamsFromFile():
         
     def createMuxDecoderDictKeysAndLookupTable(self):
         """ this function is used to produce the lookup table required for the mux_decoder_pixel_XX tags
-            there are 512 these (not counting the master one) and this function is only likely to be run 1-2 times at most
+            there are 512 of these (not counting the master one) and this function is only likely to be run 1-2 times at most
         """
-
-        filename = ExtractSlowControlParamsFromFile.currentDir + '/scMuxDictKeys.txt'
-        try:
-            lookup_file = open(filename, 'w')
-        except Exception as e:
-            print "createMuxDecoderDictKeysAndLookupTable: Couldn't open file because: ", e
         
         # Create number in order for mux decoder pixels
         numberList = []
-        for row in range(16):
-            for col in range(512-row, 0,-16):
+        for row in range(32):
+            for col in range(512-row, 0,-32):
                 numberList.append(col)
-        
-        lookupTableList = []
-        mux_offset = 0x03
-        pixels = 512
-        
-        # Generate dictionary keys to be used inside LpdSlowCtrlSequence.py
-        for idx in range(pixels):
-            lookupTableList.append( """                         'mux_decoder_pixel_%i'""" % numberList[idx] + """        : 0x%03x,\n""" % (mux_offset + idx*3) )
-        
-        # Each line should look similar to this:
-        """                         'mux_decoder_pixel_512'        : 0x03,"""
-        
-        # Write these dictionary keys to file
-        for idx in range(pixels):
-            lookup_file.write( lookupTableList[idx] )
-        
-        try:
-            lookup_file.close()
-        except Exception as e:
-            print "createdMuxDecoderTable: Couldn't close file because: ", e
 
-    
+        pixels = 512
+
         """ create the lookup table for Mux Decoder settings that will be used inside this script """
 
         filename = ExtractSlowControlParamsFromFile.currentDir + '/scMuxLookupTable.txt'
@@ -724,21 +659,17 @@ class ExtractSlowControlParamsFromFile():
         lookup_file.write("muxDecoderLookupTable = [")
         
         ''' Extract 'mux_decoder_pixel_' section from each key name.. '''
-        for idx in range(pixels):    # Remove leading whitespaces
-            noPreSpaces = lookupTableList[idx].strip()
-            # Select key name
-            keyName = noPreSpaces[0:24]
-            # Remove apostrophies
-            noApos = keyName.replace("'", "")
-            # Remove remaining whitespaces
-            noSpaces = noApos.replace(" ", "")
+        for idx in range(pixels): 
             # Write keyname to file
-            lookup_file.write( "\"" + noSpaces + "\", ")
-        # Close list with ] ..
+            lookup_file.write( "%3i, " % numberList[idx] )
+            # Limit table to 16 entries per row
+            if ((idx % 16) == 15):
+                lookup_file.write("\n\t\t\t")
+        # Close list with ] 
         lookup_file.write("]")    
         
         # The list should similar to this:
-        '''["mux_decoder_pixel_512", "mux_decoder_pixel_496",...'''
+        '''[512, 480, 448, 416, ...]'''
         
         try:
             lookup_file.close()
@@ -989,8 +920,9 @@ if __name__ == "__main__":
 
     ''' Create dictionary keys and the lookup table required for mux_decoder_pixel_xxx (used by LpdSlowCtrlSequence.py and this script)
         DONE ''' 
-#    slowControlParams.createMuxDecoderDictKeysAndLookupTable()
-    
+    slowControlParams.createMuxDecoderDictKeysAndLookupTable()
+    print "mux table generated."
+    sys.exit()
     ''' Create a unified lookup table for feedback_select/self_test_decoder '''
     print "testing the new function.."
     slowControlParams.new__createPixelSelfTestAndFeedbackLookupTable()
