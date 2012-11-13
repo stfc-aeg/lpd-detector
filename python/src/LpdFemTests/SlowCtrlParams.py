@@ -374,7 +374,8 @@ class SlowCtrlParams(object):
         elif dictKey == "self_test_decoder":
             return (SlowCtrlParams.pixelSelfTestLookupTable[idx] - 1)
         elif dictKey == "daq_bias":
-            return (SlowCtrlParams.biasCtrlLookupTable[idx] - 1)
+            return SlowCtrlParams.biasCtrlLookupTable[idx]
+#            return (SlowCtrlParams.biasCtrlLookupTable[idx] - 1)
         else:
 #            raise SlowCtrlParamsError("Invalid execution: No lookup table for key '%s'!" % dictKey)
             return idx             
@@ -823,7 +824,12 @@ class SlowCtrlParams(object):
     
                 print "]"
 
-
+    def fetchParamsDictionary(self):
+        '''
+            Utility function used by unit testing class to obtain dictionary values
+        '''
+        return self.paramsDict
+    
 import unittest
     
 class SlowCtrlParamsTest(unittest.TestCase):
@@ -831,30 +837,33 @@ class SlowCtrlParamsTest(unittest.TestCase):
     Unit test class for SlowCtrlParams.
     '''
 
-    
+
     def testStringParse(self):
         '''
             Tests that updating a parameter works as expected
         '''
         
-        daqBiasIdx47 = 11
+        selfTestPixelIndex = 1
+        daqBiasIdx47Value = 11
         daqBiasDefault = 31
         selfTestDecoderDefault = 7
         digitalControlIdx3 = 18
 
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
-                                <self_test_decoder pixel="1" value="5"/>
+                                <self_test_decoder pixel="%i" value="5"/>
                                 <self_test_decoder_default value="%i"/>
                                 <mux_decoder pixel="2" value="0"/>
                                 <mux_decoder_default value="3"/>
+                                
                                 <daq_bias index="46" value="%i"/>
                                 <daq_bias_default value="%i"/>
                                 <daq_bias index="2" value="0"/>
+                                
                                 <digital_control value="18"/>
                                 <spare_bits value="%i"/>
                             </lpd_slow_ctrl_sequence>
-        ''' % (selfTestDecoderDefault, daqBiasIdx47, daqBiasDefault, digitalControlIdx3)
+        ''' % (selfTestPixelIndex, selfTestDecoderDefault, daqBiasIdx47Value, daqBiasDefault, digitalControlIdx3)
 
   
         # Parse XML and encode
@@ -870,25 +879,28 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = selfTestDecoderDefault
         
         # Expected encoded values
-        expectedVals = [3, -1, value, 0, [False, True, False]]
+#        expectedVals = [3, -1, value, 0, [False, True, False]]
+        expectedVals = paramsObj.fetchParamsDictionary()['self_test_decoder_default']
         # The actual values
         selfTestDecoderDefaultVals = paramsObj.getParamValue(dictKey)
 
-#        print selfTestDecoderDefaultVals, "\n", expectedVals
+#        print "\n", selfTestDecoderDefaultVals, "\n", expectedVals
         self.assertEqual(selfTestDecoderDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
         
         # 'self_test_decoder'                    : [5, 3585, [-1] * 47],
         dictKey = 'self_test_decoder'
-        index = 497 # 1
+        index = selfTestPixelIndex
         value = 5
         
         expectedVals = [3, 1537, [selfTestDecoderDefault] * 512, 1, [True, True, False]]
-        expectedVals[2][index] = value
+        expectedVals[2][ SlowCtrlParams.pixelSelfTestLookupTable[index] -1 ] = value
+
+#        print "\n497: ", SlowCtrlParams.pixelSelfTestLookupTable[497]
         
         self_test_decoderVals = paramsObj.getParamValue(dictKey)
         
-#        print self_test_decoderVals, "\n", expectedVals
-        self.assertEqual(self_test_decoderVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+#        print "\n", self_test_decoderVals, "\n", expectedVals
+        self.assertEqual(self_test_decoderVals[0], expectedVals[0], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
         
 
         # daq_bias_default
@@ -900,21 +912,21 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         daqBiasDefaultVals = paramsObj.getParamValue(dictKey)
         
-#        print daqBiasDefaultVals, "\n", expectedVals
+#        print "\n", daqBiasDefaultVals, "\n", expectedVals
         self.assertEqual(daqBiasDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
         
         # 'daq_bias'                    : [5, 3585, [-1] * 47],
         dictKey = 'daq_bias'
-        index = 5
-        value = daqBiasIdx47
+        value = daqBiasIdx47Value
         
         expectedVals = [5, 3585, [daqBiasDefault] * 47, 0, [False, True, True]]
-        expectedVals[2][21-1] = 0
-        expectedVals[2][34-1] = value
+
+        expectedVals[2][ SlowCtrlParams.biasCtrlLookupTable[2] ] = 0
+        expectedVals[2][ SlowCtrlParams.biasCtrlLookupTable[46] ] = value
         
         daq_biasVals = paramsObj.getParamValue(dictKey)
 
-#        print daq_biasVals, "\n", expectedVals
+#        print "\nEnc: ", daq_biasVals, "\nExp: ", expectedVals
         self.assertEqual(daq_biasVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
         # 'digital_control'
@@ -927,7 +939,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         digitalControlVals = paramsObj.getParamValue(dictKey)
         
-#        print digitalControlVals, "\n", expectedVals
+#        print "\n", digitalControlVals, "\n", expectedVals
         self.assertEqual(digitalControlVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
     
@@ -1102,7 +1114,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             self.displaySequence(expectedSequence)
         
         self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectAndSelfTestDecoderDefaultsCombined() failed !')
-
+    
     def testMuxDecoderDefault(self):
         '''
             Test that the key mux_decoder_default works
@@ -1139,7 +1151,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         self.assertEqual(encSeq, expectedSequence, 'testMuxDecoderDefault() failed !')
 
-        
+    
     def testDaqBiasDefault(self):
         '''
             Test that the key daq_bias_default works
@@ -1347,22 +1359,27 @@ class SlowCtrlParamsTest(unittest.TestCase):
     
     def testSpecificMuxDecoderValues(self):
         '''
-            Test all the keys
+            Test a set of specific mux_decoder key values
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
-                                <mux_decoder pixel="511" value="5"/>
-                                <mux_decoder pixel="479" value="1"/>
-                                <mux_decoder pixel="447" value="1"/>
-                                <mux_decoder pixel="415" value="1"/>
+                                <mux_decoder pixel="511" value="3"/>
+                                <mux_decoder pixel="495" value="1"/>
+                                <mux_decoder pixel="479" value="2"/>
+                                <mux_decoder pixel="463" value="5"/>
+                                <mux_decoder pixel="447" value="4"/>
+                                <mux_decoder pixel="431" value="7"/>
+                                <mux_decoder pixel="415" value="6"/>
+                                <mux_decoder pixel="319" value="6"/>
+                                <mux_decoder pixel="159" value="4"/>
                                 <mux_decoder pixel="0" value="2"/>
                                 <mux_decoder pixel="32" value="4"/>
                                 <mux_decoder pixel="64" value="1"/>
                                 <mux_decoder pixel="96" value="1"/>
-                                <mux_decoder_default value="7"/>
                             </lpd_slow_ctrl_sequence>
         '''
+#                                <mux_decoder_default value="7"/>
     
         # Parse XML and encode
         paramsObj = SlowCtrlParams(stringCmdXml)
@@ -1371,9 +1388,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
         for idx in range(48):
-            expectedSequence[idx] = 0xFFFFFFFF
-        expectedSequence[0] =  0xFFFFF925
-        expectedSequence[47] = 0x464FFFFF
+            expectedSequence[idx] = 0x0
+        expectedSequence[0] =  0xF9AA6
+        expectedSequence[1] =  0x30
+        expectedSequence[2] =  0x4
+        expectedSequence[47] = 0x40882000
 
         # Toggle display debug information
         if False:
@@ -1402,9 +1421,9 @@ class SlowCtrlParamsTest(unittest.TestCase):
 if __name__ == '__main__':
     
     # Execute unit testing
-#    unittest.main()
-#    
-#    sys.exit()
+    unittest.main()
+    
+    sys.exit()
 
     ''' 
         Manual testing - Turning the contents of the slow control file 
@@ -1413,7 +1432,8 @@ if __name__ == '__main__':
         'SlowControlMachined.xml' produced by the script: ExtractSlowControlParamsFromFile.py
     '''
 #    thisFile = '/experimentation.xml'
-    thisFile = '/scParameters.xml'
+#    thisFile = '/scParameters.xml'
+    thisFile = '/SlowControlMachined.xml'
     currentDir = os.getcwd()
     if currentDir.endswith("LpdFemTests"):
         thisFile = currentDir + thisFile
