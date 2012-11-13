@@ -1,5 +1,6 @@
 # Check in setParaValue() for list/integer type 
 import types, sys, os
+import pprint
 
 from xml.etree.ElementInclude import ElementTree
 from xml.etree.ElementTree import ParseError
@@ -28,55 +29,11 @@ class SlowCtrlParams(object):
     SEQLENGTH = 123
 
     # xml lookup tables
-    '''
-                !
-        NOTE: these are based upon a slow control numbering of pixels 1-512, index 1-47
-                but whenever they are used they are subtracted by one to match 
-                Python numbering of pixel 0-512, index 0-46
-                
-                !
-    '''
-#    biasCtrlLookupTable = [ 47, 46, 21, 15,  9, 36, 45, 19, 14,  8, 44, 
-#                            32, 18, 12,  5, 43, 30, 17, 11,  2, 42, 24, 
-#                            16, 10,  1, 41, 37, 28, 23,  7, 35, 33, 27, 
-#                            22,  6, 40, 31, 26, 20,  4, 39, 29, 25, 13, 
-#                             3, 38, 34]
+
     biasCtrlLookupTable = [ 24,  19,  44,  39,  14,  34,  29,   9,   4,  23,  18,  13,  43,   8,   3,  22, 
                             17,  12,   7,  38,   2,  33,  28,  21,  42,  37,  32,  27,  41,  16,  36,  11, 
                             31,  46,  30,   5,  26,  45,  40,  35,  25,  20,  15,  10,   6,   1,   0, ]
 
-#    muxDecoderLookupTable = [512, 480, 448, 416, 384, 352, 320, 288, 256, 224, 192, 160, 128,  96,  64,  32, 
-#                            511, 479, 447, 415, 383, 351, 319, 287, 255, 223, 191, 159, 127,  95,  63,  31, 
-#                            510, 478, 446, 414, 382, 350, 318, 286, 254, 222, 190, 158, 126,  94,  62,  30, 
-#                            509, 477, 445, 413, 381, 349, 317, 285, 253, 221, 189, 157, 125,  93,  61,  29, 
-#                            508, 476, 444, 412, 380, 348, 316, 284, 252, 220, 188, 156, 124,  92,  60,  28, 
-#                            507, 475, 443, 411, 379, 347, 315, 283, 251, 219, 187, 155, 123,  91,  59,  27, 
-#                            506, 474, 442, 410, 378, 346, 314, 282, 250, 218, 186, 154, 122,  90,  58,  26, 
-#                            505, 473, 441, 409, 377, 345, 313, 281, 249, 217, 185, 153, 121,  89,  57,  25, 
-#                            504, 472, 440, 408, 376, 344, 312, 280, 248, 216, 184, 152, 120,  88,  56,  24, 
-#                            503, 471, 439, 407, 375, 343, 311, 279, 247, 215, 183, 151, 119,  87,  55,  23, 
-#                            502, 470, 438, 406, 374, 342, 310, 278, 246, 214, 182, 150, 118,  86,  54,  22, 
-#                            501, 469, 437, 405, 373, 341, 309, 277, 245, 213, 181, 149, 117,  85,  53,  21, 
-#                            500, 468, 436, 404, 372, 340, 308, 276, 244, 212, 180, 148, 116,  84,  52,  20, 
-#                            499, 467, 435, 403, 371, 339, 307, 275, 243, 211, 179, 147, 115,  83,  51,  19, 
-#                            498, 466, 434, 402, 370, 338, 306, 274, 242, 210, 178, 146, 114,  82,  50,  18, 
-#                            497, 465, 433, 401, 369, 337, 305, 273, 241, 209, 177, 145, 113,  81,  49,  17, 
-#                            496, 464, 432, 400, 368, 336, 304, 272, 240, 208, 176, 144, 112,  80,  48,  16, 
-#                            495, 463, 431, 399, 367, 335, 303, 271, 239, 207, 175, 143, 111,  79,  47,  15, 
-#                            494, 462, 430, 398, 366, 334, 302, 270, 238, 206, 174, 142, 110,  78,  46,  14, 
-#                            493, 461, 429, 397, 365, 333, 301, 269, 237, 205, 173, 141, 109,  77,  45,  13, 
-#                            492, 460, 428, 396, 364, 332, 300, 268, 236, 204, 172, 140, 108,  76,  44,  12, 
-#                            491, 459, 427, 395, 363, 331, 299, 267, 235, 203, 171, 139, 107,  75,  43,  11, 
-#                            490, 458, 426, 394, 362, 330, 298, 266, 234, 202, 170, 138, 106,  74,  42,  10, 
-#                            489, 457, 425, 393, 361, 329, 297, 265, 233, 201, 169, 137, 105,  73,  41,   9, 
-#                            488, 456, 424, 392, 360, 328, 296, 264, 232, 200, 168, 136, 104,  72,  40,   8, 
-#                            487, 455, 423, 391, 359, 327, 295, 263, 231, 199, 167, 135, 103,  71,  39,   7, 
-#                            486, 454, 422, 390, 358, 326, 294, 262, 230, 198, 166, 134, 102,  70,  38,   6, 
-#                            485, 453, 421, 389, 357, 325, 293, 261, 229, 197, 165, 133, 101,  69,  37,   5, 
-#                            484, 452, 420, 388, 356, 324, 292, 260, 228, 196, 164, 132, 100,  68,  36,   4, 
-#                            483, 451, 419, 387, 355, 323, 291, 259, 227, 195, 163, 131,  99,  67,  35,   3, 
-#                            482, 450, 418, 386, 354, 322, 290, 258, 226, 194, 162, 130,  98,  66,  34,   2, 
-#                            481, 449, 417, 385, 353, 321, 289, 257, 225, 193, 161, 129,  97,  65,  33,   1, ]
     
     muxDecoderLookupTable = [511, 479, 447, 415, 383, 351, 319, 287, 255, 223, 191, 159, 127,  95,  63,  31, 
                             510, 478, 446, 414, 382, 350, 318, 286, 254, 222, 190, 158, 126,  94,  62,  30, 
@@ -111,38 +68,6 @@ class SlowCtrlParams(object):
                             481, 449, 417, 385, 353, 321, 289, 257, 225, 193, 161, 129,  97,  65,  33,   1, 
                             480, 448, 416, 384, 352, 320, 288, 256, 224, 192, 160, 128,  96,  64,  32,   0, ]
 
-#    pixelSelfTestLookupTable = [497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 
-#                                496, 495, 494, 493, 492, 491, 490, 489, 488, 487, 486, 485, 484, 483, 482, 481, 
-#                                465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 
-#                                464, 463, 462, 461, 460, 459, 458, 457, 456, 455, 454, 453, 452, 451, 450, 449, 
-#                                433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 
-#                                432, 431, 430, 429, 428, 427, 426, 425, 424, 423, 422, 421, 420, 419, 418, 417, 
-#                                401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 
-#                                400, 399, 398, 397, 396, 395, 394, 393, 392, 391, 390, 389, 388, 387, 386, 385, 
-#                                369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 
-#                                368, 367, 366, 365, 364, 363, 362, 361, 360, 359, 358, 357, 356, 355, 354, 353, 
-#                                337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 
-#                                336, 335, 334, 333, 332, 331, 330, 329, 328, 327, 326, 325, 324, 323, 322, 321, 
-#                                305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 
-#                                304, 303, 302, 301, 300, 299, 298, 297, 296, 295, 294, 293, 292, 291, 290, 289, 
-#                                273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 
-#                                272, 271, 270, 269, 268, 267, 266, 265, 264, 263, 262, 261, 260, 259, 258, 257, 
-#                                241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 
-#                                240, 239, 238, 237, 236, 235, 234, 233, 232, 231, 230, 229, 228, 227, 226, 225, 
-#                                209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 
-#                                208, 207, 206, 205, 204, 203, 202, 201, 200, 199, 198, 197, 196, 195, 194, 193, 
-#                                177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 
-#                                176, 175, 174, 173, 172, 171, 170, 169, 168, 167, 166, 165, 164, 163, 162, 161, 
-#                                145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 
-#                                144, 143, 142, 141, 140, 139, 138, 137, 136, 135, 134, 133, 132, 131, 130, 129, 
-#                                113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 
-#                                112, 111, 110, 109, 108, 107, 106, 105, 104, 103, 102, 101, 100,  99,  98,  97, 
-#                                 81,  82,  83,  84,  85,  86,  87,  88,  89,  90,  91,  92,  93,  94,  95,  96, 
-#                                 80,  79,  78,  77,  76,  75,  74,  73,  72,  71,  70,  69,  68,  67,  66,  65, 
-#                                 49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,  64, 
-#                                 48,  47,  46,  45,  44,  43,  42,  41,  40,  39,  38,  37,  36,  35,  34,  33, 
-#                                 17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32, 
-#                                 16,  15,  14,  13,  12,  11,  10,   9,   8,   7,   6,   5,   4,   3,   2,   1, ]
 
     pixelSelfTestLookupTable = [511, 510, 509, 508, 507, 506, 505, 504, 503, 502, 501, 500, 499, 498, 497, 496, 
                                 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491, 492, 493, 494, 495, 
@@ -176,6 +101,7 @@ class SlowCtrlParams(object):
                                  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47, 
                                  31,  30,  29,  28,  27,  26,  25,  24,  23,  22,  21,  20,  19,  18,  17,  16, 
                                   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15, ]
+
 
     def __init__(self, xmlObject, fromFile=False, strict=True):
         #TODO: Sort out argument list - will have implications wherever objects are created of this class
@@ -572,9 +498,9 @@ class SlowCtrlParams(object):
                     ''' 
                         LIST TYPE: FIRST LOOP
                     '''
-#                    if dictKey == debugComparisonKey:
-#                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n     LIST TYPE: FIRST LOOP "
-#                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\ndictKey:%15s       len(bitwiseArray): %4i" % (dictKey, len(bitwiseArray))
+                    if dictKey == debugComparisonKey:
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n     LIST TYPE: FIRST LOOP "
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\ndictKey:%15s       len(bitwiseArray): %4i" % (dictKey, len(bitwiseArray))
 
                     # Loop over all the elements of the nested list and produce bitwiseArray (MSB first)
                     #    e.g.: if keyWidth = 3, list = [1, 3, 6, .] then bitwiseOffset = [ (0, 0, 1,) (0, 1, 1,) (1, 1, 0,) ..]
@@ -589,52 +515,52 @@ class SlowCtrlParams(object):
                             # bitShiftOffset determines number of bits to shift within current slow control word
                             bitShiftOffset = (keyWidth-1) - scIdx
 
-#                            ''' DEBUG INFO '''
-#                            if dictKey == debugComparisonKey:
-#                                if idx < 5:
-#                                    if scIdx < keyWidth:#                                                                                                                    # bitwiseArray[%4i + %2i + %2i + %4i] =
-#                                        print "bitwiseArray[%4i + %2i + %2i + %4i] = ( (scWordContent[%3i] & %2i) >> %4i) => b..[%4i] = ( (%4X & %2i) >> %2X)   =   %2i." % (bitPosition, keyWidth*idx, scIdx, wordSkip*idx,
-#                                                                                                                                                                             # (scWordContent[%3i] & %2i) >> %4i
-#                                                                                                                                                                             idx, bitMask, bitShiftOffset,
-#                                                                                                                                                                             #  b..[%4i] = 
-#                                                                                                                                                                             bitPosition + keyWidth*idx + scIdx + wordSkip*idx,
-#                                                                                                                                                                             # ( (%4X & %2i) >> %2X)   = 
-#                                                                                                                                                                             slowControlWordContent[idx], bitMask, bitShiftOffset,
-#                                                                                                                                                                             # %2i."
-#                                                                                                                                                                             ( (slowControlWordContent[idx] & bitMask) >> bitShiftOffset)
-#                                                                                                                                                                             )
+                            ''' DEBUG INFO '''
+                            if dictKey == debugComparisonKey:
+                                if idx < 5:
+                                    if scIdx < keyWidth:#                                                                                                                    # bitwiseArray[%4i + %2i + %2i + %4i] =
+                                        print "bitwiseArray[%4i + %2i + %2i + %4i] = ( (scWordContent[%3i] & %2i) >> %4i) => b..[%4i] = ( (%4X & %2i) >> %2X)   =   %2i." % (bitPosition, keyWidth*idx, scIdx, wordSkip*idx,
+                                                                                                                                                                             # (scWordContent[%3i] & %2i) >> %4i
+                                                                                                                                                                             idx, bitMask, bitShiftOffset,
+                                                                                                                                                                             #  b..[%4i] = 
+                                                                                                                                                                             bitPosition + keyWidth*idx + scIdx + wordSkip*idx,
+                                                                                                                                                                             # ( (%4X & %2i) >> %2X)   = 
+                                                                                                                                                                             slowControlWordContent[idx], bitMask, bitShiftOffset,
+                                                                                                                                                                             # %2i."
+                                                                                                                                                                             ( (slowControlWordContent[idx] & bitMask) >> bitShiftOffset)
+                                                                                                                                                                             )
                             #bitMask = 1 << scIdx
                             bitwiseArray[bitPosition + keyWidth*idx + scIdx + wordSkip*idx] = ( (slowControlWordContent[idx] & bitMask) >> bitShiftOffset)
                             bitMask = bitMask >> 1
 
-#                    ''' DEBUG INFO '''
-#                    if dictKey == debugComparisonKey:
-#                        if dictKey == "feedback_select":
-#                            specialCase = 3
-#                        elif dictKey == "self_test_decoder":
-#                            specialCase = 1
-#                        else:
-#                            specialCase = 0
-#                        outputWidth = (40/keyWidth) * keyWidth
-#                        lowerLimit = bitPosition - (bitPosition % outputWidth)
-#                        upperLimit = bitPosition + numBitsRequired*(keyWidth+ specialCase)
-##                        print "bitPosition + numBitsRequired*(keyWidth+ specialCase)   == >   %3i + %3i * (%2i+ %i) " % (bitPosition, numBitsRequired, keyWidth, specialCase)
-#                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n%15s       len(bitwiseArray): %4i, content: " % (dictKey, len(bitwiseArray)),
-#                        for idx in range( len(bitwiseArray) ):
-#                            if idx < lowerLimit:
-#                                continue
-#                            if idx > upperLimit:
-#                                continue
-#                            if (idx % (outputWidth)) == 0:
-#                                print "\n%4i: " % idx,
-#                            print "%2i" % bitwiseArray[ idx ],
-#                        print ""
+                    ''' DEBUG INFO '''
+                    if dictKey == debugComparisonKey:
+                        if dictKey == "feedback_select":
+                            specialCase = 3
+                        elif dictKey == "self_test_decoder":
+                            specialCase = 1
+                        else:
+                            specialCase = 0
+                        outputWidth = (40/keyWidth) * keyWidth
+                        lowerLimit = bitPosition - (bitPosition % outputWidth)
+                        upperLimit = bitPosition + numBitsRequired*(keyWidth+ specialCase)
+#                        print "bitPosition + numBitsRequired*(keyWidth+ specialCase)   == >   %3i + %3i * (%2i+ %i) " % (bitPosition, numBitsRequired, keyWidth, specialCase)
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n%15s       len(bitwiseArray): %4i, content: " % (dictKey, len(bitwiseArray)),
+                        for idx in range( len(bitwiseArray) ):
+                            if idx < lowerLimit:
+                                continue
+                            if idx > upperLimit:
+                                continue
+                            if (idx % (outputWidth)) == 0:
+                                print "\n%4i: " % idx,
+                            print "%2i" % bitwiseArray[ idx ],
+                        print ""
 
                     '''
                         LIST TYPE: SECOND LOOP
                     '''
-#                    if dictKey == debugComparisonKey:
-#                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n     LIST TYPE: SECOND LOOP "
+                    if dictKey == debugComparisonKey:
+                        print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n     LIST TYPE: SECOND LOOP "
                         
                     # Loop over the bitwiseArray in reverse order and copy 32 bits at a time into the encoded sequence
                     for idx in range( len(bitwiseArray) ): #for idx in range( len(bitwiseArray)-1, -1, -1):
@@ -643,10 +569,10 @@ class SlowCtrlParams(object):
                         wordPosition = idx / 32
                         bitOffset = idx % 32
                         
-#                        ''' DEBUG INFO '''
-#                        if dictKey == debugComparisonKey:
-#                            if idx < 33:#if idx > 3865:
-#                                pass#print "idx, bit-Value, wordPosition, bitOffset = %3i, %1i, %3i, %2X" % (idx, bitwiseArray[idx], wordPosition, bitOffset)
+                        ''' DEBUG INFO '''
+                        if dictKey == debugComparisonKey:
+                            if idx < 33:#if idx > 3865:
+                                pass#print "idx, bit-Value, wordPosition, bitOffset = %3i, %1i, %3i, %2X" % (idx, bitwiseArray[idx], wordPosition, bitOffset)
 
                         # Add running total to sequence; increment bitPosition and check wordPosition 
                         try:
@@ -797,6 +723,14 @@ class SlowCtrlParams(object):
             Utility function used by unit testing class to obtain dictionary values
         '''
         return self.paramsDict
+
+        
+    def testFunction(self):
+        
+        print "testFunction:\n"
+        pprint.pprint(self.paramsDict)
+
+
     
 import unittest
     
@@ -1384,7 +1318,6 @@ class SlowCtrlParamsTest(unittest.TestCase):
                 print "\n%3i: " % idx,
             print "%9X" % seq[idx],
         print "\n"
-        
 
 if __name__ == '__main__':
     
@@ -1399,9 +1332,9 @@ if __name__ == '__main__':
                          
         'SlowControlMachined.xml' produced by the script: ExtractSlowControlParamsFromFile.py
     '''
-#    thisFile = '/experimentation.xml'
+    thisFile = '/xmlCheck.xml'
 #    thisFile = '/scParameters.xml'
-    thisFile = '/SlowControlMachined.xml'
+#    thisFile = '/SlowControlMachined.xml'
     currentDir = os.getcwd()
     if currentDir.endswith("LpdFemTests"):
         thisFile = currentDir + thisFile
@@ -1421,3 +1354,5 @@ if __name__ == '__main__':
     
 
     theParams.displayDictionaryValues()
+    
+#    theParams.testFunction()
