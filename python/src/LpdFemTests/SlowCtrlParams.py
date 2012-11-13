@@ -42,8 +42,8 @@ class SlowCtrlParams(object):
 #                            22,  6, 40, 31, 26, 20,  4, 39, 29, 25, 13, 
 #                             3, 38, 34]
     biasCtrlLookupTable = [ 24,  19,  44,  39,  14,  34,  29,   9,   4,  23,  18,  13,  43,   8,   3,  22, 
-                 17,  12,   7,  38,   2,  33,  28,  21,  42,  37,  32,  27,  41,  16,  36,  11, 
-                 31,  46,  30,   5,  26,  45,  40,  35,  25,  20,  15,  10,   6,   1,   0, ]
+                            17,  12,   7,  38,   2,  33,  28,  21,  42,  37,  32,  27,  41,  16,  36,  11, 
+                            31,  46,  30,   5,  26,  45,  40,  35,  25,  20,  15,  10,   6,   1,   0, ]
 
 #    muxDecoderLookupTable = [512, 496, 480, 464, 448, 432, 416, 400, 
 #                             384, 368, 352, 336, 320, 304, 288, 272, 
@@ -364,7 +364,7 @@ class SlowCtrlParams(object):
             'idx' returned unchanged for the other keys.
         '''
 
-        return idx
+#        return idx
 
         # Does dictKey have an associated lookup table?
         if dictKey == "mux_decoder":
