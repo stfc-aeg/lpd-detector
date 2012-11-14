@@ -1305,7 +1305,48 @@ class SlowCtrlParamsTest(unittest.TestCase):
             self.displaySequence(expectedSequence)
 
         self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
+
+
+    def testOldCfgSettings(self):
+        '''
+            Test a set of specific mux_decoder key values
+        '''
     
+        thisFile = '/xmlCheck.xml'
+        currentDir = os.getcwd()
+        if currentDir.endswith("LpdFemTests"):
+            thisFile = currentDir + thisFile
+        else:
+            thisFile = currentDir + "/LpdFemTests" + thisFile
+    
+        theParams = SlowCtrlParams(thisFile, fromFile=True)
+        encSeq = theParams.encode()
+        
+        
+        # How the sequence should end up looking
+        expectedSequence = [0x00000000] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[112] = 0x4B7B9EB0
+        expectedSequence[113] = 0xBB3687A6
+        expectedSequence[114] = 0x3EF5354F
+        expectedSequence[115] = 0x07A3CA53
+        expectedSequence[116] = 0xDD6B419B
+        expectedSequence[117] = 0xF64ADED4
+        expectedSequence[118] = 0xFBDC8DA3
+        expectedSequence[119] = 0x0023B9EC
+        expectedSequence[120] = 0x00000000
+        expectedSequence[121] = 0x40E1C240
+
+
+        # Toggle display debug information
+        if False:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            self.displaySequence(encSeq)
+
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
+
+        self.assertEqual(encSeq, expectedSequence, 'testOldCfgSettings() failed !')
+
     def displaySequence(self, seq):
         '''
             Helper function for unit testing, displays the contents of argument 'seq' sequence 
@@ -1322,37 +1363,5 @@ class SlowCtrlParamsTest(unittest.TestCase):
 if __name__ == '__main__':
     
     # Execute unit testing
-#    unittest.main()
-#    
-#    sys.exit()
-
-    ''' 
-        Manual testing - Turning the contents of the slow control file 
-                         into a 32 bit word sequence and print it
-                         
-        'SlowControlMachined.xml' produced by the script: ExtractSlowControlParamsFromFile.py
-    '''
-    thisFile = '/xmlCheck.xml'
-#    thisFile = '/scParameters.xml'
-#    thisFile = '/SlowControlMachined.xml'
-    currentDir = os.getcwd()
-    if currentDir.endswith("LpdFemTests"):
-        thisFile = currentDir + thisFile
-    else:
-        thisFile = currentDir + "/LpdFemTests" + thisFile
-
-    theParams = SlowCtrlParams(thisFile, fromFile=True)
-    encodedSequence = theParams.encode()
-
-    print "\nProcessing file '%s' produces the sequence: " % thisFile
-    for idx in range(len(encodedSequence)):
-        if True: #idx > 103:
-            if (idx % 8 == 0):
-                print "\n%3i: " % idx,
-            print "%9X" % encodedSequence[idx],
-    print "\n"
+    unittest.main()
     
-
-    theParams.displayDictionaryValues()
-    
-#    theParams.testFunction()
