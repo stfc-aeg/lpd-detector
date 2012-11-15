@@ -27,7 +27,9 @@ class SlowCtrlParams(object):
  
     # Class Constants
     SEQLENGTH = 123
-
+    # Enumerate the dictionary's indices 
+    WIDTH, POSN, VALUES, SKIP, TAGS = range(5)
+    
     # xml lookup tables
 
     biasCtrlLookupTable = [ 24,  19,  44,  39,  14,  34,  29,   9,   4,  23,  18,  13,  43,   8,   3,  22, 
@@ -104,7 +106,7 @@ class SlowCtrlParams(object):
 
 
     def __init__(self, xmlObject, fromFile=False, strict=True):
-        #TODO: Sort out argument list - will have implications wherever objects are created of this class
+        
         strict = True
         # Set the strict syntax flag to specified value (defaults to true)
         self.strict = strict
@@ -154,8 +156,10 @@ class SlowCtrlParams(object):
         
 
     def getParamValue(self, dictKey):
-        ''' Obtains the three variables associated with the dictionary key 'dictKey' 
-            and returns them as three variables (the third are in some cases a list) '''
+        ''' 
+            Obtains the three variables associated with the dictionary key 'dictKey' 
+            and returns them as three variables (the third are in some cases a list) 
+        '''
         
         width = 0xdeadbeef
         posn = 0xDeadBeef
@@ -165,11 +169,11 @@ class SlowCtrlParams(object):
         if dictKey in self.paramsDict:
             result = self.paramsDict[dictKey]
             
-            width = result[0]
-            posn = result[1]
-            val = result[2]
-            skip = result[3]
-            tags = result[4]
+            width = result[SlowCtrlParams.WIDTH]
+            posn = result[SlowCtrlParams.POSN]
+            val = result[SlowCtrlParams.VALUES]
+            skip = result[SlowCtrlParams.SKIP]
+            tags = result[SlowCtrlParams.TAGS]
         else:
             print "\"" + dictKey + "\" doesn't exist."
         
@@ -191,19 +195,19 @@ class SlowCtrlParams(object):
             currentValue = self.paramsDict[dictKey]
 
             # Check that the new value is within valid range
-            if not (0 <= value <= ( (2**currentValue[0]) -1) ):
-                raise SlowCtrlParamsInvalidRangeError("%s's value outside valid range, max: %i received: %i" % (dictKey, 2**currentValue[0]-1, value) )
+            if not (0 <= value <= ( (2**currentValue[SlowCtrlParams.WIDTH]) -1) ):
+                raise SlowCtrlParamsInvalidRangeError("%s's value outside valid range, max: %i received: %i" % (dictKey, 2**currentValue[SlowCtrlParams.WIDTH]-1, value) )
             
             else:
                 # Is the third variable a list or an integer?
-                if isinstance(currentValue[2], types.ListType):
+                if isinstance(currentValue[SlowCtrlParams.VALUES], types.ListType):
                     # it's a list; Update the new value
-                    currentValue[2][index] = value
+                    currentValue[SlowCtrlParams.VALUES][index] = value
                     
-                elif isinstance(currentValue[2], types.IntType):
-                    currentValue[2] = value
+                elif isinstance(currentValue[SlowCtrlParams.VALUES], types.IntType):
+                    currentValue[SlowCtrlParams.VALUES] = value
                 else:
-                    print "SetParamValue() Error: currentValue[2] is neither a list nor an integer!"
+                    print "SetParamValue() Error: currentValue[SlowCtrlParams.VALUES] is neither a list nor an integer!"
                                     
                 # Overwrite the old value
                 self.paramsDict[dictKey] = currentValue
@@ -213,17 +217,17 @@ class SlowCtrlParams(object):
             
     def encode(self):
         '''
-        Encodes the  slow control command(s)..
+            Encodes the  slow control command(s)..
         '''
 
         # Intialise tree depth (used for debugging only)
         self.depth = 0
         
-        # Parse the tree, starting at the root element, obtaining the packed
-        #     binary command sequence as a list
+        # Parse the tree, starting at the root element, populating the dictionary
+        # self.paramsDict according to the XML tags
         self.parseElement(self.root)
         
-        #TODO: sort this out; sequence should come from the buildBitstream() function ??
+        # Construct the bitstream based upon all dictionary keys not ending with _default 
         sequence  = self.buildBitstream()
         
         # Return the command sequence
@@ -231,9 +235,9 @@ class SlowCtrlParams(object):
 
     def getAttrib(self, theElement, theAttrib):
         '''
-        Returns the value of the theAttrib attribute of the specified element if it exists,
-        or a default value of 1 if not. Can also throw an exception if a non-integer
-        attribute is detected
+            Returns the value of the theAttrib attribute of the specified element if it exists,
+            or a default value of 1 if not. Can also throw an exception if a non-integer
+            attribute is detected
         '''
         if self.bDebug:
             print "attrib: '" + theAttrib + "'",
@@ -259,8 +263,6 @@ class SlowCtrlParams(object):
             'idx' returned unchanged for the other keys.
         '''
 
-#        return idx
-
         # Does dictKey have an associated lookup table?
         if dictKey == "mux_decoder":
             return SlowCtrlParams.muxDecoderLookupTable[idx]
@@ -271,7 +273,6 @@ class SlowCtrlParams(object):
         elif dictKey == "daq_bias":
             return SlowCtrlParams.biasCtrlLookupTable[idx]
         else:
-#            raise SlowCtrlParamsError("Invalid execution: No lookup table for key '%s'!" % dictKey)
             return idx             
         
     def parseElement(self, theElement):
@@ -308,10 +309,24 @@ class SlowCtrlParams(object):
                 pmValues = self.getParamValue(cmd)
 
                 # Extract required tags
-                bPixel = pmValues[4][0]
-                bValue = pmValues[4][1]
-                bIndex = pmValues[4][2]
+                bPixel = pmValues[SlowCtrlParams.TAGS][0]
+                bValue = pmValues[SlowCtrlParams.TAGS][1]
+                bIndex = pmValues[SlowCtrlParams.TAGS][2]
                 
+                # Check that the user has not supplied attribute(s) that are not required by the current key
+                #    e.g. pixel attribute not valid for any of the _default tag
+                if not bPixel:
+                    pixel = self.getAttrib(child, 'pixel')
+                    if pixel != -2:
+                        # pixel attribute incorrectly provided
+                        raise SlowCtrlParamsError("%s cannot use 'pixel' attribute" % (child.tag))
+                if not bIndex:
+                    index = self.getAttrib(child, 'index')
+                    if index != -2:
+                        # index attribute incorrectly provided
+                        raise SlowCtrlParamsError("%s cannot use 'index' attribute" % (child.tag))
+
+                    
                 # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
                 if value == -2:
@@ -372,11 +387,11 @@ class SlowCtrlParams(object):
                     print defaultKeyValue,
 
                 # Is XXX_default's value not specified ?
-                if defaultKeyValue[2] == -1:
+                if defaultKeyValue[SlowCtrlParams.VALUES] == -1:
                     # Default not set; set it's value to 0
                     self.setParamValue(key, 0, 0)
                     if self.bDebug:
-                        print " now = ", self.getParamValue(key)[2]
+                        print " now = ", self.getParamValue(key)[SlowCtrlParams.VALUES]
                 else:
                     if self.bDebug:
                         print " (no change)"
@@ -404,14 +419,14 @@ class SlowCtrlParams(object):
                 #    e.g. key = "mux_decoder_default"; sectionKey = "mux_decoder"
                 sectionKey = key.replace("_default", "")
                 sectionKeyValue = self.getParamValue(sectionKey)
-                sectionKeyLength = len(sectionKeyValue[2])
+                sectionKeyLength = len(sectionKeyValue[SlowCtrlParams.VALUES])
 
                 # Updates all values of the key except any that have already been explicitly set
                 for idx in range(sectionKeyLength):
                     # Update only if value not explicitly set
-                    if sectionKeyValue[2][idx] == -1:
+                    if sectionKeyValue[SlowCtrlParams.VALUES][idx] == -1:
                         # -1 denotes value hasn't been explicitly set; go ahead and update it
-                        self.setParamValue(sectionKey, idx, defaultKeyValue[2])
+                        self.setParamValue(sectionKey, idx, defaultKeyValue[SlowCtrlParams.VALUES])
             else:
                 # All keys that does not end with "_default", and that does not contain a list of values
                 #    eg:
@@ -419,12 +434,12 @@ class SlowCtrlParams(object):
 
                 keyValue = self.getParamValue(key)
 
-                if isinstance(keyValue[2], types.IntType):
+                if isinstance(keyValue[SlowCtrlParams.VALUES], types.IntType):
                     if self.bDebug:
                         print "%21s: It's an integer type" % key
                     
                     # Has the value been set already?
-                    if keyValue[2] == -1:
+                    if keyValue[SlowCtrlParams.VALUES] == -1:
                         # Not set; Set it to 0
                         self.setParamValue(key, 0, 0)
                     
@@ -476,15 +491,15 @@ class SlowCtrlParams(object):
                 # Get dictionary values for this key
                 cmdParams = self.getParamValue(dictKey)
                 # Word width (number of bits) of this key?
-                keyWidth = cmdParams[0]
+                keyWidth = cmdParams[SlowCtrlParams.WIDTH]
                 # Where does current key reside within the sequence?
-                wordPosition = cmdParams[1] / 32
+                wordPosition = cmdParams[SlowCtrlParams.POSN] / 32
                 # Slow Control Value(s)
-                slowControlWordContent = cmdParams[2]
+                slowControlWordContent = cmdParams[SlowCtrlParams.VALUES]
                 # bitPosition tracks the current bit position relative to the entire length of sequence (0 - 3904)
-                bitPosition = cmdParams[1]
+                bitPosition = cmdParams[SlowCtrlParams.POSN]
                 # Skip - distance between two slow control words within  the same section
-                wordSkip = cmdParams[3]
+                wordSkip = cmdParams[SlowCtrlParams.SKIP]
                 
                 # Is this a list?
                 if isinstance(slowControlWordContent, types.ListType):
@@ -593,7 +608,7 @@ class SlowCtrlParams(object):
                         continue
 
                     # How many bits to use
-                    numBitsRequired = cmdParams[0]
+                    numBitsRequired = cmdParams[SlowCtrlParams.WIDTH]
                     # Create a bit array to save each bit individually from the slow control word
                     bitwiseArray = [0] * numBitsRequired                    
                     
@@ -640,8 +655,8 @@ class SlowCtrlParams(object):
                     # Loop over this new list and copy into the encoded sequence
                     for idx in range(len(bitwiseArray)):
 
-                        wordPosition = (cmdParams[1] + idx) / 32
-                        bitOffset = (cmdParams[1] + idx) % 32
+                        wordPosition = (cmdParams[SlowCtrlParams.POSN] + idx) / 32
+                        bitOffset = (cmdParams[SlowCtrlParams.POSN] + idx) % 32
 
                         ''' DEBUG INFO '''
                         if dictKey == debugComparisonKey:
@@ -660,11 +675,6 @@ class SlowCtrlParams(object):
                             print "(integer!) BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << bitOffset) )
                             print "key = %s" % dicKey
                             return
-                        
-                        # Add running total to sequence; Increment bitPosition and check wordPosition 
-#                        encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << (31 - (bitPosition % 32)) )
-#                        bitPosition += 1
-#                        wordPosition = bitPosition / 32
 
         # Return the encoded sequence for this (partial) tree
         return encodedSequence
@@ -696,25 +706,25 @@ class SlowCtrlParams(object):
                 print "dictKey: ", cmd,
                 if len(cmd) < 12:
                     print "\t",
-                print " \tpos'n: ", dictKey[1], "\t [",
+                print " \tpos'n: ", dictKey[SlowCtrlParams.POSN], "\t [",
                 # Is the third variable a list or an integer?
-                if isinstance(dictKey[2], types.ListType):
+                if isinstance(dictKey[SlowCtrlParams.VALUES], types.ListType):
                     # it's a list
                     for idx in range(11):
                         if (idx < 5):
                             # Print the first five values
-                            print dictKey[2][idx],
+                            print dictKey[SlowCtrlParams.VALUES][idx],
                         elif idx == 5:
                             print ", .., ",
                         else:
                             # Print the last five values
-                            print dictKey[2][-1*(11-idx)],
+                            print dictKey[SlowCtrlParams.VALUES][-1*(11-idx)],
     
-                elif isinstance(dictKey[2], types.IntType):
+                elif isinstance(dictKey[SlowCtrlParams.VALUES], types.IntType):
                    # it's just an integer
-                   print dictKey[2],
+                   print dictKey[SlowCtrlParams.VALUES],
                 else:
-                    print "displayDictionaryValues() Error: dictKey[2] is neither a list nor an integer!"
+                    print "displayDictionaryValues() Error: dictKey[SlowCtrlParams.VALUES] is neither a list nor an integer!"
     
                 print "]"
 
@@ -802,7 +812,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         self_test_decoderVals = paramsObj.getParamValue(dictKey)
         
 #        print "\n", self_test_decoderVals, "\n", expectedVals
-        self.assertEqual(self_test_decoderVals[0], expectedVals[0], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+        self.assertEqual(self_test_decoderVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
         
 
         # daq_bias_default
@@ -921,6 +931,42 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 1099511627776
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
+
+    def testInvalidAttributeFails(self):
+        '''
+            Tests that providing a tag with an attribute that isn't required will raise an exception
+        '''
+
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="testInvalidAttributeFails1">
+                                <self_test_decoder_default pixel="5" value="7"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        self.assertRaises(SlowCtrlParamsError, paramsObj.encode)
+
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="testInvalidAttributeFails2">
+                                <daq_bias pixel="5" value="7"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        self.assertRaises(SlowCtrlParamsError, paramsObj.encode)
+
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="testInvalidAttributeFails3">
+                                <daq_bias_default index="15" value="31"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML and encode
+        paramsObj = SlowCtrlParams(stringCmdXml)
+        self.assertRaises(SlowCtrlParamsError, paramsObj.encode)
+
     
     def testSelfTestDecoderDefaultSetValueSeven(self):
         '''
