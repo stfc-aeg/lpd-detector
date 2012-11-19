@@ -48,6 +48,11 @@ class DigitalControlConfigure():
     
 if __name__ == "__main__":
 
+    # Example usage:
+    '''
+        python LpdFemTests/redundant_files/DigitalControlConfigure.py --reserved 0 --reset3 0 --reset2 18 --reset1 14 --clockcounteroffset 14 --clockselect 4
+    '''
+    
     # Define class arguments
     Reserved    = 0
     Reset3      = 0
@@ -58,7 +63,7 @@ if __name__ == "__main__":
     
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="DigitalControlConfigure.py - Accepts up to 6 arguments to set the functions compromising the Digital Control keyword and generates the 40 bit word used by the <digital_control> XML tag. ",
-                                     epilog="The perceived wisdom is that the following function values are the default settings:\nReserved = 0\nReset3 = 0\nReset2 = 18\nReset1 = 14\nClockCounterOffset = 14\nClockSelect = 4,\t Note: the parser ignores any argument set to 0 and therefore the default values of all of the six arguments if not provided.")
+                                     epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 0\nreset3 = 0\nreset2 = 18\nreset1 = 14\nclockcounteroffset = 14\nclockselect = 4,\t Note: the parser ignores any argument set to 0 and therefore the default value is 0 for any of the six arguments if not provided.")
 
     parser.add_argument("--reserved", help="set the Reserved function (4 bits)", type=int)
     parser.add_argument("--reset3", help="set the Reset3 function (7 bits)", type=int)
