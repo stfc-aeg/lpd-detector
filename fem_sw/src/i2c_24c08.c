@@ -53,7 +53,9 @@ int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len)
  */
 int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 {
-	int firstPage, lastPage, page, firstWriteSize, lastWriteSize, totalBytes, currentAddr;
+	int firstPage, lastPage, page, firstWriteSize, lastWriteSize, currentAddr;
+	int totalBytes = 0;
+	int numBytes = 0;
 	u8 buffer[EEPROM_PAGE_SIZE + 1];
 
 	// First byte of any write is address
@@ -80,7 +82,15 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 
 		// First page
 		memcpy( &buffer[1], pData, firstWriteSize );
-		totalBytes += writeI2C( IIC_IDX_EEPROM, IIC_ADDRESS_EEPROM, buffer, firstWriteSize+1 );
+		numBytes = writeI2C( IIC_IDX_EEPROM, IIC_ADDRESS_EEPROM, buffer, firstWriteSize+1 );
+		if (numBytes < 0)
+		{
+			return numBytes;
+		}
+		else
+		{
+			totalBytes += numBytes;
+		}
 		currentAddr += firstWriteSize;
 		buffer[0] = currentAddr;
 
@@ -89,7 +99,15 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		{
 			usleep(EEPROM_WRITE_DELAY_MS*1000);
 			memcpy( &buffer[1], pData+(currentAddr-addr), EEPROM_PAGE_SIZE );
-			totalBytes += writeI2C( IIC_IDX_EEPROM, IIC_ADDRESS_EEPROM, buffer, EEPROM_PAGE_SIZE+1 );
+			numBytes = writeI2C( IIC_IDX_EEPROM, IIC_ADDRESS_EEPROM, buffer, EEPROM_PAGE_SIZE+1 );
+			if (numBytes < 0)
+			{
+				return numBytes;
+			}
+			else
+			{
+				totalBytes += numBytes;
+			}
 			currentAddr += EEPROM_PAGE_SIZE;
 			buffer[0] = currentAddr;
 		}
@@ -97,7 +115,15 @@ int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 		// Last page
 		usleep(EEPROM_WRITE_DELAY_MS*1000);
 		memcpy( &buffer[1], pData+(currentAddr-addr), lastWriteSize );
-		totalBytes += writeI2C( IIC_IDX_EEPROM, IIC_ADDRESS_EEPROM, buffer, lastWriteSize+1 );
+		numBytes = writeI2C( IIC_IDX_EEPROM, IIC_ADDRESS_EEPROM, buffer, lastWriteSize+1 );
+		if (numBytes < 0)
+		{
+			return numBytes;
+		}
+		else
+		{
+			totalBytes += numBytes;
+		}
 
 		return totalBytes;
 
