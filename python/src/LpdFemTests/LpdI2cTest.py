@@ -400,8 +400,12 @@ class LpdI2cTest(FemClient):
 if __name__ == "__main__":
     
     # Define FEM IP address and port
-    host = '192.168.2.2'
+    #host = '192.168.2.2' # Burntoak
+    host = '192.168.3.2' # Kiribati
     port = 6969
+
+    print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (femHost, femPort)
+    time.sleep(1)
     
     thisFem = LpdI2cTest((host, port))
 
@@ -420,14 +424,14 @@ if __name__ == "__main__":
 #    print "Let's check the status now:"
 #    thisFem.displayAll()
     
-#    print "Switching low voltage off.. "
-#    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
-#    time.sleep(1)
-#    print "Low voltage now switched off!"
+    print "Switching low voltage off.. "
+    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+    time.sleep(1)
+    print "Low voltage now switched off!"
 
-#    print "Switching off high-voltage too"
-#    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
-#    time.sleep(1)
+    print "Switching off high-voltage too"
+    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+    time.sleep(1)
 
 
     print "\nClosing down Fem connection.."

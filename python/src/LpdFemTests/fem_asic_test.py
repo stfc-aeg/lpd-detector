@@ -95,8 +95,12 @@ class FemAsicTest():
     
     def execute_tests(self):
         
-        femHost = '192.168.2.2'
+        #femHost = '192.168.2.2'    # Burntoak
+        femHost = '192.168.3.2'     # Kiribati
         femPort = 6969
+        
+        print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (femHost, femPort)
+        time.sleep(1)
         
         try:
             myLpdFemClient = LpdFemClientLegacy((femHost, femPort), timeout=10)
