@@ -8,7 +8,7 @@ import argparse
 
 class DigitalControlConfigure():
 
-    def __init__(self, Reserved=0, Reset3= 0, Reset2=0, Reset1=0, ClockCounterOffset=0, ClockSelect=0):
+    def __init__(self, Reserved=0, Reset3= 0, Reset2=0, Reset1=0, ClockCounterOffset=0, ClockSelect=0, Debug=0):
         '''
             DigitalControlConfigure allows the user to specify up to all six of the different parts of the Digital Control Slow Control Section
         '''
@@ -45,14 +45,39 @@ class DigitalControlConfigure():
         xmlTag = """<digital_control value="%i"/>""" % total
 
         print "\nGenerated Digital Control XML tag: \t\t", xmlTag, "\n"
-    
+
+        if Debug:
+            print "And its binary value is: %s\n" % self.displayBinaryString(total)
+
+    def displayBinaryString(self, decValue):
+        '''
+            Turns the value of argument 'decValue' into a string, organising the bits into groups of four
+        '''
+        # Turn value into binary string
+        strValue = bin(decValue)
+        # Split the binary string into groups of four bits (in reverse order)
+        reversedGroupedBitsString = ""
+        for i in range(1, len(strValue)+1):
+            reversedGroupedBitsString += strValue[-i]
+            if i % 4 == 0:
+                    reversedGroupedBitsString += " "
+        
+        # Reversed the order
+        correctOrder = ""
+        for i in range(len(reversedGroupedBitsString)-1,-1,-1):
+            correctOrder += reversedGroupedBitsString[i]
+        return correctOrder
+
 if __name__ == "__main__":
 
     # Example usage:
     '''
         python LpdFemTests/redundant_files/DigitalControlConfigure.py --reserved 0 --reset3 0 --reset2 18 --reset1 14 --clockcounteroffset 14 --clockselect 4
     '''
-    
+
+    # Debug variable
+    Debug = 0
+        
     # Define class arguments
     Reserved    = 0
     Reset3      = 0
@@ -71,6 +96,7 @@ if __name__ == "__main__":
     parser.add_argument("--reset1", help="set the Reset1 function (7 bits)", type=int)
     parser.add_argument("--clockcounteroffset", help="set the Clock Counter Offset function (7 bits)", type=int)
     parser.add_argument("--clockselect", help="set the Clock Select function (8 bits)", type=int)
+    parser.add_argument("--debug", help="set debug to 1 for debug information", type=int)
     args = parser.parse_args()
 
     # Copy value(s) for the provided arguments
@@ -86,8 +112,9 @@ if __name__ == "__main__":
         ClockCounterOffset = args.clockcounteroffset
     if args.clockselect:
         ClockSelect = args.clockselect
+    if args.debug:
+        Debug = args.debug
 
-
-    DigitalControlConfigure(Reserved, Reset3, Reset2, Reset1, ClockCounterOffset, ClockSelect)
+    DigitalControlConfigure(Reserved, Reset3, Reset2, Reset1, ClockCounterOffset, ClockSelect, Debug)
     
     
