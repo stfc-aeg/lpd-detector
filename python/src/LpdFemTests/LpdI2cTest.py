@@ -4,6 +4,7 @@
 '''
 
 import time, types, sys
+import argparse
 
 from FemClient.FemClient import  *
 from FemApi.FemTransaction import FemTransaction
@@ -399,39 +400,45 @@ class LpdI2cTest(FemClient):
     
 if __name__ == "__main__":
     
+    
+    # Create parser object and arguments
+    parser = argparse.ArgumentParser(description="To switch on the LV, the syntax is: 'python LpdI2ctest.py --lv 1' ",
+                                     epilog="Note: If the script is executed without any given flag,  the corresponding supply will be switched OFF. Sadly, this is a limitation inherit to Python's parse module.")
+    
+    parser.add_argument("--lv", help="switch LV on or off", type=int, choices=[0, 1])
+    parser.add_argument("--hv", help="switch HV on or off", type=int, choices=[0, 1])
+    args = parser.parse_args()
+
+    
     # Define FEM IP address and port
-    #host = '192.168.2.2' # Burntoak
-    host = '192.168.3.2' # Kiribati
+    host = '192.168.2.2' # Burntoak
+#    host = '192.168.3.2' # Kiribati
     port = 6969
 
-    print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (femHost, femPort)
+    print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (host, port)
     time.sleep(1)
     
     thisFem = LpdI2cTest((host, port))
 
+    # Execute according to supplied flags
+    if args.lv:
+        print "Switching low voltage on.."
+        thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
+    else:
+        print "Switching low voltage off.. "
+        thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+    time.sleep(1)
+
+    if args.hv:
+        print "Switching high voltage on.."
+        thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
+    else:
+        print "Switching high voltage off.. "
+        thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+    time.sleep(1)
+
     # Test reading out the voltages on current first, then these ones:
     thisFem.displayAll()
-
-    # Test switching the low voltage on..
-#    print "Switching low voltage on.."
-#    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
-#    time.sleep(1)
-#    print "Switching high-voltage too!"
-#    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
-#    time.sleep(1)
-
-
-#    print "Let's check the status now:"
-#    thisFem.displayAll()
-    
-    print "Switching low voltage off.. "
-    thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
-    time.sleep(1)
-    print "Low voltage now switched off!"
-
-    print "Switching off high-voltage too"
-    thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
-    time.sleep(1)
 
 
     print "\nClosing down Fem connection.."
