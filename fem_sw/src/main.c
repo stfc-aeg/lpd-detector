@@ -138,13 +138,10 @@ int main()
 	// Initialise hardware
     initHardware();
 
-    // Initialise xilkernel
-//    xilkernel_init();
-
     // Create the master thread
     xmk_add_static_thread(masterThread, 0);
 
-    // Start kilkernel
+    // Start xilkernel
     xilkernel_start();
 
     // Never reached!
@@ -328,6 +325,7 @@ int initHardware(void)
 
     // ****************************************************************************
     // Register ISRs for I2C devices and enable
+    /*
     register_int_handler(I2C_INT_ID_LM82, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
     register_int_handler(I2C_INT_ID_EEPROM, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
     register_int_handler(I2C_INT_ID_PWR_LHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
@@ -336,6 +334,7 @@ int initHardware(void)
     enable_interrupt(I2C_INT_ID_EEPROM);
     enable_interrupt(I2C_INT_ID_PWR_LHS);
     enable_interrupt(I2C_INT_ID_PWR_RHS);
+    */
     // ****************************************************************************
 
     // ****************************************************************************

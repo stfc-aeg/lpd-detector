@@ -35,7 +35,7 @@ int readEEPROM(u8 slaveAddr, u8 addr, u8* pData, unsigned len)
  * @param pData pointer to data buffer to fill
  * @param len number of bytes to read
  *
- * @return number of bytes read
+ * @return number of bytes read or IIC_ERR_* error code (<0)
  */
 int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len)
 {
@@ -49,7 +49,7 @@ int readFromEEPROM(unsigned int addr, u8* pData, unsigned int len)
  * @param pData pointer to data buffer to write from
  * @param len number of bytes to write
  *
- * @return number of bytes written
+ * @return number of bytes written or IIC_ERR_* error code (<0)
  */
 int writeToEEPROM(unsigned int addr, u8* pData, unsigned int len)
 {
