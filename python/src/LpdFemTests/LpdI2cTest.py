@@ -125,8 +125,8 @@ class LpdI2cTest(FemClient):
         response = -1
         
         response = self.i2cRead(addr, 2)
-        high = (response[1] & 15) << 8
-        low = response[2]
+        high = (response[0] & 15) << 8
+        low = response[1]
         return high + low
 
 
@@ -151,11 +151,11 @@ class LpdI2cTest(FemClient):
         # Read operation, read ADC value
         response = self.i2cRead(addr, 2)
         
-        print " RAW response: ", response,
+        #print " RAW response: ", response,
         
         # Extract the received two bytes and return as integer
-        high = (response[1] & 15) << 8
-        low = response[2]
+        high = (response[0] & 15) << 8
+        low = response[1]
         return high + low
 
     def read_bit(self, id):
@@ -174,7 +174,7 @@ class LpdI2cTest(FemClient):
         addr = LpdI2cTest.i2cInternalBusOffset + 0x38 
         
         response = self.i2cRead(addr, 1)
-        value = response[1]
+        value = response[0]
         return (value & (1 << id)) != 0
         
 
@@ -183,8 +183,8 @@ class LpdI2cTest(FemClient):
         '''
         addr = LpdI2cTest.i2cInternalBusOffset + 0x38
         response = self.i2cRead(addr, 1)
-
-        return response[1]
+        
+        return response[0]
 
     def write_bit(self, id, value):
         ''' Change bit 'id' to 'value' in PCF7485 device
