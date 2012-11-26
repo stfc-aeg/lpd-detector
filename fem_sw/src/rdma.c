@@ -274,15 +274,15 @@ void setMux(u32 *pAddr)
 
 	// Do mux, if necessary
 	if (thisMux != mux) {
-		//DBGOUT("setMux(): Mux was %d, setting to %d\r\n", mux, thisMux);		// TODO: Remove debugging
+		//DBGOUT("setMux(): Mux was %d, setting to %d\r\n", mux, thisMux);
 		XGpio_DiscreteWrite(&gpioMux, 1, thisMux);
 		mux = thisMux;
 	}
 
 	// Unmangle address
-	//DBGOUT("setMux(): Input RDMA address: 0x%08x\r\n", *pAddr);		// TODO: Remove debugging
+	//DBGOUT("setMux(): Input RDMA address: 0x%08x\r\n", *pAddr);
 	*pAddr = (((*pAddr & 0x0FFFFFFF) & 0x0F000000) << 4) | ((*pAddr & 0x0FFFFFFF) & 0x00FFFFFF);
-	//DBGOUT("setMux(): Output RDMA address: 0x%08x\r\n", *pAddr);		// TODO: Remove debugging
+	//DBGOUT("setMux(): Output RDMA address: 0x%08x\r\n", *pAddr);
 }
 
 #endif
