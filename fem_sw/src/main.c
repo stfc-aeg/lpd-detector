@@ -62,7 +62,6 @@
 #endif
 
 // Testing and benchmarking
-#include "test.h"
 #include "iperf.h"
 
 // EDK hardware includes
