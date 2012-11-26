@@ -20,6 +20,8 @@ import matplotlib.cm as cm
 import matplotlib.pyplot
 import matplotlib
 
+from machineConfiguration import *
+
 from PyQt4 import QtCore, QtGui
 
 
@@ -50,9 +52,19 @@ class RxThread(QtCore.QThread):
         
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
+
+        # Instantiate objects of machineConfiguration to obtain network information regarding the current machine
+        #    (to enable this code to the run unmodified on different systems and PCs)
+        pcAddressConfig = machineConfiguration()
+        femHost = pcAddressConfig.get10gDestinationIpAddress(0) # 0 =  x10g_0, 1 = x10g_1
+        if femHost is None:
+            print "Error selecting10 interface, only 0 or 1 valid!\n\nExiting.."
+            print "(femHost = %s)" % femHost
+            sys.exit()
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(('192.168.7.1', 61649))
+#        self.sock.bind(('192.168.7.1', 61649))
+        self.sock.bind((femHost, 61649))
 
     def __del__(self):
         self.wait()
