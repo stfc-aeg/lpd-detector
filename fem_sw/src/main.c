@@ -38,6 +38,7 @@
 #include <stdio.h>
 
 // LWIP includes
+#include "lwip/dhcp.h"
 #include "lwip/init.h"
 #include "lwip/inet.h"
 #include "lwip/ip_addr.h"
@@ -202,6 +203,8 @@ void networkInitThread(void *p)
 
     netif = &server_netif;
 
+    int mscnt = 0;
+
     // Setup network
     IP4_ADDR(&ipaddr,  femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
     IP4_ADDR(&netmask, femConfig.net_nm[0], femConfig.net_nm[1], femConfig.net_nm[2], femConfig.net_nm[3]);
@@ -211,15 +214,41 @@ void networkInitThread(void *p)
     // Add network interface to the netif_list, and set it as default
     // NOTE: This can (and WILL) hang forever if the base address for the MAC is incorrect, or not assigned by EDK...
     // (e.g. 0xFFFF0000 etc is invalid).  Use 'Generate Addresses' if this is the case...
-    DBGOUT("NetMan: Device IP is %03d.%03d.%03d.%03d\r\n", femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
     if (!xemac_add(netif, &ipaddr, &netmask, &gateway, (unsigned char*)femConfig.net_mac, BADDR_MAC)) {
     	DBGOUT("NetMan: Error adding N/W interface to netif, aborting...\r\n");
         return;
     }
     netif_set_default(netif);
 
-    // Specify that the network if is up
-    netif_set_up(netif);
+    // If default network settings detected, get a DHCP address
+    if (femConfig.net_ip[0]==0 && femConfig.net_ip[1]==0 && femConfig.net_ip[2]==0 && femConfig.net_ip[3]==0)
+    {
+    	// DHCP
+    	DBGOUT("NetMan: No static IP defined in configuration, acquiring DHCP address...\r\n");
+    	dhcp_start(netif);
+
+        while (1) {
+            sleep(DHCP_FINE_TIMER_MSECS);
+            dhcp_fine_tmr();
+            mscnt += DHCP_FINE_TIMER_MSECS;
+            if (mscnt >= DHCP_COARSE_TIMER_SECS*1000) {
+                dhcp_coarse_tmr();
+                mscnt = 0;
+            }
+        }
+
+        DBGOUT("NetMan: Got DHCP address!\r\n");
+        // TODO: Print IP/NM/GW!
+    }
+    else
+    {
+    	// STATIC IP
+    	DBGOUT("NetMan: Static IP %03d.%03d.%03d.%03d\r\n", femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
+
+    	// Specify that the network if is up (not needed if using DHCP?)
+    	netif_set_up(netif);
+    }
+
 
     // Start packet receive thread - required for lwIP operation
     t = sys_thread_new("xemacif_input_thread", (void(*)(void*))xemacif_input_thread, netif, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
