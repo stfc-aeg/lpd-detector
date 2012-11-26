@@ -117,8 +117,7 @@ void commandProcessorThread(void* arg)
 
 		if (lwip_select(numFds + 1, &readSet, NULL, NULL, &tv) == -1)
 		{
-			DBGOUT("CmdProc: ERROR - Select failed!\r\n");
-			// TODO: What to do here?
+			xil_printf("CmdProc: ERROR - Select failed!\r\n");
 		}
 
 		// Check file descriptors, see which one needs servicing
