@@ -78,7 +78,7 @@ class FemClient(object):
             raise FemClientError("FEM has closed socket connection", FemClientError.ERRNO_SOCK_CLOSED)
         
         response = FemTransaction(encoded=data)
-        print "Response payload length:", response.payloadLen
+        #print "Response payload length:", response.payloadLen
         
         while response.incomplete:
             payloadRecvLen = response.payloadRemaining
