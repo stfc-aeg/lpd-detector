@@ -78,7 +78,7 @@ class BlitQT(FigureCanvas):
         # Initialising variables used by processRxData..
         # ---------------------------------------------- #
         
-        frm_buf_num = frm_buf_lim*4
+        frm_buf_num = 100*4 # frm_buf_lim*4
         data_buf_num = data_buf_lim+10
         
         #frame Info arrays
@@ -314,11 +314,12 @@ class BlitQT(FigureCanvas):
             
             bDebug = False
             
-            if bDebug:            
+            if bDebug:
+                filename = '/u/ckd27546/workspace/lpd/src/AdjustedDodgyAsicsReadout.txt'
                 """ DEBUG INFO - PRINT IMAGE ADC VALUES TO FILE """
-                print "Writing ADC values to file.."
+                print "Writing ADC values to file '%s'" % filename
                 try:
-                    OutputFile = open('/u/ckd27546/workspace/lpd/src/AdjustedDodgyAsicsReadout.txt', 'w+')
+                    OutputFile = open(filename, 'w+')
                 except Exception as errStr:
                     print "Error opening file: ", errStr
                 
@@ -458,88 +459,6 @@ class BlitQT(FigureCanvas):
             exit(0)
 
 
-#    def read16AsicData(self, sixteenBitArray):
-#        """ read16AsicData() accepts sixteenBitArray array argument containing all
-#            the ASIC data, and returns a LIST (!!) containing the data from the 16 ASICs
-#            mounting in the two tile system """
-#        
-#        # 
-#        twoTileAsicList = []
-#        
-#        # Distance [2 indices * 64 words] between any two consecutive pixels in the same ASIC
-#        pixelDistance = 128
-#        # Iterate over 512 pixels in one image
-#        # Pixel = [0, 1, 2, 3, ..., 511]
-#        try:
-#            # Debug information for ASIC97
-#            print "read16AsicData(), ASIC97 contains:"
-#            
-#            for pixel in range(512):
-#                
-#                # ASIC 97 located in word 27        [(27-1) * 2 = 52]
-#                # ASIC 98 located in word 27 + 1    [ASIC97 + 1 = 53]
-#                # ASIC 99 located in word 28 + 2    [ASIC97 + 2 = 54]
-#                # ASIC100 located in word 28 + 3    [ASIC97 + 3 = 55]
-#                ASIC97 = sixteenBitArray[pixel*pixelDistance + 52]
-#                ASIC98 = sixteenBitArray[pixel*pixelDistance + 53]
-#                ASIC99 = sixteenBitArray[pixel*pixelDistance + 54]
-#                ASIC100 = sixteenBitArray[pixel*pixelDistance + 55]
-#                
-#                # ASIC 101 located in word 19                  [(19-1) * 2 =  36]
-#                # ASIC 102 located in word 19 + 1              [ASIC101 + 1 = 37]
-#                # ASIC 103 located in word 20                  [ASIC101 + 2 = 38]
-#                # ASIC 104 located in word 20 + 3              [ASIC101 + 3 = 39]
-#                ASIC101 = sixteenBitArray[pixel*pixelDistance + 36]
-#                ASIC102 = sixteenBitArray[pixel*pixelDistance + 37]
-#                ASIC103 = sixteenBitArray[pixel*pixelDistance + 38]
-#                ASIC104 = sixteenBitArray[pixel*pixelDistance + 39]
-#    
-#                # ASIC 17 located in word 47                  [(47-1) * 2 = 92]
-#                # ASIC 18 located in word 47 + 1              [ASIC17 + 1 = 93]
-#                # ASIC 19 located in word 48 + 2              [ASIC17 * 2 = 94]
-#                # ASIC 20 located in word 48 +                [ASIC17 + 3 = 95]
-#                ASIC17 = sixteenBitArray[pixel*pixelDistance + 92]
-#                ASIC18 = sixteenBitArray[pixel*pixelDistance + 93]
-#                ASIC19 = sixteenBitArray[pixel*pixelDistance + 94]
-#                ASIC20 = sixteenBitArray[pixel*pixelDistance + 95]
-#                
-#                # ASIC 21 located in word 39                  [(39-1) * 2 = 76]
-#                # ASIC 22 located in word 39 + 1 [ASIC21 + 1 = 77]
-#                # ASIC 23 located in word 40                  [ASIC21 + 2 = 78]
-#                # ASIC 24 located in word 40 + 3 [ASIC21 + 3 = 79]
-#                ASIC21 = sixteenBitArray[pixel*pixelDistance + 76]
-#                ASIC22 = sixteenBitArray[pixel*pixelDistance + 77]
-#                ASIC23 = sixteenBitArray[pixel*pixelDistance + 78]
-#                ASIC24 = sixteenBitArray[pixel*pixelDistance + 79]
-#                
-#                # Append each of the 16 ASIC values to the list
-#                twoTileAsicList.append(ASIC97)
-#                twoTileAsicList.append(ASIC98)
-#                twoTileAsicList.append(ASIC99) 
-#                twoTileAsicList.append(ASIC100) 
-#                twoTileAsicList.append(ASIC101) 
-#                twoTileAsicList.append(ASIC102) 
-#                twoTileAsicList.append(ASIC103) 
-#                twoTileAsicList.append(ASIC104) 
-#                twoTileAsicList.append(ASIC17) 
-#                twoTileAsicList.append(ASIC18) 
-#                twoTileAsicList.append(ASIC19) 
-#                twoTileAsicList.append(ASIC20) 
-#                twoTileAsicList.append(ASIC21) 
-#                twoTileAsicList.append(ASIC22) 
-#                twoTileAsicList.append(ASIC23) 
-#                twoTileAsicList.append(ASIC24)
-#                
-#                # Debug information for ASIC97
-#                print "%03X, " % ASIC97,
-#                
-#        except Exception as errStr:
-#            print "read16AsicData() Error: ", errStr
-#            exit()
-#        
-#        print ""
-#        return twoTileAsicList
-
     def convertAsicDataIntoImage(self, sixteenBitArray):
         """ convertAsicDataIntoImage() sixteenBitArray array argument containing all
             the ASIC data, and returns a complete image consisting of the data from 
@@ -580,7 +499,6 @@ class BlitQT(FigureCanvas):
 
                     lookupTableAsicDistance = 52
                     try:
-                        
                         
                         # Iterate over the 16 ASICs
                         for asicOffset in range(16):
@@ -748,6 +666,7 @@ class BlitQT(FigureCanvas):
             # both are of type string..
             self.rawImageData = self.rawImageData + data[8:]
 
+#            print "Before: [%3i][%3i] " % (frame_number, packet_number),
             try:
                 #Add packet number to frame packet list
                 #print "1", frame_number, packet_number
@@ -755,9 +674,10 @@ class BlitQT(FigureCanvas):
                 #print "2", frame_number, packet_number
                 #debug
             except Exception as errStr:
+                print "frame_number, = ", frame_number, " packet_number = ", packet_number
                 print "self.packet_number_list error: ", errStr, "\nExiting.."
                 sys.exit()
-
+#            print "After: [%3i][%3i] " % (frame_number, packet_number)
 
             try:
                 #Add frame number to frm packet count list        
@@ -773,10 +693,6 @@ class BlitQT(FigureCanvas):
                 print "frame_length or data_count error: ", errStr, "\nExiting.."
                 sys.exit
             
-#            # start frm num prev at first frm num
-#            if self.frm_num_prv == -1:
-#                self.frm_num_prv = frame_number
-
             # Return frame number and end of frame
             return rawFrameNumber, frm_eof
         except Exception as errString:

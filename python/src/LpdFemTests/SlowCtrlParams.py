@@ -230,6 +230,9 @@ class SlowCtrlParams(object):
         # Construct the bitstream based upon all dictionary keys not ending with _default 
         sequence  = self.buildBitstream()
         
+        #TODO: SORT OUT THIS HACK !
+        sequence[122] = 0x20
+        print "------------------>> Manually changed the last index to be sequence[123] = ", sequence[122]
         # Return the command sequence
         return sequence
 

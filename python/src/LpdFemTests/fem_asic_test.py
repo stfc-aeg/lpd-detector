@@ -5,8 +5,9 @@ Created on 18 Apr 2012
 '''
 
 # Import Python standard modules
-import sys, os
+import sys, os, string 
 import socket
+#from socket import gethostname
 
 # Import Fem modules
 #from FemClient import FemClient
@@ -14,8 +15,16 @@ from LpdFemClientLegacy import *  #LpdFemClientLegacy
 
 # Import library for parsing XML fast command files
 from LpdCommandSequence.LpdCommandSequenceParser import LpdCommandSequenceParser
+from SlowCtrlParams import SlowCtrlParams
 
 class FemAsicTest():
+
+    # Dictionary of hostname -> 1g IP address
+    one1gAddress = {'te7burntoak'  : '192.168.2.2',
+                    'te7kiribati'  : '192.168.3.2',
+                    'devgpu02'     : '192.168.3.2',}
+
+
     def set_10g_structs_variables_te2bank(self):
         """ Construct and return two dictionaries defining two network interfaces
         """
@@ -94,13 +103,22 @@ class FemAsicTest():
     # --------------------------------------------------------------------------- #
     
     def execute_tests(self):
+
+        # Determine name of current machine
+        fullDomainName = socket.gethostname()
+        # Only need hostname, not domain part
+        hostName = fullDomainName.partition('.')[0]
+        # Locate corresponding IP address
+        femHost = FemAsicTest.one1gAddress[hostName]
+#        print "Debug info: machine = '%s', IP = '%s'." % (hostName, femHost)
         
-        #femHost = '192.168.2.2'    # Burntoak
-        femHost = '192.168.3.2'     # Kiribati
+        
+#        femHost = '192.168.2.2'    # Burntoak
+        #femHost = '192.168.3.2'     # Kiribati
         femPort = 6969
         
         print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (femHost, femPort)
-        time.sleep(1)
+        
         
         try:
             myLpdFemClient = LpdFemClientLegacy((femHost, femPort), timeout=10)
@@ -309,6 +327,15 @@ class FemAsicTest():
         # Setup the UDP IP blocks sending data via 10g udp block
         if (enable_10g == 1):
             
+            # Which PC is running the script?
+            thisHost = socket.gethostname()
+            # Remove domain name from hostname
+            hostname = thisHost.split(".", 1)[0]
+            # Construct function name to be called from hostname
+            print "Use excaliburPowerGuiMain.py and getattr() to construct and call the appropriate .set_10g_.dot() function"
+            print "\nThat it, exiting for now..\n"
+            
+            sys.exit()
             # Set up the UDP IP blocks
             x10g_0, x10g_1 = self.set_10g_structs_variables_te7burntoak()
             
@@ -378,7 +405,13 @@ class FemAsicTest():
             # Load slow control and potentially fast control commands?
             if load_asic_config_brams == 1:  # only load brams if sending data from asics
                 # slow data
-                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file( currentSlowCtrlDir + '/SlowControlDefault-1A.txt')
+#                slow_ctrl_data, no_of_bits = myLpdFemClient.read_slow_ctrl_file( currentSlowCtrlDir + '/SlowControlDefault-1A.txt')
+                
+                slowCtrlConfig = SlowCtrlParams( currentSlowCtrlDir + '/slow_control_config.xml', fromFile=True)
+                slow_ctrl_data = slowCtrlConfig.encode()
+                no_of_bits = 3911
+#                sys.exit()
+                
                 # fast data
                 if asic_pseudo_random:
                     # Yes,' fast_random_gaps.txt' really does reside within the "slow control" directory:
