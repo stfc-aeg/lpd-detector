@@ -72,9 +72,9 @@ void commandProcessorThread(void* arg)
 	// Open server socket, stream mode
 	if ((listenerSocket = lwip_socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
-		DBGOUT("CmdProc: Can't open socket, aborting...\r\n");
-		DBGOUT("Terminating thread...\r\n");
-		// TODO: Failing to open a socket is a critical failure!  We could put a retry loop here though...?
+		// Failing to open a socket is a critical failure!
+		xil_printf("CmdProc: Can't open socket, aborting...\r\n");
+		xil_printf("Terminating thread...\r\n");
 		return;
 	}
 
@@ -87,18 +87,18 @@ void commandProcessorThread(void* arg)
 	// Bind to address
 	if (lwip_bind(listenerSocket, (struct sockaddr *)&serverAddress, sizeof (serverAddress)) < 0)
 	{
-		DBGOUT("CmdProc: Can't bind to socket %d!\r\n", NET_CMD_PORT);
-		DBGOUT("Terminating thread...\r\n");
-		// TODO: Failing to bind to a socket is a critical failure!  Should we exit?
+		// Failing to bind to a socket is a critical failure!
+		xil_printf("CmdProc: Can't bind to socket %d!\r\n", NET_CMD_PORT);
+		xil_printf("Terminating thread...\r\n");
 		return;
 	}
 
 	// Begin listening, register listener as FD of interest to read
 	if (lwip_listen(listenerSocket, NET_SOCK_BACKLOG) < 0)
 	{
-		DBGOUT("CmdProc: Can't listen on socket %d!\r\n", NET_CMD_PORT);
-		DBGOUT("Terminating thread...\r\n");
-		// TODO: Failing to listen on a socket is a critical failure!  Should we exit?
+		// Failing to listen on a socket is a critical failure!
+		xil_printf("CmdProc: Can't listen on socket %d!\r\n", NET_CMD_PORT);
+		xil_printf("Terminating thread...\r\n");
 		return;
 	}
 	FD_SET(listenerSocket, &masterSet);
