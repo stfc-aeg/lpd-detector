@@ -131,7 +131,7 @@ class LpdFemClientLegacy(FemClient):
                 print "Error: thePayload neither int nor tuple!"
                 return    
             values = self.rdmaRead(theAddr, playloadLength)
-            ack = values[1:]
+            ack = values#[1:]
             # Display read values
             print [hex(val) for val in ack]
         
@@ -172,7 +172,7 @@ class LpdFemClientLegacy(FemClient):
         
         #set up IP address for SRC & destination
         print "Reading IP address for Src & destination.."
-        reg6b = self.rdmaRead(base_addr+6, 1)[1]
+        reg6b = self.rdmaRead(base_addr+6, 1)[0]
     
         reg6b = (reg6b & 0x0000FFFF)
         reg6 =  ( (net['dst_ip'] << 16) & 0xFFFFFFFF )
@@ -181,7 +181,7 @@ class LpdFemClientLegacy(FemClient):
         reg7 =  (net['dst_ip'] >> 16)
         reg7 =  ( (reg7 | (net['src_ip'] << 16)) & 0xFFFFFFFF )
         
-        reg8t = self.rdmaRead(base_addr+8, 1)[1]    # 1 = one 32 bit unsigned integer
+        reg8t = self.rdmaRead(base_addr+8, 1)[0]    # 1 = one 32 bit unsigned integer
 
         reg8t = (reg8t & 0xFFFF0000)
         reg8b = (net['src_ip'] >> 16)
@@ -232,19 +232,19 @@ class LpdFemClientLegacy(FemClient):
         #input monitor registers are offset from base address by 16
         mon_addr = LpdFemClientLegacy.llink_mon_0 + 16
 
-        print "frm_last_length:\t",         hex( self.rdmaRead(mon_addr+0, 1)[1])
-        print "frm_max_length: \t",         hex( self.rdmaRead(mon_addr+1, 1)[1])
-        print "frm_min_length: \t",         hex( self.rdmaRead(mon_addr+2, 1)[1])
-        print "frm_number:\t\t",            hex( self.rdmaRead(mon_addr+3, 1)[1])
-        print "frm_last_cycles:\t",         hex( self.rdmaRead(mon_addr+4, 1)[1])
-        print "frm_max_cycles: \t",         hex( self.rdmaRead(mon_addr+5, 1)[1])
-        print "frm_min_cycles: \t",         hex( self.rdmaRead(mon_addr+6, 1)[1]) 
-        total_data = self.rdmaRead(mon_addr+7, 1)[1]
+        print "frm_last_length:\t",         hex( self.rdmaRead(mon_addr+0, 1)[0])
+        print "frm_max_length: \t",         hex( self.rdmaRead(mon_addr+1, 1)[0])
+        print "frm_min_length: \t",         hex( self.rdmaRead(mon_addr+2, 1)[0])
+        print "frm_number:\t\t",            hex( self.rdmaRead(mon_addr+3, 1)[0])
+        print "frm_last_cycles:\t",         hex( self.rdmaRead(mon_addr+4, 1)[0])
+        print "frm_max_cycles: \t",         hex( self.rdmaRead(mon_addr+5, 1)[0])
+        print "frm_min_cycles: \t",         hex( self.rdmaRead(mon_addr+6, 1)[0]) 
+        total_data = self.rdmaRead(mon_addr+7, 1)[0]
         print "frm_data_total: \t", total_data         
-        total_cycles = self.rdmaRead(mon_addr+8, 1)[1]
+        total_cycles = self.rdmaRead(mon_addr+8, 1)[0]
         print "frm_cycle_total:\t", total_cycles
-        print "frm_trig_count: \t",         hex( self.rdmaRead(mon_addr+9, 1)[1])
-        print "frm_in_progress:\t",         hex( self.rdmaRead(mon_addr+15, 1)[1])
+        print "frm_trig_count: \t",         hex( self.rdmaRead(mon_addr+9, 1)[0])
+        print "frm_in_progress:\t",         hex( self.rdmaRead(mon_addr+15, 1)[0])
         
         # data path = 64 bit, clock = 156.25 MHz
         total_time = float(total_cycles) * (1/156.25e6)
