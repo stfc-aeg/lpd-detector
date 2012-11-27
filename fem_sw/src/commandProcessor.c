@@ -47,14 +47,13 @@ void commandProcessorThread(void* arg)
 	} while (j<NET_MAX_CLIENTS);
 
 	// RX and TX packet buffers
-	// TODO: Tidy these and change signature of commandHandler()!
 	u8* pTxBuffer = (u8*)malloc(sizeof(struct protocol_header)+MAX_PAYLOAD_SIZE);
 	struct protocol_header* pTxHeader = (struct protocol_header*)pTxBuffer;
 	if(pTxBuffer == NULL)
 	{
-		DBGOUT("CmdProc: Could not malloc main TX buffer!\r\n");
-		DBGOUT("Terminating thread...\r\n");
-		// TODO: Handle critical error!
+		// Critical error, cannot continue
+		xil_printf("CmdProc: Could not malloc main TX buffer!\r\n");
+		xil_printf("Terminating thread...\r\n");
 		return;
 	}
 
@@ -139,8 +138,7 @@ void commandProcessorThread(void* arg)
 					newFd = lwip_accept(listenerSocket, (struct sockaddr*)&clientAddress, (socklen_t*)&addrSize);
 					if (newFd == -1)
 					{
-						DBGOUT("CmdProc: Error accepting connection!");
-						// TODO: Do we need further error handling here?
+						xil_printf("CmdProc: Error accepting connection!");
 					}
 					else
 					{
@@ -1246,6 +1244,6 @@ void generateErrorResponse(u8* pTxPayload, int clientSocket, struct clientStatus
 
 	if (lwip_send(clientSocket, pTxPayload, sizeof(struct protocol_header) + payload_sz, 0) == -1)
 	{
-		// TODO: Do anything here?
+		xil_printf("GenErrResponse: Error sending packet to client!\r\n");
 	}
 }
