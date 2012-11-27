@@ -44,10 +44,10 @@ class FemClient(object):
                 self.femSocket.close()
             raise FemClientError("Socket connection timed out")
 
-        except socket.error, (errno, sockErrStr):
+        except socket.error, e:
             if self.femSocket:
                 self.femSocket.close()
-            raise FemClientError(sockErrStr)
+            raise FemClientError(str(e))
     
     def send(self, theCmd=None, theBus=None, theWidth=None, theState=None, 
              theAddr=None, thePayload=None, theReadLen=None, theTransaction=None):
@@ -60,19 +60,19 @@ class FemClient(object):
         data = theTransaction.encode()
         try:
             self.femSocket.sendall(data)
-        except socket.error, (errno, sockErrStr):
+        except socket.error, e:
             if self.femSocket:
                 self.femSocket.close()
-            raise FemClientError("Socket error %d : %s" % (errno, sockErrStr), FemClientError.ERRNO_SOCK_ERROR)
+            raise FemClientError("Socket error: %s" % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
         
     def recv(self):
         initRecvLen = FemTransaction.headerSize()
         try:
             data = self.femSocket.recv(initRecvLen)
-        except socket.error, (errno, sockErrStr):
+        except socket.error, e:
             if self.femSocket:
                 self.femSocket.close()
-            raise FemClientError("Socket error %d : %s"  % (errno, sockErrStr), FemClientError.ERRNO_SOCK_ERROR)
+            raise FemClientError("Socket error : %s"  % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
         
         if not data:
             raise FemClientError("FEM has closed socket connection", FemClientError.ERRNO_SOCK_CLOSED)
