@@ -1,8 +1,8 @@
 '''
 LpdFemClient - XFEL LPD class sitting between the API and the FemClient
 
-             - Will be renamed LpdFemClient at some point in the future
-            
+
+         
 Created 16 October 2012
 
 @Author: ckd
@@ -192,7 +192,8 @@ class LpdFemClient(FemClient):
         '''
             Set 'ASIC LV Power Enable' (0/1 = on/off)
         '''
-        
+        #TODO: Need to to proper scaling aValue -> ADC count
+        int(aValue)
         self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, aValue)
 
     def sensorBiasEnableGet(self):
@@ -208,7 +209,8 @@ class LpdFemClient(FemClient):
         '''
             Set 'Sensor LV Bias Enable' (0/1 = on/off)
         '''
-        
+        #TODO: Need to to proper scaling aValue -> ADC count
+        int(aValue)
         self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, aValue)
         
         
@@ -264,7 +266,8 @@ class LpdFemClient(FemClient):
         '''
             Set Sensor HV Bias Voltage [V]
         '''
-        
+        #TODO: Need to to proper scaling aValue -> ADC count
+        int(aValue)
         self.ad55321Write(aValue)
     
     def femVoltageGet(self):
@@ -492,7 +495,7 @@ class LpdFemClient(FemClient):
         response = self.i2cRead(addr, 2)
         
         # Extract the received two bytes and return one integer
-        value = (int((response[1] & 15) << 8) + int(response[2]))
+        value = (int((response[0] & 15) << 8) + int(response[1]))
 #        print "[%4i" % value, "]",
         return value
 
@@ -505,8 +508,8 @@ class LpdFemClient(FemClient):
         response = -1
         
         response = self.i2cRead(addr, 2)
-        high = (response[1] & 15) << 8
-        low = response[2]
+        high = (response[0] & 15) << 8
+        low = response[1]
         return high + low
 
     def ad55321Write(self, aValue):
@@ -540,7 +543,7 @@ class LpdFemClient(FemClient):
         response = self.i2cRead(addr, 1)
         
 #        print "response = ", response, " type(response) = ", type(response)
-        value = response[1]
+        value = response[0]
         return (value & (1 << id)) != 0
         
     def pcf7485ReadAllBits(self):
@@ -558,8 +561,8 @@ class LpdFemClient(FemClient):
         '''
         addr = LpdFemClient.i2cPowerCardBus + 0x38
         response = self.i2cRead(addr, 1)
-#        print "pcf7485ReadAllBits() response = ", self.debugDisplay(response[1])
-        return response[1]
+#        print "pcf7485ReadAllBits() response = ", self.debugDisplay(response[0])
+        return response[0]
 
     def pcf7485WriteOneBit(self, id, value):
         ''' 
