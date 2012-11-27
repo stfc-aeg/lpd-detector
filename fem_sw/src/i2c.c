@@ -52,10 +52,17 @@ int initI2C(void)
 	startI2C();
 
     // Fix for I2C fail on SystemACE boot - dummy operation on all I2C busses
+#ifdef DEBUG_I2C
+	DBGOUT("Un-jamming I2C busses, ignore next 4 errors!\r\n");
+	DBGOUT("--------------------------------------------\r\n");
+#endif
     doI2COperation(0, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
     doI2COperation(1, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
     doI2COperation(2, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
     doI2COperation(3, IIC_OPERATION_READ, 0xFF, &dummy, 1 );
+#ifdef DEBUG_I2C
+	DBGOUT("--------------------------------------------\r\n");
+#endif
 
 	return status;
 }
@@ -262,12 +269,21 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	if (busBusy==1)
 	{
 		// Bus not ready for operation so return
+#ifdef DEBUG_I2C
+		DBGOUT("I2C Error %d (idx=%d, addr=0x%02x)\r\n", IIC_ERR_BUS_BUSY, interfaceIdx, slaveAddr);
+#endif
 		return IIC_ERR_BUS_BUSY;
 	}
 
 	// Set slave address
 	status = XIic_SetAddress(pI, XII_ADDR_TO_SEND_TYPE, slaveAddr);
-	if (status!=XST_SUCCESS) { return IIC_ERR_SET_ADDR; }
+	if (status!=XST_SUCCESS)
+	{
+#ifdef DEBUG_I2C
+		DBGOUT("I2C Error %d (idx=%d, addr=0x%02x)\r\n", IIC_ERR_SET_ADDR, interfaceIdx, slaveAddr);
+#endif
+		return IIC_ERR_SET_ADDR;
+	}
 
 	// Do I2C transaction(s)
 	switch(opMode)
@@ -293,6 +309,9 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	if (status==XST_IIC_GENERAL_CALL_ADDRESS)
 	{
 		// This error should never happen but if it does just return and exit
+#ifdef DEBUG_I2C
+		DBGOUT("I2C Error %d (idx=%d, addr=0x%02x)\r\n", IIC_ERR_GENERAL_CALL_ADDR, interfaceIdx, slaveAddr);
+#endif
 		return IIC_ERR_GENERAL_CALL_ADDR;
 	}
 	else if (status==XST_IIC_BUS_BUSY)
@@ -310,7 +329,13 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 	while (*pVal!=0 && count<max)
 	{
 		count++;
-		if (slaveNoAck==1) { return IIC_ERR_SLAVE_NACK; }
+		if (slaveNoAck==1)
+		{
+#ifdef DEBUG_I2C
+		DBGOUT("I2C Error %d (idx=%d, addr=0x%02x)\r\n", IIC_ERR_SLAVE_NACK, interfaceIdx, slaveAddr);
+#endif
+			return IIC_ERR_SLAVE_NACK;
+		}
 	}
 
 	// Did we timeout?
@@ -333,6 +358,9 @@ int doI2COperation(int interfaceIdx, int opMode, u8 slaveAddr, u8* pData, unsign
 		}
 		xil_printf("I2C: Timed out\r\n");
 		*/
+#ifdef DEBUG_I2C
+		DBGOUT("I2C Error %d (idx=%d, addr=0x%02x)\r\n", IIC_ERR_TIMEOUT, interfaceIdx, slaveAddr);
+#endif
 		return IIC_ERR_TIMEOUT;
 	}
 	// -----------------------------------------------------------------------------------

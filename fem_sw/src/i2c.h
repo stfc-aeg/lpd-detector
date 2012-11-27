@@ -15,6 +15,8 @@
 #include "xtime_l.h"
 #include <stdio.h>
 
+//#define DEBUG_I2C			1
+
 //! I2C operation types
 enum i2c_opTypes
 {

@@ -229,8 +229,10 @@ void networkInitThread(void *p)
         while (1) {
             sleep(DHCP_FINE_TIMER_MSECS);
             dhcp_fine_tmr();
+            //DBGOUT("f");
             mscnt += DHCP_FINE_TIMER_MSECS;
             if (mscnt >= DHCP_COARSE_TIMER_SECS*1000) {
+            	//DBGOUT("C");
                 dhcp_coarse_tmr();
                 mscnt = 0;
             }
@@ -259,23 +261,16 @@ void networkInitThread(void *p)
 
     // Launch application thread (pass GPIO instance for RDMA MUX setting)
     t = sys_thread_new("cmd", commandProcessorThread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
-
-    // - OR -
-
-    // Launch iperf thread
     //t = sys_thread_new("iperf", iperf_rx_application_thread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
-
-    // - OR -
-
-    // Launch testing thread
-    //t = sys_thread_new("test", testThread, 0, NET_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 
     if (t==NULL)
     {
-    	DBGOUT("NetMan: Can't spawn thread, aborting...\r\n");
+    	// Fatal error
+    	xil_printf("NetMan: Can't spawn thread, aborting...\r\n");
+    	return;
     }
 
-    DBGOUT("NetMan: Thread exiting\r\n");
+    //DBGOUT("NetMan: Thread exiting\r\n");
 }
 
 
@@ -353,7 +348,6 @@ int initHardware(void)
 
     // ****************************************************************************
     // Register ISRs for I2C devices and enable
-    /*
     register_int_handler(I2C_INT_ID_LM82, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLm82);
     register_int_handler(I2C_INT_ID_EEPROM, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicEeprom);
     register_int_handler(I2C_INT_ID_PWR_LHS, (XInterruptHandler)XIic_InterruptHandler, (void*)&iicLhs);
@@ -362,7 +356,6 @@ int initHardware(void)
     enable_interrupt(I2C_INT_ID_EEPROM);
     enable_interrupt(I2C_INT_ID_PWR_LHS);
     enable_interrupt(I2C_INT_ID_PWR_RHS);
-    */
     // ****************************************************************************
 
     // ****************************************************************************
@@ -387,16 +380,16 @@ int initHardware(void)
     // Read FPGA temp
     fpgaTemp = readTemp(LM82_REG_READ_REMOTE_TEMP);
     lmTemp = readTemp(LM82_REG_READ_LOCAL_TEMP);
-    if (fpgaTemp!=0 && lmTemp!=0)
+    if (fpgaTemp>0 && lmTemp>0)
     {
     	DBGOUT("initHardware: FPGA temp %dc, LM82 temp %dc\r\n", fpgaTemp, lmTemp);
     }
-    else if (fpgaTemp==-1)
+    else if (fpgaTemp < 0 && lmTemp > 0)
     {
     	DBGOUT("initHardware: ERROR - FPGA temperature read error!\r\n");
     	femErrorState |= (1<<TEST_I2C_LM82_EXT_T_READ);
     }
-    else if (lmTemp==-1)
+    else if (lmTemp < 0 && fpgaTemp > 0)
     {
     	DBGOUT("initHardware: ERROR - LM82 temperature read error!\r\n");
     	femErrorState |= (1<<TEST_I2C_LM82_INT_T_READ);
