@@ -193,8 +193,7 @@ class LpdFemClient(FemClient):
             Set 'ASIC LV Power Enable' (0/1 = on/off)
         '''
         #TODO: Need to to proper scaling aValue -> ADC count
-        int(aValue)
-        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, aValue)
+        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, int(aValue) )
 
     def sensorBiasEnableGet(self):
         '''
@@ -210,8 +209,7 @@ class LpdFemClient(FemClient):
             Set 'Sensor LV Bias Enable' (0/1 = on/off)
         '''
         #TODO: Need to to proper scaling aValue -> ADC count
-        int(aValue)
-        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, aValue)
+        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, int(aValue) )
         
         
     def powerCardFemStatusGet(self):
@@ -267,8 +265,7 @@ class LpdFemClient(FemClient):
             Set Sensor HV Bias Voltage [V]
         '''
         #TODO: Need to to proper scaling aValue -> ADC count
-        int(aValue)
-        self.ad55321Write(aValue)
+        self.ad55321Write( int(aValue) )
     
     def femVoltageGet(self):
         '''
