@@ -752,7 +752,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 					{
 						SBIT(state, STATE_ACK);
 					}
-					else if (configAck==0)
+					else if (dmaControllerAck==0)
 					{
 						SBIT(state, STATE_NACK);
 						SETERR(pClient, ERR_ACQ_OP_NACK, "Failed to get ACK from PPC1 for acquire start / stop request.");
