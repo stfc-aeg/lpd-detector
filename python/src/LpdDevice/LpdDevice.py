@@ -32,7 +32,8 @@ class LpdDevice(object):
     ERROR_PARAM_UNSET          = 2003
     ERROR_PARAM_VECTOR_LENGTH  = 2004
     ERROR_PARAM_NO_METHOD      = 2005
-    ERROR_PARAM_GET_FAILED     = 2006
+    ERROR_PARAM_SET_FAILED     = 2006
+    ERROR_PARAM_GET_FAILED     = 2007
 
     def __init__(self, simulateFemClient=False):
         '''
@@ -245,8 +246,8 @@ class LpdDevice(object):
                                 setMethod(value, **kwargs)
                                 
                             except FemClientError as e:
-                                rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
-                                self.errorString = 'FEM client exception on calling set method for parameter %s: %s' % \
+                                rc = LpdDevice.ERROR_PARAM_SET_FAILED
+                                self.errorString = 'Failed to set parameter %s: %s' % \
                                     (param, e.msg)
                         
                     else:                    
@@ -299,15 +300,20 @@ class LpdDevice(object):
                 try:
                     getMethod = getattr(self.femClient, '%sGet' % param)
 
-                    try:
-                        value =  getMethod(**kwargs)
-                    except FemClientError as e:
-                        self.errorString = e.msg
-                        rc = LpdDevice.ERROR_PARAM_GET_FAILED
-
                 except AttributeError:
                     rc = LpdDevice.ERROR_PARAM_NO_METHOD
-                    self.errorString = "Missing get method for parameter", param
+                    self.errorString = "Failed to resolve client get method for parameter %s" % param
+
+                else:
+                    
+                    # Call the get method, trapping any FemClient exceptions that are generated
+                    try:
+                        value =  getMethod(**kwargs)
+                        
+                    except FemClientError as e:
+                        rc = LpdDevice.ERROR_PARAM_GET_FAILED
+                        self.errorString = 'Failed to get parameter %s: %s' % \
+                            (param, e.msg)
                     
             else:
                 
