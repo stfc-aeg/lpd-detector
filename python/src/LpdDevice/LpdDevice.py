@@ -8,6 +8,7 @@ Created on 18 Sep 2012
 
 from LpdFemClient.LpdFemClient import LpdFemClient, FemClientError
 from LpdDeviceParameters import *
+import time
 
 class LpdDevice(object):
     '''
@@ -31,6 +32,7 @@ class LpdDevice(object):
     ERROR_PARAM_UNSET          = 2003
     ERROR_PARAM_VECTOR_LENGTH  = 2004
     ERROR_PARAM_NO_METHOD      = 2005
+    ERROR_PARAM_GET_FAILED     = 2006
 
     def __init__(self, simulateFemClient=False):
         '''
@@ -52,6 +54,7 @@ class LpdDevice(object):
         #           access type, assignment policy (True if optional, otherwise mandatory), 
         #           unit name, unit symbol )
         self.allowedParams = LpdDeviceParameters().get()
+        self.opened = False
     
     def errorStringGet(self):
         '''
@@ -69,16 +72,21 @@ class LpdDevice(object):
         @return LpdDevice error code, ERROR_OK or ERROR_FEM_CONNECT_FAILED
         '''
         rc = LpdDevice.ERROR_OK
+        self.opened = True
         if not self.simulateFemClient:
             try:
                 
-                self.femClient = LpdFemClient((host, port), timeout)
+                print "***** Open device on host", host, "port", port
+                print type(host), type(port)
+                self.femClient = LpdFemClient((host, int(port)), timeout)
 
             except FemClientError as e:
                 
                 self.errorString = e.msg
                 rc = LpdDevice.ERROR_FEM_CONNECT_FAILED
-            
+                self.opened = False
+        else:
+            time.sleep(2.5)
         return rc
     
     def close(self):
@@ -91,8 +99,15 @@ class LpdDevice(object):
         if self.femClient:
             self.femClient.close()
             self.femClient = None
-        
+        self.opened = False
         return LpdDevice.ERROR_OK
+    
+    def isOpen(self):
+        '''
+        Check if a connnection to LPD device is open
+        @return boolean value
+        '''
+        return self.opened
     
     def configure(self):
         '''
@@ -102,7 +117,7 @@ class LpdDevice(object):
         @return LpdDevice error code, ERROR_OK or other error condition
 
         '''
-        
+        time.sleep(5)
         return LpdDevice.ERROR_OK
     
     def start(self):
@@ -143,6 +158,7 @@ class LpdDevice(object):
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
         
+        print "***** paramSet: param=", param, "value=", value, "type=", type(value)
         rc = LpdDevice.ERROR_OK
         
         # Check if ASIC and/or pixel keyword arguments have been passed. 
@@ -226,7 +242,7 @@ class LpdDevice(object):
                             
                             # Call the set method, trapping any FemClient exceptions that are generated 
                             try:
-                                rc = setMethod(value, **kwargs)
+                                setMethod(value, **kwargs)
                                 
                             except FemClientError as e:
                                 rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
@@ -262,7 +278,7 @@ class LpdDevice(object):
         
         rc = LpdDevice.ERROR_OK
         value = None
-        
+ 
         # Check if ASIC and/or pixel keyword arguments have been passed
         if 'asic' in kwargs:
             asic = kwargs['asic']
@@ -280,17 +296,19 @@ class LpdDevice(object):
             # underlying FemClient object and call it to retrieve the parameter
             if not self.simulateFemClient:
 
-                getMethod = getattr(self.femClient, '%sGet' % param)
-                #(rc, value) =  getMethod(**kwargs)
                 try:
-                    value = getMethod(**kwargs)
-                except FemClientError as e:
-                    rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
-                    self.errorString = 'Get of parameter %s failed: %s' % (param, e.msg)
+                    getMethod = getattr(self.femClient, '%sGet' % param)
+
+                    try:
+                        value =  getMethod(**kwargs)
+                    except FemClientError as e:
+                        self.errorString = e.msg
+                        rc = LpdDevice.ERROR_PARAM_GET_FAILED
+
                 except AttributeError:
                     rc = LpdDevice.ERROR_PARAM_NO_METHOD
-                    self.errorString = 'No get method for parameter %s' % (param)
-                
+                    self.errorString = "Missing get method for parameter", param
+                    
             else:
                 
                 # In simulation mode, resolve the parameter name including pixel and asic 

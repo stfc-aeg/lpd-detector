@@ -86,7 +86,7 @@ class LpdDeviceParameters(object):
         #           unit name, unit symbol )
     
         self.parameters = OrderedDict()
-        
+	 
         #
         # Power card control parameters
         #
@@ -119,15 +119,15 @@ class LpdDeviceParameters(object):
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardOverCurrent'] = AttributeContainer(bool, 'PowerCardOverCurrent', 'Power Card Overcurrent Flag',
+        self.parameters['powerCardOverCurrent'] = AttributeContainer(bool, 'PowerCardOvercurrent', 'Power Card Overcurrent Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardOverTemp']    = AttributeContainer(bool, 'PowerCardOverTemp', 'Power Card Over Temperature Flag',
+        self.parameters['powerCardOvertemp']    = AttributeContainer(bool, 'PowerCardOverTemp', 'Power Card Over Temperature Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardUnderTemp']   = AttributeContainer(bool, 'PowerCardUnderTemp', 'Power Card Under Temperature Flag',
+        self.parameters['powerCardUndertemp']   = AttributeContainer(bool, 'PowerCardUnderTemp', 'Power Card Under Temperature Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None)
         
@@ -261,11 +261,11 @@ class LpdDeviceParameters(object):
         #
                             
         self.parameters['tenGig0SourceMac']     = AttributeContainer(str, 'TenGigE0SourceMAC', '10GigE 0 UDP Source MAC Address',
-                                                                      '', '', '62-00-00-00-00-01',
+                                                                      None, None, '62-00-00-00-00-01',
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig0SourceIp']      = AttributeContainer(str, 'TenGigE0SourceIp', '10GigE 0 UDP Source IP Address',
-                                                                      '', '', '10.0.1.1',
+                                                                      None, None, '10.0.1.1',
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig0SourcePort']    = AttributeContainer(int, 'TenGigE0SourcePort', '10GigE 0 UDP Source Port',
@@ -273,11 +273,11 @@ class LpdDeviceParameters(object):
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig0DestMac']       = AttributeContainer(str, 'TenGigE0DestMAC', '10GigE 0 UDP Destination MAC Address',
-                                                                      '', '', '00-07-43-01-01-01',
+                                                                      None, None, '00-07-43-01-01-01',
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig0DestIp']        = AttributeContainer(str, 'TenGigE0DestIp', '10GigE 0 UDP Destination IP Address',
-                                                                      '', '', '10.0.1.2',
+                                                                      None, None, '10.0.1.2',
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig0DestPort']      = AttributeContainer(int, 'TenGigE0DestPort', '10GigE 0 UDP Destination Port',
@@ -285,11 +285,11 @@ class LpdDeviceParameters(object):
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig1SourceMac']     = AttributeContainer(str, 'TenGigE1SourceMAC', '10GigE 1 UDP Source MAC Address',
-                                                                      '', '', '62-00-00-00-00-02',
+                                                                      None, None, '62-00-00-00-00-02',
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig1SourceIp']      = AttributeContainer(str, 'TenGigE1SourceIp', '10GigE 1 UDP Source IP Address',
-                                                                      '', '', '10.0.2.1',
+                                                                      None, None, '10.0.2.1',
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig1SourcePort']    = AttributeContainer(int, 'TenGigE1SourcePort', '10GigE 1 UDP Source Port',
@@ -297,11 +297,11 @@ class LpdDeviceParameters(object):
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig1DestMac']       = AttributeContainer(str, 'TenGigE1DestMAC', '10GigE 1 UDP Destination MAC Address',
-                                                                      '', '', '00-07-43-01-01-02',
+                                                                      None, None, '00-07-43-01-01-02',
                                                                       AccessWrite, AssignmentMandatory)
        
         self.parameters['tenGig1DestIp']        = AttributeContainer(str, 'TenGigE1DestIp', '10GigE 1 UDP Destination IP Address',
-                                                                      '', '', '10.0.2.2',
+                                                                      None, None, '10.0.2.2',
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGig1DestPort']      = AttributeContainer(int, 'TenGigE1DestPort', '10GigE 1 UDP Destination Port',
@@ -387,18 +387,17 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentMandatory)
         
         self.parameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int, 'FemAsicPixelFeedbackOverride', 'ASIC per-pixel override of feedback selection: 0 = high(10p), 1= low(50p)',
-                                                                          0, 1, None,
+                                                                          0, 1, 0,
                                                                           AccessWrite, AssignmentOptional)
         
         self.parameters['femAsicPixelSelfTestOverride'] = AttributeContainer(int, 'FemAsicPixelSelfTestOverride', 'ASIC per-pixel override of self-test enable: 1 = enabled',
-                                                                          0, 1, None,
+                                                                          0, 1, 1,
                                                                           AccessWrite, AssignmentOptional)
         
         self.parameters['femReadoutOperatingMode']      = AttributeContainer(int, 'FemReadoutOperatingMode', 'FEM readout operating mode (e.g. normal, self-test scan etc, TBD',
                                                                           0, 255, 0,
                                                                           AccessWrite, AssignmentOptional)
-
-    
+                                   
     def get(self):
         '''
         Returns the dictionary of parameters built by the constructor
@@ -417,7 +416,7 @@ class LpdDeviceParameters(object):
         paramTypeMapping = { 'int'    : 'UINT32_ELEMENT',
                              'long'   : 'UINT64_ELEMENT',
                              'bool'   : 'BOOL_ELEMENT',
-                             'float'  : 'FLOAT_ELEMENT',
+                             'float'  : 'DOUBLE_ELEMENT',
                              'str'    : 'STRING_ELEMENT',
                            }
         
@@ -446,12 +445,13 @@ class LpdDeviceParameters(object):
             # If parameter has optional assignment, insert call for it
             if attrib.assignmentPolicy == AssignmentOptional:
                 templateStr += '.assignmentOptional()'
-            
-            # If parameter has a default value, insert it
-            if attrib.defaultValue != None:
-                templateStr += '.defaultValue(' + repr(attrib.defaultValue) + ')'
-            else:
-                templateStr += '.noDefaultValue()'
+                # If parameter has a default value, insert it
+                if attrib.defaultValue != None:
+                    templateStr += '.defaultValue(' + repr(attrib.defaultValue) + ')'
+                else:
+                    templateStr += '.noDefaultValue()'
+            elif attrib.assignmentPolicy == AssignmentMandatory:
+                templateStr += '.assignmentMandatory()'
                 
             # Insert access policy call
             templateStr += '.%s\n' % accessTypeMapping[attrib.accessType]
