@@ -110,7 +110,41 @@ class LpdFemClient(FemClient):
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
         
-
+        #TODO: Remove these dummy variables when they become redundant
+        self.tenGig0SourceMacDummy = 0
+        self.tenGig0SourceIpDummy = 0
+        self.tenGig0SourcePortDummy = 0
+        self.tenGig0DestMacDummy = 0          
+        self.tenGig0DestIpDummy = 0   
+        self.tenGig0DestPortDummy = 0     
+        self.tenGig1SourceMacDummy = 0
+        self.tenGig1SourceIpDummy = 0 
+        self.tenGig1SourcePortDummy = 0
+        self.tenGig1DestMacDummy = 0  
+        self.tenGig1DestIpDummy = 0  
+        self.tenGig1DestPortDummy = 0 
+        self.tenGigInterframeGapDummy = 0        
+        self.tenGigUdpPacketLenDummy = 0              
+        self.femSendPpcResetDummy              = 0
+        self.femFastCtrlDynamicDummy           = 0
+        self.femSetupSlowCtrlBramDummy         = 0
+        self.femEnableTenGigDummy              = 0
+        self.femDataSourceDummy                = 0
+        self.femAsicCountingDataDummy          = 0
+        self.femAsicModuleTypeDummy            = 0
+        self.femAsicRxStartDelayDummy          = 0
+        self.femNumLocalLinkFramesDummy        = 0
+        self.femAsicFastCmdRegSizeDummy        = 0
+        self.femAsicEnableMaskDummy            = 0
+        self.femAsicColumnsDummy               = 0
+        self.femAsicColumnsPerFrameDummy       = 0
+        self.femAsicGainOverrideDummy          = 0
+        self.femAsicSlowControlParamsDummy     = 0
+        self.femAsicFastCmdSequenceDummy       = 0
+        self.femAsicPixelFeedbackOverrideDummy = 0
+        self.femAsicPixelSelfTestOverrideDummy = 0
+        self.femReadoutOperatingModeDummy      = 0
+             
     def sensorATempGet(self):
         '''
             Get temperature from sensor A
@@ -188,12 +222,12 @@ class LpdFemClient(FemClient):
         
         return self.pcf7485ReadOneBit(LpdFemClient.LV_CTRL_BIT)
     
-    def asicPowerEnableSet(self, aValue):
+    def asicPowerEnableSet(self, aEnable):
         '''
             Set 'ASIC LV Power Enable' (0/1 = on/off)
         '''
-        #TODO: Need to to proper scaling aValue -> ADC count
-        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, int(aValue) )
+        value = 1 - int(aEnable)
+        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, value )
 
     def sensorBiasEnableGet(self):
         '''
@@ -204,12 +238,12 @@ class LpdFemClient(FemClient):
         
         return self.pcf7485ReadOneBit(LpdFemClient.HV_CTRL_BIT)
     
-    def sensorBiasEnableSet(self, aValue):
+    def sensorBiasEnableSet(self, aEnable):
         '''
             Set 'Sensor LV Bias Enable' (0/1 = on/off)
         '''
-        #TODO: Need to to proper scaling aValue -> ADC count
-        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, int(aValue) )
+        value = 1 - int(aEnable)
+        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, value )
         
         
     def powerCardFemStatusGet(self):
@@ -400,9 +434,473 @@ class LpdFemClient(FemClient):
         '''
         return self.sensorSixHundredMilliAmpsScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.HV_AMPS_CHAN)
     
+    def tenGig0SourceMacGet(self):
+        '''
+            Get tenGig0SourceMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig0SourceMacDummy
+
+    def tenGig0SourceMacSet(self, aValue):
+        '''
+            Set tenGig0SourceMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig0SourceMacDummy = aValue
+
     
+    def tenGig0SourceIpGet(self):
+        '''
+            Get tenGig0SourceIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig0SourceIpDummy
+
+    def tenGig0SourceIpSet(self, aValue):
+        '''
+            Set tenGig0SourceIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig0SourceIpDummy = aValue
+
+    def tenGig0SourcePortGet(self):
+        '''
+            Get tenGig0SourcePort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig0SourcePortDummy
+
+    def tenGig0SourcePortSet(self, aValue):
+        '''
+            Set tenGig0SourcePort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig0SourcePortDummy = aValue
+
+    def tenGig0DestMacGet(self):
+        '''
+            Get tenGig0DestMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig0DestMacDummy
+
+    def tenGig0DestMacSet(self, aValue):
+        '''
+            Set tenGig0DestMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig0DestMacDummy = aValue
+
+    def tenGig0DestIpGet(self):
+        '''
+            Get tenGig0DestIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig0DestIpDummy
+
+    def tenGig0DestIpSet(self, aValue):
+        '''
+            Set tenGig0DestIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig0DestIpDummy = aValue
+
+    def tenGig0DestPortGet(self):
+        '''
+            Get tenGig0DestPort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig0DestPortDummy
+
+    def tenGig0DestPortSet(self, aValue):
+        '''
+            Set tenGig0DestPort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig0DestPortDummy = aValue
+
+    def tenGig1SourceMacGet(self):
+        '''
+            Get tenGig1SourceMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig1SourceMacDummy
+
+    def tenGig1SourceMacSet(self, aValue):
+        '''
+            Set tenGig1SourceMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig1SourceMacDummy = aValue
+
+    def tenGig1SourceIpGet(self):
+        '''
+            Get tenGig1SourceIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig1SourceIpDummy
+
+    def tenGig1SourceIpSet(self, aValue):
+        '''
+            Set tenGig1SourceIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig1SourceIpDummy = aValue
+
+    def tenGig1SourcePortGet(self):
+        '''
+            Get tenGig1SourcePort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig1SourcePortDummy
+
+    def tenGig1SourcePortSet(self, aValue):
+        '''
+            Set tenGig1SourcePort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig1SourcePortDummy = aValue
+
+    def tenGig1DestMacGet(self):
+        '''
+            Get tenGig1DestMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig1DestMacDummy
+
+    def tenGig1DestMacSet(self, aValue):
+        '''
+            Set tenGig1DestMac
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig1DestMacDummy = aValue
+
+    def tenGig1DestIpGet(self):
+        '''
+            Get tenGig1DestIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig1DestIpDummy
+
+    def tenGig1DestIpSet(self, aValue):
+        '''
+            Set tenGig1DestIp
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig1DestIpDummy = aValue
+
+    def tenGig1DestPortGet(self):
+        '''
+            Get tenGig1DestPort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGig1DestPortDummy
+
+    def tenGig1DestPortSet(self, aValue):
+        '''
+            Set tenGig1DestPort
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGig1DestPortDummy = aValue
+
+    def tenGigInterframeGapGet(self):
+        '''
+            Get tenGigInterframeGap
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGigInterframeGapDummy
+
+    def tenGigInterframeGapSet(self, aValue):
+        '''
+            Set tenGigInterframeGap
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGigInterframeGapDummy = aValue
+
+    def tenGigUdpPacketLenGet(self):
+        '''
+            Get tenGigUdpPacketLen
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.tenGigUdpPacketLenDummy
+
+    def tenGigUdpPacketLenSet(self, aValue):
+        '''
+            Set tenGigUdpPacketLen
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.tenGigUdpPacketLenDummy = aValue
+
+    def femSendPpcResetGet(self):
+        '''
+            Get femSendPpcReset
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femSendPpcResetDummy
+
+    def femSendPpcResetSet(self, aValue):
+        '''
+            Set femSendPpcReset
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femSendPpcResetDummy = aValue
+
+    def femFastCtrlDynamicGet(self):
+        '''
+            Get femFastCtrlDynamic
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femFastCtrlDynamicDummy
+
+    def femFastCtrlDynamicSet(self, aValue):
+        '''
+            Set femFastCtrlDynamic
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femFastCtrlDynamicDummy = aValue
+
+    def femSetupSlowCtrlBramGet(self):
+        '''
+            Get femSetupSlowCtrlBram
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femSetupSlowCtrlBramDummy
+
+    def femSetupSlowCtrlBramSet(self, aValue):
+        '''
+            Set femSetupSlowCtrlBram
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femSetupSlowCtrlBramDummy = aValue
+
+    def femEnableTenGigGet(self):
+        '''
+            Get femEnableTenGig
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femEnableTenGigDummy
+
+    def femEnableTenGigSet(self, aValue):
+        '''
+            Set femEnableTenGig
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femEnableTenGigDummy = aValue
+
+    def femDataSourceGet(self):
+        '''
+            Get femDataSource
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femDataSourceDummy
+
+    def femDataSourceSet(self, aValue):
+        '''
+            Set femDataSource
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femDataSourceDummy = aValue
+
+    def femAsicCountingDataGet(self):
+        '''
+            Get femAsicCountingData
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicCountingDataDummy
+
+    def femAsicCountingDataSet(self, aValue):
+        '''
+            Set femAsicCountingData
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicCountingDataDummy = aValue
+
+    def femAsicModuleTypeGet(self):
+        '''
+            Get femAsicModuleType
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicModuleTypeDummy
+
+    def femAsicModuleTypeSet(self, aValue):
+        '''
+            Set femAsicModuleType
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicModuleTypeDummy = aValue
+
+    def femAsicRxStartDelayGet(self):
+        '''
+            Get femAsicRxStartDelay
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicRxStartDelayDummy
+
+    def femAsicRxStartDelaySet(self, aValue):
+        '''
+            Set femAsicRxStartDelay
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicRxStartDelayDummy = aValue
+
+    def femNumLocalLinkFramesGet(self):
+        '''
+            Get femNumLocalLinkFrames
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femNumLocalLinkFramesDummy
+
+    def femNumLocalLinkFramesSet(self, aValue):
+        '''
+            Set femNumLocalLinkFrames
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femNumLocalLinkFramesDummy = aValue
+
+    def femAsicFastCmdRegSizeGet(self):
+        '''
+            Get femAsicFastCmdRegSize
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicFastCmdRegSizeDummy
+
+    def femAsicFastCmdRegSizeSet(self, aValue):
+        '''
+            Set femAsicFastCmdRegSize
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicFastCmdRegSizeDummy = aValue
+
+    def femAsicEnableMaskGet(self):
+        '''
+            Get femAsicEnableMask
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicEnableMaskDummy
+
+    def femAsicEnableMaskSet(self, aValue):
+        '''
+            Set femAsicEnableMask
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicEnableMaskDummy = aValue
+
+    def femAsicColumnsGet(self):
+        '''
+            Get femAsicColumns
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicColumnsDummy
+
+    def femAsicColumnsSet(self, aValue):
+        '''
+            Set femAsicColumns
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicColumnsDummy = aValue
+
+    def femAsicColumnsPerFrameGet(self):
+        '''
+            Get femAsicColumnsPerFrame
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicColumnsPerFrameDummy
+
+    def femAsicColumnsPerFrameSet(self, aValue):
+        '''
+            Set femAsicColumnsPerFrame
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicColumnsPerFrameDummy = aValue
+
+    def femAsicGainOverrideGet(self):
+        '''
+            Get femAsicGainOverride
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicGainOverrideDummy
+
+    def femAsicGainOverrideSet(self, aValue):
+        '''
+            Set femAsicGainOverride
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicGainOverrideDummy = aValue
+
+    def femAsicSlowControlParamsGet(self):
+        '''
+            Get femAsicSlowControlParams
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicSlowControlParamsDummy
+
+    def femAsicSlowControlParamsSet(self, aValue):
+        '''
+            Set femAsicSlowControlParams
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicSlowControlParamsDummy = aValue
+
+    def femAsicFastCmdSequenceGet(self):
+        '''
+            Get femAsicFastCmdSequence
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicFastCmdSequenceDummy
+
+    def femAsicFastCmdSequenceSet(self, aValue):
+        '''
+            Set femAsicFastCmdSequence
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicFastCmdSequenceDummy = aValue
+
+    def femAsicPixelFeedbackOverrideGet(self):
+        '''
+            Get femAsicPixelFeedbackOverride
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicPixelFeedbackOverrideDummy
+                    
+    def femAsicPixelFeedbackOverrideSet(self, aValue):
+        '''
+            Set femAsicPixelFeedbackOverride
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicPixelFeedbackOverrideDummy = aValue
+            
+    def femAsicPixelSelfTestOverrideGet(self):
+        '''
+            Get femAsicPixelSelfTestOverride
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femAsicPixelSelfTestOverrideDummy
+                    
+    def femAsicPixelSelfTestOverrideSet(self, aValue):
+        '''
+            Set femAsicPixelSelfTestOverride
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femAsicPixelSelfTestOverrideDummy = aValue
+
+    def femReadoutOperatingModeGet(self):
+        '''
+            Get femReadoutOperatingMode
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        return self.femReadoutOperatingModeDummy
+
+    def femReadoutOperatingModeSet(self, aValue):
+        '''
+            Set femReadoutOperatingMode
+        '''
+        #TODO: This function needs to be updated to handle actual data
+        self.femReadoutOperatingModeDummy = aValue
+
+
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
 
+    
     def sensorAmpereRead(self, device, channel):
         '''
             Helper function: Reads sensor voltage at 'channel' in  address 'device',
