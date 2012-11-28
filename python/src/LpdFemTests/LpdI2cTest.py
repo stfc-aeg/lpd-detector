@@ -201,7 +201,8 @@ class LpdI2cTest(FemClient):
         bit_register = self.read_all_bits()
         # Change bit 'id' to 'value'
         bit_register = (bit_register & ~(1 << id)) | (value << id) | 0xFC
-
+#        print "write_bit(), bit_register = %X" % bit_register, "    value =%d, id=%d" % (value, id)
+        
         addr = LpdI2cTest.i2cInternalBusOffset + 0x38
         response = self.i2cWrite(addr, bit_register)
         

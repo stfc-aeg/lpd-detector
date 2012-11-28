@@ -150,25 +150,25 @@ def powerCardTest():
     
     (rc, femVoltage) = theDevice.paramGet('femVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "femVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "femVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V FEM      : %.2f" % femVoltage, " V ",
     
     (rc, femCurrent) = theDevice.paramGet('femCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "femCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "femCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % femCurrent, " A"
      
         
     (rc, digitalVoltage) = theDevice.paramGet('digitalVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "digitalVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "digitalVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Digital  : %.2f" % digitalVoltage, " V ",
     (rc, digitalCurrent) = theDevice.paramGet('digitalCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "digitalCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "digitalCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % digitalCurrent, " mA\n"
     
@@ -176,48 +176,48 @@ def powerCardTest():
     
     (rc, sensorAVoltage) = theDevice.paramGet('sensorAVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorAVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorAVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor A : %.2f" % sensorAVoltage, " V ",
     (rc, sensorACurrent) = theDevice.paramGet('sensorACurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorACurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorACurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorACurrent, " A"
     
 
     (rc, sensorBVoltage) = theDevice.paramGet('sensorBVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorBVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorBVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor B : %.2f" % sensorBVoltage, " V ",
     (rc, sensorBCurrent) = theDevice.paramGet('sensorBCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorBCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorBCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorBCurrent, " A"
 
     
     (rc, sensorCVoltage) = theDevice.paramGet('sensorCVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorCVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorCVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor C : %.2f" % sensorCVoltage, " V ",
     (rc, sensorCCurrent) = theDevice.paramGet('sensorCCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorCCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorCCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorCCurrent, " A"
     
     
     (rc, sensorDVoltage) = theDevice.paramGet('sensorDVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorDVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorDVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor D : %.2f" % sensorDVoltage, " V ",
     (rc, sensorDCurrent) = theDevice.paramGet('sensorDCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorDCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorDCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorDCurrent, " A"
 
@@ -225,12 +225,12 @@ def powerCardTest():
     
     (rc, sensorEVoltage) = theDevice.paramGet('sensorEVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorEVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorEVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor E : %.2f" % sensorEVoltage, " V ",
     (rc, sensorECurrent) = theDevice.paramGet('sensorECurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorECurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorECurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorECurrent, " A"
 
@@ -238,12 +238,12 @@ def powerCardTest():
     
     (rc, sensorFVoltage) = theDevice.paramGet('sensorFVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorFVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorFVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor F : %.2f" % sensorFVoltage, " V ",
     (rc, sensorFCurrent) = theDevice.paramGet('sensorFCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorFCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorFCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorFCurrent, " A"
 
@@ -251,12 +251,12 @@ def powerCardTest():
     
     (rc, sensorGVoltage) = theDevice.paramGet('sensorGVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorGVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorGVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor G : %.2f" % sensorGVoltage, " V ",
     (rc, sensorGCurrent) = theDevice.paramGet('sensorGCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorGCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorGCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorGCurrent, " A"
 
@@ -264,12 +264,12 @@ def powerCardTest():
     
     (rc, sensorHVoltage) = theDevice.paramGet('sensorHVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorHVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorHVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   V Sensor H : %.2f" % sensorHVoltage, " V ",
     (rc, sensorHCurrent) = theDevice.paramGet('sensorHCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorHCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorHCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorHCurrent, " A"
 
@@ -279,17 +279,29 @@ def powerCardTest():
     
     (rc, sensorBiasVoltage) = theDevice.paramGet('sensorBiasVoltage')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorBiasVoltage get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorBiasVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "   HV Bias    : %.2f" % sensorBiasVoltage, " V ",
     (rc, sensorBiasCurrent) = theDevice.paramGet('sensorBiasCurrent')
     if rc != LpdDevice.ERROR_OK:
-        print "sensorBiasCurrent get failed rc=%d" % (rc, theDevice.errorStringGet())
+        print "sensorBiasCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorBiasCurrent, " uA"
 
     
+    print "-- -- -- -- -- -- -- -- --"
+    rc = theDevice.paramSet('tenGig0SourceMac', 3)
+#    rc = self.lpdDevice.paramSet('tenGig0SourceMac', 127.3) 
+    if rc != LpdDevice.ERROR_OK:
+        print "tenGig0SourceMac Set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
+    (rc, tenGig0SourceMac) = theDevice.paramGet('tenGig0SourceMac')
+    if rc != LpdDevice.ERROR_OK:
+        print "New function failed!"
+        print "tenGig0SourceMac get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    else:
+        print "tenGig0SourceMac : ", tenGig0SourceMac
+        
     print "Closing Fem connection.. "        
     theDevice.close()
 
