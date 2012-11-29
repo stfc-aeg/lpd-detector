@@ -416,6 +416,7 @@ if __name__ == "__main__":
     
     parser.add_argument("--lv", help="switch LV on (1) or off (0)", type=int, choices=[0, 1])
     parser.add_argument("--hv", help="switch HV on (1) or off (0)", type=int, choices=[0, 1])
+    parser.add_argument("--displaydataonly", help="Display i2c only - THIS WILL OVERRIDE ANY LV OR HV FLAGS !", type=int, choices=[0, 1])
     args = parser.parse_args()
 
     
@@ -432,59 +433,63 @@ if __name__ == "__main__":
 
     port = 6969
 
-    print "lv, hv: ", args.lv, args.hv
-    # Only use if they decided to switch off lv but switch on hv
-    if (args.lv == 0) and(args.hv):
-        print "You decided to switch on HV but switch off LV; Aborting.."
-        sys.exit()
-        
-    print "Switching LV ",
-    if args.lv:
-        print "on, ",
-    else:
-        print "off, ",
-    print " and HV ",
-    if args.hv:
-        print "on..\n"
-    else:
-        print "off..\n"
-
     
     print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (host, port)
     time.sleep(1)
     
     thisFem = LpdI2cTest((host, port))
 
-    # Execute according to supplied flags
-    if args.lv:
-        print "Switching low voltage on.."
-        thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
-        time.sleep(1)
-        
-        # Is HV set to be switched on?
-        if args.hv:
-            # Yes - switch HV on
-            print "Switching high voltage on.."
-            thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
+    if args.displaydataonly == 1:
+        pass
+    else:
+        print "lv, hv: ", args.lv, args.hv
+        # Only use if they decided to switch off lv but switch on hv
+        if (args.lv == 0) and(args.hv):
+            print "You decided to switch on HV but switch off LV; Aborting.."
+            sys.exit()
+            
+        print "Switching LV ",
+        if args.lv:
+            print "on, ",
         else:
-            # No - switch HV off
+            print "off, ",
+        print " and HV ",
+        if args.hv:
+            print "on..\n"
+        else:
+            print "off..\n"
+    
+    
+        # Execute according to supplied flags
+        if args.lv:
+            print "Switching low voltage on.."
+            thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
+            time.sleep(1)
+            
+            # Is HV set to be switched on?
+            if args.hv:
+                # Yes - switch HV on
+                print "Switching high voltage on.."
+                thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
+            else:
+                # No - switch HV off
+                print "Switching high voltage off.. "
+                thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+    
+            time.sleep(1)
+        else:
+            # Switch off lv
+            
+            # Switch off HV first
+            
             print "Switching high voltage off.. "
             thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
-
-        time.sleep(1)
-    else:
-        # Switch off lv
-        
-        # Switch off HV first
-        
-        print "Switching high voltage off.. "
-        thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
-        time.sleep(1)
-        
-        print "Switching low voltage off.. "
-        thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
-        time.sleep(1)
-
+            time.sleep(1)
+            
+            print "Switching low voltage off.. "
+            thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+            time.sleep(1)
+    
 
     # Test reading out the voltages on current first, then these ones:
     thisFem.displayAll()
