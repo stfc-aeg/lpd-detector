@@ -29,7 +29,8 @@ Created 16 October 2012
 
 '''
 
-import sys
+# log required when calculating temperature
+from math import log
 
 from FemClient.FemClient import *
 from FemApi.FemTransaction import FemTransaction
@@ -98,9 +99,13 @@ class LpdFemClient(FemClient):
 
     # Fem has three internal i2c buses, power card uses bus 0x300
     i2cPowerCardBus = 0x300
-
+    
+    # i2c device addresses
     AD7998ADDRESS = [0x22, 0x21, 0x24, 0x23]
     
+    # Beta is utilised as an argument for calling the calculateTemperature() 
+    #    but it's effectively fixed by the hardware design
+    Beta = 3474
     
     def __init__(self, hostAddr=None, timeout=None):
         '''
@@ -150,29 +155,28 @@ class LpdFemClient(FemClient):
             Get temperature from sensor A
         '''
         
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSA_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSA_TEMP_CHAN)
 
     def sensorBTempGet(self):
         '''
             Get temperature from sensor B
         '''
         
-#        raise FemClientError('You idiot', 666)
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSB_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSB_TEMP_CHAN)
     
     def sensorCTempGet(self):
         '''
             Get temperature from Sensor C
         '''
         
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSC_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSC_TEMP_CHAN)
     
     def sensorDTempGet(self):
         '''
             Get temperature from Sensor D
         '''
         
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSD_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSD_TEMP_CHAN)
     
     
     def sensorETempGet(self):
@@ -180,7 +184,7 @@ class LpdFemClient(FemClient):
             Get temperature from Sensor E
         '''
         
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSE_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSE_TEMP_CHAN)
 
     
     def sensorFTempGet(self):
@@ -188,7 +192,7 @@ class LpdFemClient(FemClient):
             Get temperature from Sensor F
         '''
         
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSF_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSF_TEMP_CHAN)
 
     
     def sensorGTempGet(self):
@@ -196,7 +200,7 @@ class LpdFemClient(FemClient):
             Get temperature from Sensor G
         '''
         
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSG_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSG_TEMP_CHAN)
 
     
     def sensorHTempGet(self):
@@ -204,13 +208,13 @@ class LpdFemClient(FemClient):
             Get temperature from Sensor H
         '''
         
-        return self.sensorTempSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSH_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSH_TEMP_CHAN)
 
     def powerCardTempGet(self):
         '''
             Get temperature from power card
         '''
-        return self.sensorTempSixVoltScaleRead(0x22, LpdFemClient.PSU_TEMP_CHAN)
+        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.PSU_TEMP_CHAN)
     
 
     def asicPowerEnableGet(self):
@@ -959,7 +963,7 @@ class LpdFemClient(FemClient):
         '''
         return var, "0x%X" % var,
         
-    def sensorTempSixVoltScaleRead(self, device, channel):
+    def sensorTemperatureRead(self, device, channel):
         '''
             Helper function: Reads sensor temperature at 'channel' in  address 'device',
                 and converts adc counts into six volts scale.
@@ -970,9 +974,13 @@ class LpdFemClient(FemClient):
         adcVal = self.ad7998Read(device, channel)
         
         scale = 3.0
-        tempVal = (adcVal * scale / 4095.0)
-        
-        return tempVal
+        voltage = (adcVal * scale / 4095.0)
+        # Calculate resistance from voltage
+        resistance = self.calculateResistance(voltage)
+        # Calculate temperature from resistance
+        temperature = self.calculateTemperature(LpdFemClient.Beta, resistance)
+        # Round temperature to 2 decimal points
+        return round(temperature, 2)
 
     def ad7998Read(self, device, channel):
         '''
@@ -1086,3 +1094,25 @@ class LpdFemClient(FemClient):
             print "adcToTemp() Exception: ", e
 
         return tempVal
+
+    def calculateTemperature(self, Beta, resistanceOne):
+        ''' e.g. calculateTemperature(3630, 26000) = 3.304 degrees Celsius '''
+        # Define constants since resistance and temperature is already known for one point
+        resistanceZero = 10000
+        tempZero = 25.0
+
+        invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / Beta) * log(float(resistanceOne) / float(resistanceZero)) )
+
+        # Invert the value to obtain temperature (in Kelvin) and subtract 273.15 to obtain Celsius
+        return (1 / invertedTemperature) - 273.15
+
+    def calculateResistance(self, aVoltage):
+        '''
+            Calculates the resistance for a given voltage (Utilised by the temperature sensors, on board as well as each ASIC module)
+        '''
+        # Define the supply voltage and the size of resistor inside potential divider
+        vCC = 5
+        resistance = 15000
+        # Calculate resistance of the thermistor
+        resistanceTherm = ((resistance * aVoltage) / (vCC-aVoltage))
+        return resistanceTherm
