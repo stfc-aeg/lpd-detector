@@ -17,6 +17,11 @@ class machineConfiguration():
                     'te7kiribati'  : '192.168.3.2',
                     'devgpu02'     : '192.168.3.2',}
 
+    # Dictionary of hostname -> 1g IP address
+    one1gAddress = {'te7burntoak'  : '192.168.2.2',
+                    'te7kiribati'  : '192.168.3.2',
+                    'devgpu02'     : '192.168.3.2',}
+
 
     def set_10g_structs_variables_te2bank(self):
         """ Construct and return two dictionaries defining two network interfaces
@@ -109,27 +114,23 @@ class machineConfiguration():
         ip_address = (ip_address | (ip_addr_list[2] << 16))
         ip_address = (ip_address | (ip_addr_list[3] << 24))
         return ip_address 
-
-
+    
     def uint32_to_ip_addr(self, ip_addr):
-        # Construct IP address as a string from a uint32 integer
-        ip_list =[ ]
+        ''' Construct IP address (in the form of a 32-bit integer) into a string '''
+        ip_list =[ "", "", "", "" ]
         ip_address = (ip_addr & 0xFF000000) >> 24
-        ip_list.append(  str(ip_address) )
+        ip_list[3] = str(ip_address)
         ip_address = (ip_addr & 0xFF0000) >> 16
-        ip_list.append(  str(ip_address) )
+        ip_list[2] = str(ip_address)
         ip_address = (ip_addr & 0xFF00) >> 8
-        ip_list.append(  str(ip_address) )
+        ip_list[1] = str(ip_address)
         ip_address = (ip_addr & 0xFF)
-        ip_list.append(  str(ip_address) )
-        # Add the list in reverse order into one string
+        ip_list[0] = str(ip_address)
+        # Add the list's contents into one string
         ip_addr_str = ""
-        for idx in range( 4-1, -1, -1):
+        for idx in range(4):
             ip_addr_str += ip_list[idx] + "."
         return ip_addr_str[0:-1]
-
-
-
 
 
     def prt_addr_to_uint16(self, prt_addr_str):

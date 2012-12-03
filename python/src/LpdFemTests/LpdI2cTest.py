@@ -5,6 +5,7 @@
 
 import time, types, sys
 import argparse
+from math import log
 
 from FemClient.FemClient import  *
 from FemApi.FemTransaction import FemTransaction
@@ -104,7 +105,10 @@ class LpdI2cTest(FemClient):
     
     # Fem has three internal i2c buses, power card uses bus 0x300
     i2cInternalBusOffset = 0x300
-    
+
+    # Beta is utilised as an argument for calling the calculateTemperature() 
+    #    but it's effectively fixed by the hardware design
+    Beta = 3474
 
     # Dictionary of hostname -> 1g IP address
     one1gAddress = {'te7burntoak'  : '192.168.2.2',
@@ -252,6 +256,33 @@ class LpdI2cTest(FemClient):
         except Exception as e:
             print "write_temperature_value Exception: ", e
 
+    def write_temperature_in_celsius(self, value, scale, unit):
+        ''' Display argument value, formatted according to argument scale AND converting vaults into degrees Celsius
+        '''
+        # Check argument types
+        if not type(value) is types.IntType:
+            raise LpdI2cError("write_temperature_in_celsius value argument not integer type")
+        if not type(scale) is types.IntType:
+            raise LpdI2cError("write_temperature_in_celsius scale argument not integer type")
+        if not type(unit) is types.StringType:
+            raise LpdI2cError("write_temperature_in_celsius unit argument not string type")
+        # Convert adc counts into voltage
+        voltage = round( float(value * scale / 4095.0), 2)
+        # Calculate resistance using the voltage
+        resistance = self.calculateResistance(voltage)
+        # Calculate temperature in degrees Celsius from resistance
+        temperature = self.calculateTemperature(LpdI2cTest.Beta, resistance)
+        try:
+            print " ",
+            print round(temperature, 2),
+            print unit,
+            print " [",
+            print value,
+            print "]",
+        except Exception as e:
+            print "write_temperature_in_celsius Exception: ", e
+#        print "voltage, resistance, temperature = ", voltage, resistance, temperature
+        
     def show_outputs(self):
         ''' Display the output voltages and currents (Fem, Digital, Sensor, Bias)
         '''
@@ -365,31 +396,31 @@ class LpdI2cTest(FemClient):
 
         print "Temperature readings: "
         print "   Temp PSU card: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.PSU_TEMP_CHAN ),3, "V")
+        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.PSU_TEMP_CHAN ),3, "C")
         print "."
         print "   Temp Sensor A: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSA_TEMP_CHAN ),3, "V")
+        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSA_TEMP_CHAN ),3, "C")
         print "."
         print "   Temp Sensor B: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSB_TEMP_CHAN ),3, "V")
-        print "."
-        print "   Temp Sensor C: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSC_TEMP_CHAN ),3, "V")
-        print "."
-        print "   Temp Sensor D: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSD_TEMP_CHAN ),3, "V")
-        print "."
-        print "   Temp Sensor E: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSE_TEMP_CHAN ),3, "V")
-        print "."
-        print "   Temp Sensor F: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSF_TEMP_CHAN ),3, "V")
-        print "."
-        print "   Temp Sensor G: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSG_TEMP_CHAN ),3, "V")
-        print "."
-        print "   Temp Sensor H: ",
-        self.write_temperature_value( self.read_adc( LpdI2cTest.SENSH_TEMP_CHAN ),3, "V")
+        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSB_TEMP_CHAN ),3, "C")
+#        print "."
+#        print "   Temp Sensor C: ",
+#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSC_TEMP_CHAN ),3, "C")
+#        print "."
+#        print "   Temp Sensor D: ",
+#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSD_TEMP_CHAN ),3, "C")
+#        print "."
+#        print "   Temp Sensor E: ",
+#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSE_TEMP_CHAN ),3, "C")
+#        print "."
+#        print "   Temp Sensor F: ",
+#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSF_TEMP_CHAN ),3, "C")
+#        print "."
+#        print "   Temp Sensor G: ",
+#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSG_TEMP_CHAN ),3, "C")
+#        print "."
+#        print "   Temp Sensor H: ",
+#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSH_TEMP_CHAN ),3, "C")
         print "."
         print "."
 
@@ -398,10 +429,32 @@ class LpdI2cTest(FemClient):
         ''' Display low voltage, high-voltage, fault flags, temperatures and sensor data
         '''
         self.show_lv_status()
-        self.show_hv_status()
-        self.show_flags()
+#        self.show_hv_status()
+#        self.show_flags()
         self.show_temperatures()
-        self.show_outputs()
+#        self.show_outputs()
+
+    def calculateTemperature(self, Beta, resistanceOne):
+        ''' e.g. calculateTemperature(3630, 26000) = 3.304 degrees Celsius '''
+        # Define constants since resistance and temperature is already known for one point
+        resistanceZero = 10000
+        tempZero = 25.0
+
+        invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / Beta) * log(float(resistanceOne) / float(resistanceZero)) )
+
+        # Invert the value to obtain temperature (in Kelvin) and subtract 273.15 to obtain Celsius
+        return (1 / invertedTemperature) - 273.15
+
+    def calculateResistance(self, aVoltage):
+        '''
+            Calculates the resistance for a given voltage (Utilised by the temperature sensors, on board as well as each ASIC module)
+        '''
+        # Define the supply voltage and the size of resistor inside potential divider
+        vCC = 5
+        resistance = 15000
+        # Calculate resistance of the thermistor
+        resistanceTherm = ((resistance * aVoltage) / (vCC-aVoltage))
+        return resistanceTherm
 
 # -=-=-=~=~=~=-=-=- #
 

@@ -24,9 +24,9 @@ from machineConfiguration import *
 
 from PyQt4 import QtCore, QtGui
 
-
-nrows = 32
-ncols = 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
+#
+#self.nrows = 32
+#self.ncols = 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
 
 # processRxData function constants..
 frm_buf_lim = 100     # Number of frames
@@ -48,15 +48,15 @@ ITERS = 1000
 
 class RxThread(QtCore.QThread):
     
-    def __init__(self, rxSignal):
+    def __init__(self, rxSignal, pcAddressConfig):
         
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
 
         # Instantiate objects of machineConfiguration to obtain network information regarding the current machine
         #    (to enable this code to the run unmodified on different systems and PCs)
-        pcAddressConfig = machineConfiguration()
-        femHost = pcAddressConfig.get10gDestinationIpAddress(0) # 0 =  x10g_0, 1 = x10g_1
+        self.myAddressConfig = pcAddressConfig
+        femHost = self.myAddressConfig.get10gDestinationIpAddress(0) # 0 =  x10g_0, 1 = x10g_1
         if femHost is None:
             print "Error selecting10 interface, only 0 or 1 valid!\n\nExiting.."
             print "(femHost = %s)" % femHost
@@ -86,6 +86,12 @@ class BlitQT(FigureCanvas):
 
     def __init__(self):
         FigureCanvas.__init__(self, Figure())
+
+
+        self.nrows = 32
+        self.ncols = 128    # 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
+        print "Note: self.ncols = ", self.ncols
+
 
         # Initialising variables used by processRxData..
         # ---------------------------------------------- #
@@ -147,7 +153,7 @@ class BlitQT(FigureCanvas):
                 # Stuff copied from else statement..
                 
                 self.cnt = 0
-                self.data = np.empty((nrows, ncols), dtype=np.uint16)        
+                self.data = np.empty((self.nrows, self.ncols), dtype=np.uint16)        
                 
                 imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
                 self.img.extend([imgObject])
@@ -160,11 +166,11 @@ class BlitQT(FigureCanvas):
                 self.img[idx].colorbar = cb
 
                 # Add vertical lines to differentiate between the ASICs
-                for i in range(16, ncols, 16):
-                    self.ax[idx].vlines(i-0.5, 0, nrows-1, color='b', linestyles='solid')
+                for i in range(16, self.ncols, 16):
+                    self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
                 
                 # Add vertical lines to differentiate between the two tiles
-                self.ax[idx].vlines(128-0.5, 0, nrows-1, color='r', linestyle='solid')
+                self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='r', linestyle='solid')
                 
                 self.draw()
         else:
@@ -180,7 +186,7 @@ class BlitQT(FigureCanvas):
             self.ax_background = self.copy_from_bbox(self.ax.bbox)
             self.cnt = 0
     
-            self.data = np.empty((nrows, ncols), dtype=np.uint16)        
+            self.data = np.empty((self.nrows, self.ncols), dtype=np.uint16)        
             
             self.img = self.ax.imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
     
@@ -192,18 +198,30 @@ class BlitQT(FigureCanvas):
             self.img.colorbar = cb
     
             # Add vertical lines to differentiate between the ASICs
-            for i in range(16, ncols, 16):
-                self.ax.vlines(i-0.5, 0, nrows-1, color='b', linestyles='solid')
+            for i in range(16, self.ncols, 16):
+                self.ax.vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
             
             # Add vertical lines to differentiate between the two tiles
-            self.ax.vlines(128-0.5, 0, nrows-1, color='r', linestyle='solid')
+            self.ax.vlines(128-0.5, 0, self.nrows-1, color='r', linestyle='solid')
             
             self.draw()
 
         self.dataRxSignal.connect(self.handleDataRx)
                 
         self.tstart = time.time()
-        self.rxThread = RxThread(self.dataRxSignal)
+        
+        
+        # Instantiate objects of machineConfiguration to obtain network information regarding the current machine
+        #    (to enable this code to the run unmodified on different systems and PCs)
+        self.myAddressConfig = machineConfiguration()
+        femHost = self.myAddressConfig.get10gDestinationIpAddress(0) # 0 =  x10g_0, 1 = x10g_1
+        if femHost is None:
+            print "Error selecting10 interface, only 0 or 1 valid!\n\nExiting.."
+            print "(femHost = %s)" % femHost
+            sys.exit()
+        
+        
+        self.rxThread = RxThread(self.dataRxSignal, self.myAddressConfig)
         self.rxThread.start()
 
 
@@ -294,7 +312,7 @@ class BlitQT(FigureCanvas):
                     # The first image, imageArray, has now been stripped from the image
                     # Reshape image into 32 x 256 pixel array
                     try:
-                        self.data = imageArray.reshape(nrows, ncols)
+                        self.data = imageArray.reshape(self.nrows, self.ncols)
                     except Exception as errStr:
                         print "handleDataRx() failed to reshape imageArray: ", errStr, "\nExiting.."
                         exit()
@@ -371,7 +389,7 @@ class BlitQT(FigureCanvas):
                 print "Reshaping completeDataArray from 1x8192 array into 32*256 array.."
                 
                 try:
-                    self.data = completeDataArray.reshape(nrows, ncols)
+                    self.data = completeDataArray.reshape(self.nrows, self.ncols)
                 except Exception as errStr:
                     print "completeDataArray.reshape() failed! Exiting.."
                     exit()

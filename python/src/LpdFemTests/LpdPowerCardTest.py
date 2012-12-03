@@ -95,55 +95,55 @@ def powerCardTest():
     if rc != LpdDevice.ERROR_OK:
         print "powerCardTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   PSU Card Temp: %.2f' % theTemp, '  V'
+        print '   PSU Card Temp: %.2f' % theTemp, '  C'
 
     (rc, theTemp) = theDevice.paramGet('sensorATemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorATemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor A Temp: %.2f' % theTemp, '  V'
+        print '   Sensor A Temp: %.2f' % theTemp, '  C'
 
     (rc, theTemp) = theDevice.paramGet('sensorBTemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorBTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor B Temp: %.2f' % theTemp, '  V'
+        print '   Sensor B Temp: %.2f' % theTemp, '  C'
         
     (rc, theTemp) = theDevice.paramGet('sensorCTemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorCTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor C Temp: %.2f' % theTemp, '  V'
+        print '   Sensor C Temp: %.2f' % theTemp, '  C'
         
     (rc, theTemp) = theDevice.paramGet('sensorDTemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorDTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor D Temp: %.2f' % theTemp, '  V'
+        print '   Sensor D Temp: %.2f' % theTemp, '  C'
         
     (rc, theTemp) = theDevice.paramGet('sensorETemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorETemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor E Temp: %.2f' % theTemp, '  V'
+        print '   Sensor E Temp: %.2f' % theTemp, '  C'
         
     (rc, theTemp) = theDevice.paramGet('sensorFTemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorFTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor F Temp: %.2f' % theTemp, '  V'
+        print '   Sensor F Temp: %.2f' % theTemp, '  C'
         
     (rc, theTemp) = theDevice.paramGet('sensorGTemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorGTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor G Temp: %.2f' % theTemp, '  V'
+        print '   Sensor G Temp: %.2f' % theTemp, '  C'
         
     (rc, theTemp) = theDevice.paramGet('sensorHTemp')
     if rc != LpdDevice.ERROR_OK:
         print "sensorHTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print '   Sensor H Temp: %.2f' % theTemp, '  V'
+        print '   Sensor H Temp: %.2f' % theTemp, '  C'
 
     # Display Fem, Digital, sensors voltages and current
     print "\nOutputs: "
