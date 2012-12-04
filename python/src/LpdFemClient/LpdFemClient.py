@@ -114,10 +114,18 @@ class LpdFemClient(FemClient):
         
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
+
+        self.tenGig0 = {'SourceMacDummy' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
+                        'SourceIpDummy'  : self.ip_addr_to_uint32('192.168.7.2'),
+                        'SourcePortDummy' : self.prt_addr_to_uint16('8'),
+                        # Target PC:
+                        'dst_mac' : self.mac_addr_to_uint64('00-07-43-10-61-88'),
+                        'dst_ip'  : self.ip_addr_to_uint32('192.168.7.1'),
+                        'dst_prt' : self.prt_addr_to_uint16('61649')}
         
         #TODO: Remove these dummy variables when they become redundant
-        self.tenGig0SourceMacDummy = 0
-        self.tenGig0SourceIpDummy = 0
+#        self.tenGig0SourceMacDummy = 0
+#        self.tenGig0SourceIpDummy = 0
         self.tenGig0SourcePortDummy = 0
         self.tenGig0DestMacDummy = 0          
         self.tenGig0DestIpDummy = 0   
@@ -126,10 +134,10 @@ class LpdFemClient(FemClient):
         self.tenGig1SourceIpDummy = 0 
         self.tenGig1SourcePortDummy = 0
         self.tenGig1DestMacDummy = 0  
-        self.tenGig1DestIpDummy = 0  
-        self.tenGig1DestPortDummy = 0 
-        self.tenGigInterframeGapDummy = 0        
-        self.tenGigUdpPacketLenDummy = 0              
+        self.tenGig1DestIpDummy                = 0
+        self.tenGig1DestPortDummy              = 0
+        self.tenGigInterframeGapDummy          = 0
+        self.tenGigUdpPacketLenDummy           = 0
         self.femSendPpcResetDummy              = 0
         self.femFastCtrlDynamicDummy           = 0
         self.femSetupSlowCtrlBramDummy         = 0
@@ -149,7 +157,19 @@ class LpdFemClient(FemClient):
         self.femAsicPixelFeedbackOverrideDummy = 0
         self.femAsicPixelSelfTestOverrideDummy = 0
         self.femReadoutOperatingModeDummy      = 0
-             
+
+
+    def configure(self):
+        '''
+            Placeholder for the future configure() function
+        '''
+        
+    def run(self):
+        '''
+            Placeholder for the future run() function
+        '''
+        
+
     def sensorATempGet(self):
         '''
             Get temperature from sensor A
@@ -425,7 +445,6 @@ class LpdFemClient(FemClient):
         '''
         return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25H_AMPS_CHAN)
     
-    
     def sensorBiasVoltageGet(self):
         '''
             Get Sensor bias voltage readback [V]
@@ -443,44 +462,49 @@ class LpdFemClient(FemClient):
             Get tenGig0SourceMac
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.tenGig0SourceMacDummy
-
+#        return self.tenGig0SourceMacDummy
+        return self.tenGig0['SourceMacDummy']
+    
     def tenGig0SourceMacSet(self, aValue):
         '''
             Set tenGig0SourceMac
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.tenGig0SourceMacDummy = aValue
-
+#        self.tenGig0SourceMacDummy = aValue
+        self.tenGig0['SourceMacDummy'] = aValue
     
     def tenGig0SourceIpGet(self):
         '''
             Get tenGig0SourceIp
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.tenGig0SourceIpDummy
-
+#        return self.tenGig0SourceIpDummy
+        return self.tenGig0['SourceIpDummy']
+    
     def tenGig0SourceIpSet(self, aValue):
         '''
             Set tenGig0SourceIp
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.tenGig0SourceIpDummy = aValue
+#        self.tenGig0SourceIpDummy = aValue
+        self.tenGig0['SourceIpDummy'] = aValue
 
     def tenGig0SourcePortGet(self):
         '''
             Get tenGig0SourcePort
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.tenGig0SourcePortDummy
-
+#        return self.tenGig0SourcePortDummy
+        return self.tenGig0['SourcePortDummy']
+    
     def tenGig0SourcePortSet(self, aValue):
         '''
             Set tenGig0SourcePort
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.tenGig0SourcePortDummy = aValue
-
+#        self.tenGig0SourcePortDummy = aValue
+        self.tenGig0['SourcePortDummy'] = aValue
+        
     def tenGig0DestMacGet(self):
         '''
             Get tenGig0DestMac

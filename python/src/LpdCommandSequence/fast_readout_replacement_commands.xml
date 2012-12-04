@@ -4,7 +4,7 @@
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 	<!-- Replaces the file fast_readout_4f_gaps.txt -->
 	
-	<sync_reset/> <!-- Start Config chip? -->
+	<sync_reset/> <!-- Start Config chip -->
 	<on_chip_reset_enable/>
 	<nop/>
 	<reset_write_pointer/>

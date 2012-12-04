@@ -21,110 +21,7 @@ from machineConfiguration import *
 
 class FemAsicTest():
 
-#    # Dictionary of hostname -> 1g IP address
-#    one1gAddress = {'te7burntoak'  : '192.168.2.2',
-#                    'te7kiribati'  : '192.168.3.2',
-#                    'devgpu02'     : '192.168.3.2',}
-#
-#
-#    def set_10g_structs_variables_te2bank(self):
-#        """ Construct and return two dictionaries defining two network interfaces
-#        """
-#        
-#        x10g_0 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-#                  'src_ip'  : self.ip_addr_to_uint32('192.168.7.2'),
-#                  'src_prt' : self.prt_addr_to_uint16('0000'),
-#                  # PC TARGET:
-#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),
-#                  'dst_ip'  : self.ip_addr_to_uint32('192.168.0.13'),
-#                  'dst_prt' : self.prt_addr_to_uint16('0000')}
-#        
-#        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-09'),
-#                  'src_ip'  : self.ip_addr_to_uint32('192.168.0.100'),
-#                  'src_prt' : self.prt_addr_to_uint16('0000'),
-#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
-#                  'dst_ip'  : self.ip_addr_to_uint32('192.168.0.13'),
-#                  'dst_prt' : self.prt_addr_to_uint16('0000')}
-#        return x10g_0, x10g_1
-#
-#    def set_10g_structs_variables_te7burntoak(self):
-#        """ Construct and return two dictionaries defining two network interfaces
-#        """
-#        
-#        x10g_0 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-#                  'src_ip'  : self.ip_addr_to_uint32('192.168.7.2'),
-#                  'src_prt' : self.prt_addr_to_uint16('8'),
-#                  # Target PC:
-#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-10-61-88'),
-#                  'dst_ip'  : self.ip_addr_to_uint32('192.168.7.1'),
-#                  'dst_prt' : self.prt_addr_to_uint16('61649')}
-#        
-#        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-#                  'src_ip'  : self.ip_addr_to_uint32('192.168.8.2'),
-#                  'src_prt' : self.prt_addr_to_uint16('0000'),
-#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
-#                  'dst_ip'  : self.ip_addr_to_uint32('192.168.8.1'),
-#                  'dst_prt' : self.prt_addr_to_uint16('0000')}
-#    
-#        return x10g_0, x10g_1
-#    
-#    def set_10g_structs_variables_devgpu02(self):
-#        """ Construct and return two dictionaries defining two network interfaces
-#        """
-#        
-#        x10g_0 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-#                  'src_ip'  : self.ip_addr_to_uint32('10.0.0.2'),            # Updated
-#                  'src_prt' : self.prt_addr_to_uint16('8'),
-#                  # Target PC:
-#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-10-65-A0'),    # Updated
-#                  'dst_ip'  : self.ip_addr_to_uint32('10.0.0.1'),            # Updated
-#                  'dst_prt' : self.prt_addr_to_uint16('61649')}
-#        
-#        x10g_1 = {'src_mac' : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-#                  'src_ip'  : self.ip_addr_to_uint32('192.168.8.2'),
-#                  'src_prt' : self.prt_addr_to_uint16('0000'),
-#                  'dst_mac' : self.mac_addr_to_uint64('00-07-43-06-31-A3'),  # in vhdl 10g 
-#                  'dst_ip'  : self.ip_addr_to_uint32('192.168.8.1'),
-#                  'dst_prt' : self.prt_addr_to_uint16('0000')}
-#    
-#        return x10g_0, x10g_1        
-#
-#        
-#    
-#    def mac_addr_to_uint64(self, mac_addr_str):
-#        """ convert hex MAC address 'u-v-w-x-y-z' string to integer """
-#        # Convert MAC address into list of 6 elements (and removing the - characters)
-#        mac_addr_list = mac_addr_str.split('-')   
-#        # Convert hexadecimal values into the decimals
-#        mac_addr_list = [int(val, 16) for val in mac_addr_list]
-#        # combine the 6 elements into a single 48 bit MAC value
-#        mac_address = 0
-#        mac_address = (mac_address | mac_addr_list[0])
-#        mac_address = (mac_address | (mac_addr_list[1] << 8))
-#        mac_address = (mac_address | (mac_addr_list[2] << 16))
-#        mac_address = (mac_address | (mac_addr_list[3] << 24))
-#        mac_address = (mac_address | (mac_addr_list[4] << 32))
-#        mac_address = (mac_address | (mac_addr_list[5] << 40))
-#        return mac_address
-#    
-#    def ip_addr_to_uint32(self, ip_addr_str):
-#        # Convert IP address into list of 4 elements (and removing the - characters)
-#        ip_addr_list = ip_addr_str.split('.') 
-#        # Convert hexadecimal values into the decimals
-#        ip_addr_list = [int(val) for val in ip_addr_list]    
-#        # combine the 4 elements into a single 32 bit value 
-#        ip_address = 0
-#        ip_address = (ip_address | ip_addr_list[0])
-#        ip_address = (ip_address | (ip_addr_list[1] << 8))
-#        ip_address = (ip_address | (ip_addr_list[2] << 16))
-#        ip_address = (ip_address | (ip_addr_list[3] << 24))
-#        return ip_address 
-#    
-#    def prt_addr_to_uint16(self, prt_addr_str):
-#        #convert hex prt string to integer
-#        return int(prt_addr_str)
-        
-        
+       
     # --------------------------------------------------------------------------- #
     
     def execute_tests(self):
@@ -313,7 +210,7 @@ class FemAsicTest():
         # 2 bytes per pixel (after gain selection)
         # + 64 byte for asic rx header and trailer (each 8 x 32 bits) but removed by ll_rmv )
         udp_frm_sze = (no_asic_cols+1) * 512 * 128 * 2 + 0  # header and trailer removed by ll_rmv
-        udp_in_buf_size = 2048*1024
+#        udp_in_buf_size = 2048*1024   # Never used
         
         #  overrides to asic algorithm gain selection
         #  bits
@@ -340,7 +237,7 @@ class FemAsicTest():
             udp_pkt_num = 1
 #            udp_frm_sze = 1024*1024*8
             udp_frm_sze = 262144
-            udp_in_buf_size =1024*1024*1024*1
+#            udp_in_buf_size =1024*1024*1024*1    # Never used
             
             # if data source is 'PPC':
         elif (data_source_to_10g == 2):
@@ -573,17 +470,16 @@ class FemAsicTest():
         
         print "Receiving the image data from 10g link.."
         
-        # Neither of the two functions actually do anything
-        if  readout_mode is "packet":
-            # Currently redundant:
-            dudp = myLpdFemClient.recv_image_data_as_packet(udp_pkt_num, dudp, packet_size)
-        elif readout_mode is "frame":
-            # Currently redundant:
-            dudp = myLpdFemClient.recv_image_data_as_frame(dudp)            
-        else:
-            pass
-        
-        
+#        # Neither of the two functions actually do anything
+#        if  readout_mode is "packet":
+#            # Currently redundant:
+#            dudp = myLpdFemClient.recv_image_data_as_packet(udp_pkt_num, dudp, packet_size)
+#        elif readout_mode is "frame":
+#            # Currently redundant:
+#            dudp = myLpdFemClient.recv_image_data_as_frame(dudp)            
+#        else:
+#            pass
+
         print ""
         
         # Send data via 10g UDP block

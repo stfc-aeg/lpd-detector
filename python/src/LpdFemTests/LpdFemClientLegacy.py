@@ -427,25 +427,25 @@ class LpdFemClientLegacy(FemClient):
         #rdma_write(    data_gen_0+data_gen_0_offset, num_ll_frames)
         self.rdmaWrite(LpdFemClientLegacy.data_gen_0+data_gen_0_offset, num_ll_frames)
 
-    def recv_image_data_as_packet(self, udp_pkt_num, dudp, packet_size): 
-        # loop to read udp frame packet by packet
-#        for i in range(0,udp_pkt_num-1, 1):
-#             TODO: Will next packet overwrite previous packet?
-#            dudp = LpdFemClientLegacy.recv()
-#             Or use read() function:  ->   #dudp = myFemClient.read(theBus, theWidth, theAddr, theReadLen)    ??
-#            print "%4i %8X %8X %8X %8X" % (i, dudp(1),dudp(2),dudp(3),dudp(packet_size))
-#            dudp = uint32(fread(u, packet_size, 'uint16'));
-#            fprintf('%04i %08X %08X %08X %08X',i, dudp(1),dudp(2),dudp(3),dudp(packet_size));
+#    def recv_image_data_as_packet(self, udp_pkt_num, dudp, packet_size): 
+#        # loop to read udp frame packet by packet
+##        for i in range(0,udp_pkt_num-1, 1):
+##             
+##            dudp = LpdFemClientLegacy.recv()
+##             Or use read() function:  ->   #dudp = myFemClient.read(theBus, theWidth, theAddr, theReadLen)    ??
+##            print "%4i %8X %8X %8X %8X" % (i, dudp(1),dudp(2),dudp(3),dudp(packet_size))
+##            dudp = uint32(fread(u, packet_size, 'uint16'));
+##            fprintf('%04i %08X %08X %08X %08X',i, dudp(1),dudp(2),dudp(3),dudp(packet_size));
+##        return dudp
+#        dudp = []
 #        return dudp
-        dudp = []
-        return dudp
-    
-    def recv_image_data_as_frame(self, dudp):
-#        dudp = LpdFemClientLegacy.recv()
-#        return dudp
-#        return self.recv()
-        dudp = []
-        return dudp 
+#    
+#    def recv_image_data_as_frame(self, dudp):
+##        dudp = LpdFemClientLegacy.recv()
+##        return dudp
+##        return self.recv()
+#        dudp = []
+#        return dudp 
     
     def read_slow_ctrl_file(self, filename):
     
