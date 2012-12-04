@@ -12,6 +12,9 @@ from SlowCtrlParams import SlowCtrlParams
 
 class paper_exercise():
 
+    currentSlowCtrlDir = "/"
+    currentFastCmdDir = "/"
+    
     try:
         myLpdFemClient = LpdFemClientLegacy(('192...', 6969), timeout=10)
     except FemClientError as errString:
@@ -21,6 +24,8 @@ class paper_exercise():
     # --------------------------------------------------------------------------- #
     #            CONFIGURE
     # --------------------------------------------------------------------------- #
+    
+    ''' See jac's function: config_10g_link() ? '''
     
     femHost                 = '192 ... ...'
     femPort                 = 6969
@@ -102,17 +107,17 @@ class paper_exercise():
         print ""
         myLpdFemClient.read_ll_monitor()
 
-        slowCtrlConfig = SlowCtrlParams( '/slow_control_config.xml', fromFile=True)
+        slowCtrlConfig = SlowCtrlParams( currentSlowCtrlDir + '/slow_control_config.xml', fromFile=True)
         slow_ctrl_data = slowCtrlConfig.encode()
         no_of_bits = 3911
 
         # fast data
         if asic_pseudo_random:
             # Yes,' fast_random_gaps.txt' really does reside within the "slow control" directory:
-            [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new( '/fast_random_gaps.txt', fast_cmd_reg_size)
+            [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new( currentSlowCtrlDir + '/fast_random_gaps.txt', fast_cmd_reg_size)
         else:
             # Real ASIC data selected, load slow control configuration from file
-            fileCmdSeq = LpdCommandSequenceParser( '/fast_readout_replacement_commands.xml', fromFile=True)
+            fileCmdSeq = LpdCommandSequenceParser( currentFastCmdDir + '/fast_readout_replacement_commands.xml', fromFile=True)
             fast_cmd_data = fileCmdSeq.encode() 
             
             no_of_words = fileCmdSeq.getTotalNumberWords()
@@ -144,32 +149,58 @@ class paper_exercise():
         # asic rx gain override
         myLpdFemClient.gain_override(asic_gain_override)
 
-
         # top level steering - ie:
         # turn fast & slow buffers on
         # asic serial out readback is from bot sp3 i/o
         # asic start readout delay wrt fast cmd
         myLpdFemClient.top_level_steering(asic_rx_start_delay)
-    
-    
-    # select asic or llink gen as data source
-    myLpdFemClient.fem_local_link_mux_setup(data_source_to_10g)
+        
+        # select asic or llink gen as data source
+        myLpdFemClient.fem_local_link_mux_setup(data_source_to_10g)
 
-    if trigger_type is 'all':
-        # start asic seq  = reset, slow, fast & asic rx
-        print "You selected 'all'"
-        myLpdFemClient.toggle_bits(0, 2)
+    
+        #--------------------------------------------------------------------
+        # send triggers to data generators
+        
+        if trigger_type is 'all':
+            # start asic seq  = reset, slow, fast & asic rx
+            print "You selected 'all'"
+            myLpdFemClient.toggle_bits(0, 2)
+        elif trigger_type is 'a':
+            # trigger to local link frame gen 
+            print "You selected 'a'"
+            myLpdFemClient.toggle_bits(0, 1)
+        elif trigger_type is 'b':
+            # trigger the asic rx block
+            print "You selected 'b'"
+            myLpdFemClient.toggle_bits(3, 1)
+        elif trigger_type is 's':
+            # trigger just the slow contol IP block
+            print "You selected 's'"
+            myLpdFemClient.toggle_bits(7, 1)
+        elif trigger_type is 'f':
+            # trigger just the fast cmd block
+            print "You selected 'f'"
+            myLpdFemClient.toggle_bits(7, 2)
+        elif trigger_type is 'x':
+            # trigger fastand asic rx  (not slow)
+            myLpdFemClient.toggle_bits(7, 2)
+            myLpdFemClient.toggle_bits(3, 1)
+        else:
+            print "No case matching variable trigger_type = ", trigger_type
+        #--------------------------------------------------------------------
 
-    # Send data via 10g UDP block
-    if enable_10g == 1:
-        # Check local link frame statistics
-        myLpdFemClient.read_ll_monitor()        
+        # Send data via 10g UDP block
+        if enable_10g == 1:
+            # Check local link frame statistics
+            myLpdFemClient.read_ll_monitor()        
 
 
     # --------------------------------------------------------------------------- #
     #        START    
     # --------------------------------------------------------------------------- #
     
+    ''' See jac's function: start_10g_link() ? '''
 
 
 if __name__ == '__main__':
