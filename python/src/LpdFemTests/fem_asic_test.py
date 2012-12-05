@@ -246,44 +246,12 @@ class FemAsicTest():
         
         # Setup the UDP IP blocks sending data via 10g udp block
         if (enable_10g == 1):
-            
-            # Which PC is running the script?
-#            thisHost = socket.gethostname()
-            # Remove domain name from hostname
-#            hostname = thisHost.split(".", 1)[0]
-
-#            # Construct function name to be called from hostname
-#            try:
-#                handlerMethod = getattr(self, "set_10g_structs_variables_%s" % hostname)
-#            except Exception as e:
-#                print "No network information defined for this machine: ", hostname
-#                print "\tError: ", e, "\nExiting.."
-#                sys.exit()
-                
-#            print "handlerMethod = ", handlerMethod
-#            print "type(handlerMethod) = ", type(handlerMethod)
-            
-#            x10g_0, x10g_1 = handlerMethod()
-#            print "Locally generated:  ", x10g_0
-            
+                        
             x10g_0, x10g_1 = pcAddressConfig.getStructsVariables()
-            print "Remotely generated: ", x10g_0
 
-            ''' SHUTTING DOWN FEM PREMATURELY - REMOVE WHEN FINISHED DEBUGGING '''            
-            # Close down Fem connection
-            try:
-                myLpdFemClient.close()
-            except Exception as errStr:
-                print "Unable to close Fem connection: ", errStr
-            else:
-                print "Closed Fem connection."
-            sys.exit()
-            
-            
-            
-            
+            ''' Now replaced by function generator '''
             # Set up the UDP IP blocks
-            x10g_0, x10g_1 = self.set_10g_structs_variables_te7burntoak()
+#            x10g_0, x10g_1 = self.set_10g_structs_variables_te7burntoak()
             
             # Set up the UDP IP blocks
             myLpdFemClient.fem_10g_udp_set_up_block0(udp_pkt_len, udp_frm_sze, eth_ifg)
