@@ -62,6 +62,7 @@ class RxThread(QtCore.QThread):
             print "(femHost = %s)" % femHost
             sys.exit()
         
+        print "Connecting to host: %s.." % (femHost)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #        self.sock.bind(('192.168.7.1', 61649))
         self.sock.bind((femHost, 61649))
@@ -342,7 +343,7 @@ class BlitQT(FigureCanvas):
                     print "Finished drawing subplots"
 
             
-            bDebug = False
+            bDebug = True
             
             if bDebug:
                 filename = '/u/ckd27546/workspace/lpd/src/AdjustedDodgyAsicsReadout.txt'

@@ -474,14 +474,14 @@ if __name__ == "__main__":
 
     
     # Define FEM IP address and port
-#    host = '192.168.2.2' # Burntoak
+    host = '192.168.2.2' # Burntoak
 #    host = '192.168.3.2' # Kiribati, devgpu02
     # Determine name of current machine
     fullDomainName = socket.gethostname()
     # Only need hostname, not domain part
     hostName = fullDomainName.partition('.')[0]
     # Locate corresponding IP address
-    host = LpdI2cTest.one1gAddress[hostName]
+#    host = LpdI2cTest.one1gAddress[hostName]
 #    print "Debug info: machine = '%s', IP = '%s'." % (hostName, host)    
 
     port = 6969

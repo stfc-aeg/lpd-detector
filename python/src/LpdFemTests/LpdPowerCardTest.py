@@ -5,8 +5,8 @@ def powerCardTest():
     theDevice = LpdDevice()
 
     
-#    rc = theDevice.open('192.168.2.2', 6969)    # Burntoak
-    rc = theDevice.open('192.168.3.2', 6969)    # Kiribati, devgpu02
+    rc = theDevice.open('192.168.2.2', 6969)    # Burntoak
+#    rc = theDevice.open('192.168.3.2', 6969)    # Kiribati, devgpu02
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return

@@ -232,7 +232,7 @@ class SlowCtrlParams(object):
         
         #TODO: SORT OUT THIS HACK !
         sequence[122] = 0x20
-        print "------------------>> Manually changed the last index to be sequence[123] = ", sequence[122]
+        print "------->> Manually changed sequence[123] = ", sequence[122]
         # Return the command sequence
         return sequence
 
@@ -676,7 +676,7 @@ class SlowCtrlParams(object):
                             encodedSequence[wordPosition] = encodedSequence[wordPosition] | (bitwiseArray[idx] << bitOffset)
                         except:
                             print "(integer!) BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << bitOffset) )
-                            print "key = %s" % dicKey
+                            print "key = %s" % dictKey
                             return
 
         # Return the encoded sequence for this (partial) tree
@@ -991,6 +991,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # Construct a list of how sequence should look like
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         for idx in range(48,112):
             expectedSequence[idx] = 0xEEEEEEEE
 
@@ -1022,6 +1024,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         for idx in range(48,112):
             expectedSequence[idx] = 0x11111111
         
@@ -1053,6 +1057,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         for idx in range(48,112):
             expectedSequence[idx] = 0x55555555
         
@@ -1083,6 +1089,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         for idx in range(48):
             indexNo = idx % 3
             if indexNo == 0:
@@ -1120,6 +1128,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         expectedSequence[112] = 0x42108420
         expectedSequence[113] = 0x10842108
         expectedSequence[114] = 0x84210842
@@ -1152,6 +1162,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
             
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         expectedSequence[112] = 0xFFFFFFFE
         expectedSequence[113] = 0xFFFFFFFF
         expectedSequence[114] = 0xFFFFFFFF
@@ -1188,6 +1200,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         expectedSequence[112] = 0x1
 
         # Toggle display debug information
@@ -1217,6 +1231,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         # 3820 / 32 = 119; 3820 % 32 = 12
         expectedSequence[119] = 31 << 12
         
@@ -1253,6 +1269,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         # 3825 / 32 = 119; 3825 % 32 = 17
         expectedSequence[119] = ( (filterValue & thisIndex) << 17)
         expectedSequence[120] = overflow
@@ -1266,7 +1284,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             self.displaySequence(expectedSequence)
         
         self.assertEqual(encSeq, expectedSequence, 'testFilterControl() failed !')
-    
+        
     def testAllKeysAllValues(self):
         '''
             Test all the keys
@@ -1296,7 +1314,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0xFFFFFFFF] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] = 1
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] = 0x20
 
         # Toggle display debug information
         if False:
@@ -1338,6 +1356,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] = 0x20
+
         for idx in range(48):
             expectedSequence[idx] = 0x0
         expectedSequence[0] =  0xF9AA6
@@ -1361,7 +1381,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             Test a set of specific mux_decoder key values
         '''
     
-        thisFile = '/xmlCheck.xml'
+        thisFile = '/SlowControlDefault.xml'
         currentDir = os.getcwd()
         if currentDir.endswith("LpdFemTests"):
             thisFile = currentDir + thisFile
@@ -1374,6 +1394,8 @@ class SlowCtrlParamsTest(unittest.TestCase):
         
         # How the sequence should end up looking
         expectedSequence = [0x00000000] * SlowCtrlParams.SEQLENGTH
+        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+
         expectedSequence[112] = 0x4B7B9EB0
         expectedSequence[113] = 0xBB3687A6
         expectedSequence[114] = 0x3EF5354F

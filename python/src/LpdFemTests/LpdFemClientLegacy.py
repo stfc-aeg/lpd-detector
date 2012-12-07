@@ -709,7 +709,7 @@ class LpdFemClientLegacy(FemClient):
         #data_source_reg           = (0x00000001 | base_addr)
         no_clk_cyc_dly_reg        = (0x00000002 | base_addr)
         no_asic_cols_cols_frm_reg = (0x00000003 | base_addr)
-         
+          
         # setup data values
         no_asic_cols = (no_asic_cols & 0x0000001FF)
         no_cols_frm  = (no_cols_frm & 0x0000001FF)
