@@ -15,9 +15,6 @@
 
 void reloadChain(XSysAce *pAce, unsigned int idx);
 int writeImage(unsigned int idx, u32 addr, u32 len);
-
-void testCF(void);
-
 int mySelfTest(XSysAce *pAce);
 
 #endif /* SYSACE_H_ */

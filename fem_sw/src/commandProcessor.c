@@ -1121,6 +1121,9 @@ int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClien
 					break;
 
 				case BUS_RAW_REG:
+					// Everything valid!
+					break;
+
 				case BUS_RDMA:
 					// Data width must always be 32bit
 					if (pHeader->data_width!=WIDTH_LONG)
@@ -1129,6 +1132,7 @@ int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClien
 						return -1;
 					}
 					break;
+
 				case BUS_DIRECT:
 					// Only write operations make sense here
 					if (pHeader->state!=STATE_WRITE)
@@ -1158,6 +1162,9 @@ int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClien
 				break;
 			case CMD_INT_GET_HW_INIT_STATE:
 				// Rest of header is ignored, this case only here to avoid running the default case!
+				break;
+			case CMD_INT_WRITE_TO_SYSACE:
+				// TODO: Header check?
 				break;
 			default:
 				// For CMD_INTERNAL the address field holds the command type...

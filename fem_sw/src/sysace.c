@@ -42,23 +42,22 @@ int writeImage(unsigned int idx, u32 addr, u32 len)
 	}
 
 	// Insert sysace image number into path and filename
-	fname[14] = (char)(48+idx);
-	fname[20] = (char)(48+idx);
+	fname[12] = (char)(48+idx);
+	fname[17] = (char)(48+idx);
 
 	// Dump filename
 	// TODO: Remove DBGOUT
 	DBGOUT("SystemACE filename (idx=%d): '", idx);
 	DBGOUT(fname);
-	DBGOUT("'/r/n");
+	DBGOUT("'\r\n");
 
 	// Open file for writing (w option discards any existing file, or creates it if not present)
-	//pHandle = sysace_fopen(fname, "w");
-	pHandle = sysace_fopen("a:\\test.txt", "w");		// TODO: DUMMY FILENAME FOR TESTING, REMOVE!
+	pHandle = sysace_fopen(fname, "w");
 	if (pHandle==NULL)
 	{
 		DBGOUT("SysACE: Cannot open file '");
 		DBGOUT(fname);
-		DBGOUT("' for writing!/r/n");
+		DBGOUT("' for writing!\r\n");
 		return -1;
 	}
 
@@ -66,8 +65,7 @@ int writeImage(unsigned int idx, u32 addr, u32 len)
 	retVal = sysace_fwrite((void*)addr, 1, len, pHandle);
 	if (retVal==-1)
 	{
-		// TODOL Remove DBGOUT
-		DBGOUT("SysACE: Error writing data to file/r/n");
+		DBGOUT("SysACE: Error writing data to file\r\n");
 		sysace_fclose(pHandle);
 		return -1;
 	}
@@ -75,40 +73,6 @@ int writeImage(unsigned int idx, u32 addr, u32 len)
 	// Close file (flush data to disk), exit
 	retVal = sysace_fclose(pHandle);
 	return retVal;
-}
-
-/**
- * Writes an empty test file to the CF
- */
-void testCF(void)
-{
-	// TODO: Remove this function
-
-	char data[] = {'H','e','l','l','o',' ','w','o','r','l','d','!',13,10 };
-	void *pHandle;
-	int retVal;
-
-	pHandle = sysace_fopen("a:\\test.txt", "w");
-
-	if (pHandle == NULL)
-	{
-		DBGOUT("sysace: Failed to open file for output.\r\n");
-		return;
-	}
-
-	retVal = sysace_fwrite(data, 1, sizeof(data), pHandle);
-
-	if (retVal==-1)
-	{
-		DBGOUT("sysace: Test file write failed.\r\n");
-	}
-	else
-	{
-		DBGOUT("sysace: Test file write OK!\r\n");
-	}
-
-	sysace_fclose(pHandle);
-
 }
 
 /**
@@ -132,9 +96,9 @@ int mySelfTest(XSysAce *InstancePtr)
 	DBGOUT("hurfDurf: Trying to lock SystemACE... ");
 	if (status!=XST_SUCCESS) { DBGOUT("failed.\r\n"); } else { DBGOUT("OK!\r\n"); }
 	if (XSysAce_IsMpuLocked(InstancePtr->BaseAddress)) {
-		DBGOUT("hurfDurf: SystemACE lock is ENABLED\r\n");
+		DBGOUT("SA_selfTest: SystemACE lock is ENABLED\r\n");
 	} else {
-		DBGOUT("hurfDurf: SystemACE lock is DISABLED\r\n");
+		DBGOUT("SA_selfTest: SystemACE lock is DISABLED\r\n");
 	}
 */
 
@@ -146,7 +110,7 @@ int mySelfTest(XSysAce *InstancePtr)
 	 */
 	Result = XSysAce_Lock(InstancePtr, TRUE);
 	if (Result != XST_SUCCESS) {
-		DBGOUT("hurfDurf: failed at lock (%d)\r\n", Result);
+		DBGOUT("SA_selfTest: failed at lock (%d)\r\n", Result);
 		return Result;
 	}
 
@@ -154,7 +118,7 @@ int mySelfTest(XSysAce *InstancePtr)
 	 * Verify the lock was retrieved
 	 */
 	if (!XSysAce_IsMpuLocked(InstancePtr->BaseAddress)) {
-		DBGOUT("hurfDurf: failed at lock verify\r\n");
+		DBGOUT("SA_selfTest: failed at lock verify\r\n");
 		return XST_FAILURE;
 	}
 
@@ -167,7 +131,7 @@ int mySelfTest(XSysAce *InstancePtr)
 	 * Verify the lock was released
 	 */
 	if (XSysAce_IsMpuLocked(InstancePtr->BaseAddress)) {
-		DBGOUT("hurfDurf: failed at lock release\r\n");
+		DBGOUT("SA_selfTest: failed at lock release\r\n");
 		return XST_FAILURE;
 	}
 
@@ -175,7 +139,7 @@ int mySelfTest(XSysAce *InstancePtr)
 	 * If there are currently any errors on the device, fail self-test
 	 */
 	if (XSysAce_GetErrorReg(InstancePtr->BaseAddress) != 0) {
-		DBGOUT("hurfDurf: ErrorReg: 0x%x\r\n", XSysAce_GetErrorReg(InstancePtr->BaseAddress));
+		DBGOUT("SA_selfTest: ErrorReg: 0x%x\r\n", XSysAce_GetErrorReg(InstancePtr->BaseAddress));
 		return XST_FAILURE;
 	}
 
