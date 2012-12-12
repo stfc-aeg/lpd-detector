@@ -991,7 +991,7 @@ class LpdFemClient(FemClient):
 #            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_readout_4f_gaps.txt',fast_cmd_reg_size)
              
             # ''' XML implementation '''
-            fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/lpd/src/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
+            fileCmdSeq = LpdCommandSequenceParser( self.fastCtrlPath + 'fast_readout_replacement_commands.xml', fromFile=True)
             # fileCmdSeq = LpdCommandSequenceParser('../LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
             fast_cmd_data = fileCmdSeq.encode()
             
