@@ -34,13 +34,17 @@ from string import strip, split
 
 # log required when calculating temperature
 from math import log
-import pprint
+import pprint, time
 
 from FemClient.FemClient import *
 from FemApi.FemTransaction import FemTransaction
 
-# Test using FemAsicTest class..
-from LpdFemTests.fem_asic_test import *
+# Import library for parsing XML fast command files
+from LpdCommandSequence.LpdCommandSequenceParser import LpdCommandSequenceParser
+from LpdFemTests.SlowCtrlParams import SlowCtrlParams
+
+## Test using FemAsicTest class..
+#from LpdFemTests.fem_asic_test import *
 
 class LpdFemClient(FemClient):
     '''
@@ -150,13 +154,37 @@ class LpdFemClient(FemClient):
     rsvd_31      = 0x0f800000    #31
     
     # file path to the location of the slow control and fast control configuration files
-    filePath    = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
+    filePath     = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
+    slowCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
+    fastCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdCommandSequence/'
+    
+#    # Obtain current working directory for the slow control
+#    # The two folders in question are related like this:
+#    #    workspace/LpdFemTests
+#    #    workspace/LpdCommandSequence
+#    currentSlowCtrlDir = os.getcwd()
+#    # Is this script executed from the folder containing it or its parent folder?
+#    if currentSlowCtrlDir.find("LpdFemTests") == -1:
+#        # Script was executed from parent folder
+#        
+#        # Because we are in the parent folder and not in the subfolder,
+#        # the fast control path is straightforward to construct from slow control's:
+#        currentFastCmdDir = currentSlowCtrlDir
+#        # and then append "/LpdCommandSequence"
+#        currentFastCmdDir += "/LpdCommandSequence"
+#        
+#        # Construct slow control path by appending '/LpdFemTests'
+#        currentSlowCtrlDir += "/LpdFemTests" 
+#    else:
+#        # fem_asic_test executed from the same folder so we can use the parent folder of currentSlowCtrlDir 
+#        # however, fast command reside in a different folder:
+#        currentFastCmdDir = currentSlowCtrlDir.replace("/LpdFemTests", "") + "/LpdCommandSequence"
     
     def __init__(self, hostAddr=None, timeout=None):
         '''
             Constructor for LpdFemClient class
         '''
-        
+
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
 
@@ -655,7 +683,7 @@ class LpdFemClient(FemClient):
         
     def x10g_net_lut_setup(self, base_addr, net):
         """ Set up the LUTs for 10G Farm Mode  """
-        # !!!!!
+         
         mac_low = ((net['nic_mac'] &  0xFFFFFFFF0000) >> 16)
         mac_high = ((net['nic_mac'] & 0x00000000FFFF) << 16) 
         ip = net['nic_ip']
@@ -732,7 +760,7 @@ class LpdFemClient(FemClient):
         """ Enable or Disable 10G Farm Mode  """
         
         ctrl_reg = self.rdmaRead(base_addr+15, 1)[0]
-        print 'ctrl_reg = $%08X' %ctrl_reg         
+        print 'ctrl_reg = $%08X' % ctrl_reg         
         
         if mode == 1:
             ctrl_reg = ctrl_reg | 0x00000020
@@ -912,7 +940,7 @@ class LpdFemClient(FemClient):
         data_gen_base = self.data_gen_0
                 
         # final param to enable data gen headers for farm mode
-        self.setup_ll_frm_gen(data_gen_base, self.x10g_0['frame_len']/8, self.x10g_0['data_format'], self.x10g_0['num_frames']-1, 1)  
+        self.setup_ll_frm_gen(data_gen_base, self.x10g_0['frame_len']/8, self.x10g_0['data_format'], self.x10g_0['num_frames']-1, 1)
         
         self.override_header_ll_frm_gen(data_gen_base, 0, 0)  # default is not to override index nr in header
                      
@@ -936,7 +964,10 @@ class LpdFemClient(FemClient):
     def config_asic_slow(self):
         """ configure asic slow control parameters
              """                                        
-        slow_ctrl_data, no_of_bits = self.read_slow_ctrl_file( self.filePath + 'SlowControlDefault-1A.txt')
+#        slow_ctrl_data, no_of_bits = self.read_slow_ctrl_file( self.filePath + 'SlowControlDefault-1A.txt')
+        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_config.xml', fromFile=True)
+        slow_ctrl_data = slowCtrlConfig.encode()
+        no_of_bits = 3911
   
         load_mode = self.run_params['asic_slow_load_mode']                
                                                
@@ -955,18 +986,17 @@ class LpdFemClient(FemClient):
              """                        
         if self.run_params['asic_data_type'] == "asic_pseudo_random":
 #                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_random_gaps.txt',fast_cmd_reg_size)
-            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.filePath + 'fast_random_gaps.txt',fast_cmd_reg_size)
+            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_random_gaps.txt',fast_cmd_reg_size)
         else:
-            # [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_readout_4f_gaps.txt',fast_cmd_reg_size)
-            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.filePath + 'fast_readout_4f_gaps.txt',fast_cmd_reg_size)
+#            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_readout_4f_gaps.txt',fast_cmd_reg_size)
              
             # ''' XML implementation '''
-# #                    fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/lpd/src/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
+            fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/lpd/src/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
             # fileCmdSeq = LpdCommandSequenceParser('../LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
-            # fast_cmd_data = fileCmdSeq.encode()
+            fast_cmd_data = fileCmdSeq.encode()
             
-            # no_of_words = fileCmdSeq.getTotalNumberWords()
-            # no_of_nops = fileCmdSeq.getTotalNumberNops()
+            no_of_words = fileCmdSeq.getTotalNumberWords()
+            no_of_nops = fileCmdSeq.getTotalNumberNops()
                         
 
         #set up the fast command block
@@ -996,20 +1026,21 @@ class LpdFemClient(FemClient):
                 mask_list[0] = 0x00000001
             elif self.run_params['detector_type'] == "two_tile_module": #Enable 16 channels for 2-Tile
 # new mapping ?
-#                mask_list[0] = 0xff000000
-#                mask_list[1] = 0x00000000
-#                mask_list[2] = 0x00000000
-#                mask_list[3] = 0x0000ff00
+                # Mapping for super module that contains just one ASIC
+                mask_list[0] = 0x0f000000   #0x0f0000f0
+                mask_list[1] = 0x0f000000   #0x0f0000f0
+                mask_list[2] = 0x00000000
+                mask_list[3] = 0x00000000
 # old mapping
 #                mask_list[0] = 0x00ff0000
 #                mask_list[1] = 0x00000000
 #                mask_list[2] = 0x0000ff00
 #                mask_list[3] = 0x00000000
 # take all channels whilst testing
-                mask_list[0] = 0xffffffff
-                mask_list[1] = 0xffffffff
-                mask_list[2] = 0xffffffff
-                mask_list[3] = 0xffffffff
+#                mask_list[0] = 0xffffffff
+#                mask_list[1] = 0xffffffff
+#                mask_list[2] = 0xffffffff
+#                mask_list[3] = 0xffffffff
             else:       # Enable all channels for supermodule
                 mask_list[0] = 0xffffffff
                 mask_list[1] = 0xffffffff
@@ -1447,6 +1478,106 @@ class LpdFemClient(FemClient):
         
         return 0
 
+    def start_10g_link(self):
+        """ start a 10g link
+        """
+
+        if self.run_params['debug_level'] > 5:
+            print "Start 10G link nr", self.x10g_0['link_nr']
+
+        data_gen_base = self.data_gen_0
+        ll_mon_base = self.llink_mon_0
+        ppc_bram_base = self.bram_ppc1
+
+      
+        time.sleep(self.x10g_0['delay'])   # wait before trigger
+
+
+        if self.run_params['run_type'] == "ll_data_gen": # ll data gen
+          
+            # check last cycle has completed                
+            link_busy = self.status_ll_frm_mon(ll_mon_base) 
+            gen_busy = self.status_ll_frm_gen(data_gen_base) 
+            i = 0
+#            print "\n" 
+#            while link_busy == 1:
+            while gen_busy == 1:
+                i=i+1
+#                link_busy = self.status_ll_frm_gen(data_gen_base)                
+#                print "Data Gen on 10G link nr %2d has busy flag = %d" %(self.x10g_0['link_nr'], link_busy)
+                print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs\r' %(self.x10g_0['link_nr'],i),
+                sys.stdout.flush() 
+#                print "1 WARNING Data Gen on 10G link nr %2d is still BUSY" %self.x10g_0['link_nr']
+                time.sleep(1)                    
+                link_busy = self.status_ll_frm_mon(ll_mon_base) 
+                gen_busy = self.status_ll_frm_gen(data_gen_base) 
+
+        if self.run_params['10g_farm_mode'] == 3:
+            i = 0
+            for nic in self.x10g_0['nic_list']:
+                # give a soft reset to reset the frame nr in the headers (resets the the ip port nr)
+                # don't do this any earlier or won't trigger
+                #self.soft_reset_ll_frm_gen(data_gen_base) 
+        
+                if self.x10g_0['data_gen'] == 1:
+                    # check last transfer has completed                
+                    link_busy = self.status_ll_frm_mon(ll_mon_base) 
+                    gen_busy = self.status_ll_frm_gen(data_gen_base) 
+                    t = 0
+                    while gen_busy == 1:
+                        t=t+1
+                        print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs\r' %(self.x10g_0['link_nr'],t),
+                        sys.stdout.flush() 
+                        time.sleep(1)                    
+                        link_busy = self.status_ll_frm_mon(ll_mon_base) 
+                        gen_busy = self.status_ll_frm_gen(data_gen_base) 
+                      
+                    # override the index nr in the data gen ll header output for selecting the 10g port nr in lut
+                    index_nr = i
+                    self.override_header_ll_frm_gen(data_gen_base, 1, index_nr)
+                        
+                    if self.run_params['debug_level'] > 5:
+                        print "Trigger LL Data Gen"
+                    
+                    self.toggle_bits(self.fem_ctrl_0+0, 0)   
+                    
+#                elif self.x10g_0['data_gen'] == 2:
+                elif self.run_params['run_type'] == "ppc_data_direct": # ppc dma ddr2 preprogrammed
+                    
+                    # check previous dma tx has completed
+                    busy = self.prev_dma_tx(ppc_bram_base) 
+                    t = 0;    
+                    while busy == 1:
+                        t=t+1
+                        print 'Waiting to Trigger Next Cycle : 10G link nr %2d DMA is BUSY ; waiting %d secs\r' %(self.x10g_0['link_nr'],t),
+                        sys.stdout.flush() 
+                        time.sleep(1)                    
+                        busy = self.prev_dma_tx(ppc_bram_base) 
+        
+                    if self.run_params['debug_level'] > 5:
+                        print "Trigger DMA Tx"
+                    self.start_dma_tx(ppc_bram_base, i)  # pass index to ppc to select tx descriptor
+                    
+                i = i + 1
+                
+        else:
+            if self.x10g_0['data_gen'] == 1:
+                # give a soft reset to reset the frame nr in the headers (resets the the ip port nr)
+                # don't do this any earlier or won't trigger
+                self.soft_reset_ll_frm_gen(data_gen_base)  
+              
+                print "Trigger LL Data Gen"
+                self.toggle_bits(self.fem_ctrl_0+0, 0)   
+         
+        return 0
+
+            
+    def final_dma_tx(self, base_addr):
+        """ flag last dma tx """
+  
+        self.rdmaWrite(base_addr+10, 0x5678) 
+            
+        return 0 
 
     '''
         --------------------------------------------------------
@@ -1513,17 +1644,17 @@ class LpdFemClient(FemClient):
 
         else: # data from datagen or ppc ddr2 
                     
-            print "Data Generator disabled for now, exiting.."
-#            num_cycles = run_params['num_cycles']
-#            print "Starting Run of %d cycles" % run_params['num_cycles']
-#            for i in range (1, num_cycles+1):
-#            #              print "Starting Run Cycle Nr %d" % i
-#                self.start_10g_link(run_params, x10g_0, myLpdFemClient)  
-#            #              self.send_trigger(run_params, myLpdFemClient) 
-#            
-#            if x10g_0['data_gen'] == 2:
-#                myLpdFemClient.final_dma_tx(myLpdFemClient.bram_ppc1)  
-            sys.exit()
+#            print "Data Generator disabled for now, exiting.."
+            num_cycles = self.run_params['num_cycles']
+            print "Starting Run of %d cycles" % self.run_params['num_cycles']
+            for i in range (1, num_cycles+1):
+#                print "Starting Run Cycle Nr %d" % i
+                self.start_10g_link()  
+#                self.send_trigger(run_params, myLpdFemClient) 
+            
+            if self.x10g_0['data_gen'] == 2:
+                self.final_dma_tx(self.bram_ppc1)  
+
         
 
     def run(self):
@@ -2124,15 +2255,17 @@ class LpdFemClient(FemClient):
         '''
             Get femAsicModuleType
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femAsicModuleTypeDummy
+        #TODO: Variable type changed from integer to string ?
+        return self.run_params['detector_type']
+#        return self.femAsicModuleTypeDummy
 
     def femAsicModuleTypeSet(self, aValue):
         '''
             Set femAsicModuleType
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femAsicModuleTypeDummy = aValue
+        #TODO: Variable type changed from integer to string ?
+        self.run_params['detector_type'] = aValue
+#        self.femAsicModuleTypeDummy = aValue
 
     def femAsicRxStartDelayGet(self):
         '''

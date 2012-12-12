@@ -133,6 +133,24 @@ class LpdI2cTest(FemClient):
         low = response[1]
         return high + low
 
+    def write_dac(self, aValue):
+        '''
+            Write 'aAValue' (2 bytes) to ad5321 device
+        '''
+    
+        response = -1
+        # Construct address and payload (as a tuple)
+        addr = LpdI2cTest.i2cInternalBusOffset + 0x0C
+        payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
+
+        # Write new ADC value to device
+        ack = self.i2cWrite(addr, payload)
+        
+        # Verify write operation
+        response = self.read_dac()
+        return response
+    
+
 
     def read_adc(self, deviceId):
         ''' Read 2 bytes from deviceId channel in ad7998
@@ -429,7 +447,7 @@ class LpdI2cTest(FemClient):
         ''' Display low voltage, high-voltage, fault flags, temperatures and sensor data
         '''
         self.show_lv_status()
-#        self.show_hv_status()
+        self.show_hv_status()
 #        self.show_flags()
         self.show_temperatures()
 #        self.show_outputs()
@@ -469,6 +487,7 @@ if __name__ == "__main__":
     
     parser.add_argument("--lv", help="switch LV on (1) or off (0)", type=int, choices=[0, 1])
     parser.add_argument("--hv", help="switch HV on (1) or off (0)", type=int, choices=[0, 1])
+    parser.add_argument("--hvbias", help="switch HV bias level - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int)
     parser.add_argument("--displaydataonly", help="Display i2c only - THIS WILL OVERRIDE ANY LV OR HV FLAGS !", type=int, choices=[0, 1])
     args = parser.parse_args()
 
@@ -480,9 +499,6 @@ if __name__ == "__main__":
     fullDomainName = socket.gethostname()
     # Only need hostname, not domain part
     hostName = fullDomainName.partition('.')[0]
-    # Locate corresponding IP address
-#    host = LpdI2cTest.one1gAddress[hostName]
-#    print "Debug info: machine = '%s', IP = '%s'." % (hostName, host)    
 
     port = 6969
 
@@ -495,7 +511,7 @@ if __name__ == "__main__":
     if args.displaydataonly == 1:
         pass
     else:
-        print "lv, hv: ", args.lv, args.hv
+        print "lv, hv, hv bias: ", args.lv, args.hv, args.hvbias
         # Only use if they decided to switch off lv but switch on hv
         if (args.lv == 0) and(args.hv):
             print "You decided to switch on HV but switch off LV; Aborting.."
@@ -503,15 +519,14 @@ if __name__ == "__main__":
             
         print "Switching LV ",
         if args.lv:
-            print "on, ",
+            print "on ",
         else:
-            print "off, ",
+            print "off ",
         print " and HV ",
         if args.hv:
             print "on..\n"
         else:
             print "off..\n"
-    
     
         # Execute according to supplied flags
         if args.lv:
@@ -528,7 +543,12 @@ if __name__ == "__main__":
                 # No - switch HV off
                 print "Switching high voltage off.. "
                 thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
-    
+
+                # Change bias, if bias specified
+                if args.hvbias > -1:
+                    print "Changing bias to ", args.hvbias, "ADC counts"
+                    thisFem.write_dac(args.hvbias)
+
             time.sleep(1)
         else:
             # Switch off lv
@@ -542,8 +562,14 @@ if __name__ == "__main__":
             print "Switching low voltage off.. "
             thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
             time.sleep(1)
-    
+            
+            if args.hvbias > -1:
+                print "Changing bias to ", args.hvbias, "ADC counts"
+                
+                thisFem.write_dac(args.hvbias)
 
+    print "\n"
+    
     # Test reading out the voltages on current first, then these ones:
     thisFem.displayAll()
 
