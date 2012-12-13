@@ -621,14 +621,19 @@ int commandHandler(struct protocol_header* pRxHeader,
 	int responseSize = 0;	// Payload size for response packet in bytes
 	u32 numOps = 0;			// Number of requested operations performed
 	u8 state = 0;			// Status byte
-
-	int i2cError = 0;			// Flag used to tell if I2C error handler routine needs to run, non 0 represents error code
+	int i2cError = 0;		// Flag used to tell if I2C error handler routine needs to run, non 0 represents error code
 	u8 slaveAddress = 0;
 	u8 busIndex = 0;
 
 	// Native size pointers for various data widths
-	u32* pTxPayload_32  = NULL;
 	u32* pRxPayload_32  = NULL;
+	u16* pRxPayload_16	= NULL;
+	u8*  pRxPayload_8	= NULL;
+	void *pRxPld;
+	u32* pTxPayload_32  = NULL;
+	u16* pTxPayload_16	= NULL;
+	u8*  pTxPayload_8	= NULL;
+	void *pTxPld;
 
 	// Copy original header to response packet, take a local copy of the status byte to update
 	memcpy(pTxHeader, pRxHeader, sizeof(struct protocol_header));
@@ -636,14 +641,22 @@ int commandHandler(struct protocol_header* pRxHeader,
 
 	// Pointers to received and outgoing packet payloads
 	pRxPayload_32 = (u32*)pRxPayload;
+	pRxPayload_16 = (u16*)pRxPayload;
+	pRxPayload_8  = (u8*)pRxPayload;
 	pTxPayload_32 = (u32*)pTxPayload;
-	pTxPayload_32 += 1;		// Nudge outgoing packet payload pointer by 1 so as to skip first u32 which will be populated with #ops
+	pTxPayload_16 = (u16*)pTxPayload;
+	pTxPayload_8  = (u8*)pTxPayload;
 
-	u32 numRequestedReads = *pRxPayload_32;		// Number of REQUESTED ops (only valid for read operations)
+	// Nudge outgoing packet payload pointer by 1 so as to skip first u32 which will be populated with numOps
+	pTxPayload_32 += 1;
 
-	// Increment response size to include #ops as first entry
+	// Number of REQUESTED ops (only valid for read operations)
+	u32 numRequestedReads = *pRxPayload_32;
+
+	// Increment response size to include numOps as first entry
 	responseSize += sizeof(u32);
 
+	// Reset flags
 	u32 dmaControllerAck = 0;
 	int status;
 	int configAck = 0;
@@ -871,28 +884,96 @@ int commandHandler(struct protocol_header* pRxHeader,
 				// --------------------------------------------------------------------
 				case BUS_RAW_REG:
 
-					dataWidth = sizeof(u32);
+					// Supports BYTE, WORD and LONG operations
+
 					if (CMPBIT(state, STATE_READ)) // READ OPERATION
 					{
-						for (i=0; i<*pRxPayload_32; i++)
+
+						switch(pRxHeader->data_width)
 						{
-							*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*dataWidth));
-							responseSize += dataWidth;
-							numOps++;
-						}
-						SBIT(state, STATE_ACK);
+						case WIDTH_BYTE:
+							dataWidth = 1;
+							for (i=0; i<*pRxPayload_32; i++)
+							{
+								*(pTxPayload_8 + i) = readRegister_8(pRxHeader->address + (i*dataWidth));
+								responseSize += dataWidth;
+								numOps++;
+							}
+							SBIT(state, STATE_ACK);
+							break;
+
+						case WIDTH_WORD:
+							dataWidth = 2;
+							for (i=0; i<*pRxPayload_32; i++)
+							{
+								*(pTxPayload_16 + i) = readRegister_16(pRxHeader->address + (i*dataWidth));
+								responseSize += dataWidth;
+								numOps++;
+							}
+							SBIT(state, STATE_ACK);
+							break;
+
+						case WIDTH_LONG:
+							dataWidth = 4;
+							for (i=0; i<*pRxPayload_32; i++)
+							{
+								*(pTxPayload_32+i) = readRegister_32(pRxHeader->address + (i*dataWidth));
+								responseSize += dataWidth;
+								numOps++;
+							}
+							SBIT(state, STATE_ACK);
+							break;
+
+						default:
+							SBIT(state, STATE_NACK);
+
+						} // END (switch(pRxHeader->data_width))
 
 					}
 					else if (CMPBIT(state, STATE_WRITE)) // WRITE OPERATION
 					{
-						for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+
+						switch(pRxHeader->data_width)
 						{
-							pRxPayload_32 = (u32*)pRxPayload;
-							writeRegister_32( pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i) );
-							numOps++;
-						}
-						SBIT(state, STATE_ACK);
+						case WIDTH_BYTE:
+							dataWidth = 1;
+							for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+							{
+								pRxPayload_8 = (u8*)pRxPayload;
+								writeRegister_8( pRxHeader->address + (i*dataWidth), *(pRxPayload_8+i) );
+								numOps++;
+							}
+							SBIT(state, STATE_ACK);
+							break;
+
+						case WIDTH_WORD:
+							dataWidth = 2;
+							for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+							{
+								pRxPayload_16 = (u16*)pRxPayload;
+								writeRegister_16( pRxHeader->address + (i*dataWidth), *(pRxPayload_16+i) );
+								numOps++;
+							}
+							SBIT(state, STATE_ACK);
+							break;
+
+						case WIDTH_LONG:
+							dataWidth = 4;
+							for (i=0; i<((pRxHeader->payload_sz)/dataWidth); i++)
+							{
+								pRxPayload_32 = (u32*)pRxPayload;
+								writeRegister_32( pRxHeader->address + (i*dataWidth), *(pRxPayload_32+i) );
+								numOps++;
+							}
+							SBIT(state, STATE_ACK);
+							break;
+
+						default:
+							SBIT(state, STATE_NACK);
+
+						} // END (switch(pRxHeader->data_width))
 					}
+
 					break; // BUS_RAW_REG
 
 				// --------------------------------------------------------------------

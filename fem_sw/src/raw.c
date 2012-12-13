@@ -19,7 +19,6 @@ u32 readRegister_32(u32 addr)
 	return Xil_In32(addr);
 }
 
-
 /**
  * Writes a raw 32bit register
  * @param addr register address
@@ -29,7 +28,6 @@ void writeRegister_32(u32 addr, u32 value)
 {
 	Xil_Out32(addr, value);
 }
-
 
 /**
  * Reads a raw 16bit register
@@ -42,7 +40,6 @@ u16 readRegister_16(u32 addr)
 	return Xil_In16(addr);
 }
 
-
 /**
  * Writes a raw 16bit register
  * @param addr register address
@@ -52,7 +49,6 @@ void writeRegister_16(u32 addr, u16 value)
 {
 	Xil_Out16(addr, value);
 }
-
 
 /**
  * Reads a raw 8bit register
@@ -64,7 +60,6 @@ u8 readRegister_8(u32 addr)
 {
 	return Xil_In8(addr);
 }
-
 
 /**
  * Writes raw 32bit register
