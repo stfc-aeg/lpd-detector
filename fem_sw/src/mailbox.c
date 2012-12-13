@@ -141,7 +141,7 @@ int acquireConfigAckReceive(void)
 	}
 	else
 	{
-		// Timed out or an error occured
+		// Timed out or an error occurred
 		return -1;
 	}
 }
