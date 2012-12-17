@@ -78,7 +78,6 @@ class LpdDevice(object):
             try:
                 
                 print "***** Open device on host", host, "port", port
-                print type(host), type(port)
                 self.femClient = LpdFemClient((host, int(port)), timeout)
 
             except FemClientError as e:
@@ -118,7 +117,9 @@ class LpdDevice(object):
         @return LpdDevice error code, ERROR_OK or other error condition
 
         '''
-        time.sleep(5)
+        #TODO: Exception Handling?
+        self.femClient.configure()
+        
         return LpdDevice.ERROR_OK
     
     def start(self):
@@ -128,7 +129,8 @@ class LpdDevice(object):
 
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
-        
+        #TODO: Exception Handling?
+        self.femClient.run()
         return LpdDevice.ERROR_OK
     
     def stop(self):

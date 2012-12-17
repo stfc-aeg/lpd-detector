@@ -13,14 +13,14 @@ def lpdTest():
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return
-    
-    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-    (rc, bRet) = theDevice.paramGet('configure')
+    # Configure the FEM
+    rc = theDevice.configure()
     if rc != LpdDevice.ERROR_OK:
         print "configure() failed rc=%d : %s" % (rc, theDevice.errorStringGet())
  
-    (rc, bRet) = theDevice.paramGet('run')
+    # Acquire image data
+    rc = theDevice.start()
     if rc != LpdDevice.ERROR_OK:
         print "run() failed rc=%d : %s" % (rc, theDevice.errorStringGet())
  

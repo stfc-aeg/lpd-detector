@@ -154,31 +154,9 @@ class LpdFemClient(FemClient):
     rsvd_31      = 0x0f800000    #31
     
     # file path to the location of the slow control and fast control configuration files
-    filePath     = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
     slowCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
     fastCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdCommandSequence/'
     
-#    # Obtain current working directory for the slow control
-#    # The two folders in question are related like this:
-#    #    workspace/LpdFemTests
-#    #    workspace/LpdCommandSequence
-#    currentSlowCtrlDir = os.getcwd()
-#    # Is this script executed from the folder containing it or its parent folder?
-#    if currentSlowCtrlDir.find("LpdFemTests") == -1:
-#        # Script was executed from parent folder
-#        
-#        # Because we are in the parent folder and not in the subfolder,
-#        # the fast control path is straightforward to construct from slow control's:
-#        currentFastCmdDir = currentSlowCtrlDir
-#        # and then append "/LpdCommandSequence"
-#        currentFastCmdDir += "/LpdCommandSequence"
-#        
-#        # Construct slow control path by appending '/LpdFemTests'
-#        currentSlowCtrlDir += "/LpdFemTests" 
-#    else:
-#        # fem_asic_test executed from the same folder so we can use the parent folder of currentSlowCtrlDir 
-#        # however, fast command reside in a different folder:
-#        currentFastCmdDir = currentSlowCtrlDir.replace("/LpdFemTests", "") + "/LpdCommandSequence"
     
     def __init__(self, hostAddr=None, timeout=None):
         '''
@@ -234,8 +212,8 @@ class LpdFemClient(FemClient):
         self.run_params = { 
             'detector_type' : # "fem_standalone", # FEM Standalone 
                         # "single_asic_module",# Single ASIC test module
-                         "two_tile_module", # 2-Tile module
-                        # "supermodule", # Supermodule
+                        # "two_tile_module", # 2-Tile module
+                         "supermodule", # Supermodule
            
             'run_type' :   "asic_data_via_ppc",  # ASIC data (via PPC) [Standard Operation] 
                       # "asic_data_direct",   # ASIC data direct from Rx block
@@ -245,7 +223,7 @@ class LpdFemClient(FemClient):
 #====== params for run type = "asic_data_via_ppc" or "asic_data_direct"
 
             'asic_data_type' :   "asic_sensor", # Asic sensor data [Standard Operation Real Data]
-                       # "asicrx_counting", # Asic Rx Block internally generated counting data (simulated data)
+                        # "asicrx_counting", # Asic Rx Block internally generated counting data (simulated data)
                         # "asic_pseudo_random", # Asic Pseudo random data (test data from asic)
 
              # if asic clock is coming from on board FEM 100 MHz Osc
@@ -257,8 +235,8 @@ class LpdFemClient(FemClient):
             'asic_slow_load_mode' : 0, # 0 = parallel load
                                         # 1 = daisy chain
                                         
-            'asic_nr_images' : 1, # nr of images to capture per train
-            'asic_nr_images_per_frame' : 1, # nr of images put in each local link frame output by data rx
+            'asic_nr_images' : 1,#5, # nr of images to capture per train
+            'asic_nr_images_per_frame' : 1,#5, # nr of images put in each local link frame output by data rx
 
             'asicrx_capture_asic_header_TEST_ONLY' : 0,  # = 0 (NORMAL OPERATION) ignore asic header bits 
                                                # = 1 (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
@@ -949,7 +927,7 @@ class LpdFemClient(FemClient):
 #-------------------------------------------------------------------------------------    
     def config_asic_modules(self):
         """ configure asic modules
-             """                        
+        """                        
 
         self.config_asic_slow()         
         self.config_asic_fast()         
@@ -963,9 +941,10 @@ class LpdFemClient(FemClient):
 #-------------------------------------------------------------------------------------    
     def config_asic_slow(self):
         """ configure asic slow control parameters
-             """                                        
-#        slow_ctrl_data, no_of_bits = self.read_slow_ctrl_file( self.filePath + 'SlowControlDefault-1A.txt')
+        """                                        
         slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_config.xml', fromFile=True)
+#        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_TEST.xml', fromFile=True)
+
         slow_ctrl_data = slowCtrlConfig.encode()
         no_of_bits = 3911
   
@@ -992,7 +971,6 @@ class LpdFemClient(FemClient):
              
             # ''' XML implementation '''
             fileCmdSeq = LpdCommandSequenceParser( self.fastCtrlPath + 'fast_readout_replacement_commands.xml', fromFile=True)
-            # fileCmdSeq = LpdCommandSequenceParser('../LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
             fast_cmd_data = fileCmdSeq.encode()
             
             no_of_words = fileCmdSeq.getTotalNumberWords()
@@ -1025,10 +1003,9 @@ class LpdFemClient(FemClient):
             if self.run_params['detector_type'] == "single_asic_module": # Enable 2 channel for single ASIC test module
                 mask_list[0] = 0x00000001
             elif self.run_params['detector_type'] == "two_tile_module": #Enable 16 channels for 2-Tile
-# new mapping ?
-                # Mapping for super module that contains just one ASIC
-                mask_list[0] = 0x0f000000   #0x0f0000f0
-                mask_list[1] = 0x0f000000   #0x0f0000f0
+# new mapping
+                mask_list[0] = 0x0f0000f0
+                mask_list[1] = 0x0f0000f0
                 mask_list[2] = 0x00000000
                 mask_list[3] = 0x00000000
 # old mapping
@@ -1042,10 +1019,15 @@ class LpdFemClient(FemClient):
 #                mask_list[2] = 0xffffffff
 #                mask_list[3] = 0xffffffff
             else:       # Enable all channels for supermodule
-                mask_list[0] = 0xffffffff
-                mask_list[1] = 0xffffffff
-                mask_list[2] = 0xffffffff
-                mask_list[3] = 0xffffffff
+                # Mapping for super module that contains just one ASIC
+                mask_list[0] = 0x0f000000
+                mask_list[1] = 0x0f000000
+                mask_list[2] = 0x00000000
+                mask_list[3] = 0x00000000
+#                mask_list[0] = 0xffffffff
+#                mask_list[1] = 0xffffffff
+#                mask_list[2] = 0xffffffff
+#                mask_list[3] = 0xffffffff
 
         no_asic_cols = self.run_params['asic_nr_images'] + 1               
         no_asic_cols_per_frm = self.run_params['asic_nr_images_per_frame'] + 1                       

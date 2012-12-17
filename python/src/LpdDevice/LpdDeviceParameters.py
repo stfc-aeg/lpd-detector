@@ -398,17 +398,6 @@ class LpdDeviceParameters(object):
                                                                           0, 255, 0,
                                                                           AccessWrite, AssignmentOptional)
 
-        #
-        # THIS IS A TEMPORARY ADDITION: it's for testing the new version of jac's reader script
-        #
-        
-        self.parameters['configure']              = AttributeContainer(bool, 'configure', 'Configure the FEM',
-                                                                      (True, False), None, True,
-                                                                      AccessWrite, AssignmentOptional)
-        self.parameters['run']              = AttributeContainer(bool, 'run', 'Execute run function on the FEM',
-                                                                      (True, False), None, True,
-                                                                      AccessWrite, AssignmentOptional)
-
     def get(self):
         '''
         Returns the dictionary of parameters built by the constructor

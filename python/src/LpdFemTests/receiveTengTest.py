@@ -33,7 +33,7 @@ frm_buf_lim = 100     # Number of frames
 data_buf_lim = 100   # Number of packets in each frame
 
 # Variable used to enable/test subplotting
-global_bSubPlotting = False
+global_bSubPlotting = True
 
 # Enable or disable debugging
 bDebug = True
@@ -41,8 +41,8 @@ bDebug = True
 # Define variables used as arguments by
 # Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
 #    where max number of plotMaxPlots = plotRows * plotCols
-plotRows = 2
-plotCols = 1
+plotRows = 1 #2
+plotCols = 1 #3
 plotMaxPlots = plotRows * plotCols
 
 
@@ -91,6 +91,10 @@ class BlitQT(FigureCanvas):
 
     def __init__(self):
         FigureCanvas.__init__(self, Figure())
+        
+
+        # Track packet number
+        self.packetNumber = -1
 
 
         self.nrows = 32
@@ -193,7 +197,6 @@ class BlitQT(FigureCanvas):
             self.cnt = 0
     
             self.data = np.empty((self.nrows, self.ncols), dtype=np.uint16)
-#            print "__init__() just created: len(self.data) = %i,  self.nrows = %i, self.ncols = %i" % (len(self.data),  self.nrows, self.ncols)
 
             self.img = self.ax.imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
     
@@ -259,7 +262,7 @@ class BlitQT(FigureCanvas):
         if foundEof:
             
             
-            print "\nrawImageData length = ", len(self.rawImageData), " (bytes)"
+            print "\nRaw Image Data Received = ", len(self.rawImageData), " (bytes)"
 #            print "RAW IMAGE CONTENT: "
 #            for i in range(640):
 #                if i % 16 == 0:
@@ -270,6 +273,8 @@ class BlitQT(FigureCanvas):
 
             
             # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
+            # Reset packet number
+            self.packetNumber= -1
             
 #            print ""
 
@@ -295,22 +300,52 @@ class BlitQT(FigureCanvas):
             #     Each 32-bit word contain 2 pixels
             _16BitWordArray = np.empty(_32BitArrayLen*2, dtype='i2')
             
+            # Check with the Gain bits (Bits 12-13);
+            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid(s)
+            gainCounter = [0, 0, 0, 0]
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
             for rawIdx in range(_32BitArrayLen):
-#                _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] >> 16
-#                _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] & 0xFFFF
                 _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] >> 16
                 _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] & 0xFFFF
 
-                # Check whether gain bits are set
+                # Check gain bits switch to clips
                 if (_16BitWordArray[rawIdx*2] & 0xF000) > 0:
-                    print " !",
+                    # Gain isn't x100, determine its type
+                    gain = (_16BitWordArray[rawIdx*2] & 0xF000) >> 12
+                    if gain == 1:
+                        # x10
+                        gainCounter[1] += 1
+                    elif gain == 2:
+                        # x1
+                        gainCounter[2] += 1
+                    else:
+                        # Invalid gain setting detected
+                        gainCounter[3] += 1
+                else:
+                    # Gain is x100
+                    gainCounter[0] += 1
+
                 if (_16BitWordArray[rawIdx*2+1] & 0xF000) > 0:
-                    print "| ",
+                    # Gain isn't x100, determine its type
+                    gain = (_16BitWordArray[rawIdx*2+1] & 0xF000) >> 12 
+                    if gain == 1:
+                        # x10
+                        gainCounter[1] += 1
+                    elif gain == 2:
+                        # x1
+                        gainCounter[2] += 1
+                    else:
+                        # Invalid gain setting detected
+                        gainCounter[3] += 1
+                else:
+                    # Gain is x100
+                    gainCounter[0] += 1
                     
 #            print ""
-                
-
+            print "\nGain:      x100       x10        x1  (invalid)"
+            print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
+            del gainCounter
+            
             """ DEBUG INFO: """ 
 #            print "Number of 16 Bit Word: ", len(_16BitWordArray)
 #            # Display array contenting 16 bit elements:
@@ -318,15 +353,15 @@ class BlitQT(FigureCanvas):
 #            self.display16BitArrayInHex(_16BitWordArray)
 #            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
             
-            # Extract the 16 ASICs image data from the full Quadrant data
-#            completeDataArray = self.convertAsicDataIntoTwoTileImage(_16BitWordArray)
 #            print "------------------ Before: ------------------"
 #            for i in range(640):
 #                if i % 16 == 0:
 #                    print "\n%3X: " % i,
 #                print "%3X" % _16BitWordArray[i],
 #            print ""
-            
+
+            # Extract the 16 ASICs image data from the full Quadrant data
+#            completeDataArray = self.convertAsicDataIntoTwoTileImage(_16BitWordArray)            
             completeDataArray = self.convertAsicDataIntoSuperModuleImage(_16BitWordArray)
 
 #            print "------------------ After: ------------------"
@@ -361,7 +396,7 @@ class BlitQT(FigureCanvas):
                         exit()
                         
                     # Display debug information..
-#                    print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len(_16BitWordArray), " image data: \n", self.data
+                    print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len(_16BitWordArray), " image data: \n", self.data
                     
                     # Set title as frame number, current image number
                     self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
@@ -383,7 +418,6 @@ class BlitQT(FigureCanvas):
                 else:
                     # Finished
                     print "Finished drawing subplots"
-                    print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             
             bDebug = False
@@ -443,7 +477,7 @@ class BlitQT(FigureCanvas):
 
             # 'Reset' rawImageData variable
             self.rawImageData = self.rawImageData[0:0]
-            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
         else:
             # Didn't find End Of File within this packet, check next packet..
             pass
@@ -520,26 +554,29 @@ class BlitQT(FigureCanvas):
 
 
     def convertAsicDataIntoTwoTileImage(self, sixteenBitArray):
-        """ convertAsicDataIntoTwoTileImage() sixteenBitArray array argument containing all
-            the ASIC data, and returns a complete image consisting of the data from 
-            the 16 ASICs organised into a 32 x 256 pixel image """
+        """ Argument sixteenBitArray array contains all the (super module) ASIC data. 
+            From the 65,536 pixels, the function picks out and returns 512 pixels times 16 ASICs
+            organised into a 32 x 256 pixel image; 8192 pixels """
         # Create an array to contain 8192 elements (32 x 16 x 16)
         completeImageArray = np.empty(8192, dtype=np.uint16)
         
         # Distance between two consecutive pixels within the same ASIC in the quadrant detector
         pixelDistance = 128
         
-#        print "convertAsicDataIntoTwoTileImage(), algorithm picking out indices:"
-        
+        bDebug = False
+        if bDebug:
+            print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            print "convertAsicDataIntoTwoTileImage(), algorithm picking out indices:"
+            print "sixteenBitArray[rawDataOffset] => imageIndex"
+            rawInfo = ""
+            imageInfo = ""
+
         try:
-            
-            # Define variables used by nested loops..
-            # Distance between adjacent columns and rows, respectively
-            column_width = pixelDistance
-            row_length = 16 * pixelDistance
+            # Counter variables
+            imageIndex = 0
+            rawCounter = 0
 
             # Distance within the 64 word table that defines order of ASIC read out
-            # Each word represents two array elements; Word 1 = 97, 98; Word 2 = 99, 100; etc
             lookupTableAsicDistance = 0
             
             #Iterate over 32 rows
@@ -547,37 +584,41 @@ class BlitQT(FigureCanvas):
                 
                 # Iterate over 16 columns
                 for column in range(16):
-
-                    lookupTableAsicDistance = 52
+                    
+                    # Go in reverse order from ASIC 104-97, 24-17
+                    lookupTableAsicDistance = 104-1
                     try:
                         
                         # Iterate over the 16 ASICs
                         for asicOffset in range(16):
                             
-                            rawDataOffset = (column * column_width) + (row * row_length) + lookupTableAsicDistance
+                            imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
+                            rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
                             
-                            completeImageArray[ (15 - column) + (16 * asicOffset) + (256 * row)] = sixteenBitArray[rawDataOffset]
+                            completeImageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
 
 #                            # DEBUG - mark every read pixel value in raw data
 #                            sixteenBitArray[rawDataOffset] = 4095
-#                            print "%1X:%1X:%5i   " % (column, asicOffset, rawDataOffset),
                             
-                            # Need to update lookupTableAsicDistance manually for ASIC 101, 17 and 21..
-                            if asicOffset is 3:
-                                # ASIC101 is next
-                                lookupTableAsicDistance = 36
-                            elif asicOffset is 7:
-                                # ASIC17 is next
-                                lookupTableAsicDistance = 92
-                            elif asicOffset is 11:
-                                # ASIC21 is next
-                                lookupTableAsicDistance = 76
+                            # Need to update lookupTableAsicDistance manually for ASIC 24
+                            if asicOffset is 7:
+                                # ASIC24 is next
+                                lookupTableAsicDistance = 24-1
                             else:
-                                lookupTableAsicDistance += 1
+                                lookupTableAsicDistance -= 1
                                 
-#                            # DEBUG - add new line
-#                            if asicOffset == 15:
-#                                print "."
+                            if bDebug:
+                                rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
+                                imageInfo += "%5i" % imageIndex
+
+                        # Increment counter for rawDataOffset for every tile of 8 ASICs 
+                        rawCounter += 1
+                        
+                        if bDebug:
+                            if row < 2:
+                                print rawInfo, " => ", imageInfo
+                            rawInfo = ""
+                            imageInfo = ""
                             
                     except Exception as errStr:
                         print "convertAsicDataIntoTwoTileImage(), look up table execution failed: ", errStr, "\nExiting.."
@@ -614,7 +655,6 @@ class BlitQT(FigureCanvas):
             rawCounter = 0
 
             # Distance within the 64 word table that defines order of ASIC read out
-            # Each word represents two array elements; Word 1 = 97, 98; Word 2 = 99, 100; etc
             lookupTableAsicDistance = 0
             
             #Iterate over 32 rows
@@ -631,7 +671,7 @@ class BlitQT(FigureCanvas):
                         for asicOffset in range(8):
                             
                             imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
-                            rawDataOffset = lookupTableAsicDistance + 128 * rawCounter
+                            rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
                             
                             completeImageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
 
@@ -644,9 +684,6 @@ class BlitQT(FigureCanvas):
 
                             # Decrement lookupTableAsicDistance since ASIC are located in one row
                             lookupTableAsicDistance -= 1
-
-                            # Increment counter for imageIndex for every ASIC and every pixel
-                            imageIndex += 1
                         
                         # Increment counter for rawDataOffset for every tile of 8 ASICs 
                         rawCounter += 1
@@ -670,32 +707,34 @@ class BlitQT(FigureCanvas):
 # ~~~~~~~~~~~~ #
 
     def retrieveFirstTwoTileImageFromAsicData(self, sixteenBitArray):
-        """ retrieveFirstTwoTileImageFromAsicData() takes the sixteenBitArray array argument containing all
-            the ASIC data (full supermodule), and returns,
+        """ The sixteenBitArray array argument contains all
+            the ASIC data (full supermodule) data. The function returns,
                 * boolean to signal whether this is the last image in the data
                 * the first image (32 x 16 x 16 pixels) of an image found in the data,
             in the form of the 16 ASICs organised into a 32 x 256 pixel image 
         """
         # Create an array to contain 8192 elements (32 x 16 x 16)
-        imageImageArray = np.empty(8192, dtype=np.uint16)
-        
-        
-        """ Debug information.. """
-#        print "retrieveFirstTwoTileImageFromAsicData() len(sixteenBitArray) ", len(sixteenBitArray)
+        imageArray = np.empty(8192, dtype=np.uint16)
         
         # Distance between two consecutive pixels within the same ASIC in the quadrant detector
         pixelDistance = 128
         
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
-        
-        # Define variables used by nested loops..
-        # Distance between adjacent columns and rows, respectively
-        column_width = pixelDistance
-        row_length = 16 * pixelDistance
+
+        bDebug = False
+        if bDebug:
+            print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            print "retrieveFirstTwoTileImageFromAsicData(), algorithm picking out indices:"
+            print "sixteenBitArray[rawDataOffset] => imageIndex"
+            rawInfo = ""
+            imageInfo = ""
+
+        # Counter variables
+        imageIndex = 0
+        rawCounter = 0
 
         # Distance within the 64 word table that defines order of ASIC read out
-        # Each word represents two array elements; Word 1 = 97, 98; Word 2 = 99, 100; etc
         lookupTableAsicDistance = 0
         
         #Iterate over 32 rows
@@ -704,28 +743,37 @@ class BlitQT(FigureCanvas):
             # Iterate over 16 columns
             for column in range(16):
 
-                lookupTableAsicDistance = 52
+                # Go in reverse order from ASIC 112-105, 24-17
+                lookupTableAsicDistance = 112-1
                 try:
                     
                     # Iterate over the 16 ASICs
                     for asicOffset in range(16):
                         
-                        rawDataOffset = (column * column_width) + (row * row_length) + lookupTableAsicDistance
+                        imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
+                        rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
                         
-                        imageImageArray[ (15 - column) + (16 * asicOffset) + (256 * row)] = sixteenBitArray[rawDataOffset]
-                        
-                        # Need to update lookupTableAsicDistance manually for ASIC 101, 17 and 21..
-                        if asicOffset is 3:
-                            # ASIC101 is next
-                            lookupTableAsicDistance = 36
-                        elif asicOffset is 7:
-                            # ASIC17 is next
-                            lookupTableAsicDistance = 92
-                        elif asicOffset is 11:
-                            # ASIC21 is next
-                            lookupTableAsicDistance = 76
+                        imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
+                    
+                        # Need to update lookupTableAsicDistance manually for ASIC 24
+                        if asicOffset is 7:
+                            # ASIC24 is next
+                            lookupTableAsicDistance = 24-1
                         else:
-                            lookupTableAsicDistance += 1
+                            lookupTableAsicDistance -= 1
+                            
+                        if bDebug:
+                            rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
+                            imageInfo += "%5i" % imageIndex
+
+                    # Increment counter for rawDataOffset for every tile of 8 ASICs 
+                    rawCounter += 1
+                    
+                    if bDebug:
+                        if row < 2:
+                            print rawInfo, " => ", imageInfo
+                        rawInfo = ""
+                        imageInfo = ""
                         
                 except IndexError:
                     # If end of array reached, will raise IndexError
@@ -744,20 +792,20 @@ class BlitQT(FigureCanvas):
         except IndexError:
             print "Last Image detected"
 
-        return bNextImageAvailable, imageImageArray
+        return bNextImageAvailable, imageArray
 
 
     def retrieveFirstSuperModuleImageFromAsicData(self, sixteenBitArray):
-        """ retrieveFirstSuperModuleImageFromAsicData() takes the sixteenBitArray array argument containing all
-            the ASIC data (full supermodule), and returns,    [AS OF 10/12/2012] 
+        """ The sixteenBitArray array argument containing all
+            the ASIC data (full supermodule), and returns,    
+            [AS OF 10/12/2012]: 
                 * boolean to signal whether this is the last image in the data
                 * the first image (32 x 16 x 8 pixels) of an image found in the data,
             in the form of the 8 ASICs organised into a 32 x 128 pixel image 
         """
         # Create an array to contain 4096 elements (32 x 16 x 8)
-        imageImageArray = np.empty(4096, dtype=np.uint16)
+        imageArray = np.empty(4096, dtype=np.uint16)
         
-        print "-- -- -- -- -- -- -- -- -- IT REALLY IS THIS FUNCTION -- -- -- -- -- -- -- -- --"
         """ Debug information.. """
 #        print "retrieveFirstSuperModuleImageFromAsicData() len(sixteenBitArray) ", len(sixteenBitArray)
         
@@ -767,15 +815,11 @@ class BlitQT(FigureCanvas):
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
         
-        # Define variables used by nested loops..
-        # Distance between adjacent columns and rows, respectively
-#        column_width = pixelDistance
-#        row_length = 16 * pixelDistance
+        # Counter variables
         imageIndex = 0
         rawCounter = 0
 
         # Distance within the 64 word table that defines order of ASIC read out
-        # Each word represents two array elements; Word 1 = 97, 98; Word 2 = 99, 100; etc
         lookupTableAsicDistance = 0
         
         #Iterate over 32 rows
@@ -783,23 +827,21 @@ class BlitQT(FigureCanvas):
             
             # Iterate over 16 columns
             for column in range(16):
-
-                lookupTableAsicDistance = 105-1   #52
+                
+                # Go in reverse order from ASIC 112-105
+                lookupTableAsicDistance = 112-1
                 try:
                     
                     # Iterate over the 8 ASICs
                     for asicOffset in range(8):
 
-#                        rawDataOffset = (column * column_width) + (row * row_length) + lookupTableAsicDistance
-#                        imageImageArray[ (15 - column) + (8 * asicOffset) + (self.ncols * row)] = sixteenBitArray[rawDataOffset]
-                        rawDataOffset = lookupTableAsicDistance + pixelDistance * rawCounter
-                        imageImageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
+                        imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
+                        rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
+                        
+                        imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
 
                         # Increment lookupTableAsicDistance since ASIC are located in one row
-                        lookupTableAsicDistance += 1
-
-                        # Increment counter for imageIndex for every ASIC and every pixel
-                        imageIndex += 1
+                        lookupTableAsicDistance -= 1
 
                     # Increment counter for rawDataOffset for every tile of 8 ASICs 
                     rawCounter += 1
@@ -821,7 +863,7 @@ class BlitQT(FigureCanvas):
         except IndexError:
             print "Last Image detected"
 
-        return bNextImageAvailable, imageImageArray
+        return bNextImageAvailable, imageArray
 
 # ~~~~~~~~~~~~ #
 
@@ -842,16 +884,17 @@ class BlitQT(FigureCanvas):
 #            print "  -8, -7, -6, -5, -4, -3, -2, -1"
 #        sDebug = ""
 #        for i in range(8, 0, -1):
-##        for i in range(18, 0, -1):
 #            sDebug += "%4X" % ord( data[-i] )
 #        print sDebug
         
         try:
             offset = 0
             # Extract frame number (the first four bytes)
-            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
+#            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
+            frame_number = 0
             # Extract packet number (the following four bytes)
             packet_number = ord(data[offset-4]) #(ord(data[offset+7]) << 24) + (ord(data[offset+6]) << 16) + (ord(data[offset+5]) << 8) + ord(data[offset+4])
+#            packet_number = 0
             header_info = ord(data[-1])
 #            print "header_info: ", header_info
             # Extract Start Of Frame, End of Frame
@@ -871,13 +914,22 @@ class BlitQT(FigureCanvas):
                 
             frame_number = frame_number - self.first_frm_num
             
+            # Compare this packet number against the previous packet number
+            if packet_number != (self.packetNumber +1):
+                # packet numbering not consecutive
+                print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
+#            else:
+#                print "Previous packet number: %3i this packet number: %3i" % (self.packetNumber, packet_number)
+            # Update current packet number
+            self.packetNumber = packet_number
+            
             try:
                 #Add frame number to index list
                 if self.frame_number_list[frame_number] == 0:
                     self.frame_number_index_list[self.j] = frame_number
             except Exception as errStr:
                 print "self.frame_number_index_list error: ", errStr, "\nExiting.."
-#                print "frame_number = ", frame_number, " self.j = ", self.j
+                print "frame_number = ", frame_number, " self.j = ", self.j
                 sys.exit()
             
             if frm_eof == 1:
@@ -900,9 +952,10 @@ class BlitQT(FigureCanvas):
                 #print "2", frame_number, packet_number
                 #debug
             except Exception as errStr:
-                print "frame_number, = ", frame_number, " packet_number = ", packet_number
-                print "self.packet_number_list error: ", errStr, "\nExiting.."
-                sys.exit()
+                pass
+#                print "frame_number, = ", frame_number, " packet_number = ", packet_number, "( ignoring)"
+#                print "self.packet_number_list error: ", errStr, "\nExiting.."
+#                sys.exit()
 #            print "After: [%3i][%3i] " % (frame_number, packet_number)
 
             try:
