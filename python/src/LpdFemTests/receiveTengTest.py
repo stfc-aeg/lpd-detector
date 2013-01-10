@@ -10,30 +10,20 @@ import os
 import sys
 import time
 import socket
+import datetime
 
-#import matplotlib
-#matplotlib.use('Qt4Agg')
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.cm as cm
 import matplotlib.pyplot
 import matplotlib
+import h5py
 
 from machineConfiguration import *
 
 from PyQt4 import QtCore, QtGui
 
-#
-#self.nrows = 32
-#self.ncols = 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
-
-# processRxData function constants..
-frm_buf_lim = 100     # Number of frames
-data_buf_lim = 100   # Number of packets in each frame
-
-# Variable used to enable/test subplotting
-global_bSubPlotting = True
 
 # Enable or disable debugging
 bDebug = True
@@ -41,14 +31,10 @@ bDebug = True
 # Define variables used as arguments by
 # Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
 #    where max number of plotMaxPlots = plotRows * plotCols
-plotRows = 1 #2
-plotCols = 1 #3
+plotRows = 4
+plotCols = 1
 plotMaxPlots = plotRows * plotCols
 
-
-NX = 100
-NY = 100
-ITERS = 1000
 
 class RxThread(QtCore.QThread):
     
@@ -66,9 +52,9 @@ class RxThread(QtCore.QThread):
             print "(femHost = %s)" % femHost
             sys.exit()
         
-        print "Connecting to host: %s.." % (femHost)
+        print "Listening to host: %s.." % (femHost)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#        self.sock.bind(('192.168.7.1', 61649))
+#        self.sock.bind(('192.168.2.2', 61649))
         self.sock.bind((femHost, 61649))
 
     def __del__(self):
@@ -92,44 +78,25 @@ class BlitQT(FigureCanvas):
     def __init__(self):
         FigureCanvas.__init__(self, Figure())
         
-
         # Track packet number
         self.packetNumber = -1
 
-
+        # Define plotted image dimensions: 
         self.nrows = 32
-        self.ncols = 128    # 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
-#        self.numAsics = 8
+        self.ncols = 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
         print "Note: self.ncols = ", self.ncols
 
 
         # Initialising variables used by processRxData..
         # ---------------------------------------------- #
-        
-        frm_buf_num = 100*4 # frm_buf_lim*4
-        data_buf_num = data_buf_lim+10
-        
-        #frame Info arrays
-        self.packet_count    = [0] * frm_buf_num
-        self.frame_count  = 0
-
-        # frame_length is frame length less header info
-        self.frame_length = [0] * frm_buf_num
-        
-        
-        self.packet_number_list     = [ [0] * data_buf_num ] * frm_buf_num
-        self.frame_number_list     = [0] * frm_buf_num
-        self.frame_number_index_list =  [0] * frm_buf_num
-        
+                
         self.first_frm_num = -1
-
         self.j = 0
         
         # ---------------------------------------------- #
         
-        # Create a list (array?) to contain payload from all UDP packets
+        # Create a list to contain payload of all UDP packets
         self.rawImageData = ""
-
 
         # Generate list of xticks, yticks to label the x, y axis
         xlist = []
@@ -139,82 +106,47 @@ class BlitQT(FigureCanvas):
         ylist = []
         for i in range(8, 32, 8):
             ylist.append(i)
+        
+        print "Initialising; Preparing graphics.."
+        
+        # Create a list for axes object and one for image objects, to store that info for each image
+        self.ax = []
+        self.img = []
+        
+        # Because subplotting has been selected, need a list of axes to cover multiple subplots
+        for idx in range(plotMaxPlots):
 
-        if global_bSubPlotting:
+            axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
+            self.ax.extend([axesObject])
             
-            print "SubPlotting selected; Preparing graphics.."
+            self.ax[idx].set_xticks(xlist)
+            self.ax[idx].set_yticks(ylist)
             
-            # Create a list for axis object and image object, to contain one instance for each image
-            self.ax = []
-            self.img = []
-            
-            # Because subplotting has been selected, need a list of axis to cover multiple subplots
-            for idx in range(plotMaxPlots):
-
-                axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
-                self.ax.extend([axesObject])
-                
-                self.ax[idx].set_xticks(xlist)
-                self.ax[idx].set_yticks(ylist)
-                
-                # Set the title of each plot temporarily
-                self.ax[idx].set_title("Frame %i" % idx)
-                
-                # Stuff copied from else statement..
-                
-                self.cnt = 0
-                self.data = np.empty((self.nrows, self.ncols), dtype=np.uint16)        
-                
-                imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
-                self.img.extend([imgObject])
-
-                # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
-                axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
-                cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
-
-                # Set the colour bar
-                self.img[idx].colorbar = cb
-
-                # Add vertical lines to differentiate between the ASICs
-                for i in range(16, self.ncols, 16):
-                    self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
-                
-                # Add vertical lines to differentiate between the two tiles
-                self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='r', linestyle='solid')
-                
-                self.draw()
-        else:
-            ''' Ordinary readout, only plot the first image from the image '''
-            self.ax = self.figure.add_subplot(1, 1, 1)  #111)
-
-            self.ax.set_xticks(xlist)
-            self.ax.set_yticks(ylist)
-    
-            self.draw()
-    
-            self.old_size = self.ax.bbox.width, self.ax.bbox.height
-            self.ax_background = self.copy_from_bbox(self.ax.bbox)
+            # Set the title of each plot temporarily
+            self.ax[idx].set_title("Frame %i" % idx)
+                            
             self.cnt = 0
-    
-            self.data = np.empty((self.nrows, self.ncols), dtype=np.uint16)
+            self.data = np.empty((self.nrows, self.ncols), dtype=np.uint16)        
+            
+            imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
+            self.img.extend([imgObject])
 
-            self.img = self.ax.imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
-    
             # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
-            axc, kw = matplotlib.colorbar.make_axes(self.ax)
-            cb = matplotlib.colorbar.Colorbar(axc, self.img)
+            axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
+            cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
 
             # Set the colour bar
-            self.img.colorbar = cb
-    
+            self.img[idx].colorbar = cb
+
             # Add vertical lines to differentiate between the ASICs
             for i in range(16, self.ncols, 16):
-                self.ax.vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
+                self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
             
             # Add vertical lines to differentiate between the two tiles
-            self.ax.vlines(128-0.5, 0, self.nrows-1, color='r', linestyle='solid')
+            self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
             
             self.draw()
+            
 
         self.dataRxSignal.connect(self.handleDataRx)
                 
@@ -226,8 +158,7 @@ class BlitQT(FigureCanvas):
         self.myAddressConfig = machineConfiguration()
         femHost = self.myAddressConfig.get10gDestinationIpAddress(0) # 0 =  x10g_0, 1 = x10g_1
         if femHost is None:
-            print "Error selecting10 interface, only 0 or 1 valid!\n\nExiting.."
-            print "(femHost = %s)" % femHost
+            print "Error selecting 10G interface, only 0 or 1 valid!\n\nExiting.." 
             sys.exit()
         
         
@@ -237,47 +168,23 @@ class BlitQT(FigureCanvas):
 
     def handleDataRx(self, data):
 
-        if global_bSubPlotting:
-            pass
-            # Don't do restore_region() at the moment if subplotting..
-        else:
-            current_size = self.ax.bbox.width, self.ax.bbox.height
-            if self.old_size != current_size:
-                self.old_size = current_size
-
-                self.draw()
-                self.ax_background = self.copy_from_bbox(self.ax.bbox)
-    
-            self.restore_region(self.ax_background)
-
         # process UDP data in data variable
         try:
             frameNumber, foundEof  = self.processRxData(data)
-        except Exception as errStr:
-            print "processRxData() failed: ", errStr, "\nExiting.."
+        except Exception as e:
+            print "processRxData() failed: ", e, "\nExiting.."
             sys.exit()
 #        print "frameNumber, foundEof = ", frameNumber, foundEof
         
-        # Only process image data when End Of File encountered..
+        # Only process image data when End Of File encountered
         if foundEof:
             
-            
             print "\nRaw Image Data Received = ", len(self.rawImageData), " (bytes)"
-#            print "RAW IMAGE CONTENT: "
-#            for i in range(640):
-#                if i % 16 == 0:
-#                    print "\n%3X: " % i,                
-#                print "%3X" % ord(self.rawImageData[i]),
-#            print ""
-#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-
             
             # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
             # Reset packet number
             self.packetNumber= -1
             
-#            print ""
-
             ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
             
             # Create 32 bit, Little-Endian, integer type using numpy
@@ -296,22 +203,27 @@ class BlitQT(FigureCanvas):
             # Calculate length of 32 bit array
             _32BitArrayLen = len(_32BitWordArray)
 
-            # Create empty array to store 16 bit elements (eg 32Bit array * 2)
+            # Create empty array to store 16 bit elements (eg 32 Bit array * 2)
             #     Each 32-bit word contain 2 pixels
             _16BitWordArray = np.empty(_32BitArrayLen*2, dtype='i2')
             
-            # Check with the Gain bits (Bits 12-13);
-            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid(s)
-            gainCounter = [0, 0, 0, 0]
+            
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
             for rawIdx in range(_32BitArrayLen):
                 _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] >> 16
                 _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] & 0xFFFF
 
-                # Check gain bits switch to clips
-                if (_16BitWordArray[rawIdx*2] & 0xF000) > 0:
+            # Check the Gain bits (Bits 12-13);
+            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
+            gainCounter = [0, 0, 0, 0]
+
+            for idx in range( len(_16BitWordArray) ):
+
+                # Check bits 12-13: 
+                gainBits = _16BitWordArray[idx] & 0x3000
+                if gainBits > 0:
                     # Gain isn't x100, determine its type
-                    gain = (_16BitWordArray[rawIdx*2] & 0xF000) >> 12
+                    gain = gainBits >> 12
                     if gain == 1:
                         # x10
                         gainCounter[1] += 1
@@ -325,26 +237,10 @@ class BlitQT(FigureCanvas):
                     # Gain is x100
                     gainCounter[0] += 1
 
-                if (_16BitWordArray[rawIdx*2+1] & 0xF000) > 0:
-                    # Gain isn't x100, determine its type
-                    gain = (_16BitWordArray[rawIdx*2+1] & 0xF000) >> 12 
-                    if gain == 1:
-                        # x10
-                        gainCounter[1] += 1
-                    elif gain == 2:
-                        # x1
-                        gainCounter[2] += 1
-                    else:
-                        # Invalid gain setting detected
-                        gainCounter[3] += 1
-                else:
-                    # Gain is x100
-                    gainCounter[0] += 1
-                    
-#            print ""
             print "\nGain:      x100       x10        x1  (invalid)"
             print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
             del gainCounter
+            
             
             """ DEBUG INFO: """ 
 #            print "Number of 16 Bit Word: ", len(_16BitWordArray)
@@ -359,121 +255,66 @@ class BlitQT(FigureCanvas):
 #                    print "\n%3X: " % i,
 #                print "%3X" % _16BitWordArray[i],
 #            print ""
-
-            # Extract the 16 ASICs image data from the full Quadrant data
-#            completeDataArray = self.convertAsicDataIntoTwoTileImage(_16BitWordArray)            
-            completeDataArray = self.convertAsicDataIntoSuperModuleImage(_16BitWordArray)
-
-#            print "------------------ After: ------------------"
-            print "---------- Image Data ----------"
-            for i in range(80):
-                if i % 16 == 0:
-                    print "\n%3X: " % i,
-                print "%3X" % completeDataArray[i],
-            print ""
             
-            # Plot multiple images if subplot enabled according to line 35
-            if global_bSubPlotting:
-                # Define variables that increase with each while loop iteration
-                currentPlot = 0
-                bNextImageAvailable = True
-                
-                # Loop over the specified number of plots
-                while bNextImageAvailable and currentPlot < plotMaxPlots:
-                    
-                    # Get the first image of the image
-#                    bNextImageAvailable, imageArray = self.retrieveFirstTwoTileImageFromAsicData(_16BitWordArray)
-                    bNextImageAvailable, imageArray = self.retrieveFirstSuperModuleImageFromAsicData(_16BitWordArray)
-                    
-                    
-                    # The first image, imageArray, has now been stripped from the image
-                    # Reshape image into 32 x 256 pixel array
-                    try:
-                        self.data = imageArray.reshape(self.nrows, self.ncols)
-                    except Exception as errStr:
-                        print "handleDataRx() failed to reshape imageArray: ", errStr, "\nExiting.."
-                        print "len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols
-                        exit()
-                        
-                    # Display debug information..
-                    print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len(_16BitWordArray), " image data: \n", self.data
-                    
-                    # Set title as frame number, current image number
-                    self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
-                    
-                    # Load image into figure
-                    self.img[currentPlot].set_data(self.data)
-
-                    self.ax[currentPlot].draw_artist(self.img[currentPlot])
-                    self.blit(self.ax[currentPlot].bbox)
-                                        
-                    # Increment currentPlot
-                    currentPlot += 1
-
-                    """ Remove this image from image array before next iteration
-                        NOTE: _16BitWordArray contains full quadrant data, therefore while one image is 8192 pixels, 
-                                it represents a region of 65,536 pixels within the full quadrant data !
-                    """
-                    _16BitWordArray = _16BitWordArray[65536:]
-                else:
-                    # Finished
-                    print "Finished drawing subplots"
-
-            
-            bDebug = False
-            
-            if bDebug:
-                filename = '/u/ckd27546/AsicsReadout.txt'
-                """ DEBUG INFO - PRINT IMAGE ADC VALUES TO FILE """
-                print "Writing ADC values to file '%s'" % filename
-                try:
-                    OutputFile = open(filename, 'w+')
-                except Exception as errStr:
-                    print "Error opening file: ", errStr
-                
-                try:
-                    for pxl in range(self.ncols*self.nrows):
-                        OutputFile.write("%i, " % completeDataArray[pxl])
-                except Exception as errStr:
-                    print "Error writing ADC values to file: ", errStr
-                else:
-                    print "Finished writing to file"
+            # Create hdf file
+            dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            fileName = "/tmp/lpdTwoTile-%s.hdf5" % dateString
     
-                try:
-                    OutputFile.close()
-                except Exception as errStr:
-                    print "Error closing file '%' because: %s" % (filename, errStr)
+            hdfFile = h5py.File(fileName, 'w')
+            ds = hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+                                            maxshape=(None,self.nrows, self.ncols))
 
-
-            """ NOTE THAT THIS IS THE REAL MCCOY; DO NOT REMOVE IF ELIMINATING SUBPLOT FROM CODE
-            !!!!!
-            """
-            if global_bSubPlotting is False:
-                print "Reshaping completeDataArray to fit plot.."
+            
+            # Define variables that increase with each loop iteration
+            currentPlot = 0
+            bNextImageAvailable = True
+            
+            # Loop over the specified number of plots
+            while bNextImageAvailable and currentPlot < plotMaxPlots:
                 
+                # Determine where the current plot begins in the data
+                dataBeginning = 65536*currentPlot
+            
+                # Get the first image of the image
+                bNextImageAvailable, imageArray = self.retrieveFirstTwoTileImageFromAsicData(_16BitWordArray[dataBeginning:])
+#                    bNextImageAvailable, imageArray = self.retrieveFirstSuperModuleImageFromAsicData(_16BitWordArray[dataBeginning:])
+                
+                # The first image, imageArray, has now been stripped from the image
+                # Reshape image into 32 x 256 pixel array
                 try:
-                    self.data = completeDataArray.reshape(self.nrows, self.ncols)
-                except Exception as errStr:
-                    print "completeDataArray.reshape() failed: %s \nExiting.." % errStr
+                    self.data = imageArray.reshape(self.nrows, self.ncols)
+                except Exception as e:
+                    print "handleDataRx() failed to reshape imageArray: ", e, "\nExiting.."
                     print "len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols
                     exit()
-
-                # Set title to current frame number
-                self.ax.set_title("Frame %i" % frameNumber)
+                
+                # Mask out gain bits from data
+                self.data = self.data & 0xfff
+                
+                # Display debug information..
+                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] ), " image data: \n", self.data
+                
+                # Set title as frame number, current image number
+                self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
                 
                 # Load image into figure
-                self.img.set_data(self.data)
-                
-                self.ax.draw_artist(self.img)
-                self.blit(self.ax.bbox)
+                self.img[currentPlot].set_data(self.data)
 
-#            """ Debug Testing: saving the image.. """
-#            # Only saves the 32 x 256 image, nothing else:
-#            try:
-#                matplotlib.pyplot.imsave("ImageFrame_%03i.png" % frameNumber, self.data)
-#            except Exception as errStr:
-#                print "Failed to use .imsave() because: ", errStr, "\nExiting.."
-#                exit()
+                self.ax[currentPlot].draw_artist(self.img[currentPlot])
+                self.blit(self.ax[currentPlot].bbox)
+
+                # Write image to file
+                ds.resize((currentPlot+1, self.nrows, self.ncols))
+                ds[currentPlot,...] = self.data
+
+                # Increment currentPlot
+                currentPlot += 1
+
+            else:
+                # Finished
+                print "Finished drawing subplots"
+                hdfFile.close()
+
 
             # 'Reset' rawImageData variable
             self.rawImageData = self.rawImageData[0:0]
@@ -520,8 +361,8 @@ class BlitQT(FigureCanvas):
                     currentArrayElement = ""
                 
             print "Number of 16 bit words: ", data_len/2
-        except Exception as errStr:
-            print "display32BitArrayInHex() error: ", errStr
+        except Exception as e:
+            print "display32BitArrayInHex() error: ", e
             exit(0)
 
     def display16BitArrayInHex(self, dataArray):
@@ -548,161 +389,9 @@ class BlitQT(FigureCanvas):
                     currentArrayElement = ""
                 
             print "Number of 16 bit words: ", data_len
-        except Exception as errStr:
-            print "display16BitArrayInHex() error: ", errStr
+        except Exception as e:
+            print "display16BitArrayInHex() error: ", e
             exit(0)
-
-
-    def convertAsicDataIntoTwoTileImage(self, sixteenBitArray):
-        """ Argument sixteenBitArray array contains all the (super module) ASIC data. 
-            From the 65,536 pixels, the function picks out and returns 512 pixels times 16 ASICs
-            organised into a 32 x 256 pixel image; 8192 pixels """
-        # Create an array to contain 8192 elements (32 x 16 x 16)
-        completeImageArray = np.empty(8192, dtype=np.uint16)
-        
-        # Distance between two consecutive pixels within the same ASIC in the quadrant detector
-        pixelDistance = 128
-        
-        bDebug = False
-        if bDebug:
-            print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-            print "convertAsicDataIntoTwoTileImage(), algorithm picking out indices:"
-            print "sixteenBitArray[rawDataOffset] => imageIndex"
-            rawInfo = ""
-            imageInfo = ""
-
-        try:
-            # Counter variables
-            imageIndex = 0
-            rawCounter = 0
-
-            # Distance within the 64 word table that defines order of ASIC read out
-            lookupTableAsicDistance = 0
-            
-            #Iterate over 32 rows
-            for row in range(32):
-                
-                # Iterate over 16 columns
-                for column in range(16):
-                    
-                    # Go in reverse order from ASIC 104-97, 24-17
-                    lookupTableAsicDistance = 104-1
-                    try:
-                        
-                        # Iterate over the 16 ASICs
-                        for asicOffset in range(16):
-                            
-                            imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
-                            rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
-                            
-                            completeImageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
-
-#                            # DEBUG - mark every read pixel value in raw data
-#                            sixteenBitArray[rawDataOffset] = 4095
-                            
-                            # Need to update lookupTableAsicDistance manually for ASIC 24
-                            if asicOffset is 7:
-                                # ASIC24 is next
-                                lookupTableAsicDistance = 24-1
-                            else:
-                                lookupTableAsicDistance -= 1
-                                
-                            if bDebug:
-                                rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
-                                imageInfo += "%5i" % imageIndex
-
-                        # Increment counter for rawDataOffset for every tile of 8 ASICs 
-                        rawCounter += 1
-                        
-                        if bDebug:
-                            if row < 2:
-                                print rawInfo, " => ", imageInfo
-                            rawInfo = ""
-                            imageInfo = ""
-                            
-                    except Exception as errStr:
-                        print "convertAsicDataIntoTwoTileImage(), look up table execution failed: ", errStr, "\nExiting.."
-                        exit()                    
-
-        except Exception as errStr:
-            print "convertAsicDataIntoTwoTileImage() Error: ", errStr, "\nExiting.."
-            exit()
-        
-        return completeImageArray
-
-    def convertAsicDataIntoSuperModuleImage(self, sixteenBitArray):
-        """ Argument sixteenBitArray array contains all data from the complete super module.
-            From the 65,536 pixels, the function picks out and returns 512 pixels times the number of ASIC
-            [AS OF 10/12/2012] ->
-                8 ASICs organised into a 32 x 128 pixel image; 4096 pixels """
-        # Create an array to contain 4096 elements (32 x 16 x 8)
-        completeImageArray = np.empty(4096, dtype=np.uint16)
-        
-        # Distance between two consecutive pixels within the same ASIC in the quadrant detector
-        pixelDistance = 128
-        
-        bDebug = False
-        if bDebug:
-            print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-            print "convertAsicDataIntoSuperModuleImage(), algorithm picking out indices:"
-            print "sixteenBitArray[rawDataOffset] => imageIndex"
-            rawInfo = ""
-            imageInfo = ""
-            
-        try:
-            # Counter variables
-            imageIndex = 0
-            rawCounter = 0
-
-            # Distance within the 64 word table that defines order of ASIC read out
-            lookupTableAsicDistance = 0
-            
-            #Iterate over 32 rows
-            for row in range(32):
-                
-                # Iterate over 16 columns
-                for column in range(16):
-
-                    # Go in reverse order from ASIC 112-105
-                    lookupTableAsicDistance = 112-1
-
-                    try:
-                        # Iterate over the number of ASICs
-                        for asicOffset in range(8):
-                            
-                            imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
-                            rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
-                            
-                            completeImageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
-
-#                            # DEBUG - mark every read pixel value in raw data
-#                            sixteenBitArray[rawDataOffset] = 2500   #4095
-
-                            if bDebug:
-                                rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
-                                imageInfo += "%5i" % imageIndex
-
-                            # Decrement lookupTableAsicDistance since ASIC are located in one row
-                            lookupTableAsicDistance -= 1
-                        
-                        # Increment counter for rawDataOffset for every tile of 8 ASICs 
-                        rawCounter += 1
-                        
-                        if bDebug:
-                            if row < 2:
-                                print rawInfo, " => ", imageInfo
-                            rawInfo = ""
-                            imageInfo = ""
-
-                    except Exception as errStr:
-                        print "convertAsicDataIntoSuperModuleImage(), look up table execution failed: ", errStr, "\nExiting.."
-                        exit()                    
-
-        except Exception as errStr:
-            print "convertAsicDataIntoSuperModuleImage() Error: ", errStr, "\nExiting.."
-            exit()
-        
-        return completeImageArray
 
 # ~~~~~~~~~~~~ #
 
@@ -758,7 +447,7 @@ class BlitQT(FigureCanvas):
                         # Need to update lookupTableAsicDistance manually for ASIC 24
                         if asicOffset is 7:
                             # ASIC24 is next
-                            lookupTableAsicDistance = 24-1
+                            lookupTableAsicDistance = 32-1  # 24-1
                         else:
                             lookupTableAsicDistance -= 1
                             
@@ -779,8 +468,8 @@ class BlitQT(FigureCanvas):
                     # If end of array reached, will raise IndexError
                     print "IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
                     break
-                except Exception as errStr:
-                    print "retrieveFirstTwoTileImageFromAsicData(), look up table execution failed: ", errStr, "\nExiting.."
+                except Exception as e:
+                    print "retrieveFirstTwoTileImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
                     exit()
 
         # Check whether this is the last image in the image data..
@@ -850,8 +539,8 @@ class BlitQT(FigureCanvas):
                     # If end of array reached, will raise IndexError
 #                    print "SM-IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
                     break
-                except Exception as errStr:
-                    print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", errStr, "\nExiting.."
+                except Exception as e:
+                    print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
                     exit()                    
 
         # Check whether this is the last image in the image data..
@@ -872,10 +561,8 @@ class BlitQT(FigureCanvas):
             [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
         """
                 
-        # save the read frame number as it'll be modified to be RELATIVE before we reach the end of this function.. 
+        # Save the read frame number as it'll be modified to be RELATIVE before we reach the end of this function.. 
         rawFrameNumber = -1
-
-        data_len = len(data)
 
         ''' DEBUGGING INFORMATION '''
 #        if ( ( ord(data[-1]) & 0x80) >> 7 ) == 1:
@@ -918,64 +605,24 @@ class BlitQT(FigureCanvas):
             if packet_number != (self.packetNumber +1):
                 # packet numbering not consecutive
                 print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
-#            else:
-#                print "Previous packet number: %3i this packet number: %3i" % (self.packetNumber, packet_number)
+
             # Update current packet number
             self.packetNumber = packet_number
-            
-            try:
-                #Add frame number to index list
-                if self.frame_number_list[frame_number] == 0:
-                    self.frame_number_index_list[self.j] = frame_number
-            except Exception as errStr:
-                print "self.frame_number_index_list error: ", errStr, "\nExiting.."
-                print "frame_number = ", frame_number, " self.j = ", self.j
-                sys.exit()
-            
+                        
             if frm_eof == 1:
                 self.j=self.j+1
             else:
                 pass
             
-            
             # Not yet end of file: copy current packet contents onto (previous) packet contents
             # First 8 bytes are frame number and packet number - omitting those..
             # both are of type string..
-#            self.rawImageData = self.rawImageData + data[8:]
             self.rawImageData = self.rawImageData + data[0:-8]
 
-#            print "Before: [%3i][%3i] " % (frame_number, packet_number),
-            try:
-                #Add packet number to frame packet list
-                #print "1", frame_number, packet_number
-                self.packet_number_list[frame_number][packet_number] = self.packet_number_list[frame_number][packet_number] + 1
-                #print "2", frame_number, packet_number
-                #debug
-            except Exception as errStr:
-                pass
-#                print "frame_number, = ", frame_number, " packet_number = ", packet_number, "( ignoring)"
-#                print "self.packet_number_list error: ", errStr, "\nExiting.."
-#                sys.exit()
-#            print "After: [%3i][%3i] " % (frame_number, packet_number)
-
-            try:
-                #Add frame number to frm packet count list        
-                self.frame_number_list[frame_number] = self.frame_number_list[frame_number] + 1
-            except Exception as errStr:
-                print "self.frame_number_list error: ", errStr, "\nExiting.."
-                sys.exit()
-                
-            try:
-                self.frame_length[frame_number] = self.frame_length[frame_number] + data_len - 8    # Remove 8 for the frame header
-                self.packet_count[frame_number] = self.packet_count[frame_number]+1
-            except Exception as errStr:
-                print "frame_length or data_count error: ", errStr, "\nExiting.."
-                sys.exit
-            
             # Return frame number and end of frame
             return rawFrameNumber, frm_eof
-        except Exception as errString:
-            print "processRxData() error: ", errString
+        except Exception as e:
+            print "processRxData() error: ", e
             return -1, -1
 
         
