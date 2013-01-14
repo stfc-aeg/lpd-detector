@@ -47,6 +47,7 @@ class LpdCommandSequenceParser():
                          'self_test_en'             : 0x16,
                          'stop_read_out'            : 0x17,
                          'reset_state_machine'      : 0x18,
+                         'asic_slow_readout_start'  : 0x20,
                          'sync_reset'               : 0x5a5a5
                       }
         

@@ -18,7 +18,15 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.cm as cm
 import matplotlib.pyplot
 import matplotlib
-import h5py
+# Import HDF5 Library; Disable its use if library not installed on PC
+try:
+    import h5py
+except:
+    print "No HDF5 Library detected - Disabling file writing"
+    bHDF5 = False
+else:
+    print "HDF5 Library present."
+    bHDF5 = True
 
 from machineConfiguration import *
 
@@ -86,14 +94,9 @@ class BlitQT(FigureCanvas):
         self.ncols = 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
         print "Note: self.ncols = ", self.ncols
 
-
         # Initialising variables used by processRxData..
-        # ---------------------------------------------- #
-                
         self.first_frm_num = -1
         self.j = 0
-        
-        # ---------------------------------------------- #
         
         # Create a list to contain payload of all UDP packets
         self.rawImageData = ""
@@ -126,8 +129,8 @@ class BlitQT(FigureCanvas):
             self.ax[idx].set_title("Frame %i" % idx)
                             
             self.cnt = 0
-            self.data = np.empty((self.nrows, self.ncols), dtype=np.uint16)        
-            
+            self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
+                        
             imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
             self.img.extend([imgObject])
 
@@ -152,7 +155,6 @@ class BlitQT(FigureCanvas):
                 
         self.tstart = time.time()
         
-        
         # Instantiate objects of machineConfiguration to obtain network information regarding the current machine
         #    (to enable this code to the run unmodified on different systems and PCs)
         self.myAddressConfig = machineConfiguration()
@@ -160,7 +162,6 @@ class BlitQT(FigureCanvas):
         if femHost is None:
             print "Error selecting 10G interface, only 0 or 1 valid!\n\nExiting.." 
             sys.exit()
-        
         
         self.rxThread = RxThread(self.dataRxSignal, self.myAddressConfig)
         self.rxThread.start()
@@ -256,13 +257,14 @@ class BlitQT(FigureCanvas):
 #                print "%3X" % _16BitWordArray[i],
 #            print ""
             
-            # Create hdf file
-            dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            fileName = "/tmp/lpdTwoTile-%s.hdf5" % dateString
-    
-            hdfFile = h5py.File(fileName, 'w')
-            ds = hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
-                                            maxshape=(None,self.nrows, self.ncols))
+            # Create hdf file - if HDF5 Library present
+            if bHDF5:
+                dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                fileName = "/tmp/lpdTwoTile-%s.hdf5" % dateString
+        
+                hdfFile = h5py.File(fileName, 'w')
+                ds = hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+                                                maxshape=(None,self.nrows, self.ncols))
 
             
             # Define variables that increase with each loop iteration
@@ -303,9 +305,10 @@ class BlitQT(FigureCanvas):
                 self.ax[currentPlot].draw_artist(self.img[currentPlot])
                 self.blit(self.ax[currentPlot].bbox)
 
-                # Write image to file
-                ds.resize((currentPlot+1, self.nrows, self.ncols))
-                ds[currentPlot,...] = self.data
+                # Write image to file - if HDF5 Library present
+                if bHDF5:
+                    ds.resize((currentPlot+1, self.nrows, self.ncols))
+                    ds[currentPlot,...] = self.data
 
                 # Increment currentPlot
                 currentPlot += 1
@@ -313,7 +316,9 @@ class BlitQT(FigureCanvas):
             else:
                 # Finished
                 print "Finished drawing subplots"
-                hdfFile.close()
+                # Close file if HDF5 Library present
+                if bHDF5:
+                    hdfFile.close()
 
 
             # 'Reset' rawImageData variable
@@ -426,13 +431,13 @@ class BlitQT(FigureCanvas):
         # Distance within the 64 word table that defines order of ASIC read out
         lookupTableAsicDistance = 0
         
-        #Iterate over 32 rows
+        # Iterate over 32 rows
         for row in range(32):
             
             # Iterate over 16 columns
             for column in range(16):
 
-                # Go in reverse order from ASIC 112-105, 24-17
+                # Go in reverse order from ASIC 112-105, 32-25
                 lookupTableAsicDistance = 112-1
                 try:
                     
@@ -444,10 +449,10 @@ class BlitQT(FigureCanvas):
                         
                         imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
                     
-                        # Need to update lookupTableAsicDistance manually for ASIC 24
+                        # Need to update lookupTableAsicDistance manually for ASIC 32
                         if asicOffset is 7:
-                            # ASIC24 is next
-                            lookupTableAsicDistance = 32-1  # 24-1
+                            # ASIC32 is next
+                            lookupTableAsicDistance = 32-1
                         else:
                             lookupTableAsicDistance -= 1
                             
@@ -495,9 +500,6 @@ class BlitQT(FigureCanvas):
         # Create an array to contain 4096 elements (32 x 16 x 8)
         imageArray = np.empty(4096, dtype=np.uint16)
         
-        """ Debug information.. """
-#        print "retrieveFirstSuperModuleImageFromAsicData() len(sixteenBitArray) ", len(sixteenBitArray)
-        
         # Distance between two consecutive pixels within the same ASIC in the quadrant detector
         pixelDistance = 128
         
@@ -511,7 +513,7 @@ class BlitQT(FigureCanvas):
         # Distance within the 64 word table that defines order of ASIC read out
         lookupTableAsicDistance = 0
         
-        #Iterate over 32 rows
+        # Iterate over 32 rows
         for row in range(32):
             
             # Iterate over 16 columns
@@ -537,7 +539,7 @@ class BlitQT(FigureCanvas):
 
                 except IndexError:
                     # If end of array reached, will raise IndexError
-#                    print "SM-IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
+                    print "SM-IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
                     break
                 except Exception as e:
                     print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
