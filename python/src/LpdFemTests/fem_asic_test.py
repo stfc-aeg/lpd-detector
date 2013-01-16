@@ -17,6 +17,8 @@ import pprint
 # Import Fem modules
 #from FemClient import FemClient
 from LpdFemClient import *  #LpdFemClient
+#TODO: Why all of a sudden need to include these two imports: ???
+from LpdFemClient.LpdFemClient import LpdFemClient, FemClientError
 
 # Import library for parsing XML fast command files
 from LpdCommandSequence.LpdCommandSequenceParser import LpdCommandSequenceParser

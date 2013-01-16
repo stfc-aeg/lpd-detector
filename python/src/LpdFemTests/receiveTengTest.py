@@ -43,6 +43,8 @@ plotRows = 4
 plotCols = 1
 plotMaxPlots = plotRows * plotCols
 
+#TODO: Set this variable to False when using ASIC version 2
+bAsicV1 = True
 
 class RxThread(QtCore.QThread):
     
@@ -275,8 +277,12 @@ class BlitQT(FigureCanvas):
             while bNextImageAvailable and currentPlot < plotMaxPlots:
                 
                 # Determine where the current plot begins in the data
-                dataBeginning = 65536*currentPlot
-            
+                #    Need to keep the first row blank if this is version 1 of the Asic
+                if bAsicV1:
+                    dataBeginning = 65536*currentPlot + self.ncols
+                else:
+                    dataBeginning = 65536*currentPlot
+                
                 # Get the first image of the image
                 bNextImageAvailable, imageArray = self.retrieveFirstTwoTileImageFromAsicData(_16BitWordArray[dataBeginning:])
 #                    bNextImageAvailable, imageArray = self.retrieveFirstSuperModuleImageFromAsicData(_16BitWordArray[dataBeginning:])

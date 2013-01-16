@@ -1,5 +1,5 @@
 # Check in setParaValue() for list/integer type 
-import types, sys, os
+import types, sys, os, time
 import pprint
 
 from xml.etree.ElementInclude import ElementTree
@@ -105,7 +105,18 @@ class SlowCtrlParams(object):
                                   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15, ]
 
 
-    def __init__(self, xmlObject, fromFile=False, strict=True):
+    def __init__(self, xmlObject, preambleBit=None, fromFile=False, strict=True):
+        
+        # Check that preambleBit argument was supplied
+        # Currently (16/01/2013) serial clock must be kept high for six bits
+        #    BEFORE the first slow control bit is sent. If these number of bits changes in the future,
+        #    then simply modify argument preambleBit accordingly
+        if preambleBit == None:
+            print "\nClass SlowCtrlParams mandatory argument 'preambleBit' NOT specified: Exiting.."
+            sys.exit()
+        else:
+            self.preambleBit = preambleBit
+
         
         strict = True
         # Set the strict syntax flag to specified value (defaults to true)
@@ -117,7 +128,7 @@ class SlowCtrlParams(object):
         if self.bDebug:
             print "debugging enabled."
 
-        #    paramsDict = {'dictKey'                     : [width, posn, value(s), skip, [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
+        #    paramsDict = {'dictKey'                     : [width, posn, value(s), skip, [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]]}
         self.paramsDict = {'mux_decoder_default'         : [3,  -1,     -1,         0, [False, True, False]],
                            'mux_decoder'                 : [3,  0,      [-1] * 512, 0, [True,  True, False]],
                            'feedback_select_default'     : [1,  -1,     -1,         0, [False, True, False]],
@@ -136,7 +147,11 @@ class SlowCtrlParams(object):
         
         ''' Debug information '''
         if self.bDebug:
-            print "Class initialising, reading file or string = "
+            print "Class SlowCtrlParams initialising, reading ",
+            if fromFile:
+                print "file: "
+            else:
+                print "string: "
             print xmlObject
             
         #TODO: Implemented this:
@@ -170,10 +185,10 @@ class SlowCtrlParams(object):
             result = self.paramsDict[dictKey]
             
             width = result[SlowCtrlParams.WIDTH]
-            posn = result[SlowCtrlParams.POSN]
-            val = result[SlowCtrlParams.VALUES]
-            skip = result[SlowCtrlParams.SKIP]
-            tags = result[SlowCtrlParams.TAGS]
+            posn  = result[SlowCtrlParams.POSN]
+            val   = result[SlowCtrlParams.VALUES]
+            skip  = result[SlowCtrlParams.SKIP]
+            tags  = result[SlowCtrlParams.TAGS]
         else:
             print "\"" + dictKey + "\" doesn't exist."
         
@@ -207,8 +222,8 @@ class SlowCtrlParams(object):
                 elif isinstance(currentValue[SlowCtrlParams.VALUES], types.IntType):
                     currentValue[SlowCtrlParams.VALUES] = value
                 else:
-                    print "SetParamValue() Error: currentValue[SlowCtrlParams.VALUES] is neither a list nor an integer!"
-                                    
+                    print "SetParamValue() Error: Key %s is neither a list nor an integer!" % dictKey
+
                 # Overwrite the old value
                 self.paramsDict[dictKey] = currentValue
 
@@ -217,7 +232,7 @@ class SlowCtrlParams(object):
             
     def encode(self):
         '''
-            Encodes the  slow control command(s)..
+            Encodes the slow control command(s)..
         '''
 
         # Intialise tree depth (used for debugging only)
@@ -230,9 +245,6 @@ class SlowCtrlParams(object):
         # Construct the bitstream based upon all dictionary keys not ending with _default 
         sequence  = self.buildBitstream()
         
-        #TODO: SORT OUT THIS HACK !
-        sequence[122] = 0x20
-        print "------->> Manually changed sequence[123] = ", sequence[122]
         # Return the command sequence
         return sequence
 
@@ -291,7 +303,7 @@ class SlowCtrlParams(object):
         self.depth = self.depth + 1
 
         # The structure of the parameters dictionary is:
-        # paramsDict = {'dictKey' : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]}
+        # paramsDict = {'dictKey' : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]]}
         #     where values(s) is an integer or a list, and the nested list of booleans defines which tags that are required
 
         # Loop over child nodes of the current element
@@ -316,8 +328,8 @@ class SlowCtrlParams(object):
                 bValue = pmValues[SlowCtrlParams.TAGS][1]
                 bIndex = pmValues[SlowCtrlParams.TAGS][2]
                 
-                # Check that the user has not supplied attribute(s) that are not required by the current key
-                #    e.g. pixel attribute not valid for any of the _default tag
+                # Check that the user has not supplied attribute(s) that are not valid with the current key
+                #    e.g. pixel attribute is not valid for any of the _default tags
                 if not bPixel:
                     pixel = self.getAttrib(child, 'pixel')
                     if pixel != -2:
@@ -341,7 +353,7 @@ class SlowCtrlParams(object):
                 
                 # Is there a pixel tag?
                 if bPixel:
-                    # Get pixel
+                    # Yes - Get pixel
                     pixel = self.getAttrib(child, 'pixel')
                     
                     # Use pixel number to obtain pixel order using the lookup table function
@@ -471,7 +483,6 @@ class SlowCtrlParams(object):
         '''
 
         ''' Debug variables '''
-        debugIdx = 33
         debugComparisonKey = ""
 #        debugComparisonKey = "spare_bits"
 #        debugComparisonKey = "feedback_select"  
@@ -479,6 +490,9 @@ class SlowCtrlParams(object):
 #        debugComparisonKey = "daq_bias" 
 #        debugComparisonKey = "self_test_decoder"
 #        debugComparisonKey = "digital_control"
+
+        #TODO: MAKE THIS AN CLASS ARGUMENT !!
+        self.preambleBit = 6
 
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * SlowCtrlParams.SEQLENGTH
@@ -496,11 +510,15 @@ class SlowCtrlParams(object):
                 # Word width (number of bits) of this key?
                 keyWidth = cmdParams[SlowCtrlParams.WIDTH]
                 # Where does current key reside within the sequence?
-                wordPosition = cmdParams[SlowCtrlParams.POSN] / 32
+                wordPosition = (cmdParams[SlowCtrlParams.POSN] + self.preambleBit) / 32
                 # Slow Control Value(s)
                 slowControlWordContent = cmdParams[SlowCtrlParams.VALUES]
+                
+                
                 # bitPosition tracks the current bit position relative to the entire length of sequence (0 - 3904)
-                bitPosition = cmdParams[SlowCtrlParams.POSN]
+                bitPosition = (cmdParams[SlowCtrlParams.POSN] + self.preambleBit)
+
+                
                 # Skip - distance between two slow control words within  the same section
                 wordSkip = cmdParams[SlowCtrlParams.SKIP]
                 
@@ -511,7 +529,7 @@ class SlowCtrlParams(object):
                     numBitsRequired = len(slowControlWordContent)
 
                     # Create a bit array to save all the slow control words, bit by bit
-                    bitwiseArray = [0] * 3905
+                    bitwiseArray = [0] * (3905 + self.preambleBit)
 
                     ''' 
                         LIST TYPE: FIRST LOOP
@@ -658,8 +676,8 @@ class SlowCtrlParams(object):
                     # Loop over this new list and copy into the encoded sequence
                     for idx in range(len(bitwiseArray)):
 
-                        wordPosition = (cmdParams[SlowCtrlParams.POSN] + idx) / 32
-                        bitOffset = (cmdParams[SlowCtrlParams.POSN] + idx) % 32
+                        wordPosition = ((cmdParams[SlowCtrlParams.POSN] + self.preambleBit) + idx) / 32
+                        bitOffset = ((cmdParams[SlowCtrlParams.POSN] + self.preambleBit) + idx) % 32
 
                         ''' DEBUG INFO '''
                         if dictKey == debugComparisonKey:
@@ -724,8 +742,8 @@ class SlowCtrlParams(object):
                             print dictKey[SlowCtrlParams.VALUES][-1*(11-idx)],
     
                 elif isinstance(dictKey[SlowCtrlParams.VALUES], types.IntType):
-                   # it's just an integer
-                   print dictKey[SlowCtrlParams.VALUES],
+                    # it's just an integer
+                    print dictKey[SlowCtrlParams.VALUES],
                 else:
                     print "displayDictionaryValues() Error: dictKey[SlowCtrlParams.VALUES] is neither a list nor an integer!"
     
@@ -782,7 +800,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
   
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         paramsObj.encode()
 
         # Display an excerp of each dictionary key's value:
@@ -875,7 +893,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         value = 8
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         with self.assertRaises(SlowCtrlParamsInvalidRangeError):
             paramsObj.setParamValue(dictKey, index, value)
 
@@ -947,7 +965,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         self.assertRaises(SlowCtrlParamsError, paramsObj.encode)
 
         stringCmdXml = '''<?xml version="1.0"?>
@@ -957,7 +975,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         self.assertRaises(SlowCtrlParamsError, paramsObj.encode)
 
         stringCmdXml = '''<?xml version="1.0"?>
@@ -967,7 +985,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         self.assertRaises(SlowCtrlParamsError, paramsObj.encode)
 
     
@@ -983,7 +1001,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # Display an excerp of each dictionary key's value:
@@ -991,10 +1009,12 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # Construct a list of how sequence should look like
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         for idx in range(48,112):
             expectedSequence[idx] = 0xEEEEEEEE
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
 
         # Toggle display of debug information
         if False:
@@ -1019,16 +1039,18 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         for idx in range(48,112):
             expectedSequence[idx] = 0x11111111
         
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
@@ -1052,15 +1074,17 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         for idx in range(48,112):
             expectedSequence[idx] = 0x55555555
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
         
         # Toggle display debug information
         if False:
@@ -1084,12 +1108,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         for idx in range(48):
             indexNo = idx % 3
@@ -1099,6 +1122,9 @@ class SlowCtrlParamsTest(unittest.TestCase):
                 expectedSequence[idx] = 0xDB6DB6DB
             else:
                 expectedSequence[idx] = 0xB6DB6DB6
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
         
         # Toggle display debug information
         if False:
@@ -1123,12 +1149,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         expectedSequence[112] = 0x42108420
         expectedSequence[113] = 0x10842108
@@ -1138,6 +1163,9 @@ class SlowCtrlParamsTest(unittest.TestCase):
         expectedSequence[117] = 0x42108421
         expectedSequence[118] = 0x10842108
         expectedSequence[119] = 0x842
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
         
         # Toggle display debug information
         if False:
@@ -1157,12 +1185,11 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
 
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
             
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         expectedSequence[112] = 0xFFFFFFFE
         expectedSequence[113] = 0xFFFFFFFF
@@ -1172,6 +1199,9 @@ class SlowCtrlParamsTest(unittest.TestCase):
         expectedSequence[117] = 0xFFFFFFFF
         expectedSequence[118] = 0xFFFFFFFF
         expectedSequence[119] = 0xFFF
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
 
         # Toggle display debug information
         if False:
@@ -1195,14 +1225,15 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
 
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
-
         expectedSequence[112] = 0x1
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
 
         # Toggle display debug information
         if False:
@@ -1211,7 +1242,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             
             print "\nExpected Sequence: (len)", len(expectedSequence)
             self.displaySequence(expectedSequence)
-        
+
         self.assertEqual(encSeq, expectedSequence, 'testSelfTestEnable() failed !')
 
     def testSpareBits(self):
@@ -1226,15 +1257,17 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         # 3820 / 32 = 119; 3820 % 32 = 12
         expectedSequence[119] = 31 << 12
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
         
         # Toggle display debug information
         if False:
@@ -1243,7 +1276,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             
             print "\nExpected Sequence: (len)", len(expectedSequence)
             self.displaySequence(expectedSequence)
-            
+
         self.assertEqual(encSeq, expectedSequence, 'testSpareBits() failed !')
 
     
@@ -1260,7 +1293,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
         ''' % filterValue
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         thisIndex = paramsObj.generateBitMask(15)
@@ -1269,11 +1302,13 @@ class SlowCtrlParamsTest(unittest.TestCase):
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
 
         # 3825 / 32 = 119; 3825 % 32 = 17
         expectedSequence[119] = ( (filterValue & thisIndex) << 17)
         expectedSequence[120] = overflow
+
+        # Bit shift expected sequence by 6 bits
+        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
 
         # Toggle display debug information
         if False:
@@ -1282,7 +1317,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             
             print "\nExpected Sequence: (len)", len(expectedSequence)
             self.displaySequence(expectedSequence)
-        
+            
         self.assertEqual(encSeq, expectedSequence, 'testFilterControl() failed !')
         
     def testAllKeysAllValues(self):
@@ -1309,13 +1344,14 @@ class SlowCtrlParamsTest(unittest.TestCase):
         ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
 
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0xFFFFFFFF] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] = 0x20
-
+        expectedSequence[0]= 0xFFFFFFC0
+        expectedSequence[ SlowCtrlParams.SEQLENGTH-1] = 0x7F
+        
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
@@ -1351,20 +1387,20 @@ class SlowCtrlParamsTest(unittest.TestCase):
 #                                <mux_decoder_default value="7"/>
     
         # Parse XML and encode
-        paramsObj = SlowCtrlParams(stringCmdXml)
+        paramsObj = SlowCtrlParams(stringCmdXml, preambleBit=6)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
         expectedSequence = [0] * SlowCtrlParams.SEQLENGTH
-        expectedSequence[SlowCtrlParams.SEQLENGTH-1] = 0x20
 
         for idx in range(48):
             expectedSequence[idx] = 0x0
-        expectedSequence[0] =  0xF9AA6
-        expectedSequence[1] =  0x30
-        expectedSequence[2] =  0x4
-        expectedSequence[47] = 0x40882000
-
+        expectedSequence[0] =  0x3E6A980
+        expectedSequence[1] =  0xC00
+        expectedSequence[2] =  0x100
+        expectedSequence[47] = 0x22080000
+        expectedSequence[48] = 0x10
+        
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
@@ -1374,21 +1410,63 @@ class SlowCtrlParamsTest(unittest.TestCase):
             self.displaySequence(expectedSequence)
 
         self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
+#
+#
+#    def testOldCfgSettings(self):
+#        '''
+#            Test a set of specific mux_decoder key values
+#        '''
+#    
+#        thisFile = '/SlowControlDefault.xml'
+#        currentDir = os.getcwd()
+#        if currentDir.endswith("LpdFemTests"):
+#            thisFile = currentDir + thisFile
+#        else:
+#            thisFile = currentDir + "/LpdFemTests" + thisFile
+#    
+#        theParams = SlowCtrlParams(thisFile, fromFile=True)
+#        encSeq = theParams.encode()
+#        
+#        
+#        # How the sequence should end up looking
+#        expectedSequence = [0x00000000] * SlowCtrlParams.SEQLENGTH
+#        expectedSequence[SlowCtrlParams.SEQLENGTH-1] =  0x20
+#
+#        expectedSequence[112] = 0x4B7B9EB0
+#        expectedSequence[113] = 0xBB3687A6
+#        expectedSequence[114] = 0x3EF5354F
+#        expectedSequence[115] = 0x07A3CA53
+#        expectedSequence[116] = 0xDD6B419B
+#        expectedSequence[117] = 0xF64ADED4
+#        expectedSequence[118] = 0xFBDC8DA3
+#        expectedSequence[119] = 0x0023B9EC
+#        expectedSequence[120] = 0x00000000
+#        expectedSequence[121] = 0x40E1C240
+#
+#
+#        # Toggle display debug information
+#        if False:
+#            print "\n\nEncoded Sequence: (len)", len(encSeq)
+#            self.displaySequence(encSeq)
+#
+#            print "\nExpected Sequence: (len)", len(expectedSequence)
+#            self.displaySequence(expectedSequence)
 
+#        self.assertEqual(encSeq, expectedSequence, 'testOldCfgSettings() failed !')
 
-    def testOldCfgSettings(self):
+    def testNewCfgIncludingPreambleDelay(self):
         '''
             Test a set of specific mux_decoder key values
         '''
     
-        thisFile = '/SlowControlDefault.xml'
+        thisFile = '/preambleDelaySlowControl.xml'
         currentDir = os.getcwd()
         if currentDir.endswith("LpdFemTests"):
             thisFile = currentDir + thisFile
         else:
             thisFile = currentDir + "/LpdFemTests" + thisFile
     
-        theParams = SlowCtrlParams(thisFile, fromFile=True)
+        theParams = SlowCtrlParams(thisFile, preambleBit=6, fromFile=True)
         encSeq = theParams.encode()
         
         
@@ -1416,7 +1494,7 @@ class SlowCtrlParamsTest(unittest.TestCase):
             print "\nExpected Sequence: (len)", len(expectedSequence)
             self.displaySequence(expectedSequence)
 
-        self.assertEqual(encSeq, expectedSequence, 'testOldCfgSettings() failed !')
+        self.assertEqual(encSeq, expectedSequence, 'testNewCfgIncludingPreambleDelay() failed !')
 
     def displaySequence(self, seq):
         '''
@@ -1424,12 +1502,30 @@ class SlowCtrlParamsTest(unittest.TestCase):
         '''
             
         for idx in range(len(seq)):
-#            if idx < 112:
-#                continue
+            if idx < 112:
+                continue
             if (idx % 8 == 0):
                 print "\n%3i: " % idx,
             print "%9X" % seq[idx],
         print "\n"
+
+    def bitshiftSlowControlArray(self, seq, numBits):
+        '''
+            Helper function: (Left-)bitshift sequence 'seq' by 'numBits' bits  
+        '''
+        
+        lastIndexExcess = 0
+        for idx in range(len(seq)):
+            # Bitshift
+            seq[idx] = seq[idx] << numBits
+            # Add any bits shifted in from the previous index
+            seq[idx] = seq[idx] | lastIndexExcess
+            # Save anything beyond the 32 bit boundary for the next index
+            lastIndexExcess = seq[idx] >> 32
+            # Throwaway any bits beyond the 32 bit boundary
+            seq[idx]= seq[idx] & 0xFFFFFFFF
+        
+        return seq
 
 if __name__ == '__main__':
     

@@ -5,7 +5,7 @@
 
 import time, types, sys
 import argparse
-from math import log
+from math import log, ceil
 
 from FemClient.FemClient import  *
 from FemApi.FemTransaction import FemTransaction
@@ -474,6 +474,13 @@ class LpdI2cTest(FemClient):
         resistanceTherm = ((resistance * aVoltage) / (vCC-aVoltage))
         return resistanceTherm
 
+    def convertBiasVoltageToAdcCount(self, biasLevel):
+        '''
+           Converts adc counts into HV bias level 
+        '''
+        adcCounts = int( ceil( biasLevel/0.122) )
+        return adcCounts
+
 # -=-=-=~=~=~=-=-=- #
 
 
@@ -487,14 +494,13 @@ if __name__ == "__main__":
     
     parser.add_argument("--lv", help="switch LV on (1) or off (0)", type=int, choices=[0, 1])
     parser.add_argument("--hv", help="switch HV on (1) or off (0)", type=int, choices=[0, 1])
-    parser.add_argument("--hvbias", help="switch HV bias level - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int)
+    parser.add_argument("--hvbias", help="set HV bias level (in volts) - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int)
     parser.add_argument("--displaydataonly", help="Display i2c only - THIS WILL OVERRIDE ANY LV OR HV FLAGS !", type=int, choices=[0, 1])
     args = parser.parse_args()
 
     
     # Define FEM IP address and port
     host = '192.168.2.2' # Burntoak
-#    host = '192.168.3.2' # Kiribati, devgpu02
     # Determine name of current machine
     fullDomainName = socket.gethostname()
     # Only need hostname, not domain part
@@ -504,35 +510,27 @@ if __name__ == "__main__":
 
     
     print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (host, port)
-    time.sleep(1)
     
     thisFem = LpdI2cTest((host, port))
 
+    # Convert HV bias (if specified) into equivalent ADC counts
+    adcCounts = 0
+    if args.hvbias is not None:
+        adcCounts = thisFem.convertBiasVoltageToAdcCount(args.hvbias)
+        
     if args.displaydataonly == 1:
         pass
     else:
-        print "lv, hv, hv bias: ", args.lv, args.hv, args.hvbias
+#        print "lv, hv, hv bias: ", args.lv, args.hv, args.hvbias
         # Only use if they decided to switch off lv but switch on hv
         if (args.lv == 0) and(args.hv):
             print "You decided to switch on HV but switch off LV; Aborting.."
             sys.exit()
-            
-        print "Switching LV ",
-        if args.lv:
-            print "on ",
-        else:
-            print "off ",
-        print " and HV ",
-        if args.hv:
-            print "on..\n"
-        else:
-            print "off..\n"
-    
+                
         # Execute according to supplied flags
         if args.lv:
             print "Switching low voltage on.."
             thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
-            time.sleep(1)
             
             # Is HV set to be switched on?
             if args.hv:
@@ -546,10 +544,9 @@ if __name__ == "__main__":
 
                 # Change bias, if bias specified
                 if args.hvbias > -1:
-                    print "Changing bias to ", args.hvbias, "ADC counts"
-                    thisFem.write_dac(args.hvbias)
+                    print "Changing HV bias to ", args.hvbias, " V.."
+                    thisFem.write_dac(adcCounts)
 
-            time.sleep(1)
         else:
             # Switch off lv
             
@@ -557,16 +554,13 @@ if __name__ == "__main__":
             
             print "Switching high voltage off.. "
             thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
-            time.sleep(1)
             
             print "Switching low voltage off.. "
             thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
-            time.sleep(1)
             
             if args.hvbias > -1:
-                print "Changing bias to ", args.hvbias, "ADC counts"
-                
-                thisFem.write_dac(args.hvbias)
+                print "Changing HV bias to ", args.hvbias, " V.."
+                thisFem.write_dac(adcCounts)
 
     print "\n"
     

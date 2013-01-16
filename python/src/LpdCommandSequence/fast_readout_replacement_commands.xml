@@ -14,7 +14,7 @@
 	<start_trigger_pointer/> 
 	<nop/>
 	<nop/>
-	<trigger_flag_set count="4"/>
+	<trigger_flag_set count="4"/><!-- 4 images saved from ASICs -->
 	<nop/>
 	<on_chip_reset_disable/>
 	<reset_pre_amp/>
@@ -28,7 +28,7 @@
 	<nop/>
 	<read_out_data/> 
 	<!-- Add additional NOPS to allow sufficient data to be clocked out of the ASICs -->
-	<loop count="4">
+	<loop count="11">
 		<nop/>
 		<nop count="501"/>
 	</loop>
