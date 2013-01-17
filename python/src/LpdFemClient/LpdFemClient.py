@@ -942,8 +942,8 @@ class LpdFemClient(FemClient):
     def config_asic_slow(self):
         """ configure asic slow control parameters
         """                                        
-        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_config.xml', fromFile=True)
-#        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_TEST.xml', fromFile=True)
+#        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_config.xml', fromFile=True)
+        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_TEST.xml', fromFile=True)
 
         slow_ctrl_data = slowCtrlConfig.encode()
         no_of_bits = 3911
@@ -1568,11 +1568,8 @@ class LpdFemClient(FemClient):
     
     def configure(self):
         '''
-            Placeholder for the future configure() function
+            Load configuration into Fem
         '''
-#        femHost = '192.168.2.2' # standalone fem
-#        femPort = 6969
-
 
         global asic_rx_start_pseudo_random    
         global asic_rx_start_2tile  
@@ -2632,15 +2629,3 @@ class LpdFemClient(FemClient):
         # Calculate resistance of the thermistor
         resistanceTherm = ((resistance * aVoltage) / (vCC-aVoltage))
         return resistanceTherm
-
-    def configureGet(self):
-        '''
-            TODO: REMOVE OR RATIONALISE THIS FUNCTION AFTER FINISHED TESTING
-        '''
-        self.configure()
-
-    def runGet(self):
-        '''
-            TODO: REMOVE OR RATIONALISE THIS FUNCTION AFTER FINISHED TESTING
-        '''
-        self.run()
