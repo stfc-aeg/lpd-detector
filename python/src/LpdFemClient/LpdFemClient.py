@@ -93,19 +93,19 @@ class LpdFemClient(FemClient):
     ON  = 0
 
     # Bit numbers for status bits
-    FEM_STATUS_BIT = 2
-    EXT_TRIP_BIT   = 3
-    FAULT_FLAG_BIT = 4
-    OVERCURRENT_BIT =5
-    HIGH_TEMP_BIT  = 6
-    LOW_TEMP_BIT   = 7
+    FEM_STATUS_BIT  = 2
+    EXT_TRIP_BIT    = 3
+    FAULT_FLAG_BIT  = 4
+    OVERCURRENT_BIT = 5
+    HIGH_TEMP_BIT   = 6
+    LOW_TEMP_BIT    = 7
     
     # Values for status bits
     TRIPPED = 1
     FAULT   = 1
     NORMAL  = 0
     
-    # Enumarate fault flag as either cleared (0) or tripped (1) 
+    # Enumerate fault flag as either cleared (0) or tripped (1) 
     flag_message = ["No", "Yes"]
 
     # Fem has three internal i2c buses, power card uses bus 0x300
@@ -120,38 +120,38 @@ class LpdFemClient(FemClient):
 
     # with new addressing using top 4 bits for fpga selection
     #    """ 32 way splitter """
-    udp_10g_0     = 0x00000000    #0
-    udp_10g_1     = 0x00800000    #1
-    data_gen_0    = 0x01000000    #2
-    data_chk_0    = 0x01800000    #3
-    data_gen_1    = 0x02000000    #4
-    data_chk_1    = 0x02800000    #5
-    fem_ctrl_0    = 0x03000000    #6
-    llink_mon_0   = 0x03800000    #7
-    data_mon_1    = 0x04000000    #8
-    slow_ctr_2    = 0x04800000    #9
-    fast_cmd_0    = 0x05000000    #10
-    fast_cmd_1    = 0x05800000    #11
-    asic_srx_0    = 0x06000000    #12
-    rsvd_13       = 0x06800000    #13
-    slow_ctr_0    = 0x07000000    #14
-    slow_ctr_1    = 0x07800000    #15
-    dma_gen_0    = 0x08000000    #16
-    dma_chk_0    = 0x08800000    #17
-    dma_gen_1    = 0x09000000    #18
-    dma_chk_1    = 0x09800000    #19
-    dma_gen_2    = 0x0a000000    #20
-    dma_chk_2    = 0x0a800000    #21
-    dma_gen_3    = 0x0b000000    #22
-    dma_chk_3    = 0x0b800000    #23
-    bram_ppc1    = 0x0c000000    #24
-    rsvd_25      = 0x0c800000    #25
-    rsvd_26      = 0x0d000000    #26
-    rsvd_27      = 0x0d800000    #27
-    rsvd_28      = 0x0e000000    #28
-    rsvd_29      = 0x0e800000    #29
-    rsvd_30      = 0x0f000000    #30
-    rsvd_31      = 0x0f800000    #31
+    udp_10g_0           = 0x00000000    #0
+    udp_10g_1           = 0x00800000    #1
+    data_gen_0          = 0x01000000    #2
+    data_chk_0          = 0x01800000    #3
+    data_gen_1          = 0x02000000    #4
+    data_chk_1          = 0x02800000    #5
+    fem_ctrl_0          = 0x03000000    #6
+    llink_mon_0         = 0x03800000    #7
+    data_mon_1          = 0x04000000    #8
+    slow_ctr_2          = 0x04800000    #9
+    fast_cmd_0          = 0x05000000    #10
+    fast_cmd_1          = 0x05800000    #11
+    asic_srx_0          = 0x06000000    #12
+    llink_mon_asicrx    = 0x06800000    #13
+    slow_ctr_0          = 0x07000000    #14
+    slow_ctr_1          = 0x07800000    #15
+    dma_gen_0           = 0x08000000    #16
+    dma_chk_0           = 0x08800000    #17
+    dma_gen_1           = 0x09000000    #18
+    dma_chk_1           = 0x09800000    #19
+    dma_gen_2           = 0x0a000000    #20
+    dma_chk_2           = 0x0a800000    #21
+    dma_gen_3           = 0x0b000000    #22
+    dma_chk_3           = 0x0b800000    #23
+    bram_ppc1           = 0x0c000000    #24
+    rsvd_25             = 0x0c800000    #25
+    rsvd_26             = 0x0d000000    #26
+    rsvd_27             = 0x0d800000    #27
+    rsvd_28             = 0x0e000000    #28
+    rsvd_29             = 0x0e800000    #29
+    rsvd_30             = 0x0f000000    #30
+    rsvd_31             = 0x0f800000    #31
     
     # file path to the location of the slow control and fast control configuration files
     slowCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
@@ -262,8 +262,8 @@ class LpdFemClient(FemClient):
 
             'slow_params_file_name_old' : 'SlowControlDefault-1B.txt',   # used if slow_params_file_type = 0
                                                                         # 'SlowControlDefault-1A.txt'
-            'slow_params_file_name_xml' : 'slow_control_config_jac.xml',   # used if slow_params_file_type = 1
-                                                                           # slow_control_config.xml  # standard
+            'slow_params_file_name_xml' : #'slow_control_config_jac.xml',   # used if slow_params_file_type = 1
+                                          'preambleDelaySlowControl.xml', # slow_control_config.xml  # standard
 
             'fast_cmd_file_type' : 1,  # 0 = old format file ; 1 = xml file
 
@@ -273,8 +273,8 @@ class LpdFemClient(FemClient):
                                                                             # 'fast_readout_4f_gaps.txt'  # standard
             'fast_cmd_pseudorandom_file_name' : 'fast_random_gaps.txt',  # for pseudorandom asic data
 
-            'fast_cmd_sensor_data_file_name_xml' : 'fast_cmd_1f_with_slow_readout.xml',  # for real asic sensor
-                                                    # 'fast_readout_replacement_commands.xml',  # for real asic sensor data
+            'fast_cmd_sensor_data_file_name_xml' : #'fast_cmd_1f_with_slow_readout.xml',  # for real asic sensor
+                                                    'fast_readout_replacement_commands.xml',  # for real asic sensor data
             'fast_cmd_pseudorandom_file_name_xml' : 'fast_random_gaps.xml',  # for pseudorandom asic data
 
             'asic_readout_with_slow_clock' : 1,  # 0 = asic readout phase uses same clock as capture phase
@@ -421,7 +421,7 @@ class LpdFemClient(FemClient):
     def clear_ll_monitor(self, base):
         """ readout a local link monitor block
             Rob Halsall 08-04-2011    """
-#       base_addr = LpdFemClient.llink_mon_0
+#       base_addr = LpdFemClientLpdFemClient.llink_mon_0
         #input monitor registers are offset from base address by 16
         
         print "Local Link Monitor Counter Reset"
@@ -437,22 +437,22 @@ class LpdFemClient(FemClient):
         """ readout a local link monitor block """
         
         #input monitor registers are offset from base address by 16
-#        mon_addr = LpdFemClient.llink_mon_0 + 16
+#        mon_addr = LpdFemClientLpdFemClient.llink_mon_0 + 16
         mon_addr = base + 16
 
         print "frm_last_length (bytes):\t",         hex( self.rdmaRead(mon_addr+0, 1)[0])
         print "frm_max_length (bytes): \t",         hex( self.rdmaRead(mon_addr+1, 1)[0])
         print "frm_min_length (bytes): \t",         hex( self.rdmaRead(mon_addr+2, 1)[0])
-        print "frm_number:\t\t",                    hex( self.rdmaRead(mon_addr+3, 1)[0])
-        print "frm_last_cycles:\t",                 hex( self.rdmaRead(mon_addr+4, 1)[0])
-        print "frm_max_cycles: \t",                 hex( self.rdmaRead(mon_addr+5, 1)[0])
-        print "frm_min_cycles: \t",                 hex( self.rdmaRead(mon_addr+6, 1)[0]) 
+        print "frm_number:\t\t\t",                    hex( self.rdmaRead(mon_addr+3, 1)[0])
+        print "frm_last_cycles:\t\t",                 hex( self.rdmaRead(mon_addr+4, 1)[0])
+        print "frm_max_cycles: \t\t",                 hex( self.rdmaRead(mon_addr+5, 1)[0])
+        print "frm_min_cycles: \t\t",                 hex( self.rdmaRead(mon_addr+6, 1)[0]) 
         total_data = self.rdmaRead(mon_addr+7, 1)[0]
         print "frm_data_total (bytes): \t", total_data         
         total_cycles = self.rdmaRead(mon_addr+8, 1)[0]
-        print "frm_cycle_total:\t", total_cycles
-        print "frm_trig_count: \t",                 hex( self.rdmaRead(mon_addr+9, 1)[0])
-        print "frm_in_progress:\t",                 hex( self.rdmaRead(mon_addr+15, 1)[0])
+        print "frm_cycle_total:\t\t", total_cycles
+        print "frm_trig_count: \t\t",                 hex( self.rdmaRead(mon_addr+9, 1)[0])
+        print "frm_in_progress:\t\t",                 hex( self.rdmaRead(mon_addr+15, 1)[0])
         
         # data path = 64 bit, clock = 156.25 MHz
 #        total_time = float(total_cycles) * (1/156.25e6)
@@ -970,16 +970,16 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(self.fem_ctrl_0+12, asic_slow_readout_duration)  
 
         if self.run_params['slow_params_file_type'] == 1:
-            self.config_asic_slow_xml(self.run_params) 
+            self.config_asic_slow_xml() 
         else:        
-            self.config_asic_slow(self.run_params)         
+            self.config_asic_slow()         
 
         if self.run_params['fast_cmd_file_type'] == 1:
-            self.config_asic_fast_xml(self.run_params)         
+            self.config_asic_fast_xml()         
         else:        
-            self.config_asic_fast(self.run_params)         
+            self.config_asic_fast()         
 
-        self.config_asic_datarx(self.run_params)         
+        self.config_asic_datarx()
              
         print "ENABLE asic Tristate output buffers"
         self.rdmaWrite(self.fem_ctrl_0+5, 0)
@@ -1014,7 +1014,7 @@ class LpdFemClient(FemClient):
 
 ##        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_TEST.xml', fromFile=True)
 
-        slowCtrlConfig = SlowCtrlParams( currentSlowCtrlDir + '/' + self.run_params['slow_params_file_name_xml'], fromFile=True)
+        slowCtrlConfig = SlowCtrlParams( currentSlowCtrlDir + '/' + self.run_params['slow_params_file_name_xml'], preambleBit=6, fromFile=True)
         slow_ctrl_data = slowCtrlConfig.encode()
         no_of_bits = 3911 # 3911
                   
@@ -1058,7 +1058,7 @@ class LpdFemClient(FemClient):
         else:
             fast_cmd_file_name = self.run_params['fast_cmd_sensor_data_file_name_xml']
              
-        fileCmdSeq = LpdCommandSequenceParser(fast_cmd_file_name, fromFile=True)   
+        fileCmdSeq = LpdCommandSequenceParser(self.fastCtrlPath + fast_cmd_file_name, fromFile=True)
         fast_cmd_data = fileCmdSeq.encode()
             
         no_of_words = fileCmdSeq.getTotalNumberWords()
@@ -1144,7 +1144,6 @@ class LpdFemClient(FemClient):
         no_asic_cols = self.run_params['asic_nr_images'] #+ 1               
         # no_asic_cols_per_frm = self.run_params['asic_nr_images_per_frame'] #+ 1              
         no_asic_cols_per_frm = self.run_params['asic_nr_images']     # force all images to be in one frame               
-        print "---> no_asic_cols, no_asic_cols_per_frm: ", no_asic_cols, no_asic_cols_per_frm, " <-----"
              
         #set up the ASIC RX IP block
         self.fem_asic_rx_setup(self.asic_srx_0 , mask_list, no_asic_cols, no_asic_cols_per_frm)
@@ -1156,7 +1155,7 @@ class LpdFemClient(FemClient):
             self.asicrx_self_test_counting_data_disable()
 
         # asic rx gain override
-        self.asicrx_override_gain(self.run_params['asicrx_gain_selection'])
+        self.asicrx_override_gain()
 
         # asic rx invert adc data
         if self.run_params['asicrx_invert_data'] == 1:            
@@ -1207,10 +1206,10 @@ class LpdFemClient(FemClient):
         # send triggers to data generators
         #--------------------------------------------------------------------
                                  
-        if self.self.run_params['run_type'] == "ll_data_gen":            
+        if self.run_params['run_type'] == "ll_data_gen":            
             print "Trigger Data Gen"
             self.toggle_bits(self.fem_ctrl_0+0, 0) # trigger to local link frame gen 
-        elif (self.self.run_params['run_type'] == "asic_data_via_ppc") or (self.self.run_params['run_type'] == "asic_data_direct"):             
+        elif (self.run_params['run_type'] == "asic_data_via_ppc") or (self.run_params['run_type'] == "asic_data_direct"):             
             print "Trigger Asic"
 #            print "------------------ > self.fem_ctrl_0 = ", self.fem_ctrl_0
             self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asic rx
@@ -1571,7 +1570,7 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(reg_addr, new_value)
         return 0        
 
-    def asicrx_override_gain(self, gain_select):
+    def asicrx_override_gain(self):
         # added override to gain selection 
         # 
         #  bits
@@ -1581,6 +1580,7 @@ class LpdFemClient(FemClient):
         #  1011  force select x1          11
         #  1111  force error condition ?  15
  
+        gain_select = self.run_params['asicrx_gain_selection']
         reg_addr = self.asic_srx_0+0
         prev_value = self.rdmaRead(reg_addr, 1)[0] 
         new_value = prev_value | (gain_select & 0x0000000f)
@@ -1596,7 +1596,7 @@ class LpdFemClient(FemClient):
             print "Start 10G link nr", self.x10g_0['link_nr']
 
         data_gen_base = self.data_gen_0
-        ll_mon_base = self.llink_mon_0
+        ll_mon_base = LpdFemClient.llink_mon_0
         ppc_bram_base = self.bram_ppc1
 
       
