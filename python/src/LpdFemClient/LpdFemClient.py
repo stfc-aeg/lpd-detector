@@ -222,8 +222,8 @@ class LpdFemClient(FemClient):
 
 #====== params for run type = "asic_data_via_ppc" or "asic_data_direct"
 
-            'asic_data_type' :   "asic_sensor", # Asic sensor data [Standard Operation Real Data]
-                        # "asicrx_counting", # Asic Rx Block internally generated counting data (simulated data)
+            'asic_data_type' : #  "asic_sensor", # Asic sensor data [Standard Operation Real Data]
+                         "asicrx_counting", # Asic Rx Block internally generated counting data (simulated data)
                         # "asic_pseudo_random", # Asic Pseudo random data (test data from asic)
 
              # if asic clock is coming from on board FEM 100 MHz Osc
@@ -783,6 +783,17 @@ class LpdFemClient(FemClient):
     def swap_endian(self, data):  
         swapped = ((data << 24) & 0xff000000) | ((data << 8) & 0x00ff0000) | ((data >>24) & 0x000000ff) | ((data >> 8) & 0x0000ff00)
         return swapped
+
+    def x10g_net_lut_clear(self, base_addr):
+        """ Zero the Farm Mode LUTs contents """
+    
+        for i in range (0, 256):   
+            self.rdmaWrite(base_addr + 0x00010200 + 2*i, 0)    # mac lower 32 bits 
+            self.rdmaWrite(base_addr + 0x00010200 + 2*i + 1, 0)    # mac upper 16 bits 
+            self.rdmaWrite(base_addr + 0x00010100 + i, 0)    # ip 32 bits
+            self.rdmaWrite(base_addr + 0x00010000 + i, 0)    # port 16 bits           
+            
+        return 0   
 
     def dump_regs_hex(self, base_addr, nr_regs):
         """ hex dump of regs """
@@ -1588,6 +1599,16 @@ class LpdFemClient(FemClient):
         
         return 0
 
+# new taken from TB script
+    def soft_reset_ll_frm_gen(self, base_address):
+        """ This function just resets the frame nr in the header """
+            
+        # Data Gen soft reset
+        #print "DATA GEN Internal Reset"
+        self.rdmaWrite(base_address+0,0x00000000)    
+        self.rdmaWrite(base_address+0,0x00000001)
+        self.rdmaWrite(base_address+0,0x00000000)        
+
     def start_10g_link(self):
         """ start a 10g link
         """
@@ -1681,13 +1702,50 @@ class LpdFemClient(FemClient):
          
         return 0
 
+ 
+    def start_dma_tx(self, base_addr, index):
+        """ start dma tx """
+  
+        self.rdmaWrite(base_addr+9, index) 
+        self.rdmaWrite(base_addr+8, 0x1234) 
             
+        return 0 
+
+    def clear_dma_tx(self, base_addr, index):
+        """ init dma tx """
+  
+        self.rdmaWrite(base_addr+8, 0) 
+        self.rdmaWrite(base_addr+9, 0) 
+        self.rdmaWrite(base_addr+10, 0) 
+            
+        return 0 
+               
     def final_dma_tx(self, base_addr):
         """ flag last dma tx """
   
         self.rdmaWrite(base_addr+10, 0x5678) 
             
         return 0 
+
+    def clear_final_dma_tx(self, base_addr):
+        """ flag last dma tx """
+  
+        self.rdmaWrite(base_addr+10, 0) 
+            
+        return 0 
+ 
+    def prev_dma_tx(self, base_addr):
+        """  """  
+        busy = 1
+        
+        reg = self.rdmaRead(base_addr+8, 1) [1]
+        reg &= 0x0000ffff
+        
+        if reg == 0:
+          busy = 0
+            
+        return busy
+         
 
     def zero_regs(self, base_addr, nr_regs):
         """ zero regs eg bram """
@@ -1715,6 +1773,17 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(reg_addr, off)
          
         return 0   
+
+    def status_ll_frm_gen(self, base_address):
+        """ This function returns busy status of data gen """
+            
+        busy = self.rdmaRead(base_address+17, 1)[0]  
+        return busy        
+
+    def status_ll_frm_mon(self, base_address):
+        """ This function returns busy status of link monitor """ 
+        busy = self.rdmaRead(base_address+16+15, 1)[0]  
+        return busy  
 
     '''
         --------------------------------------------------------
