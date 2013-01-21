@@ -112,8 +112,7 @@ class SlowCtrlParams(object):
         #    BEFORE the first slow control bit is sent. If these number of bits changes in the future,
         #    then simply modify argument preambleBit accordingly
         if preambleBit == None:
-            print "\nClass SlowCtrlParams mandatory argument 'preambleBit' NOT specified: Exiting.."
-            sys.exit()
+            raise SlowCtrlParamsError('Class SlowCtrlParams mandatory argument "preambleBit" NOT specified')
         else:
             self.preambleBit = preambleBit
 
