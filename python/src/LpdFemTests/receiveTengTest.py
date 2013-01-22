@@ -1,3 +1,4 @@
+
 # X10G Development code
 # Receive and display 10G image data
 # Hacked together by Christian Angelsen 18-06-2012
@@ -434,8 +435,8 @@ class BlitQT(FigureCanvas):
             # Iterate over 16 columns
             for column in range(16):
 
-                # Go in reverse order from ASIC 112-105, 32-25
-                lookupTableAsicDistance = 112-1
+                # Go in reverse order from ASIC 32-25, 112-105
+                lookupTableAsicDistance = 32-1
                 try:
                     
                     # Iterate over the 16 ASICs
@@ -448,20 +449,20 @@ class BlitQT(FigureCanvas):
                     
                         # Need to update lookupTableAsicDistance manually for ASIC 32
                         if asicOffset is 7:
-                            # ASIC32 is next
-                            lookupTableAsicDistance = 32-1
+                            # ASIC112 is next
+                            lookupTableAsicDistance = 112-1
                         else:
                             lookupTableAsicDistance -= 1
                             
                         if bDebug:
-#                            rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
-                            imageInfo += "%5i" % imageIndex
+                            rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
+#                            imageInfo += "%5i" % imageIndex
 
                     # Increment counter for rawDataOffset after columns*ASICs (16 ASICs) 
                     rawCounter += 1
                     
                     if bDebug:
-                        if row < 4: # 2:
+                        if row < 3: # 2:
                             print rawInfo, " => ", imageInfo
                         rawInfo = ""
                         imageInfo = ""
