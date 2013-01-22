@@ -2,14 +2,22 @@
     LpdReadoutTest.py - Readout a super module system containing one tile, using the API
 '''
 
+import sys
 from LpdDevice.LpdDevice import LpdDevice
+from networkConfiguration import *
 
-def lpdTest():
+def lpdTest(femHost=None, femPort=None):
     
     theDevice = LpdDevice()
+
+    # Was either femHost and femPort NOT provided to this class?
+    if (femHost == None) or (femPort == None):
+        # Either or both were not supplied from the command line; Use networkConfiguration class
+        networkConfig = networkConfiguration()
+        femHost = networkConfig.ctrl0SrcIp
+        femPort = int(networkConfig.ctrlPrt)
    
-#    rc = theDevice.open('127.0.0.1', 5000)
-    rc = theDevice.open('192.168.2.2', 6969)    # Kiribati, devgpu02
+    rc = theDevice.open(femHost, femPort)
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return
@@ -31,4 +39,14 @@ def lpdTest():
 
 if __name__ == '__main__':
     
-    lpdTest()
+
+    # Check command line for host and port info    
+    if len(sys.argv) == 3:
+        femHost = sys.argv[1]
+        femPort = int(sys.argv[2])
+    else:
+        # Nothing provided from command line; Use defaults
+        femHost = None
+        femPort = None        
+
+    lpdTest(femHost, femPort)

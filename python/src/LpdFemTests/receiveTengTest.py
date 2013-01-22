@@ -28,7 +28,7 @@ else:
     print "HDF5 Library present."
     bHDF5 = True
 
-from machineConfiguration import *
+from networkConfiguration import *
 
 from PyQt4 import QtCore, QtGui
 
@@ -48,24 +48,16 @@ bAsicV1 = True
 
 class RxThread(QtCore.QThread):
     
-    def __init__(self, rxSignal, pcAddressConfig):
+#    def __init__(self, rxSignal, pcAddressConfig):
+    def __init__(self, rxSignal, femHost, femPort):
         
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
 
-        # Instantiate objects of machineConfiguration to obtain network information regarding the current machine
-        #    (to enable this code to the run unmodified on different systems and PCs)
-        self.myAddressConfig = pcAddressConfig
-        femHost = self.myAddressConfig.get10gDestinationIpAddress(0) # 0 =  x10g_0, 1 = x10g_1
-        if femHost is None:
-            print "Error selecting interface, only 0 or 1 valid!\n\nExiting.."
-            print "(femHost = %s)" % femHost
-            sys.exit()
-        
-        print "Listening to host: %s.." % (femHost)
+        print "Listening to host: %s port: %s.." % (femHost, femPort)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #        self.sock.bind(('192.168.2.2', 61649))
-        self.sock.bind((femHost, 61649))
+        self.sock.bind((femHost, femPort))
 
     def __del__(self):
         self.wait()
@@ -85,7 +77,7 @@ class BlitQT(FigureCanvas):
     
     dataRxSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self):
+    def __init__(self, femHost=None, femPort=None):
         FigureCanvas.__init__(self, Figure())
         
         # Track packet number
@@ -156,16 +148,15 @@ class BlitQT(FigureCanvas):
         self.dataRxSignal.connect(self.handleDataRx)
                 
         self.tstart = time.time()
-        
-        # Instantiate objects of machineConfiguration to obtain network information regarding the current machine
-        #    (to enable this code to the run unmodified on different systems and PCs)
-        self.myAddressConfig = machineConfiguration()
-        femHost = self.myAddressConfig.get10gDestinationIpAddress(0) # 0 =  x10g_0, 1 = x10g_1
-        if femHost is None:
-            print "Error selecting 10G interface, only 0 or 1 valid!\n\nExiting.." 
-            sys.exit()
-        
-        self.rxThread = RxThread(self.dataRxSignal, self.myAddressConfig)
+
+        # Was either femHost and femPort NOT provided to this class?
+        if (femHost == None) or (femPort == None):
+            # Either or both were not supplied from the command line; Use networkConfiguration class
+            networkConfig = networkConfiguration()
+            femHost = networkConfig.tenGig0DstIp
+            femPort = int(networkConfig.tenGig0DstPrt)
+
+        self.rxThread = RxThread(self.dataRxSignal, femHost, femPort)
         self.rxThread.start()
 
 
@@ -276,12 +267,12 @@ class BlitQT(FigureCanvas):
             # Loop over the specified number of plots
             while bNextImageAvailable and currentPlot < plotMaxPlots:
                 
-                # Determine where the current plot begins in the data
-                #    Need to keep the first row blank if this is version 1 of the Asic
-                if bAsicV1:
-                    dataBeginning = 65536*currentPlot + self.ncols
-                else:
-                    dataBeginning = 65536*currentPlot
+#                # Determine where the current plot begins in the data
+#                #    Need to keep the first row blank if this is version 1 of the Asic
+#                if bAsicV1:
+#                    dataBeginning = 65536*currentPlot
+#                else:
+                dataBeginning = 65536*currentPlot
                 
                 # Get the first image of the image
                 bNextImageAvailable, imageArray = self.retrieveFirstTwoTileImageFromAsicData(_16BitWordArray[dataBeginning:])
@@ -463,21 +454,21 @@ class BlitQT(FigureCanvas):
                             lookupTableAsicDistance -= 1
                             
                         if bDebug:
-                            rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
+#                            rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
                             imageInfo += "%5i" % imageIndex
 
-                    # Increment counter for rawDataOffset for every tile of 8 ASICs 
+                    # Increment counter for rawDataOffset after columns*ASICs (16 ASICs) 
                     rawCounter += 1
                     
                     if bDebug:
-                        if row < 2:
+                        if row < 4: # 2:
                             print rawInfo, " => ", imageInfo
                         rawInfo = ""
                         imageInfo = ""
                         
                 except IndexError:
                     # If end of array reached, will raise IndexError
-                    print "IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
+                    print "2T, IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
                     break
                 except Exception as e:
                     print "retrieveFirstTwoTileImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
@@ -635,8 +626,19 @@ class BlitQT(FigureCanvas):
 
         
 if __name__ == "__main__":
+
+    # Check command line for host and port info    
+    if len(sys.argv) == 3:
+        femHost = sys.argv[1]
+        femPort = int(sys.argv[2])
+    else:
+        # Nothing provided from command line; Use defaults
+        femHost = None
+        femPort = None        
+
+
     app = QtGui.QApplication(sys.argv)
-    widget = BlitQT()
+    widget = BlitQT(femHost, femPort)
     widget.show()
     
     sys.exit(app.exec_())
