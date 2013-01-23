@@ -5,7 +5,6 @@ Created on 21 January 2013
 '''
 
 # Import Python standard modules
-#import sys, os, string 
 import socket
 
 class networkConfiguration(object):

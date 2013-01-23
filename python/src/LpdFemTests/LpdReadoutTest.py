@@ -1,10 +1,13 @@
 '''
-    LpdReadoutTest.py - Readout a super module system containing one tile, using the API
+    LpdReadoutTest.py - Readout a system using the API
+                        The number of modules in the system is set by LpdFemClient.
+                    
 '''
 
-import sys
 from LpdDevice.LpdDevice import LpdDevice
 from networkConfiguration import *
+import sys
+
 
 def lpdTest(femHost=None, femPort=None):
     

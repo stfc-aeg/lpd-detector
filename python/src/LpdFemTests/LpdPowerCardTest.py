@@ -1,21 +1,28 @@
 from LpdDevice.LpdDevice import LpdDevice
+import sys
 
-def powerCardTest():
+def powerCardTest(biasLevel):
     
     theDevice = LpdDevice()
 
     
-    rc = theDevice.open('192.168.2.2', 6969)    # Burntoak
-#    rc = theDevice.open('192.168.3.2', 6969)    # Kiribati, devgpu02
+    rc = theDevice.open('192.168.2.2', 6969)
+
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return
     
     print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
     
+    # Update sensorBias if user provided new value via command line
+    if biasLevel is not None:
+        rc = theDevice.paramSet('sensorBias', biasLevel )
+        if rc != LpdDevice.ERROR_OK:
+            print "sensorBiasSet set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
     
     print "Status:"
-    print "    Low voltage = ",
+    print "    Low voltage  = ",
     (rc, bLowVoltageOff) = theDevice.paramGet('asicPowerEnable')
     if rc != LpdDevice.ERROR_OK:
         print "asicPowerEnable get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -40,7 +47,8 @@ def powerCardTest():
     if rc != LpdDevice.ERROR_OK:
         print "sensorBias get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print hvBias
+        print hvBias , "V"
+
 
 
     print "Flags:" 
@@ -290,14 +298,13 @@ def powerCardTest():
 
     
     print "-- -- -- -- -- -- -- -- --"
+
     rc = theDevice.paramSet('tenGig0SourceMac', 3)
-#    rc = self.lpdDevice.paramSet('tenGig0SourceMac', 127.3) 
     if rc != LpdDevice.ERROR_OK:
         print "tenGig0SourceMac Set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
     (rc, tenGig0SourceMac) = theDevice.paramGet('tenGig0SourceMac')
     if rc != LpdDevice.ERROR_OK:
-        print "New function failed!"
         print "tenGig0SourceMac get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "tenGig0SourceMac : ", tenGig0SourceMac
@@ -306,6 +313,11 @@ def powerCardTest():
     theDevice.close()
 
 if __name__ == '__main__':
-    
-    powerCardTest()
+
+    if len(sys.argv) == 2:
+        biasLevel = sys.argv[1]
+    else:
+        biasLevel = None
+        
+    powerCardTest(biasLevel)
     

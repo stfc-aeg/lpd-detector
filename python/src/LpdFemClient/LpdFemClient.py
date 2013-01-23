@@ -33,7 +33,7 @@ Created 16 October 2012
 from string import strip, split
 
 # log required when calculating temperature
-from math import log
+from math import log, ceil
 import pprint, time, os
 
 from FemClient.FemClient import *
@@ -222,8 +222,8 @@ class LpdFemClient(FemClient):
 
 #====== params for run type = "asic_data_via_ppc" or "asic_data_direct"
 
-            'asic_data_type' : #  "asic_sensor", # Asic sensor data [Standard Operation Real Data]
-                         "asicrx_counting", # Asic Rx Block internally generated counting data (simulated data)
+            'asic_data_type' :   "asic_sensor", # Asic sensor data [Standard Operation Real Data]
+                         #"asicrx_counting", # Asic Rx Block internally generated counting data (simulated data)
                         # "asic_pseudo_random", # Asic Pseudo random data (test data from asic)
 
              # if asic clock is coming from on board FEM 100 MHz Osc
@@ -274,7 +274,8 @@ class LpdFemClient(FemClient):
             'fast_cmd_pseudorandom_file_name' : 'fast_random_gaps.txt',  # for pseudorandom asic data
 
             'fast_cmd_sensor_data_file_name_xml' : #'fast_cmd_1f_with_slow_readout.xml',  # for real asic sensor
-                                                    'fast_readout_replacement_commands.xml',  # for real asic sensor data
+                                                    # 'fast_readout_replacement_commands.xml',  # for real asic sensor data
+                                                    'playingWivLasers.xml',  # for real asic sensor data
             'fast_cmd_pseudorandom_file_name_xml' : 'fast_random_gaps.xml',  # for pseudorandom asic data
 
             'asic_readout_with_slow_clock' : 1,  # 0 = asic readout phase uses same clock as capture phase
@@ -332,12 +333,6 @@ class LpdFemClient(FemClient):
                        'nic_list'   : [ '61649@192.168.3.1' ]
                       }
 
-        # Lpd fem object placeholder
-#        self.myLpdFemClient = None
-        # FemAsicTest object - to utilise John's new script
-#        self.femAsicTest = FemAsicTest()
-        # Obtain run parametres and 10 G settings
-#        self.run_params, self.x10g_0 = self.femAsicTest.set_10g_structs_variables()
     '''
         --------------------------------------------------------
         Support functions taken from John's version of LpdFemClient.py:
@@ -463,9 +458,9 @@ class LpdFemClient(FemClient):
         else:
             rate = 0
             
-        print "Data Total = %e" % total_data
-        print "Data Time = %e" % total_time
-        print "Data Rate = %e" % rate
+        print "Data Total = \t\t\t%e" % total_data
+        print "Data Time  = \t\t\t%e" % total_time
+        print "Data Rate  = \t\t\t%e" % rate
         
         print ""
         
@@ -687,13 +682,18 @@ class LpdFemClient(FemClient):
 
 # farm modes
         
-    def x10g_net_lut_setup(self, base_addr, net):
+#    def x10g_net_lut_setup(self, base_addr, net):
+    def x10g_net_lut_setup(self, base_addr):
         """ Set up the LUTs for 10G Farm Mode  """
          
-        mac_low = ((net['nic_mac'] &  0xFFFFFFFF0000) >> 16)
-        mac_high = ((net['nic_mac'] & 0x00000000FFFF) << 16) 
-        ip = net['nic_ip']
-        port = net['nic_prt']        
+#        mac_low = ((net['nic_mac'] &  0xFFFFFFFF0000) >> 16)
+#        mac_high = ((net['nic_mac'] & 0x00000000FFFF) << 16) 
+        mac_low = ((self.x10g_0['nic_mac'] &  0xFFFFFFFF0000) >> 16)
+        mac_high = ((self.x10g_0['nic_mac'] & 0x00000000FFFF) << 16) 
+#        ip = net['nic_ip']
+#        port = net['nic_prt']
+        ip = self.x10g_0['nic_ip']
+        port = self.x10g_0['nic_prt']
 
         # Example
         # '00-07-43-11-97-90'
@@ -708,9 +708,11 @@ class LpdFemClient(FemClient):
         mac_high = self.swap_endian(mac_high)
         ip = self.swap_endian(ip)  
 
-        num_ports = net['num_prts']  
+#        num_ports = net['num_prts']
+        num_ports = self.x10g_0('num_prts')
         print "num ports =", num_ports
-        num_frames = net['num_frames']
+#        num_frames = net['num_frames']
+        num_frames = self.x10g_0['num_frames']
         
 #       for i in range (0, 256):
         nr_lut_entries = num_frames
@@ -725,12 +727,14 @@ class LpdFemClient(FemClient):
             
         return 0
 
-    def x10g_net_lut_setup_from_list(self, base_addr, net, myTBTest, mac_ip_lut):
+#    def x10g_net_lut_setup_from_list(self, base_addr, net, myTBTest, mac_ip_lut):
+    def x10g_net_lut_setup_from_list(self, base_addr, mac_ip_lut):
         """ Set up the LUTs for 10G Farm Mode from list of NIC port@host """
         
         i = 0;
         
-        for nic in net['nic_list']:
+#        for nic in net['nic_list']:
+        for nic in self.x10g_0['nic_list']:
             new_nic = nic.split('@')
             nic_port = new_nic[0]
             #print "port ", port
@@ -739,11 +743,13 @@ class LpdFemClient(FemClient):
             nic_mac = mac_ip_lut[nic_host]              
             print "mac ", nic_mac 
             
-            mac = myTBTest.mac_addr_to_uint64(nic_mac)
+#            mac = myTBTest.mac_addr_to_uint64(nic_mac)
+            mac = self.mac_addr_to_uint64(nic_mac)
             mac_low = ((mac &  0xFFFFFFFF0000) >> 16)
             mac_high = ((mac & 0x00000000FFFF) << 16)
             
-            ip = myTBTest.ip_addr_to_uint32(nic_host)
+#            ip = myTBTest.ip_addr_to_uint32(nic_host)
+            ip = self.ip_addr_to_uint32(nic_host)
             port = int(nic_port)
                   
             print "port ", port
@@ -784,16 +790,17 @@ class LpdFemClient(FemClient):
         swapped = ((data << 24) & 0xff000000) | ((data << 8) & 0x00ff0000) | ((data >>24) & 0x000000ff) | ((data >> 8) & 0x0000ff00)
         return swapped
 
-    def x10g_net_lut_clear(self, base_addr):
-        """ Zero the Farm Mode LUTs contents """
-    
-        for i in range (0, 256):   
-            self.rdmaWrite(base_addr + 0x00010200 + 2*i, 0)    # mac lower 32 bits 
-            self.rdmaWrite(base_addr + 0x00010200 + 2*i + 1, 0)    # mac upper 16 bits 
-            self.rdmaWrite(base_addr + 0x00010100 + i, 0)    # ip 32 bits
-            self.rdmaWrite(base_addr + 0x00010000 + i, 0)    # port 16 bits           
-            
-        return 0   
+    #TODO: never used?
+#    def x10g_net_lut_clear(self, base_addr):
+#        """ Zero the Farm Mode LUTs contents """
+#    
+#        for i in range (0, 256):   
+#            self.rdmaWrite(base_addr + 0x00010200 + 2*i, 0)    # mac lower 32 bits 
+#            self.rdmaWrite(base_addr + 0x00010200 + 2*i + 1, 0)    # mac upper 16 bits 
+#            self.rdmaWrite(base_addr + 0x00010100 + i, 0)    # ip 32 bits
+#            self.rdmaWrite(base_addr + 0x00010000 + i, 0)    # port 16 bits           
+#            
+#        return 0   
 
     def dump_regs_hex(self, base_addr, nr_regs):
         """ hex dump of regs """
@@ -888,11 +895,13 @@ class LpdFemClient(FemClient):
  
             print "Setting up Farm Mode LUT. May take several seconds... "                       
             if self.run_params['10g_farm_mode'] == 2:
-                self.x10g_net_lut_setup(x10g_base, self.x10g_0) 
+#                self.x10g_net_lut_setup(x10g_base, self.x10g_0)
+                self.x10g_net_lut_setup(x10g_base)
                 self.x10g_set_farm_mode(x10g_base, 1)
             elif self.run_params['10g_farm_mode'] == 3:      
-                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0, self, mac_ip_lut)  
-                self.x10g_set_farm_mode(x10g_base, 1)                         
+#                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0, self, mac_ip_lut)
+                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0, mac_ip_lut)
+                self.x10g_set_farm_mode(x10g_base, 1)
             else: 
                 print "Not in Farm Mode."              
                 self.x10g_set_farm_mode(x10g_base, 0)
@@ -1710,15 +1719,15 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(base_addr+8, 0x1234) 
             
         return 0 
-
-    def clear_dma_tx(self, base_addr, index):
-        """ init dma tx """
-  
-        self.rdmaWrite(base_addr+8, 0) 
-        self.rdmaWrite(base_addr+9, 0) 
-        self.rdmaWrite(base_addr+10, 0) 
-            
-        return 0 
+    #TODO: Never used?
+#    def clear_dma_tx(self, base_addr, index):
+#        """ init dma tx """
+#  
+#        self.rdmaWrite(base_addr+8, 0) 
+#        self.rdmaWrite(base_addr+9, 0) 
+#        self.rdmaWrite(base_addr+10, 0) 
+#            
+#        return 0 
                
     def final_dma_tx(self, base_addr):
         """ flag last dma tx """
@@ -1726,13 +1735,13 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(base_addr+10, 0x5678) 
             
         return 0 
-
-    def clear_final_dma_tx(self, base_addr):
-        """ flag last dma tx """
-  
-        self.rdmaWrite(base_addr+10, 0) 
-            
-        return 0 
+    #TODO: Never used?
+#    def clear_final_dma_tx(self, base_addr):
+#        """ flag last dma tx """
+#  
+#        self.rdmaWrite(base_addr+10, 0) 
+#            
+#        return 0 
  
     def prev_dma_tx(self, base_addr):
         """  """  
@@ -1742,19 +1751,19 @@ class LpdFemClient(FemClient):
         reg &= 0x0000ffff
         
         if reg == 0:
-          busy = 0
+            busy = 0
             
         return busy
          
-
-    def zero_regs(self, base_addr, nr_regs):
-        """ zero regs eg bram """
-        
-        print 'Zero rdma base addr = $%08X ; nr regs = $%08X' %(base_addr, nr_regs)
-        for i in range(0, nr_regs):
-            self.rdmaWrite(base_addr+i, 0) 
-                    
-        return 0      
+    #TODO: Never used?
+#    def zero_regs(self, base_addr, nr_regs):
+#        """ zero regs eg bram """
+#        
+#        print 'Zero rdma base addr = $%08X ; nr regs = $%08X' %(base_addr, nr_regs)
+#        for i in range(0, nr_regs):
+#            self.rdmaWrite(base_addr+i, 0) 
+#                    
+#        return 0      
 
     def register_set_bit(self, reg_addr, bit_nr):
         """ set bit in register """
@@ -2053,14 +2062,13 @@ class LpdFemClient(FemClient):
         '''
             Get Sensor HV Bias Voltage [V]
         '''
-        return self.ad5321Read()
+        return self.sensorBiasLevelRead()
     
     def sensorBiasSet(self, aValue):
         '''
             Set Sensor HV Bias Voltage [V]
         '''
-        #TODO: Need to to proper scaling aValue -> ADC count
-        self.ad55321Write( int(aValue) )
+        self.ad55321Write( int( ceil( aValue/0.122) ) )
     
     def femVoltageGet(self):
         '''
@@ -2673,6 +2681,13 @@ class LpdFemClient(FemClient):
 
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
 
+    def sensorBiasLevelRead(self):
+        '''
+            Helper function: Reads high voltage bias level and converts
+                from ADC counts into voltage
+        '''
+        value = self.ad5321Read()
+        return round( float( value * 500 / 4095.0), 2)
     
     def sensorAmpereRead(self, device, channel):
         '''

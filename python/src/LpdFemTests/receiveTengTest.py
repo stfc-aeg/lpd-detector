@@ -7,11 +7,7 @@
 # For detailed comments on animation and the techniqes used here, see
 # the wiki entry http://www.scipy.org/Cookbook/Matplotlib/Animations
 
-import os
-import sys
-import time
-import socket
-import datetime
+import os, sys, time, socket, datetime
 
 import numpy as np
 from matplotlib.figure import Figure
@@ -19,6 +15,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.cm as cm
 import matplotlib.pyplot
 import matplotlib
+
 # Import HDF5 Library; Disable its use if library not installed on PC
 try:
     import h5py
@@ -44,12 +41,9 @@ plotRows = 4
 plotCols = 1
 plotMaxPlots = plotRows * plotCols
 
-#TODO: Set this variable to False when using ASIC version 2
-bAsicV1 = True
 
 class RxThread(QtCore.QThread):
     
-#    def __init__(self, rxSignal, pcAddressConfig):
     def __init__(self, rxSignal, femHost, femPort):
         
         QtCore.QThread.__init__(self)
@@ -207,6 +201,8 @@ class BlitQT(FigureCanvas):
             for rawIdx in range(_32BitArrayLen):
                 _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] >> 16
                 _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] & 0xFFFF
+#                _16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
+#                _16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
 
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
@@ -268,11 +264,6 @@ class BlitQT(FigureCanvas):
             # Loop over the specified number of plots
             while bNextImageAvailable and currentPlot < plotMaxPlots:
                 
-#                # Determine where the current plot begins in the data
-#                #    Need to keep the first row blank if this is version 1 of the Asic
-#                if bAsicV1:
-#                    dataBeginning = 65536*currentPlot
-#                else:
                 dataBeginning = 65536*currentPlot
                 
                 # Get the first image of the image
