@@ -157,6 +157,22 @@ class LpdFemClient(FemClient):
     slowCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
     fastCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdCommandSequence/'
     
+    ########## Enumerated values for proposed API additions ##########
+    # -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- #
+    DETECTOR_TYPE_STANDALONE    = 0
+    DETECTOR_TYPE_SUPERMODULE   = 1
+    DETECTOR_TYPE_SINGLE_ASIC   = 2
+    DETECTOR_TYPE_TWO_TILE      = 3
+
+    RUN_TYPE_ASIC_DATA_VIA_PPC  = 0
+    RUN_TYPE_ASIC_DATA_DIRECT   = 1
+    RUN_TYPE_LL_DATA_GEN        = 2
+    RUN_TYPE_PPC_DATA_DIRECT    = 3
+    
+    ASIC_DATA_TYPE_SENSOR       = 0
+    ASIC_DATA_TYPE_RX_COUNTING  = 1
+    ASIC_DATA_TYPE_PSEUDO_RANDOM = 2
+    # -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- #
     
     def __init__(self, hostAddr=None, timeout=None):
         '''
@@ -207,6 +223,30 @@ class LpdFemClient(FemClient):
         self.femReadoutOperatingModeDummy      = 0
 
 
+        ########## Parameters that (may) need to exposed in API ##########
+        self.detectorType = LpdFemClient.DETECTOR_TYPE_SUPERMODULE
+        # femAsicModuleType = detectorType = detector_type ?
+        self.runType = LpdFemClient.RUN_TYPE_ASIC_DATA_VIA_PPC
+        # femDataSource = runType = run_type ?
+
+        self.asicDataType           = LpdFemClient.ASIC_DATA_TYPE_SENSOR
+        self.asicLocalClockFreq     = 0
+        self.asicSlowLoadMode       = 0
+        self.asicRxInvertData       = 0
+        self.asicRxStartFromFastStrobe  = 1
+        self.asicRxDelayOddChannels     = 1
+        self.asicSlowClockPhase         = 0
+        self.slowParamsFilename         = "preambleDelaySlowControl.xml"
+        self.fastCommandFilename        = "fast_readout_replacement_commands.xml"
+        self.asicReadoutSlowedClock     = 1
+        self.ppcMode                    = 0
+        self.ppcResetDelay              = 5
+        self.numberTestCycles           = 1 # 'num_cycles'  : 1, # repeat the test n times
+        self.rxPlayback                 = 0 # 'playback' : 0, # 1 for playback rx (to load files into ddr2 memory)
+        self.farmSelectMode             = 1 # '10g_farm_mode' : 1,   # 3 for farm mode with nic lists 
+        self.clearTenGigLut             = 0 #  'clear_10g_lut' : 0   # 1 to clear 10g lut tables before start
+
+        
         # ------------------ variables utilised by jac's script ------------------
 
         self.run_params = { 
@@ -229,19 +269,22 @@ class LpdFemClient(FemClient):
              # if asic clock is coming from on board FEM 100 MHz Osc
             'asic_local_clock_freq' : 0, # 0 = no scaling = 100 MHz
                                         # 1 = scaled down clock, usually = 10 MHz (set by dcm params)
-
+            
+            #TODO: asic_fast_dynamic => femFastCtrlDynamic ? 
             'asic_fast_dynamic' : 1, # 1 = New dynamic commands
 
             'asic_slow_load_mode' : 0, # 0 = parallel load
                                         # 1 = daisy chain
-                                        
+            
+            #TODO: asic_nr_images => femAsicColumns ? (femAsicColumnsPerFrame redundant?)                            
             'asic_nr_images' : 4,#5, # nr of images to capture per train
             #'asic_nr_images_per_frame' : 4, # nr of images put in each local link frame output by data rx
                                                 # now ignored and force to have all images in 1 frame
                                                 
             'asicrx_capture_asic_header_TEST_ONLY' : 0,  # = 0 (NORMAL OPERATION) ignore asic header bits 
                                                # = 1 (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
-
+            
+            #TODO: asicrx_gain_selection => femAsicGainOverride
             'asicrx_gain_selection' : 8,  # gain algorithm selection
                                     #  0000  normal gain selection     0
                                     #  1000  force select x100         8
@@ -298,23 +341,25 @@ class LpdFemClient(FemClient):
               '10g_farm_mode' : 1,   # 3 for farm mode with nic lists 
                       # 2 for farm mode with fixed ip host and multiple ports
                       # 1 for legacy non farm mode (only 1 ip host and port per link)  
-  
+              
+              #TODO: eth_ifg => tenGigInterframeGap
               'eth_ifg' : 0x000,   # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
+              #TODO: udp_pkt_len => tenGigUdpPacketLen
               'udp_pkt_len' : 8000, # default udp packet length in bytes (can be overriden in asic runs)
               'clear_10g_lut' : 0   # 1 to clear 10g lut tables before start
 #========
                     }  
      
         # look up table to match MAC addresses with IP for host NIC
-        global mac_ip_lut
-        mac_ip_lut = { '192.168.2.1' : '00-07-43-11-97-90',   # redbridge eth2
-                    '192.168.3.1' : '00-07-43-11-97-98',   # redbridge eth3
-                    '192.168.6.1' : '00-07-43-10-61-80',   # burntoak eth6
-                    '192.168.7.1' : '00-07-43-10-61-88',   # burntoak eth7
-                    '192.168.8.1' : '00-07-43-10-61-90',   # burntoak eth8
-                    '192.168.9.1' : '00-07-43-10-61-98',   # burntoak eth9
-                    '10.0.0.1' : '00-07-43-10-66-A0'   # tim's lab
-            }  
+#        global mac_ip_lut
+        self.mac_ip_lut = { '192.168.2.1' : '00-07-43-11-97-90',   # redbridge eth2
+                            '192.168.3.1' : '00-07-43-11-97-98',   # redbridge eth3
+                            '192.168.6.1' : '00-07-43-10-61-80',   # burntoak eth6
+                            '192.168.7.1' : '00-07-43-10-61-88',   # burntoak eth7
+                            '192.168.8.1' : '00-07-43-10-61-90',   # burntoak eth8
+                            '192.168.9.1' : '00-07-43-10-61-98',   # burntoak eth9
+                            '10.0.0.1' : '00-07-43-10-66-A0'   # tim's lab
+                            }  
 
         self.x10g_0 = {'fpga_mac'   : self.mac_addr_to_uint64('62-00-00-00-00-01'), # fpga
                        'fpga_ip'    : self.ip_addr_to_uint32('10.0.0.2'),
@@ -728,7 +773,7 @@ class LpdFemClient(FemClient):
         return 0
 
 #    def x10g_net_lut_setup_from_list(self, base_addr, net, myTBTest, mac_ip_lut):
-    def x10g_net_lut_setup_from_list(self, base_addr, mac_ip_lut):
+    def x10g_net_lut_setup_from_list(self, base_addr):
         """ Set up the LUTs for 10G Farm Mode from list of NIC port@host """
         
         i = 0;
@@ -740,7 +785,7 @@ class LpdFemClient(FemClient):
             #print "port ", port
             nic_host = new_nic[1]       
             print "host ", nic_host
-            nic_mac = mac_ip_lut[nic_host]              
+            nic_mac = self.mac_ip_lut[nic_host]              
             print "mac ", nic_mac 
             
 #            mac = myTBTest.mac_addr_to_uint64(nic_mac)
@@ -900,7 +945,7 @@ class LpdFemClient(FemClient):
                 self.x10g_set_farm_mode(x10g_base, 1)
             elif self.run_params['10g_farm_mode'] == 3:      
 #                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0, self, mac_ip_lut)
-                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0, mac_ip_lut)
+                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0)   #, mac_ip_lut)
                 self.x10g_set_farm_mode(x10g_base, 1)
             else: 
                 print "Not in Farm Mode."              
@@ -1796,6 +1841,19 @@ class LpdFemClient(FemClient):
 
     '''
         --------------------------------------------------------
+        Rationalised various bits of jac' s code into standalone functions
+        --------------------------------------------------------
+    '''
+
+    def send_long_asic_reset(self):
+        """ Send Long Reset to ASIC pin """
+        self.register_set_bit(self.fem_ctrl_0+10, 0)  
+        time.sleep(5) 
+        self.register_clear_bit(self.fem_ctrl_0+10, 0)  
+        return 0
+    
+    '''
+        --------------------------------------------------------
         --------------------------------------------------------
     '''
     
@@ -1805,7 +1863,7 @@ class LpdFemClient(FemClient):
         '''
 
         global asic_rx_start_pseudo_random    
-        global asic_rx_start_2tile  
+        global asic_rx_start_2tile
         global asic_rx_start_single_asic 
         global asic_rx_hdr_bits   # subtract from values above to capture asic headers
 
@@ -1828,8 +1886,8 @@ class LpdFemClient(FemClient):
 
         # offsets in bits for different gains for slow asic readout (Nb first 16 pixels are skipped over)
         asicrx_offset_slow_readout_x100 = 24 
-        asicrx_offset_slow_readout_x10 = 564 
-        asicrx_offset_slow_readout_x1 = 564 
+        asicrx_offset_slow_readout_x10  = 564 
+        asicrx_offset_slow_readout_x1   = 564 
 
         # Asic fast cmds 20 or 22 bits format   (only 22 bit commands work at present)
         fast_cmd_reg_size = 22
@@ -1852,9 +1910,10 @@ class LpdFemClient(FemClient):
 
 # send Reset to ASIC pin . Shouldn't be necessary? as short reset pulse is sent before trigger sequence.
         print "Send Long Reset to ASIC pin"
-        self.register_set_bit(self.fem_ctrl_0+10, 0)  
-        time.sleep(5) 
-        self.register_clear_bit(self.fem_ctrl_0+10, 0)  
+        self.send_long_asic_reset()
+#        self.register_set_bit(self.fem_ctrl_0+10, 0)  
+#        time.sleep(5) 
+#        self.register_clear_bit(self.fem_ctrl_0+10, 0)  
         
         self.clear_ll_monitor(self.llink_mon_asicrx)
         self.clear_ll_monitor(self.llink_mon_0)
