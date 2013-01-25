@@ -182,26 +182,14 @@ class LpdFemClient(FemClient):
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
 
-        #TODO: Remove these dummy variables when they become redundant
-        #TODO: THIS tenGig0 DICTIONARY IS CURRENTLY NOT BEEN USED !
-        #                    PLEASE SEE x10g_0 STRUCTURE INSTEAD
-        self.tenGig0 = {'SourceMacDummy'  : self.mac_addr_to_uint64('62-00-00-00-00-01'),
-                        'SourceIpDummy'   : self.ip_addr_to_uint32('10.0.0.2'),
-                        'SourcePortDummy' : self.prt_addr_to_uint16('0'),
-                        # Target PC:
-                        'DestMacDummy'  : self.mac_addr_to_uint64('00-07-43-10-65-A0'),
-                        'DestIpDummy'   : self.ip_addr_to_uint32('10.0.0.1'),
-                        'DestPortDummy' : self.prt_addr_to_uint16('61649')
-                        }
-        
+        # These dummy variables are all marked to be removed..!       
         self.tenGig1SourceMacDummy = 0
         self.tenGig1SourceIpDummy = 0 
         self.tenGig1SourcePortDummy = 0
         self.tenGig1DestMacDummy = 0  
         self.tenGig1DestIpDummy                = 0
         self.tenGig1DestPortDummy              = 0
-        self.tenGigInterframeGapDummy          = 0
-        self.tenGigUdpPacketLenDummy           = 0
+        
         self.femSendPpcResetDummy              = 0
         self.femFastCtrlDynamicDummy           = 0
         self.femSetupSlowCtrlBramDummy         = 0
@@ -229,10 +217,10 @@ class LpdFemClient(FemClient):
         self.runType = LpdFemClient.RUN_TYPE_ASIC_DATA_VIA_PPC
         # femDataSource = runType = run_type ?
 
-        self.asicDataType           = LpdFemClient.ASIC_DATA_TYPE_SENSOR
-        self.asicLocalClockFreq     = 0
-        self.asicSlowLoadMode       = 0
-        self.asicRxInvertData       = 0
+        self.asicDataType               = LpdFemClient.ASIC_DATA_TYPE_SENSOR
+        self.asicLocalClockFreq         = 0
+        self.asicSlowLoadMode           = 0
+        self.asicRxInvertData           = 0
         self.asicRxStartFromFastStrobe  = 1
         self.asicRxDelayOddChannels     = 1
         self.asicSlowClockPhase         = 0
@@ -361,12 +349,12 @@ class LpdFemClient(FemClient):
                             '10.0.0.1' : '00-07-43-10-66-A0'   # tim's lab
                             }  
 
-        self.x10g_0 = {'fpga_mac'   : self.mac_addr_to_uint64('62-00-00-00-00-01'), # fpga
-                       'fpga_ip'    : self.ip_addr_to_uint32('10.0.0.2'),
-                       'fpga_prt'   : self.prt_addr_to_uint16('0'),
-                       'nic_mac'    : self.mac_addr_to_uint64('00-07-43-10-65-A0'), # burntoak eth6
-                       'nic_ip'     : self.ip_addr_to_uint32('10.0.0.1'),
-                       'nic_prt'    : self.prt_addr_to_uint16('61649'),
+        self.tenGig0 = {'SourceMac'   : '62-00-00-00-00-01',  # self.mac_addr_to_uint64('62-00-00-00-00-01'), # fpga
+                       'SourceIp'    : '10.0.0.2',           # self.ip_addr_to_uint32('10.0.0.2'),
+                       'SourcePort'  : '0',                  # self.prt_addr_to_uint16('0'),
+                       'DestMac'     : '00-07-43-10-65-A0',  # self.mac_addr_to_uint64('00-07-43-10-65-A0'), # burntoak eth6
+                       'DestIp'      : '10.0.0.1',           # self.ip_addr_to_uint32('10.0.0.1'),
+                       'DestPort'    : '61649',              # self.prt_addr_to_uint16('61649'),
                        'enable'     : 1,        # enable this link
                        'link_nr'    : 1,        # link number
                        'data_gen'   : 1,        # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
@@ -398,6 +386,17 @@ class LpdFemClient(FemClient):
         mac_address = (mac_address | (mac_addr_list[3] << 24))
         mac_address = (mac_address | (mac_addr_list[4] << 32))
         mac_address = (mac_address | (mac_addr_list[5] << 40))
+        return mac_address
+
+    def mac_addr_to_string(self, mac_addr_uint64):
+        """ convert uint64 MAC address into 'u-v-w-x-y-z' string """
+        mac_address = ""
+        mac_address += "%02X" % ( (mac_addr_uint64 & (0xFF << 0)) >> 0) + "-"
+        mac_address += "%02X" % ( (mac_addr_uint64 & (0xFF << 8)) >> 8) + "-"
+        mac_address += "%02X" % ( (mac_addr_uint64 & (0xFF << 16)) >> 16) + "-"
+        mac_address += "%02X" % ( (mac_addr_uint64 & (0xFF << 24)) >> 24) + "-"
+        mac_address += "%02X" % ( (mac_addr_uint64 & (0xFF << 32)) >> 32) + "-"
+        mac_address += "%02X" % ( (mac_addr_uint64 & (0xFF << 40)) >> 40)
         return mac_address
     
     def ip_addr_to_uint32(self, ip_addr_str):
@@ -433,6 +432,10 @@ class LpdFemClient(FemClient):
     def prt_addr_to_uint16(self, prt_addr_str):
         #convert hex prt string to integer
         return int(prt_addr_str)
+
+    def prt_addr_to_str(self, prt_addr_uint16):
+        #convert hex prt string to integer
+        return str(prt_addr_uint16)
         
     def init_ppc_bram(self, base_addr, fpga_nr):
         """ This function initialises ppc bram with fpga id """
@@ -584,13 +587,13 @@ class LpdFemClient(FemClient):
         #set up MAC address for SRC & destination
         # src and dest mac, ip and ports are only used if Farm mode LUT is disabled
  
-        reg1 = (net['fpga_mac'] & 0x00000000FFFFFFFF)
+        reg1 = ( self.mac_addr_to_uint64(net['SourceMac']) & 0x00000000FFFFFFFF)
     
-        reg2b = ((net['fpga_mac'] & 0x0000FFFF00000000) >> 32)
-        reg2t = ((net['nic_mac'] & 0x000000000000FFFF) << 16)
+        reg2b = (( self.mac_addr_to_uint64(net['SourceMac']) & 0x0000FFFF00000000) >> 32)
+        reg2t = (( self.mac_addr_to_uint64(net['DestMac']) & 0x000000000000FFFF) << 16)
         reg2 = (reg2b | reg2t)
     
-        reg3 = (net['nic_mac'] >> 16)
+        reg3 = ( self.mac_addr_to_uint64(net['DestMac']) >> 16)
 
         #print "# fpga_mac_lower_32"
         self.rdmaWrite(base_addr+0, reg1)
@@ -604,23 +607,23 @@ class LpdFemClient(FemClient):
         reg6b = self.rdmaRead(base_addr+6, 1)[0]
 #        reg6b = 0xA1B2C3D4
         reg6b = (reg6b & 0x0000FFFF)
-        reg6 =  ( (net['nic_ip'] << 16)  & 0xFFFFFFFF )
+        reg6 =  ( ( self.ip_addr_to_uint32(net['DestIp']) << 16)  & 0xFFFFFFFF )
         reg6 =  (reg6 | reg6b)
     
-        reg7 =  (net['nic_ip'] >> 16)
-        reg7 = ( (reg7 | (net['fpga_ip'] << 16)) & 0xFFFFFFFF )
+        reg7 =  ( self.ip_addr_to_uint32(net['DestIp']) >> 16)
+        reg7 = ( (reg7 | ( self.ip_addr_to_uint32(net['SourceIp']) << 16)) & 0xFFFFFFFF )
         
         reg8t = self.rdmaRead(base_addr+8, 1)[0]    # 1 = one 32 bit unsigned integer
 #        reg8t = 0x9F8E7D6C
         reg8t = (reg8t & 0xFFFF0000)
-        reg8b =  (net['fpga_ip'] >> 16)
+        reg8b =  ( self.ip_addr_to_uint32(net['SourceIp']) >> 16)
         reg8 =  (reg8t | reg8b)
 
         # added jac from rob's latest code
 
         # set the udp source port
         reg8t = (reg8 & 0x0000FFFF)
-        reg8b = (net['fpga_prt'] << 16)
+        reg8b = ( self.prt_addr_to_uint16(net['SourcePort']) << 16)
         # port bytes need to be swapped in xaui register
         reg8bl = reg8b & 0x00ff
         reg8bu = reg8b & 0xff00
@@ -630,7 +633,7 @@ class LpdFemClient(FemClient):
         reg9t = self.rdmaRead(base_addr+9, 1)[0]    # nb this was wrong reg in rob's code
         # set the udp destination port
         reg9t = (reg9t & 0xFFFF0000)
-        reg9b = (net['nic_prt'] & 0x0000FFFF)
+        reg9b = ( self.prt_addr_to_uint16(net['DestPort']) & 0x0000FFFF)
         # port bytes need to be swapped in xaui register
         reg9bl = reg9b & 0x00ff
         reg9bu = reg9b & 0xff00
@@ -731,14 +734,10 @@ class LpdFemClient(FemClient):
     def x10g_net_lut_setup(self, base_addr):
         """ Set up the LUTs for 10G Farm Mode  """
          
-#        mac_low = ((net['nic_mac'] &  0xFFFFFFFF0000) >> 16)
-#        mac_high = ((net['nic_mac'] & 0x00000000FFFF) << 16) 
-        mac_low = ((self.x10g_0['nic_mac'] &  0xFFFFFFFF0000) >> 16)
-        mac_high = ((self.x10g_0['nic_mac'] & 0x00000000FFFF) << 16) 
-#        ip = net['nic_ip']
-#        port = net['nic_prt']
-        ip = self.x10g_0['nic_ip']
-        port = self.x10g_0['nic_prt']
+        mac_low  = (( self.mac_addr_to_uint64(self.tenGig0['DestMac']) &  0xFFFFFFFF0000) >> 16)
+        mac_high = (( self.mac_addr_to_uint64(self.tenGig0['DestMac']) & 0x00000000FFFF) << 16) 
+        ip = self.ip_addr_to_uint32(self.tenGig0['DestIp'])
+        port = self.prt_addr_to_uint16(self.tenGig0['DestPort'])
 
         # Example
         # '00-07-43-11-97-90'
@@ -754,10 +753,10 @@ class LpdFemClient(FemClient):
         ip = self.swap_endian(ip)  
 
 #        num_ports = net['num_prts']
-        num_ports = self.x10g_0('num_prts')
+        num_ports = self.tenGig0('num_prts')
         print "num ports =", num_ports
 #        num_frames = net['num_frames']
-        num_frames = self.x10g_0['num_frames']
+        num_frames = self.tenGig0['num_frames']
         
 #       for i in range (0, 256):
         nr_lut_entries = num_frames
@@ -779,7 +778,7 @@ class LpdFemClient(FemClient):
         i = 0;
         
 #        for nic in net['nic_list']:
-        for nic in self.x10g_0['nic_list']:
+        for nic in self.tenGig0['nic_list']:
             new_nic = nic.split('@')
             nic_port = new_nic[0]
             #print "port ", port
@@ -910,49 +909,49 @@ class LpdFemClient(FemClient):
         """ configure 10g link
         """
                
-        if self.x10g_0['enable'] == 1:
-            print "Configure 10G link nr", self.x10g_0['link_nr']
+        if self.tenGig0['enable'] == 1:
+            print "Configure 10G link nr", self.tenGig0['link_nr']
             
             if self.run_params['debug_level'] > 0:
-                pp.pprint(self.x10g_0)
+                pp.pprint(self.tenGig0)
                         
             x10g_base = self.udp_10g_0
             data_gen_base = self.data_gen_0
             ppc_bram_base = self.bram_ppc1
            
             udp_pkt_len = self.run_params['udp_pkt_len']
-            udp_frm_sze = self.x10g_0['frame_len']
+            udp_frm_sze = self.tenGig0['frame_len']
 
             eth_ifg = self.run_params['eth_ifg']
             enable_udp_packet_hdr = 4;  # enabled for python = 4  
             
             # legacy non farm mode. (farm mode = 1)
             self.setup_10g_udp_block(x10g_base, udp_pkt_len, udp_frm_sze, eth_ifg)
-            self.setup_10g_udp_net_block(x10g_base, self.x10g_0)    
+            self.setup_10g_udp_net_block(x10g_base, self.tenGig0)    
             self.setup_10g_packet_header(x10g_base, enable_udp_packet_hdr)
 
             self.setup_10g_rx_filter(x10g_base) # accepts any udp packets
 
             self.setup_10g_index_cycle(x10g_base, 0) # use 1st word in gen header for 10g index to port lut   
                                  
-#            print "Dump of Farm Mode LUT for xaui for Link %d" % self.x10g_0['link_nr']
+#            print "Dump of Farm Mode LUT for xaui for Link %d" % self.tenGig0['link_nr']
 #            self.dump_regs_hex(x10g_base+0x10000, 16) 
  
             print "Setting up Farm Mode LUT. May take several seconds... "                       
             if self.run_params['10g_farm_mode'] == 2:
-#                self.x10g_net_lut_setup(x10g_base, self.x10g_0)
+#                self.x10g_net_lut_setup(x10g_base, self.tenGig0)
                 self.x10g_net_lut_setup(x10g_base)
                 self.x10g_set_farm_mode(x10g_base, 1)
             elif self.run_params['10g_farm_mode'] == 3:      
-#                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0, self, mac_ip_lut)
-                self.x10g_net_lut_setup_from_list(x10g_base, self.x10g_0)   #, mac_ip_lut)
+#                self.x10g_net_lut_setup_from_list(x10g_base, self.tenGig0, self, mac_ip_lut)
+                self.x10g_net_lut_setup_from_list(x10g_base, self.tenGig0)   #, mac_ip_lut)
                 self.x10g_set_farm_mode(x10g_base, 1)
             else: 
                 print "Not in Farm Mode."              
                 self.x10g_set_farm_mode(x10g_base, 0)
 
             if self.run_params['debug_level'] > 3:                
-                print "Dump of Farm Mode LUT for xaui for Link %d" % self.x10g_0['link_nr']
+                print "Dump of Farm Mode LUT for xaui for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(x10g_base+0x10000, 16) 
                 self.dump_regs_hex(x10g_base+0x100f0, 16)                               
                 self.dump_regs_hex(x10g_base+0x10100, 16)
@@ -961,9 +960,9 @@ class LpdFemClient(FemClient):
                 self.dump_regs_hex(x10g_base+0x103f0, 16)
                     
             if self.run_params['debug_level'] > 1:
-                print "Dump of regs for xaui for Link %d" % self.x10g_0['link_nr']
+                print "Dump of regs for xaui for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(x10g_base, 16)
-                print "Dump of regs for Data Gen for Link %d" % self.x10g_0['link_nr']
+                print "Dump of regs for Data Gen for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(data_gen_base, 16)
   
 #            if (self.run_params['run_type'] == 0) or (self.run_params['run_type'] == 3):   # data via ppc
@@ -972,9 +971,9 @@ class LpdFemClient(FemClient):
 #                self.setup_10g_index_cycle(x10g_base, 0) # use 1st word in gen header for 10g index to port lut 
 
         
-#            if self.x10g_0['data_gen'] == 2:   # data source is ppc
+#            if self.tenGig0['data_gen'] == 2:   # data source is ppc
             if (self.run_params['run_type'] == "asic_data_via_ppc") or (self.run_params['run_type'] == "ppc_data_direct"):  # data with PPC ll header
-                self.setup_ppc_bram(ppc_bram_base, self.x10g_0['frame_len']) 
+                self.setup_ppc_bram(ppc_bram_base, self.tenGig0['frame_len']) 
                 self.setup_10g_index_cycle(x10g_base, 3) # use 4th word in ppc header for 10g index to port lut 
 
                 # reset ppc after bram has been set up... moved reset to top level
@@ -1011,7 +1010,7 @@ class LpdFemClient(FemClient):
         data_gen_base = self.data_gen_0
                 
         # final param to enable data gen headers for farm mode
-        self.setup_ll_frm_gen(data_gen_base, self.x10g_0['frame_len']/8, self.x10g_0['data_format'], self.x10g_0['num_frames']-1, 1)
+        self.setup_ll_frm_gen(data_gen_base, self.tenGig0['frame_len']/8, self.tenGig0['data_format'], self.tenGig0['num_frames']-1, 1)
         
         self.override_header_ll_frm_gen(data_gen_base, 0, 0)  # default is not to override index nr in header
                      
@@ -1668,14 +1667,14 @@ class LpdFemClient(FemClient):
         """
 
         if self.run_params['debug_level'] > 5:
-            print "Start 10G link nr", self.x10g_0['link_nr']
+            print "Start 10G link nr", self.tenGig0['link_nr']
 
         data_gen_base = self.data_gen_0
         ll_mon_base = LpdFemClient.llink_mon_0
         ppc_bram_base = self.bram_ppc1
 
       
-        time.sleep(self.x10g_0['delay'])   # wait before trigger
+        time.sleep(self.tenGig0['delay'])   # wait before trigger
 
 
         if self.run_params['run_type'] == "ll_data_gen": # ll data gen
@@ -1689,29 +1688,29 @@ class LpdFemClient(FemClient):
             while gen_busy == 1:
                 i=i+1
 #                link_busy = self.status_ll_frm_gen(data_gen_base)                
-#                print "Data Gen on 10G link nr %2d has busy flag = %d" %(self.x10g_0['link_nr'], link_busy)
-                print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs\r' %(self.x10g_0['link_nr'],i),
+#                print "Data Gen on 10G link nr %2d has busy flag = %d" %(self.tenGig0['link_nr'], link_busy)
+                print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs\r' %(self.tenGig0['link_nr'],i),
                 sys.stdout.flush() 
-#                print "1 WARNING Data Gen on 10G link nr %2d is still BUSY" %self.x10g_0['link_nr']
+#                print "1 WARNING Data Gen on 10G link nr %2d is still BUSY" %self.tenGig0['link_nr']
                 time.sleep(1)                    
                 link_busy = self.status_ll_frm_mon(ll_mon_base) 
                 gen_busy = self.status_ll_frm_gen(data_gen_base) 
 
         if self.run_params['10g_farm_mode'] == 3:
             i = 0
-            for nic in self.x10g_0['nic_list']:
+            for nic in self.tenGig0['nic_list']:
                 # give a soft reset to reset the frame nr in the headers (resets the the ip port nr)
                 # don't do this any earlier or won't trigger
                 #self.soft_reset_ll_frm_gen(data_gen_base) 
         
-                if self.x10g_0['data_gen'] == 1:
+                if self.tenGig0['data_gen'] == 1:
                     # check last transfer has completed                
                     link_busy = self.status_ll_frm_mon(ll_mon_base) 
                     gen_busy = self.status_ll_frm_gen(data_gen_base) 
                     t = 0
                     while gen_busy == 1:
                         t=t+1
-                        print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs\r' %(self.x10g_0['link_nr'],t),
+                        print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs\r' %(self.tenGig0['link_nr'],t),
                         sys.stdout.flush() 
                         time.sleep(1)                    
                         link_busy = self.status_ll_frm_mon(ll_mon_base) 
@@ -1726,7 +1725,7 @@ class LpdFemClient(FemClient):
                     
                     self.toggle_bits(self.fem_ctrl_0+0, 0)   
                     
-#                elif self.x10g_0['data_gen'] == 2:
+#                elif self.tenGig0['data_gen'] == 2:
                 elif self.run_params['run_type'] == "ppc_data_direct": # ppc dma ddr2 preprogrammed
                     
                     # check previous dma tx has completed
@@ -1734,7 +1733,7 @@ class LpdFemClient(FemClient):
                     t = 0;    
                     while busy == 1:
                         t=t+1
-                        print 'Waiting to Trigger Next Cycle : 10G link nr %2d DMA is BUSY ; waiting %d secs\r' %(self.x10g_0['link_nr'],t),
+                        print 'Waiting to Trigger Next Cycle : 10G link nr %2d DMA is BUSY ; waiting %d secs\r' %(self.tenGig0['link_nr'],t),
                         sys.stdout.flush() 
                         time.sleep(1)                    
                         busy = self.prev_dma_tx(ppc_bram_base) 
@@ -1746,7 +1745,7 @@ class LpdFemClient(FemClient):
                 i = i + 1
                 
         else:
-            if self.x10g_0['data_gen'] == 1:
+            if self.tenGig0['data_gen'] == 1:
                 # give a soft reset to reset the frame nr in the headers (resets the the ip port nr)
                 # don't do this any earlier or won't trigger
                 self.soft_reset_ll_frm_gen(data_gen_base)  
@@ -1950,7 +1949,7 @@ class LpdFemClient(FemClient):
                 self.start_10g_link()  
 #                self.send_trigger(run_params, myLpdFemClient) 
             
-            if self.x10g_0['data_gen'] == 2:
+            if self.tenGig0['data_gen'] == 2:
                 self.final_dma_tx(self.bram_ppc1)  
 
         
@@ -2265,97 +2264,73 @@ class LpdFemClient(FemClient):
         '''
             Get tenGig0SourceMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-#        return self.tenGig0SourceMacDummy
-        return self.tenGig0['SourceMacDummy']
-    
+        return self.tenGig0['SourceMac']
+
     def tenGig0SourceMacSet(self, aValue):
         '''
             Set tenGig0SourceMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-#        self.tenGig0SourceMacDummy = aValue
-        self.tenGig0['SourceMacDummy'] = aValue
+        self.tenGig0['SourceMac'] = aValue
     
     def tenGig0SourceIpGet(self):
         '''
             Get tenGig0SourceIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-#        return self.tenGig0SourceIpDummy
-        return self.tenGig0['SourceIpDummy']
+        return self.tenGig0['SourceIp']
     
     def tenGig0SourceIpSet(self, aValue):
         '''
             Set tenGig0SourceIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-#        self.tenGig0SourceIpDummy = aValue
-        self.tenGig0['SourceIpDummy'] = aValue
+        self.tenGig0['SourceIp'] = aValue
 
     def tenGig0SourcePortGet(self):
         '''
             Get tenGig0SourcePort
         '''
-        #TODO: This function needs to be updated to handle actual data
-#        return self.tenGig0SourcePortDummy
-        return self.tenGig0['SourcePortDummy']
+        return self.tenGig0['SourcePort']
     
     def tenGig0SourcePortSet(self, aValue):
         '''
             Set tenGig0SourcePort
         '''
-        #TODO: This function needs to be updated to handle actual data
-#        self.tenGig0SourcePortDummy = aValue
-        self.tenGig0['SourcePortDummy'] = aValue
+        self.tenGig0['SourcePort'] = aValue
         
     def tenGig0DestMacGet(self):
         '''
             Get tenGig0DestMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig0['DestMacDummy']
-#        return self.tenGig0DestMacDummy
+        return self.tenGig0['DestMac']
 
     def tenGig0DestMacSet(self, aValue):
         '''
             Set tenGig0DestMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig0['DestMacDummy'] = aValue
-#        self.tenGig0DestMacDummy = aValue
+        self.tenGig0['DestMac'] = aValue
 
     def tenGig0DestIpGet(self):
         '''
             Get tenGig0DestIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig0['DestIpDummy']
-#        return self.tenGig0DestIpDummy
+        return self.tenGig0['DestIp']
 
     def tenGig0DestIpSet(self, aValue):
         '''
             Set tenGig0DestIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig0['DestIpDummy'] = aValue
-#        self.tenGig0DestIpDummy = aValue
+        self.tenGig0['DestIp'] = aValue
 
     def tenGig0DestPortGet(self):
         '''
             Get tenGig0DestPort
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig0['DestPortDummy']
-#        return self.tenGig0DestPortDummy
+        return self.tenGig0['DestPort']
 
     def tenGig0DestPortSet(self, aValue):
         '''
             Set tenGig0DestPort
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig0['DestPortDummy'] = aValue
-#        self.tenGig0DestPortDummy = aValue
+        self.tenGig0['DestPort'] = aValue
 
     def tenGig1SourceMacGet(self):
         '''
@@ -2445,29 +2420,25 @@ class LpdFemClient(FemClient):
         '''
             Get tenGigInterframeGap
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGigInterframeGapDummy
+        return self.run_params['eth_ifg']
 
     def tenGigInterframeGapSet(self, aValue):
         '''
             Set tenGigInterframeGap
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGigInterframeGapDummy = aValue
+        self.run_params['eth_ifg'] = aValue
 
     def tenGigUdpPacketLenGet(self):
         '''
             Get tenGigUdpPacketLen
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGigUdpPacketLenDummy
+        return self.run_params['udp_pkt_len']
 
     def tenGigUdpPacketLenSet(self, aValue):
         '''
             Set tenGigUdpPacketLen
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGigUdpPacketLenDummy = aValue
+        self.run_params['udp_pkt_len'] = aValue
 
     def femSendPpcResetGet(self):
         '''
