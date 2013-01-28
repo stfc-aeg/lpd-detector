@@ -187,6 +187,47 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "tenGigUdpPacketLen =%d." % value
 
+        rc = theDevice.paramSet('femAsicFastCmdRegSize', 22)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicFastCmdRegSize set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicFastCmdRegSize')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicFastCmdRegSize get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicFastCmdRegSize =%d." % value
+
+#        rc = theDevice.paramSet('femAsicEnableMask', [1, 2, 3, 4])
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicEnableMask set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicEnableMask')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicEnableMask get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicEnableMask = .", value
+
+        rc = theDevice.paramSet('femAsicGainOverride', 8)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicGainOverride set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicGainOverride')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicGainOverride get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicGainOverride =%d." % value
+
+        rc = theDevice.paramSet('femDataSource', 0)
+        if rc != LpdDevice.ERROR_OK:
+            print "femDataSource set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femDataSource')
+        if rc != LpdDevice.ERROR_OK:
+            print "femDataSource get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femDataSource =%d." % value
+
+
     else:
 
         # Configure the FEM

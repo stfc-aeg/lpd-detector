@@ -159,10 +159,10 @@ class LpdFemClient(FemClient):
     
     ########## Enumerated values for proposed API additions ##########
     # -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- #
-    DETECTOR_TYPE_STANDALONE    = 0
-    DETECTOR_TYPE_SUPERMODULE   = 1
-    DETECTOR_TYPE_SINGLE_ASIC   = 2
-    DETECTOR_TYPE_TWO_TILE      = 3
+    ASIC_MODULE_TYPE_STANDALONE    = 0
+    ASIC_MODULE_TYPE_SUPERMODULE   = 1
+    ASIC_MODULE_TYPE_SINGLE_ASIC   = 2
+    ASIC_MODULE_TYPE_TWO_TILE      = 3
 
     RUN_TYPE_ASIC_DATA_VIA_PPC  = 0
     RUN_TYPE_ASIC_DATA_DIRECT   = 1
@@ -172,6 +172,7 @@ class LpdFemClient(FemClient):
     ASIC_DATA_TYPE_SENSOR       = 0
     ASIC_DATA_TYPE_RX_COUNTING  = 1
     ASIC_DATA_TYPE_PSEUDO_RANDOM = 2
+    
     # -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- #
     
     def __init__(self, hostAddr=None, timeout=None):
@@ -190,20 +191,17 @@ class LpdFemClient(FemClient):
         self.tenGig1DestIpDummy                = 0
         self.tenGig1DestPortDummy              = 0
         
-        self.femSendPpcResetDummy              = 0
-        self.femFastCtrlDynamicDummy           = 0
-        self.femSetupSlowCtrlBramDummy         = 0
-        self.femEnableTenGigDummy              = 0
-        self.femDataSourceDummy                = 0
-        self.femAsicCountingDataDummy          = 0
-        self.femAsicModuleTypeDummy            = 0
-        self.femAsicRxStartDelayDummy          = 0
-        self.femNumLocalLinkFramesDummy        = 0
-        self.femAsicFastCmdRegSizeDummy        = 0
-        self.femAsicEnableMaskDummy            = 0
-        self.femAsicColumnsDummy               = 0
-        self.femAsicColumnsPerFrameDummy       = 0
-        self.femAsicGainOverrideDummy          = 0
+        self.femSendPpcReset              = 0   #TODO: id variable? (controls  self.reset_ppc() ?)
+        self.femFastCtrlDynamic           = 0  #TODO: 'asic_fast_dynamic' ?
+        self.femSetupSlowCtrlBram         = 0  #TODO: Maps to which variable?
+#        self.femEnableTenGigDummy              = 0    #TODO: this actually found in the structure self.tenGig0 ?
+#        self.femDataSource                = 0  
+        self.femAsicCountingData          = 0  #TODO: Nearest is run_params['asic_data_type'] = 'asicrx_counting' ?
+        self.femAsicRxStartDelayDummy          = 0  #TODO: original variable removed?
+        self.femNumLocalLinkFramesDummy        = 0  #TODO: original variable = ??
+        self.femAsicFastCmdRegSize             = 22
+        self.femAsicEnableMask                 = [0, 0, 0, 0]
+        self.femAsicColumnsPerFrameDummy       = 0  #TODO: Redundant?
         self.femAsicSlowControlParamsDummy     = 0
         self.femAsicFastCmdSequenceDummy       = 0
         self.femAsicPixelFeedbackOverrideDummy = 0
@@ -212,7 +210,7 @@ class LpdFemClient(FemClient):
 
 
         ########## Parameters that (may) need to exposed in API ##########
-        self.detectorType = LpdFemClient.DETECTOR_TYPE_SUPERMODULE
+#        self.detectorType = LpdFemClient.DETECTOR_TYPE_SUPERMODULE
         # femAsicModuleType = detectorType = detector_type ?
         self.runType = LpdFemClient.RUN_TYPE_ASIC_DATA_VIA_PPC
         # femDataSource = runType = run_type ?
@@ -238,17 +236,26 @@ class LpdFemClient(FemClient):
         # ------------------ variables utilised by jac's script ------------------
 
         self.run_params = { 
-            'detector_type' : # "fem_standalone", # FEM Standalone 
-                        # "single_asic_module",# Single ASIC test module
-                        # "two_tile_module", # 2-Tile module
-                         "supermodule", # Supermodule
-           
-            'run_type' :   "asic_data_via_ppc",  # ASIC data (via PPC) [Standard Operation] 
+            'femAsicModuleType' : # self.ASIC_MODULE_TYPE_STANDALONE, # FEM Standalone 
+                        # self.ASIC_MODULE_TYPE_SINGLE_ASIC,# Single ASIC test module
+                        # self.ASIC_MODULE_TYPE_TWO_TILE, # 2-Tile module
+                         self.ASIC_MODULE_TYPE_SUPERMODULE, # Supermodule
+
+#            'detector_type' : # "fem_standalone", # FEM Standalone 
+#                        # "single_asic_module",# Single ASIC test module
+#                        # "two_tile_module", # 2-Tile module
+#                         "supermodule", # Supermodule
+
+            'femDataSource' :   self.RUN_TYPE_ASIC_DATA_VIA_PPC,  # ASIC data (via PPC) [Standard Operation]
+                      # self.RUN_TYPE_ASIC_DATA_DIRECT,   # ASIC data direct from Rx block
+                      # self.RUN_TYPE_LL_DATA_GEN,   # LL Data Gen  (simulated data)
+                      # self.RUN_TYPE_PPC_DATA_DIRECT, #  preprogrammed data DDR2 (simulated data)
+#            'run_type' :   "asic_data_via_ppc",  # ASIC data (via PPC) [Standard Operation] 
                       # "asic_data_direct",   # ASIC data direct from Rx block
                       # "ll_data_gen",   # LL Data Gen  (simulated data)
                       # "ppc_data_direct", #  preprogrammed data DDR2 (simulated data)
 
-#====== params for run type = "asic_data_via_ppc" or "asic_data_direct"
+#====== params for run type = self.RUN_TYPE_ASIC_DATA_VIA_PPC or self.RUN_TYPE_ASIC_DATA_DIRECT
 
             'asic_data_type' :   "asic_sensor", # Asic sensor data [Standard Operation Real Data]
                          #"asicrx_counting", # Asic Rx Block internally generated counting data (simulated data)
@@ -264,8 +271,9 @@ class LpdFemClient(FemClient):
             'asic_slow_load_mode' : 0, # 0 = parallel load
                                         # 1 = daisy chain
             
-            #TODO: asic_nr_images => femAsicColumns ? (femAsicColumnsPerFrame redundant?)                            
-            'asic_nr_images' : 4,#5, # nr of images to capture per train
+            #TODO: asic_nr_images => femAsicColumns ? (femAsicColumnsPerFrame redundant?)
+            'femAsicColumns' : 4,#5, # nr of images to capture per train
+#            'asic_nr_images' : 4,#5, # nr of images to capture per train
             #'asic_nr_images_per_frame' : 4, # nr of images put in each local link frame output by data rx
                                                 # now ignored and force to have all images in 1 frame
                                                 
@@ -273,7 +281,8 @@ class LpdFemClient(FemClient):
                                                # = 1 (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
             
             #TODO: asicrx_gain_selection => femAsicGainOverride
-            'asicrx_gain_selection' : 8,  # gain algorithm selection
+            'femAsicGainOverride' : 8,  # gain algorithm selection
+#            'asicrx_gain_selection' : 8,  # gain algorithm selection
                                     #  0000  normal gain selection     0
                                     #  1000  force select x100         8
                                     #  1001  force select x10          9
@@ -331,9 +340,10 @@ class LpdFemClient(FemClient):
                       # 1 for legacy non farm mode (only 1 ip host and port per link)  
               
               #TODO: eth_ifg => tenGigInterframeGap
-              'eth_ifg' : 0x000,   # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
+#              'tenGigInterframeGap' : 0x000,   # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
+              'tenGigInterframeGap' : 0x000,   # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
               #TODO: udp_pkt_len => tenGigUdpPacketLen
-              'udp_pkt_len' : 8000, # default udp packet length in bytes (can be overriden in asic runs)
+              'tenGigUdpPacketLen' : 8000, # default udp packet length in bytes (can be overriden in asic runs)
               'clear_10g_lut' : 0   # 1 to clear 10g lut tables before start
 #========
                     }  
@@ -892,13 +902,13 @@ class LpdFemClient(FemClient):
         # set asic clock freq
         self.set_asic_clock_freq(self.fem_ctrl_0, self.run_params['asic_local_clock_freq'])    # 0 = 100 Mhz, 1 = div clock 10 MHz
       
-        if self.run_params['run_type'] == "asic_data_via_ppc":
+        if self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000001)  # asic data via ppc
-        elif self.run_params['run_type'] == "asic_data_direct":
+        elif self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_DIRECT:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000102)  # aisc direct to 10g
-        elif self.run_params['run_type'] == "ll_data_gen":
+        elif self.run_params['femDataSource'] == self.RUN_TYPE_LL_DATA_GEN:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000000)  # data generator
-        elif self.run_params['run_type'] == "ppc_data_direct":
+        elif self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000001)  # ppc generated data
         else:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000001)  # asic data via ppc
@@ -919,10 +929,10 @@ class LpdFemClient(FemClient):
             data_gen_base = self.data_gen_0
             ppc_bram_base = self.bram_ppc1
            
-            udp_pkt_len = self.run_params['udp_pkt_len']
+            udp_pkt_len = self.run_params['tenGigUdpPacketLen']
             udp_frm_sze = self.tenGig0['frame_len']
 
-            eth_ifg = self.run_params['eth_ifg']
+            eth_ifg = self.run_params['tenGigInterframeGap']
             enable_udp_packet_hdr = 4;  # enabled for python = 4  
             
             # legacy non farm mode. (farm mode = 1)
@@ -965,14 +975,14 @@ class LpdFemClient(FemClient):
                 print "Dump of regs for Data Gen for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(data_gen_base, 16)
   
-#            if (self.run_params['run_type'] == 0) or (self.run_params['run_type'] == 3):   # data via ppc
+#            if (self.run_params['femDataSource'] == 0) or (self.run_params['run_type'] == 3):   # data via ppc
 #                self.setup_10g_index_cycle(x10g_base, 3) # use 4th word in ppc header for 10g index to port lut 
 #            else:
 #                self.setup_10g_index_cycle(x10g_base, 0) # use 1st word in gen header for 10g index to port lut 
 
         
 #            if self.tenGig0['data_gen'] == 2:   # data source is ppc
-            if (self.run_params['run_type'] == "asic_data_via_ppc") or (self.run_params['run_type'] == "ppc_data_direct"):  # data with PPC ll header
+            if (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT):  # data with PPC ll header
                 self.setup_ppc_bram(ppc_bram_base, self.tenGig0['frame_len']) 
                 self.setup_10g_index_cycle(x10g_base, 3) # use 4th word in ppc header for 10g index to port lut 
 
@@ -1030,7 +1040,7 @@ class LpdFemClient(FemClient):
         # duration (in slowed down asic clock cycles) for slow readout clock
         # each image takes ~ 480x22=1056 clocks to read out, plus allowance for setup time
 
-        asic_slow_readout_duration = self.run_params['asic_nr_images'] * 1056 + 5000
+        asic_slow_readout_duration = self.run_params['femAsicColumns'] * 1056 + 5000
         self.rdmaWrite(self.fem_ctrl_0+12, asic_slow_readout_duration)  
 
         if self.run_params['slow_params_file_type'] == 1:
@@ -1099,7 +1109,7 @@ class LpdFemClient(FemClient):
         else:
             fast_cmd_file_name = self.run_params['fast_cmd_sensor_data_file_name']
 
-        [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new(fast_cmd_file_name, fast_cmd_reg_size)
+        [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new(fast_cmd_file_name, self.femAsicFastCmdRegSize)
                        
         print "fast cmds no_of_words, no_of_nops: ", no_of_words, no_of_nops
 
@@ -1145,10 +1155,10 @@ class LpdFemClient(FemClient):
 #        """ configure asic fast command module
 #             """                        
 #        if self.run_params['asic_data_type'] == "asic_pseudo_random":
-##                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_random_gaps.txt',fast_cmd_reg_size)
-#            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_random_gaps.txt',fast_cmd_reg_size)
+##                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_random_gaps.txt',self.femAsicFastCmdRegSize)
+#            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_random_gaps.txt',self.femAsicFastCmdRegSize)
 #        else:
-##            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_readout_4f_gaps.txt',fast_cmd_reg_size)
+##            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_readout_4f_gaps.txt',self.femAsicFastCmdRegSize)
 #             
 #            # ''' XML implementation '''
 #            fileCmdSeq = LpdCommandSequenceParser( self.fastCtrlPath + 'fast_readout_replacement_commands.xml', fromFile=True)
@@ -1174,43 +1184,42 @@ class LpdFemClient(FemClient):
         # Asic Rx 128 bit channel enable masks
         
         # Use list instead of array
-        mask_list = [0, 0, 0, 0]
         if self.run_params['asic_data_type'] == "asicrx_counting":    # enable all channels for dummy data from asic rx    
-            mask_list[0] = 0xffffffff
-            mask_list[1] = 0xffffffff
-            mask_list[2] = 0xffffffff
-            mask_list[3] = 0xffffffff
+            self.femAsicEnableMask[0] = 0xffffffff
+            self.femAsicEnableMask[1] = 0xffffffff
+            self.femAsicEnableMask[2] = 0xffffffff
+            self.femAsicEnableMask[3] = 0xffffffff
         else: # Enable only relevant channel for single ASIC test module
-            if self.run_params['detector_type'] == "single_asic_module": # Enable 2 channel for single ASIC test module
-                mask_list[0] = 0x00000001
-            elif self.run_params['detector_type'] == "two_tile_module": #Enable 16 channels for 2-Tile
+            if self.run_params['femAsicModuleType'] == self.ASIC_MODULE_TYPE_SINGLE_ASIC: # Enable 2 channel for single ASIC test module
+                self.femAsicEnableMask[0] = 0x00000001
+            elif self.run_params['femAsicModuleType'] == self.ASIC_MODULE_TYPE_TWO_TILE: #Enable 16 channels for 2-Tile
 # new mapping  working
-                mask_list[0] = 0x0f0000f0
-                mask_list[1] = 0x0f0000f0
-                mask_list[2] = 0x00000000
-                mask_list[3] = 0x00000000
+                self.femAsicEnableMask[0] = 0x0f0000f0
+                self.femAsicEnableMask[1] = 0x0f0000f0
+                self.femAsicEnableMask[2] = 0x00000000
+                self.femAsicEnableMask[3] = 0x00000000
 # old mapping
-#                mask_list[0] = 0x00ff0000
-#                mask_list[1] = 0x00000000
-#                mask_list[2] = 0x0000ff00
-#                mask_list[3] = 0x00000000
+#                self.femAsicEnableMask[0] = 0x00ff0000
+#                self.femAsicEnableMask[1] = 0x00000000
+#                self.femAsicEnableMask[2] = 0x0000ff00
+#                self.femAsicEnableMask[3] = 0x00000000
 # take all channels whilst testing
-#                mask_list[0] = 0xffffffff
-#                mask_list[1] = 0xffffffff
-#                mask_list[2] = 0xffffffff
-#                mask_list[3] = 0xffffffff
+#                self.femAsicEnableMask[0] = 0xffffffff
+#                self.femAsicEnableMask[1] = 0xffffffff
+#                self.femAsicEnableMask[2] = 0xffffffff
+#                self.femAsicEnableMask[3] = 0xffffffff
             else:       # Enable all channels for supermodule
-                mask_list[0] = 0xffffffff
-                mask_list[1] = 0xffffffff
-                mask_list[2] = 0xffffffff
-                mask_list[3] = 0xffffffff
+                self.femAsicEnableMask[0] = 0xffffffff
+                self.femAsicEnableMask[1] = 0xffffffff
+                self.femAsicEnableMask[2] = 0xffffffff
+                self.femAsicEnableMask[3] = 0xffffffff
 
-        no_asic_cols = self.run_params['asic_nr_images'] #+ 1               
+        no_asic_cols = self.run_params['femAsicColumns'] #+ 1               
         # no_asic_cols_per_frm = self.run_params['asic_nr_images_per_frame'] #+ 1              
-        no_asic_cols_per_frm = self.run_params['asic_nr_images']     # force all images to be in one frame               
+        no_asic_cols_per_frm = self.run_params['femAsicColumns']     # force all images to be in one frame               
              
         #set up the ASIC RX IP block
-        self.fem_asic_rx_setup(self.asic_srx_0 , mask_list, no_asic_cols, no_asic_cols_per_frm)
+        self.fem_asic_rx_setup(self.asic_srx_0 , self.femAsicEnableMask, no_asic_cols, no_asic_cols_per_frm)
         
         # data source - self test
         if self.run_params['asic_data_type'] == "asicrx_counting":            
@@ -1236,7 +1245,7 @@ class LpdFemClient(FemClient):
         if self.run_params['asic_data_type'] == "asic_pseudo_random":
             asic_rx_start_delay = asic_rx_start_pseudo_random
         else:
-            if self.run_params['detector_type'] == "single_asic_module":
+            if self.run_params['femAsicModuleType'] == self.ASIC_MODULE_TYPE_SINGLE_ASIC:
                 asic_rx_start_delay = asic_rx_start_single_asic
             else:           
                 asic_rx_start_delay = asic_rx_start_2tile 
@@ -1244,11 +1253,11 @@ class LpdFemClient(FemClient):
             if self.run_params['asicrx_capture_asic_header_TEST_ONLY'] == 1:
                 asic_rx_start_delay = asic_rx_start_delay - asic_rx_hdr_bits
             elif self.run_params['asic_readout_with_slow_clock'] == 1:  # following offsets skip 1st row of pixels
-                if self.run_params['asicrx_gain_selection'] == 8:
+                if self.run_params['femAsicGainOverride'] == 8:
                     asic_rx_start_delay = asic_rx_start_delay + asicrx_offset_slow_readout_x100
-                elif self.run_params['asicrx_gain_selection'] == 9:
+                elif self.run_params['femAsicGainOverride'] == 9:
                     asic_rx_start_delay = asic_rx_start_delay + asicrx_offset_slow_readout_x10
-                elif self.run_params['asicrx_gain_selection'] == 11:
+                elif self.run_params['femAsicGainOverride'] == 11:
                     asic_rx_start_delay = asic_rx_start_delay + asicrx_offset_slow_readout_x1
 
 
@@ -1270,10 +1279,10 @@ class LpdFemClient(FemClient):
         # send triggers to data generators
         #--------------------------------------------------------------------
                                  
-        if self.run_params['run_type'] == "ll_data_gen":            
+        if self.run_params['femDataSource'] == self.RUN_TYPE_LL_DATA_GEN:            
             print "Trigger Data Gen"
             self.toggle_bits(self.fem_ctrl_0+0, 0) # trigger to local link frame gen 
-        elif (self.run_params['run_type'] == "asic_data_via_ppc") or (self.run_params['run_type'] == "asic_data_direct"):             
+        elif (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_DIRECT):             
             print "Trigger Asic"
 #            print "------------------ > self.fem_ctrl_0 = ", self.fem_ctrl_0
             self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asic rx
@@ -1644,7 +1653,7 @@ class LpdFemClient(FemClient):
         #  1011  force select x1          11
         #  1111  force error condition ?  15
  
-        gain_select = self.run_params['asicrx_gain_selection']
+        gain_select = self.run_params['femAsicGainOverride']
         reg_addr = self.asic_srx_0+0
         prev_value = self.rdmaRead(reg_addr, 1)[0] 
         new_value = prev_value | (gain_select & 0x0000000f)
@@ -1677,7 +1686,7 @@ class LpdFemClient(FemClient):
         time.sleep(self.tenGig0['delay'])   # wait before trigger
 
 
-        if self.run_params['run_type'] == "ll_data_gen": # ll data gen
+        if self.run_params['femDataSource'] == self.RUN_TYPE_LL_DATA_GEN: # ll data gen
           
             # check last cycle has completed                
             link_busy = self.status_ll_frm_mon(ll_mon_base) 
@@ -1726,7 +1735,7 @@ class LpdFemClient(FemClient):
                     self.toggle_bits(self.fem_ctrl_0+0, 0)   
                     
 #                elif self.tenGig0['data_gen'] == 2:
-                elif self.run_params['run_type'] == "ppc_data_direct": # ppc dma ddr2 preprogrammed
+                elif self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT: # ppc dma ddr2 preprogrammed
                     
                     # check previous dma tx has completed
                     busy = self.prev_dma_tx(ppc_bram_base) 
@@ -1870,7 +1879,7 @@ class LpdFemClient(FemClient):
         global asicrx_offset_slow_readout_x10   # add to skip 1st row of pixels with slowed down readout
         global asicrx_offset_slow_readout_x1   # add to skip 1st row of pixels with slowed down readout
 
-        global fast_cmd_reg_size
+#        global fast_cmd_reg_size
    
         global pp
 
@@ -1889,7 +1898,7 @@ class LpdFemClient(FemClient):
         asicrx_offset_slow_readout_x1   = 564 
 
         # Asic fast cmds 20 or 22 bits format   (only 22 bit commands work at present)
-        fast_cmd_reg_size = 22
+#        self.femAsicFastCmdRegSize = 22
 
         print "=======================================================================" 
   
@@ -1923,14 +1932,14 @@ class LpdFemClient(FemClient):
         # set up the 10g link params
         self.config_10g_link()         
 
-        if (self.run_params['run_type'] == "asic_data_via_ppc") or (self.run_params['run_type'] == "ppc_data_direct"):  # runs with ppc
+        if (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
             self.reset_ppc()         
 
         # set up data gen - not necessary for actual data but leave alone, "just in case"
         self.config_data_gen()         
 
         # set up asic blocks
-        if (self.run_params['run_type'] == "asic_data_via_ppc") or (self.run_params['run_type'] == "asic_data_direct"):  # data from asic
+        if (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_DIRECT):  # data from asic
             self.config_asic_modules()
 
             # set length of strobe from fast command file to slow down asic readout
@@ -2420,125 +2429,119 @@ class LpdFemClient(FemClient):
         '''
             Get tenGigInterframeGap
         '''
-        return self.run_params['eth_ifg']
+        return self.run_params['tenGigInterframeGap']
 
     def tenGigInterframeGapSet(self, aValue):
         '''
             Set tenGigInterframeGap
         '''
-        self.run_params['eth_ifg'] = aValue
+        self.run_params['tenGigInterframeGap'] = aValue
 
     def tenGigUdpPacketLenGet(self):
         '''
             Get tenGigUdpPacketLen
         '''
-        return self.run_params['udp_pkt_len']
+        return self.run_params['tenGigUdpPacketLen']
 
     def tenGigUdpPacketLenSet(self, aValue):
         '''
             Set tenGigUdpPacketLen
         '''
-        self.run_params['udp_pkt_len'] = aValue
+        self.run_params['tenGigUdpPacketLen'] = aValue
 
     def femSendPpcResetGet(self):
         '''
             Get femSendPpcReset
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.femSendPpcResetDummy
+        return self.femSendPpcReset
 
     def femSendPpcResetSet(self, aValue):
         '''
             Set femSendPpcReset
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.femSendPpcResetDummy = aValue
+        self.femSendPpcReset = aValue
 
     def femFastCtrlDynamicGet(self):
         '''
             Get femFastCtrlDynamic
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.femFastCtrlDynamicDummy
+        return self.femFastCtrlDynamic
 
     def femFastCtrlDynamicSet(self, aValue):
         '''
             Set femFastCtrlDynamic
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.femFastCtrlDynamicDummy = aValue
+        self.femFastCtrlDynamic = aValue
 
     def femSetupSlowCtrlBramGet(self):
         '''
             Get femSetupSlowCtrlBram
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.femSetupSlowCtrlBramDummy
+        return self.femSetupSlowCtrlBram
 
     def femSetupSlowCtrlBramSet(self, aValue):
         '''
             Set femSetupSlowCtrlBram
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.femSetupSlowCtrlBramDummy = aValue
+        self.femSetupSlowCtrlBram = aValue
 
     def femEnableTenGigGet(self):
         '''
             Get femEnableTenGig
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femEnableTenGigDummy
+        return self.tenGig0['enable']
 
     def femEnableTenGigSet(self, aValue):
         '''
             Set femEnableTenGig
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femEnableTenGigDummy = aValue
+        self.tenGig0['enable'] = aValue
 
     def femDataSourceGet(self):
         '''
             Get femDataSource
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.femDataSourceDummy
+        return self.femDataSource
 
     def femDataSourceSet(self, aValue):
         '''
             Set femDataSource
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.femDataSourceDummy = aValue
+        self.femDataSource = aValue
 
     def femAsicCountingDataGet(self):
         '''
             Get femAsicCountingData
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.femAsicCountingDataDummy
+        return self.femAsicCountingData
 
     def femAsicCountingDataSet(self, aValue):
         '''
             Set femAsicCountingData
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.femAsicCountingDataDummy = aValue
+        self.femAsicCountingData = aValue
 
     def femAsicModuleTypeGet(self):
         '''
             Get femAsicModuleType
         '''
-        #TODO: Variable type changed from integer to string ?
-        return self.run_params['detector_type']
-#        return self.femAsicModuleTypeDummy
+        return self.run_params['femAsicModuleType']
 
     def femAsicModuleTypeSet(self, aValue):
         '''
             Set femAsicModuleType
         '''
-        #TODO: Variable type changed from integer to string ?
-        self.run_params['detector_type'] = aValue
-#        self.femAsicModuleTypeDummy = aValue
+        self.run_params['femAsicModuleType'] = aValue
 
     def femAsicRxStartDelayGet(self):
         '''
@@ -2573,70 +2576,64 @@ class LpdFemClient(FemClient):
             Get femAsicFastCmdRegSize
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.femAsicFastCmdRegSizeDummy
+        return self.femAsicFastCmdRegSize
 
     def femAsicFastCmdRegSizeSet(self, aValue):
         '''
             Set femAsicFastCmdRegSize
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.femAsicFastCmdRegSizeDummy = aValue
+        self.femAsicFastCmdRegSize = aValue
 
     def femAsicEnableMaskGet(self):
         '''
             Get femAsicEnableMask
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femAsicEnableMaskDummy
+        return self.femAsicEnableMask
 
     def femAsicEnableMaskSet(self, aValue):
         '''
             Set femAsicEnableMask
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femAsicEnableMaskDummy = aValue
+        self.femAsicEnableMask = aValue
 
     def femAsicColumnsGet(self):
         '''
             Get femAsicColumns
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femAsicColumnsDummy
+        return self.run_paramm['femAsicColumns']
 
     def femAsicColumnsSet(self, aValue):
         '''
             Set femAsicColumns
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femAsicColumnsDummy = aValue
+        self.run_paramm['femAsicColumns'] = aValue
 
-    def femAsicColumnsPerFrameGet(self):
-        '''
-            Get femAsicColumnsPerFrame
-        '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femAsicColumnsPerFrameDummy
-
-    def femAsicColumnsPerFrameSet(self, aValue):
-        '''
-            Set femAsicColumnsPerFrame
-        '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femAsicColumnsPerFrameDummy = aValue
+#    def femAsicColumnsPerFrameGet(self):
+#        '''
+#            Get femAsicColumnsPerFrame
+#        '''
+#        #TODO: This function needs to be updated to handle actual data
+#        return self.femAsicColumnsPerFrameDummy
+#
+#    def femAsicColumnsPerFrameSet(self, aValue):
+#        '''
+#            Set femAsicColumnsPerFrame
+#        '''
+#        #TODO: This function needs to be updated to handle actual data
+#        self.femAsicColumnsPerFrameDummy = aValue
 
     def femAsicGainOverrideGet(self):
         '''
             Get femAsicGainOverride
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femAsicGainOverrideDummy
+        return self.run_params['femAsicGainOverride']
 
     def femAsicGainOverrideSet(self, aValue):
         '''
             Set femAsicGainOverride
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femAsicGainOverrideDummy = aValue
+        self.run_params['femAsicGainOverride'] = aValue
 
     def femAsicSlowControlParamsGet(self):
         '''
