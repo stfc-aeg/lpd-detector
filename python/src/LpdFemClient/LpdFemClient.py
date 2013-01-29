@@ -183,37 +183,26 @@ class LpdFemClient(FemClient):
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
 
-        # These dummy variables are all marked to be removed..!       
-        self.tenGig1SourceMacDummy = 0
-        self.tenGig1SourceIpDummy = 0 
-        self.tenGig1SourcePortDummy = 0
-        self.tenGig1DestMacDummy = 0  
-        self.tenGig1DestIpDummy                = 0
-        self.tenGig1DestPortDummy              = 0
-        
-        self.femSendPpcReset              = 0   #TODO: id variable? (controls  self.reset_ppc() ?)
-        self.femFastCtrlDynamic           = 0  #TODO: 'asic_fast_dynamic' ?
-        self.femSetupSlowCtrlBram         = 0  #TODO: Maps to which variable?
-#        self.femEnableTenGigDummy              = 0    #TODO: this actually found in the structure self.tenGig0 ?
-#        self.femDataSource                = 0  
-        self.femAsicCountingData          = 0  #TODO: Nearest is run_params['asic_data_type'] = 'asicrx_counting' ?
-        self.femAsicRxStartDelayDummy          = 0  #TODO: original variable removed?
-        self.femNumLocalLinkFramesDummy        = 0  #TODO: original variable = ??
+        # API variables extracted from jac's functions
         self.femAsicFastCmdRegSize             = 22
         self.femAsicEnableMask                 = [0, 0, 0, 0]
+        self.femAsicSlowControlParams          = ""
+        self.femAsicFastCmdSequence            = ""
+
+        ######## API parameters: Uncertain mapping? ########
+
+        self.femSendPpcReset              = 0  #TODO: Used to control executing:  self.reset_ppc()
+        self.femSetupSlowCtrlBram         = 0  #TODO: Used to control executing:    .fem_slow_ctrl_setup()
+        self.femAsicCountingData          = 0  #TODO: Boolean has become: run_params['asic_data_type'] == 'asicrx_counting'
+        self.femAsicRxStartDelayDummy          = 0  #TODO: original variable removed?
+        self.femNumLocalLinkFramesDummy        = 0  #TODO: Used to be a variable controlling execution of: config_data_gen() => .setup_ll_frm_gen()
         self.femAsicColumnsPerFrameDummy       = 0  #TODO: Redundant?
-        self.femAsicSlowControlParamsDummy     = 0
-        self.femAsicFastCmdSequenceDummy       = 0
-        self.femAsicPixelFeedbackOverrideDummy = 0
-        self.femAsicPixelSelfTestOverrideDummy = 0
-        self.femReadoutOperatingModeDummy      = 0
+        self.femAsicPixelFeedbackOverrideDummy = 0  #TODO: Should this be implemented? (How?)
+        self.femAsicPixelSelfTestOverrideDummy = 0  #TODO: Should this be implemented? (How?)
+        self.femReadoutOperatingMode      = 0   #TODO: Functionality not yet implemented
 
 
         ########## Parameters that (may) need to exposed in API ##########
-#        self.detectorType = LpdFemClient.DETECTOR_TYPE_SUPERMODULE
-        # femAsicModuleType = detectorType = detector_type ?
-        self.runType = LpdFemClient.RUN_TYPE_ASIC_DATA_VIA_PPC
-        # femDataSource = runType = run_type ?
 
         self.asicDataType               = LpdFemClient.ASIC_DATA_TYPE_SENSOR
         self.asicLocalClockFreq         = 0
@@ -265,13 +254,12 @@ class LpdFemClient(FemClient):
             'asic_local_clock_freq' : 0, # 0 = no scaling = 100 MHz
                                         # 1 = scaled down clock, usually = 10 MHz (set by dcm params)
             
-            #TODO: asic_fast_dynamic => femFastCtrlDynamic ? 
-            'asic_fast_dynamic' : 1, # 1 = New dynamic commands
+            'femFastCtrlDynamic' : 1, # 1 = New dynamic commands
+#            'asic_fast_dynamic' : 1, # 1 = New dynamic commands
 
             'asic_slow_load_mode' : 0, # 0 = parallel load
                                         # 1 = daisy chain
             
-            #TODO: asic_nr_images => femAsicColumns ? (femAsicColumnsPerFrame redundant?)
             'femAsicColumns' : 4,#5, # nr of images to capture per train
 #            'asic_nr_images' : 4,#5, # nr of images to capture per train
             #'asic_nr_images_per_frame' : 4, # nr of images put in each local link frame output by data rx
@@ -376,6 +364,23 @@ class LpdFemClient(FemClient):
                        'nic_list'   : [ '61649@192.168.3.1' ]
                       }
 
+        # Placeholder; Not really used..
+        self.tenGig1 = {'SourceMac'  : 'X62-00-00-00-00-01',
+                       'SourceIp'    : 'X10.0.0.2',          
+                       'SourcePort'  : 'X0',                 
+                       'DestMac'     : 'X00-07-43-10-65-A0', 
+                       'DestIp'      : 'X10.0.0.1',
+                       'DestPort'    : 'X61649',
+                       'enable'     : 1,        # enable this link
+                       'link_nr'    : 1,        # link number
+                       'data_gen'   : 1,        # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
+                       'data_format': 0,        # data format type  (0 for counting data)  
+                       'frame_len'  : 0x10000,  #  0xFFFFF0,   #  0x800,    # frame len in bytes
+                       'num_frames' : 1,        # number of frames to send in each cycle
+                       'num_prts'   : 2,        # number of ports to loop over before repeating
+                       'delay'      : 0,        # delay offset wrt previous link in secs
+                       'nic_list'   : [ '61649@192.168.3.1' ]
+                      }
     '''
         --------------------------------------------------------
         Support functions taken from John's version of LpdFemClient.py:
@@ -1089,14 +1094,16 @@ class LpdFemClient(FemClient):
 ##        slowCtrlConfig = SlowCtrlParams( self.slowCtrlPath + 'slow_control_TEST.xml', fromFile=True)
 
         slowCtrlConfig = SlowCtrlParams( currentSlowCtrlDir + '/' + self.run_params['slow_params_file_name_xml'], preambleBit=6, fromFile=True)
-        slow_ctrl_data = slowCtrlConfig.encode()
+        self.femAsicSlowControlParams = slowCtrlConfig.encode()
+#        slow_ctrl_data = slowCtrlConfig.encode()
         no_of_bits = 3911 # 3911
                   
         load_mode = self.run_params['asic_slow_load_mode']                
                                                
         # load in BRAM 
-        self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, slow_ctrl_data, no_of_bits, load_mode)
-                     
+#        self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, slow_ctrl_data, no_of_bits, load_mode)
+        self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, self.femAsicSlowControlParams, no_of_bits, load_mode)
+        
         return 0
 
 
@@ -1114,7 +1121,7 @@ class LpdFemClient(FemClient):
         print "fast cmds no_of_words, no_of_nops: ", no_of_words, no_of_nops
 
         #set up the fast command block
-        if self.run_params['asic_fast_dynamic'] == 1:   # new design with dynamic vetos
+        if self.run_params['femFastCtrlDynamic'] == 1:   # new design with dynamic vetos
             self.fem_fast_bram_setup(self.fast_cmd_1, fast_cmd_data, no_of_words)
             self.fem_fast_cmd_setup_new(self.fast_cmd_0, no_of_words+no_of_nops)
         else:
@@ -1133,7 +1140,8 @@ class LpdFemClient(FemClient):
             fast_cmd_file_name = self.run_params['fast_cmd_sensor_data_file_name_xml']
              
         fileCmdSeq = LpdCommandSequenceParser(self.fastCtrlPath + fast_cmd_file_name, fromFile=True)
-        fast_cmd_data = fileCmdSeq.encode()
+#        fast_cmd_data = fileCmdSeq.encode()
+        self.femAsicFastCmdSequence = fileCmdSeq.encode()
             
         no_of_words = fileCmdSeq.getTotalNumberWords()
         no_of_nops = fileCmdSeq.getTotalNumberNops()
@@ -1141,12 +1149,14 @@ class LpdFemClient(FemClient):
         print "fast cmds no_of_words, no_of_nops: ", no_of_words, no_of_nops
 
         #set up the fast command block
-        if self.run_params['asic_fast_dynamic'] == 1:   # new design with dynamic vetos
-            self.fem_fast_bram_setup(self.fast_cmd_1, fast_cmd_data, no_of_words)
+        if self.run_params['femFastCtrlDynamic'] == 1:   # new design with dynamic vetos
+#            self.fem_fast_bram_setup(self.fast_cmd_1, fast_cmd_data, no_of_words)
+            self.fem_fast_bram_setup(self.fast_cmd_1, self.femAsicFastCmdSequence, no_of_words)
             self.fem_fast_cmd_setup_new(self.fast_cmd_0, no_of_words+no_of_nops)
         else:
-            self.fem_fast_cmd_setup(self.fast_cmd_0, self.fast_cmd_1, fast_cmd_data, no_of_words, fast_ctrl_dynamic)            
-               
+#            self.fem_fast_cmd_setup(self.fast_cmd_0, self.fast_cmd_1, fast_cmd_data, no_of_words, fast_ctrl_dynamic)
+            self.fem_fast_cmd_setup(self.fast_cmd_0, self.fast_cmd_1, self.femAsicFastCmdSequence, no_of_words, fast_ctrl_dynamic)
+
                      
         return 0
 
@@ -1169,7 +1179,7 @@ class LpdFemClient(FemClient):
 #                        
 #
 #        #set up the fast command block
-#        if self.run_params['asic_fast_dynamic'] == 1:   # new design with dynamic vetos
+#        if self.run_params['femFastCtrlDynamic'] == 1:   # new design with dynamic vetos
 #            self.fem_fast_bram_setup(self.fast_cmd_1, fast_cmd_data, no_of_words)
 #            self.fem_fast_cmd_setup_new(self.fast_cmd_0, no_of_words+no_of_nops)
 #        else:
@@ -1987,28 +1997,24 @@ class LpdFemClient(FemClient):
         '''
             Get temperature from sensor A
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSA_TEMP_CHAN)
 
     def sensorBTempGet(self):
         '''
             Get temperature from sensor B
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSB_TEMP_CHAN)
     
     def sensorCTempGet(self):
         '''
             Get temperature from Sensor C
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSC_TEMP_CHAN)
     
     def sensorDTempGet(self):
         '''
             Get temperature from Sensor D
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSD_TEMP_CHAN)
     
     
@@ -2016,7 +2022,6 @@ class LpdFemClient(FemClient):
         '''
             Get temperature from Sensor E
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSE_TEMP_CHAN)
 
     
@@ -2024,7 +2029,6 @@ class LpdFemClient(FemClient):
         '''
             Get temperature from Sensor F
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSF_TEMP_CHAN)
 
     
@@ -2032,7 +2036,6 @@ class LpdFemClient(FemClient):
         '''
             Get temperature from Sensor G
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSG_TEMP_CHAN)
 
     
@@ -2040,7 +2043,6 @@ class LpdFemClient(FemClient):
         '''
             Get temperature from Sensor H
         '''
-        
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSH_TEMP_CHAN)
 
     def powerCardTempGet(self):
@@ -2056,7 +2058,6 @@ class LpdFemClient(FemClient):
         
             Returns True if OFF; False if ON
         '''
-        
         return self.pcf7485ReadOneBit(LpdFemClient.LV_CTRL_BIT)
     
     def asicPowerEnableSet(self, aEnable):
@@ -2345,85 +2346,73 @@ class LpdFemClient(FemClient):
         '''
             Get tenGig1SourceMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig1SourceMacDummy
+        return self.tenGig1['SourceMac']
 
     def tenGig1SourceMacSet(self, aValue):
         '''
             Set tenGig1SourceMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig1SourceMacDummy = aValue
-
+        self.tenGig1['SourceMac'] = aValue
+    
     def tenGig1SourceIpGet(self):
         '''
             Get tenGig1SourceIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig1SourceIpDummy
-
+        return self.tenGig1['SourceIp']
+    
     def tenGig1SourceIpSet(self, aValue):
         '''
             Set tenGig1SourceIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig1SourceIpDummy = aValue
+        self.tenGig1['SourceIp'] = aValue
 
     def tenGig1SourcePortGet(self):
         '''
             Get tenGig1SourcePort
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig1SourcePortDummy
-
+        return self.tenGig1['SourcePort']
+    
     def tenGig1SourcePortSet(self, aValue):
         '''
             Set tenGig1SourcePort
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig1SourcePortDummy = aValue
-
+        self.tenGig1['SourcePort'] = aValue
+        
     def tenGig1DestMacGet(self):
         '''
             Get tenGig1DestMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig1DestMacDummy
+        return self.tenGig1['DestMac']
 
     def tenGig1DestMacSet(self, aValue):
         '''
             Set tenGig1DestMac
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig1DestMacDummy = aValue
+        self.tenGig1['DestMac'] = aValue
 
     def tenGig1DestIpGet(self):
         '''
             Get tenGig1DestIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig1DestIpDummy
+        return self.tenGig1['DestIp']
 
     def tenGig1DestIpSet(self, aValue):
         '''
             Set tenGig1DestIp
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig1DestIpDummy = aValue
+        self.tenGig1['DestIp'] = aValue
 
     def tenGig1DestPortGet(self):
         '''
             Get tenGig1DestPort
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.tenGig1DestPortDummy
+        return self.tenGig1['DestPort']
 
     def tenGig1DestPortSet(self, aValue):
         '''
             Set tenGig1DestPort
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.tenGig1DestPortDummy = aValue
+        self.tenGig1['DestPort'] = aValue
 
     def tenGigInterframeGapGet(self):
         '''
@@ -2467,15 +2456,13 @@ class LpdFemClient(FemClient):
         '''
             Get femFastCtrlDynamic
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femFastCtrlDynamic
+        return self.run_params['femFastCtrlDynamic']
 
     def femFastCtrlDynamicSet(self, aValue):
         '''
             Set femFastCtrlDynamic
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femFastCtrlDynamic = aValue
+        self.run_params['femFastCtrlDynamic'] = aValue
 
     def femSetupSlowCtrlBramGet(self):
         '''
@@ -2507,15 +2494,13 @@ class LpdFemClient(FemClient):
         '''
             Get femDataSource
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femDataSource
+        return self.run_params['femDataSource']
 
     def femDataSourceSet(self, aValue):
         '''
             Set femDataSource
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femDataSource = aValue
+        self.run_params['femDataSource'] = aValue
 
     def femAsicCountingDataGet(self):
         '''
@@ -2639,29 +2624,27 @@ class LpdFemClient(FemClient):
         '''
             Get femAsicSlowControlParams
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femAsicSlowControlParamsDummy
+        return self.femAsicSlowControlParams
 
     def femAsicSlowControlParamsSet(self, aValue):
         '''
             Set femAsicSlowControlParams
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femAsicSlowControlParamsDummy = aValue
+        self.femAsicSlowControlParams = aValue
 
     def femAsicFastCmdSequenceGet(self):
         '''
             Get femAsicFastCmdSequence
         '''
         #TODO: This function needs to be updated to handle actual data
-        return self.femAsicFastCmdSequenceDummy
+        return self.femAsicFastCmdSequence
 
     def femAsicFastCmdSequenceSet(self, aValue):
         '''
             Set femAsicFastCmdSequence
         '''
         #TODO: This function needs to be updated to handle actual data
-        self.femAsicFastCmdSequenceDummy = aValue
+        self.femAsicFastCmdSequence = aValue
 
     def femAsicPixelFeedbackOverrideGet(self):
         '''
@@ -2695,15 +2678,13 @@ class LpdFemClient(FemClient):
         '''
             Get femReadoutOperatingMode
         '''
-        #TODO: This function needs to be updated to handle actual data
-        return self.femReadoutOperatingModeDummy
+        return self.femReadoutOperatingMode
 
     def femReadoutOperatingModeSet(self, aValue):
         '''
             Set femReadoutOperatingMode
         '''
-        #TODO: This function needs to be updated to handle actual data
-        self.femReadoutOperatingModeDummy = aValue
+        self.femReadoutOperatingMode = aValue
 
 
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
