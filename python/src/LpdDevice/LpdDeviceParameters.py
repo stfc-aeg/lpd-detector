@@ -119,15 +119,15 @@ class LpdDeviceParameters(object):
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardOverCurrent'] = AttributeContainer(bool, 'PowerCardOvercurrent', 'Power Card Overcurrent Flag',
+        self.parameters['powerCardOverCurrent'] = AttributeContainer(bool, 'PowerCardOverCurrent', 'Power Card Overcurrent Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardOvertemp']    = AttributeContainer(bool, 'PowerCardOverTemp', 'Power Card Over Temperature Flag',
+        self.parameters['powerCardOverTemp']    = AttributeContainer(bool, 'PowerCardOverTemp', 'Power Card Over Temperature Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, AssignmentOptional)
         
-        self.parameters['powerCardUndertemp']   = AttributeContainer(bool, 'PowerCardUnderTemp', 'Power Card Under Temperature Flag',
+        self.parameters['powerCardUnderTemp']   = AttributeContainer(bool, 'PowerCardUnderTemp', 'Power Card Under Temperature Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None)
         
@@ -142,7 +142,6 @@ class LpdDeviceParameters(object):
         self.parameters['sensorBTemp']          = AttributeContainer(float, 'SensorBTemp', 'Sensor B Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, 'Celsius', 'C')
-          
                             
         self.parameters['sensorCTemp']          = AttributeContainer(float, 'SensorCTemp', 'Sensor C Temperature [C]',
                                                                         0, 100,  None,
@@ -362,7 +361,7 @@ class LpdDeviceParameters(object):
                                                                          (20, 22), None, 22,
                                                                          AccessWrite, AssignmentOptional)
         
-        self.parameters['femAsicEnableMask']            = AttributeContainer([int], 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
+        self.parameters['femAsicEnableMask']            = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
                                                                          0, 0xFFFFFFFF, 0,
                                                                          AccessWrite, AssignmentMandatory)
         

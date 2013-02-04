@@ -197,7 +197,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femAsicFastCmdRegSize \t= %d." % value
 
-#        rc = theDevice.paramSet('femAsicEnableMask', [1, 2, 3, 4])
+        # Enable 2 Tile Systems' ASICs
+        rc = theDevice.paramSet('femAsicEnableMask', [0x0f0000f0, 0x0f0000f0, 0x00000000, 0x00000000])
         if rc != LpdDevice.ERROR_OK:
             print "femAsicEnableMask set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -227,6 +228,17 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femDataSource \t\t= %d." % value
 
+        # Not yet implemented in the API..
+#        rc = theDevice.paramSet('asicDataType', 1)
+#        if rc != LpdDevice.ERROR_OK:
+#            print "asicDataType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#    
+#        (rc, value) = theDevice.paramGet('asicDataType')
+#        if rc != LpdDevice.ERROR_OK:
+#            print "asicDataType get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        else:
+#            print "asicDataType \t\t= %d." % value
+
 #        rc = theDevice.paramSet('femAsicSlowControlParams', "<xml../>")
         if rc != LpdDevice.ERROR_OK:
             print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -246,6 +258,26 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femAsicFastCmdSequence get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
             print "femAsicFastCmdSequence =%s." % value
+
+        rc = theDevice.paramSet('femFastCtrlDynamic', True)
+        if rc != LpdDevice.ERROR_OK:
+            print "femFastCtrlDynamic set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femFastCtrlDynamic')
+        if rc != LpdDevice.ERROR_OK:
+            print "femFastCtrlDynamic get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femFastCtrlDynamic = ", value
+
+        rc = theDevice.paramSet('femEnableTenGig', True)
+        if rc != LpdDevice.ERROR_OK:
+            print "femEnableTenGig set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femEnableTenGig')
+        if rc != LpdDevice.ERROR_OK:
+            print "femEnableTenGig get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femEnableTenGig = ", value
 
 
     else:
