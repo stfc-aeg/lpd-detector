@@ -40,11 +40,9 @@ from FemClient.FemClient import *
 from FemApi.FemTransaction import FemTransaction
 
 # Import library for parsing XML fast command files
-from LpdCommandSequence.LpdCommandSequenceParser import LpdCommandSequenceParser
-from LpdFemTests.SlowCtrlParams import SlowCtrlParams
+from LpdAsicCommandSequence import LpdAsicCommandSequence
+from LpdAsicControl import LpdAsicControl
 
-## Test using FemAsicTest class..
-#from LpdFemTests.fem_asic_test import *
 
 class LpdFemClient(FemClient):
     '''
@@ -154,7 +152,7 @@ class LpdFemClient(FemClient):
     rsvd_31             = 0x0f800000    #31
     
     # file path to the location of the slow control and fast control configuration files
-    slowCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/'
+    slowCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdFemTests/ConfigFiles/'
     fastCtrlPath = '/u/ckd27546/workspace/xfel_workspace/LpdCommandSequence/'
     
     ########## Enumerated values for proposed API additions ##########
@@ -199,7 +197,7 @@ class LpdFemClient(FemClient):
         self.femAsicColumnsPerFrameDummy        = 0  #TODO: Redundant?
         self.femAsicPixelFeedbackOverrideDummy  = 0  #TODO: Should this be implemented? (How?)
         self.femAsicPixelSelfTestOverrideDummy  = 0  #TODO: Should this be implemented? (How?)
-        self.femReadoutOperatingMode            = 0   #TODO: Functionality not yet implemented
+        self.femReadoutOperatingMode            = 0  #TODO: Functionality not yet implemented
 
 
         ########## Parameters that (may) need to exposed in API ##########
@@ -251,93 +249,72 @@ class LpdFemClient(FemClient):
                             # self.ASIC_DATA_TYPE_PSEUDO_RANDOM,  # Asic Pseudo random data (test data from asic)
 
              # if asic clock is coming from on board FEM 100 MHz Osc
-            'asic_local_clock_freq' : 0, # 0 = no scaling = 100 MHz
-                                        # 1 = scaled down clock, usually = 10 MHz (set by dcm params)
-            
-            'femFastCtrlDynamic' : True, # 1 = New dynamic commands
-#            'asic_fast_dynamic' : 1, # 1 = New dynamic commands
+            'asic_local_clock_freq'                 : 0,        # 0 = no scaling = 100 MHz
+                                                                # 1 = scaled down clock, usually = 10 MHz (set by dcm params)
+            'femFastCtrlDynamic'                    : True,     # True = New dynamic commands
+            'asic_slow_load_mode'                   : 0,        # 0 = parallel load
+                                                                # 1 = daisy chain
+            'femAsicColumns'                        : 4,        # nr of images to capture per train
+            'asicrx_capture_asic_header_TEST_ONLY'  : 0,        # = 0 (NORMAL OPERATION) ignore asic header bits 
+                                                                # = 1 (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
+            'femAsicGainOverride'                   : 8,        # gain algorithm selection
+                                                                #  0000  normal gain selection     0
+                                                                #  1000  force select x100         8
+                                                                #  1001  force select x10          9
+                                                                #  1011  force select x1          11
+                                                                #  1111  force error condition ?  15
+            'asicrx_invert_data'                    : 0,        # 1 = invert adc output data (by subtracting value from $FFF)
+            'asicrx_start_from_fast_strobe'         : 1,        # 1 = Start asic rx data capture using strobe derived from fast command file
+                                                                # 0 = Start asic rx data capture using fixed delay value 
+            'asicrx_delay_odd_channels'             : 1,        # 1 = delay odd data channels by one clock to fix alignment
+            'asic_slow_clock_phase'                 : 0,        # additional phase adjustment of slow clock rsync wrt asic reset
+            'slow_params_file_type'                 : 1,        # 0 = old slow params file ; 1 = xml file
 
-            'asic_slow_load_mode' : 0, # 0 = parallel load
-                                        # 1 = daisy chain
-            
-            'femAsicColumns' : 4,#5, # nr of images to capture per train
-#            'asic_nr_images' : 4,#5, # nr of images to capture per train
-            #'asic_nr_images_per_frame' : 4, # nr of images put in each local link frame output by data rx
-                                                # now ignored and force to have all images in 1 frame
-                                                
-            'asicrx_capture_asic_header_TEST_ONLY' : 0,  # = 0 (NORMAL OPERATION) ignore asic header bits 
-                                               # = 1 (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
-            
-            #TODO: asicrx_gain_selection => femAsicGainOverride
-            'femAsicGainOverride' : 8,  # gain algorithm selection
-#            'asicrx_gain_selection' : 8,  # gain algorithm selection
-                                    #  0000  normal gain selection     0
-                                    #  1000  force select x100         8
-                                    #  1001  force select x10          9
-                                    #  1011  force select x1          11
-                                    #  1111  force error condition ?  15
+            'slow_params_file_name_old'             : 'SlowControlDefault-1B.txt',   # used if slow_params_file_type = 0
+                                                                                     # 'SlowControlDefault-1A.txt'
 
-            'asicrx_invert_data' : 0,  # 1 = invert adc output data (by subtracting value from $FFF)
+            'slow_params_file_name_xml'             : #'slow_control_config_jac.xml',    # used if slow_params_file_type = 1
+                                                      'preambleDelaySlowControl.xml',   # slow_control_config.xml  # standard
 
-            'asicrx_start_from_fast_strobe' : 1,  # 1 = Start asic rx data capture using strobe derived from fast command file
-                                                    # 0 = Start asic rx data capture using fixed delay value 
+            'fast_cmd_file_type'                    : 1,  # 0 = old format file ; 1 = xml file
 
-            'asicrx_delay_odd_channels' : 1,  # 1 = delay odd data channels by one clock to fix alignment
+            'fast_cmd_sensor_data_file_name'        : 'fast_cmd_1f_with_slow_readout.txt',  # for real asic sensor data
+                                                                                            # 'fast_readout_testing2.txt'
+                                                                                            # 'fast_readout_1f_with_slow_readout.txt'
+                                                                                            # 'fast_readout_4f_gaps.txt'  # standard
 
-            'asic_slow_clock_phase' : 0,  # additional phase adjustment of slow clock rsync wrt asic reset
+            'fast_cmd_pseudorandom_file_name'       : 'fast_random_gaps.txt',               # for pseudorandom asic data
 
-            'slow_params_file_type' : 1,  # 0 = old slow params file ; 1 = xml file
-
-            'slow_params_file_name_old' : 'SlowControlDefault-1B.txt',   # used if slow_params_file_type = 0
-                                                                        # 'SlowControlDefault-1A.txt'
-            'slow_params_file_name_xml' : #'slow_control_config_jac.xml',   # used if slow_params_file_type = 1
-                                          'preambleDelaySlowControl.xml', # slow_control_config.xml  # standard
-
-            'fast_cmd_file_type' : 1,  # 0 = old format file ; 1 = xml file
-
-            'fast_cmd_sensor_data_file_name' : 'fast_cmd_1f_with_slow_readout.txt',  # for real asic sensor data
-                                                                            # 'fast_readout_testing2.txt'
-                                                                            # 'fast_readout_1f_with_slow_readout.txt'
-                                                                            # 'fast_readout_4f_gaps.txt'  # standard
-            'fast_cmd_pseudorandom_file_name' : 'fast_random_gaps.txt',  # for pseudorandom asic data
-
-            'fast_cmd_sensor_data_file_name_xml' : #'fast_cmd_1f_with_slow_readout.xml',  # for real asic sensor
+            'fast_cmd_sensor_data_file_name_xml'    : 'playingWivLasers.xml',               # allows use of laser pointer
+                                                    # 'fast_cmd_1f_with_slow_readout.xml',  # for real asic sensor
                                                     # 'fast_readout_replacement_commands.xml',  # for real asic sensor data
-                                                    'playingWivLasers.xml',  # for real asic sensor data
-            'fast_cmd_pseudorandom_file_name_xml' : 'fast_random_gaps.xml',  # for pseudorandom asic data
+                                                    
+            'fast_cmd_pseudorandom_file_name_xml'   : 'fast_random_gaps.xml',  # for pseudorandom asic data
 
-            'asic_readout_with_slow_clock' : 1,  # 0 = asic readout phase uses same clock as capture phase
-                                            # 1 = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
+            'asic_readout_with_slow_clock'          : 1,    # 0 = asic readout phase uses same clock as capture phase
+                                                            # 1 = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
 
 #======== params for general steering 
-            'ppc_mode' : 0,   # 0 = Single Train Shot with PPC reset 
-                      # 1 = Continuous readout (not working yet)
-
-            'ppc_reset_delay_secs' : 5,   # wait after resetting ppc 
-
-            'num_cycles'  : 1, # repeat the test n times
-              
-            'playback' : 0, # 1 for playback rx (to load files into ddr2 memory)
-            'debug_level' : 2,    # higher values more print out
+            'ppc_mode'             : 0, # 0 = Single Train Shot with PPC reset 
+                                        # 1 = Continuous readout (not working yet)
+            'ppc_reset_delay_secs' : 5, # wait after resetting ppc 
+            'num_cycles'           : 1, # repeat the test n times
+            'playback'             : 0, # 1 for playback rx (to load files into ddr2 memory)
+            'debug_level'          : 2, # higher values more print out
 
  
 #======== params for 10G data links
 
-              '10g_farm_mode' : 1,   # 3 for farm mode with nic lists 
-                      # 2 for farm mode with fixed ip host and multiple ports
-                      # 1 for legacy non farm mode (only 1 ip host and port per link)  
-              
-              #TODO: eth_ifg => tenGigInterframeGap
-#              'tenGigInterframeGap' : 0x000,   # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
-              'tenGigInterframeGap' : 0x000,   # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
-              #TODO: udp_pkt_len => tenGigUdpPacketLen
-              'tenGigUdpPacketLen' : 8000, # default udp packet length in bytes (can be overriden in asic runs)
-              'clear_10g_lut' : 0   # 1 to clear 10g lut tables before start
+              '10g_farm_mode'       : 1,    # 3 for farm mode with nic lists 
+                                            # 2 for farm mode with fixed ip host and multiple ports
+                                            # 1 for legacy non farm mode (only 1 ip host and port per link)  
+              'tenGigInterframeGap' : 0x000,# ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
+              'tenGigUdpPacketLen'  : 8000, # default udp packet length in bytes (can be overriden in asic runs)
+              'clear_10g_lut'       : 0     # 1 to clear 10g lut tables before start
 #========
                     }  
      
         # look up table to match MAC addresses with IP for host NIC
-#        global mac_ip_lut
         self.mac_ip_lut = { '192.168.2.1' : '00-07-43-11-97-90',   # redbridge eth2
                             '192.168.3.1' : '00-07-43-11-97-98',   # redbridge eth3
                             '192.168.6.1' : '00-07-43-10-61-80',   # burntoak eth6
@@ -992,8 +969,7 @@ class LpdFemClient(FemClient):
 
 ##-------------------------------------------------------------------------------------    
     def config_data_gen(self):
-        """ configure data generator
-             """                        
+        """ configure data generator """                        
         data_gen_base = self.data_gen_0
                 
         # final param to enable data gen headers for farm mode
@@ -1038,7 +1014,7 @@ class LpdFemClient(FemClient):
     def config_asic_slow(self):
         """ configure asic slow control parameters
              """                                        
-        slow_ctrl_data, no_of_bits = self.read_slow_ctrl_file(self.run_params['slow_params_file_name_old'])
+        slow_ctrl_data, no_of_bits = self.read_slow_ctrl_file( self.slowCtrlPath + self.run_params['slow_params_file_name_old'])
 
         print "Slow params file ctrl reg enable strobe active for bits", no_of_bits
   
@@ -1055,12 +1031,11 @@ class LpdFemClient(FemClient):
 
 #-------------------------------------------------------------------------------------    
     def config_asic_slow_xml(self):
-        """ configure asic slow control parameters from xml
-             """                                        
+        """ configure asic slow control parameters from xml """                                        
 
         currentSlowCtrlDir = os.getcwd()
 
-        slowCtrlConfig = SlowCtrlParams( currentSlowCtrlDir + '/' + self.run_params['slow_params_file_name_xml'], preambleBit=6, fromFile=True)
+        slowCtrlConfig = LpdAsicControl( currentSlowCtrlDir + '/ConfigFiles/' + self.run_params['slow_params_file_name_xml'], preambleBit=6, fromFile=True)
         self.femAsicSlowControlParams = slowCtrlConfig.encode()
 
         no_of_bits = 3911
@@ -1078,9 +1053,9 @@ class LpdFemClient(FemClient):
         """ configure asic fast command module """
                                 
         if self.run_params['asicDataType'] == "asic_pseudo_random":
-            fast_cmd_file_name = self.run_params['fast_cmd_pseudorandom_file_name']
+            fast_cmd_file_name = self.slowCtrlPath + self.run_params['fast_cmd_pseudorandom_file_name']
         else:
-            fast_cmd_file_name = self.run_params['fast_cmd_sensor_data_file_name']
+            fast_cmd_file_name = self.slowCtrlPath + self.run_params['fast_cmd_sensor_data_file_name']
 
         [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new(fast_cmd_file_name, self.femAsicFastCmdRegSize)
                        
@@ -1104,7 +1079,7 @@ class LpdFemClient(FemClient):
         else:
             fast_cmd_file_name = self.run_params['fast_cmd_sensor_data_file_name_xml']
              
-        fileCmdSeq = LpdCommandSequenceParser(self.fastCtrlPath + fast_cmd_file_name, fromFile=True)
+        fileCmdSeq = LpdAsicCommandSequence(self.slowCtrlPath + fast_cmd_file_name, fromFile=True)
         self.femAsicFastCmdSequence = fileCmdSeq.encode()
             
         no_of_words = fileCmdSeq.getTotalNumberWords()
@@ -1127,13 +1102,13 @@ class LpdFemClient(FemClient):
 #        """ configure asic fast command module
 #             """                        
 #        if self.run_params['asicDataType'] == "asic_pseudo_random":
-##                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_random_gaps.txt',self.femAsicFastCmdRegSize)
+##                    [fast_cmd_data, no_of_words, no_of_nops] = myLpdFemClient.read_fast_cmd_file_jc_new('/u/ckd27546/workspace/lpd/src/LpdFemTests/fast_random_gapsx',self.femAsicFastCmdRegSize)
 #            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_random_gaps.txt',self.femAsicFastCmdRegSize)
 #        else:
 ##            [fast_cmd_data, no_of_words, no_of_nops] = self.read_fast_cmd_file_jc_new( self.fastCtrlPath + 'fast_readout_4f_gaps.txt',self.femAsicFastCmdRegSize)
 #             
 #            # ''' XML implementation '''
-#            fileCmdSeq = LpdCommandSequenceParser( self.fastCtrlPath + 'fast_readout_replacement_commands.xml', fromFile=True)
+#            fileCmdSeq = LpdAsicCommandSequence( self.fastCtrlPath + 'fast_readout_replacement_commands.xml', fromFile=True)
 #            fast_cmd_data = fileCmdSeq.encode()
 #            
 #            no_of_words = fileCmdSeq.getTotalNumberWords()
@@ -1872,8 +1847,7 @@ class LpdFemClient(FemClient):
         '''
         
         print "Executing run().."
-        
-            
+                    
         self.send_trigger()
 
         # Read out all registers (Required, otherwise .read_ll..() will execute too soon!) 
@@ -1931,7 +1905,6 @@ class LpdFemClient(FemClient):
         '''
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSG_TEMP_CHAN)
 
-    
     def sensorHTempGet(self):
         '''
             Get temperature from Sensor H
@@ -1943,7 +1916,6 @@ class LpdFemClient(FemClient):
             Get temperature from power card
         '''
         return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.PSU_TEMP_CHAN)
-    
 
     def asicPowerEnableGet(self):
         '''
@@ -1958,7 +1930,7 @@ class LpdFemClient(FemClient):
             Set 'ASIC LV Power Enable' (0/1 = on/off)
         '''
         value = 1 - int(aEnable)
-        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, value )
+        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, value)
 
     def sensorBiasEnableGet(self):
         '''
@@ -1966,7 +1938,6 @@ class LpdFemClient(FemClient):
         
             Returns True if OFF; False if ON
         '''
-        
         return self.pcf7485ReadOneBit(LpdFemClient.HV_CTRL_BIT)
     
     def sensorBiasEnableSet(self, aEnable):
@@ -1974,8 +1945,7 @@ class LpdFemClient(FemClient):
             Set 'Sensor LV Bias Enable' (0/1 = on/off)
         '''
         value = 1 - int(aEnable)
-        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, value )
-        
+        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, value)
         
     def powerCardFemStatusGet(self):
         '''
@@ -2634,9 +2604,6 @@ class LpdFemClient(FemClient):
         '''
             Helper function: Reads sensor temperature at 'channel' in  address 'device',
                 and converts adc counts into six volts scale.
-            Note:   This function will become different from
-                    sensorThreeVoltScaleRead(device, channel)
-                    because this function will later convert into degrees centigrade
         '''
         adcVal = self.ad7998Read(device, channel)
         
@@ -2694,22 +2661,17 @@ class LpdFemClient(FemClient):
         response = self.ad5321Read()
         return response
     
-    def pcf7485ReadOneBit(self, id):
+    def pcf7485ReadOneBit(self, bitId):
         ''' 
             Read one byte from PCF7485 device and determine if set.
-        
             Note: bit 1 = 0, 2 = 1,  3 = 2, 4 = 4, 
                       5 = 8, 6 = 16, 7 = 32 8 = 64
-            Therefore, id must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
+            Therefore, bitId must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
         '''
-        
         addr = LpdFemClient.i2cPowerCardBus + 0x38 
-        
         response = self.i2cRead(addr, 1)
-        
-#        print "response = ", response, " type(response) = ", type(response)
         value = response[0]
-        return (value & (1 << id)) != 0
+        return (value & (1 << bitId)) != 0
         
     def pcf7485ReadAllBits(self):
         ''' 
@@ -2728,16 +2690,15 @@ class LpdFemClient(FemClient):
         response = self.i2cRead(addr, 1)
         return response[0]
 
-    def pcf7485WriteOneBit(self, id, value):
+    def pcf7485WriteOneBit(self, bitId, value):
         ''' 
-            Change bit 'id' to 'value' in PCF7485 device
+            Change bit 'bitId' to 'value' in PCF7485 device
         '''        
+        addr = LpdFemClient.i2cPowerCardBus + 0x38
         # Read PCF7485's current value
         bit_register = self.pcf7485ReadAllBits()
-        # Change bit 'id' to 'value'
-        bit_register = (bit_register & ~(1 << id)) | (value << id) | 0xFC
-
-        addr = LpdFemClient.i2cPowerCardBus + 0x38
+        # Change bit 'bitId' to 'value'
+        bit_register = (bit_register & ~(1 << bitId)) | (value << bitId) | 0xFC
         response = self.i2cWrite(addr, bit_register)
         #TODO: Check ack (i.e.'response') to verify successful write
 
