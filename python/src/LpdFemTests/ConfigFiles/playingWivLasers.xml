@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="playingWivLasers.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+	<sync_reset/> <!-- Start Config chip -->
+	<on_chip_reset_disable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<start_write_pointer/>
+	<start_trigger_pointer/> 
+	<nop/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<remove_reset_pre_amp/>
+	<remove_reset_gain_stage1/>
+	<remove_reset_gain_stage2/>
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>	
+	<nop count="4"/>
+	<asic_slow_readout_start/>
+	<nop count="4"/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/> 
+	<!-- Add additional NOPS to allow sufficient data to be clocked out of the ASICs -->
+	<loop count="11">
+		<nop/>
+		<nop count="501"/>
+	</loop>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+</lpd_command_sequence>

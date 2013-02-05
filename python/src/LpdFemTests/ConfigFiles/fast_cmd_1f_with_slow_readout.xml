@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="fast_readout_replacement_commands.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+	<!-- Replaces the file fast_readout_4f_gaps.txt -->
+	
+	<sync_reset/> <!-- Start Config chip? -->
+	<on_chip_reset_enable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<start_write_pointer/>
+	<start_trigger_pointer/> 
+	<nop/>
+    <nop count="51"/>
+	<nop/>
+	<trigger_flag_set count="1"/>
+	<nop/>
+	<on_chip_reset_disable/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>	
+	<nop/>
+	<asic_slow_readout_start/>	
+	<nop/>
+    <nop count="1001"/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/> 
+	<nop/>
+    <nop count="21"/>
+	<!-- Add additional NOPS to allow sufficient data to be clocked out of the ASICs, loop count = nr of images -->
+	<loop count="4">
+		<nop/>
+		<nop count="839"/>
+	</loop>
+ 	<nop/>
+    <nop count="21"/>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+</lpd_command_sequence>
