@@ -5,7 +5,7 @@
 '''
 
 from LpdDevice.LpdDevice import LpdDevice
-from networkConfiguration import *
+from networkConfiguration import networkConfiguration
 import sys
 
 
@@ -26,6 +26,13 @@ def LpdReadoutTest(femHost=None, femPort=None):
         return
 
     bDebug = False
+
+#            'slow_params_file_name_xml'             : #'slow_control_config_jac.xml',            # used if slow_params_file_type = 1
+#                                                      'preambleDelaySlowControl.xml',            # slow_control_config.xml  # standard
+#            'fast_cmd_sensor_data_file_name_xml'    : 'playingWivLasers.xml',                    # allows use of laser pointer
+#                                                    # 'fast_cmd_1f_with_slow_readout.xml',       # file created by jac
+#                                                    # 'fast_readout_replacement_commands.xml',   # for real asic sensor data                                                    
+#            'fast_cmd_pseudorandom_file_name_xml'   : 'fast_random_gaps.xml',                    # for pseudorandom asic data
     
     ######################################################
     # Only do Set/Get calls if developing...
@@ -229,7 +236,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femDataSource \t\t= %d." % value
 
         # Not yet implemented in the API..
-#        rc = theDevice.paramSet('asicDataType', 1)
+#        rc = theDevice.paramSet('asicDataType', 0)
 #        if rc != LpdDevice.ERROR_OK:
 #            print "asicDataType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 #    
@@ -239,25 +246,6 @@ def LpdReadoutTest(femHost=None, femPort=None):
 #        else:
 #            print "asicDataType \t\t= %d." % value
 
-#        rc = theDevice.paramSet('femAsicSlowControlParams', "<xml../>")
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    
-        (rc, value) = theDevice.paramGet('femAsicSlowControlParams')
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicSlowControlParams get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-        else:
-            print "femAsicSlowControlParams =%s." % value
-
-#        rc = theDevice.paramSet('femAsicFastCmdSequence', "<xml../>")
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicFastCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    
-        (rc, value) = theDevice.paramGet('femAsicFastCmdSequence')
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicFastCmdSequence get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-        else:
-            print "femAsicFastCmdSequence =%s." % value
 
         rc = theDevice.paramSet('femFastCtrlDynamic', True)
         if rc != LpdDevice.ERROR_OK:
@@ -267,7 +255,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         if rc != LpdDevice.ERROR_OK:
             print "femFastCtrlDynamic get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femFastCtrlDynamic = ", value
+            print "femFastCtrlDynamic \t= ", value
 
         rc = theDevice.paramSet('femEnableTenGig', True)
         if rc != LpdDevice.ERROR_OK:
@@ -277,9 +265,66 @@ def LpdReadoutTest(femHost=None, femPort=None):
         if rc != LpdDevice.ERROR_OK:
             print "femEnableTenGig get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femEnableTenGig = ", value
+            print "femEnableTenGig \t= ", value
 
+        rc = theDevice.paramSet('femAsicColumns', 4)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicColumns set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicColumns')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicColumns get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicColumns \t\t= %d" % value
 
+        # Read Slow Control (LpdAsicControl) XML file into a string
+        ff = open('ConfigFiles/preambleDelaySlowControl.xml', 'r')
+        xmlString = ff.read(-1)
+        ff.close ()
+        
+        rc = theDevice.paramSet('femAsicSlowControlParams', xmlString)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicSlowControlParams')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicSlowControlParams get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        else:
+#            print "femAsicSlowControlParams:\n", value
+
+        # Read Asic Command Sequence (LpdAsicCommandSequence) XML file into a string
+        ff = open('ConfigFiles/playingWivLasers.xml', 'r')
+        xmlString = ff.read(-1)
+        ff.close ()
+        
+        rc = theDevice.paramSet('femAsicFastCmdSequence', xmlString)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicFastCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicFastCmdSequence')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicFastCmdSequence get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        else:
+#            print "femAsicFastCmdSequence:\n", value
+
+        rc = theDevice.paramSet('femFastCtrlDynamic', True)
+        if rc != LpdDevice.ERROR_OK:
+            print "femFastCtrlDynamic set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femFastCtrlDynamic')
+        if rc != LpdDevice.ERROR_OK:
+            print "femFastCtrlDynamic get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femFastCtrlDynamic \t= ", value
+
+        # Outstanding variables - Do not currently control anything inside LpdFemClient..
+#        femSendPpcReset
+#        femSetupSlowCtrlBram
+#        femAsicCountingData
+#        femAsicRxStartDelay
+#        femNumLocalLinkFrames
+#        femReadoutOperatingMode
+        
     else:
 
         # Configure the FEM

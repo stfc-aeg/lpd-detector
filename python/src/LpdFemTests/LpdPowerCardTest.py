@@ -299,16 +299,6 @@ def powerCardTest(biasLevel):
     
     print "-- -- -- -- -- -- -- -- --"
 
-    rc = theDevice.paramSet('tenGig0SourceMac', 3)
-    if rc != LpdDevice.ERROR_OK:
-        print "tenGig0SourceMac Set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    
-    (rc, tenGig0SourceMac) = theDevice.paramGet('tenGig0SourceMac')
-    if rc != LpdDevice.ERROR_OK:
-        print "tenGig0SourceMac get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    else:
-        print "tenGig0SourceMac : ", tenGig0SourceMac
-        
     print "Closing Fem connection.. "        
     theDevice.close()
 

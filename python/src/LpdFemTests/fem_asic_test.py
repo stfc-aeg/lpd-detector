@@ -21,7 +21,7 @@ from LpdFemClient import *  #LpdFemClient
 from LpdFemClient.LpdFemClient import LpdFemClient, FemClientError
 
 # Import library for parsing XML fast command files
-from LpdCommandSequence.LpdCommandSequenceParser import LpdCommandSequenceParser
+from LpdCommandSequence.LpdAsicCommandSequence import LpdAsicCommandSequence
 
 class FemAsicTest():
 
@@ -488,8 +488,8 @@ class FemAsicTest():
             [fast_cmd_data, no_of_words, no_of_nops] = myClient.read_fast_cmd_file_jc_new('fast_readout_4f_gaps.txt',fast_cmd_reg_size)
              
             # ''' XML implementation '''
-# #                    fileCmdSeq = LpdCommandSequenceParser('/u/ckd27546/workspace/lpd/src/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
-            # fileCmdSeq = LpdCommandSequenceParser('../LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
+# #                    fileCmdSeq = LpdAsicCommandSequence('/u/ckd27546/workspace/lpd/src/LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
+            # fileCmdSeq = LpdAsicCommandSequence('../LpdCommandSequence/fast_readout_replacement_commands.xml', fromFile=True)
             # fast_cmd_data = fileCmdSeq.encode()
             
             # no_of_words = fileCmdSeq.getTotalNumberWords()
