@@ -152,17 +152,19 @@ class LpdAsicControl(object):
             else:
                 print "string: "
             print xmlObject
-            
-        #TODO: Implemented this:
-        # Parse the XML specified, either from a file if the fromFile flag
-        # was set or from the string passed
-        if fromFile == True:
-            self.tree = ElementTree.parse(xmlObject)
-            self.root = self.tree.getroot()
-        else:
-            self.tree = None 
-            self.root = ElementTree.fromstring(xmlObject)
         
+        try:
+            # Parse the XML specified, either from a file if the fromFile flag
+            # was set or from the string passed
+            if fromFile == True:
+                self.tree = ElementTree.parse(xmlObject)
+                self.root = self.tree.getroot()
+            else:
+                self.tree = None 
+                self.root = ElementTree.fromstring(xmlObject)
+        except Exception as e:
+            raise LpdAsicControlError('Error parsing XML: %s' % e)
+            
         # Get the root of the tree and verify it is an lpd_command_sequence
         if self.root.tag != 'lpd_slow_ctrl_sequence':
             raise LpdAsicControlError('Root element is not an LPD slow control command')

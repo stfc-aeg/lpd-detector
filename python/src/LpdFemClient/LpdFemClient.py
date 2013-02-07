@@ -210,7 +210,7 @@ class LpdFemClient(FemClient):
         self.numberTestCycles           = 1 # 'num_cycles'  : 1, # repeat the test n times
         self.rxPlayback                 = 0 # 'playback' : 0, # 1 for playback rx (to load files into ddr2 memory)
         self.farmSelectMode             = 1 # '10g_farm_mode' : 1,   # 3 for farm mode with nic lists 
-        self.clearTenGigLut             = 0 # 'clear_10g_lut' : 0   # 1 to clear 10g lut tables before start
+        self.clearTenGigLut             = 0 #TODO: Never Utilised?
 
         # Constants ?
         self.asicRxPseudoRandomStart      = 61    # asic_rx_start_pseudo_random
@@ -241,28 +241,28 @@ class LpdFemClient(FemClient):
                             # self.ASIC_DATA_TYPE_RX_COUNTING,    # Asic Rx Block internally generated counting data (simulated data)
                             # self.ASIC_DATA_TYPE_PSEUDO_RANDOM,  # Asic Pseudo random data (test data from asic)
 
-             # if asic clock is coming from on board FEM 100 MHz Osc
+            # if asic clock is coming from on board FEM 100 MHz Osc
             'asic_local_clock_freq'                 : 0,        # 0 = no scaling = 100 MHz
                                                                 # 1 = scaled down clock, usually = 10 MHz (set by dcm params)
             'femFastCtrlDynamic'                    : True,     # True = New dynamic commands
             'asic_slow_load_mode'                   : 0,        # 0 = parallel load
                                                                 # 1 = daisy chain
             'femAsicColumns'                        : 4,        # nr of images to capture per train
-            'asicrx_capture_asic_header_TEST_ONLY'  : 0,        # = 0 (NORMAL OPERATION) ignore asic header bits 
-                                                                # = 1 (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
+            'asicrx_capture_asic_header_TEST_ONLY'  : False,    # False = (NORMAL OPERATION) ignore asic header bits 
+                                                                # True  = (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
             'femAsicGainOverride'                   : 8,        # gain algorithm selection
                                                                 #  0000  normal gain selection     0
                                                                 #  1000  force select x100         8
                                                                 #  1001  force select x10          9
                                                                 #  1011  force select x1          11
                                                                 #  1111  force error condition ?  15
-            'asicrx_invert_data'                    : 0,        # 1 = invert adc output data (by subtracting value from $FFF)
-            'asicrx_start_from_fast_strobe'         : 1,        # 1 = Start asic rx data capture using strobe derived from fast command file
-                                                                # 0 = Start asic rx data capture using fixed delay value 
-            'asicrx_delay_odd_channels'             : 1,        # 1 = delay odd data channels by one clock to fix alignment
+            'asicrx_invert_data'                    : False,    # True  = invert adc output data (by subtracting value from $FFF)
+            'asicrx_start_from_fast_strobe'         : True,     # True  = Start asic rx data capture using strobe derived from fast command file
+                                                                # False = Start asic rx data capture using fixed delay value 
+            'asicrx_delay_odd_channels'             : True,     # True  = delay odd data channels by one clock to fix alignment
             'asic_slow_clock_phase'                 : 0,        # additional phase adjustment of slow clock rsync wrt asic reset
-            'asic_readout_with_slow_clock'          : 1,        # 0 = asic readout phase uses same clock as capture phase
-                                                                # 1 = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
+            'asic_readout_with_slow_clock'          : True,     # False = asic readout phase uses same clock as capture phase
+                                                                # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
 
 #======== params for general steering 
             'ppc_mode'             : 0, # 0 = Single Train Shot with PPC reset 
@@ -278,6 +278,7 @@ class LpdFemClient(FemClient):
                                             # 1 for legacy non farm mode (only 1 ip host and port per link)  
               'tenGigInterframeGap' : 0x000,# ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
               'tenGigUdpPacketLen'  : 8000, # default udp packet length in bytes (can be overriden in asic runs)
+              #TODO: clear_10g_lut never used?
               'clear_10g_lut'       : 0     # 1 to clear 10g lut tables before start
 #========
                     }  
@@ -317,7 +318,7 @@ class LpdFemClient(FemClient):
                        'DestIp'      : 'X10.0.0.1',
                        'DestPort'    : 'X61649',
                        'femEnable'   : True,    # enable this link
-                       'link_nr'    : 1,        # link number
+                       'link_nr'    : 2,        # link number
                        'data_gen'   : 1,        # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
                        'data_format': 0,        # data format type  (0 for counting data)  
                        'frame_len'  : 0x10000,  #  0xFFFFF0,   #  0x800,    # frame len in bytes
@@ -911,10 +912,14 @@ class LpdFemClient(FemClient):
 #-------------------------------------------------------------------------------------    
     def config_asic_slow_xml(self):
         """ configure asic slow control parameters from xml """                                        
-
-        LpdAsicControlParams = LpdAsicControl( self.femAsicSlowControlParams, preambleBit=6, fromFile=False)
-        encodedString = LpdAsicControlParams.encode()
-
+        
+        try:
+            LpdAsicControlParams = LpdAsicControl( self.femAsicSlowControlParams, preambleBit=6, fromFile=False)
+            encodedString = LpdAsicControlParams.encode()
+        except Exception as e:
+            raise e
+            sys.exit()
+            
         no_of_bits = 3911
                   
         load_mode = self.run_params['asic_slow_load_mode']                
@@ -993,13 +998,13 @@ class LpdFemClient(FemClient):
         self.asicrx_override_gain()
 
         # asic rx invert adc data
-        if self.run_params['asicrx_invert_data'] == 1:            
+        if self.run_params['asicrx_invert_data']:            
             self.asicrx_invert_data_enable()
         else:
             self.asicrx_invert_data_disable()
 
         # delay odd data channels to fix alignment
-        if self.run_params['asicrx_delay_odd_channels'] == 1:            
+        if self.run_params['asicrx_delay_odd_channels']:    # == 1:            
             self.rdmaWrite(self.fem_ctrl_0+8, 1)           
         else:
             self.rdmaWrite(self.fem_ctrl_0+8, 0)           
@@ -1012,9 +1017,9 @@ class LpdFemClient(FemClient):
             else:
                 asic_rx_start_delay = self.asicRx2tileStart 
             
-            if self.run_params['asicrx_capture_asic_header_TEST_ONLY'] == 1:
+            if self.run_params['asicrx_capture_asic_header_TEST_ONLY']: # == 1:
                 asic_rx_start_delay = asic_rx_start_delay - self.asicRxHeaderBits
-            elif self.run_params['asic_readout_with_slow_clock'] == 1:  # following offsets skip 1st row of pixels
+            elif self.run_params['asic_readout_with_slow_clock']:   # == 1:  # following offsets skip 1st row of pixels
                 if self.run_params['femAsicGainOverride'] == 8:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x100
                 elif self.run_params['femAsicGainOverride'] == 9:
@@ -1024,10 +1029,10 @@ class LpdFemClient(FemClient):
 
         print "asic_rx_start_delay = %s " % asic_rx_start_delay          
 
-        if self.run_params['asicrx_start_from_fast_strobe'] == 0:  
-            self.rdmaWrite(self.fem_ctrl_0+4, asic_rx_start_delay)  # OLD using fixed offsets          
-        else:
+        if self.run_params['asicrx_start_from_fast_strobe']:    # == 1:
             self.rdmaWrite(self.fem_ctrl_0+14, asic_rx_start_delay)   # NEW using strobe from fast command file         
+        else:
+            self.rdmaWrite(self.fem_ctrl_0+4, asic_rx_start_delay)  # OLD using fixed offsets          
 
     def send_trigger(self):
         """ send triggers """

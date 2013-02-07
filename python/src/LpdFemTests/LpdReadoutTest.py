@@ -15,7 +15,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
 
     # Was either femHost and femPort NOT provided to this class?
     if (femHost == None) or (femPort == None):
-        # Either or both were not supplied from the command line; Use networkConfiguration class
+        # At least one wasn't supplied from the command line; Use networkConfiguration class
         networkConfig = networkConfiguration()
         femHost = networkConfig.ctrl0SrcIp
         femPort = int(networkConfig.ctrlPrt)
@@ -26,6 +26,27 @@ def LpdReadoutTest(femHost=None, femPort=None):
         return
 
     bDebug = False
+
+    # Need to configure fast and slow control whether doing readout or debugging..
+
+    # Read Slow Control (LpdAsicControl) XML file into a string
+    ff = open('ConfigFiles/preambleDelaySlowControl.xml', 'r')
+    xmlString = ff.read(-1)
+    ff.close ()
+    
+    rc = theDevice.paramSet('femAsicSlowControlParams', xmlString)
+    if rc != LpdDevice.ERROR_OK:
+        print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
+    # Read Asic Command Sequence (LpdAsicCommandSequence) XML file into a string
+    ff = open('ConfigFiles/playingWivLasers.xml', 'r')
+    xmlString = ff.read(-1)
+    ff.close ()
+#    xmlString = ""
+    
+    rc = theDevice.paramSet('femAsicFastCmdSequence', xmlString)
+    if rc != LpdDevice.ERROR_OK:
+        print "femAsicFastCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
 #            'slow_params_file_name_xml'             : #'slow_control_config_jac.xml',            # used if slow_params_file_type = 1
 #                                                      'preambleDelaySlowControl.xml',            # slow_control_config.xml  # standard
@@ -277,36 +298,6 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femAsicColumns \t\t= %d" % value
 
-        # Read Slow Control (LpdAsicControl) XML file into a string
-        ff = open('ConfigFiles/preambleDelaySlowControl.xml', 'r')
-        xmlString = ff.read(-1)
-        ff.close ()
-        
-        rc = theDevice.paramSet('femAsicSlowControlParams', xmlString)
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    
-        (rc, value) = theDevice.paramGet('femAsicSlowControlParams')
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicSlowControlParams get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-#        else:
-#            print "femAsicSlowControlParams:\n", value
-
-        # Read Asic Command Sequence (LpdAsicCommandSequence) XML file into a string
-        ff = open('ConfigFiles/playingWivLasers.xml', 'r')
-        xmlString = ff.read(-1)
-        ff.close ()
-        
-        rc = theDevice.paramSet('femAsicFastCmdSequence', xmlString)
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicFastCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    
-        (rc, value) = theDevice.paramGet('femAsicFastCmdSequence')
-        if rc != LpdDevice.ERROR_OK:
-            print "femAsicFastCmdSequence get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-#        else:
-#            print "femAsicFastCmdSequence:\n", value
-
         rc = theDevice.paramSet('femFastCtrlDynamic', True)
         if rc != LpdDevice.ERROR_OK:
             print "femFastCtrlDynamic set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -316,6 +307,18 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femFastCtrlDynamic get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
             print "femFastCtrlDynamic \t= ", value
+
+        (rc, value) = theDevice.paramGet('femAsicSlowControlParams')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicSlowControlParams get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicSlowControlParams:\n", value
+    
+        (rc, value) = theDevice.paramGet('femAsicFastCmdSequence')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicFastCmdSequence get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicFastCmdSequence:\n", value
 
         # Outstanding variables - Do not currently control anything inside LpdFemClient..
 #        femSendPpcReset
