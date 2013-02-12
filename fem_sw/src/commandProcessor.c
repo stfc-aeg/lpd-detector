@@ -773,7 +773,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 					else
 					{
 						SBIT(state, STATE_NACK);
-						SETERR(pClient, ERR_ACQ_OP_BACK_ACK, "ACK from PPC1 for acquire start / stop request had error or timeout.");
+						SETERR(pClient, ERR_ACQ_OP_BAD_ACK, "ACK from PPC1 for acquire start / stop request had error or timeout.");
 					}
 					break;
 

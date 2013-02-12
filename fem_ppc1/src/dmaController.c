@@ -805,6 +805,7 @@ int main()
 					while (numConfigBdsToProcess>0)
 					{
 
+
 						numUploadTx = XLlDma_BdRingFromHw(pBdRings[BD_RING_UPLOAD], pStatusBlock->numConfigBds, &pConfigBd);
 						for(i=0; i<numUploadTx; i++)
 						{
@@ -822,7 +823,30 @@ int main()
 						}
 						numConfigBdsToProcess -= numUploadTx;
 
-					}
+						// **************************************************************************************
+						// Check for mailbox messages
+						// **************************************************************************************
+						if (checkForMailboxMessage(&mbox, pMsg))
+						{
+							switch (pMsg->cmd)
+							{
+							case CMD_ACQ_STOP:
+								// Stops upload immediately
+								//print("[INFO ] Got stop upload message, stopping...\r\n");
+								if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
+								{
+									printf("[ERROR] Could not ACK PPC2 on CMD_ACQ_STOP (upload stop)\r\n");
+								}
+								numConfigBdsToProcess = 0;
+								break;
+
+							default:
+								//print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
+								break;
+							}
+						}
+
+					} // END while(numConfigBdsToProcess>0)
 
 					//printf("[INFO ] Verified %d config. upload BD(s) OK!\r\n", (int)pStatusBlock->numConfigBds);
 
@@ -839,6 +863,9 @@ int main()
 				break;
 			} // END switch(lastMode)
 			break;
+
+			// -------------------------------------------------------------------------------------
+
 		case CMD_ACQ_STOP:
 			// All OK so ACK PPC2
 			if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)

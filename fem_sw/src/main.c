@@ -202,7 +202,10 @@ void networkInitThread(void *p)
 
     netif = &server_netif;
 
+    /*
+     * For DHCP
     int mscnt = 0;
+	*/
 
     // Setup network
     IP4_ADDR(&ipaddr,  femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);
@@ -220,6 +223,7 @@ void networkInitThread(void *p)
     netif_set_default(netif);
 
     // If default network settings detected, get a DHCP address
+    /*
     if (femConfig.net_ip[0]==0 && femConfig.net_ip[1]==0 && femConfig.net_ip[2]==0 && femConfig.net_ip[3]==0)
     {
     	// DHCP
@@ -240,8 +244,10 @@ void networkInitThread(void *p)
 
         DBGOUT("NetMan: Got DHCP address!\r\n");
         // TODO: Print IP/NM/GW!
+
     }
     else
+    */
     {
     	// STATIC IP
     	DBGOUT("NetMan: Static IP %03d.%03d.%03d.%03d\r\n", femConfig.net_ip[0], femConfig.net_ip[1], femConfig.net_ip[2], femConfig.net_ip[3]);

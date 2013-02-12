@@ -26,7 +26,6 @@ void createFailsafeConfig(struct fem_config* pConfig)
 	pConfig->net_mac[4]			= 0xBE;
 	pConfig->net_mac[5]			= 0xEF;
 
-	/*
 	// STATIC IP
 	// IP address
 	pConfig->net_ip[0]			= 192;
@@ -45,10 +44,10 @@ void createFailsafeConfig(struct fem_config* pConfig)
 	pConfig->net_gw[1]			= 168;
 	pConfig->net_gw[2]			= 0;
 	pConfig->net_gw[3]			= 1;
-	*/
 
 	// DHCP
 	// IP address
+	/*
 	pConfig->net_ip[0]			= 0;
 	pConfig->net_ip[1]			= 0;
 	pConfig->net_ip[2]			= 0;
@@ -65,6 +64,7 @@ void createFailsafeConfig(struct fem_config* pConfig)
 	pConfig->net_gw[1]			= 0;
 	pConfig->net_gw[2]			= 0;
 	pConfig->net_gw[3]			= 0;
+	*/
 
 	// LM82 setpoints
 	pConfig->temp_high_setpoint	= 40;
