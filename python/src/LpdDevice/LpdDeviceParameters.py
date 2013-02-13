@@ -345,8 +345,8 @@ class LpdDeviceParameters(object):
                                                                         (True, False), None, False,
                                                                         AccessWrite, AssignmentOptional)
         
-        self.parameters['femAsicModuleType']            = AttributeContainer(int, 'FemAsicModuleType', 'Selects type of ASIC module 1=single ASIC, 2=2-tile module',
-                                                                        1, 2, 2,
+        self.parameters['femAsicModuleType']            = AttributeContainer(int, 'FemAsicModuleType', 'Selects type of ASIC module  0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
+                                                                        0, 3, 2,
                                                                         AccessWrite, AssignmentOptional)
         
         self.parameters['femAsicRxStartDelay']          = AttributeContainer(int, 'FemAsicRxStartDelay', 'Number of clock periods before start of ASIC data RX - will be replaced',
@@ -396,6 +396,62 @@ class LpdDeviceParameters(object):
         self.parameters['femReadoutOperatingMode']      = AttributeContainer(int, 'FemReadoutOperatingMode', 'FEM readout operating mode (e.g. normal, self-test scan etc, TBD',
                                                                           0, 255, 0,
                                                                           AccessWrite, AssignmentOptional)
+
+        ############ Additional Variables ############
+    
+        self.parameters['femAsicDataType']      = AttributeContainer(int, 'FemAsicDataType', 'ASIC data type 0=sensor data, 1=rx counting, 2=pseudorandom',
+                                                                          0, 2, 0,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicLocalClock']    = AttributeContainer(int, 'FemAsicLocalClock', 'ASIC clock scaling 0=100 MHz, 1=scaled down clock (10 MHz)',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femFastCtrlDynamic']   = AttributeContainer(bool, 'FemFastCtrlDynamic', 'New dynamic ASIC commands',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicSlowLoadMode']  = AttributeContainer(int, 'FemAsicSlowLoadMode', 'ASIC control load mode 0=parallel, 1=serial',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicRxInvertData']  = AttributeContainer(bool, 'FemAsicRxInvertData', 'Invert ADC ASIC data',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicRxFastStrobe']  = AttributeContainer(bool, 'FemAsicRxFastStrobe', 'Start ASIC capture using strobe derived from ASIC Command file',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicRxDelayOddChannels'] = AttributeContainer(bool, 'FemAsicRxDelayOddChannels', 'Delay odd ASIC data channels by one clock to fix alignment',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicSlowClockPhase']= AttributeContainer(int, 'FemAsicSlowClockPhase', 'ASIC additional phase adjustment of slow clock rsync wrt ASIC reset',
+                                                                          0, 65535, 0,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicSlowedClock']   = AttributeContainer(bool, 'FemAsicSlowedClock', 'ASIC readout phase is slowed down',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femPpcMode']           = AttributeContainer(int, 'FemPpcMode', 'Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femPpcResetDelay']     = AttributeContainer(int, 'FemPpcResetDelay', 'Delay after resetting ppc ',
+                                                                          0, 10, 5,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femNumTestCycles']     = AttributeContainer(int, 'FemNumTestCycles', 'Number of test cycles if LL Data Generator or PPC Data Direct selected',
+                                                                          0, 255, 1,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['tenGigFarmMode']       = AttributeContainer(int, 'TenGigFarmMode', '10GigE farm mode 1=disabled, 2=fixed IP,multi port, 3=farm mode with nic lists',
+                                                                          1, 3, 1,
+                                                                          AccessWrite, AssignmentMandatory)
+
+
 
     def get(self):
         '''

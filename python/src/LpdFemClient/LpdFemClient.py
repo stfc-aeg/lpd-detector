@@ -153,19 +153,20 @@ class LpdFemClient(FemClient):
     
     ########## Enumerated values for proposed API additions ##########
     # -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- #
-    ASIC_MODULE_TYPE_STANDALONE    = 0
-    ASIC_MODULE_TYPE_SUPERMODULE   = 1
-    ASIC_MODULE_TYPE_SINGLE_ASIC   = 2
-    ASIC_MODULE_TYPE_TWO_TILE      = 3
+
+    ASIC_MODULE_TYPE_SUPERMODULE   = 0
+    ASIC_MODULE_TYPE_SINGLE_ASIC   = 1
+    ASIC_MODULE_TYPE_TWO_TILE      = 2
+    ASIC_MODULE_TYPE_STANDALONE    = 3
 
     RUN_TYPE_ASIC_DATA_VIA_PPC  = 0
     RUN_TYPE_ASIC_DATA_DIRECT   = 1
     RUN_TYPE_LL_DATA_GEN        = 2
     RUN_TYPE_PPC_DATA_DIRECT    = 3
     
-    ASIC_DATA_TYPE_SENSOR       = 0
-    ASIC_DATA_TYPE_RX_COUNTING  = 1
-    ASIC_DATA_TYPE_PSEUDO_RANDOM = 2
+    ASIC_DATA_TYPE_ASIC_SENSOR   = 0     # Asic sensor data [Standard Operation Real Data]
+    ASIC_DATA_TYPE_RX_COUNTING   = 1     # Asic Rx Block internally generated counting data (simulated data)
+    ASIC_DATA_TYPE_PSEUDO_RANDOM = 2    # Asic Pseudo random data (test data from asic)
     
     # -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- #
     
@@ -190,29 +191,12 @@ class LpdFemClient(FemClient):
         self.femAsicCountingData                = 0  #TODO: Boolean has become: run_params['asic_data_type'] == 'asicrx_counting'
         self.femAsicRxStartDelay                = 0  #TODO: original variable removed?
         self.femNumLocalLinkFrames              = 0  #TODO: Used to be a variable controlling execution of: config_data_gen() => .setup_ll_frm_gen()
-        self.femAsicColumnsPerFrame             = 0  #TODO: Redundant?
-        self.femAsicPixelFeedbackOverride       = 0  #TODO: Should this be implemented? (How?)
-        self.femAsicPixelSelfTestOverride       = 0  #TODO: Should this be implemented? (How?)
-        self.femReadoutOperatingMode            = 0  #TODO: Functionality not yet implemented
+        self.femAsicPixelFeedbackOverride       = 0  #TODO: To be implemented
+        self.femAsicPixelSelfTestOverride       = 0  #TODO: To be implemented
+        self.femReadoutOperatingMode            = 0  #TODO: To be implemented
 
-        ########## Parameters that (may) need to exposed in API ##########
 
-        self.asicDataType               = LpdFemClient.ASIC_DATA_TYPE_SENSOR
-        self.asicLocalClockFreq         = 0
-        self.asicSlowLoadMode           = 0
-        self.asicRxInvertData           = 0
-        self.asicRxStartFromFastStrobe  = 1
-        self.asicRxDelayOddChannels     = 1
-        self.asicSlowClockPhase         = 0
-        self.asicReadoutSlowedClock     = 1
-        self.ppcMode                    = 0
-        self.ppcResetDelay              = 5
-        self.numberTestCycles           = 1 # 'num_cycles'  : 1, # repeat the test n times
-        self.rxPlayback                 = 0 # 'playback' : 0, # 1 for playback rx (to load files into ddr2 memory)
-        self.farmSelectMode             = 1 # '10g_farm_mode' : 1,   # 3 for farm mode with nic lists 
-        self.clearTenGigLut             = 0 #TODO: Never Utilised?
-
-        # Constants ?
+        ########### Constants ###########
         self.asicRxPseudoRandomStart      = 61    # asic_rx_start_pseudo_random
         self.asicRx2tileStart             = 810   # asic_rx_start_2tile
         self.asicRxSingleStart            = 0     # asic_rx_start_single_asic
@@ -222,66 +206,60 @@ class LpdFemClient(FemClient):
         self.asicRxOffsetSlowReadout_x10  = 564   # asicrx_offset_slow_readout_x10
         self.asicRxOffsetSlowReadout_x1   = 564   # asicrx_offset_slow_readout_x1 
 
-        
+        ########## Parameters that (may) need to exposed in API ##########
+
         # ------------------ variables utilised by jac's script ------------------
 
-        self.run_params = { 
-            'femAsicModuleType' : # self.ASIC_MODULE_TYPE_STANDALONE,    # FEM Standalone 
-                                  # self.ASIC_MODULE_TYPE_SINGLE_ASIC,   # Single ASIC test module
-                                  # self.ASIC_MODULE_TYPE_TWO_TILE,      # 2-Tile module
-                                 self.ASIC_MODULE_TYPE_SUPERMODULE,      # Supermodule
+        self.femAsicModuleType  = self.ASIC_MODULE_TYPE_SUPERMODULE      # Supermodule
+        # self.ASIC_MODULE_TYPE_STANDALONE    # FEM Standalone 
+        # self.ASIC_MODULE_TYPE_SINGLE_ASIC   # Single ASIC test module
+        # self.ASIC_MODULE_TYPE_TWO_TILE      # 2-Tile module
 
-            'femDataSource' :   self.RUN_TYPE_ASIC_DATA_VIA_PPC,  # ASIC data (via PPC) [Standard Operation]
-                              # self.RUN_TYPE_ASIC_DATA_DIRECT,   # ASIC data direct from Rx block
-                              # self.RUN_TYPE_LL_DATA_GEN,        # LL Data Gen  (simulated data)
-                              # self.RUN_TYPE_PPC_DATA_DIRECT,    # preprogrammed data DDR2 (simulated data)
+        self.femDataSource      = self.RUN_TYPE_ASIC_DATA_VIA_PPC  # ASIC data (via PPC) [Standard Operation]
+        # self.RUN_TYPE_ASIC_DATA_DIRECT   # ASIC data direct from Rx block
+        # self.RUN_TYPE_LL_DATA_GEN        # LL Data Gen  (simulated data)
+        # self.RUN_TYPE_PPC_DATA_DIRECT    # preprogrammed data DDR2 (simulated data)
 
 #====== params for run type = self.RUN_TYPE_ASIC_DATA_VIA_PPC or self.RUN_TYPE_ASIC_DATA_DIRECT
-            'asicDataType' : self.ASIC_DATA_TYPE_SENSOR,          # Asic sensor data [Standard Operation Real Data]
-                            # self.ASIC_DATA_TYPE_RX_COUNTING,    # Asic Rx Block internally generated counting data (simulated data)
-                            # self.ASIC_DATA_TYPE_PSEUDO_RANDOM,  # Asic Pseudo random data (test data from asic)
-
-            # if asic clock is coming from on board FEM 100 MHz Osc
-            'asic_local_clock_freq'                 : 0,        # 0 = no scaling = 100 MHz
-                                                                # 1 = scaled down clock, usually = 10 MHz (set by dcm params)
-            'femFastCtrlDynamic'                    : True,     # True = New dynamic commands
-            'asic_slow_load_mode'                   : 0,        # 0 = parallel load
-                                                                # 1 = daisy chain
-            'femAsicColumns'                        : 4,        # nr of images to capture per train
-            'asicrx_capture_asic_header_TEST_ONLY'  : False,    # False = (NORMAL OPERATION) ignore asic header bits 
-                                                                # True  = (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
-            'femAsicGainOverride'                   : 8,        # gain algorithm selection
-                                                                #  0000  normal gain selection     0
-                                                                #  1000  force select x100         8
-                                                                #  1001  force select x10          9
-                                                                #  1011  force select x1          11
-                                                                #  1111  force error condition ?  15
-            'asicrx_invert_data'                    : False,    # True  = invert adc output data (by subtracting value from $FFF)
-            'asicrx_start_from_fast_strobe'         : True,     # True  = Start asic rx data capture using strobe derived from fast command file
-                                                                # False = Start asic rx data capture using fixed delay value 
-            'asicrx_delay_odd_channels'             : True,     # True  = delay odd data channels by one clock to fix alignment
-            'asic_slow_clock_phase'                 : 0,        # additional phase adjustment of slow clock rsync wrt asic reset
-            'asic_readout_with_slow_clock'          : True,     # False = asic readout phase uses same clock as capture phase
-                                                                # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
-
+        self.femAsicDataType    = self.ASIC_DATA_TYPE_ASIC_SENSOR          # Asic sensor data [Standard Operation Real Data]
+        # self.ASIC_DATA_TYPE_RX_COUNTING    # Asic Rx Block internally generated counting data (simulated data)
+        # self.ASIC_DATA_TYPE_PSEUDO_RANDOM  # Asic Pseudo random data (test data from asic)
+        
+        self.femAsicLocalClock                      = 0        # 0 = no scaling (100 MHz), 1 = scaled down clock  [10 MHz (set by dcm params)]
+        self.femFastCtrlDynamic                     = True     # True = New dynamic commands
+        self.femAsicSlowLoadMode                    = 0        # 0 = parallel load, 1 = daisy chain
+        self.femAsicColumns                         = 4        # nr of images to capture per train
+        self.asicrx_capture_asic_header_TEST_ONLY   = False    # False = (NORMAL OPERATION) ignore asic header bits 
+        # True  = (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
+        self.femAsicGainOverride                    = 8        # gain algorithm selection
+        #  0000  normal gain selection     0
+        #  1000  force select x100         8
+        #  1001  force select x10          9
+        #  1011  force select x1          11
+        #  1111  force error condition ?  15
+        self.femAsicRxInvertData                    = False    # True  = invert adc output data (by subtracting value from $FFF)
+        self.femAsicRxFastStrobe                    = True     # True  = Start asic rx data capture using strobe derived from fast command file
+        # False = Start asic rx data capture using fixed delay value 
+        self.femAsicRxDelayOddChannels              = True     # True  = delay odd data channels by one clock to fix alignment
+        self.femAsicSlowClockPhase                  = 0        # additional phase adjustment of slow clock rsync wrt asic reset
+        self.femAsicSlowedClock                     = True     # False = asic readout phase uses same clock as capture phase
+        # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
+        
 #======== params for general steering 
-            'ppc_mode'             : 0, # 0 = Single Train Shot with PPC reset 
-                                        # 1 = Continuous readout (not working yet)
-            'ppc_reset_delay_secs' : 5, # wait after resetting ppc 
-            'num_cycles'           : 1, # repeat the test n times
-            'playback'             : 0, # 1 for playback rx (to load files into ddr2 memory)
-            'debug_level'          : 2, # higher values more print out
-
+        self.femPpcResetDelay   = 5 # wait after resetting ppc 
+        self.femNumTestCycles   = 1 # repeat the test n times
+        self.debug_level        = 2 # higher values more print out
+        #TODO: NEVER USED:
+        self.rxPlayback         = 0 # 1 for playback rx (to load files into ddr2 memory)
+        self.femPpcMode         = 0 # 0 = Single Train Shot with PPC reset, 1 = Continuous readout (not working yet)
+        
 #======== params for 10G data links
-              '10g_farm_mode'       : 1,    # 3 for farm mode with nic lists 
-                                            # 2 for farm mode with fixed ip host and multiple ports
-                                            # 1 for legacy non farm mode (only 1 ip host and port per link)  
-              'tenGigInterframeGap' : 0x000,# ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
-              'tenGigUdpPacketLen'  : 8000, # default udp packet length in bytes (can be overriden in asic runs)
-              #TODO: clear_10g_lut never used?
-              'clear_10g_lut'       : 0     # 1 to clear 10g lut tables before start
-#========
-                    }  
+        self.tenGigFarmMode       = 1       # 1 = non farm mode (1 ip host/port per link), 2 = farm mode (fixed ip host/multiple ports), 3 = farm mode with nic lists
+        self.tenGigInterframeGap = 0x000    # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
+        self.tenGigUdpPacketLen  = 8000     # default udp packet length in bytes (can be overriden in asic runs)
+        #TODO: NEVER USED:
+        self.clear_10g_lut       = 0        # 1 to clear 10g lut tables before start
+     
      
         # look up table to match MAC addresses with IP for host NIC
         self.mac_ip_lut = { '192.168.2.1' : '00-07-43-11-97-90',   # redbridge eth2
@@ -663,12 +641,11 @@ class LpdFemClient(FemClient):
         mac_high = self.swap_endian(mac_high)
         ip = self.swap_endian(ip)  
 
-        num_ports = self.tenGig0('num_prts')
+        num_ports  = self.tenGig0['num_prts']
         num_frames = self.tenGig0['num_frames']
-        
-#       for i in range (0, 256):
+
         nr_lut_entries = num_frames
-#        nr_lut_entries = num_frames*num_cycles
+
         if nr_lut_entries > 256 :
             nr_lut_entries = 256
         for i in range (0, nr_lut_entries):   # only set up for max nr of frames in a cycle 
@@ -773,15 +750,15 @@ class LpdFemClient(FemClient):
         """ configure top level of design """
         
         # set asic clock freq
-        self.set_asic_clock_freq(self.fem_ctrl_0, self.run_params['asic_local_clock_freq'])    # 0 = 100 Mhz, 1 = div clock 10 MHz
+        self.set_asic_clock_freq(self.fem_ctrl_0, self.femAsicLocalClock)    # 0 = 100 Mhz, 1 = div clock 10 MHz
       
-        if self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC:
+        if self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000001)  # asic data via ppc
-        elif self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_DIRECT:
+        elif self.femDataSource == self.RUN_TYPE_ASIC_DATA_DIRECT:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000102)  # aisc direct to 10g
-        elif self.run_params['femDataSource'] == self.RUN_TYPE_LL_DATA_GEN:
+        elif self.femDataSource == self.RUN_TYPE_LL_DATA_GEN:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000000)  # data generator
-        elif self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT:
+        elif self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000001)  # ppc generated data
         else:
             self.rdmaWrite(self.fem_ctrl_0+1, 0x00000001)  # asic data via ppc
@@ -792,17 +769,17 @@ class LpdFemClient(FemClient):
         if self.tenGig0['femEnable']:
             print "Configure 10G link nr", self.tenGig0['link_nr']
             
-            if self.run_params['debug_level'] > 0:
+            if self.debug_level > 0:
                 self.pp.pprint(self.tenGig0)
 
             x10g_base = self.udp_10g_0
             data_gen_base = self.data_gen_0
             ppc_bram_base = self.bram_ppc1
            
-            udp_pkt_len = self.run_params['tenGigUdpPacketLen']
+            udp_pkt_len = self.tenGigUdpPacketLen
             udp_frm_sze = self.tenGig0['frame_len']
 
-            eth_ifg = self.run_params['tenGigInterframeGap']
+            eth_ifg = self.tenGigInterframeGap
             enable_udp_packet_hdr = 4  # enabled for python = 4  
             
             # legacy non farm mode. (farm mode = 1)
@@ -818,17 +795,17 @@ class LpdFemClient(FemClient):
 #            self.dump_regs_hex(x10g_base+0x10000, 16) 
  
             print "Setting up Farm Mode LUT. May take several seconds... "                       
-            if self.run_params['10g_farm_mode'] == 2:
+            if self.tenGigFarmMode == 2:
                 self.x10g_net_lut_setup(x10g_base)
                 self.x10g_set_farm_mode(x10g_base, 1)
-            elif self.run_params['10g_farm_mode'] == 3:      
+            elif self.tenGigFarmMode == 3:      
                 self.x10g_net_lut_setup_from_list(x10g_base, self.tenGig0)   #, mac_ip_lut)
                 self.x10g_set_farm_mode(x10g_base, 1)
             else: 
                 print "Not in Farm Mode."              
                 self.x10g_set_farm_mode(x10g_base, 0)
 
-            if self.run_params['debug_level'] > 3:                
+            if self.debug_level > 3:                
                 print "Dump of Farm Mode LUT for xaui for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(x10g_base+0x10000, 16) 
                 self.dump_regs_hex(x10g_base+0x100f0, 16)                               
@@ -837,20 +814,20 @@ class LpdFemClient(FemClient):
                 self.dump_regs_hex(x10g_base+0x10200, 16)
                 self.dump_regs_hex(x10g_base+0x103f0, 16)
                     
-            if self.run_params['debug_level'] > 1:
+            if self.debug_level > 1:
                 print "Dump of regs for xaui for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(x10g_base, 16)
                 print "Dump of regs for Data Gen for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(data_gen_base, 16)
   
-#            if (self.run_params['femDataSource'] == 0) or (self.run_params['run_type'] == 3):   # data via ppc
+#            if (self.femDataSource == 0) or (self.run_type'] == 3):   # data via ppc
 #                self.setup_10g_index_cycle(x10g_base, 3) # use 4th word in ppc header for 10g index to port lut 
 #            else:
 #                self.setup_10g_index_cycle(x10g_base, 0) # use 1st word in gen header for 10g index to port lut 
 
         
 #            if self.tenGig0['data_gen'] == 2:   # data source is ppc
-            if (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT):  # data with PPC ll header
+            if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT):  # data with PPC ll header
                 self.setup_ppc_bram(ppc_bram_base, self.tenGig0['frame_len']) 
                 self.setup_10g_index_cycle(x10g_base, 3) # use 4th word in ppc header for 10g index to port lut 
 
@@ -871,7 +848,7 @@ class LpdFemClient(FemClient):
         self.toggle_bits(self.fem_ctrl_0+9, 0)
         print "Reset the PPC.."
         
-        theDelay = self.run_params['ppc_reset_delay_secs']
+        theDelay = self.femPpcResetDelay
 
         print "Waiting %s seconds.." % theDelay
         time.sleep(theDelay)
@@ -892,13 +869,13 @@ class LpdFemClient(FemClient):
         """ configure asic modules """                        
 
         # phase delay of sync of slow clock wrt asic reset
-        self.rdmaWrite(self.fem_ctrl_0+13, self.run_params['asic_slow_clock_phase'])  
+        self.rdmaWrite(self.fem_ctrl_0+13, self.femAsicSlowClockPhase)  
 
         # duration of slowed down asic readout clock
         # duration (in slowed down asic clock cycles) for slow readout clock
         # each image takes ~ 480x22=1056 clocks to read out, plus allowance for setup time
 
-        asic_slow_readout_duration = self.run_params['femAsicColumns'] * 1056 + 5000
+        asic_slow_readout_duration = self.femAsicColumns * 1056 + 5000
         self.rdmaWrite(self.fem_ctrl_0+12, asic_slow_readout_duration)  
 
         # Load slow control, Fast Commands, asic module
@@ -922,7 +899,7 @@ class LpdFemClient(FemClient):
             
         no_of_bits = 3911
                   
-        load_mode = self.run_params['asic_slow_load_mode']                
+        load_mode = self.femAsicSlowLoadMode
 
         # load in BRAM
         self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, encodedString, no_of_bits, load_mode)
@@ -940,7 +917,7 @@ class LpdFemClient(FemClient):
         print "fast cmds no_of_words, no_of_nops: ", no_of_words, no_of_nops
 
         # Setup the fast command block
-        if self.run_params['femFastCtrlDynamic']:   # new design with dynamic vetos
+        if self.femFastCtrlDynamic:   # new design with dynamic vetos
             self.fem_fast_bram_setup(self.fast_cmd_1, xmlString, no_of_words)
             self.fem_fast_cmd_setup_new(self.fast_cmd_0, no_of_words+no_of_nops)
         else:
@@ -951,15 +928,15 @@ class LpdFemClient(FemClient):
         """ configure asic data rx module """                        
         
         # Use list instead of array
-        if self.run_params['asicDataType'] == "asicrx_counting":    # enable all channels for dummy data from asic rx    
+        if self.femAsicDataType == self.ASIC_DATA_TYPE_RX_COUNTING:    # enable all channels for dummy data from asic rx    
             self.femAsicEnableMask[0] = 0xffffffff
             self.femAsicEnableMask[1] = 0xffffffff
             self.femAsicEnableMask[2] = 0xffffffff
             self.femAsicEnableMask[3] = 0xffffffff
         else: # Enable only relevant channel for single ASIC test module
-            if self.run_params['femAsicModuleType'] == self.ASIC_MODULE_TYPE_SINGLE_ASIC: # Enable 2 channel for single ASIC test module
+            if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SINGLE_ASIC: # Enable 2 channel for single ASIC test module
                 self.femAsicEnableMask[0] = 0x00000001
-            elif self.run_params['femAsicModuleType'] == self.ASIC_MODULE_TYPE_TWO_TILE: #Enable 16 channels for 2-Tile
+            elif self.femAsicModuleType == self.ASIC_MODULE_TYPE_TWO_TILE: #Enable 16 channels for 2-Tile
 # new mapping  working
                 self.femAsicEnableMask[0] = 0x0f0000f0
                 self.femAsicEnableMask[1] = 0x0f0000f0
@@ -981,15 +958,15 @@ class LpdFemClient(FemClient):
                 self.femAsicEnableMask[2] = 0xffffffff
                 self.femAsicEnableMask[3] = 0xffffffff
 
-        no_asic_cols = self.run_params['femAsicColumns'] #+ 1               
-        # no_asic_cols_per_frm = self.run_params['asic_nr_images_per_frame'] #+ 1              
-        no_asic_cols_per_frm = self.run_params['femAsicColumns']     # force all images to be in one frame               
+        no_asic_cols = self.femAsicColumns #+ 1               
+        # no_asic_cols_per_frm = self.asic_nr_images_per_frame'] #+ 1              
+        no_asic_cols_per_frm = self.femAsicColumns     # force all images to be in one frame               
              
         # Setup the ASIC RX IP block
         self.fem_asic_rx_setup(self.asic_srx_0 , self.femAsicEnableMask, no_asic_cols, no_asic_cols_per_frm)
         
         # data source - self test
-        if self.run_params['asicDataType'] == "asicrx_counting":            
+        if self.femAsicDataType == self.ASIC_DATA_TYPE_RX_COUNTING:            
             self.asicrx_self_test_counting_data_enable()
         else:
             self.asicrx_self_test_counting_data_disable()
@@ -998,38 +975,38 @@ class LpdFemClient(FemClient):
         self.asicrx_override_gain()
 
         # asic rx invert adc data
-        if self.run_params['asicrx_invert_data']:            
+        if self.femAsicRxInvertData:            
             self.asicrx_invert_data_enable()
         else:
             self.asicrx_invert_data_disable()
 
         # delay odd data channels to fix alignment
-        if self.run_params['asicrx_delay_odd_channels']:    # == 1:            
+        if self.femAsicRxDelayOddChannels:    # == 1:            
             self.rdmaWrite(self.fem_ctrl_0+8, 1)           
         else:
             self.rdmaWrite(self.fem_ctrl_0+8, 0)           
         
-        if self.run_params['asicDataType'] == "asic_pseudo_random":
+        if self.femAsicDataType == self.ASIC_DATA_TYPE_PSEUDO_RANDOM:
             asic_rx_start_delay = self.asicRxPseudoRandomStart
         else:
-            if self.run_params['femAsicModuleType'] == self.ASIC_MODULE_TYPE_SINGLE_ASIC:
+            if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SINGLE_ASIC:
                 asic_rx_start_delay = self.asicRxSingleStart
             else:
                 asic_rx_start_delay = self.asicRx2tileStart 
             
-            if self.run_params['asicrx_capture_asic_header_TEST_ONLY']: # == 1:
+            if self.asicrx_capture_asic_header_TEST_ONLY: # == 1:
                 asic_rx_start_delay = asic_rx_start_delay - self.asicRxHeaderBits
-            elif self.run_params['asic_readout_with_slow_clock']:   # == 1:  # following offsets skip 1st row of pixels
-                if self.run_params['femAsicGainOverride'] == 8:
+            elif self.femAsicSlowedClock:   # == 1:  # following offsets skip 1st row of pixels
+                if self.femAsicGainOverride == 8:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x100
-                elif self.run_params['femAsicGainOverride'] == 9:
+                elif self.femAsicGainOverride == 9:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x10
-                elif self.run_params['femAsicGainOverride'] == 11:
+                elif self.femAsicGainOverride == 11:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x1
 
         print "asic_rx_start_delay = %s " % asic_rx_start_delay          
 
-        if self.run_params['asicrx_start_from_fast_strobe']:    # == 1:
+        if self.femAsicRxFastStrobe:    # == 1:
             self.rdmaWrite(self.fem_ctrl_0+14, asic_rx_start_delay)   # NEW using strobe from fast command file         
         else:
             self.rdmaWrite(self.fem_ctrl_0+4, asic_rx_start_delay)  # OLD using fixed offsets          
@@ -1041,10 +1018,10 @@ class LpdFemClient(FemClient):
         # send triggers to data generators
         #--------------------------------------------------------------------
                                  
-        if self.run_params['femDataSource'] == self.RUN_TYPE_LL_DATA_GEN:            
+        if self.femDataSource == self.RUN_TYPE_LL_DATA_GEN:            
             print "Trigger Data Gen"
             self.toggle_bits(self.fem_ctrl_0+0, 0) # trigger to local link frame gen 
-        elif (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_DIRECT):             
+        elif (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_ASIC_DATA_DIRECT):             
             print "Trigger Asic"
             self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asic rx
         else:
@@ -1245,7 +1222,7 @@ class LpdFemClient(FemClient):
         #  1001  force select x10          9
         #  1011  force select x1          11
         #  1111  force error condition ?  15
-        gain_select = self.run_params['femAsicGainOverride']
+        gain_select = self.femAsicGainOverride
         reg_addr    = self.asic_srx_0+0
         prev_value  = self.rdmaRead(reg_addr, 1)[0] 
         new_value   = prev_value | (gain_select & 0x0000000f)
@@ -1262,7 +1239,7 @@ class LpdFemClient(FemClient):
     def start_10g_link(self):
         """ start a 10g link """
 
-        if self.run_params['debug_level'] > 5:
+        if self.debug_level > 5:
             print "Start 10G link nr", self.tenGig0['link_nr']
 
         data_gen_base = self.data_gen_0
@@ -1271,7 +1248,7 @@ class LpdFemClient(FemClient):
       
         time.sleep(self.tenGig0['delay'])   # wait before trigger
 
-        if self.run_params['femDataSource'] == self.RUN_TYPE_LL_DATA_GEN: # ll data gen
+        if self.femDataSource == self.RUN_TYPE_LL_DATA_GEN: # ll data gen
           
             # check last cycle has completed                
             link_busy = self.status_ll_frm_mon(ll_mon_base) 
@@ -1286,7 +1263,7 @@ class LpdFemClient(FemClient):
                 link_busy = self.status_ll_frm_mon(ll_mon_base) 
                 gen_busy = self.status_ll_frm_gen(data_gen_base) 
 
-        if self.run_params['10g_farm_mode'] == 3:
+        if self.tenGigFarmMode == 3:
             i = 0
             for nic in self.tenGig0['nic_list']:
                 # give a soft reset to reset the frame nr in the headers (resets the the ip port nr)
@@ -1310,12 +1287,12 @@ class LpdFemClient(FemClient):
                     index_nr = i
                     self.override_header_ll_frm_gen(data_gen_base, 1, index_nr)
                         
-                    if self.run_params['debug_level'] > 5:
+                    if self.debug_level > 5:
                         print "Trigger LL Data Gen"
                     
                     self.toggle_bits(self.fem_ctrl_0+0, 0)   
 
-                elif self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT: # ppc dma ddr2 preprogrammed
+                elif self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT: # ppc dma ddr2 preprogrammed
                     
                     # check previous dma tx has completed
                     busy = self.prev_dma_tx(ppc_bram_base) 
@@ -1327,7 +1304,7 @@ class LpdFemClient(FemClient):
                         time.sleep(1)                    
                         busy = self.prev_dma_tx(ppc_bram_base) 
         
-                    if self.run_params['debug_level'] > 5:
+                    if self.debug_level > 5:
                         print "Trigger DMA Tx"
                     self.start_dma_tx(ppc_bram_base, i)  # pass index to ppc to select tx descriptor
                 i = i + 1
@@ -1418,8 +1395,8 @@ class LpdFemClient(FemClient):
   
         self.pp = pprint.PrettyPrinter(indent=4)
   
-        if self.run_params['debug_level'] > 0:
-            self.pp.pprint(self.run_params)
+#        if self.debug_level > 0:
+#            self.pp.pprint(self.run_params)
 
         self.init_ppc_bram(self.bram_ppc1, 0xBEEFFACE)
 
@@ -1438,35 +1415,31 @@ class LpdFemClient(FemClient):
         # Setup the 10g link params
         self.config_10g_link()         
 
-        if (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
+        if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
             self.reset_ppc()         
 
         # Setup data gen - not necessary for actual data but leave alone, "just in case"
         self.config_data_gen()         
 
         # Setup asic blocks
-        if (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.run_params['femDataSource'] == self.RUN_TYPE_ASIC_DATA_DIRECT):  # data from asic
+        if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_ASIC_DATA_DIRECT):  # data from asic
             self.config_asic_modules()
 
             # set length of strobe from fast command file to slow down asic readout
             self.rdmaWrite(self.fem_ctrl_0+15, 10) # 0xffffff is 24 bit max         
-            
-            # send_trigger() moved to run() 
-            #self.send_trigger(self.run_params, self.myLpdFemClient) 
 
         else: # data from datagen or ppc ddr2 
                     
 #            print "Data Generator disabled for now, exiting.."
-            num_cycles = self.run_params['num_cycles']
-            print "Starting Run of %d cycles" % self.run_params['num_cycles']
+            num_cycles = self.femNumTestCycles
+            print "Starting Run of %d cycles" % self.femNumTestCycles
             for i in range (1, num_cycles+1):
 #                print "Starting Run Cycle Nr %d" % i
                 self.start_10g_link()  
-#                self.send_trigger(run_params, myLpdFemClient) 
-            
+
             if self.tenGig0['data_gen'] == 2:
                 self.final_dma_tx(self.bram_ppc1)  
-        
+
 
     def run(self):
         '''
@@ -1908,25 +1881,25 @@ class LpdFemClient(FemClient):
         '''
             Get tenGigInterframeGap
         '''
-        return self.run_params['tenGigInterframeGap']
+        return self.tenGigInterframeGap
 
     def tenGigInterframeGapSet(self, aValue):
         '''
             Set tenGigInterframeGap
         '''
-        self.run_params['tenGigInterframeGap'] = aValue
+        self.tenGigInterframeGap = aValue
 
     def tenGigUdpPacketLenGet(self):
         '''
             Get tenGigUdpPacketLen
         '''
-        return self.run_params['tenGigUdpPacketLen']
+        return self.tenGigUdpPacketLen
 
     def tenGigUdpPacketLenSet(self, aValue):
         '''
             Set tenGigUdpPacketLen
         '''
-        self.run_params['tenGigUdpPacketLen'] = aValue
+        self.tenGigUdpPacketLen = aValue
 
     def femSendPpcResetGet(self):
         '''
@@ -1946,13 +1919,13 @@ class LpdFemClient(FemClient):
         '''
             Get femFastCtrlDynamic
         '''
-        return self.run_params['femFastCtrlDynamic']
+        return self.femFastCtrlDynamic
 
     def femFastCtrlDynamicSet(self, aValue):
         '''
             Set femFastCtrlDynamic
         '''
-        self.run_params['femFastCtrlDynamic'] = aValue
+        self.femFastCtrlDynamic = aValue
 
     def femSetupSlowCtrlBramGet(self):
         '''
@@ -1984,13 +1957,13 @@ class LpdFemClient(FemClient):
         '''
             Get femDataSource
         '''
-        return self.run_params['femDataSource']
+        return self.femDataSource
 
     def femDataSourceSet(self, aValue):
         '''
             Set femDataSource
         '''
-        self.run_params['femDataSource'] = aValue
+        self.femDataSource = aValue
 
     def femAsicCountingDataGet(self):
         '''
@@ -2010,13 +1983,13 @@ class LpdFemClient(FemClient):
         '''
             Get femAsicModuleType
         '''
-        return self.run_params['femAsicModuleType']
+        return self.femAsicModuleType
 
     def femAsicModuleTypeSet(self, aValue):
         '''
             Set femAsicModuleType
         '''
-        self.run_params['femAsicModuleType'] = aValue
+        self.femAsicModuleType = aValue
 
     def femAsicRxStartDelayGet(self):
         '''
@@ -2074,25 +2047,25 @@ class LpdFemClient(FemClient):
         '''
             Get femAsicColumns
         '''
-        return self.run_params['femAsicColumns']
+        return self.femAsicColumns
 
     def femAsicColumnsSet(self, aValue):
         '''
             Set femAsicColumns
         '''
-        self.run_params['femAsicColumns'] = aValue
+        self.femAsicColumns = aValue
 
     def femAsicGainOverrideGet(self):
         '''
             Get femAsicGainOverride
         '''
-        return self.run_params['femAsicGainOverride']
+        return self.femAsicGainOverride
 
     def femAsicGainOverrideSet(self, aValue):
         '''
             Set femAsicGainOverride
         '''
-        self.run_params['femAsicGainOverride'] = aValue
+        self.femAsicGainOverride = aValue
 
     def femAsicSlowControlParamsGet(self):
         '''
@@ -2157,6 +2130,150 @@ class LpdFemClient(FemClient):
             Set femReadoutOperatingMode
         '''
         self.femReadoutOperatingMode = aValue
+
+    def femAsicDataTypeGet(self):
+        '''
+            Get femAsicDataType
+        '''
+        return self.femAsicDataType
+
+    def femAsicDataTypeSet(self, aValue):
+        '''
+            Set femAsicDataType
+        '''
+        self.femAsicDataType = aValue
+
+    def femAsicLocalClockGet(self):
+        '''
+            Get femAsicLocalClock
+        '''
+        return self.femAsicLocalClock
+
+    def femAsicLocalClockSet(self, aValue):
+        '''
+            Set femAsicLocalClock
+        '''
+        self.femAsicLocalClock = aValue
+
+    def femAsicSlowLoadModeGet(self):
+        '''
+            Get femAsicSlowLoadMode
+        '''
+        return self.femAsicSlowLoadMode
+
+    def femAsicSlowLoadModeSet(self, aValue):
+        '''
+            Set femAsicSlowLoadMode
+        '''
+        self.femAsicSlowLoadMode = aValue
+
+    def femAsicRxInvertDataGet(self):
+        '''
+            Get femAsicRxInvertData
+        '''
+        return self.femAsicRxInvertData
+
+    def femAsicRxInvertDataSet(self, aValue):
+        '''
+            Set femAsicRxInvertData
+        '''
+        self.femAsicRxInvertData = aValue
+
+    def femAsicRxFastStrobeGet(self):
+        '''
+            Get femAsicRxFastStrobe
+        '''
+        return self.femAsicRxFastStrobe
+
+    def femAsicRxFastStrobeSet(self, aValue):
+        '''
+            Set femAsicRxFastStrobe
+        '''
+        self.femAsicRxFastStrobe = aValue
+
+    def femAsicRxDelayOddChannelsGet(self):
+        '''
+            Get femAsicRxDelayOddChannels
+        '''
+        return self.femAsicRxDelayOddChannels
+
+    def femAsicRxDelayOddChannelsSet(self, aValue):
+        '''
+            Set femAsicRxDelayOddChannels
+        '''
+        self.femAsicRxDelayOddChannels = aValue
+
+    def femAsicSlowClockPhaseGet(self):
+        '''
+            Get femAsicSlowClockPhase
+        '''
+        return self.femAsicSlowClockPhase
+
+    def femAsicSlowClockPhaseSet(self, aValue):
+        '''
+            Set femAsicSlowClockPhase
+        '''
+        self.femAsicSlowClockPhase = aValue
+
+    def femAsicSlowedClockGet(self):
+        '''
+            Get femAsicSlowedClock
+        '''
+        return self.femAsicSlowedClock
+
+    def femAsicSlowedClockSet(self, aValue):
+        '''
+            Set femAsicSlowedClock
+        '''
+        self.femAsicSlowedClock = aValue
+
+    def femPpcModeGet(self):
+        '''
+            Get femPpcMode
+        '''
+        return self.femPpcMode
+
+    def femPpcModeSet(self, aValue):
+        '''
+            Set femPpcMode
+        '''
+        self.femPpcMode = aValue
+
+    def femPpcResetDelayGet(self):
+        '''
+            Get femPpcResetDelay
+        '''
+        return self.femPpcResetDelay
+
+    def femPpcResetDelaySet(self, aValue):
+        '''
+            Set femPpcResetDelay
+        '''
+        self.femPpcResetDelay = aValue
+
+    def femNumTestCyclesGet(self):
+        '''
+            Get femNumTestCycles
+        '''
+        return self.femNumTestCycles
+
+    def femNumTestCyclesSet(self, aValue):
+        '''
+            Set femNumTestCycles
+        '''
+        self.femNumTestCycles = aValue
+
+    def tenGigFarmModeGet(self):
+        '''
+            Get tenGigFarmMode
+        '''
+        return self.tenGigFarmMode
+
+    def tenGigFarmModeSet(self, aValue):
+        '''
+            Set tenGigFarmMode
+        '''
+        self.tenGigFarmMode = aValue
 
 
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
