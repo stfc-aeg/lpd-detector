@@ -103,8 +103,6 @@ class LpdI2cTest(FemClient):
     # ad7998 device addresses
     adc_chip_address = [0x22, 0x21, 0x24, 0x23]
     
-    # Fem has three internal i2c buses, power card uses bus 0x300
-    i2cInternalBusOffset = 0x300
 
     # Beta is utilised as an argument for calling the calculateTemperature() 
     #    but it's effectively fixed by the hardware design
@@ -115,17 +113,25 @@ class LpdI2cTest(FemClient):
                     'te7kiribati'  : '192.168.3.2',
                     'devgpu02'     : '192.168.3.2',}
 
-    def __init__(self, hostAddr=None, timeout=None):
+    def __init__(self, hostAddr=None, timeout=None, femI2cBus=None):
         
         # Call superclass initialising function
         super(LpdI2cTest, self).__init__(hostAddr, timeout)
+
+    def setBus(self, femI2cBus):
+        # Fem has three internal i2c buses
+#        if femI2cBus is None:
+#            self.femI2cBus = 0x300 # LHS Power Card
+##        self.femI2cBus = 0x200 # RHS Power Card
+#        else:
+        self.femI2cBus= femI2cBus
 
         
     def read_dac(self):
         ''' Read 2 bytes from ad5321 device 
         '''
         
-        addr = LpdI2cTest.i2cInternalBusOffset + 0x0C
+        addr = self.femI2cBus + 0x0C
         response = -1
         
         response = self.i2cRead(addr, 2)
@@ -140,7 +146,7 @@ class LpdI2cTest(FemClient):
     
         response = -1
         # Construct address and payload (as a tuple)
-        addr = LpdI2cTest.i2cInternalBusOffset + 0x0C
+        addr = self.femI2cBus + 0x0C
         payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
 
         # Write new ADC value to device
@@ -164,7 +170,7 @@ class LpdI2cTest(FemClient):
         if (0 > deviceId) or (deviceId > 31):
             raise LpdI2cError("Read_adc() deviceId argument outside valid range (0 - 31)")
         
-        addr = LpdI2cTest.i2cInternalBusOffset + LpdI2cTest.adc_chip_address[deviceId >> 3]
+        addr = self.femI2cBus + LpdI2cTest.adc_chip_address[deviceId >> 3]
         adcChannel = 0x80 + ((deviceId & 7) << 4)
 
         # Write operation, select ADC channel
@@ -193,7 +199,7 @@ class LpdI2cTest(FemClient):
         if not id in validInput:
             raise LpdI2cError("Read_bit() id argument outside valid list [0, 1, 2, 4, 8, 16, 32, 64]")
         
-        addr = LpdI2cTest.i2cInternalBusOffset + 0x38 
+        addr = self.femI2cBus + 0x38 
         
         response = self.i2cRead(addr, 1)
         value = response[0]
@@ -203,7 +209,7 @@ class LpdI2cTest(FemClient):
     def read_all_bits(self):
         ''' Read and return one byte from PCF7485 device
         '''
-        addr = LpdI2cTest.i2cInternalBusOffset + 0x38
+        addr = self.femI2cBus + 0x38
         response = self.i2cRead(addr, 1)
         
         return response[0]
@@ -225,7 +231,7 @@ class LpdI2cTest(FemClient):
         bit_register = (bit_register & ~(1 << id)) | (value << id) | 0xFC
 #        print "write_bit(), bit_register = %X" % bit_register, "    value =%d, id=%d" % (value, id)
         
-        addr = LpdI2cTest.i2cInternalBusOffset + 0x38
+        addr = self.femI2cBus + 0x38
         response = self.i2cWrite(addr, bit_register)
         
         #TODO: Check the acknowledgement? (response)
@@ -492,6 +498,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="To switch on the LV, the syntax is: 'python LpdI2ctest.py --lv 1' ",
                                      epilog="Note: If the script is executed without any given flag,  the corresponding supply will be switched OFF. Sadly, this is a limitation inherit to Python's parse module.")
     
+    parser.add_argument("--femI2cBus", help="Set femI2cBus", type=int, choices=[0, 0x100, 0x200, 0x300])
     parser.add_argument("--lv", help="switch LV on (1) or off (0)", type=int, choices=[0, 1])
     parser.add_argument("--hv", help="switch HV on (1) or off (0)", type=int, choices=[0, 1])
     parser.add_argument("--hvbias", help="set HV bias level (in volts) - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int)
@@ -508,10 +515,24 @@ if __name__ == "__main__":
 
     port = 6969
 
+    if args.femI2cBus is not None:
+        femI2cBus =  args.femI2cBus
     
-    print "~+~+~+~+~+~+~+~+~+~+~+~+~ Connecting to host: %s, port: %i ~+~+~+~+~+~+~+~+~+~+~+~+~" % (host, port)
+    print "~+~+~+~+~ Connecting to host: %s, port: %i, femI2cBus: %i ~+~+~+~+~" % (host, port, femI2cBus)
+    
+    if femI2cBus == 0:
+        femI2cBusName = "LM82"
+    elif femI2cBus == 256:
+        femI2cBusName = "EEPROM"
+    elif femI2cBus == 512:
+        femI2cBusName = "RHS Power Card"
+    else:
+        femI2cBusName = "LHS Power Card"
+        
+    print "    ~+~+~+~+~+~+~ Connecting to %14s ~+~+~+~+~+~+~" % femI2cBusName
     
     thisFem = LpdI2cTest((host, port))
+    thisFem.setBus(femI2cBus)
 
     # Convert HV bias (if specified) into equivalent ADC counts
     adcCounts = 0

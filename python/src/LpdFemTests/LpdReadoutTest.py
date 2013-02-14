@@ -6,7 +6,7 @@
 
 from LpdDevice.LpdDevice import LpdDevice
 from networkConfiguration import networkConfiguration
-import sys
+import sys, time
 
 
 def LpdReadoutTest(femHost=None, femPort=None):
@@ -25,12 +25,13 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return
 
-    bDebug = False
+    bDebug = True
 
     # Need to configure fast and slow control whether doing readout or debugging..
 
     # Read Slow Control (LpdAsicControl) XML file into a string
     ff = open('ConfigFiles/preambleDelaySlowControl.xml', 'r')
+#    ff = open('ConfigFiles/SupModTest.xml', 'r')
     xmlString = ff.read(-1)
     ff.close ()
     
@@ -225,8 +226,10 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femAsicFastCmdRegSize \t= %d." % value
 
-        # Enable 2 Tile Systems' ASICs
+        # Enable 2 Tile System's ASICs
         rc = theDevice.paramSet('femAsicEnableMask', [0x0f0000f0, 0x0f0000f0, 0x00000000, 0x00000000])
+        # Enable everything..
+#        rc = theDevice.paramSet('femAsicEnableMask', [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF])
         if rc != LpdDevice.ERROR_OK:
             print "femAsicEnableMask set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -234,7 +237,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         if rc != LpdDevice.ERROR_OK:
             print "femAsicEnableMask get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicEnableMask \t= ", value
+            print "femAsicEnableMask \t= [%8X, %8X, %8X, %8X]" %  (value[0], value[1], value[2], value[3])
 
         rc = theDevice.paramSet('femAsicGainOverride', 8)
         if rc != LpdDevice.ERROR_OK:
@@ -255,18 +258,6 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femDataSource get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
             print "femDataSource \t\t= %d." % value
-
-        # Not yet implemented in the API..
-#        rc = theDevice.paramSet('asicDataType', 0)
-#        if rc != LpdDevice.ERROR_OK:
-#            print "asicDataType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-#    
-#        (rc, value) = theDevice.paramGet('asicDataType')
-#        if rc != LpdDevice.ERROR_OK:
-#            print "asicDataType get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-#        else:
-#            print "asicDataType \t\t= %d." % value
-
 
         rc = theDevice.paramSet('femFastCtrlDynamic', True)
         if rc != LpdDevice.ERROR_OK:
@@ -311,92 +302,148 @@ def LpdReadoutTest(femHost=None, femPort=None):
         (rc, value) = theDevice.paramGet('femAsicSlowControlParams')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicSlowControlParams get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-        else:
-            print "femAsicSlowControlParams:\n", value
+#        else:
+#            print "femAsicSlowControlParams:\n", value
     
         (rc, value) = theDevice.paramGet('femAsicFastCmdSequence')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicFastCmdSequence get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-        else:
-            print "femAsicFastCmdSequence:\n", value
+#        else:
+#            print "femAsicFastCmdSequence:\n", value
+
     
-        #################################
-        print "UNTESTED FUNCTION CALLS:"
-        #################################
-        
+        rc = theDevice.paramSet('femAsicDataType', 0)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicDataType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femAsicDataType')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicDataType get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicDataType:\t", value
+            print "femAsicDataType\t\t= ", value
+    
+        rc = theDevice.paramSet('femAsicLocalClock', 0)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicLocalClock set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('femAsicLocalClock')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicLocalClock get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicLocalClock:\t", value
+            print "femAsicLocalClock\t= ", value
+    
+        rc = theDevice.paramSet('femAsicSlowLoadMode', 0)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicSlowLoadMode set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('femAsicSlowLoadMode')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicSlowLoadMode get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicSlowLoadMode:\t", value
+            print "femAsicSlowLoadMode\t= ", value
     
+        rc = theDevice.paramSet('femAsicRxInvertData', False)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicRxInvertData set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femAsicRxInvertData')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicRxInvertData get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicRxInvertData:\t", value
-    
+            print "femAsicRxInvertData\t= ", value
+
+        rc = theDevice.paramSet('femAsicRxFastStrobe', True)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicRxFastStrobe set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femAsicRxFastStrobe')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicRxFastStrobe get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicRxFastStrobe:\t", value
+            print "femAsicRxFastStrobe\t= ", value
+
+        rc = theDevice.paramSet('femAsicRxDelayOddChannels', True)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicRxDelayOddChannels set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('femAsicRxDelayOddChannels')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicRxDelayOddChannels get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicRxDelayOddChannels:\t", value
-    
+            print "femAsicRxDelayOddChannels\t= ", value
+
+        rc = theDevice.paramSet('femAsicSlowClockPhase', 0)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicSlowClockPhase set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femAsicSlowClockPhase')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicSlowClockPhase get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicSlowClockPhase:\t", value
-    
+            print "femAsicSlowClockPhase\t= ", value
+
+        rc = theDevice.paramSet('femAsicSlowedClock', True)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicSlowedClock set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femAsicSlowedClock')
         if rc != LpdDevice.ERROR_OK:
             print "femAsicSlowedClock get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicSlowedClock:\t", value
-    
+            print "femAsicSlowedClock\t= ", value
+
+        rc = theDevice.paramSet('femPpcMode', 0)
+        if rc != LpdDevice.ERROR_OK:
+            print "femPpcMode set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femPpcMode')
         if rc != LpdDevice.ERROR_OK:
             print "femPpcMode get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femPpcMode:\t", value
-    
+            print "femPpcMode\t\t= ", value
+
+        rc = theDevice.paramSet('femPpcResetDelay', 5)
+        if rc != LpdDevice.ERROR_OK:
+            print "femPpcResetDelay set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femPpcResetDelay')
         if rc != LpdDevice.ERROR_OK:
             print "femPpcResetDelay get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femPpcResetDelay:\t", value
-    
+            print "femPpcResetDelay\t= ", value
+
+        rc = theDevice.paramSet('femNumTestCycles', 1)
+        if rc != LpdDevice.ERROR_OK:
+            print "femNumTestCycles set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('femNumTestCycles')
         if rc != LpdDevice.ERROR_OK:
             print "femNumTestCycles get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femNumTestCycles:\t", value
-    
+            print "femNumTestCycles\t= ", value
+
+        rc = theDevice.paramSet('tenGigFarmMode', 1)
+        if rc != LpdDevice.ERROR_OK:
+            print "tenGigFarmMode set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
         (rc, value) = theDevice.paramGet('tenGigFarmMode')
         if rc != LpdDevice.ERROR_OK:
             print "tenGigFarmMode get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "tenGigFarmMode:\t", value
+            print "tenGigFarmMode\t\t= ", value
+
+        rc = theDevice.paramSet('femI2cBus', 0x300)
+        if rc != LpdDevice.ERROR_OK:
+            print "femI2cBus set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
+        (rc, value) = theDevice.paramGet('femI2cBus')
+        if rc != LpdDevice.ERROR_OK:
+            print "femI2cBus get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femI2cBus\t\t=  %3X" % value
         
-    else:
+#        time.sleep(2)
+#    else:
 
         # Configure the FEM
         rc = theDevice.configure()

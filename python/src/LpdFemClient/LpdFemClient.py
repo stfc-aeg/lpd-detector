@@ -106,8 +106,6 @@ class LpdFemClient(FemClient):
     # Enumerate fault flag as either cleared (0) or tripped (1) 
     flag_message = ["No", "Yes"]
 
-    # Fem has three internal i2c buses, power card uses bus 0x300
-    i2cPowerCardBus = 0x300
     
     # i2c device addresses
     AD7998ADDRESS = [0x22, 0x21, 0x24, 0x23]
@@ -177,6 +175,10 @@ class LpdFemClient(FemClient):
 
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
+
+        # Fem has three internal i2c buses
+#        femI2cBus = 0x300 # LHS Power Card
+        self.femI2cBus = 0x200 # RHS Power Card
 
         # API variables extracted from jac's functions
         self.femAsicFastCmdRegSize             = 22
@@ -927,36 +929,36 @@ class LpdFemClient(FemClient):
     def config_asic_datarx(self):
         """ configure asic data rx module """                        
         
-        # Use list instead of array
-        if self.femAsicDataType == self.ASIC_DATA_TYPE_RX_COUNTING:    # enable all channels for dummy data from asic rx    
-            self.femAsicEnableMask[0] = 0xffffffff
-            self.femAsicEnableMask[1] = 0xffffffff
-            self.femAsicEnableMask[2] = 0xffffffff
-            self.femAsicEnableMask[3] = 0xffffffff
-        else: # Enable only relevant channel for single ASIC test module
-            if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SINGLE_ASIC: # Enable 2 channel for single ASIC test module
-                self.femAsicEnableMask[0] = 0x00000001
-            elif self.femAsicModuleType == self.ASIC_MODULE_TYPE_TWO_TILE: #Enable 16 channels for 2-Tile
-# new mapping  working
-                self.femAsicEnableMask[0] = 0x0f0000f0
-                self.femAsicEnableMask[1] = 0x0f0000f0
-                self.femAsicEnableMask[2] = 0x00000000
-                self.femAsicEnableMask[3] = 0x00000000
-# old mapping
-#                self.femAsicEnableMask[0] = 0x00ff0000
-#                self.femAsicEnableMask[1] = 0x00000000
-#                self.femAsicEnableMask[2] = 0x0000ff00
+#        # Use list instead of array
+#        if self.femAsicDataType == self.ASIC_DATA_TYPE_RX_COUNTING:    # enable all channels for dummy data from asic rx    
+#            self.femAsicEnableMask[0] = 0xffffffff
+#            self.femAsicEnableMask[1] = 0xffffffff
+#            self.femAsicEnableMask[2] = 0xffffffff
+#            self.femAsicEnableMask[3] = 0xffffffff
+#        else: # Enable only relevant channel for single ASIC test module
+#            if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SINGLE_ASIC: # Enable 2 channel for single ASIC test module
+#                self.femAsicEnableMask[0] = 0x00000001
+#            elif self.femAsicModuleType == self.ASIC_MODULE_TYPE_TWO_TILE: #Enable 16 channels for 2-Tile
+## new mapping  working
+#                self.femAsicEnableMask[0] = 0x0f0000f0
+#                self.femAsicEnableMask[1] = 0x0f0000f0
+#                self.femAsicEnableMask[2] = 0x00000000
 #                self.femAsicEnableMask[3] = 0x00000000
-# take all channels whilst testing
+## old mapping
+##                self.femAsicEnableMask[0] = 0x00ff0000
+##                self.femAsicEnableMask[1] = 0x00000000
+##                self.femAsicEnableMask[2] = 0x0000ff00
+##                self.femAsicEnableMask[3] = 0x00000000
+## take all channels whilst testing
+##                self.femAsicEnableMask[0] = 0xffffffff
+##                self.femAsicEnableMask[1] = 0xffffffff
+##                self.femAsicEnableMask[2] = 0xffffffff
+##                self.femAsicEnableMask[3] = 0xffffffff
+#            else:       # Enable all channels for supermodule
 #                self.femAsicEnableMask[0] = 0xffffffff
 #                self.femAsicEnableMask[1] = 0xffffffff
 #                self.femAsicEnableMask[2] = 0xffffffff
 #                self.femAsicEnableMask[3] = 0xffffffff
-            else:       # Enable all channels for supermodule
-                self.femAsicEnableMask[0] = 0xffffffff
-                self.femAsicEnableMask[1] = 0xffffffff
-                self.femAsicEnableMask[2] = 0xffffffff
-                self.femAsicEnableMask[3] = 0xffffffff
 
         no_asic_cols = self.femAsicColumns #+ 1               
         # no_asic_cols_per_frm = self.asic_nr_images_per_frame'] #+ 1              
@@ -2275,6 +2277,17 @@ class LpdFemClient(FemClient):
         '''
         self.tenGigFarmMode = aValue
 
+    def femI2cBusGet(self):
+        '''
+            Get femI2cBus
+        '''
+        return self.femI2cBus
+
+    def femI2cBusSet(self, aValue):
+        '''
+            Set femI2cBus
+        '''
+        self.femI2cBus = aValue
 
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
 
@@ -2358,7 +2371,7 @@ class LpdFemClient(FemClient):
             Read two bytes from 'channel' in ad7998 at address 'device'
         '''
         # Construct i2c address and ADC channel to be read
-        addr = LpdFemClient.i2cPowerCardBus + device
+        addr = self.femI2cBus + device
         adcChannel = 0x80 + ((channel & 7) << 4)
         # Write operation, select ADC channel
         ack = self.i2cWrite(addr, adcChannel)
@@ -2372,7 +2385,7 @@ class LpdFemClient(FemClient):
         ''' 
             Read 2 bytes from ad5321 device 
         '''
-        addr = LpdFemClient.i2cPowerCardBus + 0x0C
+        addr = self.femI2cBus + 0x0C
         response = self.i2cRead(addr, 2)
         high = (response[0] & 15) << 8
         low = response[1]
@@ -2383,7 +2396,7 @@ class LpdFemClient(FemClient):
             Write 'aValue' (2 bytes) to ad5321 device
         '''
         # Construct address and payload (as a tuple)
-        addr = LpdFemClient.i2cPowerCardBus + 0x0C
+        addr = self.femI2cBus + 0x0C
         payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
         # Write new ADC value to device
         ack = self.i2cWrite(addr, payload)
@@ -2398,7 +2411,7 @@ class LpdFemClient(FemClient):
                       5 = 8, 6 = 16, 7 = 32 8 = 64
             Therefore, bitId must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
         '''
-        addr = LpdFemClient.i2cPowerCardBus + 0x38 
+        addr = self.femI2cBus + 0x38 
         response = self.i2cRead(addr, 1)
         value = response[0]
         return (value & (1 << bitId)) != 0
@@ -2416,7 +2429,7 @@ class LpdFemClient(FemClient):
                 Beware      bit 0 = 1, bit 1 = 2, bit 2 = 4, etc !!
                 therefore   131 = 128 + 2 + 1 (bits: 7, 1, 0)
         '''
-        addr = LpdFemClient.i2cPowerCardBus + 0x38
+        addr = self.femI2cBus + 0x38
         response = self.i2cRead(addr, 1)
         return response[0]
 
@@ -2424,7 +2437,7 @@ class LpdFemClient(FemClient):
         ''' 
             Change bit 'bitId' to 'value' in PCF7485 device
         '''        
-        addr = LpdFemClient.i2cPowerCardBus + 0x38
+        addr = self.femI2cBus + 0x38
         # Read PCF7485's current value
         bit_register = self.pcf7485ReadAllBits()
         # Change bit 'bitId' to 'value'

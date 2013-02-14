@@ -1,7 +1,7 @@
 from LpdDevice.LpdDevice import LpdDevice
 import sys
 
-def powerCardTest(biasLevel):
+def powerCardTest(femI2cBus):
     
     theDevice = LpdDevice()
 
@@ -14,12 +14,24 @@ def powerCardTest(biasLevel):
     
     print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
     
-    # Update sensorBias if user provided new value via command line
-    if biasLevel is not None:
-        rc = theDevice.paramSet('sensorBias', biasLevel )
+    # Update femI2cBus if user provided new value via command line
+    if femI2cBus is not None:
+        rc = theDevice.paramSet('femI2cBus', femI2cBus )
         if rc != LpdDevice.ERROR_OK:
-            print "sensorBiasSet set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    
+            print "femI2cBusSet set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            
+            if femI2cBus == 0:
+                femI2cBusName = "LM82"
+            elif femI2cBus == 256:
+                femI2cBusName = "EEPROM"
+            elif femI2cBus == 512:
+                femI2cBusName = "RHS Power Card"
+            else:
+                femI2cBusName = "LHS Power Card"
+                
+            print "    ~+~+~+~+~+~+~ Connecting to %14s ~+~+~+~+~+~+~" % femI2cBusName
+
     
     print "Status:"
     print "    Low voltage  = ",
@@ -305,9 +317,9 @@ def powerCardTest(biasLevel):
 if __name__ == '__main__':
 
     if len(sys.argv) == 2:
-        biasLevel = sys.argv[1]
+        femI2cBus = int(sys.argv[1], 16)
     else:
-        biasLevel = None
+        femI2cBus = None
         
-    powerCardTest(biasLevel)
+    powerCardTest(femI2cBus)
     

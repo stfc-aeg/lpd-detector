@@ -451,6 +451,10 @@ class LpdDeviceParameters(object):
                                                                           1, 3, 1,
                                                                           AccessWrite, AssignmentMandatory)
 
+        self.parameters['femI2cBus']            = AttributeContainer(int, 'FemI2cBus', 'Set Fem i2c internal bus 0x000=LM82, 0x100=EEPROM, 0x200=RHS Power Card, 0x300=LHS Power Card (2Tile System)',
+                                                                          (0x000,  0x100, 0x200, 0x300), None, 0x300,
+                                                                          AccessWrite, AssignmentMandatory)
+
 
 
     def get(self):
