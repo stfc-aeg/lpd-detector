@@ -249,6 +249,16 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femAsicGainOverride \t= %d." % value
 
+        rc = theDevice.paramSet('femAsicModuleType', 0)
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicModuleType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicModuleType')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicModuleType get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicModuleType \t= %d." % value
+
         rc = theDevice.paramSet('femDataSource', 0)
         if rc != LpdDevice.ERROR_OK:
             print "femDataSource set failed rc=%d : %s" % (rc, theDevice.errorStringGet())

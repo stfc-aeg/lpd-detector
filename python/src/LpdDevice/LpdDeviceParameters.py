@@ -337,7 +337,7 @@ class LpdDeviceParameters(object):
                                                                       (True, False), None, True,
                                                                       AccessWrite, AssignmentOptional)
         
-        self.parameters['femDataSource']                = AttributeContainer(int, 'FemDataSource', 'Source of data sent to 10GigE: 0=frame generator, 1=ASIC, 2=PPC',
+        self.parameters['femDataSource']                = AttributeContainer(int, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (from Rxblock), 2=frame generator, 3=PPC (preprogrammed)',
                                                                       0, 2, 1,
                                                                       AccessWrite, AssignmentOptional)
         

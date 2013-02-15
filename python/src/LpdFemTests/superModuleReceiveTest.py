@@ -81,7 +81,7 @@ class BlitQT(FigureCanvas):
         # Define plotted image dimensions: 
         self.nrows = 32*8   # 32 rows * 8 ASICs 
         self.ncols = 256    # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
-        print "Note: self.ncols = ", self.ncols
+        print "Note: self.nrows = ", self.nrows, " self.ncols = ", self.ncols
 
         # Initialising variables used by processRxData..
         self.first_frm_num = -1
@@ -139,6 +139,8 @@ class BlitQT(FigureCanvas):
             self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
             
             #TODO: Add horizontal lines !
+            for i in range(32, self.nrows, 32):
+                self.ax[idx].hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
             
             self.draw()
             
@@ -188,9 +190,9 @@ class BlitQT(FigureCanvas):
             """ DEBUG INFO: """
 #            print "Extracted number of 32 bit words: ", len(_32BitWordArray)
 #            # Display array content 32 bit integers
-#            print "Array contents structured into 32 bit elements [byte swapped!]:"
-#            self.display32BitArrayInHex(_32BitWordArray)
-#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            print "Array contents structured into 32 bit elements [byte swapped!]:"
+            self.display32BitArrayInHex(_32BitWordArray)
+            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             # Calculate length of 32 bit array
             _32BitArrayLen = len(_32BitWordArray)
@@ -286,7 +288,7 @@ class BlitQT(FigureCanvas):
                 self.data = self.data & 0xfff
                 
                 # Display debug information..
-                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] ), " image data: \n", self.data
+                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] )#, " image data: \n", self.data
                 
                 # Set title as frame number, current image number
                 self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
