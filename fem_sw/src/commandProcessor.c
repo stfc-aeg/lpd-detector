@@ -736,7 +736,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 			{
 
 				case CMD_ACQ_CONFIG:
-					// Send config request (does not block for CMD_ACQ_CONFIG)
+					// Send config. request (does not block for CMD_ACQ_CONFIG)
 					dmaControllerAck = acquireConfigMsgSend(pRxHeader->address, pAcqConfig->bufferSz, pAcqConfig->bufferCnt, pAcqConfig->numAcq, pAcqConfig->acqMode, pAcqConfig->bdCoalesceCount, 10000);
 
 					// Wait for response
@@ -748,7 +748,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 					else if (configAck==0)
 					{
 						SBIT(state, STATE_NACK);
-						SETERR(pClient, ERR_ACQ_CONFIG_NACK, "Failed to get ACK from PPC1 for acquire configure request.");
+						SETERR(pClient, ERR_ACQ_CONFIG_NACK, "NACK from PPC1 for acquire configure request.");
 					}
 					else
 					{
@@ -768,7 +768,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 					else if (dmaControllerAck==0)
 					{
 						SBIT(state, STATE_NACK);
-						SETERR(pClient, ERR_ACQ_OP_NACK, "Failed to get ACK from PPC1 for acquire start / stop request.");
+						SETERR(pClient, ERR_ACQ_OP_NACK, "NACK from PPC1 for acquire start / stop request.");
 					}
 					else
 					{
