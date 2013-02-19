@@ -852,6 +852,13 @@ int main()
 								numConfigBdsToProcess = 0;
 								break;
 
+							case CMD_ACQ_START:
+								if(sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
+								{
+									printf("[ERROR] Could not ACK PPC2 on CMD_ACQ_START, already running\r\n");
+								}
+								break;
+
 							default:
 								//print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
 								break;
