@@ -744,7 +744,7 @@ int main()
 									// NACK because we didn't stop cleanly
 									if (sendAcquireAckMessage(&mbox, 0)==0)
 									{
-										printf("[ERROR] Could not ACK PPC2 on CMQ_ACQ_STOP (dirty stop)\r\n");
+										printf("[ERROR] Could not NACK PPC2 on CMQ_ACQ_STOP (dirty stop)\r\n");
 									}
 									sendStopAck = 0;
 								}
@@ -767,9 +767,21 @@ int main()
 							pStatusBlock->state = STATE_ACQ_STOPPING;
 							sendStopAck = 1;
 							break;
+						case CMD_ACQ_START:
+							// Already running so ACK
+							if (sendAcquireAckMessage(&mbox, 0xFFFFFFFF)==0)
+							{
+								printf("[ERROR] Could not ACK PPC2 on CMQ_ACQ_START\r\n");
+							}
+							break;
 
 						default:
 							//print("[ERROR] Unexpected command in acquire loop, ignoring for now\r\n");
+							// NACK unknown command requests
+							if (sendAcquireAckMessage(&mbox, 0)==0)
+							{
+								printf("[ERROR] Could not NACK PPC2 on command, already acquiring!\r\n");
+							}
 							break;
 						}
 					}
@@ -894,6 +906,10 @@ int main()
 		default:
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			printf("[ERROR] Unrecognised mailbox command %d\r\n", (unsigned)pMsg->cmd);
+			if (sendAcquireAckMessage(&mbox, 0)==0)
+			{
+				printf("[ERROR] Could not NACK PPC2 on unknown command!\r\n");
+			}
 			// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 			break;
 
