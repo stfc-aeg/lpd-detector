@@ -29,7 +29,8 @@
 #define MAX_STOP_ATTEMPTS				500			//! Number of main event loops we'll wait for TX DMA operations to clear
 
 #define DDR2_BADDR					XPAR_DDR2_SDRAM_MEM_BASEADDR	//! DDR2 base address
-#define DDR2_SZ						0x40000000						//! DDR2 size (1GB)
+#define DDR2_TOP					XPAR_DDR2_SDRAM_MEM_HIGHADDR	//! Top of DDR2 region
+#define DDR2_SZ						((DDR2_TOP-DDR2_BADDR)+1)		//! DDR2 size (1GB)
 #define BRAM_BADDR					XPAR_SHARED_BRAM_IF_CNTLR_PPC_1_BASEADDR
 #define LL_BD_BADDR					0x90280000						//! Bass address for BDs
 #define LL_BD_SZ					0x00180000						//! Size of BD memory region
@@ -1159,6 +1160,13 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 {
 	int status;
 
+	// Check source address is sane
+	if ( (bufferAddr < DDR2_BADDR) || (bufferAddr>DDR2_TOP) )
+	{
+		printf("[ERROR] Config. address 0x%8x does not lie within DDR2 memory region!\r\n", (unsigned int)bufferAddr);
+		return XST_FAILURE;
+	}
+
 	// Check we won't exceed BD storage allocation
 	if (bufferCnt > LL_MAX_CONFIG_BD)
 	{
@@ -1199,6 +1207,14 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 
 	// Update status
 	pStatusBlock->numConfigBds = bufferCnt;
+
+	// Zero other status fields
+	pStatusBlock->totalErrors = 0;
+	pStatusBlock->readPtr = 0;
+	pStatusBlock->writePtr = 0;
+	pStatusBlock->totalRecvBot = 0;
+	pStatusBlock->totalRecvTop = 0;
+	pStatusBlock->totalSent = 0;
 
 	// Start TX engine
 	status = XLlDma_BdRingStart(pUploadBdRing);
