@@ -343,7 +343,7 @@ int main()
 
 		case CMD_ACQ_START:
 
-			//printf("[INFO ] Starting acquisition, mode %d!\r\n", (int)lastMode);
+			//printf("[INFO ] ACQ_START, LMODE=%d\r\n", (int)lastMode);
 			switch(lastMode)
 			{
 			case ACQ_MODE_NORMAL:
@@ -861,6 +861,16 @@ int main()
 				}
 
 				break;
+
+			default:
+				printf("[ERROR] Received CMD_ACQ_START but have not received configuration!\r\n");
+				// NACK PPC2
+	    	    if(sendAcquireAckMessage(&mbox, 0)==0)
+	    	    {
+	    	    	printf("[ERROR] Could not ACK PPC2 on CMD_ACQ_START!\r\n");
+	    	    }
+				break;
+
 			} // END switch(lastMode)
 			break;
 
