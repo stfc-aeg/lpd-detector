@@ -283,7 +283,7 @@ class BlitQT(FigureCanvas):
                 self.data = self.data & 0xfff
                 
                 # Display debug information..
-                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] ), " image data: \n", self.data
+                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: %9i" % len( _16BitWordArray[dataBeginning:] )#, " image data: \n", self.data
                 
                 # Set title as frame number, current image number
                 self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
@@ -304,7 +304,7 @@ class BlitQT(FigureCanvas):
 
             else:
                 # Finished
-                print "Finished drawing subplots"
+                #print "Finished drawing subplots"
                 # Close file if HDF5 Library present
                 if bHDF5:
                     hdfFile.close()
@@ -473,7 +473,7 @@ class BlitQT(FigureCanvas):
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:
-            print "Last Image detected"
+            pass    #print "Last Image detected"
 
         return bNextImageAvailable, imageArray
 

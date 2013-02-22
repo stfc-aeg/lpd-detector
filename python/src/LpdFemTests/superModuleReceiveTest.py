@@ -190,9 +190,9 @@ class BlitQT(FigureCanvas):
             """ DEBUG INFO: """
 #            print "Extracted number of 32 bit words: ", len(_32BitWordArray)
 #            # Display array content 32 bit integers
-            print "Array contents structured into 32 bit elements [byte swapped!]:"
-            self.display32BitArrayInHex(_32BitWordArray)
-            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+#            print "Array contents structured into 32 bit elements [byte swapped!]:"
+#            self.display32BitArrayInHex(_32BitWordArray)
+#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             # Calculate length of 32 bit array
             _32BitArrayLen = len(_32BitWordArray)
@@ -505,39 +505,56 @@ class BlitQT(FigureCanvas):
         rawCounter = 0
 
         # Distance within the 64 word table that defines order of ASIC read out
-        lookupTableAsicDistance = 0
+        # Go in reverse order from ASIC  128-1
+        lookupTableAsicDistance = 128-1
+
+        bDebug = False
         
-        # Iterate over 32 rows
-        for row in range(32):
-            
-            # Iterate over 16 columns
-            for column in range(16):
+        # Iterate over 32 rows (within an ASIC)
+        for ROW in range(32):
+
+            # Iterate over 16 columns of ASIC tiles
+            for asicColumn in range(16):
                 
-                # Go in reverse order from ASIC  128-1
-                lookupTableAsicDistance = 128-1
-                try:
-                    
-                    # Iterate over the 8 ASICs
-                    for asicOffset in range(8):
+                # Iterate over the 8 rows of ASIC tiles
+                for asicRow in range(7, -1, -1):
 
-                        imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
-                        rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
-                        
-                        imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
+                    try:
+                        # Iterate over 16 columns (within an ASIC)
+                        for COLUMN in range(16):
 
-                        # Increment lookupTableAsicDistance since ASIC are located in one row
-                        lookupTableAsicDistance -= 1
+#                            imageIndex = 15 - COLUMN + (8192*asicRow) + (16*asicColumn) + (256*ROW)
+                            imageIndex = 15 + (16* COLUMN) + (8192*asicRow) - asicColumn + (256*ROW)
+                            
+                            rawDataOffset = lookupTableAsicDistance + (128*rawCounter)
+                            
+                            if bDebug:
+                                if rawDataOffset < 768:
+#                                    print "%4i" % rawDataOffset,
+                                    print "%6i" % imageIndex,
 
-                    # Increment counter for rawDataOffset for every tile of 8 ASICs 
-                    rawCounter += 1
+                            imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
+#                            imageArray[ imageIndex ] = COLUMN*100
+    
+                            # Decrement lookupTableAsicDistance unless already zero
+                            if lookupTableAsicDistance == 0:
+                                lookupTableAsicDistance = 128-1
+                                # Increment counter for rawDataOffset for every supermodule worth of (128) ASICs 
+                                rawCounter += 1
+                            else:
+                                lookupTableAsicDistance -= 1
 
-                except IndexError:
-                    # If end of array reached, will raise IndexError
-                    print "SM-IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
-                    break
-                except Exception as e:
-                    print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
-                    exit()                    
+                        if bDebug:
+                            if rawDataOffset < 768:
+                                print ""
+
+                    except IndexError:
+                        # If end of array reached, will raise IndexError
+                        print "SM-IdxError, debug: %3i %3i %3i %3i, %4i,  %6i "  % (asicRow, asicColumn, ROW, COLUMN, lookupTableAsicDistance, rawDataOffset)
+                        break
+                    except Exception as e:
+                        print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
+                        exit()                    
 
         # Check whether this is the last image in the image data..
         try:

@@ -86,7 +86,7 @@ class LpdDeviceParameters(object):
         #           unit name, unit symbol )
     
         self.parameters = OrderedDict()
-	 
+
         #
         # Power card control parameters
         #
@@ -308,7 +308,7 @@ class LpdDeviceParameters(object):
                                                                       AccessWrite, AssignmentMandatory)
         
         self.parameters['tenGigInterframeGap']  = AttributeContainer(int, 'TenGigInterframeGap', '10GigE Inter-frame gap timer [clock cycles]',
-                                                                      0, 0xFFFFFFFF, 0x1000,
+                                                                      0, 0xFFFFFFFF, 0x0,
                                                                       AccessWrite, AssignmentOptional)
         
         self.parameters['tenGigUdpPacketLen']   = AttributeContainer(int, 'TenGigUDPPacketLength', '10GigE UDP packet payload length',
@@ -324,52 +324,48 @@ class LpdDeviceParameters(object):
         self.parameters['femSendPpcReset']              = AttributeContainer(bool, 'FemSendPPCReset', 'Send PPC processor reset to FEM',
                                                                       (True, False), None, True,
                                                                       AccessWrite, AssignmentOptional)
-        
+        #TODO: Redundant because there is no action if set to False?
         self.parameters['femFastCtrlDynamic']           = AttributeContainer(bool, 'FemFastCtrlDynamic', 'Enables fast control with dynamic vetos',
                                                                       (True, False), None, True,
                                                                       AccessWrite, AssignmentOptional)
         
-        self.parameters['femSetupSlowCtrlBram']         = AttributeContainer(bool, 'FemSetupSlowCtrlBRAM', 'Enables setup of ASIC slow control sequence',
-                                                                      (True, False), None, True,
-                                                                      AccessWrite, AssignmentOptional)
+#        self.parameters['femSetupSlowCtrlBram']         = AttributeContainer(bool, 'FemSetupSlowCtrlBRAM', 'Enables setup of ASIC slow control sequence',
+#                                                                      (True, False), None, True,
+#                                                                      AccessWrite, AssignmentOptional)
         
         self.parameters['femEnableTenGig']              = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
                                                                       (True, False), None, True,
                                                                       AccessWrite, AssignmentOptional)
         
         self.parameters['femDataSource']                = AttributeContainer(int, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (from Rxblock), 2=frame generator, 3=PPC (preprogrammed)',
-                                                                      0, 2, 1,
+                                                                      0, 3, 1,
                                                                       AccessWrite, AssignmentOptional)
         
-        self.parameters['femAsicCountingData']          = AttributeContainer(bool, 'FemAsicCountingData', 'Enables dummy ASIC counting data in FEM',
-                                                                        (True, False), None, False,
-                                                                        AccessWrite, AssignmentOptional)
+#        self.parameters['femAsicCountingData']          = AttributeContainer(bool, 'FemAsicCountingData', 'Enables dummy ASIC counting data in FEM',
+#                                                                        (True, False), None, False,
+#                                                                        AccessWrite, AssignmentOptional)
         
         self.parameters['femAsicModuleType']            = AttributeContainer(int, 'FemAsicModuleType', 'Selects type of ASIC module  0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
                                                                         0, 3, 2,
                                                                         AccessWrite, AssignmentOptional)
         
-        self.parameters['femAsicRxStartDelay']          = AttributeContainer(int, 'FemAsicRxStartDelay', 'Number of clock periods before start of ASIC data RX - will be replaced',
-                                                                        0, 65535, 61,
-                                                                        AccessWrite, AssignmentOptional)
+#        self.parameters['femAsicRxStartDelay']          = AttributeContainer(int, 'FemAsicRxStartDelay', 'Number of clock periods before start of ASIC data RX - will be replaced',
+#                                                                        0, 65535, 61,
+#                                                                        AccessWrite, AssignmentOptional)
         
-        self.parameters['femNumLocalLinkFrames']        = AttributeContainer(int, 'FemNumLocalLinkFrames', 'Number of local link frames to generate in test mode',
-                                                                         0, 65536, 1,
-                                                                         AccessWrite, AssignmentOptional)
+#        self.parameters['femNumLocalLinkFrames']        = AttributeContainer(int, 'FemNumLocalLinkFrames', 'Number of local link frames to generate in test mode',
+#                                                                         0, 65536, 1,
+#                                                                         AccessWrite, AssignmentOptional)
         
         self.parameters['femAsicFastCmdRegSize']        = AttributeContainer(int, 'FemAsicFastCmdRegSize', 'Size of the ASIC fast command register in bits',
                                                                          (20, 22), None, 22,
                                                                          AccessWrite, AssignmentOptional)
         
         self.parameters['femAsicEnableMask']            = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
-                                                                         0, 0xFFFFFFFF, 0,
+                                                                         0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
                                                                          AccessWrite, AssignmentMandatory)
         
         self.parameters['femAsicColumns']               = AttributeContainer(int, 'FemAsicColumns', 'Sets ASIC RX readout size (time-slices) per trigger',
-                                                                         0, 255, 1,
-                                                                         AccessWrite, AssignmentOptional)
-        
-        self.parameters['femAsicColumnsPerFrame']       = AttributeContainer(int, 'FemAsicColumnsPerFrame', 'Sets ASIC readout size per output frame',
                                                                          0, 255, 1,
                                                                          AccessWrite, AssignmentOptional)
         
