@@ -217,40 +217,40 @@ class LpdFemClient(FemClient):
         # self.ASIC_DATA_TYPE_RX_COUNTING                            # (1) Asic Rx Block internally generated counting data (simulated data)
         # self.ASIC_DATA_TYPE_PSEUDO_RANDOM                          # (2) Asic Pseudo random data (test data from asic)
         
-        self.femAsicLocalClock                      = 0        # 0 = no scaling (100 MHz), 1 = scaled down clock  [10 MHz (set by dcm params)]
-        self.femFastCtrlDynamic                     = True     # True = New dynamic commands
-        self.femAsicSlowLoadMode                    = 0        # 0 = parallel load, 1 = daisy chain
-        self.femAsicColumns                         = 4        # nr of images to capture per train
-        self.asicrx_capture_asic_header_TEST_ONLY   = False    # False = (NORMAL OPERATION) ignore asic header bits 
-        # True  = (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
-        self.femAsicGainOverride                    = 8        # gain algorithm selection
-        #  0000  normal gain selection     0
-        #  1000  force select x100         8
-        #  1001  force select x10          9
-        #  1011  force select x1          11
-        #  1111  force error condition ?  15
-        self.femAsicRxInvertData                    = False    # True  = invert adc output data (by subtracting value from $FFF)
-        self.femAsicRxFastStrobe                    = True     # True  = Start asic rx data capture using strobe derived from fast command file
-        # False = Start asic rx data capture using fixed delay value 
-        self.femAsicRxDelayOddChannels              = True     # True  = delay odd data channels by one clock to fix alignment
-        self.femAsicSlowClockPhase                  = 0        # additional phase adjustment of slow clock rsync wrt asic reset
-        self.femAsicSlowedClock                     = True     # False = asic readout phase uses same clock as capture phase
-        # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
+        self.femAsicLocalClock                      = 0         # 0 = no scaling (100 MHz), 1 = scaled down clock  [10 MHz (set by dcm params)]
+        self.femFastCtrlDynamic                     = True      # True = New dynamic commands
+        self.femAsicSlowLoadMode                    = 0         # 0 = parallel load, 1 = daisy chain
+        self.femAsicColumns                         = 4         # nr of images to capture per train
+        self.asicrx_capture_asic_header_TEST_ONLY   = False     # False = (NORMAL OPERATION) ignore asic header bits 
+                                                                # True  = (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
+        self.femAsicGainOverride                    = 8         # gain algorithm selection
+        #                                                       #   0000  normal gain selection     0
+        #                                                       #   1000  force select x100         8
+        #                                                       #   1001  force select x10          9
+        #                                                       #   1011  force select x1          11
+        #                                                       #   1111  force error condition ?  15
+        self.femAsicRxInvertData                    = False     # True  = invert adc output data (by subtracting value from $FFF)
+        self.femAsicRxFastStrobe                    = True      # True  = Start asic rx data capture using strobe derived from fast command file
+                                                                # False = Start asic rx data capture using fixed delay value 
+        self.femAsicRxDelayOddChannels              = True      # True  = delay odd data channels by one clock to fix alignment
+        self.femAsicSlowClockPhase                  = 0         # additional phase adjustment of slow clock rsync wrt asic reset
+        self.femAsicSlowedClock                     = True      # False = asic readout phase uses same clock as capture phase
+                                                                # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
         
 #======== params for general steering 
-        self.femPpcResetDelay   = 5 # wait after resetting ppc 
-        self.femNumTestCycles   = 1 # repeat the test n times
-        self.debug_level        = 0 # higher values more print out
+        self.femPpcResetDelay       = 5     # wait after resetting ppc 
+        self.femNumTestCycles       = 1     # repeat the test n times
+        self.debug_level            = 0     # higher values more print out
         #TODO: NEVER USED:
-        self.rxPlayback         = 0 # 1 for playback rx (to load files into ddr2 memory)
-        self.femPpcMode         = 0 # 0 = Single Train Shot with PPC reset, 1 = Continuous readout (not working yet)
+        self.rxPlayback             = 0     # 1 for playback rx (to load files into ddr2 memory)
+        self.femPpcMode             = 0     # 0 = Single Train Shot with PPC reset, 1 = Continuous readout (not working yet)
         
 #======== params for 10G data links
-        self.tenGigFarmMode       = 1       # 1 = non farm mode (1 ip host/port per link), 2 = farm mode (fixed ip host/multiple ports), 3 = farm mode with nic lists
-        self.tenGigInterframeGap = 0x000    # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
-        self.tenGigUdpPacketLen  = 8000     # default udp packet length in bytes (can be overriden in asic runs)
+        self.tenGigFarmMode         = 1     # 1 = non farm mode (1 ip host/port per link), 2 = farm mode (fixed ip host/multiple ports), 3 = farm mode with nic lists
+        self.tenGigInterframeGap    = 0x000 # ethernet inter frame gap  ; ensure receiving 10G NIC parameters have been set accordingly
+        self.tenGigUdpPacketLen     = 8000  # default udp packet length in bytes (can be overriden in asic runs)
         #TODO: NEVER USED:
-        self.clear_10g_lut       = 0        # 1 to clear 10g lut tables before start
+        self.clear_10g_lut          = 0     # 1 to clear 10g lut tables before start
      
      
         # look up table to match MAC addresses with IP for host NIC
@@ -260,24 +260,25 @@ class LpdFemClient(FemClient):
                             '192.168.7.1' : '00-07-43-10-61-88',   # burntoak eth7
                             '192.168.8.1' : '00-07-43-10-61-90',   # burntoak eth8
                             '192.168.9.1' : '00-07-43-10-61-98',   # burntoak eth9
-                            '10.0.0.1' : '00-07-43-10-66-A0'   # tim's lab
+                            '10.0.0.1'    : '00-07-43-10-66-A0'    # tim's lab
                             }  
 
-        self.tenGig0 = {'SourceMac'  : '62-00-00-00-00-01',  # self.mac_addr_to_uint64('62-00-00-00-00-01'), # fpga
-                       'SourceIp'    : '10.0.0.2',           # self.ip_addr_to_uint32('10.0.0.2'),
-                       'SourcePort'  : '0',                  # self.prt_addr_to_uint16('0'),
-                       'DestMac'     : '00-07-43-10-65-A0',  # self.mac_addr_to_uint64('00-07-43-10-65-A0'), # burntoak eth6
-                       'DestIp'      : '10.0.0.1',           # self.ip_addr_to_uint32('10.0.0.1'),
-                       'DestPort'    : '61649',              # self.prt_addr_to_uint16('61649'),
-                       'femEnable'   : True,     # enable this link
-                       'link_nr'     : 1,        # link number
-                       'data_gen'    : 1,        # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
-                       'data_format' : 0,        # data format type  (0 for counting data)  
-                       'frame_len'   : 0x10000,  # frame len in bytes
-                       'num_frames'  : 1,        # number of frames to send in each cycle
-                       'num_prts'    : 2,        # number of ports to loop over before repeating
-                       'delay'       : 0,        # delay offset wrt previous link in secs
-                       'nic_list'    : [ '61649@192.168.3.1' ]
+        self.tenGig0 = {'SourceMac'  : '62-00-00-00-00-01',
+                       'SourceIp'    : '10.0.0.2',         
+                       'SourcePort'  : '0',                
+                       'DestMac'     : '00-07-43-10-65-A0',
+                       'DestIp'      : '10.0.0.1',         
+                       'DestPort'    : '61649',            
+                       'femEnable'   : True,                    # enable this link
+                       #TODO: Add these to the API?
+                       'link_nr'     : 1,                       # link number
+                       'data_gen'    : 1,                       # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
+                       'data_format' : 0,                       # data format type  (0 for counting data)  
+                       'frame_len'   : 0x10000,                 # frame len in bytes
+                       'num_frames'  : 1,                       # number of frames to send in each cycle
+                       'num_prts'    : 2,                       # number of ports to loop over before repeating
+                       'delay'       : 0,                       # delay offset wrt previous link in secs
+                       'nic_list'    : [ '61649@192.168.3.1' ]  
                       }
 
         # Placeholder; Not really used..
@@ -287,14 +288,14 @@ class LpdFemClient(FemClient):
                        'DestMac'     : 'X00-07-43-10-65-A0', 
                        'DestIp'      : 'X10.0.0.1',
                        'DestPort'    : 'X61649',
-                       'femEnable'   : True,     # enable this link
-                       'link_nr'     : 2,        # link number
-                       'data_gen'    : 1,        # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
-                       'data_format' : 0,        # data format type  (0 for counting data)  
-                       'frame_len'   : 0x10000,  # frame len in bytes
-                       'num_frames'  : 1,        # number of frames to send in each cycle
-                       'num_prts'    : 2,        # number of ports to loop over before repeating
-                       'delay'       : 0,        # delay offset wrt previous link in secs
+                       'femEnable'   : True,                    # enable this link
+                       'link_nr'     : 2,                       # link number
+                       'data_gen'    : 1,                       # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
+                       'data_format' : 0,                       # data format type  (0 for counting data)  
+                       'frame_len'   : 0x10000,                 # frame len in bytes
+                       'num_frames'  : 1,                       # number of frames to send in each cycle
+                       'num_prts'    : 2,                       # number of ports to loop over before repeating
+                       'delay'       : 0,                       # delay offset wrt previous link in secs
                        'nic_list'    : [ '61649x@x192.168.3.1' ]
                       }
     '''
@@ -965,43 +966,43 @@ class LpdFemClient(FemClient):
                 fem format:  [0] = ASIC1-4, 17-20, 33-37, etc; [1] = ASIC5-8, 21-24, ..
         '''
         femMask = [0x0, 0x0, 0x0, 0x0]
-        
-        femMask[3] = (femMask[3] | (userMask[0]     & 0x0000000F) )
-        femMask[2] = (femMask[2] | ( (userMask[0]   & 0x000000F0) >> 4) )
-        femMask[1] = (femMask[1] | ( (userMask[0]   & 0x00000F00) >> 8) )
-        femMask[0] = (femMask[0] | ( (userMask[0]   & 0x0000F000) >> 12) )
-        femMask[3] = (femMask[3] | ( (userMask[0]   & 0x000F0000) >> 12) )
-        femMask[2] = (femMask[2] | ( (userMask[0]   & 0x00F00000) >> 16) )
-        femMask[1] = (femMask[1] | ( (userMask[0]   & 0x0F000000) >> 20) )
-        femMask[0] = (femMask[0] | ( (userMask[0]   & 0xF0000000) >> 24) )
+
+        femMask[0] = (femMask[0] | (userMask[0]     & 0x0000000F) << 28)
+        femMask[1] = (femMask[1] | ( (userMask[0]   & 0x000000F0) << 24) )
+        femMask[2] = (femMask[2] | ( (userMask[0]   & 0x00000F00) << 20) )
+        femMask[3] = (femMask[3] | ( (userMask[0]   & 0x0000F000) << 16) )
+        femMask[0] = (femMask[0] | ( (userMask[0]   & 0x000F0000) <<  8) )
+        femMask[1] = (femMask[1] | ( (userMask[0]   & 0x00F00000) <<  4) )
+        femMask[2] = (femMask[2] | ( (userMask[0]   & 0x0F000000)      ) )
+        femMask[3] = (femMask[3] | ( (userMask[0]   & 0xF0000000) >>  4) )
     
-        femMask[3] = (femMask[3] | ( (userMask[1]   & 0x0000000F) << 8) )
-        femMask[2] = (femMask[2] | ( (userMask[1]   & 0x000000F0) << 4) )
-        femMask[1] = (femMask[1] | ( (userMask[1]   & 0x00000F00)     ) )
-        femMask[0] = (femMask[0] | ( (userMask[1]   & 0x0000F000) >>  4) )
-        femMask[3] = (femMask[3] | ( (userMask[1]   & 0x000F0000) >>  4) )
-        femMask[2] = (femMask[2] | ( (userMask[1]   & 0x00F00000) >>  8) )
-        femMask[1] = (femMask[1] | ( (userMask[1]   & 0x0F000000) >> 12) )
-        femMask[0] = (femMask[0] | ( (userMask[1]   & 0xF0000000) >> 16) )
+        femMask[0] = (femMask[0] | ( (userMask[1]   & 0x0000000F) << 20) )
+        femMask[1] = (femMask[1] | ( (userMask[1]   & 0x000000F0) << 16) )
+        femMask[2] = (femMask[2] | ( (userMask[1]   & 0x00000F00) << 12) )
+        femMask[3] = (femMask[3] | ( (userMask[1]   & 0x0000F000) <<  8) )
+        femMask[0] = (femMask[0] | ( (userMask[1]   & 0x000F0000)      ) )
+        femMask[1] = (femMask[1] | ( (userMask[1]   & 0x00F00000) >>  4) )
+        femMask[2] = (femMask[2] | ( (userMask[1]   & 0x0F000000) >>  8) )
+        femMask[3] = (femMask[3] | ( (userMask[1]   & 0xF0000000) >> 12) )
     
-        femMask[3] = (femMask[3] | ( (userMask[2]   & 0x0000000F) << 16) )
-        femMask[2] = (femMask[2] | ( (userMask[2]   & 0x000000F0) << 12) )
-        femMask[1] = (femMask[1] | ( (userMask[2]   & 0x00000F00) <<  8) )
-        femMask[0] = (femMask[0] | ( (userMask[2]   & 0x0000F000) <<  4) )
-        femMask[3] = (femMask[3] | ( (userMask[2]   & 0x000F0000) <<  4) )
-        femMask[2] = (femMask[2] | ( (userMask[2]   & 0x00F00000)      ) )
-        femMask[1] = (femMask[1] | ( (userMask[2]   & 0x0F000000) >>  4) )
-        femMask[0] = (femMask[0] | ( (userMask[2]   & 0xF0000000) >>  8) )
-    
-        femMask[3] = (femMask[3] | ( (userMask[3]   & 0x0000000F) << 24) )
-        femMask[2] = (femMask[2] | ( (userMask[3]   & 0x000000F0) << 20) )
-        femMask[1] = (femMask[1] | ( (userMask[3]   & 0x00000F00) << 16) )
-        femMask[0] = (femMask[0] | ( (userMask[3]   & 0x0000F000) << 12) )
-        femMask[3] = (femMask[3] | ( (userMask[3]   & 0x000F0000) << 12) )
-        femMask[2] = (femMask[2] | ( (userMask[3]   & 0x00F00000) <<  8) )
-        femMask[1] = (femMask[1] | ( (userMask[3]   & 0x0F000000) <<  4) )
-        femMask[0] = (femMask[0] | ( (userMask[3]   & 0xF0000000)      ) )
-        
+        femMask[0] = (femMask[0] | ( (userMask[2]   & 0x0000000F) << 12) )
+        femMask[1] = (femMask[1] | ( (userMask[2]   & 0x000000F0) <<  8) )
+        femMask[2] = (femMask[2] | ( (userMask[2]   & 0x00000F00) <<  4) )
+        femMask[3] = (femMask[3] | ( (userMask[2]   & 0x0000F000)      ) )
+        femMask[0] = (femMask[0] | ( (userMask[2]   & 0x000F0000) >>  8) )
+        femMask[1] = (femMask[1] | ( (userMask[2]   & 0x00F00000) >> 12) )
+        femMask[2] = (femMask[2] | ( (userMask[2]   & 0x0F000000) >> 16) )
+        femMask[3] = (femMask[3] | ( (userMask[2]   & 0xF0000000) >> 20) )
+
+        femMask[0] = (femMask[0] | ( (userMask[3]   & 0x0000000F) <<  4) )
+        femMask[1] = (femMask[1] | ( (userMask[3]   & 0x000000F0)      ) )
+        femMask[2] = (femMask[2] | ( (userMask[3]   & 0x00000F00) >>  8) )
+        femMask[3] = (femMask[3] | ( (userMask[3]   & 0x0000F000) >> 12) )
+        femMask[0] = (femMask[0] | ( (userMask[3]   & 0x000F0000) >> 12) )
+        femMask[1] = (femMask[1] | ( (userMask[3]   & 0x00F00000) >> 16) )
+        femMask[2] = (femMask[2] | ( (userMask[3]   & 0x0F000000) >> 20) )
+        femMask[3] = (femMask[3] | ( (userMask[3]   & 0xF0000000) >> 24) )
+
         if self.debug_level > 2:
             print "userMask => femMask\n==================="
             for idx in range(4):
