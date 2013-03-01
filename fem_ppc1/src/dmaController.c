@@ -251,8 +251,6 @@ int main()
 
     	//print("[INFO ] Waiting for mailbox message...\r\n");
 
-    	//sendStopAck = 1;
-
     	// Blocking read of mailbox message
     	XMbox_ReadBlocking(&mbox, (u32 *)pMsg, sizeof(mailMsg));
 
@@ -1218,23 +1216,8 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 {
 	int status;
 
-	/*
-	// Check source address is sane
-	if ( (bufferAddr < DDR2_BADDR) || (bufferAddr>DDR2_TOP) )
-	{
-		printf("[ERROR] Config. address 0x%8x does not lie within DDR2 memory region!\r\n", (unsigned int)bufferAddr);
-		return XST_FAILURE;
-	}
-
-	// Check we won't exceed BD storage allocation
-	if (bufferCnt > LL_MAX_CONFIG_BD)
-	{
-		printf("[ERROR] Configuration buffer count exceeds maximum BD storage! (%d>%d)\r\n", (int)bufferCnt, LL_MAX_CONFIG_BD);
-		return XST_FAILURE;
-	}
-	*/
-
 	u32 bdStartAddr = LL_BD_BADDR + LL_BD_SZ - (LL_MAX_CONFIG_BD * LL_DMA_ALIGNMENT);
+
 	//printf("[INFO ] Creating %d config BDs at 0x%08x (%d max.)\r\n", (int)bufferCnt, (unsigned)bdStartAddr, LL_MAX_CONFIG_BD);
 
 	// Create BD ring & BD
