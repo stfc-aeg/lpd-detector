@@ -194,7 +194,7 @@ class BlitQT(FigureCanvas):
 
             # Create empty array to store 16 bit elements (eg 32 Bit array * 2)
             #     Each 32-bit word contain 2 pixels
-            _16BitWordArray = np.empty(_32BitArrayLen*2, dtype='i2')
+            _16BitWordArray = np.zeros(_32BitArrayLen*2, dtype='i2')
             
             
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
@@ -397,7 +397,7 @@ class BlitQT(FigureCanvas):
             in the form of the 16 ASICs organised into a 32 x 256 pixel image 
         """
         # Create an array to contain 8192 elements (32 x 16 x 16)
-        imageArray = np.empty(8192, dtype=np.uint16)
+        imageArray = np.zeros(8192, dtype=np.uint16)
         
         # Distance between two consecutive pixels within the same ASIC in the quadrant detector
         pixelDistance = 128
@@ -478,72 +478,72 @@ class BlitQT(FigureCanvas):
         return bNextImageAvailable, imageArray
 
 
-    def retrieveFirstSuperModuleImageFromAsicData(self, sixteenBitArray):
-        """ The sixteenBitArray array argument containing all
-            the ASIC data (full supermodule), and returns,    
-            [AS OF 10/12/2012]: 
-                * boolean to signal whether this is the last image in the data
-                * the first image (32 x 16 x 8 pixels) of an image found in the data,
-            in the form of the 8 ASICs organised into a 32 x 128 pixel image 
-        """
-        # Create an array to contain 4096 elements (32 x 16 x 8)
-        imageArray = np.empty(4096, dtype=np.uint16)
-        
-        # Distance between two consecutive pixels within the same ASIC in the quadrant detector
-        pixelDistance = 128
-        
-        # Boolean variable to track whether there is a image after this one in the data
-        bNextImageAvailable = False
-        
-        # Counter variables
-        imageIndex = 0
-        rawCounter = 0
-
-        # Distance within the 64 word table that defines order of ASIC read out
-        lookupTableAsicDistance = 0
-        
-        # Iterate over 32 rows
-        for row in range(32):
-            
-            # Iterate over 16 columns
-            for column in range(16):
-                
-                # Go in reverse order from ASIC 112-105
-                lookupTableAsicDistance = 112-1
-                try:
-                    
-                    # Iterate over the 8 ASICs
-                    for asicOffset in range(8):
-
-                        imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
-                        rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
-                        
-                        imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
-
-                        # Increment lookupTableAsicDistance since ASIC are located in one row
-                        lookupTableAsicDistance -= 1
-
-                    # Increment counter for rawDataOffset for every tile of 8 ASICs 
-                    rawCounter += 1
-
-                except IndexError:
-                    # If end of array reached, will raise IndexError
-                    print "SM-IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
-                    break
-                except Exception as e:
-                    print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
-                    exit()                    
-
-        # Check whether this is the last image in the image data..
-        #    NOTE: the 4096 pixels come from a region spanning 65,536 pixel in the quadrant data
-        try:
-            sixteenBitArray[65536]
-            # Will only get here if there is a next image available..
-            bNextImageAvailable = True
-        except IndexError:
-            print "Last Image detected"
-
-        return bNextImageAvailable, imageArray
+#    def retrieveFirstSuperModuleImageFromAsicData(self, sixteenBitArray):
+#        """ The sixteenBitArray array argument containing all
+#            the ASIC data (full supermodule), and returns,    
+#            [AS OF 10/12/2012]: 
+#                * boolean to signal whether this is the last image in the data
+#                * the first image (32 x 16 x 8 pixels) of an image found in the data,
+#            in the form of the 8 ASICs organised into a 32 x 128 pixel image 
+#        """
+#        # Create an array to contain 4096 elements (32 x 16 x 8)
+#        imageArray = np.zeros(4096, dtype=np.uint16)
+#        
+#        # Distance between two consecutive pixels within the same ASIC in the quadrant detector
+#        pixelDistance = 128
+#        
+#        # Boolean variable to track whether there is a image after this one in the data
+#        bNextImageAvailable = False
+#        
+#        # Counter variables
+#        imageIndex = 0
+#        rawCounter = 0
+#
+#        # Distance within the 64 word table that defines order of ASIC read out
+#        lookupTableAsicDistance = 0
+#        
+#        # Iterate over 32 rows
+#        for row in range(32):
+#            
+#            # Iterate over 16 columns
+#            for column in range(16):
+#                
+#                # Go in reverse order from ASIC 112-105
+#                lookupTableAsicDistance = 112-1
+#                try:
+#                    
+#                    # Iterate over the 8 ASICs
+#                    for asicOffset in range(8):
+#
+#                        imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
+#                        rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
+#                        
+#                        imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
+#
+#                        # Increment lookupTableAsicDistance since ASIC are located in one row
+#                        lookupTableAsicDistance -= 1
+#
+#                    # Increment counter for rawDataOffset for every tile of 8 ASICs 
+#                    rawCounter += 1
+#
+#                except IndexError:
+#                    # If end of array reached, will raise IndexError
+#                    print "SM-IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
+#                    break
+#                except Exception as e:
+#                    print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
+#                    exit()                    
+#
+#        # Check whether this is the last image in the image data..
+#        #    NOTE: the 4096 pixels come from a region spanning 65,536 pixel in the quadrant data
+#        try:
+#            sixteenBitArray[65536]
+#            # Will only get here if there is a next image available..
+#            bNextImageAvailable = True
+#        except IndexError:
+#            print "Last Image detected"
+#
+#        return bNextImageAvailable, imageArray
 
 # ~~~~~~~~~~~~ #
 
@@ -567,19 +567,19 @@ class BlitQT(FigureCanvas):
         
         try:
             offset = 0
-            # Extract frame number (the first four bytes)
+            # Extract frame number (the penultimate last four bytes) - Needs to be modified to match trailer mode (i.e. offset-X..)
 #            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
             frame_number = 0
-            # Extract packet number (the following four bytes)
-            packet_number = ord(data[offset-4]) #(ord(data[offset+7]) << 24) + (ord(data[offset+6]) << 16) + (ord(data[offset+5]) << 8) + ord(data[offset+4])
-#            packet_number = 0
-            header_info = ord(data[-1])
-#            print "header_info: ", header_info
+            # Extract packet number (the ante pre-penultimate byte; if offset-1 is last, it's offset-4)
+            packet_number = ord(data[offset-4])
+
+            trailer_info = ord(data[-1])
+#            print "trailer_info: ", trailer_info
             # Extract Start Of Frame, End of Frame
 #            frm_sof = (packet_number & 0x80000000) >> 31
 #            frm_eof = (packet_number & 0x40000000) >> 30
-            frm_sof = (header_info & 0x80) >> 7
-            frm_eof = (header_info & 0x40) >> 6
+            frm_sof = (trailer_info & 0x80) >> 7
+            frm_eof = (trailer_info & 0x40) >> 6
 #            packet_number = packet_number & 0x3FFFFFFF
             
 #            print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
@@ -595,7 +595,7 @@ class BlitQT(FigureCanvas):
             # Compare this packet number against the previous packet number
             if packet_number != (self.packetNumber +1):
                 # packet numbering not consecutive
-                print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
+                print "Warning: Previous packet number: %3i This packet number: %3i" % (self.packetNumber, packet_number)
 
             # Update current packet number
             self.packetNumber = packet_number
@@ -606,8 +606,7 @@ class BlitQT(FigureCanvas):
                 pass
             
             # Not yet end of file: copy current packet contents onto (previous) packet contents
-            # First 8 bytes are frame number and packet number - omitting those..
-            # both are of type string..
+            # Last 8 bytes are frame number and packet number - omitting those..
             self.rawImageData = self.rawImageData + data[0:-8]
 
             # Return frame number and end of frame

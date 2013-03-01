@@ -321,17 +321,10 @@ class LpdDeviceParameters(object):
         # production firmware iterations
         #
         
-        self.parameters['femSendPpcReset']              = AttributeContainer(bool, 'FemSendPPCReset', 'Send PPC processor reset to FEM',
-                                                                      (True, False), None, True,
-                                                                      AccessWrite, AssignmentOptional)
         #TODO: Redundant because there is no action if set to False?
         self.parameters['femFastCtrlDynamic']           = AttributeContainer(bool, 'FemFastCtrlDynamic', 'Enables fast control with dynamic vetos',
                                                                       (True, False), None, True,
                                                                       AccessWrite, AssignmentOptional)
-        
-#        self.parameters['femSetupSlowCtrlBram']         = AttributeContainer(bool, 'FemSetupSlowCtrlBRAM', 'Enables setup of ASIC slow control sequence',
-#                                                                      (True, False), None, True,
-#                                                                      AccessWrite, AssignmentOptional)
         
         self.parameters['femEnableTenGig']              = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
                                                                       (True, False), None, True,
@@ -341,26 +334,10 @@ class LpdDeviceParameters(object):
                                                                       0, 3, 1,
                                                                       AccessWrite, AssignmentOptional)
         
-#        self.parameters['femAsicCountingData']          = AttributeContainer(bool, 'FemAsicCountingData', 'Enables dummy ASIC counting data in FEM',
-#                                                                        (True, False), None, False,
-#                                                                        AccessWrite, AssignmentOptional)
-        
         self.parameters['femAsicModuleType']            = AttributeContainer(int, 'FemAsicModuleType', 'Selects type of ASIC module  0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
                                                                         0, 3, 2,
                                                                         AccessWrite, AssignmentOptional)
-        
-#        self.parameters['femAsicRxStartDelay']          = AttributeContainer(int, 'FemAsicRxStartDelay', 'Number of clock periods before start of ASIC data RX - will be replaced',
-#                                                                        0, 65535, 61,
-#                                                                        AccessWrite, AssignmentOptional)
-        
-#        self.parameters['femNumLocalLinkFrames']        = AttributeContainer(int, 'FemNumLocalLinkFrames', 'Number of local link frames to generate in test mode',
-#                                                                         0, 65536, 1,
-#                                                                         AccessWrite, AssignmentOptional)
-        
-        self.parameters['femAsicFastCmdRegSize']        = AttributeContainer(int, 'FemAsicFastCmdRegSize', 'Size of the ASIC fast command register in bits',
-                                                                         (20, 22), None, 22,
-                                                                         AccessWrite, AssignmentOptional)
-        
+                
         self.parameters['femAsicEnableMask']            = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
                                                                          0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
                                                                          AccessWrite, AssignmentMandatory)
@@ -449,6 +426,14 @@ class LpdDeviceParameters(object):
 
         self.parameters['femI2cBus']            = AttributeContainer(int, 'FemI2cBus', 'Set Fem i2c internal bus 0x000=LM82, 0x100=EEPROM, 0x200=RHS Power Card, 0x300=LHS Power Card (2Tile System)',
                                                                           (0x000,  0x100, 0x200, 0x300), None, 0x300,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicVersion']      = AttributeContainer(int, 'FemAsicVersion', 'ASIC version 1=version 1, 2=version 2',
+                                                                          1, 2, 1,
+                                                                          AccessWrite, AssignmentMandatory)
+
+        self.parameters['femAsicClockSource']    = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator, 1=XFEL C&C System',
+                                                                          0, 1, 0,
                                                                           AccessWrite, AssignmentMandatory)
 
 

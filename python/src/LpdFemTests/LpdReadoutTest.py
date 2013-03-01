@@ -33,7 +33,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
 #    ff = open('ConfigFiles/preambleDelaySlowControl.xml', 'r')
 #    xmlString = ff.read(-1)
 #    ff.close ()
-    xmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+#    xmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+    xmlString = 'ConfigFiles/selfTestPixel232.xml'
     
     rc = theDevice.paramSet('femAsicSlowControlParams', xmlString)
     if rc != LpdDevice.ERROR_OK:
@@ -44,7 +45,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
 #    ff = open('ConfigFiles/playingWivLasers.xml', 'r')
 #    xmlString = ff.read(-1)
 #    ff.close ()
-    xmlString = 'ConfigFiles/playingWivLasers.xml'
+    xmlString = 'ConfigFiles/SuperModuleNormalOperation.xml'# SupMod - normal readout
+#    xmlString = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
     
     rc = theDevice.paramSet('femAsicFastCmdSequence', xmlString)
     if rc != LpdDevice.ERROR_OK:
@@ -52,7 +54,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
 
 #            'slow_params_file_name_xml'             : #'slow_control_config_jac.xml',            # used if slow_params_file_type = 1
 #                                                      'preambleDelaySlowControl.xml',            # slow_control_config.xml  # standard
-#            'fast_cmd_sensor_data_file_name_xml'    : 'playingWivLasers.xml',                    # allows use of laser pointer
+#            'fast_cmd_sensor_data_file_name_xml'    : 'SuperModuleNormalOperation.xml',          # Used for Super Module operation, with slowed down readout
 #                                                    # 'SupModTest.xml'                           # Testing supermodule
 #                                                    # 'fast_cmd_1f_with_slow_readout.xml',       # file created by jac
 #                                                    # 'fast_readout_replacement_commands.xml',   # for real asic sensor data                                                    
@@ -132,8 +134,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
         
 #        rc = theDevice.paramSet('tenGig1SourceMac', 13)
-        if rc != LpdDevice.ERROR_OK:
-            print "tenGig1SourceMac set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        if rc != LpdDevice.ERROR_OK:
+#            print "tenGig1SourceMac set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('tenGig1SourceMac')
         if rc != LpdDevice.ERROR_OK:
@@ -143,8 +145,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
         
 #        rc = theDevice.paramSet('tenGig1SourceIp', 13)
-        if rc != LpdDevice.ERROR_OK:
-            print "tenGig1SourceIp set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        if rc != LpdDevice.ERROR_OK:
+#            print "tenGig1SourceIp set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('tenGig1SourceIp')
         if rc != LpdDevice.ERROR_OK:
@@ -154,8 +156,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
         
 #        rc = theDevice.paramSet('tenGig1SourcePort', 13)
-        if rc != LpdDevice.ERROR_OK:
-            print "tenGig1SourcePort set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        if rc != LpdDevice.ERROR_OK:
+#            print "tenGig1SourcePort set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('tenGig1SourcePort')
         if rc != LpdDevice.ERROR_OK:
@@ -165,8 +167,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
         
 #        rc = theDevice.paramSet('tenGig1DestMac', 13)
-        if rc != LpdDevice.ERROR_OK:
-            print "tenGig1DestMac set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        if rc != LpdDevice.ERROR_OK:
+#            print "tenGig1DestMac set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('tenGig1DestMac')
         if rc != LpdDevice.ERROR_OK:
@@ -176,8 +178,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
         
 #        rc = theDevice.paramSet('tenGig1DestIp', 13)
-        if rc != LpdDevice.ERROR_OK:
-            print "tenGig1DestIp set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        if rc != LpdDevice.ERROR_OK:
+#            print "tenGig1DestIp set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('tenGig1DestIp')
         if rc != LpdDevice.ERROR_OK:
@@ -187,8 +189,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
         
 #        rc = theDevice.paramSet('tenGig1DestPort', 13)
-        if rc != LpdDevice.ERROR_OK:
-            print "tenGig1DestPort set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        if rc != LpdDevice.ERROR_OK:
+#            print "tenGig1DestPort set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
         (rc, value) = theDevice.paramGet('tenGig1DestPort')
         if rc != LpdDevice.ERROR_OK:
@@ -218,22 +220,10 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "tenGigUdpPacketLen \t= %d." % value
 
-#        rc = theDevice.paramSet('femAsicFastCmdRegSize', 22)
-#        if rc != LpdDevice.ERROR_OK:
-#            print "femAsicFastCmdRegSize set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-#    
-#        (rc, value) = theDevice.paramGet('femAsicFastCmdRegSize')
-#        if rc != LpdDevice.ERROR_OK:
-#            print "femAsicFastCmdRegSize get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-#        else:
-#            print "femAsicFastCmdRegSize \t= %d." % value
-
-        # Enable 2 Tile System's ASICs - Now uses user friendly format !
-#        rc = theDevice.paramSet('femAsicEnableMask', [0xFF000000, 0x00000000, 0x00000000, 0x0000FF00])
-        # Enable everything..
-        rc = theDevice.paramSet('femAsicEnableMask', [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF])
-        # Current supermodule only has one tile working..:
-#        rc = theDevice.paramSet('femAsicEnableMask', [0x00000000, 0x00000000, 0x0000FF00, 0x00000000])
+        
+#        rc = theDevice.paramSet('femAsicEnableMask', [0xFF000000, 0x00000000, 0x00000000, 0x0000FF00])    # Enable 2 Tile System's ASICs
+#        rc = theDevice.paramSet('femAsicEnableMask', [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF])    # Enable everything
+        rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])      # Supermodule with three tiles
         if rc != LpdDevice.ERROR_OK:
             print "femAsicEnableMask set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -397,7 +387,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femAsicSlowClockPhase\t= ", value
 
-        rc = theDevice.paramSet('femAsicSlowedClock', True)
+        rc = theDevice.paramSet('femAsicSlowedClock', False)    #True)
         if rc != LpdDevice.ERROR_OK:
             print "femAsicSlowedClock set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
