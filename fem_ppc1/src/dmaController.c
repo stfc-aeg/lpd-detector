@@ -121,6 +121,7 @@ typedef struct
 // FUNCTION PROTOTYPES
 int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pTxBd, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
 int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfigBd, u32 bufferAddr, u32 bufferSz, u32 bufferCnt, acqStatusBlock* pStatusBlock);
+int checkUploadBdRequest(u32 bufferAddr, u32 bufferSz, u32 bufferCnt);
 int startAcquireEngines(XLlDma_BdRing* pRingAsicTop, XLlDma_BdRing* pRingAsicBot, XLlDma_BdRing* pRingTenGig);
 
 // TODO: Refactor to sendFemMailMsg(), recvFemMailMsg() - make common?
@@ -262,10 +263,14 @@ int main()
     		// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
         	// Send config request ACK (currently hardcoded as 0xA5A5FACE!)
-        	if (sendAcquireAckMessage(&mbox, 0xA5A5FACE)==0)
-        	{
-        		print("[ERROR] Could not send config ACK to PPC1!\r\n");
-        	}
+    		// We do not ACK ACQ_MODE_UPLOAD requests yet as we check it's validity later in this function
+    		if (pMsg->mode!=ACQ_MODE_UPLOAD)
+    		{
+				if (sendAcquireAckMessage(&mbox, 0xA5A5FACE)==0)
+				{
+					print("[ERROR] Could not send config ACK to PPC1!\r\n");
+				}
+    		}
 
     		// Ensure DMA engines are in a stable state, and stopped!
 			XLlDma_Reset(&dmaAsicTop);
@@ -315,9 +320,29 @@ int main()
 
     		case ACQ_MODE_UPLOAD:
     			// TODO: Refactor numAcq to something more generic (ACQ_MODE_NORMAL->numAcq, ACQ_MODE_UPLOAD->configStartAddr) --> modeParam?
-    			pStatusBlock->state = STATE_CFG_BSY;
-    			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, pMsg->param, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
-    			pStatusBlock->state = STATE_IDLE;
+
+    			// Verify request is sane
+    			if (checkUploadBdRequest(pMsg->param, pMsg->buffSz, pMsg->buffCnt) == XST_SUCCESS)
+    			{
+    				// Send ACK
+    				if (sendAcquireAckMessage(&mbox, 0xA5A5FACE)==0)
+    				{
+    					print("[ERROR] Could not send config ACK to PPC1!\r\n");
+    				}
+
+    				// Configure BDs
+        			pStatusBlock->state = STATE_CFG_BSY;
+        			status = configureBdsForUpload(pBdRings[BD_RING_UPLOAD], &pConfigBd, pMsg->param, pMsg->buffSz, pMsg->buffCnt, pStatusBlock);
+        			pStatusBlock->state = STATE_IDLE;
+    			}
+    			else
+    			{
+    				// Send NACK
+    				if (sendAcquireAckMessage(&mbox, 0)==0)
+    				{
+    					print("[ERROR] Could not send config NACK to PPC1!\r\n");
+    				}
+    			}
     			break;
 
     		default:
@@ -977,6 +1002,7 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 			return XST_FAILURE;
 		}
 	}
+
 	//printf("[DEBUG] Requested %d buffers of (2 x 0x%08x) bytes...\r\n", (unsigned)bufferCnt, (unsigned)bufferSz);
 
 	// Check if we can re-use BDs to save time configuring them
@@ -1001,10 +1027,12 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 	u32 topAsicRXBdOffset =		LL_BD_BADDR;
 	u32 botAsicRXBdOffset =		topAsicRXBdOffset + bdChunkSize;
 	u32 tenGigTXBdOffset =		botAsicRXBdOffset + bdChunkSize;
-	//printf("[INFO ] BDs: \r\n");
-	//printf("[INFO ] TopASIC      0x%08x\r\n", (unsigned)topAsicRXBdOffset);
-	//printf("[INFO ] Bottom ASIC  0x%08x\r\n", (unsigned)botAsicRXBdOffset);
-	//printf("[INFO ] TenGig       0x%08x\r\n", (unsigned)tenGigTXBdOffset);
+	/*
+	printf("[INFO ] BDs: \r\n");
+	printf("[INFO ] TopASIC      0x%08x\r\n", (unsigned)topAsicRXBdOffset);
+	printf("[INFO ] Bottom ASIC  0x%08x\r\n", (unsigned)botAsicRXBdOffset);
+	printf("[INFO ] TenGig       0x%08x\r\n", (unsigned)tenGigTXBdOffset);
+	*/
 
 	status = XLlDma_BdRingCreate(pRingAsicTop, topAsicRXBdOffset, topAsicRXBdOffset, LL_DMA_ALIGNMENT, bufferCnt);
 	if (status!=XST_SUCCESS)
@@ -1147,6 +1175,36 @@ int configureBdsForAcquisition(XLlDma_BdRing *pBdRings[], XLlDma_Bd **pFirstTxBd
 
 
 /**
+ * Verifies a configuration request is valid with respect to the memory region and size requested
+ * @param bufferAddr address at which configuration data is stored
+ * @param bufferSz size of configuration data
+ * @param bufferCnt number of configurations
+ *
+ * @return XST_SUCCESS or XST_FAILURE if invalid
+ */
+int checkUploadBdRequest(u32 bufferAddr, u32 bufferSz, u32 bufferCnt)
+{
+	// Check source address is sane
+	if ( (bufferAddr < DDR2_BADDR) || ((bufferAddr+(bufferSz*bufferCnt))>DDR2_TOP) )
+	{
+		printf("[ERROR] Config. address 0x%08x (0x%08x x 0x%08x BDs) does not lie within valid DDR2 memory region!\r\n", (unsigned int)bufferAddr, (unsigned int)bufferSz, (unsigned int)bufferCnt);
+		return XST_FAILURE;
+	}
+
+	// Check we won't exceed BD storage allocation
+	if (bufferCnt > LL_MAX_CONFIG_BD)
+	{
+		printf("[ERROR] Configuration buffer count exceeds maximum BD storage! (%d>%d)\r\n", (int)bufferCnt, LL_MAX_CONFIG_BD);
+		return XST_FAILURE;
+	}
+
+	// All OK
+	return XST_SUCCESS;
+}
+
+
+
+/**
  * Configures DMA engine for upstream configuration upload
  * @param pUploadBdRing pointer to BD ring for upload channel
  * @param pFirstConfigBd set by function to be first BD in TX ring
@@ -1160,6 +1218,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 {
 	int status;
 
+	/*
 	// Check source address is sane
 	if ( (bufferAddr < DDR2_BADDR) || (bufferAddr>DDR2_TOP) )
 	{
@@ -1173,6 +1232,7 @@ int configureBdsForUpload(XLlDma_BdRing *pUploadBdRing, XLlDma_Bd **pFirstConfig
 		printf("[ERROR] Configuration buffer count exceeds maximum BD storage! (%d>%d)\r\n", (int)bufferCnt, LL_MAX_CONFIG_BD);
 		return XST_FAILURE;
 	}
+	*/
 
 	u32 bdStartAddr = LL_BD_BADDR + LL_BD_SZ - (LL_MAX_CONFIG_BD * LL_DMA_ALIGNMENT);
 	//printf("[INFO ] Creating %d config BDs at 0x%08x (%d max.)\r\n", (int)bufferCnt, (unsigned)bdStartAddr, LL_MAX_CONFIG_BD);
@@ -1370,7 +1430,7 @@ int validateBuffer(XLlDma_BdRing *pRing, XLlDma_Bd *pBd, bufferType buffType)
 	// Check DMA_ERROR bit
 	if ((sts&0xFF000000)&LL_DMA_ERROR)
 	{
-		print("[ERROR] DMA transfer signalled error!\r\n");
+		print("[ERROR] DMA transfer signaled error!\r\n");
 #ifdef DEBUG_BD
 		printf("[ERROR] BD sts=%08x, len=%08x, addr=%08x\r\n", (unsigned)sts, (unsigned)len, (unsigned)addr);
 #endif
