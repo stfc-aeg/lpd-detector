@@ -583,7 +583,7 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
 		{
 			// Can't allocate payload space
 			DBGOUT("DiscClient: Can't re-malloc payload buffer for client after large packet!\r\n");
-			// TODO: HANDLE THIS ERROR
+			// TODO: Handle malloc fail on re-malloc operation after client disconnects
 		}
 		else
 		{
@@ -685,7 +685,6 @@ int commandHandler(struct protocol_header* pRxHeader,
 			else
 			{
 				SBIT(state, STATE_NACK);
-				// TODO: Set FEM error state
 			}
 			break;
 
@@ -1249,7 +1248,7 @@ int validateRequest(struct protocol_header *pHeader, struct clientStatus *pClien
 				// Rest of header is ignored, this case only here to avoid running the default case!
 				break;
 			case CMD_INT_WRITE_TO_SYSACE:
-				// TODO: Header check?
+				// TODO: Header check for CMD_INT_WRITE_TO_SYSACE?
 				break;
 			default:
 				// For CMD_INTERNAL the address field holds the command type...
