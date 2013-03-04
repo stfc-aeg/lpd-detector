@@ -694,8 +694,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 			switch(pRxHeader->address)
 			{
 			case CMD_INT_FIRMWARE:
-				// Reload firmware via Sysace
-				DBGOUT("CmdDisp: Requested systemACE firmware reload, image %d\r\n", pRxHeader->bus_target);
+				//DBGOUT("CmdDisp: Requested systemACE firmware reload, image %d\r\n", pRxHeader->bus_target);
 				SBIT(state, STATE_ACK);
 				*pReloadRequested = pRxHeader->bus_target;
 				break;
@@ -707,6 +706,11 @@ int commandHandler(struct protocol_header* pRxHeader,
 			case CMD_INT_WRITE_TO_SYSACE:
 				DBGOUT("CmdDisp: Requested SystemACE file write, doing dummy write of 8 bytes from 0x40000000...\r\n");
 				writeImage(1, 0x40000000, 8);
+				SBIT(state, STATE_ACK);
+				break;
+			case CMD_INT_GET_FPM_ID:
+				responseSize = 4;
+				*(pTxPayload_32) = (u32)getFpmId();
 				SBIT(state, STATE_ACK);
 				break;
 			}

@@ -60,7 +60,8 @@ enum internal_commands
 {
 	CMD_INT_FIRMWARE			= 0,		//!< Reboot to selected firmware
 	CMD_INT_GET_HW_INIT_STATE	= 1,		//!< Get hardware init. state
-	CMD_INT_WRITE_TO_SYSACE		= 2			//!< Write image to compact flash card via SystemACE
+	CMD_INT_WRITE_TO_SYSACE		= 2,		//!< Write image to compact flash card via SystemACE
+	CMD_INT_GET_FPM_ID			= 3			//!< Get FPM ID
 };
 
 //! Target bus for commands
