@@ -18,6 +18,8 @@
 // TODO: Remove
 #include "sleep.h"
 
+#define FPM_ID			1
+
 enum personality_commands
 {
 	FPM_DACSCAN		= 1,

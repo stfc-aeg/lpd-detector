@@ -1,11 +1,11 @@
 /*
- * FPM_lpd.c
+ * FPM_stub.c
  *
- *  Created on: Nov 15, 2011
+ *  Created on: Jan 15, 2013
  *      Author: mt47
  */
 
-#include "FPM_lpd.h"
+#include "FPM_stub.h"
 
 /**
  * Returns unique FPM ID
@@ -23,7 +23,7 @@ int getFpmId(void)
 int fpmInitHardware()
 {
 	DBGOUT("\r\n************************************\r\n");
-	DBGOUT("Personality Module: XFEL LPD\r\n");
+	DBGOUT("Personality Module: NONE\r\n");
 	DBGOUT("************************************\r\n\r\n");
 
 	return XST_SUCCESS;
@@ -57,6 +57,7 @@ void handlePersonalityCommand(	struct protocol_header* pRxHeader,
 							)
 {
 
-	// TODO: Implement LPD-specific command handling here!
+	// Dummy function
+	return;
 
 }

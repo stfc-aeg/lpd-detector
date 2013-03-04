@@ -10,4 +10,6 @@
 
 #include "personality.h"
 
+#define FPM_ID			2
+
 #endif /* FPM_LPD_H_ */

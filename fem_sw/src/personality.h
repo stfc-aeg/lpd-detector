@@ -18,6 +18,7 @@
 #include "xstatus.h"
 
 // Template header for FEM personality modules.  These methods must be implemented in the FPMs!
+int getFpmId(void);
 int fpmInitHardware(void);												//!< Personality module hardware initialisation
 int validatePersonalityHeaderContents(struct protocol_header *pHeader);	//!< Validates header for personality commands
 int handlePersonalityCommand(	struct protocol_header* pRxHeader,

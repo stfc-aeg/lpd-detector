@@ -8,6 +8,15 @@
 #include "FPM_excalibur.h"
 
 /**
+ * Returns unique FPM ID
+ * @return FPM ID
+ */
+int getFpmId(void)
+{
+	return FPM_ID;
+}
+
+/**
  * Application specific hardware initialisation function, called by main FEM at end of hardwareInit()
  * @return xstatus, XST_SUCCESS if no errors
  */
