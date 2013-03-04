@@ -38,8 +38,8 @@ int fpmInitHardware()
  */
 int validatePersonalityHeaderContents(struct protocol_header *pHeader)
 {
-	// TODO: Implement
-	return -1;
+	// Always OK, no functions implemented!
+	return 0;
 }
 
 /*
