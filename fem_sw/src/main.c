@@ -243,7 +243,6 @@ void networkInitThread(void *p)
         }
 
         DBGOUT("NetMan: Got DHCP address!\r\n");
-        // TODO: Print IP/NM/GW!
 
     }
     else
