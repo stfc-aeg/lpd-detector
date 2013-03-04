@@ -46,7 +46,7 @@ int writeImage(unsigned int idx, u32 addr, u32 len)
 	fname[17] = (char)(48+idx);
 
 	// Dump filename
-	// TODO: Remove DBGOUT
+	// TODO: SYSTEMACE: Remove DBGOUT once verified OK
 	DBGOUT("SystemACE filename (idx=%d): '", idx);
 	DBGOUT(fname);
 	DBGOUT("'\r\n");
@@ -85,7 +85,7 @@ int mySelfTest(XSysAce *InstancePtr)
 {
 	int Result;
 
-	// TODO: Remove this function
+	// TODO: SYSTEMACE: Remove this function once SystemAce working OK
 
 	// THIS CODE IS ADDED TO ORIGINAL XSYSACE_SELFTEST AS DIAGS!
 /*
