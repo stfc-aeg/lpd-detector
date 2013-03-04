@@ -414,7 +414,7 @@ int initHardware(void)
     if (status!=XST_SUCCESS)
     {
     	DBGOUT("initHardware: Failed to initialise RDMA controller.\r\n");
-    	// TODO: FEM error state
+    	femErrorState |= (1<<TEST_RDMA_INIT);
     }
     status = rdmaSelftest();
     if (status == XST_UART_TEST_FAIL)
