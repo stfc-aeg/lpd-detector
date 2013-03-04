@@ -43,7 +43,6 @@ int initRdma(void)
  */
 int rdmaSelftest(void)
 {
-	// TODO: Implement readback test
 	return XST_SUCCESS;
 }
 
