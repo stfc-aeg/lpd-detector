@@ -8,7 +8,7 @@ import argparse
 
 class DigitalControlConfigure():
 
-    def __init__(self, Reserved=0, Reset3= 0, Reset2=0, Reset1=0, ClockCounterOffset=0, ClockSelect=0, Debug=0):
+    def __init__(self, Reserved=0, Reset3=10, Reset2=9, Reset1=7, ClockCounterOffset=2, ClockSelect=2, Debug=0):
         '''
             DigitalControlConfigure allows the user to specify up to all six of the different parts of the Digital Control Slow Control Section
         '''
@@ -81,14 +81,14 @@ if __name__ == "__main__":
     # Define class arguments
     Reserved    = 0
     Reset3      = 0
-    Reset2      = 0 #18
-    Reset1      = 0 #14
-    ClockCounterOffset = 0  #14
-    ClockSelect = 0 #4
+    Reset2      = 0
+    Reset1      = 0
+    ClockCounterOffset = 0
+    ClockSelect = 0
     
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="DigitalControlConfigure.py - Accepts up to 6 arguments to set the functions compromising the Digital Control keyword and generates the 40 bit word used by the <digital_control> XML tag. ",
-                                     epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 0\nreset3 = 0\nreset2 = 18\nreset1 = 14\nclockcounteroffset = 14\nclockselect = 4,\t Note: the parser ignores any argument set to 0 and therefore the default value is 0 for any of the six arguments if not provided.")
+                                     epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 0\nreset3 = 10\nreset2 = 9\nreset1 = 7\nclockcounteroffset = 2\nclockselect = 2,\t Note: the parser ignores any argument set to 0 and therefore the default value is 0 for any of the six arguments if not provided.")
 
     parser.add_argument("--reserved", help="set the Reserved function (4 bits)", type=int)
     parser.add_argument("--reset3", help="set the Reset3 function (7 bits)", type=int)

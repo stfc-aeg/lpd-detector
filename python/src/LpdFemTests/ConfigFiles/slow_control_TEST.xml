@@ -73,6 +73,6 @@
    <spare_bits value="27"/>
    <filter_control value="557056"/>
    <adc_clock_delay value="0"/>
-   <digital_control value="75959812"/>
+   <digital_control value="5406687746"/>
 
 </lpd_slow_ctrl_sequence> 

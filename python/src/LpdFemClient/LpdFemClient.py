@@ -185,10 +185,10 @@ class LpdFemClient(FemClient):
         self.asicRx2tileStart              = 810   # asic_rx_start_2tile
         self.asicRxSingleStart             = 0     # asic_rx_start_single_asic
         self.asicRxHeaderBits              = 12    # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
-        # offsets in bits for different gains for slow asic readout (Nb first 16 pixels are skipped over)
-        self.asicRxOffsetSlowReadout_x100  = 24    # asicrx_offset_slow_readout_x100
-        self.asicRxOffsetSlowReadout_x10   = 564   # asicrx_offset_slow_readout_x10
-        self.asicRxOffsetSlowReadout_x1    = 564   # asicrx_offset_slow_readout_x1 
+        # offsets in bits for different gains for slow asic readout 
+        self.asicRxOffsetSlowReadout_x100  = 24    #(Must skip first row of 16 pixels for x100)
+        self.asicRxOffsetSlowReadout_x10   = -12   #(keep first row of 16 pixels) # 564 (skip first row of 16 pixels)
+        self.asicRxOffsetSlowReadout_x1    = -12   #(keep first row of 16 pixels) # 564 (skip first row of 16 pixels) 
 
         ########## Parameters now (mostly) exposed in API ##########
 
@@ -819,11 +819,11 @@ class LpdFemClient(FemClient):
         else:
             self.asicrx_invert_data_disable()
 
-        # delay odd data channels to fix alignment
-        if self.femAsicRxDelayOddChannels:            
-            self.rdmaWrite(self.fem_ctrl_0+8, 1)           
+        # compensate for Double Data Rate timing shifts with slowed asic readout 
+        if self.femAsicSlowedClock:
+            self.rdmaWrite(self.fem_ctrl_0+8, 2)    # swap DDR pair of asicrx  
         else:
-            self.rdmaWrite(self.fem_ctrl_0+8, 0)           
+            self.rdmaWrite(self.fem_ctrl_0+8, 1)    # shift timing of odd asic rx chans
         
         if self.femAsicDataType == self.ASIC_DATA_TYPE_PSEUDO_RANDOM:
             asic_rx_start_delay = self.asicRxPseudoRandomStart
@@ -850,6 +850,14 @@ class LpdFemClient(FemClient):
         else:
             self.rdmaWrite(self.fem_ctrl_0+4, asic_rx_start_delay)  # OLD using fixed offsets          
 
+    def bitShifting(self, arg1, direction):
+        ''' Bit shift arg1 by direction bits (positive = left shifting, negative = right shifting) '''
+        if direction > 0:
+            newValue = arg1 << direction
+        else:
+            newValue = arg1 >> (direction* -1)
+        return newValue
+
     def femAsicEnableCalculate(self, userMask):
         '''  Convert user's femAsicEnableMask selection into fem's own format
             e.g.
@@ -858,41 +866,81 @@ class LpdFemClient(FemClient):
         '''
         femMask = [0x0, 0x0, 0x0, 0x0]
 
-        femMask[0] = (femMask[0] | (userMask[0]     & 0x0000000F) << 28)
-        femMask[1] = (femMask[1] | ( (userMask[0]   & 0x000000F0) << 24) )
-        femMask[2] = (femMask[2] | ( (userMask[0]   & 0x00000F00) << 20) )
-        femMask[3] = (femMask[3] | ( (userMask[0]   & 0x0000F000) << 16) )
-        femMask[0] = (femMask[0] | ( (userMask[0]   & 0x000F0000) <<  8) )
-        femMask[1] = (femMask[1] | ( (userMask[0]   & 0x00F00000) <<  4) )
-        femMask[2] = (femMask[2] | ( (userMask[0]   & 0x0F000000)      ) )
-        femMask[3] = (femMask[3] | ( (userMask[0]   & 0xF0000000) >>  4) )
+        bitMask = 0x0000000F
+        direction = 28
+        maskIndex = 0
+        
+        for index in range(8):
+            maskedValue     = userMask[0] & bitMask
+            shifted         = self.bitShifting( maskedValue, direction)
+            femMask[maskIndex] = (femMask[maskIndex] | shifted)
+            # Update counters
+            if index % 7 == 3:
+                direction -= 8
+            else:
+                direction -= 4
+            if maskIndex == 3:
+                maskIndex = 0
+            else:
+                maskIndex += 1
+            bitMask = bitMask << 4
+            
+        bitMask = 0x0000000F
+        direction = 20
+        maskIndex = 0
+        
+        for index in range(8):
+            maskedValue     = userMask[1] & bitMask
+            shifted         = self.bitShifting( maskedValue, direction)
+            femMask[maskIndex] = (femMask[maskIndex] | shifted)
+            # Update counters
+            if index % 7 == 3:
+                direction -= 8
+            else:
+                direction -= 4
+            if maskIndex == 3:
+                maskIndex = 0
+            else:
+                maskIndex += 1
+            bitMask = bitMask << 4
     
-        femMask[0] = (femMask[0] | ( (userMask[1]   & 0x0000000F) << 20) )
-        femMask[1] = (femMask[1] | ( (userMask[1]   & 0x000000F0) << 16) )
-        femMask[2] = (femMask[2] | ( (userMask[1]   & 0x00000F00) << 12) )
-        femMask[3] = (femMask[3] | ( (userMask[1]   & 0x0000F000) <<  8) )
-        femMask[0] = (femMask[0] | ( (userMask[1]   & 0x000F0000)      ) )
-        femMask[1] = (femMask[1] | ( (userMask[1]   & 0x00F00000) >>  4) )
-        femMask[2] = (femMask[2] | ( (userMask[1]   & 0x0F000000) >>  8) )
-        femMask[3] = (femMask[3] | ( (userMask[1]   & 0xF0000000) >> 12) )
+        bitMask = 0x0000000F
+        direction = 12
+        maskIndex = 0
+        
+        for index in range(8):
+            maskedValue     = userMask[2] & bitMask
+            shifted         = self.bitShifting( maskedValue, direction)
+            femMask[maskIndex] = (femMask[maskIndex] | shifted)
+            # Update counters
+            if index % 7 == 3:
+                direction -= 8
+            else:
+                direction -= 4
+            if maskIndex == 3:
+                maskIndex = 0
+            else:
+                maskIndex += 1
+            bitMask = bitMask << 4
     
-        femMask[0] = (femMask[0] | ( (userMask[2]   & 0x0000000F) << 12) )
-        femMask[1] = (femMask[1] | ( (userMask[2]   & 0x000000F0) <<  8) )
-        femMask[2] = (femMask[2] | ( (userMask[2]   & 0x00000F00) <<  4) )
-        femMask[3] = (femMask[3] | ( (userMask[2]   & 0x0000F000)      ) )
-        femMask[0] = (femMask[0] | ( (userMask[2]   & 0x000F0000) >>  8) )
-        femMask[1] = (femMask[1] | ( (userMask[2]   & 0x00F00000) >> 12) )
-        femMask[2] = (femMask[2] | ( (userMask[2]   & 0x0F000000) >> 16) )
-        femMask[3] = (femMask[3] | ( (userMask[2]   & 0xF0000000) >> 20) )
-
-        femMask[0] = (femMask[0] | ( (userMask[3]   & 0x0000000F) <<  4) )
-        femMask[1] = (femMask[1] | ( (userMask[3]   & 0x000000F0)      ) )
-        femMask[2] = (femMask[2] | ( (userMask[3]   & 0x00000F00) >>  4) )
-        femMask[3] = (femMask[3] | ( (userMask[3]   & 0x0000F000) >>  8) )
-        femMask[0] = (femMask[0] | ( (userMask[3]   & 0x000F0000) >> 16) )
-        femMask[1] = (femMask[1] | ( (userMask[3]   & 0x00F00000) >> 20) )
-        femMask[2] = (femMask[2] | ( (userMask[3]   & 0x0F000000) >> 24) )
-        femMask[3] = (femMask[3] | ( (userMask[3]   & 0xF0000000) >> 28) )
+        bitMask = 0x0000000F
+        direction = 4
+        maskIndex = 0
+        
+        for index in range(8):
+            maskedValue     = userMask[3] & bitMask
+            shifted         = self.bitShifting( maskedValue, direction)
+            femMask[maskIndex] = (femMask[maskIndex] | shifted)
+            # Update counters
+            if index % 7 == 3:
+                direction -= 8
+            else:
+                direction -= 4
+            if maskIndex == 3:
+                maskIndex = 0
+            else:
+                maskIndex += 1
+            bitMask = bitMask << 4
 
         if self.debug_level > 2:
             print "userMask => femMask\n==================="

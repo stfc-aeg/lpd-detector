@@ -32,6 +32,7 @@
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>	
 	<nop count="4"/>
+	<nop/>
 	<asic_slow_readout_start/>
 	<nop count="4"/>
 	<sync_reset/>

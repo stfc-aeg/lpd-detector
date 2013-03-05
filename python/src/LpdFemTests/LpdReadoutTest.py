@@ -26,29 +26,36 @@ def LpdReadoutTest(femHost=None, femPort=None):
 
     bDebug = True
 
-    # Need to configure fast and slow control whether doing readout or debugging..
+    xmlConfiguration = 2    # 1=normal operation, 2=slowdown operation
+    if xmlConfiguration == 1:
+        SlowControlXmlString = 'ConfigFiles/selfTestPixel232.xml'
+        FastCmdXmlString     = 'ConfigFiles/SuperModuleNormalOperation.xml'# SupMod - normal readout
+    elif xmlConfiguration == 2:
+        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+        FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+    else:
+        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl_B.xml'
+        FastCmdXmlString = 'ConfigFiles/fast_cmd_4f_with_slow_readout_C.xml'
+        print SlowControlXmlString
+        print FastCmdXmlString
 
     #TODO: Temporary hack, pass filename instead of XML string
     # Read Slow Control (LpdAsicControl) XML file into a string
 #    ff = open('ConfigFiles/preambleDelaySlowControl.xml', 'r')
-#    xmlString = ff.read(-1)
+#    SlowControlXmlString = ff.read(-1)
 #    ff.close ()
-#    xmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
-    xmlString = 'ConfigFiles/selfTestPixel232.xml'
     
-    rc = theDevice.paramSet('femAsicSlowControlParams', xmlString)
-    if rc != LpdDevice.ERROR_OK:
-        print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-
     #TODO: Temporary hack, pass filename instead of XML string
     # Read Asic Command Sequence (LpdAsicCommandSequence) XML file into a string
 #    ff = open('ConfigFiles/playingWivLasers.xml', 'r')
-#    xmlString = ff.read(-1)
+#    FastCmdXmlString = ff.read(-1)
 #    ff.close ()
-    xmlString = 'ConfigFiles/SuperModuleNormalOperation.xml'# SupMod - normal readout
-#    xmlString = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+
+    rc = theDevice.paramSet('femAsicSlowControlParams', SlowControlXmlString)
+    if rc != LpdDevice.ERROR_OK:
+        print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
-    rc = theDevice.paramSet('femAsicFastCmdSequence', xmlString)
+    rc = theDevice.paramSet('femAsicFastCmdSequence', FastCmdXmlString)
     if rc != LpdDevice.ERROR_OK:
         print "femAsicFastCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -221,9 +228,9 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "tenGigUdpPacketLen \t= %d." % value
 
         
-#        rc = theDevice.paramSet('femAsicEnableMask', [0xFF000000, 0x00000000, 0x00000000, 0x0000FF00])    # Enable 2 Tile System's ASICs
+        rc = theDevice.paramSet('femAsicEnableMask', [0x00FF0000, 0x00000000, 0x00000000, 0x000000FF])    # Enable 2 Tile System's ASICs
 #        rc = theDevice.paramSet('femAsicEnableMask', [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF])    # Enable everything
-        rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])      # Supermodule with three tiles
+#        rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])      # Supermodule with three tiles
         if rc != LpdDevice.ERROR_OK:
             print "femAsicEnableMask set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -234,7 +241,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femAsicEnableMask \t= [%8X, %8X, %8X, %8X]" %  (value[0], value[1], value[2], value[3])
 
         # (Default value is 0)
-        rc = theDevice.paramSet('femAsicGainOverride', 8)
+            rc = theDevice.paramSet('femAsicGainOverride', 9)#8)
         if rc != LpdDevice.ERROR_OK:
             print "femAsicGainOverride set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -284,7 +291,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femEnableTenGig \t= ", value
 
-        rc = theDevice.paramSet('femAsicColumns', 4)
+        rc = theDevice.paramSet('femAsicColumns', 40)
         if rc != LpdDevice.ERROR_OK:
             print "femAsicColumns set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -387,7 +394,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femAsicSlowClockPhase\t= ", value
 
-        rc = theDevice.paramSet('femAsicSlowedClock', False)    #True)
+        rc = theDevice.paramSet('femAsicSlowedClock', True)
         if rc != LpdDevice.ERROR_OK:
             print "femAsicSlowedClock set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 

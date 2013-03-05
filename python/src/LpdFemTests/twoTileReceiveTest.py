@@ -51,7 +51,7 @@ class RxThread(QtCore.QThread):
 
         print "Listening to host: %s port: %s.." % (femHost, femPort)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#        self.sock.bind(('192.168.2.2', 61649))
+        print "line 54:", femHost, femPort
         self.sock.bind((femHost, femPort))
 
     def __del__(self):
@@ -150,7 +150,7 @@ class BlitQT(FigureCanvas):
             networkConfig = networkConfiguration()
             femHost = networkConfig.tenGig0DstIp
             femPort = int(networkConfig.tenGig0DstPrt)
-
+        print "line 153: ", femHost, femPort, "\n\n"
         self.rxThread = RxThread(self.dataRxSignal, femHost, femPort)
         self.rxThread.start()
 
@@ -199,10 +199,9 @@ class BlitQT(FigureCanvas):
             
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
             for rawIdx in range(_32BitArrayLen):
+                # CHANGED:
                 _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] >> 16
                 _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] & 0xFFFF
-#                _16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
-#                _16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
 
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
@@ -268,7 +267,6 @@ class BlitQT(FigureCanvas):
                 
                 # Get the first image of the image
                 bNextImageAvailable, imageArray = self.retrieveFirstTwoTileImageFromAsicData(_16BitWordArray[dataBeginning:])
-#                    bNextImageAvailable, imageArray = self.retrieveFirstSuperModuleImageFromAsicData(_16BitWordArray[dataBeginning:])
                 
                 # The first image, imageArray, has now been stripped from the image
                 # Reshape image into 32 x 256 pixel array
