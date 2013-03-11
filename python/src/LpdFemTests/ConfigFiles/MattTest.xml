@@ -2,7 +2,7 @@
    <lpd_slow_ctrl_sequence name="SupModTest.xml"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
    xsi:noNamespaceSchemaLocation="lpdSlowCtrlSequence.xsd">
-   <!-- This file is hand edited -->
+   <!-- This file is hand edited by Matt -->
 
    <mux_decoder_default value="0"/>
    <feedback_select_default value="0"/>
