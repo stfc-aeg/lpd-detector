@@ -4,13 +4,13 @@
 
 #      RHS Power Card
 
-python LpdI2cTest.py --hvbias 50 --femI2cBus 512
-python LpdI2cTest.py --lv 1 --hv 1 --femI2cBus 512
+python LpdPowerControl.py --hvbias 50 --femI2cBus 512
+python LpdPowerControl.py --lv 1 --hv 1 --femI2cBus 512
 
 #      LHS Power Card
 
-python LpdI2cTest.py --hvbias 50 --femI2cBus 768
-python LpdI2cTest.py --lv 1 --hv 1 --femI2cBus 768
+python LpdPowerControl.py --hvbias 50 --femI2cBus 768
+python LpdPowerControl.py --lv 1 --hv 1 --femI2cBus 768
 
 
 #echo "Running fem_asic_test.py 20 times.."
@@ -19,5 +19,5 @@ python LpdI2cTest.py --lv 1 --hv 1 --femI2cBus 768
 
 echo "-=-=-=-=-=-=-=-=-=-=-=-=-         POWER CARDS' INFO:         -=-=-=-=-=-=-=-=-=-=-=-=-"
 
-python LpdPowerCardTest.py 0x200
-python LpdPowerCardTest.py 0x300
+python LpdPowerStatus.py 0x200
+python LpdPowerStatus.py 0x300

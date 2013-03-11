@@ -4,7 +4,7 @@ Created on 18 Sep 2012
 @author: tcn
 '''
 import unittest
-from LpdDevice.LpdDevice import * 
+from LpdDevice import * 
 
 class Test(unittest.TestCase):
 

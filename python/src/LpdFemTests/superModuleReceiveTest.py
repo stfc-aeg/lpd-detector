@@ -51,7 +51,6 @@ class RxThread(QtCore.QThread):
 
         print "Listening to host: %s port: %s.." % (femHost, femPort)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#        self.sock.bind(('192.168.2.2', 61649))
         self.sock.bind((femHost, femPort))
 
     def __del__(self):
@@ -80,7 +79,7 @@ class BlitQT(FigureCanvas):
 
         # Define plotted image dimensions: 
         self.nrows = 32*8   # 32 rows * 8 ASICs = 256 
-        self.ncols = 256    # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
+        self.ncols = 256    # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors / Row: 16 x 8 x 2 = 256 columns
         self.imageSize = self.nrows * self.ncols
 
         # Create an array to contain 65536 elements (32 x 8 x 16 x 16 = super module image)
@@ -168,7 +167,6 @@ class BlitQT(FigureCanvas):
         except Exception as e:
             print "processRxData() failed: ", e, "\nExiting.."
             sys.exit()
-#        print "frameNumber, foundEof = ", frameNumber, foundEof
         
         # Only process image data when End Of File encountered
         if foundEof:
@@ -187,12 +185,12 @@ class BlitQT(FigureCanvas):
             #     eg: ABCD => DCBA
             _32BitWordArray = np.fromstring(self.rawImageData, dtype=_32BitLittleEndianType)
             
-            """ DEBUG INFO: """
-#            print "Extracted number of 32 bit words: ", len(_32BitWordArray)
-#            # Display array content 32 bit integers
-#            print "Array contents structured into 32 bit elements [byte swapped!]:"
-#            self.display32BitArrayInHex(_32BitWordArray)
-#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            if bDebug:
+                print "Extracted number of 32 bit words: ", len(_32BitWordArray)
+                # Display array content 32 bit integers
+                print "Array contents structured into 32 bit elements [byte swapped!]:"
+                self.display32BitArrayInHex(_32BitWordArray)
+                print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             # Calculate length of 32 bit array
             _32BitArrayLen = len(_32BitWordArray)
@@ -204,10 +202,9 @@ class BlitQT(FigureCanvas):
             
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
             for rawIdx in range(_32BitArrayLen):
-                _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] >> 16
-                _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] & 0xFFFF
-#                _16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
-#                _16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
+                # Reverted back to NOT swapping ASIC pairs
+                _16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
+                _16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
 
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
@@ -238,19 +235,12 @@ class BlitQT(FigureCanvas):
             del gainCounter
             
             
-            """ DEBUG INFO: """ 
-#            print "Number of 16 Bit Word: ", len(_16BitWordArray)
-#            # Display array contenting 16 bit elements:
-#            print "Array contents re-structured into 16 bit elements:"
-#            self.display16BitArrayInHex(_16BitWordArray)
-#            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-            
-#            print "------------------ Before: ------------------"
-#            for i in range(640):
-#                if i % 16 == 0:
-#                    print "\n%3X: " % i,
-#                print "%3X" % _16BitWordArray[i],
-#            print ""
+            if bDebug:
+                print "Number of 16 Bit Word: ", len(_16BitWordArray)
+                # Display array contenting 16 bit elements:
+                print "Array contents re-structured into 16 bit elements:"
+                self.display16BitArrayInHex(_16BitWordArray)
+                print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
             
             # Create hdf file - if HDF5 Library present
             if bHDF5:
@@ -261,7 +251,6 @@ class BlitQT(FigureCanvas):
                 ds = hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
                                                 maxshape=(None,self.nrows, self.ncols))
 
-            
             # Define variables that increase with each loop iteration
             currentPlot = 0
             bNextImageAvailable = True
@@ -275,7 +264,7 @@ class BlitQT(FigureCanvas):
                 bNextImageAvailable = self.retrieveFirstSuperModuleImageFromAsicData(_16BitWordArray[dataBeginning:])
                 
                 # The first image, imageArray, has now been stripped from the image
-                # Reshape image into 32 x 256 pixel array
+                # Reshape image into 256 x 256 pixel array
                 try:
                     self.data = self.imageArray.reshape(self.nrows, self.ncols)
                 except Exception as e:
@@ -287,7 +276,7 @@ class BlitQT(FigureCanvas):
                 self.data = self.data & 0xfff
                 
                 # Display debug information..
-                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] )#, " image data: \n", self.data
+                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] )
                 
                 # Set title as frame number, current image number
                 self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
@@ -317,7 +306,6 @@ class BlitQT(FigureCanvas):
                 if bHDF5:
                     hdfFile.close()
 
-
             # 'Reset' rawImageData variable
             self.rawImageData = self.rawImageData[0:0]
             print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
@@ -326,8 +314,6 @@ class BlitQT(FigureCanvas):
             pass
   
         if self.cnt == 0:
-            # TODO: this shouldn't be necessary, but if it is excluded the
-            # canvas outside the axes is not initially painted.
             self.draw()
         else:
             self.cnt += 1
@@ -444,26 +430,14 @@ class BlitQT(FigureCanvas):
 #                                    print "%4i" % rawDataOffset,
                                     print "%6i" % imageIndex,
                             
-                            #Testing..
-#                            Module12 = range(49-1, 56)
-#                            Module15 = range(97-1, 104)
-#                            Module2 = range(105-1,  116)    # 112)
-#                            if lookupTableAsicDistance in Module15 or lookupTableAsicDistance in Module2 or lookupTableAsicDistance in Module12:
-#                                self.imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
                             self.imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
                             
 #                            # Print contents of one ASIC
-                            if lookupTableAsicDistance == 1:
-                                if debugCount % 16 == 0:
-                                    print "\n%4i:" % debugCount,
-                                print "%4i" % sixteenBitArray[rawDataOffset],
-                                debugCount += 1
-
-#                            # Mark one pixel in a specified ASIC
-#                            if (ROW == 30) and (lookupTableAsicDistance == 50-1):
-#                                    asicRange = range(3)
-#                                    if asicColumn in asicRange:
-#                                        self.imageArray[ imageIndex ] = 201
+#                            if lookupTableAsicDistance == 1:
+#                                if debugCount % 16 == 0:
+#                                    print "\n%4i:" % debugCount,
+#                                print "%4i" % sixteenBitArray[rawDataOffset],
+#                                debugCount += 1
 
                             # Increment lookupTableAsicDistance or zero it if we reached last ASIC
                             if lookupTableAsicDistance == 128-1:
@@ -471,7 +445,6 @@ class BlitQT(FigureCanvas):
                                 # Increment counter for rawDataOffset for every supermodule worth of (128) ASICs 
                                 rawCounter += 1
                             else:
-                                #lookupTableAsicDistance -= 1
                                 lookupTableAsicDistance += 1
 
                         if bDebug:
@@ -480,7 +453,7 @@ class BlitQT(FigureCanvas):
 
                     except IndexError:
                         # If end of array reached, will raise IndexError
-                        print "SM-IdxError, debug: %3i %3i %3i %3i, %4i,  %6i "  % (asicRow, asicColumn, ROW, COLUMN, lookupTableAsicDistance, rawDataOffset)
+                        print "SMod-IdxError, debug: %3i %3i %3i %3i, %4i,  %6i "  % (asicRow, asicColumn, ROW, COLUMN, lookupTableAsicDistance, rawDataOffset)
                         break
                     except Exception as e:
                         print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
@@ -493,10 +466,8 @@ class BlitQT(FigureCanvas):
             bNextImageAvailable = True
         except IndexError:
             print "Last Image detected"
-
         return bNextImageAvailable
 
-# ~~~~~~~~~~~~ #
 
     def processRxData(self, data):
         """ Process (chunks of) UDP data into packets of a frame 
@@ -524,13 +495,11 @@ class BlitQT(FigureCanvas):
             # Extract packet number (the following four bytes)
             packet_number = ord(data[offset-4]) #(ord(data[offset+7]) << 24) + (ord(data[offset+6]) << 16) + (ord(data[offset+5]) << 8) + ord(data[offset+4])
 #            packet_number = 0
-            header_info = ord(data[-1])
-#            print "header_info: ", header_info
+            trailer_info = ord(data[-1])
+#            print "trailer_info: ", trailer_info
             # Extract Start Of Frame, End of Frame
-#            frm_sof = (packet_number & 0x80000000) >> 31
-#            frm_eof = (packet_number & 0x40000000) >> 30
-            frm_sof = (header_info & 0x80) >> 7
-            frm_eof = (header_info & 0x40) >> 6
+            frm_sof = (trailer_info & 0x80) >> 7
+            frm_eof = (trailer_info & 0x40) >> 6
 #            packet_number = packet_number & 0x3FFFFFFF
             
 #            print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
@@ -579,10 +548,8 @@ if __name__ == "__main__":
         femHost = None
         femPort = None        
 
-
     app = QtGui.QApplication(sys.argv)
     widget = BlitQT(femHost, femPort)
     widget.show()
     
     sys.exit(app.exec_())
-

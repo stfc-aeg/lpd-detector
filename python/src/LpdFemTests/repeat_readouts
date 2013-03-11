@@ -6,7 +6,7 @@
 for ((  i = 0 ;  i <= 50;  i++  ))
 do
   echo "-=-=-=-=-=-=-=-=-=-=-=-=- Executing time no: $i -=-=-=-=-=-=-=-=-=-=-=-=-"
-  python fem_asic_test.py
+  python LpdReadoutTest.py
 done
 
 #echo "Running fem_asic_test.py 20 times.."

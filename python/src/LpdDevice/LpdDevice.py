@@ -86,7 +86,7 @@ class LpdDevice(object):
                 rc = LpdDevice.ERROR_FEM_CONNECT_FAILED
                 self.opened = False
         else:
-            time.sleep(2.5)
+            pass
         return rc
     
     def close(self):
@@ -141,7 +141,7 @@ class LpdDevice(object):
 
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
-        
+        #TODO: Requires implementation of stop action(s)
         return LpdDevice.ERROR_OK
         
     def paramSet(self, param, value, **kwargs):
@@ -161,7 +161,7 @@ class LpdDevice(object):
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
         
-        print "***** paramSet: param=", param, "value=", value, "type=", type(value)
+#        print "***** paramSet: param=", param, "value=", value, "type=", type(value)
         rc = LpdDevice.ERROR_OK
         
         # Check if ASIC and/or pixel keyword arguments have been passed. 

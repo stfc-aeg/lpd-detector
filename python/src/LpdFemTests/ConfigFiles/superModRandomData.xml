@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="superModRandomData.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+	<sync_reset/> <!-- Start Config chip -->
+	<nop/>
+	<reset_state_machine/>
+	<sync_reset/>
+	<test_mode_d/>	
+	<nop count="4"/>
+	<asic_slow_readout_start/>
+	<nop count="4"/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/> 
+	<!-- Add additional NOPS to allow sufficient data to be clocked out of the ASICs -->
+	<loop count="11">
+		<nop/>
+		<nop count="501"/>
+	</loop>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+</lpd_command_sequence>

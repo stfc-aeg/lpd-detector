@@ -436,6 +436,25 @@ class LpdDeviceParameters(object):
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentMandatory)
 
+        self.parameters['femDebugLevel']    = AttributeContainer(int, 'FemDebugLevel', 'Set the debug level',
+                                                                          0, 6, 0,
+                                                                          AccessWrite, AssignmentMandatory)
+        #TODO: Decide range of values?
+        self.parameters['tenGig0DataGenerator']    = AttributeContainer(int, 'TenGig0DataGenerator', '10GigE 0 Data generator 1=DataGen 2=PPC DDR2',
+                                                                          1, 2, 1,
+                                                                          AccessWrite, AssignmentMandatory)
+        #TODO: Decide range of values?
+        self.parameters['tenGig0DataFormat']    = AttributeContainer(int, 'TenGig0DataFormat', '10GigE 0 Data format type 0=counting data',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentMandatory)
+        #TODO: Decide range of values?
+        self.parameters['tenGig0FrameLength']    = AttributeContainer(int, 'TenGig0FrameLength', '10GigE 0 Frame length in bytes',
+                                                                          0, 0xFFFFFF, 0x10000,
+                                                                          AccessWrite, AssignmentMandatory)
+        #TODO: Decide range of values?
+        self.parameters['tenGig0NumberOfFrames']    = AttributeContainer(int, 'TenGig0NumberOfFrames', '10GigE 0 Number of frames to send in each cycle',
+                                                                          0, 512, 1,
+                                                                          AccessWrite, AssignmentMandatory)
 
 
     def get(self):

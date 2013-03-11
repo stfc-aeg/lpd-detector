@@ -5,12 +5,10 @@
 
 
 from LpdDevice.LpdDevice import LpdDevice
-import sys
 
-def powerCardTest(): #femI2cBus):
+def powerCardTest():
     
     theDevice = LpdDevice()
-
     
     rc = theDevice.open('192.168.2.2', 6969)
 
@@ -20,11 +18,6 @@ def powerCardTest(): #femI2cBus):
     
     print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-
-#            if femI2cBus == 0:
-#                femI2cBusName = "LM82"
-#            elif femI2cBus == 256:
-#                femI2cBusName = "EEPROM"
     femRHSBus = 512
     femLHSBus = 768
 
@@ -302,150 +295,84 @@ def powerCardTest(): #femI2cBus):
     # --------------------------------------------------------------- #
     # --------------------------------------------------------------- #
 
-    print "    ~+~+~+~+~+~+~ LHS ~+~+~+~+~+~+~+~+~ RHS ~+~+~+~+~+~+~"
+    print "    ~+~+~+~+~+~+~ RHS ~+~+~+~+~+~+~+~+~ LHS ~+~+~+~+~+~+~"
     
     print "Status:"
     print "    Low voltage  = ",
-    if bLeftLvOff:
+    if bRightLvOff:
         print "off.",
     else:
         print "on.",
     print "\t    Low voltage  = ",
-    if bRightLvOff:
+    if bLeftLvOff:
         print "off."
     else:
         print "on."
         
     print "    High voltage = ",
-    if bLeftHvOff:
+    if bRightHvOff:
         print "off.",
     else:
         print "on.",
     print "\t    High voltage = ",
-    if bRightHvOff:
+    if bLeftHvOff:
         print "off."
     else:
         print "on."
         
-    print "    HV setting: ",
-    print leftHvBias , "V",
-    print "\t    HV setting: ",
-    print rightHvBias , "V"
-
-
+    print "    HV setting: ", rightHvBias , "V", "\t    HV setting: ", leftHvBias , "V"
 
     print "Flags:" 
-    print "    Fault Flag        = ",  
-    print sLeftFaultStatus,
-    print "\t    Fault Flag        = ",  
-    print sRightFaultStatus
-
-    print "    Fem Status   Trip = ", 
-    print sLeftFemStatus,
-    print "\t    Fem Status   Trip = ", 
-    print sRightFemStatus
-
-    print "    External     Trip = ",
-    print sLeftExtStatus,
-    print "\t    External     Trip = ",
-    print sRightExtStatus
-        
-    print "    Over current Trip = ",
-    print sLeftOverCurrentStatus,
-    print "\t    Over current Trip = ",
-    print sRightOverCurrentStatus
-
-    print "    Over temp    Trip = ",
-    print sLeftOvertempStatus,
-    print "\t    Over temp    Trip = ",
-    print sRightOvertempStatus
-
-    print "    Undertemp    Trip = ",
-    print sLeftUndertempStatus,
-    print "\t    Undertemp    Trip = ",
-    print sRightUndertempStatus
-
-    print ".\n"
+    print "    Fault Flag        = ", sRightFaultStatus, "\t    Fault Flag        = ", sLeftFaultStatus
+    print "    Fem Status   Trip = ", sRightFemStatus, "\t    Fem Status   Trip = ", sLeftFemStatus
+    print "    External     Trip = ", sRightExtStatus, "\t    External     Trip = ", sLeftExtStatus
+    print "    Over current Trip = ", sRightOverCurrentStatus, "\t    Over current Trip = ", sLeftOverCurrentStatus
+    print "    Over temp    Trip = ", sRightOvertempStatus, "\t    Over temp    Trip = ", sLeftOvertempStatus
+    print "    Undertemp    Trip = ", sRightUndertempStatus, "\t    Undertemp    Trip = ", sLeftUndertempStatus, ".\n"
 
 #    # Display temperature readings from PSU Card and Sensors
     print "Temperature readings:"
-    print '   PSU Card Temp: %.2f' % leftPsuCardTemp, '  C',
-    print '\t   PSU Card Temp: %.2f' % rightPsuCardTemp, '  C'
-    print '   Sensor A Temp: %.2f' % leftSensorATemp, '  C',
-    print '\t   Sensor A Temp: %.2f' % rightSensorATemp, '  C'
-    print '   Sensor B Temp: %.2f' % leftSensorBTemp, '  C',
-    print '\t   Sensor B Temp: %.2f' % rightSensorBTemp, '  C'
-    print '   Sensor C Temp: %.2f' % leftSensorCTemp, '  C',
-    print '\t   Sensor C Temp: %.2f' % rightSensorCTemp, '  C'
-    print '   Sensor D Temp: %.2f' % leftSensorDTemp, '  C',
-    print '\t   Sensor D Temp: %.2f' % rightSensorDTemp, '  C'
-    print '   Sensor E Temp: %.2f' % leftSensorETemp, '  C',
-    print '\t   Sensor E Temp: %.2f' % rightSensorETemp, '  C'
-    print '   Sensor F Temp: %.2f' % leftSensorFTemp, '  C',
-    print '\t   Sensor F Temp: %.2f' % rightSensorFTemp, '  C'
-    print '   Sensor G Temp: %.2f' % leftSensorGTemp, '  C',
-    print '\t   Sensor G Temp: %.2f' % rightSensorGTemp, '  C'
-    print '   Sensor H Temp: %.2f' % leftSensorHTemp, '  C',
-    print '\t   Sensor H Temp: %.2f' % rightSensorHTemp, '  C'
+    print '   PSU Card Temp: %.2f' % rightPsuCardTemp, '  C',
+    print '\t   PSU Card Temp: %.2f' % leftPsuCardTemp, '  C'
+
+    print '   Sensor H Temp: %.2f' % rightSensorHTemp, '  C', '\t   Sensor A Temp: %.2f' % leftSensorATemp, '  C'
+    print '   Sensor G Temp: %.2f' % rightSensorGTemp, '  C', '\t   Sensor B Temp: %.2f' % leftSensorBTemp, '  C'
+    print '   Sensor F Temp: %.2f' % rightSensorFTemp, '  C', '\t   Sensor C Temp: %.2f' % leftSensorCTemp, '  C'
+    print '   Sensor E Temp: %.2f' % rightSensorETemp, '  C', '\t   Sensor D Temp: %.2f' % leftSensorDTemp, '  C'
+    print '   Sensor D Temp: %.2f' % rightSensorDTemp, '  C', '\t   Sensor E Temp: %.2f' % leftSensorETemp, '  C'
+    print '   Sensor C Temp: %.2f' % rightSensorCTemp, '  C', '\t   Sensor F Temp: %.2f' % leftSensorFTemp, '  C'
+    print '   Sensor B Temp: %.2f' % rightSensorBTemp, '  C', '\t   Sensor G Temp: %.2f' % leftSensorGTemp, '  C'
+    print '   Sensor A Temp: %.2f' % rightSensorATemp, '  C', '\t   Sensor H Temp: %.2f' % leftSensorHTemp, '  C'
 
     # Display Fem, Digital, sensors voltages and current
     print "\nOutputs: "
 
-    print "   V FEM      : %.2f" % leftFemVoltage, " V ",
-    print "%.2f" % leftFemCurrent, " A",
-    print "\t   V FEM      : %.2f" % rightFemVoltage, " V ",
-    print "%.2f" % rightFemCurrent, " A"
-    print "   V Digital  : %.2f" % leftDigitalVoltage, " V ",
-    print "%.2f" % leftDigitalCurrent, " mA",
-    print "\t   V Digital  : %.2f" % rightDigitalVoltage, " V ",
-    print "%.2f" % rightDigitalCurrent, " mA\n"
-    print "   V Sensor A : %.2f" % leftSensorAVoltage, " V ",
-    print "%.2f" % leftSensorACurrent, " A",
-    print "\t   V Sensor A : %.2f" % rightSensorAVoltage, " V ",
-    print "%.2f" % rightSensorACurrent, " A"
+    print "   V FEM      : %.2f" % rightFemVoltage, " V ", "%.2f" % rightFemCurrent, " A",
+    print "\t   V FEM      : %.2f" % leftFemVoltage, " V ", "%.2f" % leftFemCurrent, " A"
+    print "   V Digital  : %.2f" % rightDigitalVoltage, " V ", "%.2f" % rightDigitalCurrent, " mA",
+    print "\t   V Digital  : %.2f" % leftDigitalVoltage, " V ", "%.2f" % leftDigitalCurrent, " mA\n"
 
+    print "   V Sensor H : %.2f" % rightSensorHVoltage, " V ", "%.2f" % rightSensorHCurrent, " A",
+    print "\t   V Sensor A : %.2f" % leftSensorAVoltage, " V ", "%.2f" % leftSensorACurrent, " A"
+    print "   V Sensor G : %.2f" % rightSensorGVoltage, " V ", "%.2f" % rightSensorGCurrent, " A",
+    print "\t   V Sensor B : %.2f" % leftSensorBVoltage, " V ", "%.2f" % leftSensorBCurrent, " A"
+    print "   V Sensor F : %.2f" % rightSensorFVoltage, " V ", "%.2f" % rightSensorFCurrent, " A",
+    print "\t   V Sensor C : %.2f" % leftSensorCVoltage, " V ", "%.2f" % leftSensorCCurrent, " A"
+    print "   V Sensor E : %.2f" % rightSensorEVoltage, " V ", "%.2f" % rightSensorECurrent, " A",
+    print "\t   V Sensor D : %.2f" % leftSensorDVoltage, " V ", "%.2f" % leftSensorDCurrent, " A"
+    print "   V Sensor D : %.2f" % rightSensorDVoltage, " V ", "%.2f" % rightSensorDCurrent, " A",
+    print "\t   V Sensor E : %.2f" % leftSensorEVoltage, " V ", "%.2f" % leftSensorECurrent, " A"
+    print "   V Sensor C : %.2f" % rightSensorCVoltage, " V ", "%.2f" % rightSensorCCurrent, " A",
+    print "\t   V Sensor F : %.2f" % leftSensorFVoltage, " V ", "%.2f" % leftSensorFCurrent, " A"
+    print "   V Sensor B : %.2f" % rightSensorBVoltage, " V ", "%.2f" %  rightSensorBCurrent, " A",
+    print "\t   V Sensor G : %.2f" % leftSensorGVoltage, " V ", "%.2f" % leftSensorGCurrent, " A"
+    print "   V Sensor A : %.2f" % rightSensorAVoltage, " V ", "%.2f" % rightSensorACurrent, " A",
+    print "\t   V Sensor H : %.2f" % leftSensorHVoltage, " V ", "%.2f" % leftSensorHCurrent, " A\n"
 
-    print "   V Sensor B : %.2f" % leftSensorBVoltage, " V ",
-    print "%.2f" %  leftSensorBCurrent, " A",
-    print "\t   V Sensor B : %.2f" % rightSensorBVoltage, " V ",
-    print "%.2f" % rightSensorBCurrent, " A"
-    print "   V Sensor C : %.2f" % leftSensorCVoltage, " V ",
-    print "%.2f" % leftSensorCCurrent, " A",
-    print "\t   V Sensor C : %.2f" % rightSensorCVoltage, " V ",
-    print "%.2f" % rightSensorCCurrent, " A"
-    print "   V Sensor D : %.2f" % leftSensorDVoltage, " V ",
-    print "%.2f" % leftSensorDCurrent, " A",
-    print "\t   V Sensor D : %.2f" % rightSensorDVoltage, " V ",
-    print "%.2f" % rightSensorDCurrent, " A"
-
-    print "   V Sensor E : %.2f" % leftSensorEVoltage, " V ",
-    print "%.2f" % leftSensorECurrent, " A",
-    print "\t   V Sensor E : %.2f" % rightSensorEVoltage, " V ",
-    print "%.2f" % rightSensorECurrent, " A"
-    print "   V Sensor F : %.2f" % leftSensorFVoltage, " V ",
-    print "%.2f" % leftSensorFCurrent, " A",
-    print "\t   V Sensor F : %.2f" % rightSensorFVoltage, " V ",
-    print "%.2f" % rightSensorFCurrent, " A"
-
-    print "   V Sensor G : %.2f" % leftSensorGVoltage, " V ",
-    print "%.2f" % leftSensorGCurrent, " A",
-    print "\t   V Sensor G : %.2f" % rightSensorGVoltage, " V ",
-    print "%.2f" % rightSensorGCurrent, " A"
-    print "   V Sensor H : %.2f" % leftSensorHVoltage, " V ",
-    print "%.2f" % leftSensorHCurrent, " A",
-    print "\t   V Sensor H : %.2f" % rightSensorHVoltage, " V ",
-    print "%.2f" % rightSensorHCurrent, " A"
-
-
-    print ""
-
-    
-
-
-    print "   HV Bias    : %.2f" % leftSensorBiasVoltage, " V ",
-    print "%.2f" % leftSensorBiasCurrent, " uA",
-    print "\t   HV Bias    : %.2f" % rightSensorBiasVoltage, " V ",
-    print "%.2f" % rightSensorBiasCurrent, " uA"
+    print "   HV Bias    : %.2f" % rightSensorBiasVoltage, " V ",
+    print "%.2f" % rightSensorBiasCurrent, " uA",
+    print "\t   HV Bias    : %.2f" % leftSensorBiasVoltage, " V ",
+    print "%.2f" % leftSensorBiasCurrent, " uA"
     
     print "-- -- -- -- -- -- -- -- --"
 
@@ -453,11 +380,6 @@ def powerCardTest(): #femI2cBus):
     theDevice.close()
 
 if __name__ == '__main__':
-
-#    if len(sys.argv) == 2:
-#        femI2cBus = int(sys.argv[1], 16)
-#    else:
-#        femI2cBus = None
         
-    powerCardTest() #femI2cBus)
+    powerCardTest()
     
