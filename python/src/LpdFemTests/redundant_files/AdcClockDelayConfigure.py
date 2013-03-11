@@ -44,7 +44,7 @@ class AdcClockDelayConfigure():
         for i in range(1, len(strValue)+1):
             reversedGroupedBitsString += strValue[-i]
             if i % 4 == 0:
-                    reversedGroupedBitsString += " "
+                reversedGroupedBitsString += " "
         
         # Reversed the order
         correctOrder = ""
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     # Example usage:
     '''
-        python LpdFemTests/redundant_files/AdcClockDelayConfigure.py --reserved 0 --delayadjust 0
+        python AdcClockDelayConfigure.py --reserved 0 --delayadjust 0
     '''
 
     # Debug variable
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="AdcClockDelayConfigure.py - Accepts up to 2 arguments to set the functions compromising the Filter Control keyword and generates the 20 bit word used by the <adc_clock_delay> XML tag. ",
-                                     epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 0\ndelayadjust = 0,\t Note: the parser ignores any argument set to 0 and therefore the default values of all of the two arguments is 0 if not provided.\t\t\t NOTE: SCRIPT NOT TESTED !")
+                                     epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 0\ndelayadjust = 0,\t Note: the parser ignores any argument set to 0 and therefore the default values for both of the two arguments are 0 if not provided.")
 
     parser.add_argument("--reserved", help="set the Reserved function (17 bits)", type=int, choices=reservedRange)
     parser.add_argument("--delayadjust", help="set the Delay Adjust function (3 bit)", type=int, choices=delayRange)

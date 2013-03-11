@@ -56,18 +56,18 @@ if __name__ == "__main__":
 
     # Example usage:
     '''
-        python LpdFemTests/redundant_files/FilterControlConfigure.py --reserved 278528 --filterenable 0
+        python FilterControlConfigure.py --reserved 0 --filterenable 1
     '''
     # Debug variable
     Debug = 0
         
     # Define class arguments
-    Reserved    = 0 #278528
-    FilterEnable = 0 #0
+    Reserved    = 0 
+    FilterEnable = 0
     
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="FilterControlConfigure.py - Accepts up to 2 arguments to set the functions compromising the Filter Control keyword and generates the 20 bit word used by the <filter_control> XML tag. ",
-                                     epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 278528\nfilterenable = 0,\t Note: the parser ignores any argument set to 0 and therefore the default values of all of the two arguments is 0 if not provided.")
+                                     epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 0\nfilterenable = 1,\t Note: the parser ignores any argument set to 0 and therefore the default values of both of the two arguments are 0 if not provided.")
 
     parser.add_argument("--reserved", help="set the Reserved function (19 bits)", type=int)
     parser.add_argument("--filterenable", help="set the Filter Enable function (1 bit)", type=int)

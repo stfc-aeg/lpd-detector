@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # Example usage:
     '''
-        python LpdFemTests/redundant_files/DigitalControlConfigure.py --reserved 0 --reset3 0 --reset2 18 --reset1 14 --clockcounteroffset 14 --clockselect 4
+        python DigitalControlConfigure.py --reserved 0 --reset3 10 --reset2 9 --reset1 7 --clockcounteroffset 2 --clockselect 2
     '''
 
     # Debug variable
