@@ -570,26 +570,16 @@ void disconnectClient(struct clientStatus* pState, int *pIndex, fd_set* pFdSet, 
 {
 
 	//DBGOUT("DiscClient: Client #%d disconnected.\r\n", *pIndex);
+
 	lwip_close(*pIndex);
 	FD_CLR(*pIndex, pFdSet);
 	(*pNumConnectedClients)--;
 
-	// If payload buffer exceeds nominal size, reduce it
-	if (pState->payloadBufferSz > NET_NOMINAL_RX_BUFFER_SZ)
-	{
-		free(pState->pPayload);
-		pState->pPayload = malloc(NET_NOMINAL_RX_BUFFER_SZ);
-		if (pState->pPayload == NULL)
-		{
-			// Can't allocate payload space
-			DBGOUT("DiscClient: Can't re-malloc payload buffer for client after large packet!\r\n");
-			// TODO: Handle malloc fail on re-malloc operation after client disconnects
-		}
-		else
-		{
-			DBGOUT("DiscClient: Resized payload buffer to %d\r\n", NET_NOMINAL_RX_BUFFER_SZ);
-		}
-	}
+	// Free client resources
+	free(pState->pHdr);
+	free(pState->pPayload);
+	pState->pHdr = 0;
+	pState->pPayload = 0;
 
 	pState->state = STATE_COMPLETE;
 }
