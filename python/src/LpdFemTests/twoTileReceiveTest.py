@@ -117,7 +117,7 @@ class BlitQT(FigureCanvas):
             self.ax[idx].set_yticks(ylist)
             
             # Set the title of each plot temporarily
-            self.ax[idx].set_title("Frame %i" % idx)
+            self.ax[idx].set_title("Train %i" % idx)
                             
             self.cnt = 0
             self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
@@ -165,7 +165,6 @@ class BlitQT(FigureCanvas):
         except Exception as e:
             print "processRxData() failed: ", e, "\nExiting.."
             sys.exit()
-#        print "frameNumber, foundEof = ", frameNumber, foundEof
         
         # Only process image data when End Of File encountered
         if foundEof:
@@ -184,7 +183,6 @@ class BlitQT(FigureCanvas):
             #     eg: ABCD => DCBA
             _32BitWordArray = np.fromstring(self.rawImageData, dtype=_32BitLittleEndianType)
             
-            """ DEBUG INFO: """
             if bDebug:
                 print "Extracted number of 32 bit words: ", len(_32BitWordArray)
                 # Display array content 32 bit integers
@@ -202,9 +200,9 @@ class BlitQT(FigureCanvas):
             
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
             for rawIdx in range(_32BitArrayLen):
-                # TODO: (check) Swapping ASIC pairs (this change introduced between version 672 and 693 !)
-                _16BitWordArray[rawIdx*2 + 1] = _32BitWordArray[rawIdx] >> 16
-                _16BitWordArray[rawIdx*2]     = _32BitWordArray[rawIdx] & 0xFFFF
+                # Reverted back to NOT swapping ASIC pairs
+                _16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
+                _16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
 
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
@@ -277,10 +275,10 @@ class BlitQT(FigureCanvas):
                 self.data = self.data & 0xfff
                 
                 # Display plot information
-                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: %9i" % len( _16BitWordArray[dataBeginning:] )
+                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: %9i" % len( _16BitWordArray[dataBeginning:] )
                 
-                # Set title as frame number, current image number
-                self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
+                # Set title as train number, current image number
+                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
                 
                 # Load image into figure
                 self.img[currentPlot].set_data(self.data)
@@ -500,8 +498,8 @@ class BlitQT(FigureCanvas):
 #            packet_number = packet_number & 0x3FFFFFFF
             
 #            print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
-            # rawFrameNumber = frame number read from packet
-            # frame_number = frame number relative to execution of this software
+            # rawFrameNumber = train number read from packet
+            # frame_number = train number relative to execution of this software
             rawFrameNumber = frame_number
             
             if self.first_frm_num == -1:
@@ -526,7 +524,7 @@ class BlitQT(FigureCanvas):
             # Last 8 bytes are frame number and packet number - omitting those..
             self.rawImageData = self.rawImageData + data[0:-8]
 
-            # Return frame number and end of frame
+            # Return train number and end of frame
             return rawFrameNumber, frm_eof
         except Exception as e:
             print "processRxData() error: ", e

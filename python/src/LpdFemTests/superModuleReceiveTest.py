@@ -32,13 +32,13 @@ from PyQt4 import QtCore, QtGui
 
 
 # Enable or disable debugging
-bDebug = True
+bDebug = False
 
 # Define variables used as arguments by
 # Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
 #    where max number of plotMaxPlots = plotRows * plotCols
-plotRows = 1
-plotCols = 1
+plotRows = 2
+plotCols = 2
 plotMaxPlots = plotRows * plotCols
 
 
@@ -117,7 +117,7 @@ class BlitQT(FigureCanvas):
             self.ax[idx].set_yticks(ylist)
             
             # Set the title of each plot temporarily
-            self.ax[idx].set_title("Frame %i" % idx)
+            self.ax[idx].set_title("Train %i" % idx)
                             
             self.cnt = 0
             self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
@@ -276,10 +276,10 @@ class BlitQT(FigureCanvas):
                 self.data = self.data & 0xfff
                 
                 # Display debug information..
-                print "Frame %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] )
+                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] )
                 
-                # Set title as frame number, current image number
-                self.ax[currentPlot].set_title("Frame %i Image %i" % (frameNumber, currentPlot))
+                # Set title as train number, current image number
+                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
                 
                 # Load image into figure
                 self.img[currentPlot].set_data(self.data)
@@ -465,7 +465,7 @@ class BlitQT(FigureCanvas):
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:
-            print "Last Image detected"
+            pass   # Last Image detected
         return bNextImageAvailable
 
 
@@ -474,7 +474,7 @@ class BlitQT(FigureCanvas):
             [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
         """
                 
-        # Save the read frame number as it'll be modified to be RELATIVE before we reach the end of this function.. 
+        # Save the read train number as it'll be modified to be RELATIVE before we reach the end of this function.. 
         rawFrameNumber = -1
 
         ''' DEBUGGING INFORMATION '''
@@ -489,7 +489,7 @@ class BlitQT(FigureCanvas):
         
         try:
             offset = 0
-            # Extract frame number (the first four bytes)
+            # Extract train number (the first four bytes)
 #            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
             frame_number = 0
             # Extract packet number (the following four bytes)
@@ -503,8 +503,8 @@ class BlitQT(FigureCanvas):
 #            packet_number = packet_number & 0x3FFFFFFF
             
 #            print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
-            # rawFrameNumber = frame number read from packet
-            # frame_number = frame number relative to execution of this software
+            # rawFrameNumber = train number read from packet
+            # frame_number = train number relative to execution of this software
             rawFrameNumber = frame_number
             
             if self.first_frm_num == -1:
@@ -526,11 +526,11 @@ class BlitQT(FigureCanvas):
                 pass
             
             # Not yet end of file: copy current packet contents onto (previous) packet contents
-            # First 8 bytes are frame number and packet number - omitting those..
+            # Last 8 bytes are train number and packet number - omitting those..
             # both are of type string..
             self.rawImageData = self.rawImageData + data[0:-8]
 
-            # Return frame number and end of frame
+            # Return train number and end of train
             return rawFrameNumber, frm_eof
         except Exception as e:
             print "processRxData() error: ", e
