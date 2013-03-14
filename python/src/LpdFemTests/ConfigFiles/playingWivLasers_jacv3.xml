@@ -58,6 +58,7 @@
 		<nop/>
 		<nop count="838"/>
 	</loop>
+	<nop count="1000"/>
 	<nop/>
 	<reset_state_machine/>
 	<nop/>
