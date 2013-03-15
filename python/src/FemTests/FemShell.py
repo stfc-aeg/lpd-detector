@@ -721,6 +721,9 @@ Example:
             # Set command
             cmd = FemTransaction.CMD_ACQ_STATUS
 
+        elif acqCommand == 'reset':
+            cmd = FemTransaction.CMD_ACQ_RESET
+            
         else:                
             print "Unrecognised acquire command:", acqCommand
             return

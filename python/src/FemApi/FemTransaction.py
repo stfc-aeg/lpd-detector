@@ -45,6 +45,7 @@ class FemTransaction():
     CMD_ACQ_START         = 2
     CMD_ACQ_STOP          = 3
     CMD_ACQ_STATUS        = 4
+    CMD_ACQ_RESET         = 5
     
     ACQ_MODE_UNSUPPORTED  = 0
     ACQ_MODE_NORMAL       = 1
