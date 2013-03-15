@@ -159,6 +159,8 @@ class LpdAsicCommandSequence():
                         if nops > 0:
                             raise LpdAsicCommandSequenceError('NOPs atttribute specified for NOP command, use count attribute instead')
                         
+                        if count > 1024:
+                            raise LpdAsicCommandSequenceError("NOP command's count attribute exceeded 1024")
                         cmdWord = (count - 1 << self.nop_pos) | cmdWord
                         # Count number of nops
                         localNopsSum += count

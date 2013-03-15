@@ -70,6 +70,70 @@
    <!-- Digital control configuration: reserved 0 reset3 9 reset2 7 reset1 7 clockcounteroffset 2 clockselect 2 -->
    <!-- ADC clock delay configuration: reserved 0 delayadjust 4 -->
    
-   
+   <!-- Matt's configuration instructions:
+
+	
+	ADC Clk Delay	100
+	Reset 3 (not significant in this mode)	1001
+	Reset 2 (not significant in this mode)	111
+	Reset 1 (not significant in this mode)	111
+	Clk Cntr Offset (not significant in this mode)	10
+	Clk Select	10
+	100x Filter	Disabled
+	ADC alt I/P	OFF
+	Pixel MUX (all pixels)	000
+	Self Test (test pattern)	000  (011)
+	Calibrate Select	Vcalib Buff
+	Bias 1	01101    13
+	Bias 2	10010    18
+	Bias 3	10111    23
+	Bias 4	11000    24
+	Bias 5	10010    18
+	Bias 6	10100    20
+	Bias 7	10111    23
+	Bias 8	11001    25
+	Bias 9	10010    18
+	Bias 10	10000    16
+	Bias 11	10010    18
+	Bias 12	10101    21
+	Bias 13	11001    25
+	Bias 14	10110    22
+	Bias 15	11111    31
+	Bias 16	11101    29
+	Bias 17	11001    25
+	Bias 18	10010    18
+	Bias 19	10000    16
+	Bias 20	10110    22
+	Bias 21	10111    23
+	Bias 22	10110    22
+	Bias 23	10110    22
+	Bias 24	11000    24
+	Bias 25	10111    23
+	Bias 26	11000    24
+	Bias 27	10111    23
+	Bias 28	10110    22
+	Bias 29	10111    23
+	Bias 30	10111    23
+	Bias 31	01111    15
+	Bias 32	10000    16
+	Bias 33	10010    18
+	Bias 34	10111    23
+	Bias 35	11001    25
+	Bias 36	01000     8
+	Bias 37	00000     0
+	Bias 38	10011    19
+	Bias 39	10011    19
+	Bias 40	10011    19
+	Bias 41	10011    19
+	Bias 42	10011    19
+	Bias 43	10111    23
+	Bias 44	10111    23
+	Bias 45	10111    23
+	Bias 46	10011    19
+	Bias 47	10111    23
+	Self Test En	Enabled
+		
+	-->	
+  
 
 </lpd_slow_ctrl_sequence> 

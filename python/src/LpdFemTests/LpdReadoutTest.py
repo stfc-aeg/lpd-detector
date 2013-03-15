@@ -27,18 +27,23 @@ def LpdReadoutTest(femHost=None, femPort=None):
     # Display "expert" variables?
     bDebug = True
     
-    xmlConfiguration = 1    # 1=normal operation, 2=slowdown operation
+    xmlConfiguration = 2    # 1=normal operation, 2=slowdown operation
     if xmlConfiguration == 1:
         SlowControlXmlString = 'ConfigFiles/selfTestPixel232.xml'
         FastCmdXmlString     = 'ConfigFiles/SuperModuleNormalOperation.xml'# SupMod - normal readout
     elif xmlConfiguration == 2:
-        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
-        FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+#        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+#        FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+        SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
+        FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
     else:
         SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl_B.xml'
-        FastCmdXmlString = 'ConfigFiles/fast_cmd_4f_with_slow_readout_C.xml'
+        FastCmdXmlString     = 'ConfigFiles/fast_cmd_4f_with_slow_readout_C.xml'
         print SlowControlXmlString
         print FastCmdXmlString
+
+# The second of the two command sequence configurations provided by Matt:
+#        FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
 
     #TODO: Temporary hack, pass filename instead of XML string
     # Read Slow Control (LpdAsicControl) XML file into a string
@@ -171,7 +176,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "tenGigUdpPacketLen set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femAsicGainOverride', 9) #8)        # (Default value is 0)
+    rc = theDevice.paramSet('femAsicGainOverride', 8)  #8)        # (Default value is 0)
     if rc != LpdDevice.ERROR_OK:
         print "femAsicGainOverride set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 

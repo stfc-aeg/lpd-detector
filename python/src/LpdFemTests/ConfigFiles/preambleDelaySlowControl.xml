@@ -8,13 +8,9 @@
    <feedback_select_default value="0"/>
    <self_test_decoder_default value="0"/>
    <self_test_enable value="0"/>
-
-
-
    
    <!-- To match the original .txt file's output exactly...: -->
    <self_test_decoder pixel="0" value="3"/>
-
 
    <daq_bias index="46" value="23"/>
    <daq_bias index="45" value="19"/>
@@ -64,11 +60,9 @@
    <daq_bias index="37" value="19"/>
    <daq_bias index="33" value="23"/>
 
-   <!--spare_bits value="2"/-->
    <spare_bits value="0"/>
-   <!--filter_control value="0"/-->
    <filter_control value="1"/>
    <adc_clock_delay value="0"/>
-    <digital_control value="5406687746"/>
+   <digital_control value="5406687746"/>
 
 </lpd_slow_ctrl_sequence> 

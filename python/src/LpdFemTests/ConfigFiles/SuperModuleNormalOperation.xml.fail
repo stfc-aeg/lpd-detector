@@ -4,8 +4,7 @@
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 
 	<sync_reset/> <!-- Start Config chip -->
-	<nop/>
-	<on_chip_reset_enable/>
+	<on_chip_reset_disable/>
 	<nop/>
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>
@@ -13,21 +12,29 @@
 	<start_write_pointer/>
 	<start_trigger_pointer/> 
 	<nop/>
-	<nop/>
-	<trigger_flag_set count="4"/><!-- 4 images saved from ASICs -->
-	<nop/>
-	<on_chip_reset_disable/>
+
 	<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>
 
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<nop count="100"/>
+	<trigger_flag_set/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>	
 	<nop count="4"/>
 	<nop/>
-	<asic_slow_readout_start/>
 	<nop count="4"/>
-	<nop/>
 	<sync_reset/>
 	<nop/>
 	<read_out_data/> 

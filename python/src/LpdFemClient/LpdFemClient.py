@@ -708,20 +708,28 @@ class LpdFemClient(FemClient):
         asic_slow_readout_duration = 1000000 # 3100
         self.rdmaWrite(self.fem_ctrl_0+12, asic_slow_readout_duration)  
 
-        # changed order of configuration for asic following Matt's recommendations Mar 2013  jac
- 
-        #print "ENABLE asic Tristate output buffers"
+        ### Original Implementation ###
+        # Load slow control, Fast Commands, asic module
+        self.config_asic_slow_xml()
+        self.config_asic_fast_xml()
+        self.config_asic_datarx()
+        # ENABLE asic Tristate output buffers
         self.rdmaWrite(self.fem_ctrl_0+5, 0)
 
-        # Following is setting up for Asic data taking  
-
-        self.config_asic_slow_xml() # loads fem slow bram from xml file
-        # load the slow params from bram into asics, put call here so settings are stable by time of first trigger
-        self.toggle_bits(self.fem_ctrl_0+7, 0)  
- 
-        self.config_asic_fast_xml() # loads fem fast bram from xml file
-        self.config_asic_datarx()   # set up fem to receive asic data
- 
+#        ### changed order of configuration for asic following Matt's recommendations Mar 2013  jac ###
+# 
+#        #print "ENABLE asic Tristate output buffers"
+#        self.rdmaWrite(self.fem_ctrl_0+5, 0)
+#
+#        # Following is setting up for Asic data taking  
+#
+#        self.config_asic_slow_xml() # loads fem slow bram from xml file
+#        # load the slow params from bram into asics, put call here so settings are stable by time of first trigger
+#        self.toggle_bits(self.fem_ctrl_0+7, 0)  
+# 
+#        self.config_asic_fast_xml() # loads fem fast bram from xml file
+#        self.config_asic_datarx()   # set up fem to receive asic data
+# 
     def config_asic_slow_xml(self):
         """ configure asic slow control parameters from xml """                                        
         
@@ -745,7 +753,7 @@ class LpdFemClient(FemClient):
 
         #TODO: Temporary hack, filename passed from API (not XML string)
         fileCmdSeq = LpdAsicCommandSequence(self.femAsicFastCmdSequence, fromFile=True) #False)
-        xmlString  = fileCmdSeq.encode()
+        encodedSequence  = fileCmdSeq.encode()
         
         no_of_words = fileCmdSeq.getTotalNumberWords()
         no_of_nops  = fileCmdSeq.getTotalNumberNops()
@@ -754,7 +762,7 @@ class LpdFemClient(FemClient):
 
         # Setup the fast command block
         if self.femFastCtrlDynamic:   # new design with dynamic vetos
-            self.fem_fast_bram_setup(self.fast_cmd_1, xmlString, no_of_words)
+            self.fem_fast_bram_setup(self.fast_cmd_1, encodedSequence, no_of_words)
             self.fem_fast_cmd_setup_new(self.fast_cmd_0, no_of_words+no_of_nops)
         else:
             #TODO:  Fix this or remove?
@@ -926,8 +934,10 @@ class LpdFemClient(FemClient):
             print "Trigger Data Gen"
             self.toggle_bits(self.fem_ctrl_0+0, 0) # trigger to local link frame gen 
         elif (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_ASIC_DATA_DIRECT):             
-            #self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asic rx ;  
-            self.toggle_bits(self.fem_ctrl_0+7, 1)  # asic seq without slow (slow params are loaded once only during configutation)
+            ### Original Implementation ###
+            self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asic 
+#            ### Avoid Loading Slow Control Each Time ###  
+#            self.toggle_bits(self.fem_ctrl_0+7, 1)  # asic seq without slow (slow params are loaded once only during configutation)
         else:
             print "Trigger Asic"
             self.toggle_bits(self.fem_ctrl_0+0, 1)

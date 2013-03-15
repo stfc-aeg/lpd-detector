@@ -74,7 +74,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AdcClockDelayConfigure.py - Accepts up to 2 arguments to set the functions compromising the Filter Control keyword and generates the 20 bit word used by the <adc_clock_delay> XML tag. ",
                                      epilog="The perceived wisdom is that the following function values are the default settings:\nreserved = 0\ndelayadjust = 0,\t Note: the parser ignores any argument set to 0 and therefore the default values for both of the two arguments are 0 if not provided.")
 
-    parser.add_argument("--reserved", help="set the Reserved function (17 bits)", type=int, choices=reservedRange)
+    parser.add_argument("--reserved", help="set the Reserved function (17 bits: 0-131,071)", type=int)
     parser.add_argument("--delayadjust", help="set the Delay Adjust function (3 bit)", type=int, choices=delayRange)
     parser.add_argument("--debug", help="set debug to 1 for debug information", type=int, choices=[0, 1])
     args = parser.parse_args()

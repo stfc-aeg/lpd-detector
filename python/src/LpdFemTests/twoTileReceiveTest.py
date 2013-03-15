@@ -117,7 +117,7 @@ class BlitQT(FigureCanvas):
             self.ax[idx].set_yticks(ylist)
             
             # Set the title of each plot temporarily
-            self.ax[idx].set_title("Train %i" % idx)
+            self.ax[idx].set_title("Image %i" % idx)
                             
             self.cnt = 0
             self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
