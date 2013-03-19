@@ -41,7 +41,7 @@ class LpdI2cError(Exception):
 """
 
 
-class LpdI2cTest(FemClient):
+class LpdPowerControl(FemClient):
 
     # ADC channel numbers
     HV_VOLTS_CHAN =      0
@@ -116,7 +116,7 @@ class LpdI2cTest(FemClient):
     def __init__(self, hostAddr=None, timeout=None, femI2cBus=None):
         
         # Call superclass initialising function
-        super(LpdI2cTest, self).__init__(hostAddr, timeout)
+        super(LpdPowerControl, self).__init__(hostAddr, timeout)
 
     def setBus(self, femI2cBus):
         # Fem has three internal i2c buses
@@ -170,7 +170,7 @@ class LpdI2cTest(FemClient):
         if (0 > deviceId) or (deviceId > 31):
             raise LpdI2cError("Read_adc() deviceId argument outside valid range (0 - 31)")
         
-        addr = self.femI2cBus + LpdI2cTest.adc_chip_address[deviceId >> 3]
+        addr = self.femI2cBus + LpdPowerControl.adc_chip_address[deviceId >> 3]
         adcChannel = 0x80 + ((deviceId & 7) << 4)
 
         # Write operation, select ADC channel
@@ -295,7 +295,7 @@ class LpdI2cTest(FemClient):
         # Calculate resistance using the voltage
         resistance = self.calculateResistance(voltage)
         # Calculate temperature in degrees Celsius from resistance
-        temperature = self.calculateTemperature(LpdI2cTest.Beta, resistance)
+        temperature = self.calculateTemperature(LpdPowerControl.Beta, resistance)
         try:
             print " ",
             print round(temperature, 2),
@@ -313,50 +313,50 @@ class LpdI2cTest(FemClient):
         
         print "Outputs:"
         print "   V FEM      :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V5_VOLTS_CHAN ), 6, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V5_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V5_VOLTS_CHAN ), 6, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V5_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Digital  :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V12_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V12_AMPS_CHAN ), 700, "mA")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V12_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V12_AMPS_CHAN ), 700, "mA")
         print "."
         print "."
         print "   V Sensor A :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25A_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25A_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25A_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25A_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Sensor B :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25B_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25B_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25B_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25B_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Sensor C :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25C_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25C_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25C_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25C_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Sensor D :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25D_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25D_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25D_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25D_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Sensor E :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25E_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25E_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25E_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25E_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Sensor F :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25F_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25F_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25F_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25F_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Sensor G :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25G_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25G_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25G_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25G_AMPS_CHAN ), 10, "A")
         print "."
         print "   V Sensor H :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25H_VOLTS_CHAN ), 3, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.V25H_AMPS_CHAN ), 10, "A")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25H_VOLTS_CHAN ), 3, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.V25H_AMPS_CHAN ), 10, "A")
         print "."
         print "."
         print "   HV Bias  :",
-        self.write_electrical_value( self.read_adc( LpdI2cTest.HV_VOLTS_CHAN ), 600, "V")
-        self.write_electrical_value( self.read_adc( LpdI2cTest.HV_AMPS_CHAN ), 600, "uA")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.HV_VOLTS_CHAN ), 600, "V")
+        self.write_electrical_value( self.read_adc( LpdPowerControl.HV_AMPS_CHAN ), 600, "uA")
         print "."
         print "."
 
@@ -365,7 +365,7 @@ class LpdI2cTest(FemClient):
         '''        
         
         print "Status:"
-        if (self.read_bit(LpdI2cTest.LV_CTRL_BIT)):
+        if (self.read_bit(LpdPowerControl.LV_CTRL_BIT)):
             print "   Low  voltage is off." 
         else: 
             print "   Low  voltage is on." 
@@ -375,7 +375,7 @@ class LpdI2cTest(FemClient):
         ''' Display the high voltage status
         '''
 
-        if (self.read_bit(LpdI2cTest.HV_CTRL_BIT)): 
+        if (self.read_bit(LpdPowerControl.HV_CTRL_BIT)): 
             print "   High voltage is off." 
         else: 
             print "   High voltage is on." 
@@ -395,22 +395,22 @@ class LpdI2cTest(FemClient):
         print "Flags:" 
         value = self.read_all_bits()
         print "   Fault flag         = ",
-        print LpdI2cTest.flag_message[ (value & (1 << LpdI2cTest.FAULT_FLAG_BIT)) != 0],
+        print LpdPowerControl.flag_message[ (value & (1 << LpdPowerControl.FAULT_FLAG_BIT)) != 0],
         print ".\n",
         print "   Fem Status   Trip  = ",
-        print LpdI2cTest.flag_message[ (value & (1 << LpdI2cTest.FEM_STATUS_BIT)) != 0],
+        print LpdPowerControl.flag_message[ (value & (1 << LpdPowerControl.FEM_STATUS_BIT)) != 0],
         print ".\n",
         print "   External     Trip  = ",
-        print LpdI2cTest.flag_message[ (value & (1 << LpdI2cTest.EXT_TRIP_BIT)) != 0],
+        print LpdPowerControl.flag_message[ (value & (1 << LpdPowerControl.EXT_TRIP_BIT)) != 0],
         print ".\n",
         print "   Over current Trip  = ",
-        print LpdI2cTest.flag_message[ (value & (1 << LpdI2cTest.OVERCURRENT_BIT)) != 0],
+        print LpdPowerControl.flag_message[ (value & (1 << LpdPowerControl.OVERCURRENT_BIT)) != 0],
         print ".\n",
         print "   Over temp    Trip  = ",
-        print LpdI2cTest.flag_message[ (value & (1 << LpdI2cTest.HIGH_TEMP_BIT)) != 0],
+        print LpdPowerControl.flag_message[ (value & (1 << LpdPowerControl.HIGH_TEMP_BIT)) != 0],
         print ".\n",
         print "   Undertemp          = ",
-        print LpdI2cTest.flag_message[ (value & (1 << LpdI2cTest.LOW_TEMP_BIT)) != 0],
+        print LpdPowerControl.flag_message[ (value & (1 << LpdPowerControl.LOW_TEMP_BIT)) != 0],
         print ".\n",
         print ".\n",
 
@@ -420,31 +420,31 @@ class LpdI2cTest(FemClient):
 
         print "Temperature readings: "
         print "   Temp PSU card: ",
-        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.PSU_TEMP_CHAN ),3, "C")
+        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.PSU_TEMP_CHAN ),3, "C")
         print "."
         print "   Temp Sensor A: ",
-        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSA_TEMP_CHAN ),3, "C")
+        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSA_TEMP_CHAN ),3, "C")
         print "."
         print "   Temp Sensor B: ",
-        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSB_TEMP_CHAN ),3, "C")
+        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSB_TEMP_CHAN ),3, "C")
 #        print "."
 #        print "   Temp Sensor C: ",
-#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSC_TEMP_CHAN ),3, "C")
+#        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSC_TEMP_CHAN ),3, "C")
 #        print "."
 #        print "   Temp Sensor D: ",
-#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSD_TEMP_CHAN ),3, "C")
+#        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSD_TEMP_CHAN ),3, "C")
 #        print "."
 #        print "   Temp Sensor E: ",
-#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSE_TEMP_CHAN ),3, "C")
+#        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSE_TEMP_CHAN ),3, "C")
 #        print "."
 #        print "   Temp Sensor F: ",
-#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSF_TEMP_CHAN ),3, "C")
+#        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSF_TEMP_CHAN ),3, "C")
 #        print "."
 #        print "   Temp Sensor G: ",
-#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSG_TEMP_CHAN ),3, "C")
+#        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSG_TEMP_CHAN ),3, "C")
 #        print "."
 #        print "   Temp Sensor H: ",
-#        self.write_temperature_in_celsius( self.read_adc( LpdI2cTest.SENSH_TEMP_CHAN ),3, "C")
+#        self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.SENSH_TEMP_CHAN ),3, "C")
         print "."
         print "."
 
@@ -531,7 +531,7 @@ if __name__ == "__main__":
         
     print "    ~+~+~+~+~+~+~ Connecting to %14s ~+~+~+~+~+~+~" % femI2cBusName
     
-    thisFem = LpdI2cTest((host, port))
+    thisFem = LpdPowerControl((host, port))
     thisFem.setBus(femI2cBus)
 
     # Convert HV bias (if specified) into equivalent ADC counts
@@ -551,17 +551,17 @@ if __name__ == "__main__":
         # Execute according to supplied flags
         if args.lv:
             print "Switching low voltage on.."
-            thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.ON)
+            thisFem.write_bit(LpdPowerControl.LV_CTRL_BIT, LpdPowerControl.ON)
             
             # Is HV set to be switched on?
             if args.hv:
                 # Yes - switch HV on
                 print "Switching high voltage on.."
-                thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.ON)
+                thisFem.write_bit(LpdPowerControl.HV_CTRL_BIT, LpdPowerControl.ON)
             else:
                 # No - switch HV off
                 print "Switching high voltage off.. "
-                thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+                thisFem.write_bit(LpdPowerControl.HV_CTRL_BIT, LpdPowerControl.OFF)
 
                 # Change bias, if bias specified
                 if args.hvbias > -1:
@@ -574,10 +574,10 @@ if __name__ == "__main__":
             # Switch off HV first
             
             print "Switching high voltage off.. "
-            thisFem.write_bit(LpdI2cTest.HV_CTRL_BIT, LpdI2cTest.OFF)
+            thisFem.write_bit(LpdPowerControl.HV_CTRL_BIT, LpdPowerControl.OFF)
             
             print "Switching low voltage off.. "
-            thisFem.write_bit(LpdI2cTest.LV_CTRL_BIT, LpdI2cTest.OFF)
+            thisFem.write_bit(LpdPowerControl.LV_CTRL_BIT, LpdPowerControl.OFF)
             
             if args.hvbias > -1:
                 print "Changing HV bias to ", args.hvbias, " V.."

@@ -2265,6 +2265,18 @@ class LpdFemClient(FemClient):
         '''
             Write 'aValue' (2 bytes) to ad5321 device
         '''
+        # Need to change self.femI2cBus if this is supermodule
+        if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SUPERMODULE:
+            # LHS - supermodule only power card
+            self.femI2cBus = 768
+            # Construct address and payload (as a tuple)
+            addr = self.femI2cBus + 0x0C
+            payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
+            # Write new ADC value to device
+            self.i2cWrite(addr, payload)
+            
+        # RHS - power card always present
+        self.femI2cBus = 512
         # Construct address and payload (as a tuple)
         addr = self.femI2cBus + 0x0C
         payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
@@ -2304,6 +2316,19 @@ class LpdFemClient(FemClient):
         ''' 
             Change bit 'bitId' to 'value' in PCF7485 device
         '''        
+        # Need to change self.femI2cBus if this is supermodule
+        if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SUPERMODULE:
+            # LHS - supermodule only power card
+            self.femI2cBus = 768
+            addr = self.femI2cBus + 0x38
+            # Read PCF7485's current value
+            bit_register = self.pcf7485ReadAllBits()
+            # Change bit 'bitId' to 'value'
+            bit_register = (bit_register & ~(1 << bitId)) | (value << bitId) | 0xFC
+            self.i2cWrite(addr, bit_register)
+            
+        # RHS - power card always present
+        self.femI2cBus = 512
         addr = self.femI2cBus + 0x38
         # Read PCF7485's current value
         bit_register = self.pcf7485ReadAllBits()

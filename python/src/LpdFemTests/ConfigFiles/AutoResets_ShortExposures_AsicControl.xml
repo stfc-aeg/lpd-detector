@@ -13,6 +13,7 @@
 
         If reading out V1 ASIC need  <asic_slow_readout_start/> in cmd sequence to slow clock during readout phase
         Must also set femAsicSlowedClock parameter in LpdReadoutTest.py to TRUE
+
     -->
 
 	<nop/>
@@ -27,6 +28,7 @@
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>
 	<clear_skip_register/>
+	<start_write_pointer/>
 	<nop/>
 	<nop/>
 	<start_trigger_pointer/> 
@@ -49,10 +51,13 @@
 	<sync_reset/>
 	<nop/>
 	<read_out_data/>
-	<loop count="6">
-		<nop count="840"/>
+	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) -->
+	<loop count="4">
+		<nop/>
+		<nop count="838"/>
 	</loop>
-	<nop count="1000"/>
+    <nop count="30"/>   <!-- one extra row -->
 	<stop_read_out/>
 	<nop count="33"/>
 

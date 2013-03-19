@@ -1,10 +1,15 @@
+'''
+    Use the API to read out all sensors connected through I2C bus
+    
+    Author: ckd27546
+'''
+
 from LpdDevice.LpdDevice import LpdDevice
 import sys
 
-def powerCardTest(femI2cBus):
+def LpdPowerStatus(femI2cBus):
     
     theDevice = LpdDevice()
-
     
     rc = theDevice.open('192.168.2.2', 6969)
 
@@ -31,7 +36,6 @@ def powerCardTest(femI2cBus):
                 femI2cBusName = "LHS Power Card"
                 
             print "    ~+~+~+~+~+~+~ Connecting to %14s ~+~+~+~+~+~+~" % femI2cBusName
-
     
     print "Status:"
     print "    Low voltage  = ",
@@ -60,7 +64,6 @@ def powerCardTest(femI2cBus):
         print "sensorBias get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print hvBias , "V"
-
 
 
     print "Flags:" 
@@ -104,9 +107,7 @@ def powerCardTest(femI2cBus):
     if rc != LpdDevice.ERROR_OK:
         print "powerCardUnderTemp get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print sUndertempStatus
-
-    print ".\n"
+        print sUndertempStatus, ".\n"
 
     # Display temperature readings from PSU Card and Sensors
     print "Temperature readings:"
@@ -193,7 +194,6 @@ def powerCardTest(femI2cBus):
         print "%.2f" % digitalCurrent, " mA\n"
     
 
-    
     (rc, sensorAVoltage) = theDevice.paramGet('sensorAVoltage')
     if rc != LpdDevice.ERROR_OK:
         print "sensorAVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -240,7 +240,6 @@ def powerCardTest(femI2cBus):
         print "sensorDCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorDCurrent, " A"
-
     
     
     (rc, sensorEVoltage) = theDevice.paramGet('sensorEVoltage')
@@ -255,7 +254,6 @@ def powerCardTest(femI2cBus):
         print "%.2f" % sensorECurrent, " A"
 
     
-    
     (rc, sensorFVoltage) = theDevice.paramGet('sensorFVoltage')
     if rc != LpdDevice.ERROR_OK:
         print "sensorFVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -266,7 +264,6 @@ def powerCardTest(femI2cBus):
         print "sensorFCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
         print "%.2f" % sensorFCurrent, " A"
-
     
     
     (rc, sensorGVoltage) = theDevice.paramGet('sensorGVoltage')
@@ -281,7 +278,6 @@ def powerCardTest(femI2cBus):
         print "%.2f" % sensorGCurrent, " A"
 
     
-    
     (rc, sensorHVoltage) = theDevice.paramGet('sensorHVoltage')
     if rc != LpdDevice.ERROR_OK:
         print "sensorHVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -291,12 +287,9 @@ def powerCardTest(femI2cBus):
     if rc != LpdDevice.ERROR_OK:
         print "sensorHCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print "%.2f" % sensorHCurrent, " A"
+        print "%.2f" % sensorHCurrent, " A\n"
 
-    print ""
 
-    
-    
     (rc, sensorBiasVoltage) = theDevice.paramGet('sensorBiasVoltage')
     if rc != LpdDevice.ERROR_OK:
         print "sensorBiasVoltage get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -306,10 +299,7 @@ def powerCardTest(femI2cBus):
     if rc != LpdDevice.ERROR_OK:
         print "sensorBiasCurrent get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     else:
-        print "%.2f" % sensorBiasCurrent, " uA"
-
-    
-    print "-- -- -- -- -- -- -- -- --"
+        print "%.2f" % sensorBiasCurrent, " uA\n"
 
     print "Closing Fem connection.. "        
     theDevice.close()
@@ -321,5 +311,5 @@ if __name__ == '__main__':
     else:
         femI2cBus = None
         
-    powerCardTest(femI2cBus)
+    LpdPowerStatus(femI2cBus)
     

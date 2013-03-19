@@ -15,6 +15,24 @@
    <self_test_decoder pixel="0" value="3"/>
    <feedback_select pixel="0" value="1"/>
 
+   <!-- letter L in lower right side on supermodule /-->
+   <mux_decoder pixel="136" value="4"/>
+   <mux_decoder pixel="137" value="4"/>
+   <mux_decoder pixel="138" value="4"/>
+   <mux_decoder pixel="139" value="4"/>
+   <mux_decoder pixel="152" value="4"/>
+   <mux_decoder pixel="153" value="4"/>
+   <mux_decoder pixel="154" value="4"/>
+   <mux_decoder pixel="155" value="4"/>
+   <mux_decoder pixel="168" value="4"/>
+   <mux_decoder pixel="169" value="4"/>
+   <mux_decoder pixel="184" value="4"/>
+   <mux_decoder pixel="185" value="4"/>
+   <mux_decoder pixel="200" value="4"/>
+   <mux_decoder pixel="201" value="4"/>
+   <mux_decoder pixel="216" value="4"/>
+   <mux_decoder pixel="217" value="4"/>
+
    <daq_bias index="0" value="13"/>
    <daq_bias index="1" value="18"/>
    <daq_bias index="2" value="23"/>
