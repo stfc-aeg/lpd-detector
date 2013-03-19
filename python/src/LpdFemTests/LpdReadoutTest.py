@@ -104,7 +104,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
 #    rc = theDevice.paramSet('femAsicEnableMask', [0x00FF0000, 0x00000000, 0x00000000, 0x000000FF])    # Enable 2 Tile System's ASICs
 #    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF])    # Enable everything
-    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])      # Supermodule with three tiles
+#    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])      # Supermodule with three tiles
+    rc = theDevice.paramSet('femAsicEnableMask', 9999)      # Supermodule with three tiles
     if rc != LpdDevice.ERROR_OK:
         print "femAsicEnableMask set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -287,11 +288,11 @@ def LpdReadoutTest(femHost=None, femPort=None):
     else:
         print "femAsicDataType\t\t= %d" % value
     
-    (rc, value) = theDevice.paramGet('femAsicEnableMask')
-    if rc != LpdDevice.ERROR_OK:
-        print "femAsicEnableMask get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-    else:
-        print "femAsicEnableMask \t= [%8X, %8X, %8X, %8X]" %  (value[0], value[1], value[2], value[3])
+#    (rc, value) = theDevice.paramGet('femAsicEnableMask')
+#    if rc != LpdDevice.ERROR_OK:
+#        print "femAsicEnableMask get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#    else:
+#        print "femAsicEnableMask \t= [%8X, %8X, %8X, %8X]" %  (value[0], value[1], value[2], value[3])
 
     (rc, value) = theDevice.paramGet('femAsicFastCmdSequence')
     if rc != LpdDevice.ERROR_OK:
