@@ -18,7 +18,7 @@ class Test(unittest.TestCase):
         pass
 
     def testPrintNumberOfParams(self):
-        print "LpdDeviceParameters has", len(self.params.parameters), 'parameters'
+        print "LpdDeviceParameters has", len(self.params.expectedParameters), 'parameters'
 
     def testGenerateParameters(self):
         for paramTemplate in self.params.parameterTemplateStr('expected'):

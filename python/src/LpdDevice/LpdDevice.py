@@ -47,14 +47,20 @@ class LpdDevice(object):
         self.femClient = None
         self.errorString = ''
         
-        # allowedParams is a dictionary of allowed parameters, with a camelCase key and data in the form of
+        # expectedParams is a dictionary of expected parameters, with a camelCase key and data in the form of
         # a tuple that specifies everything in Sergei's 'Karabo Parameter Templates' document, namely:
         #
         # 'key' : ( type, displayed name, description, minimum possible value (or tuple of allowed values),
         #           max possible value (ignored if minimum is a tuple of possibles), default value,
-        #           access type, assignment policy (True if optional, otherwise mandatory), 
+        #           access type, assignment policy (True if optional, otherwise mandatory), internal param (true if internal)
         #           unit name, unit symbol )
-        self.allowedParams = LpdDeviceParameters().get()
+        self.expectedParams = LpdDeviceParameters().get()
+        
+        # Generate attributes containing default value for the internal parameters
+        for param, attrib in self.expectedParams.iteritems():
+            if attrib.isInternal:
+                setattr(self, param, attrib.defaultValue)
+        
         self.opened = False
     
     def errorStringGet(self):
@@ -77,7 +83,6 @@ class LpdDevice(object):
         if not self.simulateFemClient:
             try:
                 
-                print "***** Open device on host", host, "port", port
                 self.femClient = LpdFemClient((host, int(port)), timeout)
 
             except FemClientError as e:
@@ -117,10 +122,19 @@ class LpdDevice(object):
         @return LpdDevice error code, ERROR_OK or other error condition
 
         '''
-        #TODO: Exception Handling?
-        self.femClient.configure()
+        rc = LpdDevice.ERROR_OK
         
-        return LpdDevice.ERROR_OK
+        if not self.simulateFemClient:
+            try:
+                self.femClient.configure()
+            except FemClientError as e:
+                rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
+                self.errorString = 'Error during FEM configuration: %s' % e.msg()
+                
+        else:
+            time.sleep(5)
+        
+        return rc
     
     def start(self):
         '''
@@ -129,9 +143,19 @@ class LpdDevice(object):
 
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
-        #TODO: Exception Handling?
-        self.femClient.run()
-        return LpdDevice.ERROR_OK
+        
+        rc = LpdDevice.ERROR_OK
+    
+        if not self.simulateFemClient:
+            try:
+                self.femClient.run()
+            except FemClientError as e:
+                rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
+                self.errorString = 'Error during FEM acquisition start: %s' % e.msg()
+        else:
+            pass
+                
+        return rc
     
     def stop(self):
         '''
@@ -141,8 +165,19 @@ class LpdDevice(object):
 
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
-        #TODO: Requires implementation of stop action(s)
-        return LpdDevice.ERROR_OK
+        rc = LpdDevice.ERROR_OK
+    
+        if not self.simulateFemClient:
+            try:
+                # TODO implement: self.femClient.stop()
+                pass
+            except FemClientError as e:
+                rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
+                self.errorString = 'Error during FEM acquisition stop: %s' % e.msg()
+        else:
+            pass
+                
+        return rc
         
     def paramSet(self, param, value, **kwargs):
         '''
@@ -161,7 +196,6 @@ class LpdDevice(object):
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
         
-#        print "***** paramSet: param=", param, "value=", value, "type=", type(value)
         rc = LpdDevice.ERROR_OK
         
         # Check if ASIC and/or pixel keyword arguments have been passed. 
@@ -174,28 +208,37 @@ class LpdDevice(object):
             pixel = kwargs['pixel']
         else:
             pixel = None        
-            
-        # Check if parameter specified is allowed for this device
-        if param in self.allowedParams:
+        
+        # Check if parameter specified is an expected parameter for this device
+        if param in self.expectedParams:
             
             # Test if parameter value can be converted to required type, otherwise trap as an illegal
             # value type. Handle vector parameters by converting in a list iterator and check that
             # the correct number of elements are provided
             try:
-                if self.allowedParams[param].numElements > 1:                    
-                    if len(value) != self.allowedParams[param].numElements:                        
+                if self.expectedParams[param].numElements > 1:
+                    
+                    # Trap case where vector parameter is expected but only a scalar value received
+                    try:
+                        valueLen = len(value)
+                    except TypeError:
                         rc = LpdDevice.ERROR_PARAM_VECTOR_LENGTH
-                        self.errorString = 'Incorrect length for vector parameter %s specified: expected %d got %d' % \
-                            (param, self.allowedParams[param].numElements, len(value))                            
-                    else:
-                        value = [self.allowedParams[param].type(element) for element in value]
+                        self.errorString = "Got scalar value for vector parameter %s of expected length %d" % \
+                            (param, self.expectedParams[param].numElements)
+                    else:    
+                        if valueLen != self.expectedParams[param].numElements:                        
+                            rc = LpdDevice.ERROR_PARAM_VECTOR_LENGTH
+                            self.errorString = 'Incorrect length for vector parameter %s specified: expected %d got %d' % \
+                                (param, self.expectedParams[param].numElements, len(value))                            
+                        else:
+                            value = [self.expectedParams[param].type(element) for element in value]
                 else:
-                    value = self.allowedParams[param].type(value)
+                    value = self.expectedParams[param].type(value)
 
             except ValueError:
                 rc = LpdDevice.ERROR_PARAM_ILLEGAL_TYPE
                 self.errorString = 'Illegal value type for parameter %s specified: expected \'%s\' got \'%s\'' % \
-                    (param , self.allowedParams[param].type.__name__, type(value).__name__)
+                    (param , self.expectedParams[param].type.__name__, type(value).__name__)
 
             else:
                 
@@ -210,18 +253,18 @@ class LpdDevice(object):
                     
                     # If range was a list of possibilities, test that value exists in range, otherwise test
                     # against minimum and maximum values
-                    if self.allowedParams[param].possVals != None:
-                        if entry not in self.allowedParams[param].possVals:
+                    if self.expectedParams[param].possVals != None:
+                        if entry not in self.expectedParams[param].possVals:
                             rc = LpdDevice.ERROR_PARAM_ILLEGAL_VALUE
                             self.errorString = 'Illegal value set %s for parameter %s' % (repr(entry), param)
                             break
                             
                     else:
-                        if self.allowedParams[param].minValue != None and entry < self.allowedParams[param].minValue:
+                        if self.expectedParams[param].minValue != None and entry < self.expectedParams[param].minValue:
                             rc = LpdDevice.ERROR_PARAM_ILLEGAL_VALUE
                             self.errorString = 'Illegal value set %s for parameter %s' % (repr(entry), param)
                             break
-                        if self.allowedParams[param].maxValue != None and entry > self.allowedParams[param].maxValue:
+                        if self.expectedParams[param].maxValue != None and entry > self.expectedParams[param].maxValue:
                             rc = LpdDevice.ERROR_PARAM_ILLEGAL_VALUE
                             self.errorString = 'Illegal value set %s for parameter %s' % (repr(entry), param)
                             break
@@ -231,27 +274,33 @@ class LpdDevice(object):
                             
                     if not self.simulateFemClient:                    
                         
-                        # Resolve the specified FEM client set function with the parameter. Trap the situation where
+                        # If this is an internal parameter, handle at this level and set a local attribute with the specified value.
+                        # Otherwise, resolve the specified FEM client set function with the parameter. Trap the situation where
                         # the appropriate set method is not resolved - shouldn't happen if parameter definitions
                         # match the set/get method implementation
-                        try:
-                            setMethod  = getattr(self.femClient, '%sSet' % param)
-                            
-                        except AttributeError:
-                            rc = LpdDevice.ERROR_PARAM_NO_METHOD
-                            self.errorString = 'Failed to resolve client set method for for parameter %s' % param
+                        
+                        if self.expectedParams[param].isInternal:                           
+                            setattr(self, param, value)
                             
                         else:
                             
-                            # Call the set method, trapping any FemClient exceptions that are generated 
                             try:
-                                setMethod(value, **kwargs)
+                                setMethod  = getattr(self.femClient, '%sSet' % param)
                                 
-                            except FemClientError as e:
-                                rc = LpdDevice.ERROR_PARAM_SET_FAILED
-                                self.errorString = 'Failed to set parameter %s: %s' % \
-                                    (param, e.msg)
-                        
+                            except AttributeError:
+                                rc = LpdDevice.ERROR_PARAM_NO_METHOD
+                                self.errorString = 'Failed to resolve client set method for for parameter %s' % param
+                                
+                            else:
+                                
+                                # Call the set method, trapping any FemClient exceptions that are generated 
+                                try:
+                                    setMethod(value, **kwargs)
+                                    
+                                except FemClientError as e:
+                                    rc = LpdDevice.ERROR_PARAM_SET_FAILED
+                                    self.errorString = 'Failed to set parameter %s: %s' % \
+                                        (param, e.msg)                        
                     else:                    
                         
                         # In simulation mode, cache the value locally so subsequent gets return the same value
@@ -292,30 +341,41 @@ class LpdDevice(object):
         else:
             pixel = None        
 
-        # Check if the requested parameter is allowed for this device
-        if param in self.allowedParams:
+        # Check if parameter specified is an expected parameter for this device
+        if param in self.expectedParams:
             
             # If not in simulation mode, resolve the getter method in the
             # underlying FemClient object and call it to retrieve the parameter
             if not self.simulateFemClient:
 
-                try:
-                    getMethod = getattr(self.femClient, '%sGet' % param)
+                # If this is an internal parameter, handle at this level and set a local attribute with the specified value
 
-                except AttributeError:
-                    rc = LpdDevice.ERROR_PARAM_NO_METHOD
-                    self.errorString = "Failed to resolve client get method for parameter %s" % param
-
+                if self.expectedParams[param].isInternal:
+                    try:               
+                        value = getattr(self, param)
+                
+                    except AttributeError:
+                        rc = LpdDevice.ERROR_PARAM_UNSET
+                        self.errorString = 'Attempt to get unset internal parameter \'%s\'' % param
+                
                 else:
-                    
-                    # Call the get method, trapping any FemClient exceptions that are generated
                     try:
-                        value =  getMethod(**kwargs)
+                        getMethod = getattr(self.femClient, '%sGet' % param)
+    
+                    except AttributeError:
+                        rc = LpdDevice.ERROR_PARAM_NO_METHOD
+                        self.errorString = "Failed to resolve client get method for parameter %s" % param
+    
+                    else:
                         
-                    except FemClientError as e:
-                        rc = LpdDevice.ERROR_PARAM_GET_FAILED
-                        self.errorString = 'Failed to get parameter %s: %s' % \
-                            (param, e.msg)
+                        # Call the get method, trapping any FemClient exceptions that are generated
+                        try:
+                            value =  getMethod(**kwargs)
+                            
+                        except FemClientError as e:
+                            rc = LpdDevice.ERROR_PARAM_GET_FAILED
+                            self.errorString = 'Failed to get parameter %s: %s' % \
+                                (param, e.msg)
                     
             else:
                 

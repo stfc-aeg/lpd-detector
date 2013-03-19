@@ -40,9 +40,9 @@ class Test(unittest.TestCase):
         
     def testUnsetParamGet(self):
         name = 'unsetParam'
-        self.lpdDevice.allowedParams[name] =  AttributeContainer(int, 'UnsetParam', 'Unset Parameter', 0, 1000, 100, AccessWrite, AssignmentOptional)
+        self.lpdDevice.expectedParams[name] =  AttributeContainer(int, 'UnsetParam', 'Unset Parameter', 0, 1000, 100, AccessWrite, AssignmentOptional, ExternalParam)
         (rc, result) = self.lpdDevice.paramGet(name)
-        del self.lpdDevice.allowedParams[name]
+        del self.lpdDevice.expectedParams[name]
         
         self.assertEqual(rc, LpdDevice.ERROR_PARAM_UNSET, 'failed to trap get of unset parameter')
         self.assertEqual(result, None, 'get of unset parameter did not return None')
@@ -50,7 +50,7 @@ class Test(unittest.TestCase):
     def testVectorParamSetAndGet(self):
         name = 'vectorParam'
         testVector = [1, 2, 3, 4, 5000]
-        self.lpdDevice.allowedParams[name] = AttributeContainer([int]*len(testVector), 'VectorParam', 'Test Vector Parameter', 0, 0xFFFFFFFF, 0x0, AccessWrite, AssignmentOptional)
+        self.lpdDevice.expectedParams[name] = AttributeContainer([int]*len(testVector), 'VectorParam', 'Test Vector Parameter', 0, 0xFFFFFFFF, 0x0, AccessWrite, AssignmentOptional, ExternalParam)
         rc = self.lpdDevice.paramSet(name, testVector)
         self.assertEqual(rc, LpdDevice.ERROR_OK, 'Vector parameter set failed: %s' % self.lpdDevice.errorStringGet())
         (rc, result) = self.lpdDevice.paramGet(name)
@@ -61,7 +61,7 @@ class Test(unittest.TestCase):
         name = 'vectorParam'
         testVector = [1, 2, 3, 4]
         vecLen = len(testVector) + 1
-        self.lpdDevice.allowedParams[name] = AttributeContainer([int]*vecLen, 'VectorParam', 'Test Vector Parameter', 0, 0xFFFFFFFF, 0x0, AccessWrite, AssignmentOptional)
+        self.lpdDevice.expectedParams[name] = AttributeContainer([int]*vecLen, 'VectorParam', 'Test Vector Parameter', 0, 0xFFFFFFFF, 0x0, AccessWrite, AssignmentOptional, ExternalParam)
         rc = self.lpdDevice.paramSet(name, testVector)
         self.assertEqual(rc, LpdDevice.ERROR_PARAM_VECTOR_LENGTH, 'Vector parameter set failed to identify length mismatch')
         
@@ -69,7 +69,7 @@ class Test(unittest.TestCase):
         name = 'minMaxDefinedTestParam'
         minVal = 0
         maxVal = 10
-        self.lpdDevice.allowedParams[name] = AttributeContainer(int, 'MinMaxDefinedTestParam', 'Min/Max Defined Parameter', minVal, maxVal, 0, AccessWrite, AssignmentOptional)
+        self.lpdDevice.expectedParams[name] = AttributeContainer(int, 'MinMaxDefinedTestParam', 'Min/Max Defined Parameter', minVal, maxVal, 0, AccessWrite, AssignmentOptional, ExternalParam)
         illegalVal = 11
         rc = self.lpdDevice.paramSet(name, illegalVal)
         self.assertEqual(rc, LpdDevice.ERROR_PARAM_ILLEGAL_VALUE, 'Failed to trap attempt to set out-of-min/max parameter value')
@@ -77,11 +77,19 @@ class Test(unittest.TestCase):
     def testRangeDefinedParamBadValue(self):
         name = 'rangeDefinedTestParam'
         allowedVals = [0, 3, 5]
-        self.lpdDevice.allowedParams[name] = AttributeContainer(int, 'rangeDefinedTestParam', 'rangeDefinedTestParameter', allowedVals, None, 0, AccessWrite, AssignmentOptional)
+        self.lpdDevice.expectedParams[name] = AttributeContainer(int, 'rangeDefinedTestParam', 'rangeDefinedTestParameter', allowedVals, None, 0, AccessWrite, AssignmentOptional, ExternalParam)
         illegalVal = 1
         rc = self.lpdDevice.paramSet(name, illegalVal)
         self.assertEqual(rc, LpdDevice.ERROR_PARAM_ILLEGAL_VALUE, 'Failed to trap attempt to set out-of-range parameter value')
-
+        
+    def testInternalParameterSetAndGet(self):
+        name = 'femPort'
+        value = 9000
+        rc = self.lpdDevice.paramSet(name, value)
+        self.assertEqual(rc, LpdDevice.ERROR_OK, 'Failed to set legal internal parameter')
+        (rc, result) = self.lpdDevice.paramGet(name)
+        self.assertEqual(rc, LpdDevice.ERROR_OK, 'Failed to get legal internal parameter')
+        self.assertEqual(result, value, 'Mismatch between set and get of legal internal parameter')
 
 
 if __name__ == "__main__":
