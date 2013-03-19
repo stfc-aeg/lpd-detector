@@ -172,6 +172,10 @@ class LpdFemClient(FemClient):
 
         ######## API variables extracted from jac's functions ########
         self.femAsicEnableMask              = [0, 0, 0, 0]
+
+        # Temp hack to decouple ASIC mask vector from API
+        self.femAsicEnabledMaskDummy        = 0
+        
         self.femAsicSlowControlParams       = ""
         self.femAsicFastCmdSequence         = ""
 
@@ -773,13 +777,13 @@ class LpdFemClient(FemClient):
         """ configure asic data rx module """
         
         # Convert femAsicEnableMask from user format into fem's format
-        self.femAsicEnableMask = self.femAsicEnableCalculate(self.femAsicEnableMask)
+        self.femAsicEnableMaskRemap = self.femAsicEnableCalculate(self.femAsicEnableMask)
 
         no_asic_cols = self.femAsicColumns - 1
         no_asic_cols_per_frm = self.femAsicColumns - 1    # force all images to be in one frame               
              
         # Setup the ASIC RX IP block
-        self.fem_asic_rx_setup(self.asic_srx_0, self.femAsicEnableMask, no_asic_cols, no_asic_cols_per_frm)
+        self.fem_asic_rx_setup(self.asic_srx_0, self.femAsicEnableMaskRemap, no_asic_cols, no_asic_cols_per_frm)
         
         # data source - self test
         if self.femAsicDataType == self.ASIC_DATA_TYPE_RX_COUNTING:            
@@ -808,8 +812,11 @@ class LpdFemClient(FemClient):
             if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SINGLE_ASIC:
                 asic_rx_start_delay = self.asicRxSingleStart
             else:
-                asic_rx_start_delay = self.asicRx2tileStart 
-            
+                if self.femAsicSlowedClock:
+                    asic_rx_start_delay = self.asicRx2tileStart - 2 
+                else:
+                    asic_rx_start_delay = self.asicRx2tileStart
+                
             if self.asicrx_capture_asic_header_TEST_ONLY:
                 asic_rx_start_delay = asic_rx_start_delay - self.asicRxHeaderBits
             elif self.femAsicSlowedClock:     # following offsets skip 1st row of pixels
@@ -1243,8 +1250,8 @@ class LpdFemClient(FemClient):
         #nr_clocks_to_readout_image  = 512 * 36 # * asic_clock_downscale_factor # 512 pixels with 3 gain values each
 
         # testing timing difference with slowed down readout
-        if self.femAsicSlowedClock: #self.run_params['asic_readout_with_slow_clock'] == 1:
-            self.asicRx2tileStart = self.asicRx2tileStart - 2
+#        if self.femAsicSlowedClock: #self.run_params['asic_readout_with_slow_clock'] == 1:
+#            self.asicRx2tileStart = self.asicRx2tileStart - 2
 
         print "=======================================================================" 
   
@@ -1819,14 +1826,17 @@ class LpdFemClient(FemClient):
         '''
             Get femAsicEnableMask
         '''
-        return self.femAsicEnableMask
+#        return self.femAsicEnableMaskDummy # Temp hack to decouple ASIC mask vector from API
+        return self.femAsicEnableMaskDummy
 
     def femAsicEnableMaskSet(self, aValue):
         '''
             Set femAsicEnableMask
         '''
-        self.femAsicEnableMask = aValue
-
+        self.femAsicEnableMaskDummy = aValue
+        # Temp hack to decouple ASIC mask vector from API
+        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000]
+        
     def femAsicColumnsGet(self):
         '''
             Get femAsicColumns
