@@ -169,7 +169,6 @@ class LpdAsicControl(object):
         if self.root.tag != 'lpd_slow_ctrl_sequence':
             raise LpdAsicControlError('Root element is not an LPD slow control command')
 
-        
 
     def getParamValue(self, dictKey):
         ''' 
@@ -272,6 +271,19 @@ class LpdAsicControl(object):
         # Return integer attrib value    
         return attrib
 
+    def setOverrideValues(self, pixelFeedbackOverride=0, pixelSelfTestOverride=0):
+        '''
+            Allow external class to set any override values
+            NOTE: Ensure to call this function before parseElement() or override values will be ignored
+        '''
+        # Update feedback_select_default if override value is non-zero
+        if pixelFeedbackOverride > 0:
+            self.setParamValue('feedback_select_default', 0, pixelFeedbackOverride)
+        
+        # Update self_test_decoder_default if override value is non-zero
+        if pixelSelfTestOverride > 0:
+            self.setParamValue('self_test_decoder_default', 0, pixelSelfTestOverride)
+    
     def doLookupTableCheck(self, dictKey, idx):
         '''
             Accepts the dictionary key 'dictKey' and associated index 'idx' and performs the dictionary lookup for the four different keys that have a dictionary lookup table.
@@ -417,7 +429,7 @@ class LpdAsicControl(object):
             print "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
         
         # Check _default keys and updated the corresponding keys unless where the associated keys have explicitly set value(s)
-        #    e.g. if daq_bias_default = 4 them all values of daq_bias will become 4 (unless set explicitly)
+        #    e.g. if daq_bias_default = 4 then all values of daq_bias will become 4 (unless set explicitly)
 
         for key in self.paramsDict:
             # Is this a XXX_default key?
@@ -1411,50 +1423,6 @@ class LpdAsicControlTest(unittest.TestCase):
             self.displaySequence(expectedSequence)
 
         self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
-#
-#
-#    def testOldCfgSettings(self):
-#        '''
-#            Test a set of specific mux_decoder key values
-#        '''
-#    
-#        thisFile = '/SlowControlDefault.xml'
-#        currentDir = os.getcwd()
-#        if currentDir.endswith("LpdFemTests"):
-#            thisFile = currentDir + thisFile
-#        else:
-#            thisFile = currentDir + "/LpdFemTests" + thisFile
-#    
-#        theParams = LpdAsicControl(thisFile, fromFile=True)
-#        encSeq = theParams.encode()
-#        
-#        
-#        # How the sequence should end up looking
-#        expectedSequence = [0x00000000] * LpdAsicControl.SEQLENGTH
-#        expectedSequence[LpdAsicControl.SEQLENGTH-1] =  0x20
-#
-#        expectedSequence[112] = 0x4B7B9EB0
-#        expectedSequence[113] = 0xBB3687A6
-#        expectedSequence[114] = 0x3EF5354F
-#        expectedSequence[115] = 0x07A3CA53
-#        expectedSequence[116] = 0xDD6B419B
-#        expectedSequence[117] = 0xF64ADED4
-#        expectedSequence[118] = 0xFBDC8DA3
-#        expectedSequence[119] = 0x0023B9EC
-#        expectedSequence[120] = 0x00000000
-#        expectedSequence[121] = 0x40E1C240
-#
-#
-#        # Toggle display debug information
-#        if False:
-#            print "\n\nEncoded Sequence: (len)", len(encSeq)
-#            self.displaySequence(encSeq)
-#
-#            print "\nExpected Sequence: (len)", len(expectedSequence)
-#            self.displaySequence(expectedSequence)
-
-#        self.assertEqual(encSeq, expectedSequence, 'testOldCfgSettings() failed !')
-
     def testNewCfgIncludingPreambleDelay(self):
         '''
             Test a set of specific mux_decoder key values
@@ -1469,7 +1437,6 @@ class LpdAsicControlTest(unittest.TestCase):
     
         theParams = LpdAsicControl(thisFile, preambleBit=6, fromFile=True)
         encSeq = theParams.encode()
-        
         
         # How the sequence should end up looking
         expectedSequence = [0x00000000] * LpdAsicControl.SEQLENGTH
@@ -1486,7 +1453,6 @@ class LpdAsicControlTest(unittest.TestCase):
         expectedSequence[120] = 0x00000400
         expectedSequence[121] = 0x40E1C240
 
-
         # Toggle display debug information
         if False:
             print "\n\nEncoded Sequence: (len)", len(encSeq)
@@ -1497,14 +1463,66 @@ class LpdAsicControlTest(unittest.TestCase):
 
         self.assertEqual(encSeq, expectedSequence, 'testNewCfgIncludingPreambleDelay() failed !')
 
+    def testExternalOverrideValues(self):
+        '''
+            Test a set of specific mux_decoder key values
+        '''
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_slow_ctrl_sequence name="TestString">
+                                <mux_decoder pixel="511" value="3"/>
+                                <mux_decoder pixel="495" value="1"/>
+                                <mux_decoder pixel="479" value="2"/>
+                                <mux_decoder pixel="463" value="5"/>
+                                <mux_decoder pixel="447" value="4"/>
+                                <mux_decoder pixel="431" value="7"/>
+                                <mux_decoder pixel="415" value="6"/>
+                                <mux_decoder pixel="319" value="6"/>
+                                <mux_decoder pixel="159" value="4"/>
+                                <mux_decoder pixel="0" value="2"/>
+                                <mux_decoder pixel="32" value="4"/>
+                                <mux_decoder pixel="64" value="1"/>
+                                <mux_decoder pixel="96" value="1"/>
+                            </lpd_slow_ctrl_sequence>
+        '''
+    
+        # Parse XML, apply external override values and encode
+        paramsObj = LpdAsicControl(stringCmdXml, preambleBit=6)
+        paramsObj.setOverrideValues(1, 4)
+        encSeq = paramsObj.encode()
+
+        # How the sequence should end up looking
+        expectedSequence = [0] * LpdAsicControl.SEQLENGTH
+
+        for idx in range(48):
+            expectedSequence[idx] = 0x0
+        expectedSequence[0] =  0x3E6A980
+        expectedSequence[1] =  0xC00
+        expectedSequence[2] =  0x100
+        expectedSequence[47] = 0x22080000
+        expectedSequence[48] = 0xCCCCCCD0
+        for idx in range(49, 112):
+            expectedSequence[idx] = 0xCCCCCCCC
+        expectedSequence[112] = 0xC
+        
+        # Toggle display debug information
+        if False:
+            print "\n\nEncoded Sequence: (len)", len(encSeq)
+            self.displaySequence(encSeq)
+
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
+
+        self.assertEqual(encSeq, expectedSequence, 'testExternalOverrideValues() failed !')
+
     def displaySequence(self, seq):
         '''
             Helper function for unit testing, displays the contents of argument 'seq' sequence 
         '''
             
         for idx in range(len(seq)):
-            if idx < 112:
-                continue
+#            if idx < 112:
+#                continue
             if (idx % 8 == 0):
                 print "\n%3i: " % idx,
             print "%9X" % seq[idx],

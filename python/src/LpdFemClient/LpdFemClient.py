@@ -180,8 +180,8 @@ class LpdFemClient(FemClient):
         self.femAsicFastCmdSequence         = ""
 
         ######## API parameters: Functionality to be developed ########
-        self.femAsicPixelFeedbackOverride   = 0  #TODO: To be implemented
-        self.femAsicPixelSelfTestOverride   = 0  #TODO: To be implemented
+        self.femAsicPixelFeedbackOverride   = 0
+        self.femAsicPixelSelfTestOverride   = 0
         self.femReadoutOperatingMode        = 0  #TODO: To be implemented
 
         ########### Constants ###########
@@ -197,19 +197,8 @@ class LpdFemClient(FemClient):
         ########## Parameters now (mostly) exposed in API ##########
 
         self.femAsicModuleType  = self.ASIC_MODULE_TYPE_SUPERMODULE  # (0) Supermodule
-        # self.ASIC_MODULE_TYPE_SINGLE_ASIC                          # (1) Single ASIC test module
-        # self.ASIC_MODULE_TYPE_TWO_TILE                             # (2) 2-Tile module
-        # self.ASIC_MODULE_TYPE_STANDALONE                           # (3) FEM Standalone 
-
         self.femDataSource      = self.RUN_TYPE_ASIC_DATA_VIA_PPC    # (0) ASIC data (via PPC) [Standard Operation]
-        # self.RUN_TYPE_ASIC_DATA_DIRECT                             # (1) ASIC data direct from Rx block
-        # self.RUN_TYPE_LL_DATA_GEN                                  # (2) LL Data Gen  (simulated data)
-        # self.RUN_TYPE_PPC_DATA_DIRECT                              # (3) preprogrammed data DDR2 (simulated data)
-
-#====== params for run type = self.RUN_TYPE_ASIC_DATA_VIA_PPC or self.RUN_TYPE_ASIC_DATA_DIRECT
         self.femAsicDataType    = self.ASIC_DATA_TYPE_ASIC_SENSOR    # (0) Asic sensor data [Standard Operation Real Data]
-        # self.ASIC_DATA_TYPE_RX_COUNTING                            # (1) Asic Rx Block internally generated counting data (simulated data)
-        # self.ASIC_DATA_TYPE_PSEUDO_RANDOM                          # (2) Asic Pseudo random data (test data from asic)
         
         self.femAsicLocalClock                      = 0         # 0 = no scaling (100 MHz), 1 = scaled down clock  [10 MHz (set by dcm params)]
         #TODO: False not implemented!
@@ -740,6 +729,8 @@ class LpdFemClient(FemClient):
         try:
             #TODO: Temporary hack, filename passed from API (not XML string)
             LpdAsicControlParams = LpdAsicControl( self.femAsicSlowControlParams, preambleBit=6, fromFile=True) #False)
+            # Pass (any) override values onto ASIC control
+            LpdAsicControlParams.setOverrideValues(self.femAsicPixelFeedbackOverride, self.femAsicPixelSelfTestOverride)
             encodedString = LpdAsicControlParams.encode()
         except Exception as e:
             raise e
@@ -2241,7 +2232,7 @@ class LpdFemClient(FemClient):
             Read two bytes from 'channel' in ad7998 at address 'device'
         '''
         # Construct i2c address and ADC channel to be read
-        addr = self.femI2cBus + device
+        addr = self.femI2cBus | device
         adcChannel = 0x80 + ((channel & 7) << 4)
         # Write operation, select ADC channel
         self.i2cWrite(addr, adcChannel)
@@ -2255,7 +2246,7 @@ class LpdFemClient(FemClient):
         ''' 
             Read 2 bytes from ad5321 device 
         '''
-        addr = self.femI2cBus + 0x0C
+        addr = self.femI2cBus | 0x0C
         response = self.i2cRead(addr, 2)
         high = (response[0] & 15) << 8
         low = response[1]
@@ -2268,17 +2259,17 @@ class LpdFemClient(FemClient):
         # Need to change self.femI2cBus if this is supermodule
         if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SUPERMODULE:
             # LHS - supermodule only power card
-            self.femI2cBus = 768
+            self.femI2cBus = (3 << 8) # 768
             # Construct address and payload (as a tuple)
-            addr = self.femI2cBus + 0x0C
+            addr = self.femI2cBus | 0x0C
             payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
             # Write new ADC value to device
             self.i2cWrite(addr, payload)
             
         # RHS - power card always present
-        self.femI2cBus = 512
+        self.femI2cBus = (1 << 9) # 512
         # Construct address and payload (as a tuple)
-        addr = self.femI2cBus + 0x0C
+        addr = self.femI2cBus | 0x0C
         payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
         # Write new ADC value to device
         self.i2cWrite(addr, payload)
@@ -2290,7 +2281,7 @@ class LpdFemClient(FemClient):
                       5 = 8, 6 = 16, 7 = 32 8 = 64
             Therefore, bitId must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
         '''
-        addr = self.femI2cBus + 0x38 
+        addr = self.femI2cBus | 0x38 
         response = self.i2cRead(addr, 1)
         value = response[0]
         return (value & (1 << bitId)) != 0
@@ -2308,7 +2299,7 @@ class LpdFemClient(FemClient):
                 Beware      bit 0 = 1, bit 1 = 2, bit 2 = 4, etc !!
                 therefore   131 = 128 + 2 + 1 (bits: 7, 1, 0)
         '''
-        addr = self.femI2cBus + 0x38
+        addr = self.femI2cBus | 0x38
         response = self.i2cRead(addr, 1)
         return response[0]
 
@@ -2319,8 +2310,8 @@ class LpdFemClient(FemClient):
         # Need to change self.femI2cBus if this is supermodule
         if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SUPERMODULE:
             # LHS - supermodule only power card
-            self.femI2cBus = 768
-            addr = self.femI2cBus + 0x38
+            self.femI2cBus = (3 << 8) # 768
+            addr = self.femI2cBus | 0x38
             # Read PCF7485's current value
             bit_register = self.pcf7485ReadAllBits()
             # Change bit 'bitId' to 'value'
@@ -2328,8 +2319,8 @@ class LpdFemClient(FemClient):
             self.i2cWrite(addr, bit_register)
             
         # RHS - power card always present
-        self.femI2cBus = 512
-        addr = self.femI2cBus + 0x38
+        self.femI2cBus = (1 << 9) # 512
+        addr = self.femI2cBus | 0x38
         # Read PCF7485's current value
         bit_register = self.pcf7485ReadAllBits()
         # Change bit 'bitId' to 'value'
