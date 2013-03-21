@@ -28,11 +28,13 @@ Created 16 October 2012
 
 # Import Python standard modules
 # log required when calculating temperature
-from math import log, ceil
+from math import log#, ceil
 import pprint, time, sys
+from functools import partial
 
 from FemClient.FemClient import *
 from FemApi.FemTransaction import FemTransaction
+from LpdPowerCard import *
 
 # Import library for parsing XML fast command files
 from LpdAsicCommandSequence import LpdAsicCommandSequence
@@ -43,67 +45,67 @@ class LpdFemClient(FemClient):
     '''
         Handles all the low-level fem interactions
     '''
+#
+#    # ADC channel numbers
+#    HV_VOLTS_CHAN   =  0
+#    V5_VOLTS_CHAN   =  1
+#    V12_VOLTS_CHAN  =  2
+#    HV_AMPS_CHAN    =  3
+#    V5_AMPS_CHAN    =  4
+#    V12_AMPS_CHAN   =  5
+#    PSU_TEMP_CHAN   =  6
+#    V25A_VOLTS_CHAN =  8
+#    V25B_VOLTS_CHAN =  9
+#    V25C_VOLTS_CHAN = 10
+#    V25D_VOLTS_CHAN = 11
+#    V25E_VOLTS_CHAN = 12
+#    V25F_VOLTS_CHAN = 13
+#    V25G_VOLTS_CHAN = 14
+#    V25H_VOLTS_CHAN = 15
+#    V25A_AMPS_CHAN  = 16
+#    V25B_AMPS_CHAN  = 17
+#    V25C_AMPS_CHAN  = 18
+#    V25D_AMPS_CHAN  = 19
+#    V25E_AMPS_CHAN  = 20
+#    V25F_AMPS_CHAN  = 21
+#    V25G_AMPS_CHAN  = 22
+#    V25H_AMPS_CHAN  = 23
+#    SENSA_TEMP_CHAN = 24
+#    SENSB_TEMP_CHAN = 25
+#    SENSC_TEMP_CHAN = 26
+#    SENSD_TEMP_CHAN = 27
+#    SENSE_TEMP_CHAN = 28
+#    SENSF_TEMP_CHAN = 29
+#    SENSG_TEMP_CHAN = 30
+#    SENSH_TEMP_CHAN = 31
+    
+#    # Bit numbers for control bits
+#    HV_CTRL_BIT     =  0
+#    LV_CTRL_BIT     =  1
+#
+#    # Values for control bits
+#    OFF             =  1
+#    ON              =  0
 
-    # ADC channel numbers
-    HV_VOLTS_CHAN   =  0
-    V5_VOLTS_CHAN   =  1
-    V12_VOLTS_CHAN  =  2
-    HV_AMPS_CHAN    =  3
-    V5_AMPS_CHAN    =  4
-    V12_AMPS_CHAN   =  5
-    PSU_TEMP_CHAN   =  6
-    V25A_VOLTS_CHAN =  8
-    V25B_VOLTS_CHAN =  9
-    V25C_VOLTS_CHAN = 10
-    V25D_VOLTS_CHAN = 11
-    V25E_VOLTS_CHAN = 12
-    V25F_VOLTS_CHAN = 13
-    V25G_VOLTS_CHAN = 14
-    V25H_VOLTS_CHAN = 15
-    V25A_AMPS_CHAN  = 16
-    V25B_AMPS_CHAN  = 17
-    V25C_AMPS_CHAN  = 18
-    V25D_AMPS_CHAN  = 19
-    V25E_AMPS_CHAN  = 20
-    V25F_AMPS_CHAN  = 21
-    V25G_AMPS_CHAN  = 22
-    V25H_AMPS_CHAN  = 23
-    SENSA_TEMP_CHAN = 24
-    SENSB_TEMP_CHAN = 25
-    SENSC_TEMP_CHAN = 26
-    SENSD_TEMP_CHAN = 27
-    SENSE_TEMP_CHAN = 28
-    SENSF_TEMP_CHAN = 29
-    SENSG_TEMP_CHAN = 30
-    SENSH_TEMP_CHAN = 31
+#    # Bit numbers for status bits
+#    FEM_STATUS_BIT  =  2
+#    EXT_TRIP_BIT    =  3
+#    FAULT_FLAG_BIT  =  4
+#    OVERCURRENT_BIT =  5
+#    HIGH_TEMP_BIT   =  6
+#    LOW_TEMP_BIT    =  7
     
-    # Bit numbers for control bits
-    HV_CTRL_BIT     =  0
-    LV_CTRL_BIT     =  1
-
-    # Values for control bits
-    OFF             =  1
-    ON              =  0
-
-    # Bit numbers for status bits
-    FEM_STATUS_BIT  =  2
-    EXT_TRIP_BIT    =  3
-    FAULT_FLAG_BIT  =  4
-    OVERCURRENT_BIT =  5
-    HIGH_TEMP_BIT   =  6
-    LOW_TEMP_BIT    =  7
-    
-    # Values for status bits
-    TRIPPED         =  1
-    FAULT           =  1
-    NORMAL          =  0
-    
-    # Enumerate fault flag as either cleared (0) or tripped (1) 
-    flag_message    = ["No", "Yes"]
-    
-    # i2c device addresses
-    AD7998ADDRESS   = [0x22, 0x21, 0x24, 0x23]
-    
+#    # Values for status bits
+#    TRIPPED         =  1
+#    FAULT           =  1
+#    NORMAL          =  0
+#    
+#    # Enumerate fault flag as either cleared (0) or tripped (1) 
+#    flag_message    = ["No", "Yes"]
+#    
+#    # i2c device addresses
+#    AD7998ADDRESS   = [0x22, 0x21, 0x24, 0x23]
+#    
     # Beta is utilised as an argument for calling the calculateTemperature() 
     #    but it's effectively fixed by the hardware design
     Beta            = 3474
@@ -159,14 +161,27 @@ class LpdFemClient(FemClient):
     ASIC_DATA_TYPE_RX_COUNTING      = 1     # Asic Rx Block internally generated counting data (simulated data)
     ASIC_DATA_TYPE_PSEUDO_RANDOM    = 2     # Asic Pseudo random data (test data from asic)
     
-    def __init__(self, hostAddr=None, timeout=None):
+    def __init__(self, hostAddr=None, timeout=None, numberPowerCards=1):
         '''
             Constructor for LpdFemClient class
         '''
 
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
-
+        
+        self.powerCards = []
+        for id in range(numberPowerCards):
+            self.powerCards.append(LpdPowerCard(self, id))
+            
+        for param in self.powerCards[0].paramList:
+            setMethodName = param + 'Set'
+            getMethodName = param + 'Get'
+#            print "Exposing API functions for parameter", param
+            setattr(self, setMethodName, 
+                    partial(self._paramSet, method=setMethodName))
+            setattr(self, getMethodName, 
+                    partial(self._paramGet, method=getMethodName))
+        
         # Fem has three internal i2c buses
         self.femI2cBus = 0x300                          # 0x200 = RHS Power Card,  0x300 = LHS Power Card
 
@@ -271,6 +286,28 @@ class LpdFemClient(FemClient):
                        'delay'       : 0,                       # delay offset wrt previous link in secs
                        'nic_list'    : [ '61649x@x192.168.3.1' ]
                       }
+
+    def _paramSet(self, value, method):
+#        print 'In _paramSet dispatcher for method', method, 'with value', value
+        
+        #TODO: error check idx against number of power cards
+        
+        #TODO: trap attribute error at this point
+        
+        for idx in range(len(self.powerCards)):
+            self.femI2cBus = self.powerCards[idx].femI2cBus
+            getattr(self.powerCards[idx], method)(value) #[idx])
+
+    def _paramGet(self, method):
+#        print 'In _paramGet dispatcher for method', method
+        
+        value = []
+        for idx in range(len(self.powerCards)):
+#            print "femI2cBus, before: ", self.femI2cBus, " after: ", self.powerCards[idx].femI2cBus
+            self.femI2cBus = self.powerCards[idx].femI2cBus
+            value.append( getattr(self.powerCards[idx], method)() )
+        return value
+        
     '''
         --------------------------------------------------------
         Support functions taken from John's version of LpdFemClient.py:
@@ -1324,279 +1361,278 @@ class LpdFemClient(FemClient):
         self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
 
 
-    def sensorATempGet(self):
-        '''
-            Get temperature from sensor A
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSA_TEMP_CHAN)
-
-    def sensorBTempGet(self):
-        '''
-            Get temperature from sensor B
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSB_TEMP_CHAN)
+#    def sensorATempGet(self):
+#        '''
+#            Get temperature from sensor A
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSA_TEMP_CHAN)
+#
+#    def sensorBTempGet(self):
+#        '''
+#            Get temperature from sensor B
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSB_TEMP_CHAN)
+#    
+#    def sensorCTempGet(self):
+#        '''
+#            Get temperature from Sensor C
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSC_TEMP_CHAN)
+#    
+#    def sensorDTempGet(self):
+#        '''
+#            Get temperature from Sensor D
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSD_TEMP_CHAN)
+#    
+#    
+#    def sensorETempGet(self):
+#        '''
+#            Get temperature from Sensor E
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSE_TEMP_CHAN)
+#
+#    
+#    def sensorFTempGet(self):
+#        '''
+#            Get temperature from Sensor F
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSF_TEMP_CHAN)
+#
+#    
+#    def sensorGTempGet(self):
+#        '''
+#            Get temperature from Sensor G
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSG_TEMP_CHAN)
+#
+#    def sensorHTempGet(self):
+#        '''
+#            Get temperature from Sensor H
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSH_TEMP_CHAN)
+#
+#    def powerCardTempGet(self):
+#        '''
+#            Get temperature from power card
+#        '''
+#        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.PSU_TEMP_CHAN)
+#
+#    def asicPowerEnableGet(self):
+#        '''
+#            Get the status of 'ASIC LV Power Enable'
+#        
+#            Returns True if OFF; False if ON
+#        '''
+#        return self.pcf7485ReadOneBit(LpdFemClient.LV_CTRL_BIT)
+#    
+#    def asicPowerEnableSet(self, aEnable):
+#        '''
+#            Set 'ASIC LV Power Enable' (0/1 = on/off)
+#        '''
+#        value = 1 - int(aEnable)
+#        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, value)
+#    def sensorBiasEnableGet(self):
+#        '''
+#            Get the status of 'Sensor HV Bias Enable'
+#        
+#            Returns True if OFF; False if ON
+#        '''
+#        return self.pcf7485ReadOneBit(LpdFemClient.HV_CTRL_BIT)
+#    
+#    def sensorBiasEnableSet(self, aEnable):
+#        '''
+#            Set 'Sensor LV Bias Enable' (0/1 = on/off)
+#        '''
+#        value = 1 - int(aEnable)
+#        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, value)
+#        
+#    def powerCardFemStatusGet(self):
+#        '''
+#            Get power card Fem status
+#        '''
+#        value = self.pcf7485ReadAllBits()
+#        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.FEM_STATUS_BIT)) != 0]
+#    
+#    def powerCardExtStatusGet(self):
+#        '''
+#            Get power card External status
+#        '''
+#        value = self.pcf7485ReadAllBits()
+#        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.EXT_TRIP_BIT)) != 0]
+#    
+#    def powerCardFaultGet(self):
+#        '''
+#            Get power card Fault status
+#        '''
+#        value = self.pcf7485ReadAllBits()
+#        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.FAULT_FLAG_BIT)) != 0]
+#    
+#    def powerCardOverCurrentGet(self):
+#        '''
+#            Get power card Over Current status
+#        '''
+#        value = self.pcf7485ReadAllBits()
+#        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.OVERCURRENT_BIT)) != 0]
+#    
+#    def powerCardOverTempGet(self):
+#        '''
+#            Get power card Over Temp status
+#        '''
+#        value = self.pcf7485ReadAllBits()
+#        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.HIGH_TEMP_BIT)) != 0]
+#    
+#    def powerCardUnderTempGet(self):
+#        '''
+#            Get power card Under Temp status
+#        '''
+#        value = self.pcf7485ReadAllBits()
+#        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.LOW_TEMP_BIT)) != 0]
+#    
+#    def sensorBiasGet(self):
+#        '''
+#            Get Sensor HV Bias Voltage [V]
+#        '''
+#        return self.sensorBiasLevelRead()
+#    
+#    def sensorBiasSet(self, aValue):
+#        '''
+#            Set Sensor HV Bias Voltage [V]
+#        '''
+#        self.ad55321Write( int( ceil( aValue/0.122) ) )
     
-    def sensorCTempGet(self):
-        '''
-            Get temperature from Sensor C
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSC_TEMP_CHAN)
-    
-    def sensorDTempGet(self):
-        '''
-            Get temperature from Sensor D
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSD_TEMP_CHAN)
-    
-    
-    def sensorETempGet(self):
-        '''
-            Get temperature from Sensor E
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSE_TEMP_CHAN)
-
-    
-    def sensorFTempGet(self):
-        '''
-            Get temperature from Sensor F
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSF_TEMP_CHAN)
-
-    
-    def sensorGTempGet(self):
-        '''
-            Get temperature from Sensor G
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSG_TEMP_CHAN)
-
-    def sensorHTempGet(self):
-        '''
-            Get temperature from Sensor H
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[3], LpdFemClient.SENSH_TEMP_CHAN)
-
-    def powerCardTempGet(self):
-        '''
-            Get temperature from power card
-        '''
-        return self.sensorTemperatureRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.PSU_TEMP_CHAN)
-
-    def asicPowerEnableGet(self):
-        '''
-            Get the status of 'ASIC LV Power Enable'
-        
-            Returns True if OFF; False if ON
-        '''
-        return self.pcf7485ReadOneBit(LpdFemClient.LV_CTRL_BIT)
-    
-    def asicPowerEnableSet(self, aEnable):
-        '''
-            Set 'ASIC LV Power Enable' (0/1 = on/off)
-        '''
-        value = 1 - int(aEnable)
-        self.pcf7485WriteOneBit(LpdFemClient.LV_CTRL_BIT, value)
-
-    def sensorBiasEnableGet(self):
-        '''
-            Get the status of 'Sensor HV Bias Enable'
-        
-            Returns True if OFF; False if ON
-        '''
-        return self.pcf7485ReadOneBit(LpdFemClient.HV_CTRL_BIT)
-    
-    def sensorBiasEnableSet(self, aEnable):
-        '''
-            Set 'Sensor LV Bias Enable' (0/1 = on/off)
-        '''
-        value = 1 - int(aEnable)
-        self.pcf7485WriteOneBit(LpdFemClient.HV_CTRL_BIT, value)
-        
-    def powerCardFemStatusGet(self):
-        '''
-            Get power card Fem status
-        '''
-        value = self.pcf7485ReadAllBits()
-        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.FEM_STATUS_BIT)) != 0]
-    
-    def powerCardExtStatusGet(self):
-        '''
-            Get power card External status
-        '''
-        value = self.pcf7485ReadAllBits()
-        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.EXT_TRIP_BIT)) != 0]
-    
-    def powerCardFaultGet(self):
-        '''
-            Get power card Fault status
-        '''
-        value = self.pcf7485ReadAllBits()
-        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.FAULT_FLAG_BIT)) != 0]
-    
-    def powerCardOverCurrentGet(self):
-        '''
-            Get power card Over Current status
-        '''
-        value = self.pcf7485ReadAllBits()
-        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.OVERCURRENT_BIT)) != 0]
-    
-    def powerCardOverTempGet(self):
-        '''
-            Get power card Over Temp status
-        '''
-        value = self.pcf7485ReadAllBits()
-        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.HIGH_TEMP_BIT)) != 0]
-    
-    def powerCardUnderTempGet(self):
-        '''
-            Get power card Under Temp status
-        '''
-        value = self.pcf7485ReadAllBits()
-        return LpdFemClient.flag_message[ (value & (1 << LpdFemClient.LOW_TEMP_BIT)) != 0]
-    
-    def sensorBiasGet(self):
-        '''
-            Get Sensor HV Bias Voltage [V]
-        '''
-        return self.sensorBiasLevelRead()
-    
-    def sensorBiasSet(self, aValue):
-        '''
-            Set Sensor HV Bias Voltage [V]
-        '''
-        self.ad55321Write( int( ceil( aValue/0.122) ) )
-    
-    def femVoltageGet(self):
-        '''
-            Get Fem 5V Supply Voltage [V]
-        '''
-        return self.sensorSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V5_VOLTS_CHAN)
-        
-    def femCurrentGet(self):
-        '''
-            Get Fem 5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead( LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V5_AMPS_CHAN)
-
-    def digitalVoltageGet(self):
-        '''
-            Get ASIC 1.2 Digital Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V12_VOLTS_CHAN)
-
-    def digitalCurrentGet(self):
-        '''
-            Get ASIC 1.2V Digital Supply Current [myA]
-        '''
-        return self.sensorSevenHundredMilliAmpsScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V12_AMPS_CHAN)
-
-    def sensorAVoltageGet(self):
-        '''
-            Get Sensor A 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25A_VOLTS_CHAN)
-
-    def sensorACurrentGet(self):
-        '''
-            Get Sensor A 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25A_AMPS_CHAN)
-
-    def sensorBVoltageGet(self):
-        '''
-            Get Sensor B 2.5V Supply Voltage [V] 
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25B_VOLTS_CHAN)
-
-    def sensorBCurrentGet(self):
-        '''
-            Get Sensor B 2.5V Supply Current [A]',
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25B_AMPS_CHAN)
-
-    def sensorCVoltageGet(self):
-        '''
-            Get Sensor C 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25C_VOLTS_CHAN)
-
-    def sensorCCurrentGet(self):
-        '''
-            Get Sensor C 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25C_AMPS_CHAN)
-
-    def sensorDVoltageGet(self):
-        '''
-            Get Sensor D 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25D_VOLTS_CHAN)
-
-    def sensorDCurrentGet(self):
-        '''
-            Get Sensor D 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25D_AMPS_CHAN)
-
-    def sensorEVoltageGet(self):
-        '''
-            Get Sensor E 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25E_VOLTS_CHAN)
-
-    def sensorECurrentGet(self):
-        '''
-            Get Sensor E 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25E_AMPS_CHAN)
-
-    def sensorFVoltageGet(self):
-        '''
-            Get Sensor F 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25F_VOLTS_CHAN)
-
-    def sensorFCurrentGet(self):
-        '''
-            Get Sensor F 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25F_AMPS_CHAN)
-
-    def sensorGVoltageGet(self):
-        '''
-            Get Sensor G 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25G_VOLTS_CHAN)
-
-    def sensorGCurrentGet(self):
-        '''
-            Get Sensor G 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25G_AMPS_CHAN)
-
-    def sensorHVoltageGet(self):
-        '''
-            Get Sensor H 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25H_VOLTS_CHAN)
-
-    def sensorHCurrentGet(self):
-        '''
-            Get Sensor H 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25H_AMPS_CHAN)
-    
-    def sensorBiasVoltageGet(self):
-        '''
-            Get Sensor bias voltage readback [V]
-        '''
-        return self.sensorSixHundredMilliAmpsScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.HV_VOLTS_CHAN)
-    
-    def sensorBiasCurrentGet(self): 
-        '''
-            Get Sensor bias current readback [uA]
-        '''
-        return self.sensorSixHundredMilliAmpsScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.HV_AMPS_CHAN)
-    
+#    def femVoltageGet(self):
+#        '''
+#            Get Fem 5V Supply Voltage [V]
+#        '''
+#        return self.sensorSixVoltScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V5_VOLTS_CHAN)
+#        
+#    def femCurrentGet(self):
+#        '''
+#            Get Fem 5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead( LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V5_AMPS_CHAN)
+#
+#    def digitalVoltageGet(self):
+#        '''
+#            Get ASIC 1.2 Digital Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V12_VOLTS_CHAN)
+#
+#    def digitalCurrentGet(self):
+#        '''
+#            Get ASIC 1.2V Digital Supply Current [myA]
+#        '''
+#        return self.sensorSevenHundredMilliAmpsScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.V12_AMPS_CHAN)
+#
+#    def sensorAVoltageGet(self):
+#        '''
+#            Get Sensor A 2.5V Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25A_VOLTS_CHAN)
+#
+#    def sensorACurrentGet(self):
+#        '''
+#            Get Sensor A 2.5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25A_AMPS_CHAN)
+#
+#    def sensorBVoltageGet(self):
+#        '''
+#            Get Sensor B 2.5V Supply Voltage [V] 
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25B_VOLTS_CHAN)
+#
+#    def sensorBCurrentGet(self):
+#        '''
+#            Get Sensor B 2.5V Supply Current [A]',
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25B_AMPS_CHAN)
+#
+#    def sensorCVoltageGet(self):
+#        '''
+#            Get Sensor C 2.5V Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25C_VOLTS_CHAN)
+#
+#    def sensorCCurrentGet(self):
+#        '''
+#            Get Sensor C 2.5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25C_AMPS_CHAN)
+#
+#    def sensorDVoltageGet(self):
+#        '''
+#            Get Sensor D 2.5V Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25D_VOLTS_CHAN)
+#
+#    def sensorDCurrentGet(self):
+#        '''
+#            Get Sensor D 2.5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25D_AMPS_CHAN)
+#
+#    def sensorEVoltageGet(self):
+#        '''
+#            Get Sensor E 2.5V Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25E_VOLTS_CHAN)
+#
+#    def sensorECurrentGet(self):
+#        '''
+#            Get Sensor E 2.5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25E_AMPS_CHAN)
+#
+#    def sensorFVoltageGet(self):
+#        '''
+#            Get Sensor F 2.5V Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25F_VOLTS_CHAN)
+#
+#    def sensorFCurrentGet(self):
+#        '''
+#            Get Sensor F 2.5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25F_AMPS_CHAN)
+#
+#    def sensorGVoltageGet(self):
+#        '''
+#            Get Sensor G 2.5V Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25G_VOLTS_CHAN)
+#
+#    def sensorGCurrentGet(self):
+#        '''
+#            Get Sensor G 2.5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25G_AMPS_CHAN)
+#
+#    def sensorHVoltageGet(self):
+#        '''
+#            Get Sensor H 2.5V Supply Voltage [V]
+#        '''
+#        return self.sensorThreeVoltScaleRead(LpdFemClient.AD7998ADDRESS[1], LpdFemClient.V25H_VOLTS_CHAN)
+#
+#    def sensorHCurrentGet(self):
+#        '''
+#            Get Sensor H 2.5V Supply Current [A]
+#        '''
+#        return self.sensorAmpereRead(LpdFemClient.AD7998ADDRESS[2], LpdFemClient.V25H_AMPS_CHAN)
+#    
+#    def sensorBiasVoltageGet(self):
+#        '''
+#            Get Sensor bias voltage readback [V]
+#        '''
+#        return self.sensorSixHundredMilliAmpsScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.HV_VOLTS_CHAN)
+#    
+#    def sensorBiasCurrentGet(self): 
+#        '''
+#            Get Sensor bias current readback [uA]
+#        '''
+#        return self.sensorSixHundredMilliAmpsScaleRead(LpdFemClient.AD7998ADDRESS[0], LpdFemClient.HV_AMPS_CHAN)
+#    
     def tenGig0SourceMacGet(self):
         '''
             Get tenGig0SourceMac
