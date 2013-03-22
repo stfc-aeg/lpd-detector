@@ -11,8 +11,8 @@ def LpdPowerStatus(femI2cBus):
     
     theDevice = LpdDevice()
     
-    rc = theDevice.open('192.168.2.2', 6969)
-
+    rc = theDevice.open('192.168.2.2', 6969, asicModuleType=2)  # 0=supermodule, 1=fem, 2=2 tile
+    
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return
@@ -47,7 +47,9 @@ def LpdPowerStatus(femI2cBus):
             print "off."
         else:
             print "on."
-        
+
+#    print bLowVoltageOff
+#    return
     print "    High voltage = ",
     (rc, bHighVoltageOff) = theDevice.paramGet('sensorBiasEnable')
     if rc != LpdDevice.ERROR_OK:

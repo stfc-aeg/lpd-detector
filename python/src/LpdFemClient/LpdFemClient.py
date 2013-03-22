@@ -161,7 +161,7 @@ class LpdFemClient(FemClient):
     ASIC_DATA_TYPE_RX_COUNTING      = 1     # Asic Rx Block internally generated counting data (simulated data)
     ASIC_DATA_TYPE_PSEUDO_RANDOM    = 2     # Asic Pseudo random data (test data from asic)
     
-    def __init__(self, hostAddr=None, timeout=None, numberPowerCards=1):
+    def __init__(self, hostAddr=None, timeout=None, asicModuleType=0):
         '''
             Constructor for LpdFemClient class
         '''
@@ -169,9 +169,15 @@ class LpdFemClient(FemClient):
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
         
+        # Supermodule has to power cards, everyone else only one
+        if asicModuleType == 0:
+            numberPowerCards= 2
+        else:
+            numberPowerCards= 1
+            
         self.powerCards = []
-        for id in range(numberPowerCards):
-            self.powerCards.append(LpdPowerCard(self, id))
+        for powerCardIdent in range(numberPowerCards):
+            self.powerCards.append(LpdPowerCard(self, powerCardIdent))
             
         for param in self.powerCards[0].paramList:
             setMethodName = param + 'Set'
@@ -295,18 +301,19 @@ class LpdFemClient(FemClient):
         #TODO: trap attribute error at this point
         
         for idx in range(len(self.powerCards)):
-            self.femI2cBus = self.powerCards[idx].femI2cBus
+#            self.femI2cBus = self.powerCards[idx].femI2cBus
             getattr(self.powerCards[idx], method)(value) #[idx])
 
     def _paramGet(self, method):
 #        print 'In _paramGet dispatcher for method', method
         
-        value = []
-        for idx in range(len(self.powerCards)):
+#        value = []
+#        for idx in range(len(self.powerCards)):
 #            print "femI2cBus, before: ", self.femI2cBus, " after: ", self.powerCards[idx].femI2cBus
-            self.femI2cBus = self.powerCards[idx].femI2cBus
-            value.append( getattr(self.powerCards[idx], method)() )
-        return value
+#            self.femI2cBus = self.powerCards[idx].femI2cBus
+#            value.append( getattr(self.powerCards[idx], method)() )
+
+        return getattr(self.powerCards, method)()
         
     '''
         --------------------------------------------------------
@@ -2193,181 +2200,160 @@ class LpdFemClient(FemClient):
         self.tenGig0['num_frames'] = aValue
 
     """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
-
-    def sensorBiasLevelRead(self):
-        '''
-            Helper function: Reads high voltage bias level and converts
-                from ADC counts into voltage
-        '''
-        value = self.ad5321Read()
-        return round( float( value * 500 / 4095.0), 2)
-    
-    def sensorAmpereRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in  address 'device',
-                and converts adc counts into 10 amp scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 10.0
-        tempVal = (adcVal * scale / 4095.0)
-        return tempVal
-
-    def sensorSixVoltScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in address 'address',
-                and converts adc counts into 6 V scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 6.0
-        return (adcVal * scale / 4095.0)
-
-    def sensorThreeVoltScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in address 'address',
-                and converts adc counts into 3 V scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 3.0
-        return (adcVal * scale / 4095.0)
-
-    def sensorSevenHundredMilliAmpsScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor  voltage at 'channel' in address 'address',
-                and converts adc counts into 700 milliamp scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 700.0
-        return (adcVal * scale / 4095.0)
-
-    def sensorSixHundredMilliAmpsScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in address 'address',
-                and converts adc counts into 600 milliamp scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 600.0
-        return (adcVal * scale / 4095.0)
-
-    def sensorTemperatureRead(self, device, channel):
-        '''
-            Helper function: Reads sensor temperature at 'channel' in  address 'device',
-                and converts adc counts into six volts scale.
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 3.0
-        voltage = (adcVal * scale / 4095.0)
-        # Calculate resistance from voltage
-        resistance = self.calculateResistance(voltage)
-        # Calculate temperature from resistance
-        temperature = self.calculateTemperature(LpdFemClient.Beta, resistance)
-        # Round temperature to 2 decimal points
-        return round(temperature, 2)
-
-    def ad7998Read(self, device, channel):
-        '''
-            Read two bytes from 'channel' in ad7998 at address 'device'
-        '''
-        # Construct i2c address and ADC channel to be read
-        addr = self.femI2cBus | device
-        adcChannel = 0x80 + ((channel & 7) << 4)
-        # Write operation, select ADC channel
-        self.i2cWrite(addr, adcChannel)
-        # Read operation, read ADC value
-        response = self.i2cRead(addr, 2)
-        # Extract the received two bytes and return one integer
-        value = (int((response[0] & 15) << 8) + int(response[1]))
-        return value
-
-    def ad5321Read(self):
-        ''' 
-            Read 2 bytes from ad5321 device 
-        '''
-        addr = self.femI2cBus | 0x0C
-        response = self.i2cRead(addr, 2)
-        high = (response[0] & 15) << 8
-        low = response[1]
-        return high + low
-
-    def ad55321Write(self, aValue):
-        '''
-            Write 'aValue' (2 bytes) to ad5321 device
-        '''
-        # Need to change self.femI2cBus if this is supermodule
-        if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SUPERMODULE:
-            # LHS - supermodule only power card
-            self.femI2cBus = (3 << 8) # 768
-            # Construct address and payload (as a tuple)
-            addr = self.femI2cBus | 0x0C
-            payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
-            # Write new ADC value to device
-            self.i2cWrite(addr, payload)
-            
-        # RHS - power card always present
-        self.femI2cBus = (1 << 9) # 512
-        # Construct address and payload (as a tuple)
-        addr = self.femI2cBus | 0x0C
-        payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
-        # Write new ADC value to device
-        self.i2cWrite(addr, payload)
-
-    def pcf7485ReadOneBit(self, bitId):
-        ''' 
-            Read one byte from PCF7485 device and determine if set.
-            Note: bit 1 = 0, 2 = 1,  3 = 2, 4 = 4, 
-                      5 = 8, 6 = 16, 7 = 32 8 = 64
-            Therefore, bitId must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
-        '''
-        addr = self.femI2cBus | 0x38 
-        response = self.i2cRead(addr, 1)
-        value = response[0]
-        return (value & (1 << bitId)) != 0
-        
-    def pcf7485ReadAllBits(self):
-        ''' 
-            Read and return one byte from PCF7485 device
-            
-            If a bit is set, that represents: 
-                bit 0-1:    Disabled (HV, LV)
-                bit 2-7:    A fault  (Fem Status, Ext trip, fault, etc)
-                e.g.    
-                    131:    Hv (1) & Lv (2) disabled, low temperature (128) alert
-
-                Beware      bit 0 = 1, bit 1 = 2, bit 2 = 4, etc !!
-                therefore   131 = 128 + 2 + 1 (bits: 7, 1, 0)
-        '''
-        addr = self.femI2cBus | 0x38
-        response = self.i2cRead(addr, 1)
-        return response[0]
-
-    def pcf7485WriteOneBit(self, bitId, value):
-        ''' 
-            Change bit 'bitId' to 'value' in PCF7485 device
-        '''        
-        # Need to change self.femI2cBus if this is supermodule
-        if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SUPERMODULE:
-            # LHS - supermodule only power card
-            self.femI2cBus = (3 << 8) # 768
-            addr = self.femI2cBus | 0x38
-            # Read PCF7485's current value
-            bit_register = self.pcf7485ReadAllBits()
-            # Change bit 'bitId' to 'value'
-            bit_register = (bit_register & ~(1 << bitId)) | (value << bitId) | 0xFC
-            self.i2cWrite(addr, bit_register)
-            
-        # RHS - power card always present
-        self.femI2cBus = (1 << 9) # 512
-        addr = self.femI2cBus | 0x38
-        # Read PCF7485's current value
-        bit_register = self.pcf7485ReadAllBits()
-        # Change bit 'bitId' to 'value'
-        bit_register = (bit_register & ~(1 << bitId)) | (value << bitId) | 0xFC
-        self.i2cWrite(addr, bit_register)
-
-    def calculateTemperature(self, Beta, resistanceOne):
+#
+#    def sensorBiasLevelRead(self):
+#        '''
+#            Helper function: Reads high voltage bias level and converts
+#                from ADC counts into voltage
+#        '''
+#        value = self.ad5321Read()
+#        return round( float( value * 500 / 4095.0), 2)
+#    
+#    def sensorAmpereRead(self, device, channel):
+#        '''
+#            Helper function: Reads sensor voltage at 'channel' in  address 'device',
+#                and converts adc counts into 10 amp scale
+#        '''
+#        adcVal = self.ad7998Read(device, channel)
+#        scale = 10.0
+#        tempVal = (adcVal * scale / 4095.0)
+#        return tempVal
+#
+#    def sensorSixVoltScaleRead(self, device, channel):
+#        '''
+#            Helper function: Reads sensor voltage at 'channel' in address 'address',
+#                and converts adc counts into 6 V scale
+#        '''
+#        adcVal = self.ad7998Read(device, channel)
+#        scale = 6.0
+#        return (adcVal * scale / 4095.0)
+#
+#    def sensorThreeVoltScaleRead(self, device, channel):
+#        '''
+#            Helper function: Reads sensor voltage at 'channel' in address 'address',
+#                and converts adc counts into 3 V scale
+#        '''
+#        adcVal = self.ad7998Read(device, channel)
+#        scale = 3.0
+#        return (adcVal * scale / 4095.0)
+#
+#    def sensorSevenHundredMilliAmpsScaleRead(self, device, channel):
+#        '''
+#            Helper function: Reads sensor  voltage at 'channel' in address 'address',
+#                and converts adc counts into 700 milliamp scale
+#        '''
+#        adcVal = self.ad7998Read(device, channel)
+#        scale = 700.0
+#        return (adcVal * scale / 4095.0)
+#
+#    def sensorSixHundredMilliAmpsScaleRead(self, device, channel):
+#        '''
+#            Helper function: Reads sensor voltage at 'channel' in address 'address',
+#                and converts adc counts into 600 milliamp scale
+#        '''
+#        adcVal = self.ad7998Read(device, channel)
+#        scale = 600.0
+#        return (adcVal * scale / 4095.0)
+#
+#    def sensorTemperatureRead(self, device, channel):
+#        '''
+#            Helper function: Reads sensor temperature at 'channel' in  address 'device',
+#                and converts adc counts into six volts scale.
+#        '''
+#        adcVal = self.ad7998Read(device, channel)
+#        scale = 3.0
+#        voltage = (adcVal * scale / 4095.0)
+#        # Calculate resistance from voltage
+#        resistance = self.calculateResistance(voltage)
+#        # Calculate temperature from resistance
+#        temperature = self.calculateTemperature(LpdFemClient.Beta, resistance)
+#        # Round temperature to 2 decimal points
+#        return round(temperature, 2)
+#
+#    def ad7998Read(self, device, channel):
+#        '''
+#            Read two bytes from 'channel' in ad7998 at address 'device'
+#        '''
+#        # Construct i2c address and ADC channel to be read
+#        addr = self.femI2cBus | device
+#        adcChannel = 0x80 + ((channel & 7) << 4)
+#        # Write operation, select ADC channel
+#        self.i2cWrite(addr, adcChannel)
+#        # Read operation, read ADC value
+#        response = self.i2cRead(addr, 2)
+#        # Extract the received two bytes and return one integer
+#        value = (int((response[0] & 15) << 8) + int(response[1]))
+#        return value
+#
+#    def ad5321Read(self):
+#        ''' 
+#            Read 2 bytes from ad5321 device 
+#        '''
+#        addr = self.femI2cBus | 0x0C
+#        response = self.i2cRead(addr, 2)
+#        high = (response[0] & 15) << 8
+#        low = response[1]
+#        return high + low
+#
+#    def ad55321Write(self, aValue):
+#        '''
+#            Write 'aValue' (2 bytes) to ad5321 device
+#        '''
+#        # RHS - power card always present
+##        self.femI2cBus = (1 << 9) # 512
+#        # Construct address and payload (as a tuple)
+#        addr = self.femI2cBus | 0x0C
+#        payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
+#        # Write new ADC value to device
+#        self.i2cWrite(addr, payload)
+#    def pcf7485ReadOneBit(self, bitId):
+#        ''' 
+#            Read one byte from PCF7485 device and determine if set.
+#            Note: bit 1 = 0, 2 = 1,  3 = 2, 4 = 4, 
+#                      5 = 8, 6 = 16, 7 = 32 8 = 64
+#            Therefore, bitId must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
+#        '''
+#        addr = self.femI2cBus | 0x38 
+#        response = self.i2cRead(addr, 1)
+#        print "response = ", response
+#        value = response[0]
+#        return (value & (1 << bitId)) != 0
+#        
+#    def pcf7485ReadAllBits(self):
+#        ''' 
+#            Read and return one byte from PCF7485 device
+#            
+#            If a bit is set, that represents: 
+#                bit 0-1:    Disabled (HV, LV)
+#                bit 2-7:    A fault  (Fem Status, Ext trip, fault, etc)
+#                e.g.    
+#                    131:    Hv (1) & Lv (2) disabled, low temperature (128) alert
+#
+#                Beware      bit 0 = 1, bit 1 = 2, bit 2 = 4, etc !!
+#                therefore   131 = 128 + 2 + 1 (bits: 7, 1, 0)
+#        '''
+#        addr = self.femI2cBus | 0x38
+#        response = self.i2cRead(addr, 1)
+#        return response[0]
+#
+#    def pcf7485WriteOneBit(self, bitId, value):
+#        ''' 
+#            Change bit 'bitId' to 'value' in PCF7485 device
+#        '''            
+#        # RHS - power card always present
+##        self.femI2cBus = (1 << 9) # 512
+#        addr = self.femI2cBus | 0x38
+#        # Read PCF7485's current value
+#        bit_register = self.pcf7485ReadAllBits()
+#        # Change bit 'bitId' to 'value'
+#        bit_register = (bit_register & ~(1 << bitId)) | (value << bitId) | 0xFC
+#        self.i2cWrite(addr, bit_register)
+    def calculateTemperature(self, resistanceOne):
         ''' 
             Calculate temperature in thermistor using Beta and resistance
                 e.g. calculateTemperature(3630, 26000) = 3.304 degrees Celsius 
         '''
+        Beta = LpdFemClient.Beta
         # Define constants since resistance and temperature is already known for one point
         resistanceZero = 10000
         tempZero = 25.0

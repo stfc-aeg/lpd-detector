@@ -19,4 +19,5 @@ python LpdPowerControl.py --lv 1 --hv 1 --femI2cBus 768
 
 echo "-=-=-=-=-=-=-=-=-=-=-=-=-         POWER CARDS' INFO:         -=-=-=-=-=-=-=-=-=-=-=-=-"
 
-python LpdSuperModulePowerStatus.py
+python LpdPowerStatus.py 0x200
+python LpdPowerStatus.py 0x300
