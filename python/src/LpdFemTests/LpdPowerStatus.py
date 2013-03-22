@@ -11,7 +11,7 @@ def LpdPowerStatus(femI2cBus):
     
     theDevice = LpdDevice()
     
-    rc = theDevice.open('192.168.2.2', 6969, asicModuleType=2)  # 0=supermodule, 1=fem, 2=2 tile
+    rc = theDevice.open('192.168.2.2', 6969, asicModuleType=0)  # 0=supermodule, 1=fem, 2=2 tile
     
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
@@ -19,23 +19,23 @@ def LpdPowerStatus(femI2cBus):
     
     print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
     
-    # Update femI2cBus if user provided new value via command line
-    if femI2cBus is not None:
-        rc = theDevice.paramSet('femI2cBus', femI2cBus )
-        if rc != LpdDevice.ERROR_OK:
-            print "femI2cBusSet set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-        else:
-            
-            if femI2cBus == 0:
-                femI2cBusName = "LM82"
-            elif femI2cBus == 256:
-                femI2cBusName = "EEPROM"
-            elif femI2cBus == 512:
-                femI2cBusName = "RHS Power Card"
-            else:
-                femI2cBusName = "LHS Power Card"
-                
-            print "    ~+~+~+~+~+~+~ Connecting to %14s ~+~+~+~+~+~+~" % femI2cBusName
+#    # Update femI2cBus if user provided new value via command line
+#    if femI2cBus is not None:
+#        rc = theDevice.paramSet('femI2cBus', femI2cBus )
+#        if rc != LpdDevice.ERROR_OK:
+#            print "femI2cBusSet set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+#        else:
+#            
+#            if femI2cBus == 0:
+#                femI2cBusName = "LM82"
+#            elif femI2cBus == 256:
+#                femI2cBusName = "EEPROM"
+#            elif femI2cBus == 512:
+#                femI2cBusName = "RHS Power Card"
+#            else:
+#                femI2cBusName = "LHS Power Card"
+#                
+#            print "    ~+~+~+~+~+~+~ Connecting to %14s ~+~+~+~+~+~+~" % femI2cBusName
     
     print "Status:"
     print "    Low voltage  = ",

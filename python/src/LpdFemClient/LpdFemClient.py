@@ -106,9 +106,7 @@ class LpdFemClient(FemClient):
 #    # i2c device addresses
 #    AD7998ADDRESS   = [0x22, 0x21, 0x24, 0x23]
 #    
-    # Beta is utilised as an argument for calling the calculateTemperature() 
-    #    but it's effectively fixed by the hardware design
-    Beta            = 3474
+
 
     # with new addressing using top 4 bits for fpga selection
     #    """ 32 way splitter """
@@ -172,21 +170,45 @@ class LpdFemClient(FemClient):
         # Supermodule has to power cards, everyone else only one
         if asicModuleType == 0:
             numberPowerCards= 2
+            numberSensorsPerCard = 8
+            powerCardI2cBus = [3, 2]
+            sensorMapping = []
+            
+            for cardIdx in range(numberPowerCards):
+                for sensor in range(8):
+                    sensorIdx = sensor if cardIdx == 0 else (numberSensorsPerCard  - (sensor+1))
+                    sensorMapping.append([cardIdx, sensorIdx])
+            
         else:
             numberPowerCards= 1
+            powerCardI2cBus = [2]
+            sensorMapping = [[0,2], [0, 7]] # TODO Validate this mapping is correct
             
         self.powerCards = []
-        for powerCardIdent in range(numberPowerCards):
-            self.powerCards.append(LpdPowerCard(self, powerCardIdent))
+        for idx in range(numberPowerCards):
+            self.powerCards.append(LpdPowerCard(self, powerCardI2cBus[idx]))
+
+        paramTypes = ['Temp']
+        
+        for sensor in range(len(sensorMapping)):
             
-        for param in self.powerCards[0].paramList:
-            setMethodName = param + 'Set'
-            getMethodName = param + 'Get'
-#            print "Exposing API functions for parameter", param
-            setattr(self, setMethodName, 
-                    partial(self._paramSet, method=setMethodName))
-            setattr(self, getMethodName, 
-                    partial(self._paramGet, method=getMethodName))
+            for paramType in paramTypes:
+                
+                getMethodName = 'sensor' + str(sensor) + paramType + 'Get'
+                targetMethodName = 'sensor' + paramType + 'Get'
+                
+                [cardIdx, sensorIdx] = sensorMapping[sensor]
+                
+                setattr(self, getMethodName,
+                            partial(self._sensorParamGet, cardIdx=cardIdx, sensorIdx=sensorIdx, method=targetMethodName))
+#        for param in self.powerCards[0].paramList:
+#            setMethodName = param + 'Set'
+#            getMethodName = param + 'Get'
+##            print "Exposing API functions for parameter", param
+#            setattr(self, setMethodName, 
+#                    partial(self._paramSet, method=setMethodName))
+#            setattr(self, getMethodName, 
+#                    partial(self._paramGet, method=getMethodName))
         
         # Fem has three internal i2c buses
         self.femI2cBus = 0x300                          # 0x200 = RHS Power Card,  0x300 = LHS Power Card
@@ -314,6 +336,10 @@ class LpdFemClient(FemClient):
 #            value.append( getattr(self.powerCards[idx], method)() )
 
         return getattr(self.powerCards, method)()
+    
+    def _sensorParamGet(self, cardIdx, sensorIdx, method):
+        
+        return getattr(self.powerCards[cardIdx], method)(sensorIdx)
         
     '''
         --------------------------------------------------------
@@ -2348,26 +2374,4 @@ class LpdFemClient(FemClient):
 #        # Change bit 'bitId' to 'value'
 #        bit_register = (bit_register & ~(1 << bitId)) | (value << bitId) | 0xFC
 #        self.i2cWrite(addr, bit_register)
-    def calculateTemperature(self, resistanceOne):
-        ''' 
-            Calculate temperature in thermistor using Beta and resistance
-                e.g. calculateTemperature(3630, 26000) = 3.304 degrees Celsius 
-        '''
-        Beta = LpdFemClient.Beta
-        # Define constants since resistance and temperature is already known for one point
-        resistanceZero = 10000
-        tempZero = 25.0
-        invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / Beta) * log(float(resistanceOne) / float(resistanceZero)) )
-        # Invert the value to obtain temperature (in Kelvin) and subtract 273.15 to obtain Celsius
-        return (1 / invertedTemperature) - 273.15
 
-    def calculateResistance(self, aVoltage):
-        '''
-            Calculates the resistance for a given voltage (Utilised by the temperature sensors, on board as well as each ASIC module)
-        '''
-        # Define the supply voltage and the size of resistor inside potential divider
-        vCC = 5
-        resistance = 15000
-        # Calculate resistance of the thermistor
-        resistanceTherm = ((resistance * aVoltage) / (vCC-aVoltage))
-        return resistanceTherm

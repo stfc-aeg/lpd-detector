@@ -164,35 +164,67 @@ class LpdDeviceParameters(object):
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['sensorATemp']          = AttributeContainer(float, 'SensorATemp', 'Sensor A Temperature [C]',
+        self.expectedParameters['sensor0Temp']          = AttributeContainer(float, 'Sensor0Temp', 'Sensor 0 Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['sensorBTemp']          = AttributeContainer(float, 'SensorBTemp', 'Sensor B Temperature [C]',
+        self.expectedParameters['sensor1Temp']          = AttributeContainer(float, 'Sensor1Temp', 'Sensor 1 Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, 'Celsius', 'C')
                             
-        self.expectedParameters['sensorCTemp']          = AttributeContainer(float, 'SensorCTemp', 'Sensor C Temperature [C]',
+        self.expectedParameters['sensor2Temp']          = AttributeContainer(float, 'Sensor2Temp', 'Sensor 2 Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['sensorDTemp']          = AttributeContainer(float, 'SensorDTemp', 'Sensor D Temperature [C]',
+        self.expectedParameters['sensor3Temp']          = AttributeContainer(float, 'Sensor3Temp', 'Sensor 3 Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['sensorETemp']          = AttributeContainer(float, 'SensorETemp', 'Sensor E Temperature [C]',
+        self.expectedParameters['sensor4Temp']          = AttributeContainer(float, 'Sensor4Temp', 'Sensor 4 Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['sensorFTemp']          = AttributeContainer(float, 'SensorFTemp', 'Sensor F Temperature [C]',
+        self.expectedParameters['sensor5Temp']          = AttributeContainer(float, 'Sensor5Temp', 'Sensor 5 Temperature [C]',
                                                                       0, 100,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['sensorGTemp']          = AttributeContainer(float, 'SensorGTemp', 'Sensor G Temperature [C]',
+        self.expectedParameters['sensor6Temp']          = AttributeContainer(float, 'Sensor6Temp', 'Sensor 6 Temperature [C]',
                                                                       0, 100,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['sensorHTemp']          = AttributeContainer(float, 'SensorHTemp', 'Sensor H Temperature [C]',
+        self.expectedParameters['sensor7Temp']          = AttributeContainer(float, 'Sensor7Temp', 'Sensor 7 Temperature [C]',
+                                                                      0, 100,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['sensor8Temp']          = AttributeContainer(float, 'Sensor8Temp', 'Sensor 8 Temperature [C]',
+                                                                        0, 100,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['sensor9Temp']          = AttributeContainer(float, 'Sensor9Temp', 'Sensor 9 Temperature [C]',
+                                                                        0, 100,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+                            
+        self.expectedParameters['sensor10Temp']          = AttributeContainer(float, 'Sensor10Temp', 'Sensor 10 Temperature [C]',
+                                                                        0, 100,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['sensor11Temp']          = AttributeContainer(float, 'Sensor11Temp', 'Sensor 11 Temperature [C]',
+                                                                        0, 100,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['sensor12Temp']          = AttributeContainer(float, 'Sensor12Temp', 'Sensor 12 Temperature [C]',
+                                                                        0, 100,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['sensor13Temp']          = AttributeContainer(float, 'Sensor13Temp', 'Sensor 13 Temperature [C]',
+                                                                      0, 100,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['sensor14Temp']          = AttributeContainer(float, 'Sensor14Temp', 'Sensor 14 Temperature [C]',
+                                                                      0, 100,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['sensor15Temp']          = AttributeContainer(float, 'Sensor15Temp', 'Sensor 15 Temperature [C]',
                                                                       0, 100,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         

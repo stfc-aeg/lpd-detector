@@ -74,7 +74,11 @@ class LpdPowerCard(object):
     # i2c device addresses
     AD7998ADDRESS   = [0x22, 0x21, 0x24, 0x23]
     
-    def __init__(self, fem, powerCardIdent):
+    # Beta is utilised as an argument for calling the calculateTemperature() 
+    #    but it's effectively fixed by the hardware design
+    Beta            = 3474
+    
+    def __init__(self, fem, i2cBus):
         '''
 
         
@@ -83,21 +87,34 @@ class LpdPowerCard(object):
         '''
 
         self.fem = fem
-        # Construct femI2cBus from powerCardIdent
-        if powerCardIdent == 0:
-            # RHS
-            self.femI2cBus = (1 << 9) # 512 - RHS (supermodule only)
-        else:
-            # LHS
-            self.femI2cBus = (3 << 8) # 768 - LHS (two tile)
         
-        print " powerCardIdent, bus = ", powerCardIdent, self.femI2cBus
+        self.femI2cBus = (i2cBus << 8)
+
         self.paramList = ['sensorBias','sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 'powerCardOverCurrent', 
                           'powerCardOverTemp', 'powerCardUnderTemp', 'powerCardTemp', 'sensorATemp', 'sensorBTemp', 'sensorCTemp', 'sensorDTemp', 'sensorETemp', 
                           'sensorFTemp', 'sensorGTemp', 'sensorHTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorAVoltage', 
                           'sensorACurrent', 'sensorBVoltage', 'sensorBCurrent', 'sensorCVoltage', 'sensorCCurrent', 'sensorDVoltage', 'sensorDCurrent', 
                           'sensorEVoltage', 'sensorECurrent', 'sensorFVoltage', 'sensorFCurrent', 'sensorGVoltage', 'sensorGCurrent', 'sensorHVoltage', 
                           'sensorHCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent']
+    
+    def sensorTempGet(self, sensorIdx):
+        
+        
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[3], self.SENSA_TEMP_CHAN + sensorIdx)
+        
+        scale = 3.0
+        voltage = (adcVal * scale / 4095.0)
+        
+        # Calculate resistance from voltage
+        resistance = self.calculateResistance(voltage)
+        
+        # Calculate temperature from resistance
+        temperature = self.calculateTemperature(resistance)
+        
+        # Round temperature to 2 decimal points
+        
+        return temperature
+ 
     
     def sensorATempGet(self):
         '''
@@ -515,6 +532,30 @@ class LpdPowerCard(object):
         # Change bit 'bitId' to 'value'
         bit_register = (bit_register & ~(1 << bitId)) | (value << bitId) | 0xFC
         self.fem.i2cWrite(addr, bit_register)
+        
+    def calculateTemperature(self, resistanceOne):
+        ''' 
+            Calculate temperature in thermistor using Beta and resistance
+                e.g. calculateTemperature(3630, 26000) = 3.304 degrees Celsius 
+        '''
+
+        # Define constants since resistance and temperature is already known for one point
+        resistanceZero = 10000
+        tempZero = 25.0
+        invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / LpdPowerCard.Beta) * log(float(resistanceOne) / float(resistanceZero)) )
+        # Invert the value to obtain temperature (in Kelvin) and subtract 273.15 to obtain Celsius
+        return (1 / invertedTemperature) - 273.15
+
+    def calculateResistance(self, aVoltage):
+        '''
+            Calculates the resistance for a given voltage (Utilised by the temperature sensors, on board as well as each ASIC module)
+        '''
+        # Define the supply voltage and the size of resistor inside potential divider
+        vCC = 5
+        resistance = 15000
+        # Calculate resistance of the thermistor
+        resistanceTherm = ((resistance * aVoltage) / (vCC-aVoltage))
+        return resistanceTherm
 
 if __name__ == "__main__":
     
