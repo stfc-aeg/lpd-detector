@@ -69,14 +69,14 @@ class LpdDevice(object):
         '''
         return repr(self.errorString)
     
-    def open(self, host, port, timeout=defaultTimeout, numberPowerCards=1):
+    def open(self, host, port, timeout=defaultTimeout, asicModuleType=0):
         '''
         Opens a client connection to the LPD front-end module (FEM).
         
         @param host IP address of FEM as dotted quad format string
         @param port port of FEM to connect to (integer) 
         @param (optional) client timeout in seconds
-        @param number of power cards (2=supermodule, 1=all others)
+        @param (optional) asic module type (defaults to 0 = supermodule)
         @return LpdDevice error code, ERROR_OK or ERROR_FEM_CONNECT_FAILED
         '''
         rc = LpdDevice.ERROR_OK
@@ -84,7 +84,7 @@ class LpdDevice(object):
         if not self.simulateFemClient:
             try:
                 
-                self.femClient = LpdFemClient((host, int(port)), timeout, numberPowerCards)
+                self.femClient = LpdFemClient((host, int(port)), timeout, asicModuleType)
 
             except FemClientError as e:
                 

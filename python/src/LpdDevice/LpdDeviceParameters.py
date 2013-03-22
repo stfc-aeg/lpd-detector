@@ -107,6 +107,11 @@ class LpdDeviceParameters(object):
                                                                 0, 1000, 30,
                                                                 AccessWrite, AssignmentOptional, InternalParam,
                                                                 'AllOk.Disconnected')
+        self.expectedParameters['femAsicModuleType'] = AttributeContainer(int, 'FemAsicModuleType', 
+                                                                'Selects type of ASIC module  0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
+                                                                0, 3, 0,
+                                                                AccessWrite, AssignmentOptional, InternalParam, 
+                                                                'AllOk.Disconnected')
 
         #
         # Power card control parameters
@@ -358,10 +363,6 @@ class LpdDeviceParameters(object):
                                                                       0, 3, 1,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femAsicModuleType']            = AttributeContainer(int, 'FemAsicModuleType', 'Selects type of ASIC module  0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
-                                                                        0, 3, 2,
-                                                                        AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-                
 #        self.expectedParameters['femAsicEnableMask']            = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
 #                                                                         0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
 #                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
