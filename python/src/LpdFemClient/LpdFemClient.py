@@ -720,32 +720,24 @@ class LpdFemClient(FemClient):
         # duration (in slowed down asic clock cycles) for slow readout clock
         # each image takes ~ 480x22=1056 clocks to read out, plus allowance for setup time
 
-#        asic_slow_readout_duration = self.femAsicColumns * * nr_clocks_to_readout_image + 5000
-        asic_slow_readout_duration = 1000000 # 3100
+        # duration (in slowed down asic clock cycles) for slow readout clock ; allow for offset extra clocks between readout strobe and data arrival and a few extra!
+        #asic_slow_readout_duration = self.femAsicColumns * self.nr_clocks_to_readout_image + self.asicRx2tileStart + 200
+        asic_slow_readout_duration = 3000000 # just make large for a test
         self.rdmaWrite(self.fem_ctrl_0+12, asic_slow_readout_duration)  
-
-        ### Original Implementation ###
-        # Load slow control, Fast Commands, asic module
-        self.config_asic_slow_xml()
-        self.config_asic_fast_xml()
-        self.config_asic_datarx()
-        # ENABLE asic Tristate output buffers
+ 
+        #print "ENABLE asic Tristate output buffers"
         self.rdmaWrite(self.fem_ctrl_0+5, 0)
 
-#        ### changed order of configuration for asic following Matt's recommendations Mar 2013  jac ###
-# 
-#        #print "ENABLE asic Tristate output buffers"
-#        self.rdmaWrite(self.fem_ctrl_0+5, 0)
-#
-#        # Following is setting up for Asic data taking  
-#
-#        self.config_asic_slow_xml() # loads fem slow bram from xml file
-#        # load the slow params from bram into asics, put call here so settings are stable by time of first trigger
-#        self.toggle_bits(self.fem_ctrl_0+7, 0)  
-# 
-#        self.config_asic_fast_xml() # loads fem fast bram from xml file
-#        self.config_asic_datarx()   # set up fem to receive asic data
-# 
+        # Following is setting up for Asic data taking  
+
+        self.config_asic_slow_xml() # loads fem slow bram from xml file
+
+        # load the slow params from bram into asics, put call here so settings are stable by time of first trigger
+        self.toggle_bits(self.fem_ctrl_0+7, 0)  
+ 
+        self.config_asic_fast_xml() # loads fem fast bram from xml file
+        self.config_asic_datarx()   # set up fem to receive asic data
+
     def config_asic_slow_xml(self):
         """ configure asic slow control parameters from xml """                                        
         
@@ -763,6 +755,10 @@ class LpdFemClient(FemClient):
                   
         load_mode = self.femAsicSlowLoadMode
 
+        # clear the bram 
+        slow_bram_size = 512   # size in 32b words
+        self.zero_regs(self.slow_ctr_1, slow_bram_size)  
+
         # load in BRAM
         self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, encodedString, no_of_bits, load_mode)
     
@@ -777,6 +773,10 @@ class LpdFemClient(FemClient):
         no_of_nops  = fileCmdSeq.getTotalNumberNops()
                         
         #print "fast cmds no_of_words, no_of_nops: ", no_of_words, no_of_nops
+
+        # clear the bram to clear stray words at end   jac
+        fast_bram_size = 512;   # size in 32b words
+        self.zero_regs(self.fast_cmd_1, fast_bram_size)  
 
         # Setup the fast command block
         if self.femFastCtrlDynamic:   # new design with dynamic vetos
@@ -816,9 +816,9 @@ class LpdFemClient(FemClient):
 
         # compensate for Double Data Rate timing shifts with slowed asic readout 
         if self.femAsicSlowedClock:
-            self.rdmaWrite(self.fem_ctrl_0+8, 0)    # swap DDR pair of asicrx  
+            self.rdmaWrite(self.fem_ctrl_0+8, 2)    # swap DDR pair of asicrx  
         else:
-            self.rdmaWrite(self.fem_ctrl_0+8, 3)    # shift timing of odd asic rx chans
+            self.rdmaWrite(self.fem_ctrl_0+8, 1)    # shift timing of odd asic rx chans
         
         if self.femAsicDataType == self.ASIC_DATA_TYPE_PSEUDO_RANDOM:
             asic_rx_start_delay = self.asicRxPseudoRandomStart
@@ -836,12 +836,17 @@ class LpdFemClient(FemClient):
             if self.asicrx_capture_asic_header_TEST_ONLY:
                 asic_rx_start_delay = asic_rx_start_delay - self.asicRxHeaderBits
             elif self.femAsicSlowedClock:     # following offsets skip 1st row of pixels
+# nb gain selection algorithm can't work with slowed readout as samples from same pixel are no longer contiguous
                 if self.femAsicGainOverride == 8:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x100
                 elif self.femAsicGainOverride == 9:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x10
                 elif self.femAsicGainOverride == 11:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x1
+ 
+# !!!!!! TESTING ONLY
+        # adjust capture point start to next image
+        asic_rx_start_delay = asic_rx_start_delay + 0 * self.nr_clocks_to_readout_image
 
         if self.femAsicRxFastStrobe:
             self.rdmaWrite(self.fem_ctrl_0+14, asic_rx_start_delay) # NEW using strobe from fast command file         
@@ -957,12 +962,11 @@ class LpdFemClient(FemClient):
             print "Trigger Data Gen"
             self.toggle_bits(self.fem_ctrl_0+0, 0) # trigger to local link frame gen 
         elif (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_ASIC_DATA_DIRECT):             
-            ### Original Implementation ###
-            self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asic 
-#            ### Avoid Loading Slow Control Each Time: ###  
-#            self.toggle_bits(self.fem_ctrl_0+7, 1)  # asic seq without slow (slow params are loaded once only during configutation)
+            #print "Trigger ASIC"
+            #self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asic rx ;  
+            self.toggle_bits(self.fem_ctrl_0+7, 1)  # asic seq without slow (slow params are loaded once only during configutation)
         else:
-            print "Trigger Asic"
+            print "Warning udefined Trigger Asic"
             self.toggle_bits(self.fem_ctrl_0+0, 1)
                     
     def dump_registers(self):
@@ -1260,23 +1264,19 @@ class LpdFemClient(FemClient):
         # clock downscale factor for slowed down asic readout
         #asic_clock_downscale_factor = 16
 
-        lpd_image_size = 0x20000    # partial image is 128 KB
-
-        #TODO:  commented out for now (28/02/2013)
-        #nr_clocks_to_readout_image  = 512 * 36 # * asic_clock_downscale_factor # 512 pixels with 3 gain values each
-
         print "=======================================================================" 
   
         self.pp = pprint.PrettyPrinter(indent=4)
 
         #TODO: MISSED COPYING THESE TWO LINES ACROSS YESTERDAY? (28/02/2013)
-        # moved asic clock selection first
-        self.set_asic_clock_freq(self.fem_ctrl_0, self.femAsicLocalClock)    # 0 = 100 Mhz, 1 = div clock 10 MHz
         self.zero_regs(self.bram_ppc1, 20)  # clear ppc ready
   
         self.init_ppc_bram(self.bram_ppc1, 0xBEEFFACE)
 
         self.resetFwModulesToggleTristateIO()
+
+        # moved asic clock selection first
+        self.set_asic_clock_freq(self.fem_ctrl_0, self.femAsicLocalClock)    # 0 = 100 Mhz, 1 = div clock 10 MHz
 
         #TODO: Is Comment Still Relevant?
         # send Reset to ASIC pin . Shouldn't be necessary? as short reset pulse is sent before trigger sequence.
@@ -1293,7 +1293,7 @@ class LpdFemClient(FemClient):
         self.config_10g_link()         
 
         # pass readout data length to ppc bram before restarting ppc
-        self.setup_ppc_bram(self.bram_ppc1, self.femAsicColumns * lpd_image_size) 
+        self.setup_ppc_bram(self.bram_ppc1, self.femAsicColumns * self.lpd_image_size) 
 
         if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
             self.reset_ppc()         
@@ -1302,22 +1302,11 @@ class LpdFemClient(FemClient):
         # Setup data gen - not necessary for actual data but leave alone, "just in case"
         self.config_data_gen()
 
+        print "One Time Configuring ASICs... this takes about 10 seconds..."
+
         # Setup asic blocks
         if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_ASIC_DATA_DIRECT):  # data from asic
             self.config_asic_modules()
-
-#        else: # data from datagen or ppc ddr2 
-##following code won't work with new run() structure , as assumes triggers are sent from withing start_10g_link()
-#                    
-#            num_cycles = self.femNumTestCycles
-#            print "Starting Run of %d cycles" % self.femNumTestCycles
-#            for i in range (1, num_cycles+1):
-#                print "Starting Run Cycle Nr %d" % i
-#                self.start_10g_link()  
-#
-#            if self.tenGig0['data_gen'] == 2:
-#                self.final_dma_tx(self.bram_ppc1)  
-
 
     def run(self):
         '''
@@ -1327,23 +1316,49 @@ class LpdFemClient(FemClient):
         print "Executing run().."
 
         if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc, wait for ppc to be ready to read out
+            print "Running with PPC1 ...\r"
             if (self.femPpcResetDelay == 0):
                 while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
                     print "Waiting for PPC readout to be ready...\r",
                     sys.stdout.flush()
-                    
-        self.send_trigger()
+        else:
+            print "Running in PPC1 BYPASS mode...\r"
 
+        num_cycles = self.femNumTestCycles
+        print "=========================================================\r" 
+        print "Starting Sequence of %d Trains , with each Train reading out %d images" %(self.femNumTestCycles, self.femAsicColumns)
+ 
+        for i in range (1, num_cycles+1):
+            #print "Train nr %d" % i
+            print 'Train nr %4d \r' % i,
+            sys.stdout.flush()             
+            self.send_trigger()
+            time.sleep(1)     # need to check if images are all readout before sending next train
+
+        print "======== Train Cycle Completed ===========\r" 
+        time.sleep(2)   # just to see output before dumping registers
+  
         # Read out all registers (Both 2 tile & supermodule run fine without) 
         if self.femDebugLevel > 0:
+            print "Register Settings\r"
             self.dump_registers()
 
+        if num_cycles > 0 and self.femDebugLevel > 0:
+            print "Register Settings\r"
+            self.dump_registers()
+        else:
+            time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
+
+        print "Summary of Data Readout...\r"
+
         # 10g ll monitor
+        print "10G LLink Monitor"
         self.read_ll_monitor(self.llink_mon_0, 156.25e6)
 
         print "Asic Rx LLink Monitor"
         self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
 
+        print "======== Run Completed ===========\r" 
 
     def tenGig0SourceMacGet(self):
         '''
