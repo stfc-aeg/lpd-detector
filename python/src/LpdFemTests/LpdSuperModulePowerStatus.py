@@ -54,41 +54,41 @@ def powerCardTest():
     
     print "Status:"
     print "    Low voltage  = ",
-    if results['asicPowerEnable0']:
+    if results['asicPowerEnable1']:
         print "off.",
     else:
         print "on.",
     print "\t\t    Low voltage  = ",
-    if results['asicPowerEnable1']:
+    if results['asicPowerEnable0']:
         print "off."
     else:
         print "on."
         
     print "    High voltage = ",
-    if results['sensorBiasEnable0']:
+    if results['sensorBiasEnable1']:
         print "off.",
     else:
         print "on.",
     print "\t\t    High voltage = ",
-    if results['sensorBiasEnable1']:
+    if results['sensorBiasEnable0']:
         print "off."
     else:
         print "on."
         
-    print "    HV setting: %5.2f" % results['sensorBias0'] , "V", "\t\t    HV setting: %5.2f" % results['sensorBias1'], "V"
+    print "    HV setting: %5.2f" % results['sensorBias1'] , "V", "\t\t    HV setting: %5.2f" % results['sensorBias0'], "V"
 
     print "Flags:" 
-    print "    Fault Flag        = ", results['powerCardFault0'],       "\t\t    Fault Flag        = ", results['powerCardFault1']
-    print "    Fem Status   Trip = ", results['powerCardFemStatus0'],   "\t\t    Fem Status   Trip = ", results['powerCardFemStatus1']
-    print "    External     Trip = ", results['powerCardExtStatus0'],   "\t\t    External     Trip = ", results['powerCardExtStatus1']
-    print "    Over current Trip = ", results['powerCardOverCurrent0'], "\t\t    Over current Trip = ", results['powerCardOverCurrent1']
-    print "    Over temp    Trip = ", results['powerCardOverTemp0'],    "\t\t    Over temp    Trip = ", results['powerCardOverTemp1']
-    print "    Undertemp    Trip = ", results['powerCardUnderTemp0'],   "\t\t    Undertemp    Trip = ", results['powerCardUnderTemp1'], "\n"
+    print "    Fault Flag        = ", results['powerCardFault1'],       "\t\t    Fault Flag        = ", results['powerCardFault0']
+    print "    Fem Status   Trip = ", results['powerCardFemStatus1'],   "\t\t    Fem Status   Trip = ", results['powerCardFemStatus0']
+    print "    External     Trip = ", results['powerCardExtStatus1'],   "\t\t    External     Trip = ", results['powerCardExtStatus0']
+    print "    Over current Trip = ", results['powerCardOverCurrent1'], "\t\t    Over current Trip = ", results['powerCardOverCurrent0']
+    print "    Over temp    Trip = ", results['powerCardOverTemp1'],    "\t\t    Over temp    Trip = ", results['powerCardOverTemp0']
+    print "    Undertemp    Trip = ", results['powerCardUnderTemp1'],   "\t\t    Undertemp    Trip = ", results['powerCardUnderTemp0'], "\n"
 
     # Display temperature readings from PSU Card and Sensors
     print "Temperature readings:"
-    print '   PSU Card Temp:  %.2f' %   results['powerCardTemp0'], '  C',
-    print '\t\t   PSU Card Temp: %.2f' % results['powerCardTemp1'], '  C'
+    print '   PSU Card Temp:  %.2f' %   results['powerCardTemp1'], '  C',
+    print '\t\t   PSU Card Temp: %.2f' % results['powerCardTemp0'], '  C'
 
     print '   Sensor  8 Temp: %5.2f' %  results['sensor8Temp'], '  C', '\t\t   Sensor 0 Temp: %5.2f' % results['sensor0Temp'], '  C'
     print '   Sensor  9 Temp: %5.2f' %  results['sensor9Temp'], '  C', '\t\t   Sensor 1 Temp: %5.2f' % results['sensor1Temp'], '  C'
@@ -102,10 +102,10 @@ def powerCardTest():
     # Display Fem, Digital, sensors voltages and current
     print "\nOutputs: "
 
-    print "   V FEM      : %.2f" % results['femVoltage0'], " V ", "%.2f" % results['femCurrent0'], " A",
-    print "\t   V FEM      : %.2f" % results['femVoltage1'], " V ", "%.2f" % results['femCurrent1'], " A"
-    print "   V Digital  : %.2f" % results['digitalVoltage0'], " V ", "%.2f" % results['digitalCurrent0'], " mA",
-    print "\t   V Digital  : %.2f" % results['digitalVoltage1'], " V ", "%.2f" % results['digitalCurrent1'], " mA\n"
+    print "   V FEM      : %.2f" % results['femVoltage1'], " V ", "%.2f" % results['femCurrent1'], " A",
+    print "\t   V FEM      : %.2f" % results['femVoltage0'], " V ", "%.2f" % results['femCurrent0'], " A"
+    print "   V Digital  : %.2f" % results['digitalVoltage1'], " V ", "%.2f" % results['digitalCurrent1'], " mA",
+    print "\t   V Digital  : %.2f" % results['digitalVoltage0'], " V ", "%.2f" % results['digitalCurrent0'], " mA\n"
 
     print "   V Sensor 8  : %.2f"  % results['sensor8Voltage'], " V ", "%.2f" % results['sensor8Current'], " A",
     print "\t   V Sensor 0 : %.2f" % results['sensor0Voltage'], " V ", "%.2f" % results['sensor0Current'], " A"
@@ -124,10 +124,10 @@ def powerCardTest():
     print "   V Sensor 15 : %.2f"  % results['sensor15Voltage']," V ", "%.2f" % results['sensor15Current']," A",
     print "\t   V Sensor 7 : %.2f" % results['sensor7Voltage'], " V ", "%.2f" % results['sensor7Current'], " A\n"
 
-    print "   HV Bias    : %.2f" % results['sensorBiasVoltage0'], " V ",
-    print "%.2f" % results['sensorBiasCurrent0'], " uA",
-    print "\t   HV Bias    : %.2f" % results['sensorBiasVoltage1'], " V ",
-    print "%.2f" % results['sensorBiasCurrent1'], " uA"
+    print "   HV Bias    : %.2f" % results['sensorBiasVoltage1'], " V ",
+    print "%.2f" % results['sensorBiasCurrent1'], " uA",
+    print "\t   HV Bias    : %.2f" % results['sensorBiasVoltage0'], " V ",
+    print "%.2f" % results['sensorBiasCurrent0'], " uA"
 
     print "-- -- -- -- -- -- -- -- --"
 
