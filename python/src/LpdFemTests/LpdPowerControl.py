@@ -1,9 +1,10 @@
 '''
-
-@author: ckd
+    LpdPowerControl - parser providing control to enable/disable low voltage and high voltage as well as high voltage bias
+    
+    @author: ckd
 '''
 
-import time, types, sys
+import types
 import argparse
 from math import log, ceil
 
@@ -18,7 +19,6 @@ class LpdI2cError(Exception):
     def __str__(self):
         return repr(self.msg)
 
-# -=-=-=~=~=~=-=-=- #
 """
   ADC channels:
     0 = HV volts    1 = 5V volts    2 = 1.2V volts
@@ -39,7 +39,6 @@ class LpdI2cError(Exception):
     7 = [in] Low temperature (1=fault)
 
 """
-
 
 class LpdPowerControl(FemClient):
 
@@ -120,20 +119,18 @@ class LpdPowerControl(FemClient):
 
     def setBus(self, femI2cBus):
         # Fem has three internal i2c buses
-#        if femI2cBus is None:
-#            self.femI2cBus = 0x300 # LHS Power Card
-##        self.femI2cBus = 0x200 # RHS Power Card
-#        else:
-        self.femI2cBus= femI2cBus
+#        self.femI2cBus = 0x300 # LHS Power Card
+#        self.femI2cBus = 0x200 # RHS Power Card
+
+        self.femI2cBus = femI2cBus
 
         
     def read_dac(self):
-        ''' Read 2 bytes from ad5321 device 
+        ''' 
+            Read 2 bytes from ad5321 device 
         '''
         
         addr = self.femI2cBus + 0x0C
-        response = -1
-        
         response = self.i2cRead(addr, 2)
         high = (response[0] & 15) << 8
         low = response[1]
@@ -143,8 +140,6 @@ class LpdPowerControl(FemClient):
         '''
             Write 'aAValue' (2 bytes) to ad5321 device
         '''
-    
-        response = -1
         # Construct address and payload (as a tuple)
         addr = self.femI2cBus + 0x0C
         payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
@@ -155,8 +150,6 @@ class LpdPowerControl(FemClient):
         # Verify write operation
         response = self.read_dac()
         return response
-    
-
 
     def read_adc(self, deviceId):
         ''' Read 2 bytes from deviceId channel in ad7998
@@ -175,47 +168,41 @@ class LpdPowerControl(FemClient):
 
         # Write operation, select ADC channel
         ack = self.i2cWrite(addr, adcChannel)
-        
         # Read operation, read ADC value
         response = self.i2cRead(addr, 2)
-        
-        #print " RAW response: ", response,
-        
         # Extract the received two bytes and return as integer
         high = (response[0] & 15) << 8
         low = response[1]
         return high + low
 
-    def read_bit(self, id):
-        ''' Read one byte from PCF7485 device and determine if bit 'id' is set.
+    def read_bit(self, devId):
+        ''' Read one byte from PCF7485 device and determine if bit 'devId' is set.
         
             Note: bit 1 = 0, 2 = 1,  3 = 2, 4 = 4, 
                       5 = 8, 6 = 16, 7 = 32 8 = 64
-            Therefore, id must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
+            Therefore, devId must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
         '''
-        # Check input within valid range
+        # Check input within valdevId range
         validInput = [0, 1, 2, 4, 8, 16, 32, 64]
-        #if (0 > id) or (id > 31):
-        if not id in validInput:
-            raise LpdI2cError("Read_bit() id argument outside valid list [0, 1, 2, 4, 8, 16, 32, 64]")
+        if not devId in validInput:
+            raise LpdI2cError("Read_bit() devId argument outside valid list [0, 1, 2, 4, 8, 16, 32, 64]")
         
         addr = self.femI2cBus + 0x38 
-        
         response = self.i2cRead(addr, 1)
         value = response[0]
-        return (value & (1 << id)) != 0
-        
+        return (value & (1 << devId)) != 0
 
     def read_all_bits(self):
-        ''' Read and return one byte from PCF7485 device
+        ''' 
+            Read and return one byte from PCF7485 device
         '''
         addr = self.femI2cBus + 0x38
         response = self.i2cRead(addr, 1)
-        
         return response[0]
 
     def write_bit(self, id, value):
-        ''' Change bit 'id' to 'value' in PCF7485 device
+        ''' 
+            Change bit 'id' to 'value' in PCF7485 device
         '''
         # Check input within valid range
         validInput = [0, 1, 2, 4, 8, 16, 32, 64]
@@ -229,16 +216,12 @@ class LpdPowerControl(FemClient):
         bit_register = self.read_all_bits()
         # Change bit 'id' to 'value'
         bit_register = (bit_register & ~(1 << id)) | (value << id) | 0xFC
-#        print "write_bit(), bit_register = %X" % bit_register, "    value =%d, id=%d" % (value, id)
-        
         addr = self.femI2cBus + 0x38
-        response = self.i2cWrite(addr, bit_register)
-        
-        #TODO: Check the acknowledgement? (response)
-
+        self.i2cWrite(addr, bit_register)
     
     def write_electrical_value(self, value, scale, unit):
-        ''' Display argument value, formatted by scale, post fixing 'unit'
+        ''' 
+            Display argument value, formatted by scale, post fixing 'unit'
         '''
         # Check argument types
         if not type(value) is types.IntType:
@@ -249,18 +232,13 @@ class LpdPowerControl(FemClient):
             raise LpdI2cError("Write_electrical_value() unit argument not string type")
 
         try:
-            print " ",
-            print round( float(value * scale / 4095.0), 2),
-            print unit,
-            print " [",
-            print value,
-            print "]",
+            print " ", round( float(value * scale / 4095.0), 2), unit, " [", value, "]",
         except Exception as e:
             print "write_electrical_value Exception: ", e
-            
 
     def write_temperature_value(self, value, scale, unit):
-        ''' Display argument value, formatted according to argument scale
+        ''' 
+            Display argument value, formatted according to argument scale
         '''
         # Check argument types
         if not type(value) is types.IntType:
@@ -271,17 +249,13 @@ class LpdPowerControl(FemClient):
             raise LpdI2cError("Write_temperature_value() unit argument not string type")
 
         try:
-            print " ",
-            print round( float(value * scale / 4095.0), 2),
-            print unit,
-            print " [",
-            print value,
-            print "]",
+            print " ", round( float(value * scale / 4095.0), 2), unit, " [", value, "]",
         except Exception as e:
             print "write_temperature_value Exception: ", e
 
     def write_temperature_in_celsius(self, value, scale, unit):
-        ''' Display argument value, formatted according to argument scale AND converting vaults into degrees Celsius
+        ''' 
+            Display argument value, formatted according to argument scale AND converting vaults into degrees Celsius
         '''
         # Check argument types
         if not type(value) is types.IntType:
@@ -297,20 +271,14 @@ class LpdPowerControl(FemClient):
         # Calculate temperature in degrees Celsius from resistance
         temperature = self.calculateTemperature(LpdPowerControl.Beta, resistance)
         try:
-            print " ",
-            print round(temperature, 2),
-            print unit,
-            print " [",
-            print value,
-            print "]",
+            print " ", round(temperature, 2), unit, " [", value, "]",
         except Exception as e:
             print "write_temperature_in_celsius Exception: ", e
-#        print "voltage, resistance, temperature = ", voltage, resistance, temperature
         
     def show_outputs(self):
-        ''' Display the output voltages and currents (Fem, Digital, Sensor, Bias)
+        ''' 
+            Display the output voltages and currents (Fem, Digital, Sensor, Bias)
         '''
-        
         print "Outputs:"
         print "   V FEM      :",
         self.write_electrical_value( self.read_adc( LpdPowerControl.V5_VOLTS_CHAN ), 6, "V")
@@ -361,9 +329,9 @@ class LpdPowerControl(FemClient):
         print "."
 
     def show_lv_status(self):
-        ''' Display the low voltage status
+        ''' 
+            Display the low voltage status
         '''        
-        
         print "Status:"
         if (self.read_bit(LpdPowerControl.LV_CTRL_BIT)):
             print "   Low  voltage is off." 
@@ -372,26 +340,21 @@ class LpdPowerControl(FemClient):
 
 
     def show_hv_status(self):
-        ''' Display the high voltage status
+        ''' 
+            Display the high voltage status
         '''
-
         if (self.read_bit(LpdPowerControl.HV_CTRL_BIT)): 
             print "   High voltage is off." 
         else: 
             print "   High voltage is on." 
         
         value = self.read_dac()
-        print "   HV setting: ", 
-        print value,
-        print " [",
-        print round( float( value * 500 / 4095.0), 2),
-        print "V]." 
-
+        print "   HV setting: ", value, " [", round( float( value * 500 / 4095.0), 2), "V]." 
 
     def show_flags(self):
-        ''' Display  the fault flags
+        ''' 
+            Display  the fault flags
         '''
-        
         print "Flags:" 
         value = self.read_all_bits()
         print "   Fault flag         = ",
@@ -415,9 +378,9 @@ class LpdPowerControl(FemClient):
         print ".\n",
 
     def show_temperatures(self):
-        ''' Display the PSU card and sensor temperatures
+        ''' 
+            Display the PSU card and sensor temperatures
         '''
-
         print "Temperature readings: "
         print "   Temp PSU card: ",
         self.write_temperature_in_celsius( self.read_adc( LpdPowerControl.PSU_TEMP_CHAN ),3, "C")
@@ -450,7 +413,8 @@ class LpdPowerControl(FemClient):
 
 
     def displayAll(self):
-        ''' Display low voltage, high-voltage, fault flags, temperatures and sensor data
+        ''' 
+            Display low voltage, high-voltage, fault flags, temperatures and sensor data
         '''
         self.show_lv_status()
         self.show_hv_status()
@@ -490,9 +454,7 @@ class LpdPowerControl(FemClient):
 # -=-=-=~=~=~=-=-=- #
 
 
-    
 if __name__ == "__main__":
-    
                         
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="To switch on the LV, the syntax is: 'python LpdI2ctest.py --lv 1' ",
@@ -504,7 +466,6 @@ if __name__ == "__main__":
     parser.add_argument("--hvbias", help="set HV bias level (in volts) - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int)
     parser.add_argument("--displaydataonly", help="Display i2c only - THIS WILL OVERRIDE ANY LV OR HV FLAGS !", type=int, choices=[0, 1])
     args = parser.parse_args()
-
     
     # Define FEM IP address and port
     host = '192.168.2.2' # Burntoak
@@ -542,7 +503,7 @@ if __name__ == "__main__":
     if args.displaydataonly == 1:
         pass
     else:
-#        print "lv, hv, hv bias: ", args.lv, args.hv, args.hvbias
+
         # Only use if they decided to switch off lv but switch on hv
         if (args.lv == 0) and(args.hv):
             print "You decided to switch on HV but switch off LV; Aborting.."

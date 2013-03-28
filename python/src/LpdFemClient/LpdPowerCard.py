@@ -78,6 +78,9 @@ class LpdPowerCard(object):
     #    but it's effectively fixed by the hardware design
     Beta            = 3474
     
+    # Map powerCard addresses to scale
+    powerCardMapping = {0:600, 1:6.0, 2:3.0, 3:600, 4:10.0, 5:700, 6:3.0}
+    
     def __init__(self, fem, i2cBus):
         '''
 
@@ -89,16 +92,8 @@ class LpdPowerCard(object):
         self.fem = fem
         
         self.femI2cBus = (i2cBus << 8)
-
-        self.paramList = ['sensorBias','sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 'powerCardOverCurrent', 
-                          'powerCardOverTemp', 'powerCardUnderTemp', 'powerCardTemp', 'sensorATemp', 'sensorBTemp', 'sensorCTemp', 'sensorDTemp', 'sensorETemp', 
-                          'sensorFTemp', 'sensorGTemp', 'sensorHTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorAVoltage', 
-                          'sensorACurrent', 'sensorBVoltage', 'sensorBCurrent', 'sensorCVoltage', 'sensorCCurrent', 'sensorDVoltage', 'sensorDCurrent', 
-                          'sensorEVoltage', 'sensorECurrent', 'sensorFVoltage', 'sensorFCurrent', 'sensorGVoltage', 'sensorGCurrent', 'sensorHVoltage', 
-                          'sensorHCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent']
     
     def sensorTempGet(self, sensorIdx):
-        
         
         adcVal = self.ad7998Read(self.AD7998ADDRESS[3], self.SENSA_TEMP_CHAN + sensorIdx)
         
@@ -111,65 +106,48 @@ class LpdPowerCard(object):
         # Calculate temperature from resistance
         temperature = self.calculateTemperature(resistance)
         
-        # Round temperature to 2 decimal points
-        
         return temperature
+
+    def sensorVoltageGet(self, sensorIdx):
  
-    
-    def sensorATempGet(self):
-        '''
-            Get temperature from sensor A
-        '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSA_TEMP_CHAN)
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[1], self.V25A_VOLTS_CHAN + sensorIdx)
+        scale = 3.0
+        return (adcVal * scale / 4095.0)
 
-    def sensorBTempGet(self):
-        '''
-            Get temperature from sensor B
-        '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSB_TEMP_CHAN)
-    
-    def sensorCTempGet(self):
-        '''
-            Get temperature from Sensor C
-        '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSC_TEMP_CHAN)
-    
-    def sensorDTempGet(self):
-        '''
-            Get temperature from Sensor D
-        '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSD_TEMP_CHAN)
-    
-    def sensorETempGet(self):
-        '''
-            Get temperature from Sensor E
-        '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSE_TEMP_CHAN)
+    def sensorCurrentGet(self, sensorIdx):
 
-    def sensorFTempGet(self):
-        '''
-            Get temperature from Sensor F
-        '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSF_TEMP_CHAN)
-    
-    def sensorGTempGet(self):
-        '''
-            Get temperature from Sensor G
-        '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSG_TEMP_CHAN)
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[2], self.V25A_AMPS_CHAN + sensorIdx)
+        scale = 10.0
+        currentValue = (adcVal * scale / 4095.0)
+        return currentValue
 
-    def sensorHTempGet(self):
+    def sensorBiasGet(self):
         '''
-            Get temperature from Sensor H
+            Get Sensor HV Bias Voltage [V]
+            Reads high voltage bias level and converts
+                from ADC counts into voltage
         '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[3], self.SENSH_TEMP_CHAN)
+        addr = self.femI2cBus | 0x0C
+        response = self.fem.i2cRead(addr, 2)
+        high = (response[0] & 15) << 8
+        low = response[1]
+        value = high + low
+        return float( value * 500 / 4095.0)
 
     def powerCardTempGet(self):
         '''
             Get temperature from power card
+            Helper function: Reads sensor temperature at 'channel' in  address 'device',
+                and converts adc counts into six volts scale.
         '''
-        return self.sensorTemperatureRead(self.AD7998ADDRESS[0], self.PSU_TEMP_CHAN)
-        
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.PSU_TEMP_CHAN)
+        scale = 3.0
+        voltage = (adcVal * scale / 4095.0)
+        # Calculate resistance from voltage
+        resistance = self.calculateResistance(voltage)
+        # Calculate temperature from resistance
+        return self.calculateTemperature(resistance)
+    
     def powerCardFemStatusGet(self):
         '''
             Get power card Fem status
@@ -212,17 +190,16 @@ class LpdPowerCard(object):
         value = self.pcf7485ReadAllBits()
         return self.flag_message[ (value & (1 << self.LOW_TEMP_BIT)) != 0]
 
-    def sensorBiasGet(self):
-        '''
-            Get Sensor HV Bias Voltage [V]
-        '''
-        return self.sensorBiasLevelRead()
-    
     def sensorBiasSet(self, aValue):
         '''
             Set Sensor HV Bias Voltage [V]
         '''
-        self.fem.ad55321Write( int( ceil( aValue/0.122) ) )
+        adcValue = int( ceil( aValue/0.122) )
+        # Construct address and payload (as a tuple)
+        addr = self.femI2cBus | 0x0C
+        payload = ((adcValue & 0xF00) >> 8), (adcValue & 0xFF)
+        # Write new ADC value to device
+        self.fem.i2cWrite(addr, payload)
 
     def sensorBiasEnableGet(self):
         '''
@@ -237,7 +214,7 @@ class LpdPowerCard(object):
             Set 'Sensor LV Bias Enable' (0/1 = on/off)
         '''
         value = 1 - int(aEnable)
-        self.fem.pcf7485WriteOneBit(LpdPowerCard.HV_CTRL_BIT, value)
+        self.pcf7485WriteOneBit(LpdPowerCard.HV_CTRL_BIT, value)
         
     def asicPowerEnableGet(self):
         '''
@@ -252,128 +229,45 @@ class LpdPowerCard(object):
             Set 'ASIC LV Power Enable' (0/1 = on/off)
         '''
         value = 1 - int(aEnable)
-        self.fem.pcf7485WriteOneBit(LpdPowerCard.LV_CTRL_BIT, value)
+        self.pcf7485WriteOneBit(LpdPowerCard.LV_CTRL_BIT, value)
 
     def femVoltageGet(self):
         '''
             Get Fem 5V Supply Voltage [V]
         '''
-        return self.sensorSixVoltScaleRead(self.AD7998ADDRESS[0], self.V5_VOLTS_CHAN)
-        
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V5_VOLTS_CHAN)
+        scale = 6.0
+        return (adcVal * scale / 4095.0)
+
     def femCurrentGet(self):
         '''
             Get Fem 5V Supply Current [A]
         '''
-        return self.sensorAmpereRead( self.AD7998ADDRESS[0], self.V5_AMPS_CHAN)
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V5_AMPS_CHAN)
+        scale = 10.0
+        tempVal = (adcVal * scale / 4095.0)
+        return tempVal
 
     def digitalVoltageGet(self):
         '''
             Get ASIC 1.2 Digital Supply Voltage [V]
+            Helper function: Reads sensor voltage at 'channel' in address 'address',
+                and converts adc counts into 3 V scale
         '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[0], self.V12_VOLTS_CHAN)
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V12_VOLTS_CHAN)
+        scale = 3.0
+        return (adcVal * scale / 4095.0)
 
     def digitalCurrentGet(self):
         '''
-            Get ASIC 1.2V Digital Supply Current [myA]
+            Get ASIC 1.2V Digital Supply Current [mA]
+            Helper function: Reads sensor  voltage at 'channel' in address 'address',
+                and converts adc counts into 700 milliamp scale
         '''
-        return self.sensorSevenHundredMilliAmpsScaleRead(self.AD7998ADDRESS[0], self.V12_AMPS_CHAN)
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V12_AMPS_CHAN)
+        scale = 700.0
+        return (adcVal * scale / 4095.0)
 
-    def sensorAVoltageGet(self):
-        '''
-            Get Sensor A 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25A_VOLTS_CHAN)
-
-    def sensorACurrentGet(self):
-        '''
-            Get Sensor A 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25A_AMPS_CHAN)
-
-    def sensorBVoltageGet(self):
-        '''
-            Get Sensor B 2.5V Supply Voltage [V] 
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25B_VOLTS_CHAN)
-
-    def sensorBCurrentGet(self):
-        '''
-            Get Sensor B 2.5V Supply Current [A]',
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25B_AMPS_CHAN)
-
-    def sensorCVoltageGet(self):
-        '''
-            Get Sensor C 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25C_VOLTS_CHAN)
-
-    def sensorCCurrentGet(self):
-        '''
-            Get Sensor C 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25C_AMPS_CHAN)
-
-    def sensorDVoltageGet(self):
-        '''
-            Get Sensor D 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25D_VOLTS_CHAN)
-
-    def sensorDCurrentGet(self):
-        '''
-            Get Sensor D 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25D_AMPS_CHAN)
-
-    def sensorEVoltageGet(self):
-        '''
-            Get Sensor E 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25E_VOLTS_CHAN)
-
-    def sensorECurrentGet(self):
-        '''
-            Get Sensor E 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25E_AMPS_CHAN)
-
-    def sensorFVoltageGet(self):
-        '''
-            Get Sensor F 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25F_VOLTS_CHAN)
-
-    def sensorFCurrentGet(self):
-        '''
-            Get Sensor F 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25F_AMPS_CHAN)
-
-    def sensorGVoltageGet(self):
-        '''
-            Get Sensor G 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25G_VOLTS_CHAN)
-
-    def sensorGCurrentGet(self):
-        '''
-            Get Sensor G 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25G_AMPS_CHAN)
-
-    def sensorHVoltageGet(self):
-        '''
-            Get Sensor H 2.5V Supply Voltage [V]
-        '''
-        return self.sensorThreeVoltScaleRead(self.AD7998ADDRESS[1], self.V25H_VOLTS_CHAN)
-
-    def sensorHCurrentGet(self):
-        '''
-            Get Sensor H 2.5V Supply Current [A]
-        '''
-        return self.sensorAmpereRead(self.AD7998ADDRESS[2], self.V25H_AMPS_CHAN)
-    
     def sensorBiasVoltageGet(self):
         '''
             Get Sensor bias voltage readback [V]
@@ -386,53 +280,9 @@ class LpdPowerCard(object):
         '''
         return self.sensorSixHundredMilliAmpsScaleRead(self.AD7998ADDRESS[0], self.HV_AMPS_CHAN)
     
-    """ -=-=-=-=-=- Helper Functions -=-=-=-=-=- """
-
-
-    def sensorBiasLevelRead(self):
-        '''
-            Helper function: Reads high voltage bias level and converts
-                from ADC counts into voltage
-        '''
-        value = self.ad5321Read()
-        return round( float( value * 500 / 4095.0), 2)
-    
-    def sensorAmpereRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in  address 'device',
-                and converts adc counts into 10 amp scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 10.0
-        tempVal = (adcVal * scale / 4095.0)
-        return tempVal
-
-    def sensorSixVoltScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in address 'address',
-                and converts adc counts into 6 V scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 6.0
-        return (adcVal * scale / 4095.0)
-
-    def sensorThreeVoltScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in address 'address',
-                and converts adc counts into 3 V scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 3.0
-        return (adcVal * scale / 4095.0)
-
-    def sensorSevenHundredMilliAmpsScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor  voltage at 'channel' in address 'address',
-                and converts adc counts into 700 milliamp scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 700.0
-        return (adcVal * scale / 4095.0)
+    ########################################################
+    """     -=-=-=-=-=- Helper Functions -=-=-=-=-=-     """
+    ########################################################
 
     def sensorSixHundredMilliAmpsScaleRead(self, device, channel):
         '''
@@ -442,21 +292,6 @@ class LpdPowerCard(object):
         adcVal = self.ad7998Read(device, channel)
         scale = 600.0
         return (adcVal * scale / 4095.0)
-
-    def sensorTemperatureRead(self, device, channel):
-        '''
-            Helper function: Reads sensor temperature at 'channel' in  address 'device',
-                and converts adc counts into six volts scale.
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 3.0
-        voltage = (adcVal * scale / 4095.0)
-        # Calculate resistance from voltage
-        resistance = self.fem.calculateResistance(voltage)
-        # Calculate temperature from resistance
-        temperature = self.fem.calculateTemperature(resistance)
-        # Round temperature to 2 decimal points
-        return round(temperature, 2)
 
     def ad7998Read(self, device, channel):
         '''
@@ -472,26 +307,6 @@ class LpdPowerCard(object):
         # Extract the received two bytes and return one integer
         value = (int((response[0] & 15) << 8) + int(response[1]))
         return value
-
-    def ad5321Read(self):
-        ''' 
-            Read 2 bytes from ad5321 device 
-        '''
-        addr = self.femI2cBus | 0x0C
-        response = self.fem.i2cRead(addr, 2)
-        high = (response[0] & 15) << 8
-        low = response[1]
-        return high + low
-
-    def ad55321Write(self, aValue):
-        '''
-            Write 'aValue' (2 bytes) to ad5321 device
-        '''
-        # Construct address and payload (as a tuple)
-        addr = self.femI2cBus | 0x0C
-        payload = ((aValue & 0xF00) >> 8), (aValue & 0xFF)
-        # Write new ADC value to device
-        self.fem.i2cWrite(addr, payload)
 
     def pcf7485ReadOneBit(self, bitId):
         ''' 
@@ -563,3 +378,4 @@ if __name__ == "__main__":
     
     theFem.sensorBiasSet(25)
     print theFem.sensorBiasGet()
+    

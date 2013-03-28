@@ -117,17 +117,32 @@ class LpdDeviceParameters(object):
         # Power card control parameters
         #
         
-        self.expectedParameters['sensorBias']           = AttributeContainer(float, 'SensorBias', 'Sensor HV Bias Voltage [V]',
+        self.expectedParameters['sensorBias0']           = AttributeContainer(float, 'SensorBias0', 'Sensor 0 HV Bias Voltage [V]',
                                                                         0, 500, 0,
                                                                         AccessWrite, True, ExternalParam, 
                                                                         'AllOk.Idle', 'volt', 'V' )
         
-        self.expectedParameters['sensorBiasEnable']     = AttributeContainer(bool, 'SensorBiasEnable', 'Sensor HV Bias Enable',
+        self.expectedParameters['sensorBias1']           = AttributeContainer(float, 'SensorBias1', 'Sensor 1 HV Bias Voltage [V]',
+                                                                        0, 500, 0,
+                                                                        AccessWrite, True, ExternalParam, 
+                                                                        'AllOk.Idle', 'volt', 'V' )
+        
+        self.expectedParameters['sensorBiasEnable0']     = AttributeContainer(bool, 'SensorBiasEnable0', 'Sensor 0 HV Bias Enable',
                                                                         (True, False), None, False,
                                                                         AccessWrite, AssignmentOptional, ExternalParam,
                                                                         'AllOk.Idle')
         
-        self.expectedParameters['asicPowerEnable']      = AttributeContainer(bool, 'AsicPowerEnable', 'ASIC LV Power Enable',
+        self.expectedParameters['sensorBiasEnable1']     = AttributeContainer(bool, 'SensorBiasEnable1', 'Sensor 1 HV Bias Enable',
+                                                                        (True, False), None, False,
+                                                                        AccessWrite, AssignmentOptional, ExternalParam,
+                                                                        'AllOk.Idle')
+        
+        self.expectedParameters['asicPowerEnable0']      = AttributeContainer(bool, 'AsicPowerEnable0', 'ASIC 0 LV Power Enable',
+                                                                        (True, False), None, False,
+                                                                        AccessWrite, AssignmentOptional, ExternalParam,
+                                                                        'AllOk.Idle')
+
+        self.expectedParameters['asicPowerEnable1']      = AttributeContainer(bool, 'AsicPowerEnable1', 'ASIC 1 LV Power Enable',
                                                                         (True, False), None, False,
                                                                         AccessWrite, AssignmentOptional, ExternalParam,
                                                                         'AllOk.Idle')
@@ -136,31 +151,59 @@ class LpdDeviceParameters(object):
         # Power card monitoring parameters
         #
         
-        self.expectedParameters['powerCardFault']       = AttributeContainer(bool, 'PowerCardFault', 'Power Card Fault Flag',
+        self.expectedParameters['powerCardFault0']       = AttributeContainer(bool, 'PowerCardFault0', 'Power Card 0 Fault Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None)
         
-        self.expectedParameters['powerCardFemStatus']   = AttributeContainer(bool, 'PowerCardFemStatus', 'Power Card FEM Status Flag',
+        self.expectedParameters['powerCardFault1']       = AttributeContainer(bool, 'PowerCardFault1', 'Power Card 1 Fault Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None)
         
-        self.expectedParameters['powerCardExtStatus']   = AttributeContainer(bool, 'PowerCardExtStatus', 'Power Card External Status Flag',
+        self.expectedParameters['powerCardFemStatus0']   = AttributeContainer(bool, 'PowerCardFemStatus0', 'Power Card 0 FEM Status Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None)
         
-        self.expectedParameters['powerCardOverCurrent'] = AttributeContainer(bool, 'PowerCardOverCurrent', 'Power Card Overcurrent Flag',
+        self.expectedParameters['powerCardFemStatus1']   = AttributeContainer(bool, 'PowerCardFemStatus1', 'Power Card 1 FEM Status Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None)
         
-        self.expectedParameters['powerCardOverTemp']    = AttributeContainer(bool, 'PowerCardOverTemp', 'Power Card Over Temperature Flag',
+        self.expectedParameters['powerCardExtStatus0']   = AttributeContainer(bool, 'PowerCardExtStatus0', 'Power Card 0 External Status Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None)
         
-        self.expectedParameters['powerCardUnderTemp']   = AttributeContainer(bool, 'PowerCardUnderTemp', 'Power Card Under Temperature Flag',
+        self.expectedParameters['powerCardExtStatus1']   = AttributeContainer(bool, 'PowerCardExtStatus1', 'Power Card 1 External Status Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None)
         
-        self.expectedParameters['powerCardTemp']        = AttributeContainer(float, 'PowerCardTemp', 'Power Card Temperature [C]',
+        self.expectedParameters['powerCardOverCurrent0'] = AttributeContainer(bool, 'PowerCardOverCurrent0', 'Power Card 0 Overcurrent Flag',
+                                                                        (True, False), None, None,
+                                                                        AccessRead, None, ExternalParam, None)
+        
+        self.expectedParameters['powerCardOverCurrent1'] = AttributeContainer(bool, 'PowerCardOverCurrent1', 'Power Card 1 Overcurrent Flag',
+                                                                        (True, False), None, None,
+                                                                        AccessRead, None, ExternalParam, None)
+        
+        self.expectedParameters['powerCardOverTemp0']    = AttributeContainer(bool, 'PowerCardOverTemp0', 'Power Card Over 0 Temperature Flag',
+                                                                        (True, False), None, None,
+                                                                        AccessRead, None, ExternalParam, None)
+        
+        self.expectedParameters['powerCardOverTemp1']    = AttributeContainer(bool, 'PowerCardOverTemp0', 'Power Card Over 1 Temperature Flag',
+                                                                        (True, False), None, None,
+                                                                        AccessRead, None, ExternalParam, None)
+        
+        self.expectedParameters['powerCardUnderTemp0']   = AttributeContainer(bool, 'PowerCardUnderTemp0', 'Power Card Under 0 Temperature Flag',
+                                                                        (True, False), None, None,
+                                                                        AccessRead, None, ExternalParam, None)
+        
+        self.expectedParameters['powerCardUnderTemp1']   = AttributeContainer(bool, 'PowerCardUnderTemp1', 'Power Card Under 1 Temperature Flag',
+                                                                        (True, False), None, None,
+                                                                        AccessRead, None, ExternalParam, None)
+        
+        self.expectedParameters['powerCardTemp0']        = AttributeContainer(float, 'PowerCardTemp0', 'Power Card 0 Temperature [C]',
+                                                                        0, 100,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Celsius', 'C')
+        
+        self.expectedParameters['powerCardTemp1']        = AttributeContainer(float, 'PowerCardTemp', 'Power Card 1 Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
@@ -228,91 +271,179 @@ class LpdDeviceParameters(object):
                                                                       0, 100,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Celsius', 'C')
         
-        self.expectedParameters['femVoltage']           = AttributeContainer(float, 'FemVoltage', 'FEM 5V Supply Voltage [V]',
+        self.expectedParameters['femVoltage0']           = AttributeContainer(float, 'FemVoltage0', 'FEM 5V Supply 0 Voltage [V]',
                                                                       0, 6,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['femCurrent']           = AttributeContainer(float, 'FemCurrent', 'FEM 5V Supply Current [A]',
+        self.expectedParameters['femVoltage1']           = AttributeContainer(float, 'FemVoltage1', 'FEM 5V Supply 1 Voltage [V]',
+                                                                      0, 6,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['femCurrent0']           = AttributeContainer(float, 'FemCurrent0', 'FEM 5V Supply 0 Current [A]',
                                                                       0, 10,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Amps', 'A')
         
-        self.expectedParameters['digitalVoltage']       = AttributeContainer(float, 'DigitalVoltage', 'ASIC 1.2V Digital Supply Voltage [V]',
+        self.expectedParameters['femCurrent1']           = AttributeContainer(float, 'FemCurrent1', 'FEM 5V Supply 1 Current [A]',
+                                                                      0, 10,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['digitalVoltage0']       = AttributeContainer(float, 'DigitalVoltage0', 'ASIC 1.2V Digital Supply 0 Voltage [V]',
                                                                       0, 2,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['digitalCurrent']       = AttributeContainer(float, 'DigitalVoltage', 'ASIC 1.2V Digital Supply Current [mA]',
+        self.expectedParameters['digitalVoltage1']       = AttributeContainer(float, 'DigitalVoltage1', 'ASIC 1.2V Digital Supply 1 Voltage [V]',
+                                                                      0, 2,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Volts', 'V')
+
+        self.expectedParameters['digitalCurrent0']       = AttributeContainer(float, 'DigitalCurrent0', 'ASIC 1.2V Digital Supply 0 Current [mA]',
                                                                       0, 1000,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Milliamps', 'mA')
         
-        self.expectedParameters['sensorAVoltage']       = AttributeContainer(float, 'SensorAVoltage', 'Sensor A 2.5V Supply Voltage [V]',
+        self.expectedParameters['digitalCurrent1']       = AttributeContainer(float, 'DigitalCurrent1', 'ASIC 1.2V Digital Supply 1 Current [mA]',
+                                                                      0, 1000,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Milliamps', 'mA')
+        
+        self.expectedParameters['sensor0Voltage']          = AttributeContainer(float, 'Sensor0Voltage', 'Sensor 0 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensor1Voltage']          = AttributeContainer(float, 'Sensor1Voltage', 'Sensor 1 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+                            
+        self.expectedParameters['sensor2Voltage']          = AttributeContainer(float, 'Sensor2Voltage', 'Sensor 2 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensor3Voltage']          = AttributeContainer(float, 'Sensor3Voltage', 'Sensor 3 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensor4Voltage']          = AttributeContainer(float, 'Sensor4Voltage', 'Sensor 4 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensor5Voltage']          = AttributeContainer(float, 'Sensor5Voltage', 'Sensor 5 2.5V Supply Voltage [V]',
                                                                       0, 3,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorACurrent']       = AttributeContainer(float, 'SensorACurrent', 'Sensor A 2.5V Supply Current [A]',
-                                                                      0, 10,  None,
-                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
-        
-        self.expectedParameters['sensorBVoltage']       = AttributeContainer(float, 'SensorBVoltage', 'Sensor B 2.5V Supply Voltage [V]',
+        self.expectedParameters['sensor6Voltage']          = AttributeContainer(float, 'Sensor6Voltage', 'Sensor 6 2.5V Supply Voltage [V]',
                                                                       0, 3,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorBCurrent']       = AttributeContainer(float, 'SensorBCurrent', 'Sensor B 2.5V Supply Current [A]',
-                                                                      0, 10,  None,
-                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
-        
-        self.expectedParameters['sensorCVoltage']       = AttributeContainer(float, 'SensorCVoltage', 'Sensor C 2.5V Supply Voltage [V]',
+        self.expectedParameters['sensor7Voltage']          = AttributeContainer(float, 'Sensor7Voltage', 'Sensor 7 2.5V Supply Voltage [V]',
                                                                       0, 3,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorCCurrent']       = AttributeContainer(float, 'SensorCCurrent', 'Sensor C 2.5V Supply Current [A]',
-                                                                      0, 10,  None,
-                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        self.expectedParameters['sensor8Voltage']          = AttributeContainer(float, 'Sensor8Voltage', 'Sensor 8 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorDVoltage']       = AttributeContainer(float, 'SensorDVoltage', 'Sensor D 2.5V Supply Voltage [V]',
+        self.expectedParameters['sensor9Voltage']          = AttributeContainer(float, 'Sensor9Voltage', 'Sensor 9 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+                            
+        self.expectedParameters['sensor10Voltage']          = AttributeContainer(float, 'Sensor10Voltage', 'Sensor 10 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensor11Voltage']          = AttributeContainer(float, 'Sensor11Voltage', 'Sensor 11 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensor12Voltage']          = AttributeContainer(float, 'Sensor12Voltage', 'Sensor 12 2.5V Supply Voltage [V]',
+                                                                        0, 3,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensor13Voltage']          = AttributeContainer(float, 'Sensor13Voltage', 'Sensor 13 2.5V Supply Voltage [V]',
                                                                       0, 3,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorDCurrent']       = AttributeContainer(float, 'SensorDCurrent', 'Sensor D 2.5V Supply Current [A]',
-                                                                      0, 10,  None,
-                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
-        
-        self.expectedParameters['sensorEVoltage']       = AttributeContainer(float, 'SensorEVoltage', 'Sensor E 2.5V Supply Voltage [V]',
+        self.expectedParameters['sensor14Voltage']          = AttributeContainer(float, 'Sensor14Voltage', 'Sensor 14 2.5V Supply Voltage [V]',
                                                                       0, 3,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorECurrent']       = AttributeContainer(float, 'SensorECurrent', 'Sensor E 2.5V Supply Current [A]',
-                                                                      0, 10,  None,
-                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
-        
-        self.expectedParameters['sensorFVoltage']       = AttributeContainer(float, 'SensorFVoltage', 'Sensor F 2.5V Supply Voltage [V]',
+        self.expectedParameters['sensor15Voltage']          = AttributeContainer(float, 'Sensor15Voltage', 'Sensor 15 2.5V Supply Voltage [V]',
                                                                       0, 3,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorFCurrent']       = AttributeContainer(float, 'SensorFCurrent', 'Sensor F 2.5V Supply Current [A]',
+        self.expectedParameters['sensor0Current']          = AttributeContainer(float, 'Sensor0Current', 'Sensor 0 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor1Current']          = AttributeContainer(float, 'Sensor1Current', 'Sensor 1 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+                            
+        self.expectedParameters['sensor2Current']          = AttributeContainer(float, 'Sensor2Current', 'Sensor 2 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor3Current']          = AttributeContainer(float, 'Sensor3Current', 'Sensor 3 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor4Current']          = AttributeContainer(float, 'Sensor4Current', 'Sensor 4 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor5Current']          = AttributeContainer(float, 'Sensor5Current', 'Sensor 5 2.5V Supply Current [A]',
                                                                       0, 10,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Amps', 'A')
         
-        self.expectedParameters['sensorGVoltage']       = AttributeContainer(float, 'SensorGVoltage', 'Sensor G 2.5V Supply Voltage [V]',
-                                                                      0, 3,  None,
-                                                                      AccessRead, None, ExternalParam, None, 'Volts', 'V')
-        
-        self.expectedParameters['sensorGCurrent']       = AttributeContainer(float, 'SensorGCurrent', 'Sensor G 2.5V Supply Current [A]',
+        self.expectedParameters['sensor6Current']          = AttributeContainer(float, 'Sensor6Current', 'Sensor 6 2.5V Supply Current [A]',
                                                                       0, 10,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Amps', 'A')
         
-        self.expectedParameters['sensorHVoltage']       = AttributeContainer(float, 'SensorHVoltage', 'Sensor H 2.5V Supply Voltage [V]',
-                                                                      0, 3,  None,
-                                                                      AccessRead, None, ExternalParam, None, 'Volts', 'V')
-        
-        self.expectedParameters['sensorHCurrent']       = AttributeContainer(float, 'SensorHCurrent', 'Sensor H 2.5V Supply Current [A]',
+        self.expectedParameters['sensor7Current']          = AttributeContainer(float, 'Sensor7Current', 'Sensor 7 2.5V Supply Current [A]',
                                                                       0, 10,  None,
                                                                       AccessRead, None, ExternalParam, None, 'Amps', 'A')
         
-        self.expectedParameters['sensorBiasVoltage']    = AttributeContainer(float, 'SensorBiasVoltage', 'Sensor bias voltage readback [V]',
+        self.expectedParameters['sensor8Current']          = AttributeContainer(float, 'Sensor8Current', 'Sensor 8 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor9Current']          = AttributeContainer(float, 'Sensor9Current', 'Sensor 9 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+                            
+        self.expectedParameters['sensor10Current']          = AttributeContainer(float, 'Sensor10Current', 'Sensor 10 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor11Current']          = AttributeContainer(float, 'Sensor11Current', 'Sensor 11 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor12Current']          = AttributeContainer(float, 'Sensor12Current', 'Sensor 12 2.5V Supply Current [A]',
+                                                                        0, 10,  None,
+                                                                        AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor13Current']          = AttributeContainer(float, 'Sensor13Current', 'Sensor 13 2.5V Supply Current [A]',
+                                                                      0, 10,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor14Current']          = AttributeContainer(float, 'Sensor14Current', 'Sensor 14 2.5V Supply Current [A]',
+                                                                      0, 10,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensor15Current']          = AttributeContainer(float, 'Sensor15Current', 'Sensor 15 2.5V Supply Current [A]',
+                                                                      0, 10,  None,
+                                                                      AccessRead, None, ExternalParam, None, 'Amps', 'A')
+        
+        self.expectedParameters['sensorBiasVoltage0']    = AttributeContainer(float, 'SensorBiasVoltage0', 'Sensor bias 0 voltage readback [V]',
                                                                       0, 600, None,
                                                                       AccessRead, None, ExternalParam, None, 'Volts', 'V')
         
-        self.expectedParameters['sensorBiasCurrent']    = AttributeContainer(float, 'SensorBiasVoltage', 'Sensor bias current readback [uA]',
+        self.expectedParameters['sensorBiasVoltage1']    = AttributeContainer(float, 'SensorBiasVoltage1', 'Sensor bias 1 voltage readback [V]',
+                                                                      0, 600, None,
+                                                                      AccessRead, None, ExternalParam, None, 'Volts', 'V')
+        
+        self.expectedParameters['sensorBiasCurrent0']    = AttributeContainer(float, 'SensorBiasVoltage0', 'Sensor bias 0 current readback [uA]',
+                                                                      0, 600, None,
+                                                                      AccessRead, None, ExternalParam, None, 'Microamps', 'uA')
+
+        self.expectedParameters['sensorBiasCurrent1']    = AttributeContainer(float, 'SensorBiasVoltage1', 'Sensor bias 1 current readback [uA]',
                                                                       0, 600, None,
                                                                       AccessRead, None, ExternalParam, None, 'Microamps', 'uA')
 

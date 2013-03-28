@@ -1,6 +1,4 @@
 #!/bin/bash
-#
-#
 
 #      RHS Power Card
 
@@ -11,11 +9,6 @@ python LpdPowerControl.py --lv 1 --hv 1 --femI2cBus 512
 
 python LpdPowerControl.py --hvbias 50 --femI2cBus 768
 python LpdPowerControl.py --lv 1 --hv 1 --femI2cBus 768
-
-
-#echo "Running fem_asic_test.py 20 times.."
-#echo "1 of 20"
-#python LpdFemTests/fem_asic_test.py
 
 echo "-=-=-=-=-=-=-=-=-=-=-=-=-         POWER CARDS' INFO:         -=-=-=-=-=-=-=-=-=-=-=-=-"
 
