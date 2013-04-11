@@ -17,15 +17,15 @@ import matplotlib.pyplot
 import matplotlib
 
 # Import HDF5 Library; Disable its use if library not installed on PC
-#try:
-#    import h5py
-#except:
-#    print "No HDF5 Library detected - Disabling file writing"
-#    bHDF5 = False
-#else:
-#    print "HDF5 Library present."
-#    bHDF5 = True
-bHDF5 = False
+try:
+    import h5py
+except:
+    print "No HDF5 Library detected - Disabling file writing"
+    bHDF5 = False
+else:
+    print "HDF5 Library present."
+    bHDF5 = True
+#bHDF5 = False
 
 from networkConfiguration import *
 
@@ -45,11 +45,37 @@ plotRows = 2
 plotCols = 2
 plotMaxPlots = plotRows * plotCols
 
+class dataLocker(object):
+    '''
+        dataLocker - data container class to contain UDP payload and meta data
+        (such as timestamp, packet, etc)
+    '''
+    def __init__(self):
+        # Create a string to contain payload of all UDP packets
+        self.rawImageData = ""
+        self.frameNumber = -1
+        self.timeStampSof = 0.0
+        self.packetNumber = -1
+        
 
 class RxThread(QtCore.QThread):
     
     def __init__(self, rxSignal, femHost, femPort):
-        
+
+        ###############################################
+        #            MIGRATED VARIABLES               #
+        ###############################################
+        # Initialising variables used by processRxData..
+        self.first_frm_num = -1
+        self.j = 0
+        # Create object to contain UDP payload, timestamps, etc
+        self.dataObject = dataLocker()
+        # Create a list to contain payload of all UDP packets
+#        self.dataObject.rawImageData = ""
+        # Track packet number
+#        self.dataObject.packetNumber = -1
+
+        ###############################################
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
 
@@ -61,13 +87,104 @@ class RxThread(QtCore.QThread):
         self.wait()
         
     def run(self):
+
+        try:
+            while 1:    
+                stream = self.sock.recv(9000)
+#                print ".",
+                foundEof  = self.processRxData(stream)
+                if foundEof:
+                    # Complete frame received, transmit frame along with meta data saved in dataLocker object
+                    self.rxSignal.emit(self.dataObject)
+
+        except Exception as e:
+            print "processRxData() failed: ", e, "\nExiting.."
+            sys.exit()
+
+    def processRxData(self, data):
+        """ Process (chunks of) UDP data into packets of a frame 
+            [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
+        """
+#        if bTimeStamp:
+#            t1 = time.time()
+
+        # Save the read train number as it'll be modified to be RELATIVE before we reach the end of this function.. 
+        rawFrameNumber = -1
+
+        ''' DEBUGGING INFORMATION '''
+#        if ( ( ord(data[-1]) & 0x80) >> 7 ) == 1:
+#            print "The last eight bytes of each packet:"
+#            print "-- -- -- -- -- -- -- -- -- -- -- --"
+#            print "  -8, -7, -6, -5, -4, -3, -2, -1"
+#        sDebug = ""
+#        for i in range(8, 0, -1):
+#            sDebug += "%4X" % ord( data[-i] )
+#        print sDebug
         
-        while 1:    
-            stream = self.sock.recv(9000)
-#            print ".",
-            self.rxSignal.emit(stream)
-    
-    
+
+        try:
+            offset = 0
+            # Extract train number (the first four bytes)
+#            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
+            frame_number = 0
+            # Extract packet number (the following four bytes)
+            packet_number = ord(data[offset-4]) #(ord(data[offset+7]) << 24) + (ord(data[offset+6]) << 16) + (ord(data[offset+5]) << 8) + ord(data[offset+4])
+#            packet_number = 0
+            trailer_info = ord(data[-1])
+#            print "trailer_info: ", trailer_info
+            # Extract Start Of Frame, End of Frame
+            frm_sof = (trailer_info & 0x80) >> 7
+            frm_eof = (trailer_info & 0x40) >> 6
+#            packet_number = packet_number & 0x3FFFFFFF
+            
+            if bDebug:
+                print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
+            # frame_number = train number relative to execution of this software
+            self.dataObject.frameNumber = frame_number
+            
+            if self.first_frm_num == -1:
+                self.first_frm_num = frame_number
+                
+            frame_number = frame_number - self.first_frm_num
+            
+            # Compare this packet number against the previous packet number
+            if packet_number != (self.dataObject.packetNumber +1):
+                # packet numbering not consecutive
+                if packet_number > self.dataObject.packetNumber:
+                    # this packet lost between this packet and the last packet received
+                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.dataObject.packetNumber, packet_number)
+
+            # Update current packet number
+            self.dataObject.packetNumber = packet_number
+
+            # Timestamp start of frame (when we received first data of train)
+            if bTimeStamp:
+                if frm_sof == 1:
+                    # It's the start of a new train, clear any data left from previous train..
+                    self.dataObject.rawImageData = ""
+                    self.dataObject.timeStampSof = time.time()
+
+            if frm_eof == 1:
+                self.j=self.j+1
+
+                if bTimeStamp:
+                    self.timeStampEof = time.time()
+                    print "UDP data receive time:               %.9f" % (self.timeStampEof - self.dataObject.timeStampSof)
+            else:
+                pass
+            
+            # Not yet end of file: copy current packet contents onto (previous) packet contents
+            # Last 8 bytes are train number and packet number - omitting those..
+            # both are of type string..
+            self.dataObject.rawImageData += data[0:-8]
+            # Return train number and end of train
+            #return rawFrameNumber, frm_eof
+            return frm_eof
+        except Exception as e:
+            print "processRxData() error: ", e
+            return -1, -1
+
+
 class BlitQT(FigureCanvas):
 
     ''' Change font size '''
@@ -80,9 +197,6 @@ class BlitQT(FigureCanvas):
 
         # Dummy train counter
         self.trainNumber = 0
-        
-        # Track packet number
-        self.packetNumber = -1
 
         # Define plotted image dimensions: 
         self.nrows = 32*8   # 32 rows * 8 ASICs = 256 
@@ -92,13 +206,13 @@ class BlitQT(FigureCanvas):
         # Create an array to contain 65536 elements (32 x 8 x 16 x 16 = super module image)
         self.imageArray = np.zeros(self.imageSize, dtype=np.uint16)
 
-        # Initialising variables used by processRxData..
-        self.first_frm_num = -1
-        self.j = 0
-        
-        # Create a list to contain payload of all UDP packets
-        self.rawImageData = ""
-        
+#        # Initialising variables used by processRxData..
+#        self.first_frm_num = -1
+#        self.j = 0
+
+#        # Create a list to contain payload of all UDP packets
+#        self.rawImageData = ""
+
 #        # DEBUG VARIABLES
 #        self.deltaTime  = 0
 #        self.deltaCount = 0
@@ -170,166 +284,149 @@ class BlitQT(FigureCanvas):
         self.rxThread.start()
 
 
-    def handleDataRx(self, data):
+    def handleDataRx(self, dataRx):
 
-        # process UDP data in data variable
-        try:
-            frameNumber, foundEof  = self.processRxData(data)
-        except Exception as e:
-            print "processRxData() failed: ", e, "\nExiting.."
-            sys.exit()
+        # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
+        if bTimeStamp:
+            timeX1 = time.time()
         
-        # Only process image data when End Of File encountered
-        if foundEof:
-#            print "processRxData(), average time = %2.8f" % (self.deltaTime / self.deltaCount)
-            
-            # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
+        print "Raw Image Data Received:     ", len(dataRx.rawImageData), "(bytes)"
+
+        ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
+        # Create 16 bit, Little-Endian, integer type using numpy
+        _16BitLittleEndianType = np.dtype('<i2')
+
+        # Simultaneously extract 32 bit words and swap the byte order
+        #     eg: ABCD => DCBA
+        self._16BitWordArray = np.fromstring(dataRx.rawImageData, dtype=_16BitLittleEndianType)
+    
+        if bDebug:
+            print "Extracted 16 bit words: ", len(self._16BitWordArray), ". Array contents:"
+            self.display16BitArrayInHex()
+            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+
+        if bDebug:
             if bTimeStamp:
-                timeX1 = time.time()
-                            
-            print "Raw Image Data Received = ", len(self.rawImageData), " (bytes)"
-            
-            # Reset packet number
-            self.packetNumber= -1
-            
-            ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
-            # Create 16 bit, Little-Endian, integer type using numpy
-            _16BitLittleEndianType = np.dtype('<i2')
+                time2 = time.time()
+            #TODO: Checking the Gain bits slows down displaying the read out data..
+            # Check the Gain bits (Bits 12-13);
+            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
+            gainCounter = [0, 0, 0, 0]
 
-            # Simultaneously extract 32 bit words and swap the byte order
-            #     eg: ABCD => DCBA
-            self._16BitWordArray = np.fromstring(self.rawImageData, dtype=_16BitLittleEndianType)
-        
-            if bDebug:
-                print "Extracted 16 bit words: ", len(self._16BitWordArray), ". Array contents:"
-                self.display16BitArrayInHex()
-                print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            for idx in range( len(self._16BitWordArray) ):
 
-            if bDebug:
-                if bTimeStamp:
-                    time2 = time.time()
-                #TODO: Checking the Gain bits slows down displaying the read out data..
-                # Check the Gain bits (Bits 12-13);
-                # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
-                gainCounter = [0, 0, 0, 0]
-    
-                for idx in range( len(self._16BitWordArray) ):
-    
-                    # Check bits 12-13: 
-                    gainBits = self._16BitWordArray[idx] & 0x3000
-                    if gainBits > 0:
-                        # Gain isn't x100, determine its type
-                        gain = gainBits >> 12
-                        if gain == 1:
-                            # x10
-                            gainCounter[1] += 1
-                        elif gain == 2:
-                            # x1
-                            gainCounter[2] += 1
-                        else:
-                            # Invalid gain setting detected
-                            gainCounter[3] += 1
+                # Check bits 12-13: 
+                gainBits = self._16BitWordArray[idx] & 0x3000
+                if gainBits > 0:
+                    # Gain isn't x100, determine its type
+                    gain = gainBits >> 12
+                    if gain == 1:
+                        # x10
+                        gainCounter[1] += 1
+                    elif gain == 2:
+                        # x1
+                        gainCounter[2] += 1
                     else:
-                        # Gain is x100
-                        gainCounter[0] += 1
-                if bTimeStamp:
-                    time1 = time.time()
-                    self.timeStampGainCounter = time1 - time2
+                        # Invalid gain setting detected
+                        gainCounter[3] += 1
+                else:
+                    # Gain is x100
+                    gainCounter[0] += 1
+            if bTimeStamp:
+                time1 = time.time()
+                self.timeStampGainCounter = time1 - time2
 
-                print "\nGain:      x100       x10        x1  (invalid)"
-                print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
-            
-            # Create hdf file - if HDF5 Library present
-            if bHDF5:
-                dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-                fileName = "/tmp/lpdSuperModule-%s.hdf5" % dateString
+            print "\nGain:      x100       x10        x1  (invalid)"
+            print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
         
-                hdfFile = h5py.File(fileName, 'w')
-                ds = hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
-                                                maxshape=(None,self.nrows, self.ncols))
+        # Create hdf file - if HDF5 Library present
+        if bHDF5:
+            dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            fileName = "/tmp/lpdSuperModule-%s.hdf5" % dateString
+    
+            hdfFile = h5py.File(fileName, 'w')
+            ds = hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+                                            maxshape=(None,self.nrows, self.ncols))
 
-            # Define variables that increase with each loop iteration
-            currentPlot = 0
-            bNextImageAvailable = True
-            
+        # Define variables that increase with each loop iteration
+        currentPlot = 0
+        bNextImageAvailable = True
+        
 #            if bTimeStamp:
 #                print "self.timeStampGainCounter:  ", self.timeStampGainCounter
 
-            # Loop over the specified number of plots
-            while bNextImageAvailable and currentPlot < plotMaxPlots:
+        # Loop over the specified number of plots
+        while bNextImageAvailable and currentPlot < plotMaxPlots:
 
-                if bTimeStamp:
-                    timeD1 = time.time()
+            if bTimeStamp:
+                timeD1 = time.time()
 
-                dataBeginning = self.imageSize*currentPlot
+            dataBeginning = self.imageSize*currentPlot
 
-                # Get the first image of the image
-                bNextImageAvailable = self.retrieveFirstSuperModuleImageFromAsicData(dataBeginning)
+            # Get the first image of the image
+            bNextImageAvailable = self.retrieveFirstSuperModuleImageFromAsicData(dataBeginning)
 
-                # The first image, imageArray, has now been stripped from the image
-                # Reshape image into 256 x 256 pixel array
-                try:
-                    self.data = self.imageArray.reshape(self.nrows, self.ncols)
-                except Exception as e:
-                    print "handleDataRx() failed to reshape imageArray: ", e, "\nExiting.."
-                    print "len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols
-                    exit()
-                
-                # Mask out gain bits from data
-                self.data = self.data & 0xfff
-                
-                # Display debug information..
+            # The first image, imageArray, has now been stripped from the image
+            # Reshape image into 256 x 256 pixel array
+            try:
+                self.data = self.imageArray.reshape(self.nrows, self.ncols)
+            except Exception as e:
+                print "handleDataRx() failed to reshape imageArray: ", e, "\nExiting.."
+                print "len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols
+                exit()
+            
+            # Mask out gain bits from data
+            self.data = self.data & 0xfff
+            
+            # Display debug information..
 #                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( self._16BitWordArray[dataBeginning:] )
 #                # Set title as train number, current image number
 #                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
-                print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %8i" % len( self._16BitWordArray[dataBeginning:] ),
+            print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %8i" % len( self._16BitWordArray[dataBeginning:] ),
 #                if bTimeStamp:
 #                    print ".retrieve..(): ", self.timeStampRetrieveFunc
 #                else:
 #                    print ""
 
-                self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
-                
-                # Load image into figure
-                self.img[currentPlot].set_data(self.data)
+            self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
+            
+            # Load image into figure
+            self.img[currentPlot].set_data(self.data)
 
-                self.ax[currentPlot].draw_artist(self.img[currentPlot])
-                # Draw new plot
-                self.blit(self.ax[currentPlot].bbox)
+            self.ax[currentPlot].draw_artist(self.img[currentPlot])
+            # Draw new plot
+            self.blit(self.ax[currentPlot].bbox)
 
-                # Clear data before next iteration (image already rendered)
-                self.data.fill(0)
+            # Clear data before next iteration (image already rendered)
+            self.data.fill(0)
 
-                # Write image to file - if HDF5 Library present
-                if bHDF5:
-                    ds.resize((currentPlot+1, self.nrows, self.ncols))
-                    ds[currentPlot,...] = self.data
+            # Write image to file - if HDF5 Library present
+            if bHDF5:
+                ds.resize((currentPlot+1, self.nrows, self.ncols))
+                ds[currentPlot,...] = self.data
 
-                # Increment currentPlot
-                currentPlot += 1
-                if bTimeStamp:
-                    time3 = time.time()
-                    print "%.5f" %(time3 - timeD1)
-            else:
-                # Finished
-                print "\nFinished drawing subplots"
-                # Close file if HDF5 Library present
-                if bHDF5:
-                    hdfFile.close()
-
-                # Dummy counter
-                self.trainNumber += 1
-
-            # 'Reset' rawImageData variable
-            self.rawImageData = self.rawImageData[0:0]
+            # Increment currentPlot
+            currentPlot += 1
             if bTimeStamp:
-                timeX2 = time.time()
-                print "Total time = ",(timeX2 - timeX1)
-
-            print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+                time3 = time.time()
+                print "%.9f" %(time3 - timeD1)
         else:
-            # Didn't find End Of File within this packet, check next packet..
-            pass
+            # Finished
+#            print "\nFinished drawing subplots"
+            # Close file if HDF5 Library present
+            if bHDF5:
+                hdfFile.close()
+
+            # Dummy counter
+            self.trainNumber += 1
+
+        # 'Reset' rawImageData variable
+        dataRx.rawImageData = dataRx.rawImageData[0:0]
+        if bTimeStamp:
+            timeX2 = time.time()
+            print "Total time = ",(timeX2 - timeX1)
+
+        print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
   
         if self.cnt == 0:
             self.draw()
@@ -369,28 +466,18 @@ class BlitQT(FigureCanvas):
             print "display16BitArrayInHex() error: ", e
             exit(0)
 
-# ~~~~~~~~~~~~ #
-
 
     def retrieveFirstSuperModuleImageFromAsicData(self, dataBeginning):
         """ Extracts one image beginning at argument dataBeginning in the member array 
             self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
             the current image is the last image in the data
         """
-
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
 
-        bDebug = False
-
-        ######################################################################
-        #     New Implementation
-        ######################################################################
         numCols = 16
         numRows = 8
-
         numAsics = numCols * numRows
-
         numColsPerAsic = 16
         numRowsPerAsic = 32
 
@@ -405,7 +492,6 @@ class BlitQT(FigureCanvas):
 
         if bTimeStamp:
             t1 = time.time()
-
         try:
             for asicRow in xrange(numRowsPerAsic):
                 for asicCol in xrange(numColsPerAsic):
@@ -418,13 +504,10 @@ class BlitQT(FigureCanvas):
             sys.exit()
         except Exception as e:
             print "Error while extracting image: ", e, "\nExiting.."
+            sys.exit()
 
-        if bTimeStamp:
-            t2 = time.time()
         # Image now upside down, reverse the order
         self.imageArray[:,:] = self.imageArray[::-1,:]
-
-#        print 'Time to vector unpack data =', t2 - t1, 'secs'
 
         # Last image in the data?
         try:
@@ -434,89 +517,6 @@ class BlitQT(FigureCanvas):
         except IndexError:
             pass   # Last Image in this train detected
         return bNextImageAvailable
-
-
-    def processRxData(self, data):
-        """ Process (chunks of) UDP data into packets of a frame 
-            [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
-        """
-#        if bTimeStamp:
-#            t1 = time.time()
-
-        # Save the read train number as it'll be modified to be RELATIVE before we reach the end of this function.. 
-        rawFrameNumber = -1
-
-        ''' DEBUGGING INFORMATION '''
-#        if ( ( ord(data[-1]) & 0x80) >> 7 ) == 1:
-#            print "The last eight bytes of each packet:"
-#            print "-- -- -- -- -- -- -- -- -- -- -- --"
-#            print "  -8, -7, -6, -5, -4, -3, -2, -1"
-#        sDebug = ""
-#        for i in range(8, 0, -1):
-#            sDebug += "%4X" % ord( data[-i] )
-#        print sDebug
-        
-        try:
-            offset = 0
-            # Extract train number (the first four bytes)
-#            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
-            frame_number = 0
-            # Extract packet number (the following four bytes)
-            packet_number = ord(data[offset-4]) #(ord(data[offset+7]) << 24) + (ord(data[offset+6]) << 16) + (ord(data[offset+5]) << 8) + ord(data[offset+4])
-#            packet_number = 0
-            trailer_info = ord(data[-1])
-#            print "trailer_info: ", trailer_info
-            # Extract Start Of Frame, End of Frame
-            frm_sof = (trailer_info & 0x80) >> 7
-            frm_eof = (trailer_info & 0x40) >> 6
-#            packet_number = packet_number & 0x3FFFFFFF
-            
-#            print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
-            # rawFrameNumber = train number read from packet
-            # frame_number = train number relative to execution of this software
-            rawFrameNumber = frame_number
-            
-            if self.first_frm_num == -1:
-                self.first_frm_num = frame_number
-                
-            frame_number = frame_number - self.first_frm_num
-            
-            # Compare this packet number against the previous packet number
-            if packet_number != (self.packetNumber +1):
-                # packet numbering not consecutive
-                print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
-
-            # Update current packet number
-            self.packetNumber = packet_number
-
-            # Timestamp start of frame (when we received first data of train)
-            if bTimeStamp:
-                if frm_sof == 1:
-                    self.timeStampSof = time.time()
-
-            if frm_eof == 1:
-                self.j=self.j+1
-
-                if bTimeStamp:
-                    self.timeStampEof = time.time()
-                    print "\nUDP, EoF less SoF: ", self.timeStampEof - self.timeStampSof
-            else:
-                pass
-            
-            # Not yet end of file: copy current packet contents onto (previous) packet contents
-            # Last 8 bytes are train number and packet number - omitting those..
-            # both are of type string..
-            self.rawImageData += data[0:-8]
-#            if bTimeStamp:
-#                t2 = time.time()
-#                self.deltaTime += t2 - t1
-#                self.deltaCount += 1
-            # Return train number and end of train
-            return rawFrameNumber, frm_eof
-        except Exception as e:
-            print "processRxData() error: ", e
-            return -1, -1
-
         
 if __name__ == "__main__":
 
