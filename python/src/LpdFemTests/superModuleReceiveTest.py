@@ -17,18 +17,22 @@ import matplotlib.pyplot
 import matplotlib
 
 # Import HDF5 Library; Disable its use if library not installed on PC
-try:
-    import h5py
-except:
-    print "No HDF5 Library detected - Disabling file writing"
-    bHDF5 = False
-else:
-    print "HDF5 Library present."
-    bHDF5 = True
+#try:
+#    import h5py
+#except:
+#    print "No HDF5 Library detected - Disabling file writing"
+#    bHDF5 = False
+#else:
+#    print "HDF5 Library present."
+#    bHDF5 = True
+bHDF5 = False
 
 from networkConfiguration import *
 
 from PyQt4 import QtCore, QtGui
+
+# Enable or disable time stamping
+bTimeStamp = True
 
 
 # Enable or disable debugging
@@ -60,7 +64,7 @@ class RxThread(QtCore.QThread):
         
         while 1:    
             stream = self.sock.recv(9000)
-            print ".",
+#            print ".",
             self.rxSignal.emit(stream)
     
     
@@ -73,6 +77,9 @@ class BlitQT(FigureCanvas):
 
     def __init__(self, femHost=None, femPort=None):
         FigureCanvas.__init__(self, Figure())
+
+        # Dummy train counter
+        self.trainNumber = 0
         
         # Track packet number
         self.packetNumber = -1
@@ -91,6 +98,10 @@ class BlitQT(FigureCanvas):
         
         # Create a list to contain payload of all UDP packets
         self.rawImageData = ""
+        
+#        # DEBUG VARIABLES
+#        self.deltaTime  = 0
+#        self.deltaCount = 0
 
         # Generate list of xticks, yticks to label the x, y axis
         xlist = []
@@ -170,77 +181,63 @@ class BlitQT(FigureCanvas):
         
         # Only process image data when End Of File encountered
         if foundEof:
-            
-            print "\nRaw Image Data Received = ", len(self.rawImageData), " (bytes)"
+#            print "processRxData(), average time = %2.8f" % (self.deltaTime / self.deltaCount)
             
             # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
+            if bTimeStamp:
+                timeX1 = time.time()
+                            
+            print "Raw Image Data Received = ", len(self.rawImageData), " (bytes)"
+            
             # Reset packet number
             self.packetNumber= -1
             
             ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
-            
-            # Create 32 bit, Little-Endian, integer type using numpy
-            _32BitLittleEndianType = np.dtype('<i4')
+            # Create 16 bit, Little-Endian, integer type using numpy
+            _16BitLittleEndianType = np.dtype('<i2')
+
             # Simultaneously extract 32 bit words and swap the byte order
             #     eg: ABCD => DCBA
-            _32BitWordArray = np.fromstring(self.rawImageData, dtype=_32BitLittleEndianType)
-            
+            self._16BitWordArray = np.fromstring(self.rawImageData, dtype=_16BitLittleEndianType)
+        
             if bDebug:
-                print "Extracted number of 32 bit words: ", len(_32BitWordArray)
-                # Display array content 32 bit integers
-                print "Array contents structured into 32 bit elements [byte swapped!]:"
-                self.display32BitArrayInHex(_32BitWordArray)
+                print "Extracted 16 bit words: ", len(self._16BitWordArray), ". Array contents:"
+                self.display16BitArrayInHex()
                 print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-            # Calculate length of 32 bit array
-            _32BitArrayLen = len(_32BitWordArray)
-
-            # Create empty array to store 16 bit elements (eg 32 Bit array * 2)
-            #     Each 32-bit word contain 2 pixels
-            _16BitWordArray = np.zeros(_32BitArrayLen*2, dtype='i2')
-            
-            
-            # Split each 4 Byte element into 2 adjecent, 2 Byte elements
-            for rawIdx in range(_32BitArrayLen):
-                # Reverted back to NOT swapping ASIC pairs
-                _16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
-                _16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
-
-            # Check the Gain bits (Bits 12-13);
-            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
-            gainCounter = [0, 0, 0, 0]
-
-            for idx in range( len(_16BitWordArray) ):
-
-                # Check bits 12-13: 
-                gainBits = _16BitWordArray[idx] & 0x3000
-                if gainBits > 0:
-                    # Gain isn't x100, determine its type
-                    gain = gainBits >> 12
-                    if gain == 1:
-                        # x10
-                        gainCounter[1] += 1
-                    elif gain == 2:
-                        # x1
-                        gainCounter[2] += 1
+            if bDebug:
+                if bTimeStamp:
+                    time2 = time.time()
+                #TODO: Checking the Gain bits slows down displaying the read out data..
+                # Check the Gain bits (Bits 12-13);
+                # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
+                gainCounter = [0, 0, 0, 0]
+    
+                for idx in range( len(self._16BitWordArray) ):
+    
+                    # Check bits 12-13: 
+                    gainBits = self._16BitWordArray[idx] & 0x3000
+                    if gainBits > 0:
+                        # Gain isn't x100, determine its type
+                        gain = gainBits >> 12
+                        if gain == 1:
+                            # x10
+                            gainCounter[1] += 1
+                        elif gain == 2:
+                            # x1
+                            gainCounter[2] += 1
+                        else:
+                            # Invalid gain setting detected
+                            gainCounter[3] += 1
                     else:
-                        # Invalid gain setting detected
-                        gainCounter[3] += 1
-                else:
-                    # Gain is x100
-                    gainCounter[0] += 1
+                        # Gain is x100
+                        gainCounter[0] += 1
+                if bTimeStamp:
+                    time1 = time.time()
+                    self.timeStampGainCounter = time1 - time2
 
-            print "\nGain:      x100       x10        x1  (invalid)"
-            print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
-            del gainCounter
-            
-            
-            if bDebug:
-                print "Number of 16 Bit Word: ", len(_16BitWordArray)
-                # Display array contenting 16 bit elements:
-                print "Array contents re-structured into 16 bit elements:"
-                self.display16BitArrayInHex(_16BitWordArray)
-                print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+                print "\nGain:      x100       x10        x1  (invalid)"
+                print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
             
             # Create hdf file - if HDF5 Library present
             if bHDF5:
@@ -255,14 +252,20 @@ class BlitQT(FigureCanvas):
             currentPlot = 0
             bNextImageAvailable = True
             
+#            if bTimeStamp:
+#                print "self.timeStampGainCounter:  ", self.timeStampGainCounter
+
             # Loop over the specified number of plots
             while bNextImageAvailable and currentPlot < plotMaxPlots:
-                
+
+                if bTimeStamp:
+                    timeD1 = time.time()
+
                 dataBeginning = self.imageSize*currentPlot
-                
+
                 # Get the first image of the image
-                bNextImageAvailable = self.retrieveFirstSuperModuleImageFromAsicData(_16BitWordArray[dataBeginning:])
-                
+                bNextImageAvailable = self.retrieveFirstSuperModuleImageFromAsicData(dataBeginning)
+
                 # The first image, imageArray, has now been stripped from the image
                 # Reshape image into 256 x 256 pixel array
                 try:
@@ -276,10 +279,16 @@ class BlitQT(FigureCanvas):
                 self.data = self.data & 0xfff
                 
                 # Display debug information..
-                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( _16BitWordArray[dataBeginning:] )
-                
-                # Set title as train number, current image number
-                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
+#                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( self._16BitWordArray[dataBeginning:] )
+#                # Set title as train number, current image number
+#                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
+                print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %8i" % len( self._16BitWordArray[dataBeginning:] ),
+#                if bTimeStamp:
+#                    print ".retrieve..(): ", self.timeStampRetrieveFunc
+#                else:
+#                    print ""
+
+                self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
                 
                 # Load image into figure
                 self.img[currentPlot].set_data(self.data)
@@ -298,16 +307,25 @@ class BlitQT(FigureCanvas):
 
                 # Increment currentPlot
                 currentPlot += 1
-
+                if bTimeStamp:
+                    time3 = time.time()
+                    print "%.5f" %(time3 - timeD1)
             else:
                 # Finished
-                print "Finished drawing subplots"
+                print "\nFinished drawing subplots"
                 # Close file if HDF5 Library present
                 if bHDF5:
                     hdfFile.close()
 
+                # Dummy counter
+                self.trainNumber += 1
+
             # 'Reset' rawImageData variable
             self.rawImageData = self.rawImageData[0:0]
+            if bTimeStamp:
+                timeX2 = time.time()
+                print "Total time = ",(timeX2 - timeX1)
+
             print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
         else:
             # Didn't find End Of File within this packet, check next packet..
@@ -324,41 +342,11 @@ class BlitQT(FigureCanvas):
 #
 #  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-    def display32BitArrayInHex(self, dataArray):
-        """ display32BitArrayInHex takes dataArray argument containing array of raw data
-            AFTER it's been byte swapped and then displays each 16 bit ADC value (each index/byte) 
+    def display16BitArrayInHex(self):
+        """ display16BitArrayInHex displays each 16 bit ADC value (each index/byte)
             .. Unless data_len hardcoded to 160..
         """
-        
-        data_len = len(dataArray)
-        
-        data_len = 160*5
-        
-        currentArrayElement = ""
-        try:
-            # Convert each 2 byte into 16 bit data and print that
-            for idx in range(data_len/2):
-                
-                if (idx %8 == 0):
-                    print "%6d : " % idx,
-                    
-                currentArrayElement =  currentArrayElement + "       %08X " % dataArray[idx]
-                
-                if (idx % 8 == 7):
-                    print currentArrayElement
-                    currentArrayElement = ""
-                
-            print "Number of 16 bit words: ", data_len/2
-        except Exception as e:
-            print "display32BitArrayInHex() error: ", e
-            exit(0)
-
-    def display16BitArrayInHex(self, dataArray):
-        """ display16BitArrayInHex takes dataArray argument containing array of raw data
-            AFTER it's been byte swapped and then displays each 16 bit ADC value (each index/byte)
-            .. Unless data_len hardcoded to 160..
-        """
-        data_len = len(dataArray)
+        data_len = len(self._16BitWordArray)
         
         data_len = 160
         
@@ -370,7 +358,7 @@ class BlitQT(FigureCanvas):
                 if (idx %16 == 0):
                     print "%6d : " % idx,
                     
-                currentArrayElement =  currentArrayElement + "   %04X " % dataArray[idx]
+                currentArrayElement =  currentArrayElement + "   %04X " % self._16BitWordArray[idx]
                 
                 if (idx % 16 == 15):
                     print currentArrayElement
@@ -384,88 +372,67 @@ class BlitQT(FigureCanvas):
 # ~~~~~~~~~~~~ #
 
 
-    def retrieveFirstSuperModuleImageFromAsicData(self, sixteenBitArray):
-        """ The sixteenBitArray array argument containing all
-            the ASIC data (full supermodule), and returns,    
-            [AS OF  February 2013]: 
-                * boolean to signal whether this is the last image in the data
-                * the first image ( (32 x 8) * (16 x 16) pixels) of an image found in the data,
-            in the form of the 16 ASICs organised into a 256 x 256 pixel image 
+    def retrieveFirstSuperModuleImageFromAsicData(self, dataBeginning):
+        """ Extracts one image beginning at argument dataBeginning in the member array 
+            self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
+            the current image is the last image in the data
         """
-        
-        # Distance between two consecutive pixels within the same ASIC in the quadrant detector
-        pixelDistance = 128
-        
+
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
-        
-        # Counter variables
-        imageIndex = 0
-        rawCounter = 0
-
-        # Go from ASIC 1-128
-        lookupTableAsicDistance = 0
 
         bDebug = False
-        debugCount = 0
-        
-        # Iterate over 32 rows (within an ASIC)
-        for ROW in range(31, -1, -1):
 
-            # Iterate over 16 columns of ASIC tiles
-            for asicColumn in range(16):
-                
-                # Iterate over the 8 rows of ASIC tiles
-                for asicRow in range(7, -1, -1):
+        ######################################################################
+        #     New Implementation
+        ######################################################################
+        numCols = 16
+        numRows = 8
 
-                    try:
-                        # Iterate over 16 columns (within an ASIC)
-                        for COLUMN in range(16):
+        numAsics = numCols * numRows
 
-                            imageIndex = 0 + (16* COLUMN) + (8192*asicRow) + asicColumn + (256*ROW)
-                            rawDataOffset = lookupTableAsicDistance + (pixelDistance*rawCounter)
-                            
-                            if bDebug:
-                                if rawDataOffset < 768:
-#                                    print "%4i" % rawDataOffset,
-                                    print "%6i" % imageIndex,
-                            
-                            self.imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
-                            
-#                            # Print contents of one ASIC
-#                            if lookupTableAsicDistance == 1:
-#                                if debugCount % 16 == 0:
-#                                    print "\n%4i:" % debugCount,
-#                                print "%4i" % sixteenBitArray[rawDataOffset],
-#                                debugCount += 1
+        numColsPerAsic = 16
+        numRowsPerAsic = 32
 
-                            # Increment lookupTableAsicDistance or zero it if we reached last ASIC
-                            if lookupTableAsicDistance == 128-1:
-                                lookupTableAsicDistance = 0
-                                # Increment counter for rawDataOffset for every supermodule worth of (128) ASICs 
-                                rawCounter += 1
-                            else:
-                                lookupTableAsicDistance += 1
+        numPixelsPerAsic = numColsPerAsic * numRowsPerAsic
+        numPixels = numAsics * numPixelsPerAsic
 
-                        if bDebug:
-                            if rawDataOffset < 768:
-                                print ""
+        # Create linear array for unpacked pixel data
+        self.imageArray = np.zeros(numPixels, dtype=np.uint16)
+        self.imageArray = np.reshape(self.imageArray, (numRows * numRowsPerAsic, numCols * numColsPerAsic))
 
-                    except IndexError:
-                        # If end of array reached, will raise IndexError
-                        print "SMod-IdxError, debug: %3i %3i %3i %3i, %4i,  %6i "  % (asicRow, asicColumn, ROW, COLUMN, lookupTableAsicDistance, rawDataOffset)
-                        break
-                    except Exception as e:
-                        print "retrieveFirstSuperModuleImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
-                        exit()
+        rawOffset = 0
 
-        # Check whether this is the last image in the image data..
+        if bTimeStamp:
+            t1 = time.time()
+
         try:
-            sixteenBitArray[self.imageSize]
+            for asicRow in xrange(numRowsPerAsic):
+                for asicCol in xrange(numColsPerAsic):
+                    
+                    self.imageArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self._16BitWordArray[rawOffset:(rawOffset + numAsics)].reshape(8,16)
+                    rawOffset += numAsics
+        
+        except IndexError:
+            print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
+            sys.exit()
+        except Exception as e:
+            print "Error while extracting image: ", e, "\nExiting.."
+
+        if bTimeStamp:
+            t2 = time.time()
+        # Image now upside down, reverse the order
+        self.imageArray[:,:] = self.imageArray[::-1,:]
+
+#        print 'Time to vector unpack data =', t2 - t1, 'secs'
+
+        # Last image in the data?
+        try:
+            self._16BitWordArray[dataBeginning + self.imageSize]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:
-            pass   # Last Image detected
+            pass   # Last Image in this train detected
         return bNextImageAvailable
 
 
@@ -473,7 +440,9 @@ class BlitQT(FigureCanvas):
         """ Process (chunks of) UDP data into packets of a frame 
             [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
         """
-                
+#        if bTimeStamp:
+#            t1 = time.time()
+
         # Save the read train number as it'll be modified to be RELATIVE before we reach the end of this function.. 
         rawFrameNumber = -1
 
@@ -519,17 +488,29 @@ class BlitQT(FigureCanvas):
 
             # Update current packet number
             self.packetNumber = packet_number
-                        
+
+            # Timestamp start of frame (when we received first data of train)
+            if bTimeStamp:
+                if frm_sof == 1:
+                    self.timeStampSof = time.time()
+
             if frm_eof == 1:
                 self.j=self.j+1
+
+                if bTimeStamp:
+                    self.timeStampEof = time.time()
+                    print "\nUDP, EoF less SoF: ", self.timeStampEof - self.timeStampSof
             else:
                 pass
             
             # Not yet end of file: copy current packet contents onto (previous) packet contents
             # Last 8 bytes are train number and packet number - omitting those..
             # both are of type string..
-            self.rawImageData = self.rawImageData + data[0:-8]
-
+            self.rawImageData += data[0:-8]
+#            if bTimeStamp:
+#                t2 = time.time()
+#                self.deltaTime += t2 - t1
+#                self.deltaCount += 1
             # Return train number and end of train
             return rawFrameNumber, frm_eof
         except Exception as e:

@@ -1,5 +1,5 @@
 '''
-    Author: CKD27546
+    Author: ckd27546
     
     A helper class to handle I2C function calls initiated and completed by LpdFemClient
     That is: The API requests a set/get function call from LpdFemClient. 
@@ -83,7 +83,7 @@ class LpdPowerCard(object):
     
     def __init__(self, fem, i2cBus):
         '''
-
+        Constructor for LpdPowerCard
         
         @param fem Reference to the FEM object utilising this helper class
         @param powerCardIdent  Is this RHS=0 (always present) or LHS=1 (supermodule only) power card
@@ -99,15 +99,11 @@ class LpdPowerCard(object):
         
         scale = 3.0
         voltage = (adcVal * scale / 4095.0)
-        
         # Calculate resistance from voltage
         resistance = self.calculateResistance(voltage)
+        # Calculate temperature from resistance and return it
+        return self.calculateTemperature(resistance)
         
-        # Calculate temperature from resistance
-        temperature = self.calculateTemperature(resistance)
-        
-        return temperature
-
     def sensorVoltageGet(self, sensorIdx):
  
         adcVal = self.ad7998Read(self.AD7998ADDRESS[1], self.V25A_VOLTS_CHAN + sensorIdx)
@@ -245,8 +241,7 @@ class LpdPowerCard(object):
         '''
         adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V5_AMPS_CHAN)
         scale = 10.0
-        tempVal = (adcVal * scale / 4095.0)
-        return tempVal
+        return (adcVal * scale / 4095.0)
 
     def digitalVoltageGet(self):
         '''
@@ -304,9 +299,8 @@ class LpdPowerCard(object):
         self.fem.i2cWrite(addr, adcChannel)
         # Read operation, read ADC value
         response = self.fem.i2cRead(addr, 2)
-        # Extract the received two bytes and return one integer
-        value = (int((response[0] & 15) << 8) + int(response[1]))
-        return value
+        # Extract the received two bytes and return as one integer
+        return (int((response[0] & 15) << 8) + int(response[1]))
 
     def pcf7485ReadOneBit(self, bitId):
         ''' 
@@ -369,13 +363,12 @@ class LpdPowerCard(object):
         vCC = 5
         resistance = 15000
         # Calculate resistance of the thermistor
-        resistanceTherm = ((resistance * aVoltage) / (vCC-aVoltage))
-        return resistanceTherm
+        return ((resistance * aVoltage) / (vCC-aVoltage))
 
 if __name__ == "__main__":
     
     theFem = LpdFemClient(('192.168.2.2', 6969), 5, 2)
     
-    theFem.sensorBiasSet(25)
+    theFem.sensorBias0Set(25)
     print theFem.sensorBiasGet()
     

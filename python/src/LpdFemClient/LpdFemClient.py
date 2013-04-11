@@ -215,7 +215,7 @@ class LpdFemClient(FemClient):
                        'nic_list'    : [ '61649x@x192.168.3.1' ]
                       }
         
-        # Supermodule has to power cards, everyone else only one
+        # Supermodule has two power cards, everyone else only one
         if asicModuleType == 0:
             numberPowerCards= 2
             numberSensorsPerCard = 8
@@ -230,9 +230,9 @@ class LpdFemClient(FemClient):
             
         else:
             numberPowerCards= 1
-            powerCardI2cBus = [2]
+            powerCardI2cBus = [3]
             sensorMapping = [[0,2], [0, 7]] # TODO Validate this mapping is correct
-            
+        
         self.powerCards = []
         for idx in range(numberPowerCards):
             self.powerCards.append(LpdPowerCard(self, powerCardI2cBus[idx]))
@@ -275,17 +275,18 @@ class LpdFemClient(FemClient):
                 setattr(self, getMethodName,
                         partial(self._powerCardParamGet, cardIdx=cardIdx, method=targetMethodName))
 
-    def _paramSet(self, value, method):
-        
-        #TODO: error check idx against number of power cards
-        #TODO: trap attribute error at this point
-        for idx in range(len(self.powerCards)):
-            getattr(self.powerCards[idx], method)(value)
+    #TODO: Redundant? 
+#    def _paramSet(self, value, method):
+#        
+#        #TODO: error check idx against number of power cards
+#        #TODO: trap attribute error at this point
+#        for idx in range(len(self.powerCards)):
+#            getattr(self.powerCards[idx], method)(value)
 
-    def _paramGet(self, method):
-
-        return getattr(self.powerCards, method)()
-    
+#    def _paramGet(self, method):
+#
+#        return getattr(self.powerCards, method)()
+#    
     def _sensorParamGet(self, cardIdx, sensorIdx, method):
         
         return getattr(self.powerCards[cardIdx], method)(sensorIdx)
@@ -571,7 +572,6 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(base_addr + 0x0000000F, ctrl_reg_val)
         self.rdmaWrite(base_addr + 0x0000000D, eth_ifg)
 
-
     def x10g_set_farm_mode(self, base_addr, mode):
         """ Enable or Disable 10G Farm Mode  """
 
@@ -584,7 +584,6 @@ class LpdFemClient(FemClient):
             
         self.rdmaWrite(base_addr+15, ctrl_reg)  
         ctrl_reg = self.rdmaRead(base_addr+15, 1)[0]
-        #print 'ctrl_reg = $%08X' %ctrl_reg         
 
     def swap_endian(self, data):  
         swapped = ((data << 24) & 0xff000000) | ((data << 8) & 0x00ff0000) | ((data >>24) & 0x000000ff) | ((data >> 8) & 0x0000ff00)
@@ -1336,7 +1335,7 @@ class LpdFemClient(FemClient):
             time.sleep(1)     # need to check if images are all readout before sending next train
 
         print "======== Train Cycle Completed ===========\r" 
-        time.sleep(2)   # just to see output before dumping registers
+#        time.sleep(1)   # just to see output before dumping registers
   
         # Read out all registers (Both 2 tile & supermodule run fine without) 
         if self.femDebugLevel > 0:
@@ -1590,6 +1589,7 @@ class LpdFemClient(FemClient):
         self.femAsicEnableMaskDummy = aValue
         #TODO: Temp hack to decouple ASIC mask vector from API
         self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000]
+#        self.femAsicEnableMask = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
         
     def femAsicColumnsGet(self):
         '''

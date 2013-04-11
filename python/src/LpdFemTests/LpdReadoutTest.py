@@ -32,10 +32,10 @@ def LpdReadoutTest(femHost=None, femPort=None):
         SlowControlXmlString = 'ConfigFiles/selfTestPixel232.xml'
         FastCmdXmlString     = 'ConfigFiles/SuperModuleNormalOperation.xml'# SupMod - normal readout
     elif xmlConfiguration == 2:
-#        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
-#        FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
-        SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
-        FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
+        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+        FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+#        SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
+#        FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
     else:
         SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl_B.xml'
         FastCmdXmlString     = 'ConfigFiles/fast_cmd_4f_with_slow_readout_C.xml'
@@ -121,7 +121,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicModuleType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femDataSource', 0)
+    rc = theDevice.paramSet('femDataSource', 1) #0)
     if rc != LpdDevice.ERROR_OK:
         print "femDataSource set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -177,7 +177,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "tenGigUdpPacketLen set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femAsicGainOverride', 8)  #8)        # (Default value is 0)
+    rc = theDevice.paramSet('femAsicGainOverride', 9)  #8)        # (Default value is 0)
     if rc != LpdDevice.ERROR_OK:
         print "femAsicGainOverride set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -197,7 +197,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicSlowClockPhase set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femNumTestCycles', 1)
+    rc = theDevice.paramSet('femNumTestCycles', 6)  #1)
     if rc != LpdDevice.ERROR_OK:
         print "femNumTestCycles set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 

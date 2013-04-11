@@ -195,23 +195,24 @@ class BlitQT(FigureCanvas):
 
             # Create empty array to store 16 bit elements (eg 32 Bit array * 2)
             #     Each 32-bit word contain 2 pixels
-            _16BitWordArray = np.zeros(_32BitArrayLen*2, dtype='i2')
+            self._16BitWordArray = np.zeros(_32BitArrayLen*2, dtype='i2')
             
             
             # Split each 4 Byte element into 2 adjecent, 2 Byte elements
             for rawIdx in range(_32BitArrayLen):
                 # Reverted back to NOT swapping ASIC pairs
-                _16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
-                _16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
+                self._16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
+                self._16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
 
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
             gainCounter = [0, 0, 0, 0]
 
-            for idx in range( len(_16BitWordArray) ):
+            #TODO: Checking the Gain bits slows down displaying the read out data..
+            for idx in range( (_32BitArrayLen*2) ):
 
                 # Check bits 12-13: 
-                gainBits = _16BitWordArray[idx] & 0x3000
+                gainBits = self._16BitWordArray[idx] & 0x3000
                 if gainBits > 0:
                     # Gain isn't x100, determine its type
                     gain = gainBits >> 12
@@ -235,10 +236,10 @@ class BlitQT(FigureCanvas):
             
             """ DEBUG INFO: """
             if bDebug:
-                print "Number of 16 Bit Word: ", len(_16BitWordArray)
+                print "Number of 16 Bit Word: ", len(self._16BitWordArray)
                 # Display array contenting 16 bit elements:
                 print "Array contents re-structured into 16 bit elements:"
-                self.display16BitArrayInHex(_16BitWordArray)
+                self.display16BitArrayInHex(self._16BitWordArray)
                 print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
             # Create hdf file - if HDF5 Library present
@@ -260,7 +261,7 @@ class BlitQT(FigureCanvas):
                 dataBeginning = 65536*currentPlot
                 
                 # Get the first image of the image
-                bNextImageAvailable = self.retrieveFirstTwoTileImageFromAsicData(_16BitWordArray[dataBeginning:])
+                bNextImageAvailable = self.retrieveFirstTwoTileImageFromAsicData(dataBeginning)
                 
                 # The first image, imageArray, has now been stripped from the image
                 # Reshape image into 32 x 256 pixel array
@@ -275,7 +276,7 @@ class BlitQT(FigureCanvas):
                 self.data = self.data & 0xfff
                 
                 # Display plot information
-                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: %9i" % len( _16BitWordArray[dataBeginning:] )
+                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: %9i" % len( self._16BitWordArray[dataBeginning:] )
                 
                 # Set title as train number, current image number
                 self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
@@ -376,33 +377,25 @@ class BlitQT(FigureCanvas):
 
 # ~~~~~~~~~~~~ #
 
-    def retrieveFirstTwoTileImageFromAsicData(self, sixteenBitArray):
-        """ The sixteenBitArray array argument contains all
-            the ASIC data (full supermodule) data. The function returns,
-                * boolean to signal whether this is the last image in the data
-                * the first image (32 x 16 x 16 pixels) of an image found in the data,
-            in the form of the 16 ASICs organised into a 32 x 256 pixel image 
+    def retrieveFirstTwoTileImageFromAsicData(self, dataBeginning):
+        """ Extracts one image beginning at argument dataBeginning in the member array 
+            self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
+            the current image is the last image in the data
         """
         # Distance between two consecutive pixels within the same ASIC in the quadrant detector
         pixelDistance = 128
-        
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
-
-        if bDebug:
-            print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-            print "retrieveFirstTwoTileImageFromAsicData(), algorithm picking out indices:"
-            print "sixteenBitArray[rawDataOffset] => imageIndex"
-            rawInfo = ""
-            imageInfo = ""
-
         # Counter variables
         imageIndex = 0
         rawCounter = 0
-
         # Distance within the 64 word table that defines order of ASIC read out
         lookupTableAsicDistance = 0
-        
+
+        if bDebug:
+            rawInfo = ""
+            imageInfo = ""
+
         # Iterate over 32 rows
         for row in range(32):
             
@@ -419,17 +412,16 @@ class BlitQT(FigureCanvas):
                         imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
                         rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
                         
-                        self.imageArray[ imageIndex ] = sixteenBitArray[rawDataOffset]
+                        self.imageArray[ imageIndex ] = self._16BitWordArray[dataBeginning + rawDataOffset]
                     
-                        # Need to update lookupTableAsicDistance manually for ASIC 32
+                        # Need to update lookupTableAsicDistance manually for ASIC 122
                         if asicOffset is 7:
-                            # ASIC112 is next
                             lookupTableAsicDistance = 112-1
                         else:
                             lookupTableAsicDistance -= 1
                             
                         if bDebug:
-                            rawInfo += "%6i" % sixteenBitArray[rawDataOffset]
+                            rawInfo += "%6i" % self._16BitWordArray[dataBeginning + rawDataOffset]
 #                            imageInfo += "%5i" % imageIndex
 
                     # Increment counter for rawDataOffset after columns*ASICs (16 ASICs) 
@@ -438,26 +430,24 @@ class BlitQT(FigureCanvas):
                     if bDebug:
                         if row < 3: # 2:
                             print rawInfo, " => ", imageInfo
-                        rawInfo = ""
-                        imageInfo = ""
+                        rawInfo = imageInfo = ""
                         
                 except IndexError:
                     # If end of array reached, will raise IndexError
-                    print "2T, IndexError, loop counters: (", row, column, asicOffset, "). lookupTableAsi..: ", lookupTableAsicDistance, " rawDataOffset: ", rawDataOffset, " Breaking out of loop.."
+                    print "2T, IndexError, debug: %3i %3i %3i, %4i,  %6i " % (row, column, asicOffset, lookupTableAsicDistance, rawDataOffset)
                     break
                 except Exception as e:
-                    print "retrieveFirstTwoTileImageFromAsicData(), look up table execution failed: ", e, "\nExiting.."
+                    print "Error while extracting image: ", e, "\nExiting.."
                     exit()
 
         # Check whether this is the last image in the image data..
         #    NOTE: the 8192 pixels come from a region spanning 65,536 pixel in the quadrant data
         try:
-            sixteenBitArray[65536]
+            self._16BitWordArray[dataBeginning + 65536]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:
-            pass    #print "Last Image detected"
-
+            pass    # Last Image detected in this train
         return bNextImageAvailable
 
 
@@ -514,7 +504,7 @@ class BlitQT(FigureCanvas):
 
             # Update current packet number
             self.packetNumber = packet_number
-                        
+
             if frm_eof == 1:
                 self.j=self.j+1
             else:
