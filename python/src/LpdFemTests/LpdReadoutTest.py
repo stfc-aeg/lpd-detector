@@ -26,21 +26,51 @@ def LpdReadoutTest(femHost=None, femPort=None):
 
     # Display "expert" variables?
     bDebug = True
+
+    ################################################################
     
-    xmlConfiguration = 2    # 1=normal operation, 2=slowdown operation
-    if xmlConfiguration == 1:
-        SlowControlXmlString = 'ConfigFiles/selfTestPixel232.xml'
-        FastCmdXmlString     = 'ConfigFiles/SuperModuleNormalOperation.xml'# SupMod - normal readout
-    elif xmlConfiguration == 2:
-        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
-        FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
-#        SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
-#        FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
-    else:
-        SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl_B.xml'
-        FastCmdXmlString     = 'ConfigFiles/fast_cmd_4f_with_slow_readout_C.xml'
-        print SlowControlXmlString
-        print FastCmdXmlString
+    AsicVersion = 1    # 1 or 2
+    xmlConfiguration = 1    # 0 = test, 1=short (normal) exposure, 2= long exposure (slowed down)
+
+    if AsicVersion == 1:
+        femAsicSlowedClockFlag = True    # must ensure fast cmd file corresponds with readout clock selection
+        
+        #### Current XML files ####
+        if xmlConfiguration == 1:
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
+            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
+        elif xmlConfiguration == 2:
+            SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+            FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+
+        #### jac's new XML files ####
+#        if xmlConfiguration == 1:
+#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
+#            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
+#        elif xmlConfiguration == 2:
+#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
+#            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
+#        else:
+#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
+#            FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
+    elif AsicVersion == 2:
+        print "AsicVersion == 2, XML files not yet configure.. Exiting"
+        sys.exit()
+        femAsicSlowedClockFlag = False    # must ensure fast cmd file corresponds with readout clock selection
+        if xmlConfiguration == 1:
+            SlowControlXmlString = 'ConfigFiles/'
+            FastCmdXmlString     = 'ConfigFiles/'
+        elif xmlConfiguration == 2:
+            SlowControlXmlString = 'ConfigFiles/'
+            FastCmdXmlString     = 'ConfigFiles/' 
+        else:
+            SlowControlXmlString = 'ConfigFiles/'
+            FastCmdXmlString = 'ConfigFiles/'
+
+    print SlowControlXmlString
+    print FastCmdXmlString
+    
+    ################################################################
 
 # The second of the two command sequence configurations provided by Matt:
 #        FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
@@ -133,7 +163,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicLocalClock set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femAsicSlowedClock', True)
+    rc = theDevice.paramSet('femAsicSlowedClock', femAsicSlowedClockFlag)           # True for V1 asic, False for V2 asic
     if rc != LpdDevice.ERROR_OK:
         print "femAsicSlowedClock set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -148,6 +178,10 @@ def LpdReadoutTest(femHost=None, femPort=None):
     rc = theDevice.paramSet('femAsicRxFastStrobe', True)
     if rc != LpdDevice.ERROR_OK:
         print "femAsicRxFastStrobe set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+
+    rc = theDevice.paramSet('femAsicVersion', AsicVersion) # 1 or 2
+    if rc != LpdDevice.ERROR_OK:
+        print "femAsicVersion set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
     rc = theDevice.paramSet('femPpcMode', 0)
     if rc != LpdDevice.ERROR_OK:
@@ -177,7 +211,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "tenGigUdpPacketLen set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femAsicGainOverride', 9)  #8)        # (Default value is 0)
+    rc = theDevice.paramSet('femAsicGainOverride', 8)  #8)        # (Default value is 0)
     if rc != LpdDevice.ERROR_OK:
         print "femAsicGainOverride set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -197,7 +231,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicSlowClockPhase set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femNumTestCycles', 6)  #1)
+    rc = theDevice.paramSet('femNumTestCycles', 3)  #1)
     if rc != LpdDevice.ERROR_OK:
         print "femNumTestCycles set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -406,6 +440,12 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femAsicSlowClockPhase get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
             print "femAsicSlowClockPhase\t= %d" % value
+    
+        (rc, value) = theDevice.paramGet('femAsicVersion')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicVersion get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicVersion \t\t= %d." % value
     
         (rc, value) = theDevice.paramGet('femDebugLevel')
         if rc != LpdDevice.ERROR_OK:

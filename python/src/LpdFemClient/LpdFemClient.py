@@ -128,14 +128,16 @@ class LpdFemClient(FemClient):
         self.nr_clocks_to_readout_row = 16 * 3 * 12 # row of image 16 pixels
         self.lpd_image_size = 0x20000    # size of buffer in ppc for partial image is 128 KB
 
-        self.asicRxPseudoRandomStart       = 61    # asic_rx_start_pseudo_random
+        self.asicRxPseudoRandomStart       = 80    # asic_rx_start_pseudo_random
         self.asicRx2tileStart              = 810   # asic_rx_start_2tile
         self.asicRxSingleStart             = 0     # asic_rx_start_single_asic
         self.asicRxHeaderBits              = 12    # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
         # offsets in bits for different gains for slow asic readout 
-        self.asicRxOffsetSlowReadout_x100  = 24    #(Must skip first row of 16 pixels for x100)
+        self.asicRxOffsetSlowReadout_x100  = (24 - 16 * 3 * 12) #  NB first row of 16 pixels to be ignored   # skips first row of 16 pixels for x100
         self.asicRxOffsetSlowReadout_x10   = -12   #(keep first row of 16 pixels) # 564 (skip first row of 16 pixels)
-        self.asicRxOffsetSlowReadout_x1    = -12   #(keep first row of 16 pixels) # 564 (skip first row of 16 pixels) 
+        self.asicRxOffsetSlowReadout_x1    = -12   #(keep first row of 16 pixels) # 564 (skip first row of 16 pixels)
+        
+        self.asic_readout_clock_div = 16    # factor to divide asic clock for slow readout of asic v1 
 
         ########## Parameters now (mostly) exposed in API ##########
 
@@ -148,8 +150,6 @@ class LpdFemClient(FemClient):
         self.femFastCtrlDynamic                     = True      # True = New dynamic commands
         self.femAsicSlowLoadMode                    = 0         # 0 = parallel load, 1 = daisy chain
         self.femAsicColumns                         = 4         # nr of images to capture per train
-        self.asicrx_capture_asic_header_TEST_ONLY   = False     # False = (NORMAL OPERATION) ignore asic header bits 
-                                                                # True  = (TEST ONLY) readout asic header bits to check timing alignment. This will mess up data capture.
         self.femAsicGainOverride                    = 8         # gain algorithm selection
         #                                                       #   0000  normal gain selection     0
         #                                                       #   1000  force select x100         8
@@ -721,7 +721,10 @@ class LpdFemClient(FemClient):
 
         # duration (in slowed down asic clock cycles) for slow readout clock ; allow for offset extra clocks between readout strobe and data arrival and a few extra!
         #asic_slow_readout_duration = self.femAsicColumns * self.nr_clocks_to_readout_image + self.asicRx2tileStart + 200
-        asic_slow_readout_duration = 3000000 # just make large for a test
+        #  but if using 100 mhz clock to drive bufgmux clock switch needs to be correspondingly more clock periods
+        #asic_slow_readout_duration = self.asic_readout_clock_div * self.femAsicColumns * self.nr_clocks_to_readout_image + self.asicRx2tileStart + 200
+
+        asic_slow_readout_duration = 3000000 # just make large value for a test
         self.rdmaWrite(self.fem_ctrl_0+12, asic_slow_readout_duration)  
  
         #print "ENABLE asic Tristate output buffers"
@@ -732,8 +735,11 @@ class LpdFemClient(FemClient):
         self.config_asic_slow_xml() # loads fem slow bram from xml file
 
         # load the slow params from bram into asics, put call here so settings are stable by time of first trigger
-        self.toggle_bits(self.fem_ctrl_0+7, 0)  
- 
+        # ensure an asic reset is sent first so that RSYNC is sent to asic slow control block
+        self.register_set_bit(self.fem_ctrl_0+3, 8)  # configure asic sequencer to send only an asic reset and slow strobe 
+        self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic sequencer  
+        #self.toggle_bits(self.fem_ctrl_0+7, 0)  # alternatively just send start slow strobe (this doesn't send asic reset)
+         
         self.config_asic_fast_xml() # loads fem fast bram from xml file
         self.config_asic_datarx()   # set up fem to receive asic data
 
@@ -832,7 +838,7 @@ class LpdFemClient(FemClient):
                 else:
                     asic_rx_start_delay = self.asicRx2tileStart
                 
-            if self.asicrx_capture_asic_header_TEST_ONLY:
+            if self.femAsicVersion == 2:    # enable this for asic v2 timing (v2 has no header)
                 asic_rx_start_delay = asic_rx_start_delay - self.asicRxHeaderBits
             elif self.femAsicSlowedClock:     # following offsets skip 1st row of pixels
 # nb gain selection algorithm can't work with slowed readout as samples from same pixel are no longer contiguous
@@ -845,7 +851,7 @@ class LpdFemClient(FemClient):
  
 # !!!!!! TESTING ONLY
         # adjust capture point start to next image
-        asic_rx_start_delay = asic_rx_start_delay + 0 * self.nr_clocks_to_readout_image
+        #asic_rx_start_delay = asic_rx_start_delay + 0 * self.nr_clocks_to_readout_image
 
         if self.femAsicRxFastStrobe:
             self.rdmaWrite(self.fem_ctrl_0+14, asic_rx_start_delay) # NEW using strobe from fast command file         

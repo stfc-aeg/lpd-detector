@@ -45,9 +45,9 @@ plotRows = 2
 plotCols = 2
 plotMaxPlots = plotRows * plotCols
 
-class dataLocker(object):
+class lpdImageObject(object):
     '''
-        dataLocker - data container class to contain UDP payload and meta data
+        lpdImageObject - data container class to contain UDP payload and meta data
         (such as timestamp, packet, etc)
     '''
     def __init__(self):
@@ -69,12 +69,7 @@ class RxThread(QtCore.QThread):
         self.first_frm_num = -1
         self.j = 0
         # Create object to contain UDP payload, timestamps, etc
-        self.dataObject = dataLocker()
-        # Create a list to contain payload of all UDP packets
-#        self.dataObject.rawImageData = ""
-        # Track packet number
-#        self.dataObject.packetNumber = -1
-
+        self.lpdImage = lpdImageObject()
         ###############################################
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
@@ -94,8 +89,8 @@ class RxThread(QtCore.QThread):
 #                print ".",
                 foundEof  = self.processRxData(stream)
                 if foundEof:
-                    # Complete frame received, transmit frame along with meta data saved in dataLocker object
-                    self.rxSignal.emit(self.dataObject)
+                    # Complete frame received, transmit frame along with meta data saved in lpdImageObject object
+                    self.rxSignal.emit(self.lpdImage)
 
         except Exception as e:
             print "processRxData() failed: ", e, "\nExiting.."
@@ -140,7 +135,7 @@ class RxThread(QtCore.QThread):
             if bDebug:
                 print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
             # frame_number = train number relative to execution of this software
-            self.dataObject.frameNumber = frame_number
+            self.lpdImage.frameNumber = frame_number
             
             if self.first_frm_num == -1:
                 self.first_frm_num = frame_number
@@ -148,35 +143,35 @@ class RxThread(QtCore.QThread):
             frame_number = frame_number - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packet_number != (self.dataObject.packetNumber +1):
+            if packet_number != (self.lpdImage.packetNumber +1):
                 # packet numbering not consecutive
-                if packet_number > self.dataObject.packetNumber:
+                if packet_number > self.lpdImage.packetNumber:
                     # this packet lost between this packet and the last packet received
-                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.dataObject.packetNumber, packet_number)
+                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.lpdImage.packetNumber, packet_number)
 
             # Update current packet number
-            self.dataObject.packetNumber = packet_number
+            self.lpdImage.packetNumber = packet_number
 
             # Timestamp start of frame (when we received first data of train)
             if bTimeStamp:
                 if frm_sof == 1:
                     # It's the start of a new train, clear any data left from previous train..
-                    self.dataObject.rawImageData = ""
-                    self.dataObject.timeStampSof = time.time()
+                    self.lpdImage.rawImageData = ""
+                    self.lpdImage.timeStampSof = time.time()
 
             if frm_eof == 1:
                 self.j=self.j+1
 
                 if bTimeStamp:
                     self.timeStampEof = time.time()
-                    print "UDP data receive time:               %.9f" % (self.timeStampEof - self.dataObject.timeStampSof)
+                    print "UDP data receive time:               %.9f" % (self.timeStampEof - self.lpdImage.timeStampSof)
             else:
                 pass
             
             # Not yet end of file: copy current packet contents onto (previous) packet contents
             # Last 8 bytes are train number and packet number - omitting those..
             # both are of type string..
-            self.dataObject.rawImageData += data[0:-8]
+            self.lpdImage.rawImageData += data[0:-8]
             # Return train number and end of train
             #return rawFrameNumber, frm_eof
             return frm_eof
@@ -397,13 +392,13 @@ class BlitQT(FigureCanvas):
             # Draw new plot
             self.blit(self.ax[currentPlot].bbox)
 
-            # Clear data before next iteration (image already rendered)
-            self.data.fill(0)
-
             # Write image to file - if HDF5 Library present
             if bHDF5:
                 ds.resize((currentPlot+1, self.nrows, self.ncols))
                 ds[currentPlot,...] = self.data
+
+            # Clear data before next iteration (but after data written to file)
+            self.data.fill(0)
 
             # Increment currentPlot
             currentPlot += 1
