@@ -32,6 +32,14 @@ class networkConfiguration(object):
             self.tenGig0DstMac  = '00-07-43-10-65-A0'
             self.tenGig0DstIp   = '10.0.0.1'
 
+        elif hostname == 'te7garland':
+
+            self.ctrl0SrcIp     = '192.168.2.2'
+            self.ctrl0DstIp     = '192.168.2.1'
+            self.tenGig0SrcIp   = '10.0.0.2'
+            self.tenGig0DstMac  = '00-07-43-13-ED-60'
+            self.tenGig0DstIp   = '10.0.0.1'
+
         else:
         
             # What defaults to choose?
