@@ -112,7 +112,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "tenGig0SourceMac set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
-    rc = theDevice.paramSet('tenGig0SourceIp', '10.0.0.2')
+    rc = theDevice.paramSet('tenGig0SourceIp', networkConfig.tenGig0SrcIp)
     if rc != LpdDevice.ERROR_OK:
         print "tenGig0SourceIp set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -120,11 +120,11 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "tenGig0SourcePort set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
-    rc = theDevice.paramSet('tenGig0DestMac', '00-07-43-10-65-A0')
+    rc = theDevice.paramSet('tenGig0DestMac', networkConfig.tenGig0DstMac)
     if rc != LpdDevice.ERROR_OK:
         print "tenGig0DestMac set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
-    rc = theDevice.paramSet('tenGig0DestIp', '10.0.0.1')
+    rc = theDevice.paramSet('tenGig0DestIp', networkConfig.tenGig0DstIp)
     if rc != LpdDevice.ERROR_OK:
         print "tenGig0DestIp set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -231,7 +231,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicSlowClockPhase set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femNumTestCycles', 3)  #1)
+    rc = theDevice.paramSet('femNumTestCycles', 8)  #1)
     if rc != LpdDevice.ERROR_OK:
         print "femNumTestCycles set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
