@@ -7,7 +7,8 @@
 # For detailed comments on animation and the techniqes used here, see
 # the wiki entry http://www.scipy.org/Cookbook/Matplotlib/Animations
 
-import os, sys, time, socket, datetime
+import os, sys, time, socket, datetime, argparse
+
 
 import numpy as np
 from matplotlib.figure import Figure
@@ -17,6 +18,7 @@ import matplotlib.pyplot
 import matplotlib
 
 # Import HDF5 Library; Disable its use if library not installed on PC
+#bHDF5 = True
 try:
     import h5py
 except:
@@ -24,8 +26,6 @@ except:
     bHDF5 = False
 else:
     print "HDF5 Library present."
-    bHDF5 = True
-#bHDF5 = False
 
 from networkConfiguration import *
 
@@ -34,9 +34,11 @@ from PyQt4 import QtCore, QtGui
 # Enable or disable time stamping
 bTimeStamp = True
 
+#Display received data in plots
+bDisplayPlotData = True
 
-# Enable or disable debugging
-bDebug = False
+# Debugging enabled if set above 0
+bDebug = 0
 
 # Define variables used as arguments by
 # Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
@@ -45,18 +47,27 @@ plotRows = 2
 plotCols = 2
 plotMaxPlots = plotRows * plotCols
 
-class lpdImageObject(object):
+class LpdImageObject(object):
     '''
-        lpdImageObject - data container class to contain UDP payload and meta data
+        LpdImageObject - data container class to contain UDP payload and meta data
         (such as timestamp, packet, etc)
     '''
-    def __init__(self):
+    def __init__(self, frameNumber):
         # Create a string to contain payload of all UDP packets
         self.rawImageData = ""
-        self.frameNumber = -1
+        self.frameNumber = frameNumber
         self.timeStampSof = 0.0
-        self.packetNumber = -1
-        
+#        self.timeStampEof = 0.0
+#        self.packetNumber = -1
+
+    ### Create timestamp with seconds in fraction of 9 decimal points
+#dt = datetime.datetime.now().strftime("%m%d-%H:%M:%S")
+#tt = time.time()
+#nanoSeconds = "%2.9f" % (tt - int(tt))
+#label = dt + nanoSeconds[1:]
+#print "'" + label + "'"
+#eg: '0412-13:32:16.266228914'
+    
 
 class RxThread(QtCore.QThread):
     
@@ -68,12 +79,12 @@ class RxThread(QtCore.QThread):
         # Initialising variables used by processRxData..
         self.first_frm_num = -1
         self.j = 0
-        # Create object to contain UDP payload, timestamps, etc
-        self.lpdImage = lpdImageObject()
+        
         ###############################################
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
 
+        self.packetNumber = -1
         print "Listening to host: %s port: %s.." % (femHost, femPort)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((femHost, femPort))
@@ -83,25 +94,26 @@ class RxThread(QtCore.QThread):
         
     def run(self):
 
+        frameCount = 0
         try:
-            while 1:    
-                stream = self.sock.recv(9000)
-#                print ".",
-                foundEof  = self.processRxData(stream)
-                if foundEof:
-                    # Complete frame received, transmit frame along with meta data saved in lpdImageObject object
-                    self.rxSignal.emit(self.lpdImage)
-
+            while 1:
+                foundEof = 0
+                lpdImage = LpdImageObject(frameCount)
+                while foundEof == 0:
+                    stream = self.sock.recv(9000)
+                    foundEof  = self.processRxData(lpdImage, stream)
+                    if foundEof:
+                        # Complete frame received, transmit frame along with meta data saved in LpdImageObject object
+                        self.rxSignal.emit(lpdImage)
+                        
         except Exception as e:
             print "processRxData() failed: ", e, "\nExiting.."
             sys.exit()
 
-    def processRxData(self, data):
+    def processRxData(self, lpdImage, data):
         """ Process (chunks of) UDP data into packets of a frame 
             [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
         """
-#        if bTimeStamp:
-#            t1 = time.time()
 
         # Save the read train number as it'll be modified to be RELATIVE before we reach the end of this function.. 
         rawFrameNumber = -1
@@ -116,7 +128,6 @@ class RxThread(QtCore.QThread):
 #            sDebug += "%4X" % ord( data[-i] )
 #        print sDebug
         
-
         try:
             offset = 0
             # Extract train number (the first four bytes)
@@ -132,10 +143,10 @@ class RxThread(QtCore.QThread):
             frm_eof = (trailer_info & 0x40) >> 6
 #            packet_number = packet_number & 0x3FFFFFFF
             
-            if bDebug:
+            if bDebug > 8:
                 print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
             # frame_number = train number relative to execution of this software
-            self.lpdImage.frameNumber = frame_number
+            lpdImage.frameNumber = frame_number
             
             if self.first_frm_num == -1:
                 self.first_frm_num = frame_number
@@ -143,41 +154,45 @@ class RxThread(QtCore.QThread):
             frame_number = frame_number - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packet_number != (self.lpdImage.packetNumber +1):
+            if packet_number != (self.packetNumber +1):
                 # packet numbering not consecutive
-                if packet_number > self.lpdImage.packetNumber:
+                if packet_number > self.packetNumber:
                     # this packet lost between this packet and the last packet received
-                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.lpdImage.packetNumber, packet_number)
+                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
 
             # Update current packet number
-            self.lpdImage.packetNumber = packet_number
+            self.packetNumber = packet_number
 
             # Timestamp start of frame (when we received first data of train)
-            if bTimeStamp:
-                if frm_sof == 1:
-                    # It's the start of a new train, clear any data left from previous train..
-                    self.lpdImage.rawImageData = ""
-                    self.lpdImage.timeStampSof = time.time()
+            if frm_sof == 1:
+                
+                # It's the start of a new train, clear any data left from previous train..
+                lpdImage.rawImageData = ""
+                
+                if bTimeStamp:
+                    lpdImage.timeStampSof = time.time()
 
             if frm_eof == 1:
                 self.j=self.j+1
 
                 if bTimeStamp:
                     self.timeStampEof = time.time()
-                    print "UDP data receive time:               %.9f" % (self.timeStampEof - self.lpdImage.timeStampSof)
+                    print "UDP data receive time:               %.9f" % (self.timeStampEof - lpdImage.timeStampSof)
             else:
                 pass
             
             # Not yet end of file: copy current packet contents onto (previous) packet contents
             # Last 8 bytes are train number and packet number - omitting those..
             # both are of type string..
-            self.lpdImage.rawImageData += data[0:-8]
+            lpdImage.rawImageData += data[0:-8]
             # Return train number and end of train
             #return rawFrameNumber, frm_eof
+            
             return frm_eof
         except Exception as e:
             print "processRxData() error: ", e
-            return -1, -1
+            return -1
+
 
 
 class BlitQT(FigureCanvas):
@@ -187,9 +202,10 @@ class BlitQT(FigureCanvas):
     
     dataRxSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, femHost=None, femPort=None):
-        FigureCanvas.__init__(self, Figure())
+    def __init__(self, femHost=None, femPort=None, displayTiming=None, displayPlotData=None):
 
+        print "Initialising.. "
+        
         # Dummy train counter
         self.trainNumber = 0
 
@@ -201,68 +217,62 @@ class BlitQT(FigureCanvas):
         # Create an array to contain 65536 elements (32 x 8 x 16 x 16 = super module image)
         self.imageArray = np.zeros(self.imageSize, dtype=np.uint16)
 
-#        # Initialising variables used by processRxData..
-#        self.first_frm_num = -1
-#        self.j = 0
-
-#        # Create a list to contain payload of all UDP packets
-#        self.rawImageData = ""
-
-#        # DEBUG VARIABLES
-#        self.deltaTime  = 0
-#        self.deltaCount = 0
-
-        # Generate list of xticks, yticks to label the x, y axis
-        xlist = []
-        for i in range(16, 256, 16):
-            xlist.append(i)
-            
-        ylist = []
-        for i in range(32, 256, 32):
-            ylist.append(i)
+        FigureCanvas.__init__(self, Figure())
         
-        print "Initialising; Preparing graphics.."
-        
-        # Create a list for axes object and one for image objects, to store that info for each image
-        self.ax = []
-        self.img = []
-        
-        # Because subplotting has been selected, need a list of axes to cover multiple subplots
-        for idx in range(plotMaxPlots):
+        # Only create plots if user selected data to be plotted..
+        if bDisplayPlotData:
 
-            axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
-            self.ax.extend([axesObject])
+            # Generate list of xticks, yticks to label the x, y axis
+            xlist = []
+            for i in range(16, 256, 16):
+                xlist.append(i)
+                
+            ylist = []
+            for i in range(32, 256, 32):
+                ylist.append(i)
             
-            self.ax[idx].set_xticks(xlist)
-            self.ax[idx].set_yticks(ylist)
+            print "Preparing graphics.."
             
-            # Set the title of each plot temporarily
-            self.ax[idx].set_title("Image %i" % idx)
+            # Create a list for axes object and one for image objects, to store that info for each image
+            self.ax = []
+            self.img = []
+            
+            # Because subplotting has been selected, need a list of axes to cover multiple subplots
+            for idx in range(plotMaxPlots):
+    
+                axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
+                self.ax.extend([axesObject])
+                
+                self.ax[idx].set_xticks(xlist)
+                self.ax[idx].set_yticks(ylist)
+                
+                # Set the title of each plot temporarily
+                self.ax[idx].set_title("Image %i" % idx)
+                                
+                self.cnt = 0
+                self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
                             
-            self.cnt = 0
-            self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
-                        
-            imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
-            self.img.extend([imgObject])
-
-            # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
-            axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
-            cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
-
-            # Set the colour bar
-            self.img[idx].colorbar = cb
-
-            # Add vertical lines to differentiate between the ASICs
-            for i in range(16, self.ncols, 16):
-                self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
-            
-            # Add vertical lines to differentiate between two tiles
-            self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
-            
-            for i in range(32, self.nrows, 32):
-                self.ax[idx].hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
-            
-            self.draw()
+                imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
+                self.img.extend([imgObject])
+    
+                # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
+                axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
+                cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
+    
+                # Set the colour bar
+                self.img[idx].colorbar = cb
+    
+                # Add vertical lines to differentiate between the ASICs
+                for i in range(16, self.ncols, 16):
+                    self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
+                
+                # Add vertical lines to differentiate between two tiles
+                self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
+                
+                for i in range(32, self.nrows, 32):
+                    self.ax[idx].hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
+                
+                self.draw()
 
         self.dataRxSignal.connect(self.handleDataRx)
                 
@@ -295,12 +305,12 @@ class BlitQT(FigureCanvas):
         #     eg: ABCD => DCBA
         self._16BitWordArray = np.fromstring(dataRx.rawImageData, dtype=_16BitLittleEndianType)
     
-        if bDebug:
+        if bDebug > 5:
             print "Extracted 16 bit words: ", len(self._16BitWordArray), ". Array contents:"
             self.display16BitArrayInHex()
             print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-        if bDebug:
+        if bDebug > 7:
             if bTimeStamp:
                 time2 = time.time()
             #TODO: Checking the Gain bits slows down displaying the read out data..
@@ -346,9 +356,6 @@ class BlitQT(FigureCanvas):
         # Define variables that increase with each loop iteration
         currentPlot = 0
         bNextImageAvailable = True
-        
-#            if bTimeStamp:
-#                print "self.timeStampGainCounter:  ", self.timeStampGainCounter
 
         # Loop over the specified number of plots
         while bNextImageAvailable and currentPlot < plotMaxPlots:
@@ -373,24 +380,22 @@ class BlitQT(FigureCanvas):
             # Mask out gain bits from data
             self.data = self.data & 0xfff
             
-            # Display debug information..
+            if bDisplayPlotData:
 #                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( self._16BitWordArray[dataBeginning:] )
 #                # Set title as train number, current image number
 #                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
-            print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %8i" % len( self._16BitWordArray[dataBeginning:] ),
-#                if bTimeStamp:
-#                    print ".retrieve..(): ", self.timeStampRetrieveFunc
-#                else:
-#                    print ""
+                print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %8i" % len( self._16BitWordArray[dataBeginning:] ),
+                if bTimeStamp is False:
+                    print ""
 
-            self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
-            
-            # Load image into figure
-            self.img[currentPlot].set_data(self.data)
-
-            self.ax[currentPlot].draw_artist(self.img[currentPlot])
-            # Draw new plot
-            self.blit(self.ax[currentPlot].bbox)
+                self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
+                
+                # Load image into figure
+                self.img[currentPlot].set_data(self.data)
+    
+                self.ax[currentPlot].draw_artist(self.img[currentPlot])
+                # Draw new plot
+                self.blit(self.ax[currentPlot].bbox)
 
             # Write image to file - if HDF5 Library present
             if bHDF5:
@@ -422,11 +427,17 @@ class BlitQT(FigureCanvas):
             print "Total time = ",(timeX2 - timeX1)
 
         print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-  
-        if self.cnt == 0:
-            self.draw()
-        else:
-            self.cnt += 1
+        
+        if bDisplayPlotData:
+            if self.cnt == 0:
+                self.draw()
+            else:
+                self.cnt += 1
+
+#    def __del__(self):
+#        # Close file if HDF5 Library present
+#        if bHDF5:
+#            self.hdfFile.close()
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #
@@ -438,9 +449,14 @@ class BlitQT(FigureCanvas):
         """ display16BitArrayInHex displays each 16 bit ADC value (each index/byte)
             .. Unless data_len hardcoded to 160..
         """
-        data_len = len(self._16BitWordArray)
-        
-        data_len = 160
+        if bDebug > 8:
+            data_len = len(self._16BitWordArray)
+        elif bDebug > 7:
+            data_len = len(self._16BitWordArray) / 2
+        elif bDebug > 6:
+            data_len = len(self._16BitWordArray) / 4
+        elif bDebug > 5:
+            data_len = 160
         
         currentArrayElement = ""
         try:
@@ -515,17 +531,59 @@ class BlitQT(FigureCanvas):
         
 if __name__ == "__main__":
 
-    # Check command line for host and port info    
-    if len(sys.argv) == 3:
-        femHost = sys.argv[1]
-        femPort = int(sys.argv[2])
-    else:
-        # Nothing provided from command line; Use defaults
-        femHost = None
-        femPort = None        
+    # Define legal argument ranges
+    reservedRange = range(2**17)
+    delayRange = range(2**3)
 
+    # Create parser object and arguments
+    parser = argparse.ArgumentParser(description="superModuleReceiveTest.py - Receive data from a Super Module. ",
+                                     epilog="The perceived wisdom is that the following function values are.")
+
+    parser.add_argument("--femhost",            help="Set fem host IP e.g 10.0.0.1",                    type=str)
+    parser.add_argument("--femport",            help="Set fem port eg 61649",                           type=int)
+    parser.add_argument("--displaytiming",      help="Enable timing information (0=disable, 1=enable)", type=int, choices=[0, 1])
+    parser.add_argument("--displayplotdata",    help="Plot received data (0=disable, 1=enable)",        type=int, choices=[0, 1])
+    parser.add_argument("--writehdf5file",      help="Write data to hdf5 file (0=disable, 1=enable)",   type=int, choices=[0, 1])
+    parser.add_argument("--displaydebuginfo",   help="Enable debug info (0=disable, 1=enable)",         type=int, choices=[0, 1])
+    
+    args = parser.parse_args()
+
+    print "User selected: -->",
+    # Copy value(s) for the provided arguments
+    if args.femhost:
+        femHost = args.femhost
+        print "femhost",
+    else:
+        femHost = None
+    if args.femport:
+        femPort = int(args.femport)
+        print "femPort",
+    else:
+        femPort = None
+    if args.displaytiming:
+        print "displaytiming",
+        bTimeStamp = True
+    else:
+        bTimeStamp = False
+    if args.displayplotdata:
+        print "displayplotdata",
+        bDisplayPlotData = True
+    else:
+        bDisplayPlotData = False
+    if args.writehdf5file:
+        print "writehdf5file",
+        bHDF5 = True
+    else:
+        bHDF5 = False
+    if args.displaydebuginfo is not None:
+        bDebug = args.displaydebuginfo
+    else:
+        bDebug = 0
+
+    print " <--"
+    
     app = QtGui.QApplication(sys.argv)
-    widget = BlitQT(femHost, femPort)
+    widget = BlitQT(femHost, femPort)#, displayTiming, displayPlotData)
     widget.show()
     
     sys.exit(app.exec_())
