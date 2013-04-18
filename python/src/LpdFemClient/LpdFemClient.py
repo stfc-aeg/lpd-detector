@@ -1338,7 +1338,7 @@ class LpdFemClient(FemClient):
             print 'Train nr %4d \r' % i,
             sys.stdout.flush()             
             self.send_trigger()
-            time.sleep(1)     # need to check if images are all readout before sending next train
+            time.sleep(0.5)     # need to check if images are all readout before sending next train
 
         print "======== Train Cycle Completed ===========\r" 
 #        time.sleep(1)   # just to see output before dumping registers
@@ -1594,7 +1594,7 @@ class LpdFemClient(FemClient):
         '''
         self.femAsicEnableMaskDummy = aValue
         #TODO: Temp hack to decouple ASIC mask vector from API
-        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000]
+        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FFFF, 0x00000000]
 #        self.femAsicEnableMask = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
         
     def femAsicColumnsGet(self):

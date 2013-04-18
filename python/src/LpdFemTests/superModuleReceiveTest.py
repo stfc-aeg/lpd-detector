@@ -105,6 +105,8 @@ class RxThread(QtCore.QThread):
                     if foundEof:
                         # Complete frame received, transmit frame along with meta data saved in LpdImageObject object
                         self.rxSignal.emit(lpdImage)
+                        # Increment frame counter
+                        frameCount += 1
                         
         except Exception as e:
             print "processRxData() failed: ", e, "\nExiting.."
@@ -118,16 +120,6 @@ class RxThread(QtCore.QThread):
         # Save the read train number as it'll be modified to be RELATIVE before we reach the end of this function.. 
         rawFrameNumber = -1
 
-        ''' DEBUGGING INFORMATION '''
-#        if ( ( ord(data[-1]) & 0x80) >> 7 ) == 1:
-#            print "The last eight bytes of each packet:"
-#            print "-- -- -- -- -- -- -- -- -- -- -- --"
-#            print "  -8, -7, -6, -5, -4, -3, -2, -1"
-#        sDebug = ""
-#        for i in range(8, 0, -1):
-#            sDebug += "%4X" % ord( data[-i] )
-#        print sDebug
-        
         try:
             offset = 0
             # Extract train number (the first four bytes)
@@ -208,6 +200,12 @@ class BlitQT(FigureCanvas):
         
         # Dummy train counter
         self.trainNumber = 0
+        
+        # Count number of iterations across multiple trains (ie number images across multiple trains)
+        self.imageCounter   = 0
+        # iterateOffset tracks how many images have been written to previous file(s) and offsets .resize() calls to prevent
+        #    accummulating rows of 0 in hdf5 files.
+        self.iterateOffset      = 0
 
         # Define plotted image dimensions: 
         self.nrows = 32*8   # 32 rows * 8 ASICs = 256 
@@ -216,6 +214,18 @@ class BlitQT(FigureCanvas):
 
         # Create an array to contain 65536 elements (32 x 8 x 16 x 16 = super module image)
         self.imageArray = np.zeros(self.imageSize, dtype=np.uint16)
+
+        # Create hdf file - if HDF5 Library present
+        if bHDF5:
+            dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            fileName = "/tmp/lpdSuperModule-%s.hdf5" % dateString
+
+            self.hdfFile = h5py.File(fileName, 'w')
+            self.imageDs = self.hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+                                            maxshape=(None,self.nrows, self.ncols))
+            self.timeStampDs   = self.hdfFile.create_dataset('timeStamp',   (1,), 'f',      maxshape=(None,))
+            self.trainNumberDs = self.hdfFile.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+            self.imageNumberDs = self.hdfFile.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         FigureCanvas.__init__(self, Figure())
         
@@ -343,20 +353,14 @@ class BlitQT(FigureCanvas):
 
             print "\nGain:      x100       x10        x1  (invalid)"
             print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
-        
-        # Create hdf file - if HDF5 Library present
-        if bHDF5:
-            dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            fileName = "/tmp/lpdSuperModule-%s.hdf5" % dateString
-    
-            hdfFile = h5py.File(fileName, 'w')
-            ds = hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
-                                            maxshape=(None,self.nrows, self.ncols))
 
         # Define variables that increase with each loop iteration
         currentPlot = 0
         bNextImageAvailable = True
 
+        # Count number of loops with respect to trains per hdf5 file if selected
+        loopCounter = 0
+        
         # Loop over the specified number of plots
         while bNextImageAvailable and currentPlot < plotMaxPlots:
 
@@ -399,9 +403,46 @@ class BlitQT(FigureCanvas):
 
             # Write image to file - if HDF5 Library present
             if bHDF5:
-                ds.resize((currentPlot+1, self.nrows, self.ncols))
-                ds[currentPlot,...] = self.data
+                self.imageDs.resize((loopCounter+1, self.nrows, self.ncols))
+                self.imageDs[loopCounter,...] = self.data
+                
+                self.timeStampDs.resize((loopCounter+1, ))
+                self.timeStampDs[loopCounter] = dataRx.timeStampSof
+                
+                self.trainNumberDs.resize((loopCounter+1, ))
+                self.trainNumberDs[loopCounter] = self.trainNumber
+                
+                self.imageNumberDs.resize((loopCounter+1, ))
+                self.imageNumberDs[loopCounter] = self.imageCounter
 
+                # Check whether specified number of images written to file
+                if (self.imageCounter % (numberPlotsPerFile+1)) == numberPlotsPerFile:
+                    # Reset loop counter, determine new file name
+                    loopCounter = 0
+                    dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                    fileName = "/tmp/lpdSuperModule-%s.hdf5" % dateString
+                    
+                    if self.hdfFile.filename == fileName:
+                        # Modify new name to avoid overwritten old..
+                        fileName = fileName[:-5] + '_' + str(self.imageCounter) + fileName[-5:]
+                        print "Previous filename: '" + self.hdfFile.filename + "'"
+                        print "New use filename:  '" + fileName + "'"
+                    
+                    # Close old file
+                    self.hdfFile.close()
+                    self.hdfFile = h5py.File(fileName, 'w')
+                    # Recreate datasets
+                    self.imageDs = self.hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols),
+                                                               maxshape=(None,self.nrows, self.ncols))
+                    self.timeStampDs   = self.hdfFile.create_dataset('timeStamp',   (1,), 'f',      maxshape=(None,))
+                    self.trainNumberDs = self.hdfFile.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+                    self.imageNumberDs = self.hdfFile.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+                else:
+                    loopCounter += 1
+                    
+                # Increment image number counter
+                self.imageCounter += 1
+                
             # Clear data before next iteration (but after data written to file)
             self.data.fill(0)
 
@@ -411,11 +452,7 @@ class BlitQT(FigureCanvas):
                 time3 = time.time()
                 print "%.9f" %(time3 - timeD1)
         else:
-            # Finished
-#            print "\nFinished drawing subplots"
-            # Close file if HDF5 Library present
-            if bHDF5:
-                hdfFile.close()
+            # Finished drawing subplots
 
             # Dummy counter
             self.trainNumber += 1
@@ -434,10 +471,10 @@ class BlitQT(FigureCanvas):
             else:
                 self.cnt += 1
 
-#    def __del__(self):
-#        # Close file if HDF5 Library present
-#        if bHDF5:
-#            self.hdfFile.close()
+    def __del__(self):
+        # Close file if HDF5 Library present
+        if bHDF5:
+            self.hdfFile.close()
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #
@@ -537,17 +574,18 @@ if __name__ == "__main__":
 
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="superModuleReceiveTest.py - Receive data from a Super Module. ",
-                                     epilog="The perceived wisdom is that the following function values are.")
+                                     epilog="If no flags are specified, femhost and femport are set according to machineConfiguration.py, everything else's disabled.")
 
-    parser.add_argument("--femhost",            help="Set fem host IP e.g 10.0.0.1",                    type=str)
-    parser.add_argument("--femport",            help="Set fem port eg 61649",                           type=int)
-    parser.add_argument("--displaytiming",      help="Enable timing information (0=disable, 1=enable)", type=int, choices=[0, 1])
-    parser.add_argument("--displayplotdata",    help="Plot received data (0=disable, 1=enable)",        type=int, choices=[0, 1])
-    parser.add_argument("--writehdf5file",      help="Write data to hdf5 file (0=disable, 1=enable)",   type=int, choices=[0, 1])
-    parser.add_argument("--displaydebuginfo",   help="Enable debug info (0=disable, 1=enable)",         type=int, choices=[0, 1])
+    parser.add_argument("--femhost",        help="Set fem host IP e.g 10.0.0.1",                    type=str)
+    parser.add_argument("--femport",        help="Set fem port eg 61649",                           type=int)
+    parser.add_argument("--timeinfo",       help="Display timing info (0=disable, 1=enable)",       type=int, choices=[0, 1])
+    parser.add_argument("--plotdata",       help="Plot received data (0=disable, 1=enable)",        type=int, choices=[0, 1])
+    parser.add_argument("--writedata",      help="Write data to hdf5 file (0=disable, 0> = number of images per file)",   type=int)
+    parser.add_argument("--debuginfo",      help="Enable debug info (0=disable, 1=enable)",         type=int, choices=range(9))
     
     args = parser.parse_args()
 
+    # Temp debug info
     print "User selected: -->",
     # Copy value(s) for the provided arguments
     if args.femhost:
@@ -560,27 +598,30 @@ if __name__ == "__main__":
         print "femPort",
     else:
         femPort = None
-    if args.displaytiming:
-        print "displaytiming",
+    if args.timeinfo:
+        print "timeinfo",
         bTimeStamp = True
     else:
         bTimeStamp = False
-    if args.displayplotdata:
-        print "displayplotdata",
+    if args.plotdata:
+        print "plotdata",
         bDisplayPlotData = True
     else:
         bDisplayPlotData = False
-    if args.writehdf5file:
-        print "writehdf5file",
+    if args.writedata:
+        print "writedata",
         bHDF5 = True
+        numberPlotsPerFile = args.writedata
     else:
         bHDF5 = False
-    if args.displaydebuginfo is not None:
-        bDebug = args.displaydebuginfo
+    if args.debuginfo is not None:
+        bDebug = args.debuginfo
     else:
         bDebug = 0
 
+    # Temp debug info
     print " <--"
+#    print "numberPlotsPerFile: ", numberPlotsPerFile
     
     app = QtGui.QApplication(sys.argv)
     widget = BlitQT(femHost, femPort)#, displayTiming, displayPlotData)

@@ -29,13 +29,12 @@ def LpdReadoutTest(femHost=None, femPort=None):
 
     ################################################################
     
-    AsicVersion = 1    # 1 or 2
+    AsicVersion = 2    # 1 or 2
     xmlConfiguration = 1    # 0 = test, 1=short (normal) exposure, 2= long exposure (slowed down)
 
     if AsicVersion == 1:
         femAsicSlowedClockFlag = True    # must ensure fast cmd file corresponds with readout clock selection
         
-        #### Current XML files ####
         if xmlConfiguration == 1:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
             FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
@@ -43,29 +42,17 @@ def LpdReadoutTest(femHost=None, femPort=None):
             SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
             FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
 
-        #### jac's new XML files ####
-#        if xmlConfiguration == 1:
-#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
-#            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
-#        elif xmlConfiguration == 2:
-#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
-#            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
-#        else:
-#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
-#            FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
     elif AsicVersion == 2:
-        print "AsicVersion == 2, XML files not yet configure.. Exiting"
-        sys.exit()
         femAsicSlowedClockFlag = False    # must ensure fast cmd file corresponds with readout clock selection
         if xmlConfiguration == 1:
-            SlowControlXmlString = 'ConfigFiles/'
-            FastCmdXmlString     = 'ConfigFiles/'
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_asicv2_jacv1.xml'
         elif xmlConfiguration == 2:
-            SlowControlXmlString = 'ConfigFiles/'
-            FastCmdXmlString     = 'ConfigFiles/' 
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_asicv2_jacv1.xml' 
         else:
-            SlowControlXmlString = 'ConfigFiles/'
-            FastCmdXmlString = 'ConfigFiles/'
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
+            FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
 
     print SlowControlXmlString
     print FastCmdXmlString
@@ -94,15 +81,6 @@ def LpdReadoutTest(femHost=None, femPort=None):
     rc = theDevice.paramSet('femAsicFastCmdSequence', FastCmdXmlString)
     if rc != LpdDevice.ERROR_OK:
         print "femAsicFastCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
-
-#            'slow_params_file_name_xml'             : #'slow_control_config_jac.xml',            # used if slow_params_file_type = 1
-#                                                      'preambleDelaySlowControl.xml',            # slow_control_config.xml  # standard
-#            'fast_cmd_sensor_data_file_name_xml'    : 'SuperModuleNormalOperation.xml',          # Used for Super Module operation, with slowed down readout
-#                                                    # 'SupModTest.xml'                           # Testing supermodule
-#                                                    # 'fast_cmd_1f_with_slow_readout.xml',       # file created by jac
-#                                                    # 'fast_readout_replacement_commands.xml',   # for real asic sensor data                                                    
-#            'fast_cmd_pseudorandom_file_name_xml'   : 'fast_random_gaps.xml',                    # for pseudorandom asic data
-#                                                      'superModRandomData.xml'                   # Configure  ASICs to output pseudorandom data
 
     ######################################################
     # Start configuring variables using API calls
@@ -231,7 +209,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicSlowClockPhase set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femNumTestCycles', 8)  #1)
+    rc = theDevice.paramSet('femNumTestCycles', 7)  #1)
     if rc != LpdDevice.ERROR_OK:
         print "femNumTestCycles set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
