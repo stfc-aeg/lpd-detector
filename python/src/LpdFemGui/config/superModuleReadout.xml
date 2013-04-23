@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+
+<lpd_readout_config name="Basic Config">
+
+    <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
+    <tenGig0SourceIp type="str" val="10.0.0.2"/>
+    <tenGig0SourcePort type="int" val="0"/>
+    <tenGig0DestMac type="str" val="00-07-43-10-65-A0"/>
+    <tenGig0DestIp type="str" val="10.0.0.1"/>
+    <tenGig0DestPort type="int" val="61649"/>
+    <femAsicEnableMask type="int" val="9999"/>      
+    <femPpcResetDelay type="int" val="2"/>
+    <femAsicDataType type="int" val="0"/>
+    <femAsicModuleType type="int" val="0"/>
+    <femDataSource type="int" val="1"/>
+    <femAsicColumns type="int" val="4"/>
+    <femAsicLocalClock type="int" val="0"/>
+    <femAsicSlowedClock type="bool" val="True"/>
+    <femAsicSlowLoadMode type="int" val="0"/>
+    <femAsicRxInvertData type="bool" val="False"/>
+    <femAsicRxFastStrobe type="bool" val="True"/>
+    <femAsicVersion type="int" val="1"/>
+    <femPpcMode type="int" val="0"/>
+    <tenGig0DataGenerator type="int" val="1"/>
+    <tenGig0DataFormat type="int" val="0"/>
+    <tenGig0NumberOfFrames type="int" val="1"/>
+    <tenGigInterframeGap type="int" val="0"/>
+    <tenGigUdpPacketLen type="int" val="8000"/>
+    <femAsicGainOverride type="int" val="8"/> 
+    <femFastCtrlDynamic type="bool" val="True"/>
+    <femEnableTenGig type="bool" val="True"/>
+    <femAsicRxDelayOddChannels type="bool" val="True"/>
+    <femAsicSlowClockPhase type="int" val="0"/>
+    <femNumTestCycles type="int" val="8"/>
+    <tenGigFarmMode type="int" val="1"/>
+    <femI2cBus type="int" val="0x300"/>
+    <femDebugLevel type="int" val="0"/>
+    <tenGig0FrameLength type="int" val="0x10000"/>
+        
+</lpd_readout_config>
