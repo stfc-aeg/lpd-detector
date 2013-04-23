@@ -58,7 +58,11 @@
         <item>
          <layout class="QGridLayout" name="gridLayout">
           <item row="2" column="1">
-           <widget class="QLineEdit" name="fastParamEdit"/>
+           <widget class="QLineEdit" name="fastParamEdit">
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="fastParamLabel">
@@ -80,7 +84,11 @@
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QLineEdit" name="slowParamEdit"/>
+           <widget class="QLineEdit" name="slowParamEdit">
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item row="1" column="0">
            <widget class="QLabel" name="slowParamLabel">
@@ -109,7 +117,11 @@
            </widget>
           </item>
           <item row="3" column="1">
-           <widget class="QLineEdit" name="dataPathEdit"/>
+           <widget class="QLineEdit" name="dataPathEdit">
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item row="3" column="2">
            <widget class="QPushButton" name="dataPathBtn">
@@ -152,7 +164,11 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QLineEdit" name="readoutParamEdit"/>
+           <widget class="QLineEdit" name="readoutParamEdit">
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item row="3" column="0">
            <widget class="QLabel" name="dataPathLabel">
@@ -832,7 +848,7 @@
      </attribute>
      <widget class="QGroupBox" name="pwrControlGroupBox">
       <property name="enabled">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <property name="geometry">
        <rect>
@@ -998,6 +1014,9 @@
       </widget>
      </widget>
      <widget class="QGroupBox" name="pwrMonitorGroupBox">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -1070,6 +1089,20 @@
          </widget>
         </item>
         <item>
+         <widget class="QLabel" name="label_78">
+          <property name="text">
+           <string>Last update:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lastUpdate">
+          <property name="text">
+           <string>??</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <spacer name="horizontalSpacer">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -1090,7 +1123,7 @@
          <x>0</x>
          <y>70</y>
          <width>380</width>
-         <height>521</height>
+         <height>431</height>
         </rect>
        </property>
        <property name="sizePolicy">
@@ -1661,7 +1694,7 @@
           </widget>
          </item>
          <item row="3" column="2">
-          <widget class="QLabel" name="rhsSensorCur2">
+          <widget class="QLabel" name="rhsSensorVolt2">
            <property name="text">
             <string>0.0</string>
            </property>
@@ -1891,7 +1924,7 @@
           </spacer>
          </item>
          <item row="3" column="1">
-          <widget class="QLabel" name="rhsSensorVolt2">
+          <widget class="QLabel" name="rhsSensorTemp2">
            <property name="text">
             <string>0.0</string>
            </property>
@@ -1972,7 +2005,7 @@
           </widget>
          </item>
          <item row="3" column="3">
-          <widget class="QLabel" name="rhsSensorTemp2">
+          <widget class="QLabel" name="rhsSensorCur2">
            <property name="text">
             <string>0.0</string>
            </property>
@@ -2271,7 +2304,7 @@
          <x>380</x>
          <y>70</y>
          <width>380</width>
-         <height>521</height>
+         <height>431</height>
         </rect>
        </property>
        <property name="sizePolicy">
@@ -2842,7 +2875,7 @@
           </widget>
          </item>
          <item row="3" column="2">
-          <widget class="QLabel" name="lhsSensorCur2">
+          <widget class="QLabel" name="lhsSensorVolt2">
            <property name="text">
             <string>0.0</string>
            </property>
@@ -3072,7 +3105,7 @@
           </spacer>
          </item>
          <item row="3" column="1">
-          <widget class="QLabel" name="lhsSensorVolt2">
+          <widget class="QLabel" name="lhsSensorTemp2">
            <property name="text">
             <string>0.0</string>
            </property>
@@ -3153,7 +3186,7 @@
           </widget>
          </item>
          <item row="3" column="3">
-          <widget class="QLabel" name="lhsSensorTemp2">
+          <widget class="QLabel" name="lhsSensorCur2">
            <property name="text">
             <string>0.0</string>
            </property>

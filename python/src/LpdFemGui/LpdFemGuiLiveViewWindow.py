@@ -33,7 +33,7 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
         # 5x4 inches, 100 dots-per-inch
         #
         self.dpi = 100
-        self.fig = Figure((5.0, 4.0), dpi=self.dpi)
+        self.fig = Figure((8.0, 6.0), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.plotFrame)
         

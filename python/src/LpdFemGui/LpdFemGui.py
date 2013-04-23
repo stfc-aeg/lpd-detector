@@ -1,4 +1,3 @@
-import os, sys, time
 from LpdFemGuiMainWindow import *
 from LpdFemGuiLiveViewWindow import *
 from LpdPowerCardManager import *
@@ -91,10 +90,16 @@ class LpdFemGui:
                           'liveViewOffset'    : 0
                          }
 
+        # List of parameter names that don't need to force a system reconfigure
+        self.nonVolatileParams = ('fileWriteEnable', 'liveViewEnable', 'liveViewDivisor', 'liveViewOffset',
+                                  'pwrAutoUpdate', 'pwrUpdateInterval', 'dataFilePath', 'hvBiasBolts')
+
+        # Load default parameters into cache if not already existing        
         for param in defaultParams:
             if not self.cachedParams.has_key(param):
                 self.cachedParams[param] = defaultParams[param]
         
+        # Sync cached parameters back to file
         self.cachedParams.sync()
         
     def getCachedParam(self, param):
@@ -105,12 +110,16 @@ class LpdFemGui:
             return None
     
     def setCachedParam(self, param, val):
-        
+        '''
+        Update a cached parameter with a new value and flag that the device needs
+        reconfiguring if the parameter is volatile
+        '''
         if not self.cachedParams.has_key(param) or self.cachedParams[param] != val:
             self.cachedParams[param] = val
             self.cachedParams.sync()
-            if self.deviceState == LpdFemGui.DeviceReady:
-                self.deviceState = LpdFemGui.DeviceIdle
+            if not param in self.nonVolatileParams:
+                if self.deviceState == LpdFemGui.DeviceReady:
+                    self.deviceState = LpdFemGui.DeviceIdle
             
     def deviceConnect(self, addressStr, portStr):
         
@@ -155,7 +164,9 @@ class LpdFemGui:
         self.runStateUpdate()
                 
         # Clear current loaded configuration 
-        self.loadedConfig= {}        
+        self.loadedConfig= {} 
+        
+        # Load readout parameters from file       
         self.msgPrint("Loading readout parameters from file %s" % self.cachedParams['readoutParamFile'])
         try:
             readoutConfig = LpdReadoutConfig(self.cachedParams['readoutParamFile'], fromFile=True)
@@ -164,6 +175,7 @@ class LpdFemGui:
             self.deviceState = LpdFemGui.DeviceIdle
             return
 
+        # Set all parameters from file on device
         for (param, value) in readoutConfig.parameters():
             rc = self.device.paramSet(param, value)
             if rc != LpdDevice.ERROR_OK:
@@ -175,6 +187,23 @@ class LpdFemGui:
             except Exception as e:
                 print >> sys.stderr, "%s", e
 
+        # Set up number of frames based on cached parameter value of number of trains
+        self.numFrames = self.cachedParams['numTrains']
+        self.loadedConfig['numTrains'] = self.numFrames
+        rc = self.device.paramSet('femNumTestCycles', self.numFrames)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter femNumTestCycles failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+        
+        # Store values of data receiver address, port and number of frames
+        try:
+            self.dataListenAddr = self.loadedConfig['tenGig0DestIp']
+            self.dataListenPort = self.loadedConfig['tenGig0DestPort']
+        except Exception as e:
+            print >> sys.stderr, "Got exception storing reaodut config variables", e 
+        
+        # Set ASIC slow parameters file
         self.msgPrint("Loading ASIC slow parameters from file %s" % self.cachedParams['slowParamFile'])
         rc = self.device.paramSet('femAsicSlowControlParams', self.cachedParams['slowParamFile'])
         if rc != LpdDevice.ERROR_OK:
@@ -183,6 +212,7 @@ class LpdFemGui:
             self.deviceState = LpdFemGui.DeviceIdle
             return
             
+        # Set ASIC fast command sequence file
         self.msgPrint("Loading ASIC fast command sequence from file %s" % self.cachedParams['fastParamFile'])
         rc = self.device.paramSet('femAsicFastCmdSequence', self.cachedParams['fastParamFile'])
         if rc != LpdDevice.ERROR_OK:
@@ -190,7 +220,8 @@ class LpdFemGui:
                           (self.cachedParams['fastParamFile'], rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
-            
+        
+        # Upload configuration parameters to device and configure system for acquisition    
         self.msgPrint("Uploading configuration to LPD FEM device...")
         rc = self.device.configure()
         if rc != LpdDevice.ERROR_OK:
@@ -198,14 +229,7 @@ class LpdFemGui:
             self.deviceState = LpdFemGui.DeviceIdle
             return
         
-        # Store values of data receiver address, port and number of frames
-        try:
-            self.dataListenAddr = self.loadedConfig['tenGig0DestIp']
-            self.dataListenPort = self.loadedConfig['tenGig0DestPort']
-            self.numFrames      = self.loadedConfig['femNumTestCycles']
-        except Exception as e:
-            print >> sys.stderr, "Got exception storing reaodut config variables", e 
-                
+        # Set device state as ready for acquisition        
         self.deviceState = LpdFemGui.DeviceReady
     
     def deviceRun(self):
@@ -219,22 +243,33 @@ class LpdFemGui:
                                           self.dataListenAddr, self.dataListenPort, self.numFrames, self.cachedParams)
         except Exception as e:
             print >> sys.stderr, "Exception creating data receiver", e
-            
+        
+        # Set device state as running and trigger update of run state in GUI    
         self.deviceState = LpdFemGui.DeviceRunning
         self.runStateUpdate()        
 
+        # Execute the run on the device
         rc = self.device.start()
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Acquisition start failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             
+        # Wait for the data receiver threads to complete
         dataReceiver.awaitCompletion()
+        
+        # Signal device state as ready
         self.deviceState = LpdFemGui.DeviceReady
         
     def msgPrint(self, message):
+        '''
+        Sends a message to the GUI thread for display
+        '''
         self.mainWindow.messageSignal.emit(message)
         
     def runStateUpdate(self):
+        '''
+        Sends a run state update to the GUI thread for display
+        ''' 
         self.mainWindow.runStateSignal.emit()
          
 def main():

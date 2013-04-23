@@ -24,7 +24,6 @@ class LpdFemGuiMainPowerTab(object):
         self.ui = mainWindow.ui
         self.msgPrint = self.mainWindow.msgPrint
         
-    
         # Initialise default fields based on appMain cached parameters    
         self.ui.hvBiasEdit.setText(str(self.appMain.getCachedParam('hvBiasVolts')))
         self.autoUpdate = self.appMain.getCachedParam('pwrAutoUpdate')
@@ -40,6 +39,15 @@ class LpdFemGuiMainPowerTab(object):
         QtCore.QObject.connect(self.ui.pwrUpdateIntervalEdit, QtCore.SIGNAL("editingFinished()"), self.pwrUpdateIntervalUpdate)
         QtCore.QObject.connect(self.ui.pwrUpdateBtn,    QtCore.SIGNAL("clicked()"), self.powerStatusUpdate)
 
+    def updateEnabledWidgets(self):
+        
+        if self.appMain.deviceState == LpdFemGui.DeviceDisconnected:
+            self.ui.pwrControlGroupBox.setEnabled(False)
+            self.ui.pwrMonitorGroupBox.setEnabled(False)
+        else:
+            self.ui.pwrControlGroupBox.setEnabled(True)
+            self.ui.pwrMonitorGroupBox.setEnabled(True)
+            
     def lvEnableToggle(self):
         
         currentState = self.appMain.pwrCard.lvEnableGet()        
@@ -48,13 +56,14 @@ class LpdFemGuiMainPowerTab(object):
         self.mainWindow.executeAsyncCmd('%s low voltage' % actionMsg, partial(self.appMain.pwrCard.lvEnableSet, nextState), 
                               partial(self.lvEnableToggleDone, nextState))
                     
-    def lvEnableToggleDone(self, nextState):
+    def lvEnableToggleDone(self, requestedState=None):
 
-        if self.appMain.pwrCard.lvEnableGet() != nextState:
-            self.msgPrint("ERROR: failed to switch LV enable to %d", nextState)
+        stateNow = self.appMain.pwrCard.lvEnableGet()
+        if requestedState != None and stateNow != requestedState:
+            self.msgPrint("ERROR: failed to switch LV enable to %d", requestedState)
         else:
-            buttonText = "Disable" if nextState == True else "Enable"
-            stateText  = "ON" if nextState == True else "OFF"
+            buttonText = "Disable" if stateNow == True else "Enable"
+            stateText  = "ON" if stateNow == True else "OFF"
             self.ui.lvEnableBtn.setText(buttonText)
             self.ui.lvStatus.setText(stateText)
         
@@ -67,13 +76,14 @@ class LpdFemGuiMainPowerTab(object):
         self.mainWindow.executeAsyncCmd('%s high voltage' % actionMsg, partial(self.appMain.pwrCard.hvEnableSet, nextState),
                              partial(self.hvEnableToggleDone, nextState))
         
-    def hvEnableToggleDone(self, nextState):
+    def hvEnableToggleDone(self, requestedState = None):
     
-        if self.appMain.pwrCard.hvEnableGet() != nextState:
-            self.msgPrint("ERROR: failed to switch HV enable to %d", nextState)
+        stateNow = self.appMain.pwrCard.hvEnableGet()
+        if requestedState != None and  stateNow != requestedState:
+            self.msgPrint("ERROR: failed to switch HV enable to %d", requestedState)
         else:
-            buttonText = "Disable" if nextState == True else "Enable"
-            stateText  = "ON" if nextState == True else "OFF"
+            buttonText = "Disable" if stateNow == True else "Enable"
+            stateText  = "ON" if stateNow == True else "OFF"
             self.ui.hvEnableBtn.setText(buttonText)
             self.ui.hvStatus.setText(stateText)
     
@@ -116,9 +126,91 @@ class LpdFemGuiMainPowerTab(object):
         
     def powerStatusUpdateDone(self):
         
-        print "DEBUG Power status update done"
-        
+        self.mainWindow.powerStatusSignal.emit(self.appMain.pwrCard.powerStateGet())
 
+    def powerStatusUpdateDisplay(self, powerState):
+        
+        powerCardName = ('lhs', 'rhs')
+        sensorParamList = ('Temp', 'Volt', 'Cur')
+        powerCardParams = {'powerCardTemp'     : 'PsuTemp',
+                           'femVoltage'        : 'FemVolt',
+                           'femCurrent'        : 'FemCur',
+                           'digitalVoltage'    : 'DigitalVolt',
+                           'digitalCurrent'    : 'DigitalCur',
+                           'sensorBiasVoltage' : 'BiasVolt', 
+                           'sensorBiasCurrent' : 'BiasCur'
+                           }
+        powerCardFlags = { 'asicPowerEnable'      : 'LvStatus',
+                           'sensorBiasEnable'     : 'HvStatus',
+                           'powerCardFault'       : 'FaultFlag',
+                           'powerCardFemStatus'   : 'FemFlag',
+                           'powerCardExtStatus'   : 'ExtFlag',
+                           'powerCardOverCurrent' : 'OvCurFlag',
+                           'powerCardOverTemp'    : 'OvTempFlag',
+                           'powerCardUnderTemp'   : 'UnTempFlag',
+                           }
+        
+        # Loop over LHS and RHS power cards and update display
+        for powerCard in range(self.appMain.pwrCard.numPowerCards):
+            
+            # Update flags
+            for paramStem, uiObjStem in powerCardFlags.iteritems():
+                
+                paramName = paramStem + str(powerCard)
+                uiObjName= powerCardName[powerCard] + uiObjStem
+                
+                try:
+                    uiObj = getattr(self.ui, uiObjName)
+                    self.updateFlag(uiObj, powerState[paramName])
+                except Exception as e:
+                    print >> sys.stderr, "Exception during UI object mapping:", e
+                    
+            # Update sensor bias
+            paramName = 'sensorBias' + str(powerCard)
+            uiObjName = powerCardName[powerCard] + 'BiasSetpoint'
+            try:
+                uiObj = getattr(self.ui, uiObjName)
+                uiObj.setText("{:.1f}".format(powerState[paramName]))
+            except Exception as e:
+                print >> sys.stderr,"Exception during UI object mapping:", e
+            
+            # Update sensor parameters
+            for sensor in range(self.appMain.pwrCard.numSensorsPerCard):
+                sensorIdx = sensor + ( powerCard * self.appMain.pwrCard.numSensorsPerCard)
+                for (param, uiParam) in zip(self.appMain.pwrCard.sensorParamList, sensorParamList):
+                    paramName = 'sensor' + str(sensorIdx) + param
+                    uiObjName = powerCardName[powerCard] + 'Sensor' + uiParam + str(sensor)
+                    try:
+                        uiObj = getattr(self.ui, uiObjName)
+                        uiObj.setText("{:.2f}".format(powerState[paramName]))
+                    except Exception as e:
+                        print >> sys.stderr, "Exception during UI object mapping:", e
+            
+            # Update power card parameters
+            for paramStem, uiObjStem in powerCardParams.iteritems():
+                
+                paramName = paramStem + str(powerCard)
+                uiObjName   = powerCardName[powerCard] + uiObjStem
+                try:
+                    uiObj = getattr(self.ui, uiObjName)
+                    uiObj.setText("{:.2f}".format(powerState[paramName]))
+                except Exception as e:
+                    print >> sys.stderr, "Exception during UI object mapping:", e
+                    
+        timeStr = time.strftime("%H:%M:%S")
+        self.ui.lastUpdate.setText(timeStr)
+                    
+    def updateFlag(self, uiObj, value):
+        
+        if value == "Yes" or value == True:
+            bgColour = "rgb(255, 0, 0)"
+        elif value == "No" or value == False:
+            bgColour = "rgb(0, 255, 0)"
+        else:
+            bgColour = "rgb(255, 255, 200)"
+
+        uiObj.setStyleSheet("background-color: %s;" % bgColour)
+            
 class PowerAutoUpdateThread(QtCore.QThread):
     
     updateDone = QtCore.pyqtSignal()
@@ -130,16 +222,15 @@ class PowerAutoUpdateThread(QtCore.QThread):
         
     def run(self):
         
-        print "Starting auto update thread"
+        print "Starting power card auto monitoring thread"
         self.updateDone.connect(self.pwrTab.powerStatusUpdateDone)
         
-        print "Entering loop"
-        while self.pwrTab.autoUpdate == True:
+        while self.pwrTab.autoUpdate == True and self.appMain.deviceState != LpdFemGui.DeviceDisconnected:
             
             #TODO inhibit update loop when device locked
             self.appMain.pwrCard.statusUpdate()
             self.updateDone.emit()
             time.sleep(self.appMain.getCachedParam('pwrUpdateInterval'))
             
-        print "Auto update thread terminating"
+        print "Power card auto monitoring thread terminating"
         

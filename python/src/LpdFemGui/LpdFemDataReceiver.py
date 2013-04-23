@@ -12,9 +12,6 @@ from PyQt4 import QtCore
 
 import h5py
 
-# Enable or disable time stamping
-bTimeStamp = True
-
 #Display received data in plots
 bDisplayPlotData = True
 
@@ -68,11 +65,11 @@ class LpdFemDataReceiver():
 
     def awaitCompletion(self):
             
-            print >> sys.stderr, "Waiting for frame processing to complete"
+            print "Waiting for frame processing to complete"
             while self.frameProcessor.framesHandled < self.numFrames:
                 time.sleep(0.1)
             
-            print >> sys.stderr, "Frame processor handled all frames, shutting down"
+            print "Frame processor handled all frames, terminating data receiver threads"
             self.frameProcessorThread.quit()
             self.udpReceiverThread.quit()
             self.dataMonitorThread.quit()
@@ -81,8 +78,12 @@ class LpdFemDataReceiver():
             self.udpReceiverThread.wait()
             self.dataMonitorThread.wait()
             
-            print >> sys.stderr, "All threads terminated"
-            
+            try:            
+                print "Average frame UDP receive time : %f secs" % (self.udpReceiver.totalReceiveTime / self.udpReceiver.frameCount)
+                print "Average frame processing time  : %f secs" % (self.frameProcessor.totalProcessingTime / self.frameProcessor.framesHandled)
+            except Exception as e:
+                print >> sys.stderr, "Got exception", e
+                
             self.frameProcessor.cleanUp()
         
  
@@ -92,11 +93,12 @@ class UdpReceiver(QtCore.QObject):
 
         super(UdpReceiver, self).__init__()
         
-        # Initialise variables used by processRxData..
+        # Initialise variables used by processRxData
         self.first_frm_num = -1       
         self.packetNumber = -1
         self.frameCount = 0
         self.numFrames = numFrames
+        self.totalReceiveTime = 0.0
         
         # Bind to UDP receive socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -118,14 +120,16 @@ class UdpReceiver(QtCore.QObject):
                     foundEof  = self.processRxData(lpdFrame, stream)
                     if foundEof:
                         # Complete frame received, transmit frame along with meta data saved in LpdFrameContainer object
-                        print >> sys.stderr, "Frame %d receive complete" % lpdFrame.frameNumber
+                        #print >> sys.stderr, "Frame %d receive complete" % lpdFrame.frameNumber
                         self.emit(QtCore.SIGNAL("dataRxSignal"), lpdFrame)
                         self.frameCount += 1
+                        self.totalReceiveTime += (lpdFrame.timeStampEof - lpdFrame.timeStampSof)
                         
         except Exception as e:
-            print "processRxData() failed: %s" % e
+            print "UDP receiver event loop got an exception: %s" % e
+            raise(e)
             
-        print >> sys.stderr, "Receiver thread completed"
+        #print >> sys.stderr, "Receiver thread completed"
 
     def processRxData(self, lpdFrame, data):
         ''' 
@@ -209,6 +213,7 @@ class FrameProcessor(QtCore.QObject):
         self.framesHandled = 0
         self.imagesWritten = 0
         self.dataBytesReceived = 0
+        self.totalProcessingTime = 0.0
 
         # Define plotted image dimensions: 
         self.nrows = 32*8   # 32 rows * 8 ASICs = 256 
@@ -251,9 +256,9 @@ class FrameProcessor(QtCore.QObject):
 
         # Build metadata attributes from cached parameters
         for param, val in cachedParams.iteritems():
-            print >>sys.stderr, param, val
             self.metaGroup.attrs[param] = val
-        
+
+        # Write the XML configuration files into the metadata group        
         self.xmlDs = {}
         str_type = h5py.new_vlen(str)
         for paramFile in ('readoutParamFile', 'fastParamFile', 'slowParamFile'):
@@ -272,13 +277,12 @@ class FrameProcessor(QtCore.QObject):
 
     def processFrame(self, lpdFrame):
         
-        print >> sys.stderr, "Frame processor thread receiver frame number", lpdFrame.frameNumber, 'raw data length', len(lpdFrame.rawImageData)
+        #print >> sys.stderr, "Frame processor thread receiver frame number", lpdFrame.frameNumber, 'raw data length', len(lpdFrame.rawImageData)
 
         self.dataBytesReceived += len(lpdFrame.rawImageData)
         
-        # If debug timing is enabled, capture time of starting processing
-        if bTimeStamp:
-            startTime = time.time()
+        # Capture time of starting processing
+        startTime = time.time()
         
         # Simultaneously extract 16 bit pixel data from raw 32 bit words and swap the byte order
         #     eg: ABCD => DCBA
@@ -331,13 +335,13 @@ class FrameProcessor(QtCore.QObject):
         # 'Reset' rawImageData variable - WHY??
         lpdFrame.rawImageData = lpdFrame.rawImageData[0:0]
 
-        if bTimeStamp:
-            endTime = time.time()
-            print "Total frame processing time = %f secs" % (endTime - startTime)
+        endTime = time.time()
+        self.totalProcessingTime += (endTime - startTime)
+        #print "Total frame processing time = %f secs" % (endTime - startTime)
 
         self.framesHandled += 1
-        if self.framesHandled >= self.numFrames:
-            print >> sys.stderr, "Frame processor thread processed all frames, quitting"
+        #if self.framesHandled >= self.numFrames:
+        #    print >> sys.stderr, "Frame processor thread processed all frames, quitting"
         
 
     def cleanUp(self):

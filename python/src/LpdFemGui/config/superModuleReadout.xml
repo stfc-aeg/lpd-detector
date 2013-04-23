@@ -31,7 +31,7 @@
     <femEnableTenGig type="bool" val="True"/>
     <femAsicRxDelayOddChannels type="bool" val="True"/>
     <femAsicSlowClockPhase type="int" val="0"/>
-    <femNumTestCycles type="int" val="8"/>
+    <!--  <femNumTestCycles type="int" val="8"/>  -->
     <tenGigFarmMode type="int" val="1"/>
     <femI2cBus type="int" val="0x300"/>
     <femDebugLevel type="int" val="0"/>

@@ -102,18 +102,21 @@ class LpdFemGuiMainDaqTab(object):
         try:
             numTrainsVal = int(numTrains)
             self.appMain.setCachedParam('numTrains', numTrainsVal)
+            self.mainWindow.updateEnabledWidgets()
         except ValueError:
             self.ui.numTrainsEdit.setText(str(self.appMain.getCachedParam('numTrains')))
             
     def externalTriggerSelect(self, state):
         self.msgPrint("External trigger select is %d" % int(state))
         self.appMain.setCachedParam('externalTrigger', state)
+        self.mainWindow.updateEnabledWidgets()
         
     def triggerDelayUpdate(self):
         delay = self.ui.triggerDelayEdit.text()
         try:
             delayVal = int(delay)
             self.appMain.setCachedParam('triggerDelay', delayVal) 
+            self.mainWindow.updateEnabledWidgets()
         except ValueError:
             self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
         
@@ -122,20 +125,30 @@ class LpdFemGuiMainDaqTab(object):
         try:
             pixelGainVal = int(pixelGain)
             self.appMain.setCachedParam('pixelGain', pixelGainVal)
+            self.mainWindow.updateEnabledWidgets()
         except ValueError:
             self.ui.pixelGainEdit.setText(str(self.appMain.getCachedParam('pixelGain')))
             
     def fileWriteSelect(self, state):
         self.appMain.setCachedParam('fileWriteEnable', state)
+        self.mainWindow.updateEnabledWidgets()
         
     def liveViewSelect(self, state):
         self.appMain.setCachedParam('liveViewEnable', state)
+        self.mainWindow.updateEnabledWidgets()
         
     def liveViewDivisorUpdate(self):
         liveViewDivisor = self.ui.liveViewDivisorEdit.text()
         try:
             liveViewDivisorVal = int(liveViewDivisor)
-            self.appMain.setCachedParam('liveViewDivisor', liveViewDivisorVal)
+            
+            if liveViewDivisorVal < 1:
+                QtGui.QMessageBox.critical(self.mainWindow, "Illegal value", "The value of the live view divisor must be greater than zero")
+                self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
+            else:
+                self.appMain.setCachedParam('liveViewDivisor', liveViewDivisorVal)
+                self.mainWindow.updateEnabledWidgets()
+            
         except ValueError:
             self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
 
@@ -144,6 +157,8 @@ class LpdFemGuiMainDaqTab(object):
         try:
             liveViewOffsetVal = int(liveViewOffset)
             self.appMain.setCachedParam('liveViewOffset', liveViewOffsetVal)
+            self.mainWindow.updateEnabledWidgets()
+
         except ValueError:
             self.ui.liveViewOffsetEdit.setText(str(self.appMain.getCachedParam('liveViewOffset')))
         

@@ -14,6 +14,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
     messageSignal = QtCore.pyqtSignal(object)
     runStateSignal = QtCore.pyqtSignal()
     runStatusSignal = QtCore.pyqtSignal(object)
+    powerStatusSignal = QtCore.pyqtSignal(object)
      
     def __init__(self, appMain):
         
@@ -52,6 +53,9 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
     
         # Connect run status update function to signal to data recevier to push updates
         self.runStatusSignal.connect(self.daqTab.runStatusUpdate)
+        
+        # Connect power status update function to signal
+        self.powerStatusSignal.connect(self.pwrTab.powerStatusUpdateDisplay)
         
     def msgRecv(self, message):
         
@@ -118,6 +122,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.runBtn.setEnabled(False)
             
         self.daqTab.updateEnabledWidgets()
+        self.pwrTab.updateEnabledWidgets()
             
         
     def createStatusBar(self, defaultMessage):
@@ -151,7 +156,10 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.appMain.deviceDisconnect()
             self.msgPrint("Device disconnected")
             self.statusBar().showMessage(self.tr("Not connected"))
+            self.ui.connectStatus.setText("NO")
             self.ui.connectButton.setText("Connect")
+            self.ui.lvStatus.setText("Unknown")
+            self.ui.hvStatus.setText("Unknown")
             
         self.updateEnabledWidgets()
     
@@ -168,10 +176,15 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.connectStatus.setText("YES")
             self.appMain.femConfigGet()
             self.configTab.showConfig()
-            
+
+            self.pwrTab.lvEnableToggleDone()            
+            self.pwrTab.hvEnableToggleDone()
+            self.appMain.pwrCard.statusUpdate()
+            self.pwrTab.powerStatusUpdateDisplay(self.appMain.pwrCard.powerStateGet())
+                        
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
-            self.ui.pwrControlGroupBox.setEnabled(True)
+
         else:
             self.statusBar().showMessage(self.tr("Not connected"))
             self.msgPrint(self.appMain.deviceErrString)
@@ -183,7 +196,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             
             self.ui.configGroupBox.setEnabled(False)
             self.ui.operateGroupBox.setEnabled(False)
-            self.ui.pwrControlGroupBox.setEnabled(False)
+
 
         self.updateEnabledWidgets()
         
