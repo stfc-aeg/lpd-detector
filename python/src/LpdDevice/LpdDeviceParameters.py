@@ -616,11 +616,23 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femAsicVersion']      = AttributeContainer(int, 'FemAsicVersion', 'ASIC version 1=version 1, 2=version 2',
-                                                                          1, 2, 1,
+                                                                          1, 2, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicClockSource']    = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator, 1=XFEL C&C System',
-                                                                          0, 1, 0,
+        self.expectedParameters['femAsicClockSource']    = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Clock sync with xray, 1=Fem local oscillator',
+                                                                          0, 1, 1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
+        self.expectedParameters['femBeamClockSource']      = AttributeContainer(int, 'FemBeamClockSource', 'Xray sync clock source 0=XFEL, 1=PETRA',
+                                                                          1, 2, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
+        self.expectedParameters['femBeamTriggerSource']      = AttributeContainer(int, 'FemBeamTriggerSource', 'Fem beam trigger source 0=XFEL Clock & Ctrl system, 1=Software',
+                                                                          1, 2, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
+        self.expectedParameters['femRunDuration']      = AttributeContainer(int, 'FemRunDuration', 'Fem run duration (seconds) if running with external beam trigger',
+                                                                          1, 100, 20,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femDebugLevel']    = AttributeContainer(int, 'FemDebugLevel', 'Set the debug level',

@@ -454,6 +454,16 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femNumTestCycles get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
             print "femNumTestCycles\t= %d" % value
+
+        rc = theDevice.paramSet('femAsicClockSource', 0) #  
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicClockSource set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+    
+        (rc, value) = theDevice.paramGet('femAsicClockSource')
+        if rc != LpdDevice.ERROR_OK:
+            print "femAsicClockSource get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femAsicClockSource \t\t= %d." % value
     
     ######################################################
     # Configure the FEM
