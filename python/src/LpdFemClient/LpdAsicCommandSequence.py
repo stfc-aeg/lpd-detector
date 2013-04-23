@@ -48,6 +48,11 @@ class LpdAsicCommandSequence():
                          'stop_read_out'            : 0x17,
                          'reset_state_machine'      : 0x18,
                          'asic_slow_readout_start'  : 0x20,
+                         'pseudorandom_start'       : 0x21,
+                         'force_gain_x100'          : 0x22,
+                         'force_gain_x10'           : 0x23,
+                         'force_gain_x1'            : 0x24,
+                         'force_gain_algorithm'     : 0x25,
                          'sync_reset'               : 0x5a5a5
                       }
         
@@ -268,7 +273,7 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
 
         # Test that encoded sequence matches expected
         self.assertEqual(stringEncodedSeq, expectedSeq, 'Unexpected encoded result for string command sequence')
-        
+
     def testFileParse(self):
 
         expectedLenEncoded = 25
@@ -337,12 +342,36 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
         stringCmdSeq = LpdAsicCommandSequence(stringCmdXml)
         stringEncodedSeq = stringCmdSeq.encode()
 
-#        print "\nstringEncodedSeq =\n"
-#        for idx in range(len(stringEncodedSeq)):
-#            print "[%2d] = %11X" % (idx, stringEncodedSeq[idx])
+        expectedSeq = [0x200000, 0x200000, 0x600000, 0xA00000, 0xE00000, 0x1200000, 0x1600000, 0x1A00000, 0x1E00000, 0x2200000, 0x2600000]
 
+        # Test that encoded sequence matches expected
+        self.assertEqual(stringEncodedSeq, expectedSeq, 'Unexpected encoded result for testNumberOfNops test case')
+
+    def testForceGainNewCommands(self):
+        '''
+        Test whether the latest commands will work
+        '''
         
+        # Command sequence definition to encode
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_command_sequence name="testForceGainNewCommands">
+                                <pseudorandom_start/>
+                                <force_gain_x100/>
+                                <force_gain_x10/>
+                                <force_gain_x1/>
+                                <force_gain_algorithm/>
+                                <nop/>
+                            </lpd_command_sequence>
+        '''
+        # Parse XML and encode
+        stringCmdSeq = LpdAsicCommandSequence(stringCmdXml)
+        stringEncodedSeq = stringCmdSeq.encode()
+        
+        expectedSeq = [0x221000,  0x222000,  0x223000,  0x224000,  0x225000,  0x200000]
+
+        self.assertEqual( stringEncodedSeq, expectedSeq, 'Unexpected encoder results for testForceGainNewCommands()')
+
+
 if __name__ == '__main__':
          
     unittest.main()
-            
