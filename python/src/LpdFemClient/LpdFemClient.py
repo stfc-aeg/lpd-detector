@@ -165,9 +165,9 @@ class LpdFemClient(FemClient):
                                                                 # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
         #TODO:  FOR FUTURE USE
         self.femAsicVersion                         = 2         # 1 = version 1, 2 = version 2
-        self.femAsicClockSource                     = 1         # 0 = clock sync with xray ; 1 = fem local oscillator, 
+        self.femAsicClockSource                     = 1         # 0 = Fem local oscillator, 1 = Clock sync with xray 
         self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = xfel , 1 =  petra
-        self.femBeamTriggerSource                   = 0         # 0 = xfel clock and controls system, 1 = s/w
+        self.femBeamTriggerSource                   = 1         # 0 = xfel clock and controls system, 1 = s/w
         self.femRunDuration                        = 20        # run duration secs if running with external beam trigger
 
         self.ext_trig_strobe_delay    = 22         # delay of ext trigger strobe (in asic clock periods)
@@ -282,18 +282,23 @@ class LpdFemClient(FemClient):
                 setattr(self, getMethodName,
                         partial(self._powerCardParamGet, cardIdx=cardIdx, method=targetMethodName))
 
-    #TODO: Redundant? 
-#    def _paramSet(self, value, method):
-#        
-#        #TODO: error check idx against number of power cards
-#        #TODO: trap attribute error at this point
-#        for idx in range(len(self.powerCards)):
-#            getattr(self.powerCards[idx], method)(value)
+        # Add 'misc' Set functions
+        setMethodNames = ['sensorBias', 'sensorBiasEnable', 'asicPowerEnable']
 
-#    def _paramGet(self, method):
-#
-#        return getattr(self.powerCards, method)()
-#    
+        for name in setMethodNames:
+            for cardIdx in range(len(self.powerCards)):
+                
+                setMethodName = name + str(cardIdx) + 'Set'
+                targetMethodName = name + 'Set'
+                
+                setattr(self, setMethodName,
+                        partial(self._powerCardParamSet, cardIdx=cardIdx, method=targetMethodName))
+
+    #TODO: Redundant? 
+    def _powerCardParamSet(self, value, cardIdx, method):
+
+        return getattr(self.powerCards[cardIdx], method)(value)
+
     def _sensorParamGet(self, cardIdx, sensorIdx, method):
         
         return getattr(self.powerCards[cardIdx], method)(sensorIdx)
@@ -1445,7 +1450,7 @@ class LpdFemClient(FemClient):
             print "Register Settings\r"
             self.dump_registers()
 
-        if self.femNumTestCycles > 0 and self.debug_level == 0:
+        if self.femNumTestCycles > 0 and self.femDebugLevel == 0:
             print "Register Settings\r"
             self.dump_registers()
         else:
@@ -1691,9 +1696,10 @@ class LpdFemClient(FemClient):
         '''
         self.femAsicEnableMaskDummy = aValue
         #TODO: Temp hack to decouple ASIC mask vector from API
-        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FFFF, 0x00000000]
+#        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FFFF, 0x00000000]
 #        self.femAsicEnableMask = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
-        
+        self.femAsicEnableMask = [0x00000000, 0x0000FF00, 0x0000FFFF, 0x00000000]
+                
     def femAsicColumnsGet(self):
         '''
             Get femAsicColumns

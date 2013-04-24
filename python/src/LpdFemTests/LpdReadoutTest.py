@@ -30,7 +30,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     ################################################################
     
     AsicVersion = 2    # 1 or 2
-    xmlConfiguration = 1    # 0 = test, 1=short (normal) exposure, 2= long exposure (slowed down)
+    xmlConfiguration = 2    # 0 = test, 1=short (normal) exposure, 2= long exposure (slowed down)
 
     if AsicVersion == 1:
         femAsicSlowedClockFlag = True    # must ensure fast cmd file corresponds with readout clock selection
@@ -117,11 +117,11 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicEnableMask set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femPpcResetDelay', 2)
+    rc = theDevice.paramSet('femPpcResetDelay', 0)
     if rc != LpdDevice.ERROR_OK:
         print "femPpcResetDelay set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femAsicDataType', 0)
+    rc = theDevice.paramSet('femAsicDataType', 0)    # 0=Normal Data, 1=Counting data, 2=Pseudo random
     if rc != LpdDevice.ERROR_OK:
         print "femAsicDataType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -129,7 +129,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "femAsicModuleType set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
-    rc = theDevice.paramSet('femDataSource', 1) #0)
+    rc = theDevice.paramSet('femDataSource', 1) # 0 for PPC, 1 for bypass PPC
     if rc != LpdDevice.ERROR_OK:
         print "femDataSource set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
 
@@ -455,7 +455,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femNumTestCycles\t= %d" % value
 
-        rc = theDevice.paramSet('femAsicClockSource', 0) #  
+        rc = theDevice.paramSet('femAsicClockSource', 0)    #  0=Fem local oscillator, 1=Clock sync with xray
         if rc != LpdDevice.ERROR_OK:
             print "femAsicClockSource set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
@@ -464,7 +464,17 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "femAsicClockSource get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
             print "femAsicClockSource \t\t= %d." % value
+
+        rc = theDevice.paramSet('femBeamTriggerSource', 1) #  0=XFEL Clock & Ctrl system, 1=Software
+        if rc != LpdDevice.ERROR_OK:
+            print "femBeamTriggerSource set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
     
+        (rc, value) = theDevice.paramGet('femBeamTriggerSource')
+        if rc != LpdDevice.ERROR_OK:
+            print "femBeamTriggerSource get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femBeamTriggerSource \t\t= %d." % value
+
     ######################################################
     # Configure the FEM
     ######################################################

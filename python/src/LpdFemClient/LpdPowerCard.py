@@ -207,7 +207,7 @@ class LpdPowerCard(object):
     
     def sensorBiasEnableSet(self, aEnable):
         '''
-            Set 'Sensor LV Bias Enable' (0/1 = on/off)
+            Set 'Sensor HV Bias Enable' (0/1 = on/off)
         '''
         value = 1 - int(aEnable)
         self.pcf7485WriteOneBit(LpdPowerCard.HV_CTRL_BIT, value)
