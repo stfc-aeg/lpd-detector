@@ -168,9 +168,8 @@ class LpdFemClient(FemClient):
         self.femAsicClockSource                     = 1         # 0 = Fem local oscillator, 1 = Clock sync with xray 
         self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = xfel , 1 =  petra
         self.femBeamTriggerSource                   = 1         # 0 = xfel clock and controls system, 1 = s/w
-        self.femRunDuration                        = 20        # run duration secs if running with external beam trigger
 
-        self.ext_trig_strobe_delay    = 22         # delay of ext trigger strobe (in asic clock periods)
+        self.femExternalTriggerStrobeDelay    = 22         # delay of ext trigger strobe (in asic clock periods)
         self.ext_trig_strobe_inhibit    = self.nr_clocks_to_readout_image * self.femAsicColumns + self.asicRx2tileStart       # length of inhibit after ext strobe enough to read out all data (in asic clock periods)
      
         
@@ -604,12 +603,9 @@ class LpdFemClient(FemClient):
     def dump_regs_hex(self, base_addr, nr_regs):
         """ hex dump of registers """
         
-        print "" 
         print 'rdma base addr = $%08X' % base_addr 
         for i in range(0, nr_regs/2):
-            print 'reg %2d = $%08X '   % ((i*2),   self.rdmaRead(base_addr+(i*2),   1)[0]),
-            print '\treg %2d = $%08X ' % ((i*2+1), self.rdmaRead(base_addr+(i*2+1), 1)[0])
-        print ""  
+            print 'reg %2d = $%08X     %2d = $%08X'   % ((i*2),   self.rdmaRead(base_addr+(i*2),   1)[0], (i*2+1), self.rdmaRead(base_addr+(i*2+1), 1)[0])
 
     def setup_ppc_bram(self, base_addr, length):
         """ This function sets up the bram to provide ppc with run params """
@@ -661,7 +657,7 @@ class LpdFemClient(FemClient):
     def config_trig_strobe(self):
         """ configure external trigger strobes """
 
-        self.set_ext_trig_strobe_delay(self.ext_trig_strobe_delay)    
+        self.set_ext_trig_strobe_delay(self.femExternalTriggerStrobeDelay)    
         self.set_ext_trig_strobe_inhibit(self.ext_trig_strobe_inhibit)    
 
     def config_10g_link(self):
@@ -1212,7 +1208,7 @@ class LpdFemClient(FemClient):
 
             while gen_busy == 1:
                 i=i+1
-                print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs\r' % (self.tenGig0['link_nr'], i),
+                print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs' % (self.tenGig0['link_nr'], i),
                 sys.stdout.flush() 
                 time.sleep(1)                    
                 gen_busy = self.status_ll_frm_gen(data_gen_base) 
@@ -1408,55 +1404,54 @@ class LpdFemClient(FemClient):
         print "Executing run().."
 
         if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc, wait for ppc to be ready to read out
-            print "Running with PPC1 ...\r"
+            print "Running with PPC1 ..."
             if (self.femPpcResetDelay == 0):
                 while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
-                    print "Waiting for PPC readout to be ready...\r",
+                    print "Waiting for PPC readout to be ready...",
                     sys.stdout.flush()
         else:
-            print "Running in PPC1 BYPASS mode...\r"
+            print "Running in PPC1 BYPASS mode..."
 
         #num_cycles = self.femNumTestCycles
-        print "=========================================================\r" 
+        print "=========================================================" 
         print "Starting Sequence of %d Trains , with each Train reading out %d images" %(self.femNumTestCycles, self.femAsicColumns)
 
         if self.femBeamTriggerSource == 1:  # if s/w send triggers manually         
             for i in range (1, self.femNumTestCycles+1):
                 print "Train nr %d" % i
                 self.send_trigger() 
-                time.sleep(2)     # need to check if images are all readout before sending next train
-                #print 'Train nr %4d \r' % i,
+                time.sleep(0.5)     # need to check if images are all readout before sending next train
+                #print 'Train nr %4d ' % i,
                 #sys.stdout.flush()  
 
         else:  # else start run and use external c&c strobes
-            print 'Run is STARTED. Waiting for %d trigger strobes \r' %self.femNumTestCycles 
+            print 'Run is STARTED. Waiting for %d trigger strobes ' %self.femNumTestCycles 
             self.enable_ext_trig_strobe()
             nr_ext_trig_strobes = 0
             while nr_ext_trig_strobes < self.femNumTestCycles:
-                #time.sleep(self.femRunDuration)
                 nr_ext_trig_strobes = self.get_ext_trig_strobe_count()
             self.disable_ext_trig_strobe()
-            print 'Run is STOPPED \r' 
-            print 'Total Nr of External Trigger Strobe Received = %d  \r' %nr_ext_trig_strobes 
+            print 'Run is STOPPED ' 
+            print 'Total Nr of External Trigger Strobe Received = %d  ' %nr_ext_trig_strobes 
 
-        print "======== Train Cycle Completed ===========\r" 
+        print "======== Train Cycle Completed ===========" 
         time.sleep(2)   # just to see output before dumping registers
 
         v5_firmware_vers = self.get_v5_firmware_vers()
-        print 'V5 FPGA Firmware vers = %08x  \r' %v5_firmware_vers 
+        print 'V5 FPGA Firmware vers = %08x  ' %v5_firmware_vers 
 
         # Read out all registers (Both 2 tile & supermodule run fine without) 
         if self.femDebugLevel > 0:
-            print "Register Settings\r"
+            print "Register Settings"
             self.dump_registers()
 
         if self.femNumTestCycles > 0 and self.femDebugLevel == 0:
-            print "Register Settings\r"
+            print "Register Settings"
             self.dump_registers()
         else:
             time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
 
-        print "Summary of Data Readout...\r"
+        print "Summary of Data Readout..."
 
         # 10g ll monitor
         print "10G LLink Monitor"
@@ -1465,7 +1460,7 @@ class LpdFemClient(FemClient):
         print "Asic Rx LLink Monitor"
         self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
 
-        print "======== Run Completed ===========\r" 
+        print "======== Run Completed ===========" 
 
     def tenGig0SourceMacGet(self):
         '''
@@ -1928,17 +1923,17 @@ class LpdFemClient(FemClient):
         '''
         self.femBeamTriggerSource = aValue
 
-    def femRunDurationGet(self):
+    def femExternalTriggerStrobeDelayGet(self):
         '''
-            Get femRunDuration
+            Get femExternalTriggerStrobeDelay
         '''
-        return self.femRunDuration
+        return self.femExternalTriggerStrobeDelay
 
-    def femRunDurationSet(self, aValue):
+    def femExternalTriggerStrobeDelaySet(self, aValue):
         '''
-            Set femRunDuration
+            Set femExternalTriggerStrobeDelay
         '''
-        self.femRunDuration = aValue
+        self.femExternalTriggerStrobeDelay = aValue
 
 
     def femPpcModeGet(self):
