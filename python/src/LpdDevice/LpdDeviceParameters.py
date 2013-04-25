@@ -624,15 +624,15 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femBeamClockSource']      = AttributeContainer(int, 'FemBeamClockSource', 'Xray sync clock source 0=XFEL, 1=PETRA',
-                                                                          1, 2, 0,
+                                                                          0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femBeamTriggerSource']      = AttributeContainer(int, 'FemBeamTriggerSource', 'Fem beam trigger source 0=XFEL Clock & Ctrl system, 1=Software',
-                                                                          1, 2, 0,
+                                                                          0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femRunDuration']      = AttributeContainer(int, 'FemRunDuration', 'Fem run duration (seconds) if running with external beam trigger',
-                                                                          1, 100, 20,
+        self.expectedParameters['femExternalTriggerStrobeDelay'] = AttributeContainer(int, 'FemExternalTriggerStrobeDelay', 'Fem external trigger strobe delay (in ASIC clock periods)',
+                                                                          0, 65536, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femDebugLevel']    = AttributeContainer(int, 'FemDebugLevel', 'Set the debug level',
