@@ -130,7 +130,7 @@ class LpdDevice(object):
                 self.femClient.configure()
             except FemClientError as e:
                 rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
-                self.errorString = 'Error during FEM configuration: %s' % e.msg()
+                self.errorString = 'Error during FEM configuration: %s' % e.msg
                 
         else:
             time.sleep(5)
@@ -152,7 +152,7 @@ class LpdDevice(object):
                 self.femClient.run()
             except FemClientError as e:
                 rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
-                self.errorString = 'Error during FEM acquisition start: %s' % e.msg()
+                self.errorString = 'Error during FEM acquisition start: %s' % e.msg
         else:
             pass
                 
@@ -174,7 +174,7 @@ class LpdDevice(object):
                 pass
             except FemClientError as e:
                 rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
-                self.errorString = 'Error during FEM acquisition stop: %s' % e.msg()
+                self.errorString = 'Error during FEM acquisition stop: %s' % e.msg
         else:
             pass
                 

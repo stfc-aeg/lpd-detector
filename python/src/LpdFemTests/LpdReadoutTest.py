@@ -463,7 +463,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         if rc != LpdDevice.ERROR_OK:
             print "femAsicClockSource get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femAsicClockSource \t\t= %d." % value
+            print "femAsicClockSource\t= %d." % value
 
         rc = theDevice.paramSet('femBeamTriggerSource', 1) #  0=XFEL Clock & Ctrl system, 1=Software
         if rc != LpdDevice.ERROR_OK:
@@ -473,7 +473,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         if rc != LpdDevice.ERROR_OK:
             print "femBeamTriggerSource get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         else:
-            print "femBeamTriggerSource \t\t= %d." % value
+            print "femBeamTriggerSource\t= %d." % value
 
     ######################################################
     # Configure the FEM

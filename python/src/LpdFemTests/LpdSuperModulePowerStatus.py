@@ -17,7 +17,6 @@ def powerCardTest():
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return
     
-    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
     numSensors = 16
     numPowerCards = 2
     paramTypes = ['Temp', 'Voltage', 'Current']

@@ -2,14 +2,14 @@
 
 #      RHS Power Card
 
-python LpdPowerControl.py --hvbias 50
-python LpdPowerControl.py --lv 1 --hv 1
+python LpdPowerControl.py --asicmodule 0 --hvbias 50
+python LpdPowerControl.py --asicmodule 0 --lv 1 --hv 1
 
 #      LHS Power Card
 
-python LpdPowerControl.py --hvbias 50
-python LpdPowerControl.py --lv 1 --hv 1
+python LpdPowerControl.py --asicmodule 0 --hvbias 50
+python LpdPowerControl.py --asicmodule 0 --lv 1 --hv 1
 
-echo "-=-=-=-=-=-=-=-=-=-=-=-=-         POWER CARDS' INFO:         -=-=-=-=-=-=-=-=-=-=-=-=-"
+echo "-=-=-=-=-=-=-=-=-=- SUPERMODULE: POWER CARDS' INFO: -=-=-=-=-=-=-=-=-=-"
 
 python LpdSuperModulePowerStatus.py

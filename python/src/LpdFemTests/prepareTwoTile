@@ -2,9 +2,9 @@
 
 #      RHS Power Card (Two Tile System)
 
-python LpdPowerControl.py --hvbias 50 --femI2cBus 768
-python LpdPowerControl.py --lv 1 --hv 1 --femI2cBus 768
+python LpdPowerControl.py --asicmodule 2 --hvbias 50
+python LpdPowerControl.py --asicmodule 2 --lv 1 --hv 1
 
-echo "-=-=-=-=-=-=-=-=-=-=-=-=-         POWER CARDS' INFO:         -=-=-=-=-=-=-=-=-=-=-=-=-"
+echo "-=-=-=-=-=-=-=-=-=- 2-TILE SYSTEM: POWER CARDS' INFO: -=-=-=-=-=-=-=-=-=-"
 
 python LpdPowerStatus.py

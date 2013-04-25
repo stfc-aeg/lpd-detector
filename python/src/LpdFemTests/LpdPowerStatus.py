@@ -46,8 +46,6 @@ def LpdPowerStatus():
             if rc != LpdDevice.ERROR_OK:    
                 print "Unable to read parameter %s rc=%d: %s" % (paramName, rc, theDevice.errorStringGet())
     
-    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-        
     print "Status:"
     print "    Low voltage  = ",
     if results['asicPowerEnable0']:
