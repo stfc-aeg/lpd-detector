@@ -372,7 +372,7 @@ class FrameProcessor(QtCore.QObject):
         self.imageArray = np.zeros(numPixels, dtype=np.uint16)
         self.imageArray = np.reshape(self.imageArray, (numAsicRows * numRowsPerAsic, numAsicCols * numColsPerAsic))
 
-        rawOffset = 0
+        rawOffset = imageOffset
 
         try:
             for asicRow in xrange(numRowsPerAsic):
