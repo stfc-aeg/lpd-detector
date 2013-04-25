@@ -536,7 +536,7 @@ class BlitQT(FigureCanvas):
         self.imageArray = np.zeros(numPixels, dtype=np.uint16)
         self.imageArray = np.reshape(self.imageArray, (numRows * numRowsPerAsic, numCols * numColsPerAsic))
 
-        rawOffset = 0
+        rawOffset = dataBeginning
 
         if bTimeStamp:
             t1 = time.time()
