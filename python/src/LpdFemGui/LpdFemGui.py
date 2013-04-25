@@ -7,6 +7,7 @@ from FemClient.FemClient import *
 from FemApi.FemConfig import *
 from LpdReadoutConfig import *
 from persistentDict import *
+import os
 
 class PrintRedirector():
     
@@ -29,9 +30,11 @@ class LpdFemGui:
 
         self.app = app
         
-        # Load default parameters from persistent file store
-        self.defaultConfigPath = os.getcwd() + '/config'
+        # Pick up path to config file from environment, otherwise default to config directory
+        # in current working directory
+        self.defaultConfigPath = os.getenv('LPD_FEM_GUI_CONFIG_PATH', os.getcwd() + '/config')
         
+        # Load default parameters from persistent file store
         self.initialiseCachedParams()
         
         # Initialise device and default state
@@ -193,6 +196,23 @@ class LpdFemGui:
         rc = self.device.paramSet('femNumTestCycles', self.numFrames)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femNumTestCycles failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+        
+        # Set up trigger source (internal vs external)
+        externalTrigger = self.cachedParams['externalTrigger']
+        beamTriggerSource = 1 if externalTrigger == False else 0
+        rc = self.device.paramSet('femBeamTriggerSource', beamTriggerSource)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter femBeamTriggerSource failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+        
+        # Set up external trigger delay
+        triggerDelay = self.cachedParams['triggerDelay']
+        rc = self.device.paramSet('femExternalTriggerStrobeDelay', triggerDelay)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter femExternalTriggerStrobeDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
         

@@ -177,10 +177,9 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.appMain.femConfigGet()
             self.configTab.showConfig()
 
+            self.appMain.pwrCard.statusUpdate()
             self.pwrTab.lvEnableToggleDone()            
             self.pwrTab.hvEnableToggleDone()
-            self.appMain.pwrCard.statusUpdate()
-            self.pwrTab.powerStatusUpdateDisplay(self.appMain.pwrCard.powerStateGet())
                         
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)

@@ -42,7 +42,13 @@ class LpdPowerCardManager(object):
     def lvEnableSet(self, state):
         
         self.lvEnabled = state
-        self.appMain.msgPrint("LV state is now %s" % state)
+        for powerCard in range(self.numPowerCards):
+            paramName = 'asicPowerEnable' + str(powerCard)
+            rc = self.device.paramSet(paramName, state)
+            if rc != LpdDevice.ERROR_OK:
+                self.appMain.msgPrint("Unable to set LV to %d for card %d (rc=%d) : %s", int(state), powerCard, rc,
+                                      self.device.errorStringGet())
+        self.statusUpdate()
         
     def lvEnableGet(self):
     
@@ -64,6 +70,14 @@ class LpdPowerCardManager(object):
     def hvEnableSet(self, state):
         
         self.hvEnabled = state
+        for powerCard in range(self.numPowerCards):
+            paramName = 'sensorBiasEnable' + str(powerCard)
+            rc = self.device.paramSet(paramName, state)
+            if rc != LpdDevice.ERROR_OK:
+                self.appMain.msgPrint("Unable to set HV to %d for card %d (rc=%d) : %s", int(state), powerCard, rc,
+                                      self.device.errorStringGet())
+                
+        self.statusUpdate()
         
     def hvEnableGet(self):
         
@@ -84,10 +98,16 @@ class LpdPowerCardManager(object):
     
     def hvBiasSet(self, bias):
         
-        self.appMain.msgPrint("Entered hvBiasSet")
-        time.sleep(3)
-        self.hvBias = bias
-        self.appMain.msgPrint("HV bias is now %f" % bias)
+        for powerCard in range(self.numPowerCards):
+            
+            paramName = 'sensorBias' + str(powerCard)
+            rc = self.device.paramSet(paramName, bias)
+            if rc != LpdDevice.ERROR_OK:
+                self.appMain.msgPrint("Unable to set HV bias for card %d (rc=%d) : %s", powerCard, rc,
+                                      self.device.errorStringGet())
+                
+        self.statusUpdate()
+
 
     def hvBiasGet(self):
         
@@ -128,7 +148,7 @@ class LpdPowerCardManager(object):
         
         except Exception as e:
             print >> sys.stderr, "Power card status update got exception:", e
-                
+                            
     def powerStateGet(self):
         
         return self.powerState

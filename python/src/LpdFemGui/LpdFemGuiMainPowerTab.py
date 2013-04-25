@@ -62,11 +62,8 @@ class LpdFemGuiMainPowerTab(object):
         if requestedState != None and stateNow != requestedState:
             self.msgPrint("ERROR: failed to switch LV enable to %d", requestedState)
         else:
-            buttonText = "Disable" if stateNow == True else "Enable"
-            stateText  = "ON" if stateNow == True else "OFF"
-            self.ui.lvEnableBtn.setText(buttonText)
-            self.ui.lvStatus.setText(stateText)
-        
+            self.powerBtnStateUpdate('lv', stateNow)
+        self.powerStatusUpdateDone()
     
     def hvEnableToggle(self):
 
@@ -82,11 +79,9 @@ class LpdFemGuiMainPowerTab(object):
         if requestedState != None and  stateNow != requestedState:
             self.msgPrint("ERROR: failed to switch HV enable to %d", requestedState)
         else:
-            buttonText = "Disable" if stateNow == True else "Enable"
-            stateText  = "ON" if stateNow == True else "OFF"
-            self.ui.hvEnableBtn.setText(buttonText)
-            self.ui.hvStatus.setText(stateText)
-    
+            self.powerBtnStateUpdate('hv', stateNow)
+        self.powerStatusUpdateDone()
+   
     def hvBiasSetUpdate(self):
         
         biasStr = self.ui.hvBiasEdit.text()
@@ -100,7 +95,8 @@ class LpdFemGuiMainPowerTab(object):
             self.ui.hvBiasEdit.setText(str(self.appMain.getCachedParam('hvBiasVolts')))
             
     def hvBiasSetDone(self):
-        
+
+        self.powerStatusUpdateDone()        
         self.msgPrint("HV bias set complete")
     
     def pwrAutoUpdateSelect(self, state):
@@ -199,7 +195,23 @@ class LpdFemGuiMainPowerTab(object):
                     
         timeStr = time.strftime("%H:%M:%S")
         self.ui.lastUpdate.setText(timeStr)
-                    
+        
+    def powerBtnStateUpdate(self, whichBtn, state):
+        
+        if whichBtn == 'lv':
+            btn = self.ui.lvEnableBtn
+            stateDisp = self.ui.lvStatus
+        elif whichBtn == 'hv':
+            btn = self.ui.hvEnableBtn
+            stateDisp = self.ui.hvStatus
+        else:
+            return
+        
+        buttonText = "Disable" if state == True else "Enable"
+        stateText  = "ON" if state == True else "OFF"
+        btn.setText(buttonText)
+        stateDisp.setText(stateText)
+
     def updateFlag(self, uiObj, value):
         
         if value == "Yes" or value == True:

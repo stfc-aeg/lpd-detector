@@ -9,17 +9,17 @@
     <tenGig0DestIp type="str" val="10.0.0.1"/>
     <tenGig0DestPort type="int" val="61649"/>
     <femAsicEnableMask type="int" val="9999"/>      
-    <femPpcResetDelay type="int" val="2"/>
+    <femPpcResetDelay type="int" val="0"/>
     <femAsicDataType type="int" val="0"/>
     <femAsicModuleType type="int" val="0"/>
     <femDataSource type="int" val="1"/>
     <femAsicColumns type="int" val="4"/>
     <femAsicLocalClock type="int" val="0"/>
-    <femAsicSlowedClock type="bool" val="True"/>
+    <femAsicSlowedClock type="bool" val="False"/>
     <femAsicSlowLoadMode type="int" val="0"/>
     <femAsicRxInvertData type="bool" val="False"/>
     <femAsicRxFastStrobe type="bool" val="True"/>
-    <femAsicVersion type="int" val="1"/>
+    <femAsicVersion type="int" val="2"/>
     <femPpcMode type="int" val="0"/>
     <tenGig0DataGenerator type="int" val="1"/>
     <tenGig0DataFormat type="int" val="0"/>
@@ -36,5 +36,7 @@
     <femI2cBus type="int" val="0x300"/>
     <femDebugLevel type="int" val="0"/>
     <tenGig0FrameLength type="int" val="0x10000"/>
+    <femAsicClockSource type="int" val="0"/> <!--  0=FEM local clock 1=External -->
+    <femBeamClockSource type="int" val="0"/> <!--  0=XFEL 1=PETRA ??? TBD -->
         
 </lpd_readout_config>
