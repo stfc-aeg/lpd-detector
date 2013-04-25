@@ -378,19 +378,19 @@ class LpdFemClient(FemClient):
         
         mon_addr = base + 16
 
-        print "frm_last_length (bytes):\t",           hex( self.rdmaRead(mon_addr+0, 1)[0])
-        print "frm_max_length (bytes): \t",           hex( self.rdmaRead(mon_addr+1, 1)[0])
-        print "frm_min_length (bytes): \t",           hex( self.rdmaRead(mon_addr+2, 1)[0])
-        print "frm_number:\t\t\t",                    hex( self.rdmaRead(mon_addr+3, 1)[0])
-        print "frm_last_cycles:\t\t",                 hex( self.rdmaRead(mon_addr+4, 1)[0])
-        print "frm_max_cycles: \t\t",                 hex( self.rdmaRead(mon_addr+5, 1)[0])
-        print "frm_min_cycles: \t\t",                 hex( self.rdmaRead(mon_addr+6, 1)[0]) 
+        print "frm_last_length (bytes):      %s" % hex( self.rdmaRead(mon_addr+0, 1)[0])
+        print "frm_max_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+1, 1)[0])
+        print "frm_min_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+2, 1)[0])
+        print "frm_number:                   %s" % hex( self.rdmaRead(mon_addr+3, 1)[0])
+        print "frm_last_cycles:              %s" % hex( self.rdmaRead(mon_addr+4, 1)[0])
+        print "frm_max_cycles:               %s" % hex( self.rdmaRead(mon_addr+5, 1)[0])
+        print "frm_min_cycles:               %s" % hex( self.rdmaRead(mon_addr+6, 1)[0]) 
         total_data = self.rdmaRead(mon_addr+7, 1)[0]
-        print "frm_data_total (bytes): \t",           total_data, hex(total_data)         
+        print "frm_data_total (bytes):       %d %s" % (total_data, hex(total_data))         
         total_cycles = self.rdmaRead(mon_addr+8, 1)[0]
-        print "frm_cycle_total:\t\t", total_cycles
-        print "frm_trig_count: \t\t",                 hex( self.rdmaRead(mon_addr+9, 1)[0])
-        print "frm_in_progress:\t\t",                 hex( self.rdmaRead(mon_addr+15, 1)[0])
+        print "frm_cycle_total:              %d" % total_cycles
+        print "frm_trig_count:               %s" % hex( self.rdmaRead(mon_addr+9, 1)[0])
+        print "frm_in_progress:              %s" % hex( self.rdmaRead(mon_addr+15, 1)[0])
         
         # data path = 64 bit, clock = 156.25 MHz
         total_time = float(total_cycles) * (1/clock_freq)
@@ -399,9 +399,9 @@ class LpdFemClient(FemClient):
         else:
             rate = 0
             
-        print "Data Total = \t\t\t%e"   % total_data
-        print "Data Time  = \t\t\t%e"   % total_time
-        print "Data Rate  = \t\t\t%e\n" % rate
+        print "Data Total =                  %e" % total_data
+        print "Data Time  =                  %e" % total_time
+        print "Data Rate  =                  %e" % rate
 
     def set_asic_clock_freq(self, base_address, clock_sel):
         """ Set the asic clock frequency ; 0 = 100 MHz ; 1 = divided clock """
