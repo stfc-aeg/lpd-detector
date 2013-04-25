@@ -202,7 +202,7 @@ class LpdFemGuiMainDaqTab(object):
 
         self.ui.runNumber.setText(str(self.appMain.getCachedParam('runNumber')))
         
-        deviceStateMapping = {  LpdFemGui.DeviceDisconnected : 'Disconnected',
+        deviceStateMapping = {  LpdFemGui.DeviceDisconnected : 'Disconn',
                                 LpdFemGui.DeviceIdle         : 'Idle',
                                 LpdFemGui.DeviceConfiguring  : 'Configuring',
                                 LpdFemGui.DeviceReady        : 'Ready',
