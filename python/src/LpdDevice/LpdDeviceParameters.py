@@ -635,6 +635,14 @@ class LpdDeviceParameters(object):
                                                                           0, 65536, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
+        self.expectedParameters['femDelaySensors'] = AttributeContainer(int, 'FemDelaySensors', 'Fem delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB',
+                                                                          0, 0xFFFF, 0xFFFF,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
+        self.expectedParameters['femGainfromFastCmd'] = AttributeContainer(int, 'FemGainfromFastCmd', 'Fem ... 0=asicrx gain select fixed by register, 1=asicrx gain select taken from fast cmd file commands on the fly',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
         self.expectedParameters['femDebugLevel']    = AttributeContainer(int, 'FemDebugLevel', 'Set the debug level',
                                                                           0, 6, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')

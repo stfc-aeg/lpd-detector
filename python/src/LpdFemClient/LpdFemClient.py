@@ -123,13 +123,12 @@ class LpdFemClient(FemClient):
         self.femReadoutOperatingMode        = 0  #TODO: To be implemented
 
         ########### Constants ###########
-        #jac: 3 lines added: 
         self.nr_clocks_to_readout_image = 512 * 3 * 12 # * asic_clock_downscale_factor # 512 pixels with 3 gain values each
         self.nr_clocks_to_readout_row = 16 * 3 * 12 # row of image 16 pixels
         self.lpd_image_size = 0x20000    # size of buffer in ppc for partial image is 128 KB
 
         self.asicRxPseudoRandomStart       = (80+50)   # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word)
-        self.asicRx2tileStart              = 810   # asic_rx_start_2tile
+        self.asicRx2tileStart              = (810+1)     # asic_rx_start_2tile ; added 1 clock delay to compensate for shifts of sensor groups
         self.asicRxSingleStart             = 0     # asic_rx_start_single_asic
         self.asicRxHeaderBits              = 12    # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
         # offsets in bits for different gains for slow asic readout 
@@ -165,13 +164,18 @@ class LpdFemClient(FemClient):
                                                                 # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
         #TODO:  FOR FUTURE USE
         self.femAsicVersion                         = 2         # 1 = version 1, 2 = version 2
-        self.femAsicClockSource                     = 1         # 0 = Fem local oscillator, 1 = Clock sync with xray 
-        self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = xfel , 1 =  petra
+        self.femAsicClockSource                     = 0         # 0 = Fem local oscillator, 1 = Clock sync with xray 
+
+        self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = petra , 1 =  xfel
         self.femBeamTriggerSource                   = 1         # 0 = xfel clock and controls system, 1 = s/w
 
-        self.femExternalTriggerStrobeDelay    = 22         # delay of ext trigger strobe (in asic clock periods)
-        self.ext_trig_strobe_inhibit    = self.nr_clocks_to_readout_image * self.femAsicColumns + self.asicRx2tileStart       # length of inhibit after ext strobe enough to read out all data (in asic clock periods)
-     
+        self.ext_trig_strobe_delay                  = 22        # delay of ext trigger strobe (in asic clock periods)
+        self.ext_trig_strobe_polarity               = 0         # 1 = use inverted ext strobe 
+
+        self.femDelaySensors                        = 0xffff    # delay timing of 16 sensors ; bit = 1 adds 1 clock delay ; sensor mod 1 is lsb
+        self.femGainfromFastCmd                     = 0         # 0 = asicrx gain sel fixed by register , 1 =  asicrx gain sel taken from fast cmd file commands on the fly
+
+        self.ext_trig_strobe_inhibit                = self.nr_clocks_to_readout_image * self.femAsicColumns + self.asicRx2tileStart       # length of inhibit after ext strobe enough to read out all data (in asic clock periods)
         
 #======== params for general steering 
         self.femPpcResetDelay       = 5     # wait after resetting ppc 
@@ -657,9 +661,11 @@ class LpdFemClient(FemClient):
     def config_trig_strobe(self):
         """ configure external trigger strobes """
 
-        self.set_ext_trig_strobe_delay(self.femExternalTriggerStrobeDelay)    
+        self.set_ext_trig_strobe_delay(self.ext_trig_strobe_delay)    
         self.set_ext_trig_strobe_inhibit(self.ext_trig_strobe_inhibit)    
-
+        self.set_ext_trig_strobe_max(self.femNumTestCycles)   # max nr of strobes allowed to trigger train readout 
+        self.set_ext_trig_strobe_polarity(self.ext_trig_strobe_polarity) 
+               
     def config_10g_link(self):
         """ configure 10g link """
                
@@ -853,6 +859,9 @@ class LpdFemClient(FemClient):
             self.rdmaWrite(self.fem_ctrl_0+8, 2)    # swap DDR pair of asicrx  
         else:
             self.rdmaWrite(self.fem_ctrl_0+8, 1)    # shift timing of odd asic rx chans
+
+        # delay individual sensors
+        self.set_delay_sensors(self.femDelaySensors)     
         
         if self.femAsicDataType == self.ASIC_DATA_TYPE_PSEUDO_RANDOM:
             asic_rx_start_delay = self.asicRxPseudoRandomStart
@@ -866,7 +875,7 @@ class LpdFemClient(FemClient):
                     asic_rx_start_delay = self.asicRx2tileStart - 2 
                 else:
                     asic_rx_start_delay = self.asicRx2tileStart
-                
+
             if self.femAsicVersion == 2:    # enable this for asic v2 timing (v2 has no header)
                 asic_rx_start_delay = asic_rx_start_delay - self.asicRxHeaderBits
             elif self.femAsicSlowedClock:     # following offsets skip 1st row of pixels
@@ -878,10 +887,6 @@ class LpdFemClient(FemClient):
                 elif self.femAsicGainOverride == 11:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x1
  
-# !!!!!! TESTING ONLY
-        # adjust capture point start to next image
-        #asic_rx_start_delay = asic_rx_start_delay + 0 * self.nr_clocks_to_readout_image
-
         print "asic_rx_start_delay = %s " % asic_rx_start_delay
         
         if self.femAsicRxFastStrobe:
@@ -1004,7 +1009,6 @@ class LpdFemClient(FemClient):
                 self.toggle_bits(self.fem_ctrl_0+0, 1)  # start asic seq  = reset, slow, fast & asicrx ;  
             else:
                 self.toggle_bits(self.fem_ctrl_0+7, 1)  # asic seq without slow or asicrx strobe (slow params are loaded once only during configutation) 
-             
         else:
             print "Warning undefined Trigger Asic"
                     
@@ -1252,8 +1256,6 @@ class LpdFemClient(FemClient):
     def zero_regs(self, base_addr, nr_regs):
         """ zero regs eg bram """
         
-#        if self.femDebugLevel > 2:
-#            print 'Zero rdma base addr = $%08X ; nr regs = $%08X' % (base_addr, nr_regs)
         for i in range(0, nr_regs):
             self.rdmaWrite(base_addr+i, 0) 
 
@@ -1311,10 +1313,54 @@ class LpdFemClient(FemClient):
         value = self.rdmaRead(self.trig_strobe+17, 1)[0]  
         return value  
 
+    def get_ext_trig_strobe_accepted_count(self):
+        """ This function gets the count nr of ext trigger strobes accepted i.e. not inibited [READONLY] """
+        value = self.rdmaRead(self.trig_strobe+18, 1)[0]  
+        return value  
+
     def get_v5_firmware_vers(self):
         """ This function gets the firmware version loaded in main V5 FPGA [READONLY]   """
         value = self.rdmaRead(self.fem_ctrl_0+17, 1)[0]  
         return value  
+
+    def set_ext_trig_strobe_max(self, value):
+        """ This function sets the nr of ext strobes to trigger readout """
+        self.rdmaWrite(self.trig_strobe+4, value)  
+        return 0        
+
+    def get_ext_trig_strobe_max(self):
+        """ This function returns the nr of ext strobes to trigger readout """
+        value = self.rdmaRead(self.trig_strobe+4, 1)[0]  
+        return value        
+
+    def set_ext_trig_strobe_polarity(self, value):
+        """ This function selects ext trigger strobe polarity """
+        if value == 1:
+            self.register_set_bit(self.fem_ctrl_0+11, 9)  # invert
+        else:
+            self.register_clear_bit(self.fem_ctrl_0+11, 9)  
+
+    def set_delay_sensors(self, value):
+        """ This function delays timing of 16 sensors ; bit = 1 adds 1 clock delay ; lsb = sensor tile 1;  """
+        old_value = 0xffff0000 & self.rdmaRead(self.fem_ctrl_0+15, 1)[0] 
+        new_value = old_value | value;        
+        self.rdmaWrite(self.fem_ctrl_0+15, new_value)    
+        return 0        
+ 
+    def get_delay_sensors(self):
+        """ This function returns delays timing of 16 sensors ; bit = 1 adds 1 clock delay ; lsb = sensor tile 1;"""
+        value = 0x0000ffff & self.rdmaRead(self.fem_ctrl_0+15, 1)[0]  
+        return value           
+
+    def enable_femGainfromFastCmd(self):
+        """ This function enables gain selection using fast commands """
+        self.register_set_bit(self.fem_ctrl_0+11, 12)  
+        return 0        
+
+    def disable_femGainfromFastCmd(self):
+        """ This function disables gain selection using fast commands """
+        self.register_clear_bit(self.fem_ctrl_0+11, 12)  
+        return 0        
 
     '''
         --------------------------------------------------------
@@ -1412,7 +1458,6 @@ class LpdFemClient(FemClient):
         else:
             print "Running in PPC1 BYPASS mode..."
 
-        #num_cycles = self.femNumTestCycles
         print "=========================================================" 
         print "Starting Sequence of %d Trains , with each Train reading out %d images" %(self.femNumTestCycles, self.femAsicColumns)
 
@@ -1421,18 +1466,20 @@ class LpdFemClient(FemClient):
                 print "Train nr %d" % i
                 self.send_trigger() 
                 time.sleep(0.5)     # need to check if images are all readout before sending next train
-                #print 'Train nr %4d ' % i,
-                #sys.stdout.flush()  
 
         else:  # else start run and use external c&c strobes
             print 'Run is STARTED. Waiting for %d trigger strobes ' %self.femNumTestCycles 
             self.enable_ext_trig_strobe()
             nr_ext_trig_strobes = 0
-            while nr_ext_trig_strobes < self.femNumTestCycles:
-                nr_ext_trig_strobes = self.get_ext_trig_strobe_count()
+            nr_ext_trig_strobes_accepted = 0
+            while nr_ext_trig_strobes_accepted < self.femNumTestCycles:
+                nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
             self.disable_ext_trig_strobe()
             print 'Run is STOPPED ' 
-            print 'Total Nr of External Trigger Strobe Received = %d  ' %nr_ext_trig_strobes 
+            nr_ext_trig_strobes = self.get_ext_trig_strobe_count()
+            nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
+            print 'Total Nr of External Trigger Strobes Received = %d  ' %nr_ext_trig_strobes 
+            print 'Total Nr of External Trigger Strobes Accepted = %d  ' %nr_ext_trig_strobes_accepted 
 
         print "======== Train Cycle Completed ===========" 
         time.sleep(2)   # just to see output before dumping registers
@@ -1935,6 +1982,29 @@ class LpdFemClient(FemClient):
         '''
         self.femExternalTriggerStrobeDelay = aValue
 
+    def femDelaySensorsGet(self):
+        '''
+            Get femDelaySensors
+        '''
+        return self.femDelaySensors
+
+    def femDelaySensorsSet(self, aValue):
+        '''
+            Set femDelaySensors
+        '''
+        self.femDelaySensors = aValue
+
+    def femGainfromFastCmdGet(self):
+        '''
+            Get femGainfromFastCmd
+        '''
+        return self.femGainfromFastCmd
+
+    def femGainfromFastCmdSet(self, aValue):
+        '''
+            Set femGainfromFastCmd
+        '''
+        self.femGainfromFastCmd = aValue
 
     def femPpcModeGet(self):
         '''
