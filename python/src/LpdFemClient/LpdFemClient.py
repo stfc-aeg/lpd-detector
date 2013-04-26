@@ -151,7 +151,7 @@ class LpdFemClient(FemClient):
         self.femBeamTriggerSource                   = 1         # 0 = xfel clock and controls system, 1 = s/w
 
         self.ext_trig_strobe_delay                  = (2+88)    # delay of ext trigger strobe (in asic clock periods)
-        self.ext_trig_strobe_polarity               = 1         # 1 = use inverted ext strobe 
+        self.ext_trig_strobe_polarity               = 1         # 0 = use inverted ext strobe 
 
         self.femDelaySensors                        = 0xffef    # delay timing of 16 sensors ; bit = 1 adds 1 clock delay ; sensor mod 1 is lsb ; 0xffef for LCLS SM
         self.femGainFromFastCmd                     = 0         # 0 = asicrx gain sel fixed by register , 1 =  asicrx gain sel taken from fast cmd file commands on the fly
@@ -1953,13 +1953,13 @@ class LpdFemClient(FemClient):
         '''
             Get femExternalTriggerStrobeDelay
         '''
-        return self.femExternalTriggerStrobeDelay
+        return self.ext_trig_strobe_delay
 
     def femExternalTriggerStrobeDelaySet(self, aValue):
         '''
             Set femExternalTriggerStrobeDelay
         '''
-        self.femExternalTriggerStrobeDelay = aValue
+        self.ext_trig_strobe_delay = aValue
 
     def femDelaySensorsGet(self):
         '''
