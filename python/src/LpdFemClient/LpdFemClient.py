@@ -1440,7 +1440,9 @@ class LpdFemClient(FemClient):
         print "=========================================================" 
         print "Starting Sequence of %d Trains , with each Train reading out %d images" %(self.femNumTestCycles, self.femAsicColumns)
 
-        if self.femBeamTriggerSource == 1:  # if s/w send triggers manually         
+        if self.femBeamTriggerSource == 1:  # if s/w send triggers manually
+            self.enable_ext_trig_strobe() # Enable then disable external trigger strobe to reset trigger counters
+            self.disable_ext_trig_strobe()         
             for i in range (1, self.femNumTestCycles+1):
                 print "Train nr %d" % i
                 self.send_trigger() 
