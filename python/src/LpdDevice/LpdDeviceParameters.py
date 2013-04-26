@@ -108,7 +108,7 @@ class LpdDeviceParameters(object):
                                                                 AccessWrite, AssignmentOptional, InternalParam,
                                                                 'AllOk.Disconnected')
         self.expectedParameters['femAsicModuleType'] = AttributeContainer(int, 'FemAsicModuleType', 
-                                                                'Selects type of ASIC module  0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
+                                                                'Selects type of ASIC module 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
                                                                 0, 3, 0,
                                                                 AccessWrite, AssignmentOptional, InternalParam, 
                                                                 'AllOk.Disconnected')
@@ -533,6 +533,7 @@ class LpdDeviceParameters(object):
                                                                          0, 0xFFFFFFFF, 99999999,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
+        #TODO: Update description?
         self.expectedParameters['femAsicColumns']               = AttributeContainer(int, 'FemAsicColumns', 'Sets ASIC RX readout size (time-slices) per trigger',
                                                                          0, 255, 1,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
@@ -557,6 +558,7 @@ class LpdDeviceParameters(object):
                                                                           0, 1, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
+        #TODO: Not yet Implemented
         self.expectedParameters['femReadoutOperatingMode']      = AttributeContainer(int, 'FemReadoutOperatingMode', 'FEM readout operating mode (e.g. normal, self-test scan etc, TBD',
                                                                           0, 255, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
@@ -599,7 +601,7 @@ class LpdDeviceParameters(object):
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femPpcResetDelay']     = AttributeContainer(int, 'FemPpcResetDelay', 'Delay after resetting ppc ',
+        self.expectedParameters['femPpcResetDelay']     = AttributeContainer(int, 'FemPpcResetDelay', 'Delay after resetting ppc',
                                                                           0, 10, 5,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
@@ -636,7 +638,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femDelaySensors'] = AttributeContainer(int, 'FemDelaySensors', 'Fem delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB',
-                                                                          0, 0xFFFF, 0xFFFF,
+                                                                          0, 0xFFFF, 0xFFEF,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femGainFromFastCmd'] = AttributeContainer(int, 'FemGainFromFastCmd', 'Fem ... 0=asicrx gain select fixed by register, 1=asicrx gain select taken from fast cmd file commands on the fly',
