@@ -412,7 +412,7 @@
           <item row="0" column="2">
            <widget class="QPushButton" name="stopBtn">
             <property name="text">
-             <string>Stop</string>
+             <string>Abort</string>
             </property>
            </widget>
           </item>
@@ -578,7 +578,7 @@
        <rect>
         <x>390</x>
         <y>10</y>
-        <width>371</width>
+        <width>381</width>
         <height>91</height>
        </rect>
       </property>
@@ -590,7 +590,7 @@
         <rect>
          <x>0</x>
          <y>20</y>
-         <width>361</width>
+         <width>381</width>
          <height>71</height>
         </rect>
        </property>
@@ -739,7 +739,7 @@
           </property>
           <property name="maximumSize">
            <size>
-            <width>80</width>
+            <width>70</width>
             <height>16777215</height>
            </size>
           </property>
@@ -772,6 +772,12 @@
         </item>
         <item row="2" column="2">
          <widget class="QLabel" name="label_76">
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="text">
            <string>Image Proc:</string>
           </property>
@@ -830,6 +836,12 @@
         </item>
         <item row="1" column="2">
          <widget class="QLabel" name="label_75">
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="text">
            <string>Data Rx:</string>
           </property>

@@ -64,6 +64,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
     def runStateUpdate(self):
         
         self.daqTab.runStateUpdate(self.appMain.deviceState)
+        self.updateEnabledWidgets()
                 
     def executeAsyncCmd(self, message, cmdHandler, completionHandler):
         
@@ -99,6 +100,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.operateGroupBox.setEnabled(True)
             self.ui.configBtn.setEnabled(True)
             self.ui.runBtn.setEnabled(False)
+            self.ui.stopBtn.setEnabled(False)
             
         elif self.appMain.deviceState == LpdFemGui.DeviceConfiguring:
             
@@ -106,6 +108,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.operateGroupBox.setEnabled(True)
             self.ui.configBtn.setEnabled(False)
             self.ui.runBtn.setEnabled(False)
+            self.ui.stopBtn.setEnabled(False)
             
         elif self.appMain.deviceState == LpdFemGui.DeviceReady:
             
@@ -113,6 +116,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.operateGroupBox.setEnabled(True)
             self.ui.configBtn.setEnabled(True)
             self.ui.runBtn.setEnabled(True)
+            self.ui.stopBtn.setEnabled(False)
             
         elif self.appMain.deviceState == LpdFemGui.DeviceRunning:
             
@@ -120,6 +124,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.operateGroupBox.setEnabled(True)
             self.ui.configBtn.setEnabled(False)
             self.ui.runBtn.setEnabled(False)
+            self.ui.stopBtn.setEnabled(True)
             
         self.daqTab.updateEnabledWidgets()
         self.pwrTab.updateEnabledWidgets()

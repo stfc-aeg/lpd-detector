@@ -20,11 +20,12 @@ bDebug = 0
         
 class LpdFemDataReceiver():
     
-    def __init__(self, liveViewSignal, runStatusSignal, listenAddr, listenPort, numFrames, cachedParams):
+    def __init__(self, liveViewSignal, runStatusSignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
         
         try:
                 
             self.numFrames = numFrames
+            self.appMain = appMain
             
             # Create UDP recevier, frame processor and data monitor objects
             self.udpReceiver = UdpReceiver(listenAddr, listenPort, numFrames)
@@ -60,14 +61,17 @@ class LpdFemDataReceiver():
             self.udpReceiverThread.start()
             
         except Exception as e:
-            print >> sys.stderr, "LdpFemDataReceiver got exception during initialisation: %s" % e
+            print "LdpFemDataReceiver got exception during initialisation: %s" % e
         
 
     def awaitCompletion(self):
-            
+
             print "Waiting for frame processing to complete"
-            while self.frameProcessor.framesHandled < self.numFrames:
+            while self.frameProcessor.framesHandled < self.numFrames and self.appMain.abortRun == False:
                 time.sleep(0.1)
+            
+            if self.appMain.abortRun:
+                print "Run aborted by user"
             
             print "Frame processor handled all frames, terminating data receiver threads"
             self.frameProcessorThread.quit()
@@ -86,7 +90,10 @@ class LpdFemDataReceiver():
                 
             self.frameProcessor.cleanUp()
         
- 
+    def abortReceived(self):
+        
+        self.abortRunFlag = True
+        
 class UdpReceiver(QtCore.QObject):
         
     def __init__(self, listenAddr, listenPort, numFrames):

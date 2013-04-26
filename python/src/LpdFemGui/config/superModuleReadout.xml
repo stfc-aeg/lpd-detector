@@ -38,5 +38,7 @@
     <tenGig0FrameLength type="int" val="0x10000"/>
     <femAsicClockSource type="int" val="0"/> <!--  0=FEM local clock 1=External -->
     <femBeamClockSource type="int" val="0"/> <!--  0=XFEL 1=PETRA ??? TBD -->
+    <femDelaySensors type="int" val="0xFFEF"/>
+    <femGainFromFastCmd type="int" val="0"/>
         
 </lpd_readout_config>

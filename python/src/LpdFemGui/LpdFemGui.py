@@ -62,7 +62,9 @@ class LpdFemGui:
         # Redirect stdout to PrintRedirector
         sys.stdout = PrintRedirector(self.msgPrint)
         
-    
+        # Abort run flag used to signal to data receiver
+        self.abortRun = False
+            
     def initialiseCachedParams(self):
         '''
         Initialises default parameters from JSON file-backed store, or creates them
@@ -257,12 +259,17 @@ class LpdFemGui:
         # Increment the run number
         self.cachedParams['runNumber'] = self.cachedParams['runNumber'] + 1
         
+        # Clear abort run flag
+        self.abortRun = False
+        
         # Create and LpdFemDataReceiver instance to launch readout threads
         try:
-            dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
-                                          self.dataListenAddr, self.dataListenPort, self.numFrames, self.cachedParams)
+            dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal, 
+                                              self.dataListenAddr, self.dataListenPort, self.numFrames, self.cachedParams, self)
         except Exception as e:
-            print >> sys.stderr, "Exception creating data receiver", e
+            self.msgPrint("ERROR: failed to create data receiver: %s" % e)
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
         
         # Set device state as running and trigger update of run state in GUI    
         self.deviceState = LpdFemGui.DeviceRunning
@@ -273,10 +280,13 @@ class LpdFemGui:
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Acquisition start failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
-            
+
         # Wait for the data receiver threads to complete
-        dataReceiver.awaitCompletion()
-        
+        try:
+            dataReceiver.awaitCompletion()
+        except Exception as e:
+            self.msgPrint("ERROR: failed to execute awaitCompletion: %s" % e)
+            
         # Signal device state as ready
         self.deviceState = LpdFemGui.DeviceReady
         

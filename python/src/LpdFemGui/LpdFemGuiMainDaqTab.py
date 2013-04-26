@@ -196,7 +196,8 @@ class LpdFemGuiMainDaqTab(object):
         
     def deviceStop(self):
         
-        self.msgPrint("Stop not yet implemented")
+        self.msgPrint("Aborting acquisition ...")
+        self.appMain.abortRun = True
         
     def runStateUpdate(self, deviceState):
 

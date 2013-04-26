@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Tue Apr 23 17:02:26 2013
+# Created: Fri Apr 26 14:10:31 2013
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -263,10 +263,10 @@ class Ui_MainWindow(object):
         self.messageBox.setObjectName(_fromUtf8("messageBox"))
         self.runGroupBox = QtGui.QGroupBox(self.daqTab)
         self.runGroupBox.setEnabled(True)
-        self.runGroupBox.setGeometry(QtCore.QRect(390, 10, 371, 91))
+        self.runGroupBox.setGeometry(QtCore.QRect(390, 10, 381, 91))
         self.runGroupBox.setObjectName(_fromUtf8("runGroupBox"))
         self.gridLayoutWidget_5 = QtGui.QWidget(self.runGroupBox)
-        self.gridLayoutWidget_5.setGeometry(QtCore.QRect(0, 20, 361, 71))
+        self.gridLayoutWidget_5.setGeometry(QtCore.QRect(0, 20, 381, 71))
         self.gridLayoutWidget_5.setObjectName(_fromUtf8("gridLayoutWidget_5"))
         self.gridLayout_6 = QtGui.QGridLayout(self.gridLayoutWidget_5)
         self.gridLayout_6.setMargin(0)
@@ -333,7 +333,7 @@ class Ui_MainWindow(object):
         sizePolicy.setHeightForWidth(self.label_26.sizePolicy().hasHeightForWidth())
         self.label_26.setSizePolicy(sizePolicy)
         self.label_26.setMinimumSize(QtCore.QSize(0, 0))
-        self.label_26.setMaximumSize(QtCore.QSize(80, 16777215))
+        self.label_26.setMaximumSize(QtCore.QSize(70, 16777215))
         self.label_26.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.label_26.setObjectName(_fromUtf8("label_26"))
         self.gridLayout_6.addWidget(self.label_26, 0, 2, 1, 1)
@@ -347,6 +347,7 @@ class Ui_MainWindow(object):
         self.imageProc.setObjectName(_fromUtf8("imageProc"))
         self.gridLayout_6.addWidget(self.imageProc, 2, 3, 1, 1)
         self.label_76 = QtGui.QLabel(self.gridLayoutWidget_5)
+        self.label_76.setMaximumSize(QtCore.QSize(70, 16777215))
         self.label_76.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.label_76.setObjectName(_fromUtf8("label_76"))
         self.gridLayout_6.addWidget(self.label_76, 2, 2, 1, 1)
@@ -373,6 +374,7 @@ class Ui_MainWindow(object):
         self.dataRx.setObjectName(_fromUtf8("dataRx"))
         self.gridLayout_6.addWidget(self.dataRx, 1, 3, 1, 1)
         self.label_75 = QtGui.QLabel(self.gridLayoutWidget_5)
+        self.label_75.setMaximumSize(QtCore.QSize(70, 16777215))
         self.label_75.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.label_75.setObjectName(_fromUtf8("label_75"))
         self.gridLayout_6.addWidget(self.label_75, 1, 2, 1, 1)
@@ -1800,7 +1802,7 @@ class Ui_MainWindow(object):
         self.label_29.setText(QtGui.QApplication.translate("MainWindow", "Num Trains:", None, QtGui.QApplication.UnicodeUTF8))
         self.label_24.setText(QtGui.QApplication.translate("MainWindow", "External Trigger:", None, QtGui.QApplication.UnicodeUTF8))
         self.operateGroupBox.setTitle(QtGui.QApplication.translate("MainWindow", "Operate", None, QtGui.QApplication.UnicodeUTF8))
-        self.stopBtn.setText(QtGui.QApplication.translate("MainWindow", "Stop", None, QtGui.QApplication.UnicodeUTF8))
+        self.stopBtn.setText(QtGui.QApplication.translate("MainWindow", "Abort", None, QtGui.QApplication.UnicodeUTF8))
         self.configBtn.setText(QtGui.QApplication.translate("MainWindow", "Configure", None, QtGui.QApplication.UnicodeUTF8))
         self.runBtn.setText(QtGui.QApplication.translate("MainWindow", "Run", None, QtGui.QApplication.UnicodeUTF8))
         self.label_37.setText(QtGui.QApplication.translate("MainWindow", "Write Files:", None, QtGui.QApplication.UnicodeUTF8))
