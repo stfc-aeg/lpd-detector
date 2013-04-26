@@ -39,7 +39,7 @@
 	<remove_reset_gain_stage1/>
 	<remove_reset_gain_stage2/>
 	<start_trigger_pointer/> 
-	<nop count="2"/>
+	<nop count="30"/>
 	<trigger_flag_set/>
 	<nop count="10"/>
 	<trigger_flag_set/>
