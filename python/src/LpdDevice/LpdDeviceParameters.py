@@ -639,7 +639,7 @@ class LpdDeviceParameters(object):
                                                                           0, 0xFFFF, 0xFFFF,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femGainfromFastCmd'] = AttributeContainer(int, 'FemGainfromFastCmd', 'Fem ... 0=asicrx gain select fixed by register, 1=asicrx gain select taken from fast cmd file commands on the fly',
+        self.expectedParameters['femGainFromFastCmd'] = AttributeContainer(int, 'FemGainFromFastCmd', 'Fem ... 0=asicrx gain select fixed by register, 1=asicrx gain select taken from fast cmd file commands on the fly',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 

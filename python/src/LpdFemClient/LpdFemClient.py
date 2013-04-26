@@ -5,25 +5,6 @@ Created 16 October 2012
 
 @Author: ckd
 
-
-  ADC channels:
-    0 = HV volts    1 = 5V volts    2 = 1.2V volts
-    3 = HV current  4 = 5V current  5 = 1.2V current
-    6 = PSU temp    7 = not used
-    8-15  = 2.5V volts (A-H)
-    16-23 = 2.5V current (A-H)
-    24-31 = Sensor temp (A-H)
-
-  Bits:
-    0 = [out] LV control (0=on)
-    1 = [out] HV control (0=on)
-    2 = unused
-    3 = [in] External trip (1=tripped)
-    4 = [in] Fault flag (1=tripped)
-    5 = [in] Overcurrent (1=fault)
-    6 = [in] High temperature (1=fault)
-    7 = [in] Low temperature (1=fault)
-
 '''
 
 # Import Python standard modules
@@ -128,7 +109,7 @@ class LpdFemClient(FemClient):
         self.lpd_image_size = 0x20000    # size of buffer in ppc for partial image is 128 KB
 
         self.asicRxPseudoRandomStart       = (80+50)   # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word)
-        self.asicRx2tileStart              = (810+1)     # asic_rx_start_2tile ; added 1 clock delay to compensate for shifts of sensor groups
+        self.asicRx2tileStart              = (810+1)     # asic_rx_start_2tile ; added 1 clock delay to compensate for new delay of sensor groups
         self.asicRxSingleStart             = 0     # asic_rx_start_single_asic
         self.asicRxHeaderBits              = 12    # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
         # offsets in bits for different gains for slow asic readout 
@@ -169,11 +150,11 @@ class LpdFemClient(FemClient):
         self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = petra , 1 =  xfel
         self.femBeamTriggerSource                   = 1         # 0 = xfel clock and controls system, 1 = s/w
 
-        self.ext_trig_strobe_delay                  = 22        # delay of ext trigger strobe (in asic clock periods)
-        self.ext_trig_strobe_polarity               = 0         # 1 = use inverted ext strobe 
+        self.ext_trig_strobe_delay                  = (2+88)    # delay of ext trigger strobe (in asic clock periods)
+        self.ext_trig_strobe_polarity               = 1         # 1 = use inverted ext strobe 
 
-        self.femDelaySensors                        = 0xffff    # delay timing of 16 sensors ; bit = 1 adds 1 clock delay ; sensor mod 1 is lsb
-        self.femGainfromFastCmd                     = 0         # 0 = asicrx gain sel fixed by register , 1 =  asicrx gain sel taken from fast cmd file commands on the fly
+        self.femDelaySensors                        = 0xffef    # delay timing of 16 sensors ; bit = 1 adds 1 clock delay ; sensor mod 1 is lsb ; 0xffef for LCLS SM
+        self.femGainFromFastCmd                     = 0         # 0 = asicrx gain sel fixed by register , 1 =  asicrx gain sel taken from fast cmd file commands on the fly
 
         self.ext_trig_strobe_inhibit                = self.nr_clocks_to_readout_image * self.femAsicColumns + self.asicRx2tileStart       # length of inhibit after ext strobe enough to read out all data (in asic clock periods)
         
@@ -658,7 +639,7 @@ class LpdFemClient(FemClient):
         else:    # xray synched
             self.register_set_bit(self.fem_ctrl_0+11, 1)   
 
-    def config_trig_strobe(self):
+    def config_trig_strobe(self):   
         """ configure external trigger strobes """
 
         self.set_ext_trig_strobe_delay(self.ext_trig_strobe_delay)    
@@ -777,6 +758,12 @@ class LpdFemClient(FemClient):
          
         self.config_asic_fast_xml() # loads fem fast bram from xml file
         self.config_asic_datarx()   # set up fem to receive asic data
+
+        #  asicrx gain selection 
+        if self.femGainFromFastCmd == 1:
+            self.enable_femGainFromFastCmd()    # using fast cmd file commands 
+        else:
+            self.disable_femGainFromFastCmd()    # from s/w register
 
     def config_asic_slow_xml(self):
         """ configure asic slow control parameters from xml """                                        
@@ -1281,17 +1268,14 @@ class LpdFemClient(FemClient):
     def enable_ext_trig_strobe(self):
         """ This function enables acceptance of external trigger strobes """
         self.register_set_bit(self.fem_ctrl_0+11, 8)  
-        return 0        
 
     def disable_ext_trig_strobe(self):
         """ This function disables acceptance external trigger strobes """
         self.register_clear_bit(self.fem_ctrl_0+11, 8)  
-        return 0        
 
     def set_ext_trig_strobe_delay(self, value):
         """ This function sets the delay of ext trigger strobe (in nr asic clock periods e.g. 10 nsec for xfel) """
         self.rdmaWrite(self.trig_strobe+2, value)  
-        return 0        
 
     def get_ext_trig_strobe_delay(self):
         """ This function returns the delay of ext trigger strobe (in nr asic clock periods e.g. 10 nsec for xfel) """
@@ -1301,7 +1285,6 @@ class LpdFemClient(FemClient):
     def set_ext_trig_strobe_inhibit(self, value):
         """ This function gets the length of inhibit preventing further readout after an ext trigger strobe (in nr asic clock periods e.g. 10 nsec for xfel) """
         self.rdmaWrite(self.trig_strobe+3, value)  
-        return 0        
 
     def get_ext_trig_strobe_inhibit(self):
         """ This function gets the length of inhibit preventing further readout after an ext trigger strobe (in nr asic clock periods e.g. 10 nsec for xfel) """
@@ -1326,7 +1309,6 @@ class LpdFemClient(FemClient):
     def set_ext_trig_strobe_max(self, value):
         """ This function sets the nr of ext strobes to trigger readout """
         self.rdmaWrite(self.trig_strobe+4, value)  
-        return 0        
 
     def get_ext_trig_strobe_max(self):
         """ This function returns the nr of ext strobes to trigger readout """
@@ -1345,22 +1327,19 @@ class LpdFemClient(FemClient):
         old_value = 0xffff0000 & self.rdmaRead(self.fem_ctrl_0+15, 1)[0] 
         new_value = old_value | value;        
         self.rdmaWrite(self.fem_ctrl_0+15, new_value)    
-        return 0        
  
     def get_delay_sensors(self):
         """ This function returns delays timing of 16 sensors ; bit = 1 adds 1 clock delay ; lsb = sensor tile 1;"""
         value = 0x0000ffff & self.rdmaRead(self.fem_ctrl_0+15, 1)[0]  
         return value           
 
-    def enable_femGainfromFastCmd(self):
+    def enable_femGainFromFastCmd(self):
         """ This function enables gain selection using fast commands """
         self.register_set_bit(self.fem_ctrl_0+11, 12)  
-        return 0        
 
-    def disable_femGainfromFastCmd(self):
+    def disable_femGainFromFastCmd(self):
         """ This function disables gain selection using fast commands """
         self.register_clear_bit(self.fem_ctrl_0+11, 12)  
-        return 0        
 
     '''
         --------------------------------------------------------
@@ -1994,17 +1973,17 @@ class LpdFemClient(FemClient):
         '''
         self.femDelaySensors = aValue
 
-    def femGainfromFastCmdGet(self):
+    def femGainFromFastCmdGet(self):
         '''
-            Get femGainfromFastCmd
+            Get femGainFromFastCmd
         '''
-        return self.femGainfromFastCmd
+        return self.femGainFromFastCmd
 
-    def femGainfromFastCmdSet(self, aValue):
+    def femGainFromFastCmdSet(self, aValue):
         '''
-            Set femGainfromFastCmd
+            Set femGainFromFastCmd
         '''
-        self.femGainfromFastCmd = aValue
+        self.femGainFromFastCmd = aValue
 
     def femPpcModeGet(self):
         '''
