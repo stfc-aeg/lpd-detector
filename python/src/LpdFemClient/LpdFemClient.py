@@ -1988,6 +1988,18 @@ class LpdFemClient(FemClient):
         '''
         self.femBeamTriggerSource = aValue
 
+    def femBeamTriggerPetraGet(self):
+        '''
+            Get femBeamTriggerPetra
+        '''
+        return self.femBeamTriggerPetra
+
+    def femBeamTriggerPetraSet(self, aValue):
+        '''
+            Set femBeamTriggerPetra
+        '''
+        self.femBeamTriggerPetra = aValue
+
     def femExternalTriggerStrobeDelayGet(self):
         '''
             Get femExternalTriggerStrobeDelay
