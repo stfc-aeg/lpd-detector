@@ -108,7 +108,7 @@ class LpdFemClient(FemClient):
         self.nr_clocks_to_readout_row = 16 * 3 * 12 # row of image 16 pixels
         self.lpd_image_size = 0x20000    # size of buffer in ppc for partial image is 128 KB
 
-        self.asicRxPseudoRandomStart       = (80+50)   # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word)
+        self.asicRxPseudoRandomStart       = (80+50+1)   # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word), also need extra clock for sensor delay FF
         self.asicRx2tileStart              = (810+1)     # asic_rx_start_2tile ; added 1 clock delay to compensate for new delay of sensor groups
         self.asicRxSingleStart             = 0     # asic_rx_start_single_asic
         self.asicRxHeaderBits              = 12    # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
@@ -149,9 +149,11 @@ class LpdFemClient(FemClient):
 
         self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = petra , 1 =  xfel
         self.femBeamTriggerSource                   = 1         # 0 = xfel clock and controls system, 1 = s/w
+        self.femBeamTriggerPetra                    = 1         # 1 = special trigger for petra derived from clock; 0 = xfel reset line as for LCLS
 
         self.ext_trig_strobe_delay                  = (2+88)    # delay of ext trigger strobe (in asic clock periods)
         self.ext_trig_strobe_polarity               = 1         # 0 = use inverted ext strobe 
+        self.petra_shutter_polarity                 = 0         # 0 = use inverted ext strobe !
 
         self.femDelaySensors                        = 0xffef    # delay timing of 16 sensors ; bit = 1 adds 1 clock delay ; sensor mod 1 is lsb ; 0xffef for LCLS SM
         self.femGainFromFastCmd                     = 0         # 0 = asicrx gain sel fixed by register , 1 =  asicrx gain sel taken from fast cmd file commands on the fly
@@ -626,7 +628,13 @@ class LpdFemClient(FemClient):
 
     def config_clock_source(self):
         """ configure clock sources """
-      
+
+        print "config clock source started" 
+
+        # resets to hold dcm in reset while clock is switched
+        self.register_set_bit(self.fem_ctrl_0+11, 16)  # asic clock dcm
+        self.register_set_bit(self.fem_ctrl_0+11, 17)  # petra clock dcm 
+
         # xray beam clock source
         if self.femBeamClockSource == 0:    # petra 
             self.register_clear_bit(self.fem_ctrl_0+11, 2)  
@@ -638,6 +646,12 @@ class LpdFemClient(FemClient):
             self.register_clear_bit(self.fem_ctrl_0+11, 1)  
         else:    # xray synched
             self.register_set_bit(self.fem_ctrl_0+11, 1)   
+ 
+        # MUST release petra DCM BEFORE releasing asic DCM!
+        self.register_clear_bit(self.fem_ctrl_0+11, 17)  # releases reset on petra dcm    
+        self.register_clear_bit(self.fem_ctrl_0+11, 16)  # releases reset on asic dcm
+        
+        print "config clock source finished" 
 
     def config_trig_strobe(self):   
         """ configure external trigger strobes """
@@ -647,6 +661,15 @@ class LpdFemClient(FemClient):
         self.set_ext_trig_strobe_max(self.femNumTestCycles)   # max nr of strobes allowed to trigger train readout 
         self.set_ext_trig_strobe_polarity(self.ext_trig_strobe_polarity) 
                
+        # trigger strobe for Petra test is derived from petra clock
+        if self.femBeamTriggerPetra == 1:
+            self.enable_petra_trig_strobe()  
+        else:
+            self.disable_petra_trig_strobe()  
+
+        # petra shutter
+        self.set_petra_shutter_polarity(self.petra_shutter_polarity) 
+      
     def config_10g_link(self):
         """ configure 10g link """
                
@@ -1318,28 +1341,41 @@ class LpdFemClient(FemClient):
     def set_ext_trig_strobe_polarity(self, value):
         """ This function selects ext trigger strobe polarity """
         if value == 1:
-            self.register_set_bit(self.fem_ctrl_0+11, 9)  # invert
+            self.register_set_bit(self.fem_ctrl_0+11, 9)  
         else:
-            self.register_clear_bit(self.fem_ctrl_0+11, 9)  
+            self.register_clear_bit(self.fem_ctrl_0+11, 9)  # invert when bit is cleared!
 
     def set_delay_sensors(self, value):
         """ This function delays timing of 16 sensors ; bit = 1 adds 1 clock delay ; lsb = sensor tile 1;  """
-        old_value = 0xffff0000 & self.rdmaRead(self.fem_ctrl_0+15, 1)[0] 
-        new_value = old_value | value;        
-        self.rdmaWrite(self.fem_ctrl_0+15, new_value)    
+        self.rdmaWrite(self.fem_ctrl_0+15, value)
  
     def get_delay_sensors(self):
         """ This function returns delays timing of 16 sensors ; bit = 1 adds 1 clock delay ; lsb = sensor tile 1;"""
-        value = 0x0000ffff & self.rdmaRead(self.fem_ctrl_0+15, 1)[0]  
+        value = self.rdmaRead(self.fem_ctrl_0+15, 1)[0]
         return value           
 
     def enable_femGainFromFastCmd(self):
         """ This function enables gain selection using fast commands """
-        self.register_set_bit(self.fem_ctrl_0+11, 12)  
+        self.register_set_bit(self.fem_ctrl_0+11, 20)
 
     def disable_femGainFromFastCmd(self):
         """ This function disables gain selection using fast commands """
+        self.register_clear_bit(self.fem_ctrl_0+11, 20)  
+
+    def enable_petra_trig_strobe(self):
+        """ This function enables trigger strobes for PetraIII (derived from Petra clock) """
+        self.register_set_bit(self.fem_ctrl_0+11, 12 )
+
+    def disable_petra_trig_strobe(self):
+        """ This function disables trigger strobes for PetraIII """
         self.register_clear_bit(self.fem_ctrl_0+11, 12)  
+
+    def set_petra_shutter_polarity(self, value):
+        """ This function selects ext trigger strobe polarity """
+        if value == 1:
+            self.register_set_bit(self.fem_ctrl_0+11, 10)  
+        else:
+            self.register_clear_bit(self.fem_ctrl_0+11, 10)  # invert when bit is cleared!
 
     '''
         --------------------------------------------------------
@@ -1441,12 +1477,13 @@ class LpdFemClient(FemClient):
         print "Starting Sequence of %d Trains , with each Train reading out %d images" %(self.femNumTestCycles, self.femAsicColumns)
 
         if self.femBeamTriggerSource == 1:  # if s/w send triggers manually
-            self.enable_ext_trig_strobe() # Enable then disable external trigger strobe to reset trigger counters
-            self.disable_ext_trig_strobe()         
+            self.enable_ext_trig_strobe() # enable and disable to reset trigger strobe counters!
+            self.disable_ext_trig_strobe()
             for i in range (1, self.femNumTestCycles+1):
                 print "Train nr %d" % i
                 self.send_trigger() 
-                time.sleep(0.5)     # need to check if images are all readout before sending next train
+                time.sleep(2)     # need to check if images are all readout before sending next train
+                #TODO: Temporary increased delay to test 2-Tile System
 
         else:  # else start run and use external c&c strobes
             print 'Run is STARTED. Waiting for %d trigger strobes ' %self.femNumTestCycles 
