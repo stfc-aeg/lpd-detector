@@ -50,6 +50,9 @@ def LpdReadoutTest(femHost=None, femPort=None):
         elif xmlConfiguration == 2:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
             FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_asicv2_jacv1.xml' 
+            # Clone of jac's most recent xml files, for testing Two Tile System..
+#            SlowControlXmlString = 'ConfigFiles/AsicSlow_FromJaq.xml'
+#            FastCmdXmlString     = 'ConfigFiles/ManualReset_Fromjac.xml'
         else:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
             FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'

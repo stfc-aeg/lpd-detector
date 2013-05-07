@@ -21,7 +21,7 @@ class networkConfiguration(object):
             self.ctrl0SrcIp     = '192.168.2.2'
             self.ctrl0DstIp     = '192.168.2.1'
             self.tenGig0SrcIp   = '192.168.7.2'
-            self.tenGig0DstMac  = '00-07-43-06-31-A3'
+            self.tenGig0DstMac  = '00-07-43-10-61-88'
             self.tenGig0DstIp   = '192.168.7.1'
 
         elif hostname == 'devgpu02':
