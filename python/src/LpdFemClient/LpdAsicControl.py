@@ -143,7 +143,10 @@ class LpdAsicControl(object):
                            'digital_control'             : [40, 3865,   -1,         0, [False, True, False]],       # Special Case: 40 bits cover everything
                            }
 
-        
+        # Variables used to override feedback_select_default, self_test_decoder_default, if different value(s) supplied by setOverrideValues() function
+        self.overrideFeedback = -1    # overrides feedback_select_default
+        self.overrideSelfTest = -1    # overrides self_test_decoder_default        
+
         ''' Debug information '''
         if self.bDebug:
             print "Class LpdAsicControl initialising, reading ",
@@ -278,11 +281,11 @@ class LpdAsicControl(object):
         '''
         # Update feedback_select_default if override value is non-zero
         if pixelFeedbackOverride > 0:
-            self.setParamValue('feedback_select_default', 0, pixelFeedbackOverride)
+            self.overrideFeedback = pixelFeedbackOverride
         
         # Update self_test_decoder_default if override value is non-zero
         if pixelSelfTestOverride > 0:
-            self.setParamValue('self_test_decoder_default', 0, pixelSelfTestOverride)
+            self.overrideSelfTest = pixelSelfTestOverride
     
     def doLookupTableCheck(self, dictKey, idx):
         '''
@@ -408,6 +411,18 @@ class LpdAsicControl(object):
             if key.endswith("_default"):
                 if self.bDebug:
                     print "1st Pass: Found _default key: ", key, " = ",
+
+                # has setOverride..() function been called?
+                if key == 'feedback_select_default':
+                    if self.overrideFeedback > -1:
+                        # Override value set by setOverride..() function, updating dictionary..
+                        self.setParamValue(key, 0, self.overrideFeedback)
+                        
+                # Check for self test decode default
+                if key == 'self_test_decoder_default':
+                    if self.overrideSelfTest > -1:
+                        # Override value set by setOverride..() function, updating dictionary..
+                        self.setParamValue(key, 0, self.overrideSelfTest)
 
                 # Obtain _default's value
                 defaultKeyValue = self.getParamValue(key)
@@ -1423,6 +1438,7 @@ class LpdAsicControlTest(unittest.TestCase):
             self.displaySequence(expectedSequence)
 
         self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
+
     def testNewCfgIncludingPreambleDelay(self):
         '''
             Test a set of specific mux_decoder key values
@@ -1471,6 +1487,8 @@ class LpdAsicControlTest(unittest.TestCase):
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_slow_ctrl_sequence name="TestString">
                                 <mux_decoder pixel="511" value="3"/>
+                                <feedback_select_default value="1"/>
+                                <self_test_decoder_default value="2"/>
                                 <mux_decoder pixel="495" value="1"/>
                                 <mux_decoder pixel="479" value="2"/>
                                 <mux_decoder pixel="463" value="5"/>
@@ -1488,7 +1506,7 @@ class LpdAsicControlTest(unittest.TestCase):
     
         # Parse XML, apply external override values and encode
         paramsObj = LpdAsicControl(stringCmdXml, preambleBit=6)
-        paramsObj.setOverrideValues(1, 4)
+        paramsObj.setOverrideValues(pixelFeedbackOverride=1, pixelSelfTestOverride=4)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
