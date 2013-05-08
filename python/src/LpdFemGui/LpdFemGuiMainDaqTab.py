@@ -37,12 +37,31 @@ class LpdFemGuiMainDaqTab(object):
         else:
             self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Unchecked)
         self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
-        self.ui.pixelGainEdit.setText(str(self.appMain.getCachedParam('pixelGain')))
         
         self.ui.fileWriteSel.setCheckState(checkButtonState(self.appMain.getCachedParam('fileWriteEnable')))            
         self.ui.liveViewSel.setCheckState(checkButtonState(self.appMain.getCachedParam('liveViewEnable')))
         self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
         self.ui.liveViewOffsetEdit.setText(str(self.appMain.getCachedParam('liveViewOffset')))
+
+        fbkOverride = self.appMain.getCachedParam('femAsicPixelFeedbackOverride')
+        if fbkOverride == 1:
+            self.ui.pixelFbk5Sel.setChecked(True)
+        elif fbkOverride == 0:
+            self.ui.pixelFbk50Sel.setChecked(True)
+        else:
+            pass
+            
+        gainOverride = self.appMain.getCachedParam('femAsicGainOverride')
+        if gainOverride == 0:
+            self.ui.gainModeAutoSel.setChecked(True)
+        elif gainOverride == 8:
+            self.ui.gainModex100Sel.setChecked(True)
+        elif gainOverride == 9:
+            self.ui.gainModex10Sel.setChecked(True)
+        elif gainOverride == 11:
+            self.ui.gainModex1Sel.setChecked(True)
+        else:
+            pass
 
         self.runStateUpdate(self.appMain.deviceState)
 
@@ -57,11 +76,12 @@ class LpdFemGuiMainDaqTab(object):
         QtCore.QObject.connect(self.ui.numTrainsEdit,   QtCore.SIGNAL("editingFinished()"), self.numTrainsUpdate)
         QtCore.QObject.connect(self.ui.externalTriggerSel, QtCore.SIGNAL("toggled(bool)"), self.externalTriggerSelect)
         QtCore.QObject.connect(self.ui.triggerDelayEdit, QtCore.SIGNAL("editingFinished()"), self.triggerDelayUpdate)
-        QtCore.QObject.connect(self.ui.pixelGainEdit,   QtCore.SIGNAL("editingFinished()"), self.pixelGainUpdate)
         QtCore.QObject.connect(self.ui.fileWriteSel,    QtCore.SIGNAL("toggled(bool)"), self.fileWriteSelect)
         QtCore.QObject.connect(self.ui.liveViewSel,     QtCore.SIGNAL("toggled(bool)"), self.liveViewSelect)
         QtCore.QObject.connect(self.ui.liveViewDivisorEdit, QtCore.SIGNAL("editingFinished()"), self.liveViewDivisorUpdate)
         QtCore.QObject.connect(self.ui.liveViewOffsetEdit, QtCore.SIGNAL("editingFinished()"), self.liveViewOffsetUpdate)
+        QtCore.QObject.connect(self.ui.pixelFbkButtonGroup, QtCore.SIGNAL("buttonClicked(int)"), self.pixelFbkOverrideUpdate)
+        QtCore.QObject.connect(self.ui.gainOverrideButtonGroup, QtCore.SIGNAL("buttonClicked(int)"), self.gainOverrideUpdate)
         
     def updateEnabledWidgets(self):
         
@@ -120,15 +140,38 @@ class LpdFemGuiMainDaqTab(object):
         except ValueError:
             self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
         
-    def pixelGainUpdate(self):
-        pixelGain = self.ui.pixelGainEdit.text()
-        try:
-            pixelGainVal = int(pixelGain)
-            self.appMain.setCachedParam('pixelGain', pixelGainVal)
-            self.mainWindow.updateEnabledWidgets()
-        except ValueError:
-            self.ui.pixelGainEdit.setText(str(self.appMain.getCachedParam('pixelGain')))
-            
+    def pixelFbkOverrideUpdate(self):
+
+        fbkOverride = -1
+        if self.ui.pixelFbk5Sel.isChecked():
+            fbkOverride = 1
+        elif self.ui.pixelFbk50Sel.isChecked():
+            fbkOverride = 0
+        else:
+            self.msgPrint("Illegal pixel feedback override selection - should not happen")
+            return
+
+        self.appMain.setCachedParam('femAsicPixelFeedbackOverride', fbkOverride)
+        self.mainWindow.updateEnabledWidgets()
+
+    def gainOverrideUpdate(self):
+
+        gainOverride = -1
+        if self.ui.gainModeAutoSel.isChecked():
+            gainOverride = 0
+        elif self.ui.gainModex100Sel.isChecked():
+            gainOverride = 8
+        elif self.ui.gainModex10Sel.isChecked():
+            gainOverride = 9
+        elif self.ui.gainModex1Sel.isChecked():
+            gainOverride = 11
+        else:
+            self.msgPrint("Illegal gain override selection - should not happen")
+            return
+
+        self.appMain.setCachedParam('femAsicGainOverride', gainOverride)
+        self.mainWindow.updateEnabledWidgets()
+
     def fileWriteSelect(self, state):
         self.appMain.setCachedParam('fileWriteEnable', state)
         self.mainWindow.updateEnabledWidgets()
@@ -236,7 +279,7 @@ class LpdFemGuiMainDaqTab(object):
         elif (runStatus.dataBytesReceived < GB):
             dataRxText = "{:.1f} MB".format(runStatus.dataBytesReceived / MB)
         else:
-            dataRxText = "{.1f}G B".format(runStatus.dataBytesReceived / GB)
+            dataRxText = "{:.1f}G B".format(runStatus.dataBytesReceived / GB)
             
         self.ui.dataRx.setText(dataRxText)
 

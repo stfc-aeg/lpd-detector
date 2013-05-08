@@ -4,6 +4,7 @@ from LpdFemGui import *
 from LpdFemGuiMainDaqTab import *
 from LpdFemGuiMainPowerTab import *
 from LpdFemGuiMainConfigTab import *
+from LpdFemGuiMainEvrTab import *
 from utilities import *
 import time
 import sys
@@ -33,7 +34,8 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.daqTab = LpdFemGuiMainDaqTab(appMain, self)
         self.pwrTab = LpdFemGuiMainPowerTab(appMain, self)
         self.configTab = LpdFemGuiMainConfigTab(appMain, self)
-        
+        self.evrTab = LpdFemGuiMainEvrTab(appMain, self)
+
         # Initialise default fields based on appMain object
         self.ui.connectAddr.setText(self.appMain.getCachedParam('femAddr'))
         self.ui.connectPort.setText(str(self.appMain.getCachedParam('femPort')))        
@@ -128,6 +130,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             
         self.daqTab.updateEnabledWidgets()
         self.pwrTab.updateEnabledWidgets()
+        self.evrTab.updateEnabledWidgets()
             
         
     def createStatusBar(self, defaultMessage):

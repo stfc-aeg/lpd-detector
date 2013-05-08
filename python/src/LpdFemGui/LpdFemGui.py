@@ -2,6 +2,7 @@ from LpdFemGuiMainWindow import *
 from LpdFemGuiLiveViewWindow import *
 from LpdPowerCardManager import *
 from LpdFemDataReceiver import *
+from LpdEvrTimestampRecorder import *
 from LpdDevice.LpdDevice import *
 from FemClient.FemClient import *
 from FemApi.FemConfig import *
@@ -85,14 +86,19 @@ class LpdFemGui:
                           'numTrains'         : 8,
                           'externalTrigger'   : True,
                           'triggerDelay'      : 0,
-                          'pixelGain'         : 0,
                           'pwrAutoUpdate'     : False,
                           'pwrUpdateInterval' : 0,
                           'runNumber'         : 0,
                           'fileWriteEnable'   : True,
                           'liveViewEnable'    : False,
                           'liveViewDivisor'   : 1,
-                          'liveViewOffset'    : 0
+                          'liveViewOffset'    : 0,
+                          'evrMcastGroup'     : '239.255.16.17',
+                          'evrMcastPort'      : 10151,
+                          'evrMcastInterface' : '172.21.22.69',
+                          'evrRecordEnable'   : True,
+                          'femAsicGainOverride' : 8,
+                          'femAsicPixelFeedbackOverride' : 0,
                          }
 
         # List of parameter names that don't need to force a system reconfigure
@@ -217,7 +223,23 @@ class LpdFemGui:
             self.msgPrint("Setting parameter femExternalTriggerStrobeDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
-        
+
+        # Set up pixel feedback override
+        pixelFeedbackOverride = self.cachedParams['femAsicPixelFeedbackOverride']
+        rc = self.device.paramSet('femAsicPixelFeedbackOverride', pixelFeedbackOverride)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter femAsicPixelFeedbackOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+
+        # Set up ASIC gain mode override
+        gainOverride = self.cachedParams['femAsicGainOverride']
+        rc = self.device.paramSet('femAsicGainOverride', gainOverride)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter femASicGainOverride faied (rc=%d) %s", (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+
         # Store values of data receiver address, port and number of frames
         try:
             self.dataListenAddr = self.loadedConfig['tenGig0DestIp']
@@ -261,6 +283,15 @@ class LpdFemGui:
         
         # Clear abort run flag
         self.abortRun = False
+
+        # Launch LCLS EVR timestamp recorder thread if selected
+        if self.cachedParams['evrRecordEnable'] == True:
+            try:
+                timestampRecorder = LpdEvrTimestampRecorder(self.cachedParams, self)
+            except Exception as e:
+                self.msgPrint("ERROR: failed to create timestamp recorder: %s" % e)
+                self.deviceState = LpdFemGui.DevicdeIdle
+                return
         
         # Create and LpdFemDataReceiver instance to launch readout threads
         try:
@@ -281,11 +312,20 @@ class LpdFemGui:
             self.msgPrint("Acquisition start failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
 
+        # Wait for timestamp recorder thread to complete
+        if self.cachedParams['evrRecordEnable'] == True:
+            try:
+                timestampRecorder.awaitCompletion()
+                dataReceiver.injectTimestampData(timestampRecorder.evrData)
+
+            except Exception as e:
+                self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)
+
         # Wait for the data receiver threads to complete
         try:
             dataReceiver.awaitCompletion()
         except Exception as e:
-            self.msgPrint("ERROR: failed to execute awaitCompletion: %s" % e)
+            self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
             
         # Signal device state as ready
         self.deviceState = LpdFemGui.DeviceReady

@@ -26,7 +26,7 @@ class LpdFemDataReceiver():
                 
             self.numFrames = numFrames
             self.appMain = appMain
-            
+
             # Create UDP recevier, frame processor and data monitor objects
             self.udpReceiver = UdpReceiver(listenAddr, listenPort, numFrames)
             self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal)
@@ -63,6 +63,9 @@ class LpdFemDataReceiver():
         except Exception as e:
             print "LdpFemDataReceiver got exception during initialisation: %s" % e
         
+    def injectTimestampData(self, evrData):
+
+        self.frameProcessor.evrData = evrData
 
     def awaitCompletion(self):
 
@@ -203,6 +206,7 @@ class FrameProcessor(QtCore.QObject):
         QtCore.QObject.__init__(self)
         
         self.numFrames = numFrames
+        self.evrData = None
         
         self.runNumber = cachedParams['runNumber']
         self.fileWriteEnable = cachedParams['fileWriteEnable']
@@ -257,7 +261,7 @@ class FrameProcessor(QtCore.QObject):
         # Create data group entries    
         self.imageDs = self.dataGroup.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
                                         maxshape=(None,self.nrows, self.ncols))
-        self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'f',      maxshape=(None,))
+        self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
         self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
         self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
@@ -309,7 +313,7 @@ class FrameProcessor(QtCore.QObject):
 
             # Mask out gain bits from data
             # TODO REMOVE THIS
-            self.imageArray = self.imageArray & 0xfff
+            #self.imageArray = self.imageArray & 0xfff
             
             # Write image to file if selected
             if self.fileWriteEnable:
@@ -353,6 +357,21 @@ class FrameProcessor(QtCore.QObject):
 
     def cleanUp(self):
         
+        # If timestamp data has been injected, add to the HDF file structure
+        if self.evrData != None:
+            if len(self.evrData.event) > 0:
+                print "Injecting EVR timestamp data into HDF file structure"
+                evrGroup          = self.lpdGroup.create_group('evr')
+                self.evrEvent     = evrGroup.create_dataset('event', (len(self.evrData.event),), 'uint32')
+                self.evrFiducial  = evrGroup.create_dataset('fiducial', (len(self.evrData.fiducial),), 'uint32')
+                self.evrTimestamp = evrGroup.create_dataset('timeStamp', (len(self.evrData.timestamp),), 'float64')
+
+                self.evrEvent[...] = np.array(self.evrData.event)
+                self.evrFiducial[...] = np.array(self.evrData.fiducial)
+                self.evrTimestamp[...] = np.array(self.evrData.timestamp)
+            else:
+                print "No EVR timestamp data received during run"
+
         # Close file if enabled
         if self.fileWriteEnable:
             self.hdfFile.close()
