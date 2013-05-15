@@ -641,6 +641,10 @@ class LpdDeviceParameters(object):
                                                                           0, 65536, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
+        self.expectedParameters['femExternalTriggerStrobeInhibit']  = AttributeContainer(int, 'FemExternalTriggerStrobeInhibit', 'Fem external trigger strobe inhibit (in ASIC clock periods)',
+                                                                          0, 65536, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
         self.expectedParameters['femDelaySensors']                  = AttributeContainer(int, 'FemDelaySensors', 'Fem delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB',
                                                                           0, 0xFFFF, 0xFFEF,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')

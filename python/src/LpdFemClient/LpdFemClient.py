@@ -1757,8 +1757,8 @@ class LpdFemClient(FemClient):
         self.femAsicEnableMaskDummy = aValue
         #TODO: Temp hack to decouple ASIC mask vector from API
 #        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FFFF, 0x00000000]
-#        self.femAsicEnableMask = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
-        self.femAsicEnableMask = [0x00000000, 0x0000FF00, 0x0000FFFF, 0x00000000]
+        self.femAsicEnableMask = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
+#        self.femAsicEnableMask = [0x00000000, 0x0000FF00, 0x0000FFFF, 0x00000000]
                 
     def femAsicColumnsGet(self):
         '''
@@ -2011,6 +2011,18 @@ class LpdFemClient(FemClient):
             Set femExternalTriggerStrobeDelay
         '''
         self.ext_trig_strobe_delay = aValue
+
+    def femExternalTriggerStrobeInhibitGet(self):
+        '''
+            Get femExternalTriggerStrobeInhibit
+        '''
+        return self.ext_trig_strobe_inhibit
+
+    def femExternalTriggerStrobeInhibitSet(self, aValue):
+        '''
+            Set femExternalTriggerStrobeInhibit
+        '''
+        self.ext_trig_strobe_inhibit = aValue
 
     def femDelaySensorsGet(self):
         '''

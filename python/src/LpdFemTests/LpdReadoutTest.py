@@ -306,7 +306,16 @@ def LpdReadoutTest(femHost=None, femPort=None):
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
-    
+    param = 'femBeamTriggerPetra'
+    rc = theDevice.paramSet(param, 1)   # 0=XFEL reset line as for LCLS, 1=special trigger for Petra
+    if rc != LpdDevice.ERROR_OK:
+        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+
+    param = 'femExternalTriggerStrobeInhibit'
+    rc = theDevice.paramSet(param, 0)   # Inhibit in ASIC clock cycles 
+    if rc != LpdDevice.ERROR_OK:
+        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+
     ######################################################
     # Read back all the configured values
     ######################################################
@@ -586,6 +595,17 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             print "femGainFromFastCmd\t= %d." % value
 
+        (rc, value) = theDevice.paramGet('femBeamTriggerPetra')
+        if rc != LpdDevice.ERROR_OK:
+            print "femBeamTriggerPetra get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femBeamTriggerPetra\t= %d." % value
+
+        (rc, value) = theDevice.paramGet('femExternalTriggerStrobeInhibit')
+        if rc != LpdDevice.ERROR_OK:
+            print "femExternalTriggerStrobeInhibit get failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        else:
+            print "femExternalTriggerStrobeInhibit\t= %d." % value
 
     ######################################################
     # Configure the FEM
