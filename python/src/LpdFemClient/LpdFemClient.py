@@ -224,7 +224,7 @@ class LpdFemClient(FemClient):
         else:
             numberPowerCards= 1
             powerCardI2cBus = [3]
-            sensorMapping = [[0,2], [0, 7]] # TODO Validate this mapping is correct
+            sensorMapping = [[0,1], [0, 6]] # Validated on 2-Tile System at DESY
         
         self.powerCards = []
         for idx in range(numberPowerCards):
