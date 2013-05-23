@@ -550,7 +550,7 @@ class LpdDeviceParameters(object):
                                                                           None, None, 'asicFastCommandSequence.xml',
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int, 'FemAsicPixelFeedbackOverride', 'ASIC per-pixel override of feedback selection: 0 = high(10p), 1= low(50p)',
+        self.expectedParameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int, 'FemAsicPixelFeedbackOverride', 'ASIC per-pixel override of feedback selection: 0 = high(5p), 1= low(50p)',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam ,'AllOk.Idle')
         
@@ -606,7 +606,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femNumTestCycles']                 = AttributeContainer(int, 'FemNumTestCycles', 'Number of test cycles if LL Data Generator or PPC Data Direct selected',
-                                                                          0, 255, 1,
+                                                                          0, 1024, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['tenGigFarmMode']                   = AttributeContainer(int, 'TenGigFarmMode', '10GigE farm mode 1=disabled, 2=fixed IP,multi port, 3=farm mode with nic lists',

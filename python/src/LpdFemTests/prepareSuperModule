@@ -5,6 +5,8 @@
 python LpdPowerControl.py --asicmodule 0 --hvbias 50
 python LpdPowerControl.py --asicmodule 0 --lv 1 --hv 1
 
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+
 #      LHS Power Card
 
 python LpdPowerControl.py --asicmodule 0 --hvbias 50

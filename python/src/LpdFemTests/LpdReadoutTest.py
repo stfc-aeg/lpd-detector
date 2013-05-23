@@ -252,7 +252,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
     param = 'femNumTestCycles'
-    rc = theDevice.paramSet(param, 7)   # number of test cycles if LL Data Generator / PPC Data Direct selected
+    rc = theDevice.paramSet(param, 2)   # number of test cycles if LL Data Generator / PPC Data Direct selected
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 

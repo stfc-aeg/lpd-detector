@@ -5,6 +5,7 @@
 '''
 
 from LpdDevice.LpdDevice import LpdDevice
+import sys
 
 def LpdPowerStatus():
     
@@ -19,7 +20,10 @@ def LpdPowerStatus():
     paramTypes = ['powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent', 
                   'sensorBias', 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 
                   'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp']
-    
+
+    # Count how many error encountered
+    errorCount = 0
+
     results = {}
     for powerCard in range(1):
         
@@ -31,6 +35,11 @@ def LpdPowerStatus():
             results[paramName] = val
             if rc != LpdDevice.ERROR_OK:    
                 print "Unable to read parameter %s rc=%d: %s" % (paramName, rc, theDevice.errorStringGet())
+                errorCount += 1
+                if errorCount > 2:
+                    print "Detected three errors, aborting.."
+                    theDevice.close()
+                    sys.exit()
 
     paramTypes = ['Temp', 'Voltage', 'Current']
     numSensors = 2
@@ -45,6 +54,11 @@ def LpdPowerStatus():
             results[paramName] = val
             if rc != LpdDevice.ERROR_OK:    
                 print "Unable to read parameter %s rc=%d: %s" % (paramName, rc, theDevice.errorStringGet())
+                errorCount += 1
+                if errorCount > 2:
+                    print "Found three errors, aborting.."
+                    theDevice.close()
+                    sys.exit()
     
     print "Status:"
     print "    Low voltage  = ",
