@@ -51,7 +51,7 @@ int validatePersonalityHeaderContents(struct protocol_header *pHeader)
  * @param pTxPayload pointer to payload buffer for outbound packet
  * @param pResponseSize pointer to response size
  */
-ints handlePersonalityCommand(	struct protocol_header* pRxHeader,
+int handlePersonalityCommand(	struct protocol_header* pRxHeader,
 								struct protocol_header* pTxHeader,
 								u8* pRxPayload,
 								u8* pTxPayload,
