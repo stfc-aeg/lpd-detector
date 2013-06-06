@@ -33,23 +33,29 @@ def LpdReadoutTest(femHost=None, femPort=None):
     xmlConfiguration = 2    # 0 = test, 1=short (normal) exposure, 2= long exposure (slowed down)
 
     if AsicVersion == 1:
-        femAsicSlowedClockFlag = True    # must ensure fast cmd file corresponds with readout clock selection
-        
-        if xmlConfiguration == 1:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
-            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
-        elif xmlConfiguration == 2:
-            SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
-            FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
-
+        print "AsicVersion == 1, did you really pick this?"
+        sys.exit()
+#        femAsicSlowedClockFlag = True    # must ensure fast cmd file corresponds with readout clock selection
+#        
+#        if xmlConfiguration == 1:
+#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
+#            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
+#        elif xmlConfiguration == 2:
+#            SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+#            FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+#
     elif AsicVersion == 2:
         femAsicSlowedClockFlag = False    # must ensure fast cmd file corresponds with readout clock selection
         if xmlConfiguration == 1:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
             FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_asicv2_jacv1.xml'
         elif xmlConfiguration == 2:
+
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
             FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_asicv2_jacv1.xml' 
+            # Config files taken from lpdFemGui:
+            #SlowControlXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AsicSlowParameters_lowpower.xml'
+            #FastCmdXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AutoResets_ShortExposures_asicv2_jacv1.xml'
             # Clone of jac's most recent xml files, for testing Two Tile System..
 #            SlowControlXmlString = 'ConfigFiles/AsicSlow_FromJaq.xml'
 #            FastCmdXmlString     = 'ConfigFiles/ManualReset_Fromjac.xml'
@@ -287,7 +293,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
     param = 'femAsicClockSource'
-    rc = theDevice.paramSet(param, 1)   #  0=Fem local oscillator, 1=Clock sync with xray
+    rc = theDevice.paramSet(param, 0)   #  0=Fem local oscillator, 1=Clock sync with xray
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 

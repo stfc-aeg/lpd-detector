@@ -34,6 +34,8 @@ from PyQt4 import QtCore, QtGui
 # Enable or disable debugging
 bDebug = False
 
+bNewRetrieveFunc = True
+
 # Define variables used as arguments by
 # Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
 #    where max number of plotMaxPlots = plotRows * plotCols
@@ -73,6 +75,10 @@ class BlitQT(FigureCanvas):
 
     def __init__(self, femHost=None, femPort=None):
         FigureCanvas.__init__(self, Figure())
+
+        # Time code execution
+        self.timeStart = []
+        self.timeStop = []
         
         # Track packet number
         self.packetNumber = -1
@@ -204,34 +210,34 @@ class BlitQT(FigureCanvas):
                 self._16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
                 self._16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
 
-            # Check the Gain bits (Bits 12-13);
-            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
-            gainCounter = [0, 0, 0, 0]
-
-            #TODO: Checking the Gain bits slows down displaying the read out data..
-            for idx in range( (_32BitArrayLen*2) ):
-
-                # Check bits 12-13: 
-                gainBits = self._16BitWordArray[idx] & 0x3000
-                if gainBits > 0:
-                    # Gain isn't x100, determine its type
-                    gain = gainBits >> 12
-                    if gain == 1:
-                        # x10
-                        gainCounter[1] += 1
-                    elif gain == 2:
-                        # x1
-                        gainCounter[2] += 1
-                    else:
-                        # Invalid gain setting detected
-                        gainCounter[3] += 1
-                else:
-                    # Gain is x100
-                    gainCounter[0] += 1
-
-            print "\nGain:      x100       x10        x1  (invalid)"
-            print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
-            del gainCounter
+#            # Check the Gain bits (Bits 12-13);
+#            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
+#            gainCounter = [0, 0, 0, 0]
+#
+#            #TODO: Checking the Gain bits slows down displaying the read out data..
+#            for idx in range( (_32BitArrayLen*2) ):
+#
+#                # Check bits 12-13: 
+#                gainBits = self._16BitWordArray[idx] & 0x3000
+#                if gainBits > 0:
+#                    # Gain isn't x100, determine its type
+#                    gain = gainBits >> 12
+#                    if gain == 1:
+#                        # x10
+#                        gainCounter[1] += 1
+#                    elif gain == 2:
+#                        # x1
+#                        gainCounter[2] += 1
+#                    else:
+#                        # Invalid gain setting detected
+#                        gainCounter[3] += 1
+#                else:
+#                    # Gain is x100
+#                    gainCounter[0] += 1
+#
+#            print "\nGain:      x100       x10        x1  (invalid)"
+#            print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
+#            del gainCounter
             
             
             """ DEBUG INFO: """
@@ -259,9 +265,18 @@ class BlitQT(FigureCanvas):
             while bNextImageAvailable and currentPlot < plotMaxPlots:
                 
                 dataBeginning = 65536*currentPlot
-                
+
+                t1 = time.time()
+                self.timeStart.append(t1)
+
                 # Get the first image of the image
-                bNextImageAvailable = self.retrieveFirstTwoTileImageFromAsicData(dataBeginning)
+                if bNewRetrieveFunc:
+                    bNextImageAvailable = self.retrieveFirstImage(dataBeginning)
+                else:
+                    bNextImageAvailable = self.retrieveFirstTwoTileImageFromAsicData(dataBeginning)
+                    
+                t2 = time.time()
+                self.timeStop.append(t2)
                 
                 # The first image, imageArray, has now been stripped from the image
                 # Reshape image into 32 x 256 pixel array
@@ -296,6 +311,21 @@ class BlitQT(FigureCanvas):
                 currentPlot += 1
 
             else:
+                # Finished this train - work out timings..
+                if len(self.timeStart) != len(self.timeStop):
+                    print "Missmatch between timeStart %i and timeStop %i" % (len(self.timeStart), len(self.timeStop))
+                else:
+                    if bNewRetrieveFunc:
+                        print "New Func ",
+                    else:
+                        print "Old Func ",
+                    delta = 0
+                    sum = 0
+                    for idx in range(len(self.timeStart)):
+                        delta = self.timeStop[idx] - self.timeStart[idx]
+                        sum += delta
+                    print "Average time executing fuction: ", (sum / len(self.timeStop))
+                                                                                              
                 # Finished - Close file if HDF5 Library present
                 if bHDF5:
                     hdfFile.close()
@@ -450,6 +480,72 @@ class BlitQT(FigureCanvas):
             pass    # Last Image detected in this train
         return bNextImageAvailable
 
+    def retrieveFirstImage(self, dataBeginning):
+        """ Faster implementation by adopting super module algorithm
+            Extracts one image beginning at argument dataBeginning in the member array 
+            self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
+            the current image is the last image in the data
+        """
+        # Boolean variable to track whether there is a image after this one in the data
+        bNextImageAvailable = False
+
+        numCols = 16
+        numRows = 8
+        numAsics = numCols * numRows
+        numColsPerAsic = 16
+        numRowsPerAsic = 32
+
+        numPixelsPerAsic = numColsPerAsic * numRowsPerAsic
+        numPixels = numAsics * numPixelsPerAsic
+
+        # Create linear array for unpacked pixel data
+        self.imageLpdFullArray = np.zeros(numPixels, dtype=np.uint16)
+        self.imageLpdFullArray = np.reshape(self.imageLpdFullArray, (numRows * numRowsPerAsic, numCols * numColsPerAsic))
+
+        rawOffset = dataBeginning
+
+        try:
+            for asicRow in xrange(numRowsPerAsic):
+                for asicCol in xrange(numColsPerAsic):
+                    
+                    self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self._16BitWordArray[rawOffset:(rawOffset + numAsics)].reshape(8,16)
+                    rawOffset += numAsics
+
+        except IndexError:
+            print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
+            sys.exit()
+        except Exception as e:
+            print "Error while extracting image: ", e, "\nExiting.."
+            print "Debug info: %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
+            sys.exit()
+
+        # TODO: Don't swapping 1st row with last row, second row with second last row, etc for Two Tile System
+        # TODO: BUT, must swap rows for Super Module !
+#        self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
+
+        # Create array for 2 Tile data; reshape into two dimensional array
+        self.imageArray = np.zeros(32*256, dtype=np.uint16)
+        self.imageArray = self.imageArray.reshape(32, 256)
+
+        # Copy the two Tiles that exists in the two tile system
+        try:
+            # LHS Tile located in the second ASIC row, second ASIC column
+            self.imageArray[0:32, 0:128]   = self.imageLpdFullArray[32:32+32, 256-1:128-1:-1]
+            # RHS Tile located in the seventh ASIC row, second ASIC column
+            self.imageArray[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
+        except Exception as e:
+            print "Error accessing 2 Tile data: ", e
+            print "dataBeginning: ", dataBeginning
+            sys.exit()
+
+        # Last image in the data?
+        try:
+            self._16BitWordArray[dataBeginning + self.imageSize]
+            # Will only get here if there is a next image available..
+            bNextImageAvailable = True
+        except IndexError:
+            pass   # Last Image in this train detected
+        return bNextImageAvailable
 
     def processRxData(self, data):
         """ Process (chunks of) UDP data into packets of a frame 
