@@ -30,46 +30,46 @@ def LpdReadoutTest(femHost=None, femPort=None):
     ################################################################
     
     AsicVersion = 2    # 1 or 2
-    xmlConfiguration = 2   # 0 = test, 1=short exposure, 2= long exposure, 3= pseudorandom, 4 = all 3 gain readout short exposure, 5 = all 3 gain readout long exposure
-	# (also for pseudo random  select that in asic data type and disable fast strobe for asicrx start)
+    xmlConfiguration = 2    # 0 = test, 1=short (normal) exposure, 2= long exposure (slowed down)
 
     if AsicVersion == 1:
-        femAsicSlowedClockFlag = True	# must ensure fast cmd file corresponds with readout clock selection
-        if xmlConfiguration == 1:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl_jacv1.xml'
-        elif xmlConfiguration == 2:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl_jacv1.xml' 
-        elif xmlConfiguration == 3:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/asic_pseudo_random_asicv1.xml' 
-        else:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
-            FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
+        print "AsicVersion == 1, did you really pick this?"
+        sys.exit()
+#        femAsicSlowedClockFlag = True    # must ensure fast cmd file corresponds with readout clock selection
+#        
+#        if xmlConfiguration == 1:
+#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
+#            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
+#        elif xmlConfiguration == 2:
+#            SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
+#            FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
+#
     elif AsicVersion == 2:
-        femAsicSlowedClockFlag = False	# must ensure fast cmd file corresponds with readout clock selection
+        femAsicSlowedClockFlag = False    # must ensure fast cmd file corresponds with readout clock selection
         if xmlConfiguration == 1:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_asicv2_jacv1.xml' # 'ConfigFiles/short_exposure_500_images_A.xml'  #  'ConfigFiles/AutoResets_ShortExposures_asicv2_B.xml'
+            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_asicv2_jacv1.xml'
         elif xmlConfiguration == 2:
+
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
             FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_asicv2_jacv1.xml' 
-        elif xmlConfiguration == 3:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/asic_pseudo_random_asicv2.xml' 
-        elif xmlConfiguration == 4:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/short_exposure_all_3gains_asicv2_B.xml' 
-        elif xmlConfiguration == 5:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/long_exposure_all_3gains_asicv2_C.xml' 
+            # Config files taken from lpdFemGui:
+            #SlowControlXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AsicSlowParameters_lowpower.xml'
+            #FastCmdXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AutoResets_ShortExposures_asicv2_jacv1.xml'
+            # Clone of jac's most recent xml files, for testing Two Tile System..
+#            SlowControlXmlString = 'ConfigFiles/AsicSlow_FromJaq.xml'
+#            FastCmdXmlString     = 'ConfigFiles/ManualReset_Fromjac.xml'
         else:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
             FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
 
-	print SlowControlXmlString
-	print FastCmdXmlString
+    print SlowControlXmlString
+    print FastCmdXmlString
+    
+    ################################################################
+
+# The second of the two command sequence configurations provided by Matt:
+#        FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
 
     #TODO: Temporary hack, pass filename instead of XML string
     # Read Slow Control (LpdAsicControl) XML file into a string
