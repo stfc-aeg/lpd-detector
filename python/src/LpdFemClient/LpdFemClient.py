@@ -110,7 +110,7 @@ class LpdFemClient(FemClient):
         self.lpd_image_size = 0x20000    # size of buffer in ppc for partial image is 128 KB
 
         self.asicRxPseudoRandomStart       = (80+50+1)   # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word), also need extra clock for sensor delay FF
-        self.asicRx2tileStart              = (810+1)     # asic_rx_start_2tile ; added 1 clock delay to compensate for new delay of sensor groups
+        self.asicRx2tileStart              = (810+1+1)     # asic_rx_start_2tile ; added 1 clock delay to compensate for new delay of sensor groups ; add another clock step after fixing clock distribution timing in sp3 io v0109
         self.asicRxSingleStart             = 0     # asic_rx_start_single_asic
         self.asicRxHeaderBits              = 12    # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
         # offsets in bits for different gains for slow asic readout 
@@ -159,7 +159,7 @@ class LpdFemClient(FemClient):
         self.petra_shutter_polarity = 0        # 0 = use inverted ext strobe !
 
         self.femDelaySensors          = 0xffef         # delay timing of 16 sensors ; bit = 1 adds 1 clock delay ;  sensor mod 1 is lsb , mod 16 is msb
-        self.femGainfromFastCmd    = 0       # 0 = asicrx gain sel fixed by register , 1 =  asicrx gain sel taken from fast cmd file commands dynamically for reading out all 3 gains
+        self.femGainFromFastCmd    = 0       # 0 = asicrx gain sel fixed by register , 1 =  asicrx gain sel taken from fast cmd file commands dynamically for reading out all 3 gains
 
 # above need to become user params
 #=======================
@@ -799,10 +799,10 @@ class LpdFemClient(FemClient):
         self.config_asic_datarx()   # set up fem to receive asic data
 
 		#  asicrx gain selection 
-        if self.femGainfromFastCmd == 1:
-            self.enable_femGainfromFastCmd()	# using fast cmd file commands 
+        if self.femGainFromFastCmd == 1:
+            self.enable_femGainFromFastCmd()	# using fast cmd file commands 
         else:
-            self.disable_femGainfromFastCmd()	# from s/w register
+            self.disable_femGainFromFastCmd()	# from s/w register
 
     def config_asic_slow_xml(self):
         """ configure asic slow control parameters from xml """                                        
@@ -819,9 +819,9 @@ class LpdFemClient(FemClient):
                   
         load_mode = self.femAsicSlowLoadMode
 
-        # clear the bram 
-        slow_bram_size = 512;   # size in 32b words
-        self.zero_regs(self.slow_ctr_1, slow_bram_size)  
+        # clear the bram (move to  fem_slow_ctrl_setup)
+        #slow_bram_size = 512;   # size in 32b words
+        #self.zero_regs(self.slow_ctr_1, slow_bram_size)  
 
         # load in BRAM
         self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, encodedString, no_of_bits, load_mode)
@@ -838,9 +838,9 @@ class LpdFemClient(FemClient):
                         
         #print "fast cmds no_of_words, no_of_nops: ", no_of_words, no_of_nops
 
-        # clear the bram to clear stray words at end   jac
-        fast_bram_size = 1024;   # size in 32b words
-        self.zero_regs(self.fast_cmd_1, fast_bram_size)  
+        # clear the bram to clear stray words at end   jac   moved to fem_fast_bram_setup()
+        #fast_bram_size = 1024;   # size in 32b words
+        #self.zero_regs(self.fast_cmd_1, fast_bram_size)  
 
         # Setup the fast command block
         if self.femFastCtrlDynamic:   # new design with dynamic vetos
@@ -1086,6 +1086,12 @@ class LpdFemClient(FemClient):
         
         #print "Slow Ctrl RAM"
         self.rdmaWrite(base_addr_1, dataTuple)
+
+        # clear bram after data
+        data_len = len(dataTuple)
+        rem_len = data_len + 20 # just clear a few locations beyond last valid data
+        self.zero_regs(self.slow_ctr_1+data_len, rem_len)  
+        #print 'slow dataTuple len = %d : rem_len = %d' %(data_len, rem_len)        
         
         # load control registers
         
@@ -1109,40 +1115,46 @@ class LpdFemClient(FemClient):
         block_length = no_of_words
         
         if block_length > max_block_length:
-						print '**WARNING** fem_fast_bram_setup : block_length = %d  nr commands exceeds max memory size' % block_length         
-						block_length =  max_block_length        
+          print '**WARNING** fem_fast_bram_setup : block_length = %d  nr commands exceeds max memory size. Please correct fast.xml file (Exiting)' % block_length 
+          sys.exit()        
+          #block_length =  max_block_length        
         
         #print 'fem_fast_bram_setup : block_length = %0d' % block_length         
 
         # Build tuple of a list of data
         dataTuple = tuple([fast_cmd_data[i] for i in range(block_length)])
-        tuple_length = len(dataTuple)
+        data_len = len(dataTuple)
 
         # load fast control pattern memory
-        #self.rdmaWrite(base_addr_1, dataTuple)	# old PPC server code has problems with large dataTuples
+        self.rdmaWrite(base_addr_1, dataTuple)	# old PPC server code has problems with large dataTuples
 
+        rem_len = data_len + 30 # just clear a few locations beyond last valid data
+        self.zero_regs(base_addr_1+data_len, rem_len)  
+
+        # following no longer needed , assumed using new gbe server
 
 				# patch to avoid timeouts using old version of the GbE server running on PPC
 				# splitting rdma accesses up
 
-        tup1 = dataTuple[0:250]
-        tup2 = dataTuple[250:500]
-        tup3 = dataTuple[500:750]
-        tup4 = dataTuple[750:block_length]
-        tup1_len = len(tup1)
-        tup2_len = len(tup2)
-        tup3_len = len(tup3)
-        tup4_len = len(tup4)
+        ##tup1 = dataTuple[0:250]
+        ##tup2 = dataTuple[250:500]
+        ##tup3 = dataTuple[500:750]
+        ##tup4 = dataTuple[750:block_length]
+        ##tup1_len = len(tup1)
+        ##tup2_len = len(tup2)
+        ##tup3_len = len(tup3)
+        ##tup4_len = len(tup4)
 
-        print 'dataTuple len = %d : block_length = %d' %(tuple_length, block_length)        
-        print 'tup1 len = %d : tup2 len = %d ; tup3 len = %d : tup4 len = %d' %(tup1_len, tup2_len, tup3_len, tup4_len)        
+        ##print 'dataTuple len = %d : block_length = %d' %(data_len, block_length)        
+        ##print 'tup1 len = %d : tup2 len = %d ; tup3 len = %d : tup4 len = %d' %(tup1_len, tup2_len, tup3_len, tup4_len)        
 
        # load fast control pattern memory
-        print "Patching loading of Fast Cmd RAM"
-        self.rdmaWrite(base_addr_1, tup1)
-        self.rdmaWrite(base_addr_1+250, tup2)
-        self.rdmaWrite(base_addr_1+500, tup3)
-        self.rdmaWrite(base_addr_1+750, tup4)
+        ##print "Patching loading of Fast Cmd RAM"
+        ##self.rdmaWrite(base_addr_1, tup1)
+        ##self.rdmaWrite(base_addr_1+250, tup2)
+        ##self.rdmaWrite(base_addr_1+500, tup3)
+        ##self.rdmaWrite(base_addr_1+750, tup4)
+
  
        
     def fem_fast_cmd_setup_new(self, base_addr_0, no_of_words):
@@ -1315,14 +1327,14 @@ class LpdFemClient(FemClient):
     def zero_regs(self, base_addr, nr_regs):
         """ zero regs eg bram """
         
-        for i in range(0, nr_regs):
-            self.rdmaWrite(base_addr+i, 0) 
+        #for i in range(0, nr_regs):
+        #    self.rdmaWrite(base_addr+i, 0) 
 
 # use block rdma write which should be much faster
-        #zero_lst = []
-        #for i in range(nr_regs):
-        #  zero_lst.append(0)
-        #self.rdmaWrite(base_addr, zero_lst) 
+        zero_lst = []
+        for i in range(nr_regs):
+          zero_lst.append(0)
+        self.rdmaWrite(base_addr, zero_lst) 
 
     def register_set_bit(self, reg_addr, bit_nr):
         """ set bit in register """
@@ -1441,7 +1453,7 @@ class LpdFemClient(FemClient):
     def send_long_asic_reset(self):
         """ Send Long Reset to ASIC pin """
         self.register_set_bit(self.fem_ctrl_0+10, 0)  
-        time.sleep(self.femPpcResetDelay)
+        #time.sleep(self.femPpcResetDelay)  # register access is long enough delay!
         self.register_clear_bit(self.fem_ctrl_0+10, 0)  
     
     def resetFwModulesToggleTristateIO(self):
@@ -1480,7 +1492,7 @@ class LpdFemClient(FemClient):
 
         #TODO: Is Comment Still Relevant?
         # send Reset to ASIC pin . Shouldn't be necessary? as short reset pulse is sent before trigger sequence.
-        print "Send Long Reset to ASIC pin"
+        #print "Send Long Reset to ASIC pin"
         self.send_long_asic_reset()
         
         self.clear_ll_monitor(self.llink_mon_asicrx)
@@ -1502,7 +1514,7 @@ class LpdFemClient(FemClient):
         # Setup data gen - not necessary for actual data but leave alone, "just in case"
         self.config_data_gen()
 
-        print "One Time Configuring ASICs... this takes about 15 seconds..."
+        print "One Time Configuring ASICs..."
 
 		# added for test beams
         self.config_clock_source()	# clock sources
@@ -1578,7 +1590,7 @@ class LpdFemClient(FemClient):
         self.read_ll_monitor(self.llink_mon_0, 156.25e6)
 
         print "Asic Rx LLink Monitor"
-          self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
+        self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
 
         print "======== Run Completed ===========" 
 
