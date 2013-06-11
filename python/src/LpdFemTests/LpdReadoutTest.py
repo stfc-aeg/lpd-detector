@@ -12,10 +12,11 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
     theDevice = LpdDevice()
 
+    networkConfig = networkConfiguration()
+
     # Was either femHost or femPort NOT provided to this class?
     if (femHost == None) or (femPort == None):
         # At least one wasn't supplied from the command line; Use networkConfiguration class
-        networkConfig = networkConfiguration()
         femHost = networkConfig.ctrl0SrcIp
         femPort = int(networkConfig.ctrlPrt)
 
@@ -30,35 +31,40 @@ def LpdReadoutTest(femHost=None, femPort=None):
     ################################################################
     
     AsicVersion = 2    # 1 or 2
-    xmlConfiguration = 2    # 0 = test, 1=short (normal) exposure, 2= long exposure (slowed down)
+    xmlConfiguration = 4   # 0 = test, 1=short exposure, 2= long exposure, 3= pseudorandom, 4 = all 3 gain readout short exposure, 5 = all 3 gain readout long exposure
+	# (also for pseudo random  select that in asic data type and disable fast strobe for asicrx start)
 
     if AsicVersion == 1:
-        print "AsicVersion == 1, did you really pick this?"
-        sys.exit()
-#        femAsicSlowedClockFlag = True    # must ensure fast cmd file corresponds with readout clock selection
-#        
-#        if xmlConfiguration == 1:
-#            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters.xml'
-#            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl.xml'
-#        elif xmlConfiguration == 2:
-#            SlowControlXmlString = 'ConfigFiles/preambleDelaySlowControl.xml'
-#            FastCmdXmlString     = 'ConfigFiles/playingWivLasers.xml' # SupdMod (or 2Tile), slowed down, can use laser pointer
-#
-    elif AsicVersion == 2:
-        femAsicSlowedClockFlag = False    # must ensure fast cmd file corresponds with readout clock selection
+        femAsicSlowedClockFlag = True	# must ensure fast cmd file corresponds with readout clock selection
         if xmlConfiguration == 1:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_asicv2_jacv1.xml'
+            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl_jacv1.xml'
         elif xmlConfiguration == 2:
-
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl_jacv1.xml' 
+        elif xmlConfiguration == 3:
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/asic_pseudo_random_asicv1.xml' 
+        else:
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
+            FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
+    elif AsicVersion == 2:
+        femAsicSlowedClockFlag = False	# must ensure fast cmd file corresponds with readout clock selection
+        if xmlConfiguration == 1:
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_asicv2_jacv1.xml' # 'ConfigFiles/short_exposure_500_images_A.xml'  #  'ConfigFiles/AutoResets_ShortExposures_asicv2_B.xml'
+        elif xmlConfiguration == 2:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
             FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_asicv2_jacv1.xml' 
-            # Config files taken from lpdFemGui:
-            #SlowControlXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AsicSlowParameters_lowpower.xml'
-            #FastCmdXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AutoResets_ShortExposures_asicv2_jacv1.xml'
-            # Clone of jac's most recent xml files, for testing Two Tile System..
-#            SlowControlXmlString = 'ConfigFiles/AsicSlow_FromJaq.xml'
-#            FastCmdXmlString     = 'ConfigFiles/ManualReset_Fromjac.xml'
+        elif xmlConfiguration == 3:
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/asic_pseudo_random_asicv2.xml' 
+        elif xmlConfiguration == 4:
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/short_exposure_all_3gains_asicv2_B.xml' 
+        elif xmlConfiguration == 5:
+            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
+            FastCmdXmlString     = 'ConfigFiles/long_exposure_all_3gains_asicv2_C.xml' 
         else:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
             FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
@@ -233,7 +239,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
     param = 'femAsicGainOverride'
-    rc = theDevice.paramSet(param, 8)   # (Default value is 0)
+    rc = theDevice.paramSet(param, 9)   # (Default value is 0)   0 = algorithm ; 8 = x100 ; 9 = x10 ; 11 = x1
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
@@ -258,7 +264,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
     param = 'femNumTestCycles'
-    rc = theDevice.paramSet(param, 2)   # number of test cycles if LL Data Generator / PPC Data Direct selected
+    rc = theDevice.paramSet(param, 1)   # number of test cycles if LL Data Generator / PPC Data Direct selected
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
@@ -288,7 +294,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
     param = 'femDelaySensors'
-    rc = theDevice.paramSet(param, 0xffef)  # delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB
+    rc = theDevice.paramSet(param, 0xffff)  # delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
