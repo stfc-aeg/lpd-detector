@@ -18,8 +18,8 @@ from FemApi.FemTransaction import FemTransaction
 from LpdPowerCard import *
 
 # Import library for parsing XML fast command files
-from LpdAsicCommandSequence import LpdAsicCommandSequence
-from LpdAsicControl import LpdAsicControl
+from LpdAsicCommandSequence import *
+from LpdAsicControl import *
 
 
 class LpdFemClient(FemClient):
@@ -812,9 +812,8 @@ class LpdFemClient(FemClient):
             # Pass (any) override values onto ASIC control
             LpdAsicControlParams.setOverrideValues(self.femAsicPixelFeedbackOverride, self.femAsicPixelSelfTestOverride)
             encodedString = LpdAsicControlParams.encode()
-        except Exception as e:
-            raise e
-            sys.exit()
+        except LpdAsicControlError as e:
+            raise FemClientError(str(e))
             
         no_of_bits = 3911
                   
@@ -848,9 +847,8 @@ class LpdFemClient(FemClient):
             self.fem_fast_bram_setup(self.fast_cmd_1, encodedSequence, no_of_words)
             self.fem_fast_cmd_setup_new(self.fast_cmd_0, no_of_words+no_of_nops)
         else:
-            #TODO:  Fix this or remove?
-            print "femFastCtrlDynamic == False: Need to sort the following block of code! (Exiting..)"
-            sys.exit()
+            #TODO: Imlement action for False value?
+            raise FemClientError("femFastCtrlDynamic == False; Not implementation (stick with True?)")
 
     def config_asic_datarx(self):
         """ configure asic data rx module """
@@ -1569,11 +1567,11 @@ class LpdFemClient(FemClient):
         print 'V5 FPGA Firmware vers = %08x' %v5_firmware_vers 
 
         # Read out all registers (Both 2 tile & supermodule run fine without) 
-        if self.femDebugLevel > 0:
-            print "Register Settings"
-            self.dump_registers()
+#        if self.femDebugLevel > 0:
+#            print "Register Settings"
+#            self.dump_registers()
 
-        if self.femNumTestCycles > 0 and self.femDebugLevel == 0:
+        if self.femNumTestCycles > 0 and self.femDebugLevel > 0:
             print "Register Settings"
             self.dump_registers()
         else:
