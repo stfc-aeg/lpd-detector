@@ -646,17 +646,17 @@ class LpdFemClient(FemClient):
         self.register_set_bit(self.fem_ctrl_0+11, 18)  # BOT SP3 IO DCM
         self.register_set_bit(self.fem_ctrl_0+11, 19)  # TOP SP3 IO DCM
     
-       # xray beam clock source
+        # xray beam clock source
         if self.femBeamClockSource == 0:	# petra 
-          self.register_clear_bit(self.fem_ctrl_0+11, 2)  
+            self.register_clear_bit(self.fem_ctrl_0+11, 2)  
         else:	# xfel
-          self.register_set_bit(self.fem_ctrl_0+11, 2)  
+            self.register_set_bit(self.fem_ctrl_0+11, 2)  
       
-      # asic clock source
+        # asic clock source
         if self.femAsicClockSource == 0:	# fem osc 
-          self.register_clear_bit(self.fem_ctrl_0+11, 1)  
+            self.register_clear_bit(self.fem_ctrl_0+11, 1)  
         else:	# xray synched
-          self.register_set_bit(self.fem_ctrl_0+11, 1)   
+            self.register_set_bit(self.fem_ctrl_0+11, 1)   
  
         # MUST release petra DCM BEFORE releasing asic DCM!
         self.register_clear_bit(self.fem_ctrl_0+11, 17)  # releases reset on petra dcm    
@@ -1117,9 +1117,9 @@ class LpdFemClient(FemClient):
         block_length = no_of_words
         
         if block_length > max_block_length:
-          print '**WARNING** fem_fast_bram_setup : block_length = %d  nr commands exceeds max memory size. Please correct fast.xml file (Exiting)' % block_length 
-          sys.exit()        
-          #block_length =  max_block_length        
+            print '**WARNING** fem_fast_bram_setup : block_length = %d  nr commands exceeds max memory size. Please correct fast.xml file (Exiting)' % block_length 
+            sys.exit()        
+            #block_length =  max_block_length        
         
         # Build tuple of a list of data
         dataTuple = tuple([fast_cmd_data[i] for i in range(block_length)])
@@ -1133,8 +1133,8 @@ class LpdFemClient(FemClient):
 
         # following no longer needed , assumed using new gbe server
 
-				# patch to avoid timeouts using old version of the GbE server running on PPC
-				# splitting rdma accesses up
+        # patch to avoid timeouts using old version of the GbE server running on PPC
+        # splitting rdma accesses up
 
         ##tup1 = dataTuple[0:250]
         ##tup2 = dataTuple[250:500]
@@ -1148,7 +1148,7 @@ class LpdFemClient(FemClient):
         ##print 'dataTuple len = %d : block_length = %d' %(data_len, block_length)        
         ##print 'tup1 len = %d : tup2 len = %d ; tup3 len = %d : tup4 len = %d' %(tup1_len, tup2_len, tup3_len, tup4_len)        
 
-       # load fast control pattern memory
+        # load fast control pattern memory
         ##print "Patching loading of Fast Cmd RAM"
         ##self.rdmaWrite(base_addr_1, tup1)
         ##self.rdmaWrite(base_addr_1+250, tup2)
@@ -1331,7 +1331,7 @@ class LpdFemClient(FemClient):
 # use block rdma write which should be much faster
         zero_lst = []
         for i in range(nr_regs):
-          zero_lst.append(0)
+            zero_lst.append(0)
         self.rdmaWrite(base_addr, zero_lst) 
 
     def register_set_bit(self, reg_addr, bit_nr):
@@ -1531,42 +1531,42 @@ class LpdFemClient(FemClient):
 
         if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc, wait for ppc to be ready to read out
             #if (self.run_params['ppc_reset_delay_secs'] == 0):
-           print "Start Run with PPC1 Readout ..."
-           if (self.femPpcResetDelay == 0):
+            print "Start Run with PPC1 Readout ..."
+            if (self.femPpcResetDelay == 0):
                 while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
                     print "Waiting for PPC readout to be ready...",
                     sys.stdout.flush()
         else:
-             print "Start Run in PPC1 BYPASS mode..."
+            print "Start Run in PPC1 BYPASS mode..."
 
         print "=========================================================" 
         print "Starting Sequence of %d Trains , with each Train reading out %d images" %(self.femNumTestCycles, self.femAsicColumns)
 
         if self.femBeamTriggerSource == 1:  # if s/w send triggers manually         
-          self.enable_ext_trig_strobe() # enable and disable to reset trigger strobe counters!
-          self.disable_ext_trig_strobe()
-          for i in range (1, self.femNumTestCycles+1):
-            print "Train nr %d" % i
-            self.send_trigger() 
-            #time.sleep(2)     # need to check if images are all readout before sending next train
-	            #print 'Train nr %4d \r' % i,
+            self.enable_ext_trig_strobe() # enable and disable to reset trigger strobe counters!
+            self.disable_ext_trig_strobe()
+            for i in range (1, self.femNumTestCycles+1):
+                print "Train nr %d" % i
+                self.send_trigger() 
+                time.sleep(0.5)     # need to check if images are all readout before sending next train
+                #print 'Train nr %4d' % i,
                 #sys.stdout.flush()  
 
         else:  # else start run and use external c&c strobes
-            print 'Run is STARTED. Waiting for %d trigger strobes \r' %self.femNumTestCycles 
+            print 'Run is STARTED. Waiting for %d trigger strobes' %self.femNumTestCycles 
             self.enable_ext_trig_strobe()
             nr_ext_trig_strobes = 0
             nr_ext_trig_strobes_accepted = 0
             while nr_ext_trig_strobes_accepted < self.femNumTestCycles:
-            	nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
+                nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
             self.disable_ext_trig_strobe()
-            print 'Run is STOPPED \r' 
+            print 'Run is STOPPED' 
 
         print "======== Train Cycle Completed ===========" 
         #time.sleep(2)   # just to see output before dumping registers
 
         v5_firmware_vers = self.get_v5_firmware_vers()
-        print 'V5 FPGA Firmware vers = %08x  \r' %v5_firmware_vers 
+        print 'V5 FPGA Firmware vers = %08x' %v5_firmware_vers 
 
         # Read out all registers (Both 2 tile & supermodule run fine without) 
         if self.femDebugLevel > 0:
