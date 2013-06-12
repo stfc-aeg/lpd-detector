@@ -165,8 +165,6 @@ class LpdFemClient(FemClient):
 # 
 #        self.ext_trig_strobe_inhibit  = (22*200 + self.nr_clocks_to_readout_image * self.femAsicColumns + self.asicRx2tileStart)       # length of inhibit after ext strobe enough to read out all data (in asic clock periods) ; allow for 100 fast cmds each 22 clocks to inhibit during fast commands from file before readout starts
         self.ext_trig_strobe_inhibit  = (100000000*22/192)  # 100 msec for 10Hz     # see comments above
-
-        self.runDurationSecs   = 10         # run duration secs if running with external beam trigger 
         
 #======== params for general steering 
         self.femPpcResetDelay       = 5     # wait after resetting ppc 
@@ -1533,15 +1531,15 @@ class LpdFemClient(FemClient):
 
         if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc, wait for ppc to be ready to read out
             #if (self.run_params['ppc_reset_delay_secs'] == 0):
-           print "Start Run with PPC1 Readout ...\r"
+           print "Start Run with PPC1 Readout ..."
            if (self.femPpcResetDelay == 0):
                 while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
-                    print "Waiting for PPC readout to be ready...\r",
+                    print "Waiting for PPC readout to be ready...",
                     sys.stdout.flush()
         else:
-             print "Start Run in PPC1 BYPASS mode...\r"
+             print "Start Run in PPC1 BYPASS mode..."
 
-        print "=========================================================\r" 
+        print "=========================================================" 
         print "Starting Sequence of %d Trains , with each Train reading out %d images" %(self.femNumTestCycles, self.femAsicColumns)
 
         if self.femBeamTriggerSource == 1:  # if s/w send triggers manually         
@@ -1564,7 +1562,7 @@ class LpdFemClient(FemClient):
             self.disable_ext_trig_strobe()
             print 'Run is STOPPED \r' 
 
-        print "======== Train Cycle Completed ===========\r" 
+        print "======== Train Cycle Completed ===========" 
         #time.sleep(2)   # just to see output before dumping registers
 
         v5_firmware_vers = self.get_v5_firmware_vers()
@@ -1572,16 +1570,16 @@ class LpdFemClient(FemClient):
 
         # Read out all registers (Both 2 tile & supermodule run fine without) 
         if self.femDebugLevel > 0:
-            print "Register Settings\r"
+            print "Register Settings"
             self.dump_registers()
 
         if self.femNumTestCycles > 0 and self.femDebugLevel == 0:
-            print "Register Settings\r"
+            print "Register Settings"
             self.dump_registers()
         else:
             time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
 
-        print "Summary of Data Readout...\r"
+        print "Summary of Data Readout..."
 
         # 10g ll monitor
         print "10G LLink Monitor"
