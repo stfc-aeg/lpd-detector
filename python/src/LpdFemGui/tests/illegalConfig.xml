@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+
+<lpd_readout_config name="Broken Config">
+
+    <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
+    <tenGig0SourceIp type="str" val="10.0.0.2"/>
+    <tenGig0SourcePort type="int" val="0"
+    
+    Broken XML syntax, this file should throw a ParseError
