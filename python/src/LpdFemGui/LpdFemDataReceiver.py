@@ -75,8 +75,11 @@ class LpdFemDataReceiver():
             
             if self.appMain.abortRun:
                 print "Run aborted by user"
-            
-            print "Frame processor handled all frames, terminating data receiver threads"
+                self.udpReceiver.abortRun()
+                self.dataMonitor.abortRun()
+            else:
+                print "Frame processor handled all frames, terminating data receiver threads"
+                
             self.frameProcessorThread.quit()
             self.udpReceiverThread.quit()
             self.dataMonitorThread.quit()
@@ -85,17 +88,19 @@ class LpdFemDataReceiver():
             self.udpReceiverThread.wait()
             self.dataMonitorThread.wait()
             
-            try:            
-                print "Average frame UDP receive time : %f secs" % (self.udpReceiver.totalReceiveTime / self.udpReceiver.frameCount)
-                print "Average frame processing time  : %f secs" % (self.frameProcessor.totalProcessingTime / self.frameProcessor.framesHandled)
+            try:
+                if self.udpReceiver.frameCount > 0:            
+                    print "Average frame UDP receive time : %f secs" % (self.udpReceiver.totalReceiveTime / self.udpReceiver.frameCount)
+                if self.frameProcessor.framesHandled > 0:
+                    print "Average frame processing time  : %f secs" % (self.frameProcessor.totalProcessingTime / self.frameProcessor.framesHandled)
             except Exception as e:
                 print >> sys.stderr, "Got exception", e
                 
             self.frameProcessor.cleanUp()
         
-    def abortReceived(self):
-        
-        self.abortRunFlag = True
+#    def abortReceived(self):
+#        
+#        self.abortRunFlag = True
         
 class UdpReceiver(QtCore.QObject):
         
@@ -109,32 +114,41 @@ class UdpReceiver(QtCore.QObject):
         self.frameCount = 0
         self.numFrames = numFrames
         self.totalReceiveTime = 0.0
+        self.abort = False
         
         # Bind to UDP receive socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((listenAddr, listenPort))
 
+        # Set socket timeout to allow receiver loop to tick and remain responsive to aborts
+        self.sock.settimeout(0.5)
+        
         print "UDP Receiver thread listening on address %s port %s" % (listenAddr, listenPort)
 
-
+    def abortRun(self):
+        self.abort = True
+        
     def receiveLoop(self):
                     
         try:
-            while self.frameCount < self.numFrames:
+            while self.frameCount < self.numFrames and self.abort == False:
                 
                 foundEof = 0
                 lpdFrame = LpdFrameContainer(self.frameCount)
                 
-                while foundEof == 0:
-                    stream = self.sock.recv(9000)
-                    foundEof  = self.processRxData(lpdFrame, stream)
-                    if foundEof:
-                        # Complete frame received, transmit frame along with meta data saved in LpdFrameContainer object
-                        #print >> sys.stderr, "Frame %d receive complete" % lpdFrame.frameNumber
-                        self.emit(QtCore.SIGNAL("dataRxSignal"), lpdFrame)
-                        self.frameCount += 1
-                        self.totalReceiveTime += (lpdFrame.timeStampEof - lpdFrame.timeStampSof)
-                        
+                while foundEof == 0 and self.abort == False:
+                    try:
+                        stream = self.sock.recv(9000)
+                        foundEof  = self.processRxData(lpdFrame, stream)
+                        if foundEof:
+                            # Complete frame received, transmit frame along with meta data saved in LpdFrameContainer object
+                            #print >> sys.stderr, "Frame %d receive complete" % lpdFrame.frameNumber
+                            self.emit(QtCore.SIGNAL("dataRxSignal"), lpdFrame)
+                            self.frameCount += 1
+                            self.totalReceiveTime += (lpdFrame.timeStampEof - lpdFrame.timeStampSof)
+                    except socket.timeout:
+                        pass
+                    
         except Exception as e:
             print "UDP receiver event loop got an exception: %s" % e
             raise(e)
@@ -435,11 +449,15 @@ class DataMonitor(QtCore.QObject):
         self.frameProcessor = frameProcessor
         self.updateSignal = updateSignal
         self.numFrames = numFrames
+        self.abort = False
+        
+    def abortRun(self):
+        self.abort = True
         
     def monitorLoop(self):
         
         try:
-            while self.frameProcessor.framesHandled < self.numFrames:
+            while self.frameProcessor.framesHandled < self.numFrames and self.abort == False:
                 
                 runStatus = LpdRunStatusContainer(self.udpReceiver.frameCount, self.frameProcessor.framesHandled, 
                                                 self.frameProcessor.imagesWritten, self.frameProcessor.dataBytesReceived)
