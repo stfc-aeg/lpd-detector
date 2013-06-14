@@ -989,6 +989,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 							{
 								//DBGOUT("CmdDisp: Error reading RDMA, aborting!\r\n");
 								numOps = 0;
+								CBIT(state, STATE_ACK);
 								SBIT(state, STATE_NACK);
 								SETERR(pClient, ERR_RDMA_READ, "Error occurred during RDMA read.");
 								i = *pRxPayload_32;						// Skip any further processing in this loop
@@ -1017,6 +1018,7 @@ int commandHandler(struct protocol_header* pRxHeader,
 							{
 								//DBGOUT("CmdDisp: Error writing RDMA, aborting!\r\n");
 								numOps = 0;
+								CBIT(state, STATE_ACK);
 								SBIT(state, STATE_NACK);
 								SETERR(pClient, ERR_RDMA_WRITE, "Error occurred during RDMA write.");
 								i = ((pRxHeader->payload_sz)/dataWidth);	// Skip any further processing
