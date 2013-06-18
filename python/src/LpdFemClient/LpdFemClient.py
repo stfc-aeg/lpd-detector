@@ -61,7 +61,14 @@ class LpdFemClient(FemClient):
     rsvd_29         = 0x0e800000    # 29
     rsvd_30         = 0x0f000000    # 30
     rsvd_31         = 0x0f800000    # 31
-    
+ 
+# Spartan 3 devices 
+# needs new gbe embedded software with rs232 mux control
+    bot_sp3_ctrl     = 0x10000000    #  0
+    top_sp3_ctrl     = 0x20000000    #  0
+    cfg_sp3_ctrl     = 0x30000000    #  0
+
+   
     ########## Enumerated values for API variables ##########
 
     ASIC_MODULE_TYPE_SUPERMODULE    = 0     # (0) Supermodule
@@ -391,7 +398,7 @@ class LpdFemClient(FemClient):
         else:
             rate = 0
 
-        print "\nClock Freq = %d Hz\t"  % clock_freq
+        print "Clock Freq = %d Hz"  % clock_freq
             
         print "Data Total =                  %e" % total_data
         print "Data Time  =                  %e" % total_time
@@ -1075,6 +1082,24 @@ class LpdFemClient(FemClient):
         print "Dump of Ext Trigger Strobe Registers : TRIG STROBE" 
         self.dump_regs_hex(self.trig_strobe, 20) 
 
+        print "Dump of FEM Registers : BOT SP3 CTRL" 
+        try:
+            self.dump_regs_hex(self.bot_sp3_ctrl, 18)        
+        except FemClientError:
+            print "WARNING: BOT SP3 dump_regs_hex failed" 
+
+        print "Dump of FEM Registers : TOP SP3 CTRL" 
+        try:
+            self.dump_regs_hex(self.top_sp3_ctrl, 18)        
+        except FemClientError:
+            print "WARNING: TOP SP3 dump_regs_hex failed" 
+
+        print "Dump of FEM Registers : CFG SP3 CTRL" 
+        try:
+            self.dump_regs_hex(self.cfg_sp3_ctrl, 18)        
+        except FemClientError:
+            print "WARNING: CFG SP3 dump_regs_hex failed" 
+
     def fem_slow_ctrl_setup(self, base_addr_0, base_addr_1, slow_ctrl_data, no_of_bits, load_mode):
     
         #slow control set up function blank
@@ -1115,8 +1140,7 @@ class LpdFemClient(FemClient):
         block_length = no_of_words
         
         if block_length > max_block_length:
-            print '**WARNING** fem_fast_bram_setup : block_length = %d  nr commands exceeds max memory size. Please correct fast.xml file (Exiting)' % block_length 
-            sys.exit()        
+            raise FemClientError('**WARNING** fem_fast_bram_setup : block_length = %d  nr commands exceeds max memory size. Please correct fast.xml file (Exiting)' % block_length)
             #block_length =  max_block_length        
         
         # Build tuple of a list of data
@@ -1392,6 +1416,33 @@ class LpdFemClient(FemClient):
         value = self.rdmaRead(self.fem_ctrl_0+17, 1)[0]  
         return value  
 
+    def get_bot_sp3_firmware_vers(self):
+        """ This function gets the firmware version loaded in BOT SP3 FPGA [READONLY]   """
+        value = -1        
+        try:
+            value = self.rdmaRead(self.bot_sp3_ctrl+17, 1)[0]
+        except FemClientError:
+            print "WARNING: BOT SP3 Firmware version read failed"
+        return value  
+
+    def get_top_sp3_firmware_vers(self):
+        """ This function gets the firmware version loaded in TOP SP3 FPGA [READONLY]   """
+        value = -1        
+        try:
+            value = self.rdmaRead(self.top_sp3_ctrl+17, 1)[0]
+        except FemClientError:
+            print "WARNING: TOP SP3 Firmware version read failed" 
+        return value  
+
+    def get_cfg_sp3_firmware_vers(self):
+        """ This function gets the firmware version loaded in CFG SP3 FPGA [READONLY]   """
+        value = -1        
+        try:
+            value = self.rdmaRead(self.cfg_sp3_ctrl+17, 1)[0]
+        except FemClientError:
+            print "WARNING: CFG SP3 Firmware version read failed" 
+        return value   
+
     def set_ext_trig_strobe_max(self, value):
         """ This function sets the nr of ext strobes to trigger readout """
         self.rdmaWrite(self.trig_strobe+4, value)  
@@ -1563,8 +1614,11 @@ class LpdFemClient(FemClient):
         print "======== Train Cycle Completed ===========" 
         #time.sleep(2)   # just to see output before dumping registers
 
-        v5_firmware_vers = self.get_v5_firmware_vers()
-        print 'V5 FPGA Firmware vers = %08x' %v5_firmware_vers 
+        print ""
+        print '     V5 FPGA Firmware vers = %08x' %self.get_v5_firmware_vers() 
+        print 'BOT SP3 FPGA Firmware vers = %08x' %self.get_bot_sp3_firmware_vers() 
+        print 'TOP SP3 FPGA Firmware vers = %08x' %self.get_top_sp3_firmware_vers() 
+        print 'CFG SP3 FPGA Firmware vers = %08x' %self.get_cfg_sp3_firmware_vers() 
 
         # Read out all registers (Both 2 tile & supermodule run fine without) 
 #        if self.femDebugLevel > 0:
@@ -1572,18 +1626,22 @@ class LpdFemClient(FemClient):
 #            self.dump_registers()
 
         if self.femNumTestCycles > 0 and self.femDebugLevel > 0:
+            print ""
             print "Register Settings"
             self.dump_registers()
         else:
             time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
 
+        print ""
         print "Summary of Data Readout..."
 
         # 10g ll monitor
+        print ""
         print "10G LLink Monitor"
         self.read_ll_monitor(self.llink_mon_0, 156.25e6)
 
         print "Asic Rx LLink Monitor"
+        print ""
         self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
 
         print "======== Run Completed ===========" 
