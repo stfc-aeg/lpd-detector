@@ -31,7 +31,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     ################################################################
     
     AsicVersion = 2    # 1 or 2
-    xmlConfiguration = 4   # 0 = test, 1=short exposure, 2= long exposure, 3= pseudorandom, 4 = all 3 gain readout short exposure, 5 = all 3 gain readout long exposure
+    xmlConfiguration = 2   # 0 = test, 1=short exposure, 2= long exposure, 3= pseudorandom, 4 = all 3 gain readout short exposure, 5 = all 3 gain readout long exposure
 	# (also for pseudo random  select that in asic data type and disable fast strobe for asicrx start)
 
     if AsicVersion == 1:
@@ -68,6 +68,14 @@ def LpdReadoutTest(femHost=None, femPort=None):
         else:
             SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
             FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
+            
+            #TODO: ckd to check if worth having these comments out lines kicking about..
+            # Config files taken from lpdFemGui:
+            #SlowControlXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AsicSlowParameters_lowpower.xml'
+            #FastCmdXmlString = '/u/ckd27546/workspace/xfel_workspace/LpdFemGui/config/AutoResets_ShortExposures_asicv2_jacv1.xml'
+            # Clone of jac's most recent xml files, for testing Two Tile System..
+#            SlowControlXmlString = 'ConfigFiles/AsicSlow_FromJaq.xml'
+#            FastCmdXmlString     = 'ConfigFiles/ManualReset_Fromjac.xml'
 
     print SlowControlXmlString
     print FastCmdXmlString
@@ -264,7 +272,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
     param = 'femNumTestCycles'
-    rc = theDevice.paramSet(param, 1)   # number of test cycles if LL Data Generator / PPC Data Direct selected
+    rc = theDevice.paramSet(param, 10)   # number of test cycles if LL Data Generator / PPC Data Direct selected
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
 
