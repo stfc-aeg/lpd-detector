@@ -12,7 +12,15 @@ import os, sys, time, socket
 import numpy as np
 from PyQt4 import QtCore
 
-import h5py
+# Import HDF5 Library; Disable its use if library not installed on PC
+try:
+    import h5py
+except:
+    # "No HDF5 Library detected - Disabling file writing"
+    bHDF5 = False
+else:
+    # "HDF5 Library present."
+    bHDF5 = True
 
 #Display received data in plots
 bDisplayPlotData = True
@@ -210,8 +218,11 @@ class FrameProcessor(QtCore.QObject):
         self.numFrames = numFrames
         self.evrData = None
         
-#        self.runNumber = cachedParams['runNumber']
-        self.fileWriteEnable = cachedParams['fileWriteEnable']
+        #Only allow writing of HDF5 files if h5py library installed..
+        if bHDF5:
+            self.fileWriteEnable = cachedParams['fileWriteEnable']
+        else:
+            self.fileWriteEnable = False
         self.dataFilePath = cachedParams['dataFilePath']
         self.liveViewDivisor = cachedParams['liveViewDivisor']
         self.liveViewOffset  = cachedParams['liveViewOffset']
