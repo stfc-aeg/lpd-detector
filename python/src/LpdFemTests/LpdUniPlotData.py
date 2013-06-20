@@ -161,9 +161,17 @@ class LpdUniPlotData(QMainWindow):
         self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)                   
         self.imgObject = self.axes.imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
 
+        # Position colorbar according to selected Asic Module Type
+        if self.asicModuleType == 2:
+            # 2-Tile: horizontal
+            cBarPosn = 'horizontal'
+        else:
+            # Super Module, etc: vertical 
+            cBarPosn = 'vertical'
+        
         # Create nd show a colourbar
-        axc, kw = matplotlib.colorbar.make_axes(self.axes)
-        cb = matplotlib.colorbar.Colorbar(axc, self.imgObject)
+        axc, kw = matplotlib.colorbar.make_axes(self.axes, orientation=cBarPosn)
+        cb = matplotlib.colorbar.Colorbar(axc, self.imgObject, orientation=cBarPosn)
         self.imgObject.colorbar = cb
 
         # Add lines according to module type

@@ -152,52 +152,55 @@ class UdpReceiver(QtCore.QObject):
         '''
 
         try:
-            offset = 0
-            # TODO: Extract train number (the first four bytes)
-            frame_number = 0
-
-            # Extract packet number (the following four bytes)
-            packet_number = ord(data[offset-4]) 
-
-            trailer_info = ord(data[-1])
+            #Extract Trailer information
+            trailerInfo = np.zeros(2, dtype=np.uint32)
+            trailerInfo = np.fromstring(data[-8:], dtype=np.uint32)
+            
+            # Extract train/frame number (the second last 32 bit word from the raw data)
+            frameNumber = trailerInfo[0]
+            # Extract packet number (last 32 bit word)
+            packetNumber = trailerInfo[1] & 0x3FFFFFFF
 
             # Extract Start Of Frame, End of Frame
-            frm_sof = (trailer_info & 0x80) >> 7
-            frm_eof = (trailer_info & 0x40) >> 6
+            sof = (trailerInfo[1] >> (31)) & 0x1
+            eof = (trailerInfo[1] >> (30)) & 0x1
             
-            # frame_number = train number relative to execution of this software
-            #lpdFrame.frameNumber = frame_number
+            #TODO: Restore this link if frame number coming from fem before absolute?          
+            # frameNumber = train number relative to execution of this software
+            #lpdFrame.frameNumber = frameNumber
             
             if self.first_frm_num == -1:
-                self.first_frm_num = frame_number
+                self.first_frm_num = frameNumber
                 
-            frame_number = frame_number - self.first_frm_num
+            frameNumber = frameNumber - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packet_number != (self.packetNumber +1):
+            if packetNumber != (self.packetNumber +1):
+                
                 # packet numbering not consecutive
-                if packet_number > self.packetNumber:
+                if packetNumber > self.packetNumber:
+                    
                     # this packet lost between this packet and the last packet received
-                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
+                    print "Warning: Previous packet number: %3i while current packet number: %3i" % (self.packetNumber, packetNumber)
 
             # Update current packet number
-            self.packetNumber = packet_number
+            self.packetNumber = packetNumber
 
             # Timestamp start of frame (when we received first data of train)
-            if frm_sof == 1:
+            if sof == 1:
 
                 lpdFrame.timeStampSof = time.time()
         
                 # It's the start of a new train, clear any data left from previous train..
                 lpdFrame.rawImageData = ""                
 
-            if frm_eof == 1:
+            if eof == 1:
                 lpdFrame.timeStampEof = time.time()
             
             # Append current packet data onto raw image omitting trailer info
             lpdFrame.rawImageData += data[0:-8]
             
-            return frm_eof
+            return eof
         except Exception as e:
             print "processRxData() error: ", e
             return -1
@@ -404,7 +407,7 @@ class FrameProcessor(QtCore.QObject):
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
         
-        # 
+        # Check Asic Module type to determine how to process data
         if self.asicModuleType == FrameProcessor.AsicTypeRawData:
             # Raw data - no not re-order
             self.imageArray = self.pixelData[imageOffset:imageOffset + self.imageFullLpdSize].reshape(256, 256)

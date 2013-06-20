@@ -605,9 +605,9 @@ class LpdFemClient(FemClient):
     def dump_regs_hex(self, base_addr, nr_regs):
         """ hex dump of registers """
         
-        print 'rdma base addr = $%08X' % base_addr 
+        print "rdma base addr = $%08X" % base_addr 
         for i in range(0, nr_regs/2):
-            print 'reg %2d = $%08X     %2d = $%08X'   % ((i*2),   self.rdmaRead(base_addr+(i*2),   1)[0], (i*2+1), self.rdmaRead(base_addr+(i*2+1), 1)[0])
+            print "reg %2d = $%08X     %2d = $%08X"   % ((i*2),   self.rdmaRead(base_addr+(i*2),   1)[0], (i*2+1), self.rdmaRead(base_addr+(i*2+1), 1)[0])
 
     def setup_ppc_bram(self, base_addr, length):
         """ This function sets up the bram to provide ppc with run params """
@@ -1303,7 +1303,7 @@ class LpdFemClient(FemClient):
 
             while gen_busy == 1:
                 i=i+1
-                print 'Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs' % (self.tenGig0['link_nr'], i),
+                print "Waiting to Trigger Next Cycle : 10G link nr %2d is BUSY ; waiting %d secs" % (self.tenGig0['link_nr'], i),
                 sys.stdout.flush() 
                 time.sleep(1)                    
                 gen_busy = self.status_ll_frm_gen(data_gen_base) 
@@ -1403,54 +1403,54 @@ class LpdFemClient(FemClient):
 
     def get_ext_trig_strobe_count(self):
         """ This function gets the count nr of ext trigger strobes received (incl those inhibited) [READONLY] """
-        value = self.rdmaRead(self.trig_strobe+17, 1)[0]  
-        return value  
+        value = self.rdmaRead(self.trig_strobe+17, 1)[0]
+        return value
 
     def get_ext_trig_strobe_accepted_count(self):
         """ This function gets the count nr of ext trigger strobes accepted i.e. not inibited [READONLY] """
-        value = self.rdmaRead(self.trig_strobe+18, 1)[0]  
-        return value  
+        value = self.rdmaRead(self.trig_strobe+18, 1)[0]
+        return value
 
     def get_v5_firmware_vers(self):
         """ This function gets the firmware version loaded in main V5 FPGA [READONLY]   """
-        value = self.rdmaRead(self.fem_ctrl_0+17, 1)[0]  
-        return value  
+        value = self.rdmaRead(self.fem_ctrl_0+17, 1)[0]
+        return value
 
     def get_bot_sp3_firmware_vers(self):
         """ This function gets the firmware version loaded in BOT SP3 FPGA [READONLY]   """
-        value = -1        
+        value = -1
         try:
             value = self.rdmaRead(self.bot_sp3_ctrl+17, 1)[0]
         except FemClientError:
             print "WARNING: BOT SP3 Firmware version read failed"
-        return value  
+        return value
 
     def get_top_sp3_firmware_vers(self):
         """ This function gets the firmware version loaded in TOP SP3 FPGA [READONLY]   """
-        value = -1        
+        value = -1
         try:
             value = self.rdmaRead(self.top_sp3_ctrl+17, 1)[0]
         except FemClientError:
-            print "WARNING: TOP SP3 Firmware version read failed" 
-        return value  
+            print "WARNING: TOP SP3 Firmware version read failed"
+        return value
 
     def get_cfg_sp3_firmware_vers(self):
         """ This function gets the firmware version loaded in CFG SP3 FPGA [READONLY]   """
-        value = -1        
+        value = -1
         try:
             value = self.rdmaRead(self.cfg_sp3_ctrl+17, 1)[0]
         except FemClientError:
-            print "WARNING: CFG SP3 Firmware version read failed" 
-        return value   
+            print "WARNING: CFG SP3 Firmware version read failed"
+        return value
 
     def set_ext_trig_strobe_max(self, value):
         """ This function sets the nr of ext strobes to trigger readout """
-        self.rdmaWrite(self.trig_strobe+4, value)  
+        self.rdmaWrite(self.trig_strobe+4, value)
 
     def get_ext_trig_strobe_max(self):
         """ This function returns the nr of ext strobes to trigger readout """
-        value = self.rdmaRead(self.trig_strobe+4, 1)[0]  
-        return value        
+        value = self.rdmaRead(self.trig_strobe+4, 1)[0]
+        return value
 
     def set_ext_trig_strobe_polarity(self, value):
         """ This function selects ext trigger strobe polarity """
@@ -1602,23 +1602,23 @@ class LpdFemClient(FemClient):
                 #sys.stdout.flush()  
 
         else:  # else start run and use external c&c strobes
-            print 'Run is STARTED. Waiting for %d trigger strobes' %self.femNumTestCycles 
+            print "Run is STARTED. Waiting for %d trigger strobes" %self.femNumTestCycles 
             self.enable_ext_trig_strobe()
             nr_ext_trig_strobes = 0
             nr_ext_trig_strobes_accepted = 0
             while nr_ext_trig_strobes_accepted < self.femNumTestCycles:
                 nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
             self.disable_ext_trig_strobe()
-            print 'Run is STOPPED' 
+            print "Run is STOPPED" 
 
         print "======== Train Cycle Completed ===========" 
         #time.sleep(2)   # just to see output before dumping registers
 
         print ""
-        print '     V5 FPGA Firmware vers = %08x' %self.get_v5_firmware_vers() 
-        print 'BOT SP3 FPGA Firmware vers = %08x' %self.get_bot_sp3_firmware_vers() 
-        print 'TOP SP3 FPGA Firmware vers = %08x' %self.get_top_sp3_firmware_vers() 
-        print 'CFG SP3 FPGA Firmware vers = %08x' %self.get_cfg_sp3_firmware_vers() 
+        print "     V5 FPGA Firmware vers = %08x" % self.get_v5_firmware_vers()
+        print "BOT SP3 FPGA Firmware vers = %08x" % self.get_bot_sp3_firmware_vers()
+        print "TOP SP3 FPGA Firmware vers = %08x" % self.get_top_sp3_firmware_vers()
+        print "CFG SP3 FPGA Firmware vers = %08x" % self.get_cfg_sp3_firmware_vers()
 
         # Read out all registers (Both 2 tile & supermodule run fine without) 
 #        if self.femDebugLevel > 0:
@@ -2286,4 +2286,29 @@ class LpdFemClient(FemClient):
             Set tenGig0NumberOfFrames
         '''
         self.tenGig0['num_frames'] = aValue
+
+    def femV5FirmwareVersionGet(self):
+        '''
+            Get femV5FirmwareVersion
+        '''
+        return self.get_v5_firmware_vers()
+
+    def femBotSp3FirmwareVersionGet(self):
+        '''
+            Get femBotSp3FirmwareVersion
+        '''
+        return self.get_bot_sp3_firmware_vers()
+
+    def femTopSp3FirmwareVersionGet(self):
+        '''
+            Get femTopSp3FirmwareVersion
+        '''
+        return self.get_top_sp3_firmware_vers()
+
+    def femCfgSp3FirmwareVersionGet(self):
+        '''
+            Get femCfgSp3FirmwareVersion
+        '''
+        return self.get_cfg_sp3_firmware_vers()
+        
 

@@ -672,6 +672,26 @@ class LpdDeviceParameters(object):
         self.expectedParameters['tenGig0NumberOfFrames']            = AttributeContainer(int, 'TenGig0NumberOfFrames', '10GigE 0 Number of frames to send in each cycle',
                                                                           0, 512, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
+        #
+        # Firmware version variables - used to obtain read only, firmware version numbers
+        #
+
+        self.expectedParameters['femV5FirmwareVersion']        = AttributeContainer(int, 'FemV5FirmwareVersion', 'FEM V5 Firmware Version',
+                                                                        0, 4294967295,  None,
+                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
+
+        self.expectedParameters['femBotSp3FirmwareVersion']        = AttributeContainer(int, 'FemBotSp3FirmwareVersion', 'FEM Bottom SP3 FPGA Firmware Version',
+                                                                        0, 4294967295,  None,
+                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
+
+        self.expectedParameters['femTopSp3FirmwareVersion']        = AttributeContainer(int, 'FemTopSp3FirmwareVersion', 'FEM Top SP3 FPGA Firmware Version',
+                                                                        0, 4294967295,  None,
+                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
+
+        self.expectedParameters['femCfgSp3FirmwareVersion']        = AttributeContainer(int, 'FemCfgSp3FirmwareVersion', 'FEM Config SP3 FPGA Firmware Version',
+                                                                        0, 4294967295,  None,
+                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
     
     def get(self):
         '''
