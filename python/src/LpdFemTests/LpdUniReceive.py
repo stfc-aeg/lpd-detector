@@ -38,7 +38,7 @@ class LpdFemDataReceiver(QtCore.QObject):
             self.numFrames = numFrames
             self.appMain = appMain
             self.debugLevel = cachedParams['debugLevel']
-
+            
             # Create UDP recevier, frame processor and data monitor objects
             self.udpReceiver = UdpReceiver(listenAddr, listenPort, numFrames)
             self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal)
@@ -64,7 +64,8 @@ class LpdFemDataReceiver(QtCore.QObject):
             self.udpReceiverThread.start()
             
         except Exception as e:
-            print "LdpFemDataReceiver got exception during initialisation: %s" % e
+            print "LpdFemDataReceiver got exception during initialisation: %s" % e
+            raise(e)
 
     def awaitCompletion(self):
 
@@ -114,7 +115,7 @@ class UdpReceiver(QtCore.QObject):
         self.sock.bind((listenAddr, listenPort))
 
         print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-        print "UDP Receiver thread listening on address %s port %s" % (listenAddr, listenPort)
+        print "UDP Receiver thread listening on address %s port %s  (%i frames/file)" % (listenAddr, listenPort, numFrames)
 
     def closeConnection(self):
 
@@ -239,7 +240,7 @@ class FrameProcessor(QtCore.QObject):
             print "liveViewDivisor: ", self.liveViewDivisor
             print "liveViewOffset:  ", self.liveViewOffset
             print "asicModuleType:  ", self.asicModuleType
-            print "1debugLevel:      ", self.debugLevel
+            print "debugLevel:      ", self.debugLevel
         
         self.liveViewSignal = liveViewSignal
 
@@ -292,7 +293,6 @@ class FrameProcessor(QtCore.QObject):
         fileName = self.dataFilePath
 
         try:
-            print "Trying fileName: ", fileName, ".."
             self.hdfFile = h5py.File(fileName, 'w')
         except IOError as e:
             # Did it fail because file previous used?

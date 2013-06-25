@@ -14,7 +14,7 @@ from PyQt4 import QtGui
 
 class LpdUniReceiveStart():
     
-    def __init__(self, app, femHost, femPort, asicModuleType, numFrames, fileName, debugLevel):
+    def __init__(self, app, femHost, femPort, asicModuleType, numFrames, fileName, debugLevel, viewDivisor, viewOffset):
 
         #Serves no further function but app (QApplication) must exist before instantiating liveViewWindow
         self.app = app
@@ -23,7 +23,7 @@ class LpdUniReceiveStart():
                               'fileWriteEnable'   : True,
                               'liveViewDivisor'   : 1,
                               'liveViewOffset'    : 0,
-                              'asicModuleType'    : 0,  #0=super module, 2=2-tile module, #TODO: Add stand-alone fem in future for jac
+                              'asicModuleType'    : 0,
                               'debugLevel'        : 2,
                          }
         
@@ -33,6 +33,8 @@ class LpdUniReceiveStart():
         self.numFrames = numFrames
         self.cachedParams['asicModuleType'] = asicModuleType    # 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone, 4=raw data, supermodule
         self.cachedParams['debugLevel'] = debugLevel
+        self.cachedParams['liveViewDivisor'] = viewDivisor
+        self.cachedParams['liveViewOffset'] = viewOffset
         
         if fileName == None:
             # Do not write to file if no path specified
@@ -75,10 +77,10 @@ class DataReceiverThread(QtCore.QThread):
                 print "DataReceiverThread ERROR: failed to await completion of data receiver threads: %s" % e
                 return
         
-def main(femHost, femPort, asicModuletype, numFrames, fileName, debugLevel):
+def main(femHost, femPort, asicModuletype, numFrames, fileName, debugLevel, viewDivisor, viewOffset):
     
     app = QtGui.QApplication(sys.argv)
-    obj = LpdUniReceiveStart(app, femHost, femPort, asicModuletype, numFrames, fileName, debugLevel)
+    obj = LpdUniReceiveStart(app, femHost, femPort, asicModuletype, numFrames, fileName, debugLevel, viewDivisor, viewOffset)
 
     drThread = DataReceiverThread(obj)
     drThread.start()
@@ -87,49 +89,58 @@ def main(femHost, femPort, asicModuletype, numFrames, fileName, debugLevel):
 
 if __name__ == '__main__':
 
+    # Default parser values
+    asicModule  = 0
+    femHost     = '10.0.0.1'
+    femPort     = 61649
+    numFrames   = 5
+    fileName    = None
+    debugLevel  = 0
+    viewDivisor = 4
+    viewOffset  = 3
 
     # Create parser object and arguments
-    parser = argparse.ArgumentParser(description=" ", epilog="Example usage: 'python LpdUniReceiveStart.py --asicmodule 0 --file /tmp/superModData.hdf5 --numframes 10 --debuglevel 2'")
+    parser = argparse.ArgumentParser(description="Note that writing to file only possible where hdf5 library installed locally", epilog="Example usage: 'python LpdUniReceiveStart.py --asicmodule 0 --femhost 127.0.0.1 --femport 50001 --file /tmp/superModData.hdf5 --numframes 10 --viewdivisor 4 --viewoffset 3'    [local host/port, superModule, 10 frames per readout, View 3rd image of every train]")
 
-    parser.add_argument("--femhost",    help="switch LV on (1) or off (0)", type=str, default='10.0.0.1' )
-    parser.add_argument("--femport",    help="switch HV on (1) or off (0)", type=int, default=61649 )
-    parser.add_argument("--asicmodule", help="Set ASIC Module (0=supermodule, 1=Asic, 2=2-Tile , 3=fem, 4=Raw data)", type=int, choices=[0, 1, 2, 3, 4], default=0)
-    parser.add_argument("--numframes",  help="Set number of frames", type=int, default=4)
-    parser.add_argument("--file",       help="absolute path including filename", type=str, default=None)
-    parser.add_argument("--debuglevel", help="set debug level", type=int, choices=[0, 1, 2], default=0)
+    parser.add_argument("--femhost",    help="switch LV on (1) or off (0)", type=str, default=femHost )
+    parser.add_argument("--femport",    help="switch HV on (1) or off (0)", type=int, default=femPort )
+    parser.add_argument("--asicmodule", help="Set ASIC Module (0=supermodule, 1=Asic, 2=2-Tile , 3=fem, 4=Raw data)", type=int, choices=[0, 1, 2, 3, 4], default=asicModule)
+    parser.add_argument("--numframes",  help="Set number of frames", type=int, default=numFrames)
+    parser.add_argument("--file",       help="absolute path including filename", type=str, default=fileName)
+    parser.add_argument("--debuglevel", help="set debug level", type=int, choices=[0, 1, 2], default=debugLevel)
+    parser.add_argument("--viewdivisor",help="display every n image (across train(s))", type=int, default=viewDivisor)
+    parser.add_argument("--viewoffset", help="display image offset, e.g 0=first image, 1=2nd img, etc", type=int, default=viewOffset)
     args = parser.parse_args()
 
-    asicModule = 0
     if args.asicmodule != None:
         asicModule =  args.asicmodule
     
-    femHost = '10.0.0.1'
     if args.femhost != None:
         femHost = args.femhost
     
-    femPort = 61649
     if args.femport != None:
         femPort = args.femport
         
-    numFrames = 0
     if args.numframes != None:
         numFrames = args.numframes
 
-    fileName = None
     if args.file != None:
         fileName = args.file
     
-    debugLevel = 0
-    if args.file != None:
+    if args.debuglevel != None:
         debugLevel = args.debuglevel
+
+    if args.viewdivisor != None:
+        if args.viewdivisor == 0:
+            print "Illegal value: viewdivisor must be greater than zero"
+            sys.exit()
+        else:
+            viewDivisor = args.viewdivisor
+        
+    if args.viewoffset != None:
+        viewOffset = args.viewoffset
     
-#    print "asicModule = ", asicModule
-#    print "femHost =    ",femHost
-#    print "femPort =    ",femPort
-#    print "numFrames =  ",numFrames
-#    print "file(Path) = ", fileName
-    
-    main(femHost, femPort, asicModule, numFrames, fileName, debugLevel)
+    main(femHost, femPort, asicModule, numFrames, fileName, debugLevel, viewDivisor, viewOffset)
     
 
     
