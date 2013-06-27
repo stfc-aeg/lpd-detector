@@ -32,7 +32,7 @@ from PyQt4 import QtCore, QtGui
 
 
 # Enable or disable debugging
-bDebug = False
+bDebug = 0
 
 bNewRetrieveFunc = True
 
@@ -183,70 +183,46 @@ class BlitQT(FigureCanvas):
             
             ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
             
-            # Create 32 bit, Little-Endian, integer type using numpy
-            _32BitLittleEndianType = np.dtype('<i4')
-            # Simultaneously extract 32 bit words and swap the byte order
+            # Create 16 bit, Little-Endian, integer type using numpy
+            _16BitLittleEndianType = np.dtype('<i2')
+            # Simultaneously extract 16 bit words and swap the byte order
             #     eg: ABCD => DCBA
-            _32BitWordArray = np.fromstring(self.rawImageData, dtype=_32BitLittleEndianType)
+            self._16BitWordArray = np.fromstring(self.rawImageData, dtype=_16BitLittleEndianType)
             
-            if bDebug:
-                print "Extracted number of 32 bit words: ", len(_32BitWordArray)
-                # Display array content 32 bit integers
-                print "Array contents structured into 32 bit elements [byte swapped!]:"
-                self.display32BitArrayInHex(_32BitWordArray)
+            if bDebug > 5:
+                print "Extracted 16 bit words: ", len(self._16BitWordArray), ". Array contents: "
+                self.display16BitArrayInHex()
                 print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-            # Calculate length of 32 bit array
-            _32BitArrayLen = len(_32BitWordArray)
+            if bDebug > 7:
 
-            # Create empty array to store 16 bit elements (eg 32 Bit array * 2)
-            #     Each 32-bit word contain 2 pixels
-            self._16BitWordArray = np.zeros(_32BitArrayLen*2, dtype='i2')
-            
-            
-            # Split each 4 Byte element into 2 adjecent, 2 Byte elements
-            for rawIdx in range(_32BitArrayLen):
-                # Reverted back to NOT swapping ASIC pairs
-                self._16BitWordArray[rawIdx*2] = _32BitWordArray[rawIdx] >> 16
-                self._16BitWordArray[rawIdx*2 + 1]     = _32BitWordArray[rawIdx] & 0xFFFF
+                #TODO: Checking the Gain bits slows down displaying the read out data..
+                # Check the Gain bits (Bits 12-13);
+                # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
+                gainCounter = [0, 0, 0, 0]
+    
+                for idx in range( len(self._16BitWordArray) ):
+    
+                    # Check bits 12-13: 
+                    gainBits = self._16BitWordArray[idx] & 0x3000
+                    if gainBits > 0:
+                        # Gain isn't x100, determine its type
+                        gain = gainBits >> 12
+                        if gain == 1:
+                            # x10
+                            gainCounter[1] += 1
+                        elif gain == 2:
+                            # x1
+                            gainCounter[2] += 1
+                        else:
+                            # Invalid gain setting detected
+                            gainCounter[3] += 1
+                    else:
+                        # Gain is x100
+                        gainCounter[0] += 1
 
-#            # Check the Gain bits (Bits 12-13);
-#            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
-#            gainCounter = [0, 0, 0, 0]
-#
-#            #TODO: Checking the Gain bits slows down displaying the read out data..
-#            for idx in range( (_32BitArrayLen*2) ):
-#
-#                # Check bits 12-13: 
-#                gainBits = self._16BitWordArray[idx] & 0x3000
-#                if gainBits > 0:
-#                    # Gain isn't x100, determine its type
-#                    gain = gainBits >> 12
-#                    if gain == 1:
-#                        # x10
-#                        gainCounter[1] += 1
-#                    elif gain == 2:
-#                        # x1
-#                        gainCounter[2] += 1
-#                    else:
-#                        # Invalid gain setting detected
-#                        gainCounter[3] += 1
-#                else:
-#                    # Gain is x100
-#                    gainCounter[0] += 1
-#
-#            print "\nGain:      x100       x10        x1  (invalid)"
-#            print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
-#            del gainCounter
-            
-            
-            """ DEBUG INFO: """
-            if bDebug:
-                print "Number of 16 Bit Word: ", len(self._16BitWordArray)
-                # Display array contenting 16 bit elements:
-                print "Array contents re-structured into 16 bit elements:"
-                self.display16BitArrayInHex(self._16BitWordArray)
-                print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+                print "\nGain:      x100       x10        x1  (invalid)"
+                print "      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3])
 
             # Create hdf file - if HDF5 Library present
             if bHDF5:
@@ -348,43 +324,18 @@ class BlitQT(FigureCanvas):
 #
 #  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-    def display32BitArrayInHex(self, dataArray):
-        """ display32BitArrayInHex takes dataArray argument containing array of raw data
-            AFTER it's been byte swapped and then displays each 16 bit ADC value (each index/byte) 
+    def display16BitArrayInHex(self):
+        """ display16BitArrayInHex displays each 16 bit ADC value (each index/byte)
             .. Unless data_len hardcoded to 160..
         """
-        
-        data_len = len(dataArray)
-        
-        data_len = 160*5
-        
-        currentArrayElement = ""
-        try:
-            # Convert each 2 byte into 16 bit data and print that
-            for idx in range(data_len/2):
-                
-                if (idx %8 == 0):
-                    print "%6d : " % idx,
-                    
-                currentArrayElement =  currentArrayElement + "       %08X " % dataArray[idx]
-                
-                if (idx % 8 == 7):
-                    print currentArrayElement
-                    currentArrayElement = ""
-                
-            print "Number of 16 bit words: ", data_len/2
-        except Exception as e:
-            print "display32BitArrayInHex() error: ", e
-            exit(0)
-
-    def display16BitArrayInHex(self, dataArray):
-        """ display16BitArrayInHex takes dataArray argument containing array of raw data
-            AFTER it's been byte swapped and then displays each 16 bit ADC value (each index/byte)
-            .. Unless data_len hardcoded to 160..
-        """
-        data_len = len(dataArray)
-        
-        data_len = 160
+        if bDebug > 8:
+            data_len = len(self._16BitWordArray)
+        elif bDebug > 7:
+            data_len = len(self._16BitWordArray) / 2
+        elif bDebug > 6:
+            data_len = len(self._16BitWordArray) / 4
+        elif bDebug > 5:
+            data_len = 160
         
         currentArrayElement = ""
         try:
@@ -394,7 +345,7 @@ class BlitQT(FigureCanvas):
                 if (idx %16 == 0):
                     print "%6d : " % idx,
                     
-                currentArrayElement =  currentArrayElement + "   %04X " % dataArray[idx]
+                currentArrayElement =  currentArrayElement + "   %04X " % self._16BitWordArray[idx]
                 
                 if (idx % 16 == 15):
                     print currentArrayElement
@@ -404,7 +355,7 @@ class BlitQT(FigureCanvas):
         except Exception as e:
             print "display16BitArrayInHex() error: ", e
             exit(0)
-
+            
 # ~~~~~~~~~~~~ #
 
     def retrieveFirstTwoTileImageFromAsicData(self, dataBeginning):
@@ -422,9 +373,9 @@ class BlitQT(FigureCanvas):
         # Distance within the 64 word table that defines order of ASIC read out
         lookupTableAsicDistance = 0
 
-        if bDebug:
-            rawInfo = ""
-            imageInfo = ""
+#        if bDebug:
+#            rawInfo = ""
+#            imageInfo = ""
 
         # Iterate over 32 rows
         for row in range(32):
@@ -450,17 +401,17 @@ class BlitQT(FigureCanvas):
                         else:
                             lookupTableAsicDistance -= 1
                             
-                        if bDebug:
-                            rawInfo += "%6i" % self._16BitWordArray[dataBeginning + rawDataOffset]
-#                            imageInfo += "%5i" % imageIndex
+#                        if bDebug:
+#                            rawInfo += "%6i" % self._16BitWordArray[dataBeginning + rawDataOffset]
+##                            imageInfo += "%5i" % imageIndex
 
                     # Increment counter for rawDataOffset after columns*ASICs (16 ASICs) 
                     rawCounter += 1
                     
-                    if bDebug:
-                        if row < 3: # 2:
-                            print rawInfo, " => ", imageInfo
-                        rawInfo = imageInfo = ""
+#                    if bDebug:
+#                        if row < 3: # 2:
+#                            print rawInfo, " => ", imageInfo
+#                        rawInfo = imageInfo = ""
                         
                 except IndexError:
                     # If end of array reached, will raise IndexError
@@ -556,7 +507,7 @@ class BlitQT(FigureCanvas):
         rawFrameNumber = -1
 
         ''' DEBUGGING INFORMATION '''
-        if bDebug:
+        if bDebug > 8:
             if ( ( ord(data[-1]) & 0x80) >> 7 ) == 1:
                 print "The last eight bytes of each packet:"
                 print "-- -- -- -- -- -- -- -- -- -- -- --"
