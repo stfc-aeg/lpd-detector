@@ -456,19 +456,19 @@ class LpdDeviceParameters(object):
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['tenGig0SourceIp']      = AttributeContainer(str, 'TenGigE0SourceIp', '10GigE 0 UDP Source IP Address',
-                                                                      None, None, '10.0.1.1',
+                                                                      None, None, '10.0.0.2',
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['tenGig0SourcePort']    = AttributeContainer(int, 'TenGigE0SourcePort', '10GigE 0 UDP Source Port',
-                                                                      0, 65535, 8,
+                                                                      0, 65535, 0,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['tenGig0DestMac']       = AttributeContainer(str, 'TenGigE0DestMAC', '10GigE 0 UDP Destination MAC Address',
-                                                                      None, None, '00-07-43-01-01-01',
+                                                                      None, None, '00-07-43-10-61-88',
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['tenGig0DestIp']        = AttributeContainer(str, 'TenGigE0DestIp', '10GigE 0 UDP Destination IP Address',
-                                                                      None, None, '10.0.1.2',
+                                                                      None, None, '10.0.0.1',
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['tenGig0DestPort']      = AttributeContainer(int, 'TenGigE0DestPort', '10GigE 0 UDP Destination Port',
@@ -523,7 +523,7 @@ class LpdDeviceParameters(object):
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['femDataSource']                = AttributeContainer(int, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (from Rxblock), 2=frame generator, 3=PPC (preprogrammed)',
-                                                                      0, 3, 1,
+                                                                      0, 3, 0,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
 #        self.expectedParameters['femAsicEnableMask']            = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
@@ -535,7 +535,7 @@ class LpdDeviceParameters(object):
         
         #TODO: Update description? # LCLS proved 130 fine, crashes at 250
         self.expectedParameters['femAsicColumns']               = AttributeContainer(int, 'FemAsicColumns', 'Sets ASIC RX readout size (time-slices) per trigger',
-                                                                         0, 130, 1,
+                                                                         0, 130, 4,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['femAsicGainOverride']          = AttributeContainer(int, 'FemAsicGainOverride', 'Overrides ASIC gain selection algorithm (0=normal, 8=x100, 9=x10, 11=x1',
@@ -555,7 +555,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam ,'AllOk.Idle')
         
         self.expectedParameters['femAsicPixelSelfTestOverride'] = AttributeContainer(int, 'FemAsicPixelSelfTestOverride', 'ASIC per-pixel override of self-test enable: 1 = enabled',
-                                                                          0, 1, 1,
+                                                                          0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         #TODO: Not yet Implemented
@@ -602,7 +602,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femPpcResetDelay']                 = AttributeContainer(int, 'FemPpcResetDelay', 'Delay after resetting ppc',
-                                                                          0, 10, 5,
+                                                                          0, 10, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femNumTestCycles']                 = AttributeContainer(int, 'FemNumTestCycles', 'Number of test cycles if LL Data Generator or PPC Data Direct selected',
@@ -621,8 +621,8 @@ class LpdDeviceParameters(object):
                                                                           1, 2, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicClockSource']               = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Clock sync with xray, 1=Fem local oscillator',
-                                                                          0, 1, 1,
+        self.expectedParameters['femAsicClockSource']               = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator, 1=Clock sync with xray',
+                                                                          0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femBeamClockSource']               = AttributeContainer(int, 'FemBeamClockSource', 'Xray sync clock source 0=XFEL, 1=PETRA',
@@ -630,7 +630,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femBeamTriggerSource']             = AttributeContainer(int, 'FemBeamTriggerSource', 'Fem beam trigger source 0=XFEL Clock & Ctrl system, 1=Software',
-                                                                          0, 1, 0,
+                                                                          0, 1, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['femBeamTriggerPetra']              = AttributeContainer(int, 'FemBeamTriggerPetra', 'Fem Petra beam trigger source 0=XFEL reset line as for LCLS, 1=special trigger for Petra derived from clock',
@@ -638,7 +638,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femExternalTriggerStrobeDelay']    = AttributeContainer(int, 'FemExternalTriggerStrobeDelay', 'Fem external trigger strobe delay (in ASIC clock periods)',
-                                                                          0, 65536, 0,
+                                                                          0, 65536, 100,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femExternalTriggerStrobeInhibit']  = AttributeContainer(int, 'FemExternalTriggerStrobeInhibit', 'Fem external trigger strobe inhibit (in ASIC clock periods)',
@@ -646,7 +646,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femDelaySensors']                  = AttributeContainer(int, 'FemDelaySensors', 'Fem delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB',
-                                                                          0, 0xFFFF, 0xFFEF,
+                                                                          0, 0xFFFF, 0xFFFF,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         self.expectedParameters['femGainFromFastCmd']               = AttributeContainer(int, 'FemGainFromFastCmd', 'Fem Gain Selection Mode 0=Asic gain selected by register, 1=Asic gain selected by fast cmd file commands',

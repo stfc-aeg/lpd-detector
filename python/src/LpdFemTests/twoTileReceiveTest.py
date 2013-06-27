@@ -34,7 +34,7 @@ from PyQt4 import QtCore, QtGui
 # Enable or disable debugging
 bDebug = 0
 
-bNewRetrieveFunc = True
+#bNewRetrieveFunc = True
 
 # Define variables used as arguments by
 # Subplot function call: subplot(plotRows, plotCols, plotMaxPlots)
@@ -196,7 +196,6 @@ class BlitQT(FigureCanvas):
 
             if bDebug > 7:
 
-                #TODO: Checking the Gain bits slows down displaying the read out data..
                 # Check the Gain bits (Bits 12-13);
                 # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
                 gainCounter = [0, 0, 0, 0]
@@ -245,11 +244,8 @@ class BlitQT(FigureCanvas):
                 t1 = time.time()
                 self.timeStart.append(t1)
 
-                # Get the first image of the image
-                if bNewRetrieveFunc:
-                    bNextImageAvailable = self.retrieveFirstImage(dataBeginning)
-                else:
-                    bNextImageAvailable = self.retrieveFirstTwoTileImageFromAsicData(dataBeginning)
+                # Get the first image of the train
+                bNextImageAvailable = self.retrieveImage(dataBeginning)
                     
                 t2 = time.time()
                 self.timeStop.append(t2)
@@ -289,19 +285,15 @@ class BlitQT(FigureCanvas):
             else:
                 # Finished this train - work out timings..
                 if len(self.timeStart) != len(self.timeStop):
-                    print "Missmatch between timeStart %i and timeStop %i" % (len(self.timeStart), len(self.timeStop))
+                    print "Mismatch between timeStart %i and timeStop %i" % (len(self.timeStart), len(self.timeStop))
                 else:
-                    if bNewRetrieveFunc:
-                        print "New Func ",
-                    else:
-                        print "Old Func ",
                     delta = 0
-                    sum = 0
+                    tSum = 0
                     for idx in range(len(self.timeStart)):
                         delta = self.timeStop[idx] - self.timeStart[idx]
-                        sum += delta
-                    print "Average time executing fuction: ", (sum / len(self.timeStop))
-                                                                                              
+                        tSum += delta
+                    print "Average time executing fuction: ", (tSum / len(self.timeStop))
+
                 # Finished - Close file if HDF5 Library present
                 if bHDF5:
                     hdfFile.close()
@@ -358,80 +350,7 @@ class BlitQT(FigureCanvas):
             
 # ~~~~~~~~~~~~ #
 
-    def retrieveFirstTwoTileImageFromAsicData(self, dataBeginning):
-        """ Extracts one image beginning at argument dataBeginning in the member array 
-            self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
-            the current image is the last image in the data
-        """
-        # Distance between two consecutive pixels within the same ASIC in the quadrant detector
-        pixelDistance = 128
-        # Boolean variable to track whether there is a image after this one in the data
-        bNextImageAvailable = False
-        # Counter variables
-        imageIndex = 0
-        rawCounter = 0
-        # Distance within the 64 word table that defines order of ASIC read out
-        lookupTableAsicDistance = 0
-
-#        if bDebug:
-#            rawInfo = ""
-#            imageInfo = ""
-
-        # Iterate over 32 rows
-        for row in range(32):
-            
-            # Iterate over 16 columns
-            for column in range(16):
-
-                # Go in reverse order from ASIC 32-25, 112-105
-                lookupTableAsicDistance = 32-1
-                try:
-                    
-                    # Iterate over the 16 ASICs
-                    for asicOffset in range(16):
-                        
-                        imageIndex = 15 + (16 * asicOffset) - column + (self.ncols * row)
-                        rawDataOffset = lookupTableAsicDistance + (pixelDistance * rawCounter)
-                        
-                        self.imageArray[ imageIndex ] = self._16BitWordArray[dataBeginning + rawDataOffset]
-                    
-                        # Need to update lookupTableAsicDistance manually for ASIC 122
-                        if asicOffset is 7:
-                            lookupTableAsicDistance = 112-1
-                        else:
-                            lookupTableAsicDistance -= 1
-                            
-#                        if bDebug:
-#                            rawInfo += "%6i" % self._16BitWordArray[dataBeginning + rawDataOffset]
-##                            imageInfo += "%5i" % imageIndex
-
-                    # Increment counter for rawDataOffset after columns*ASICs (16 ASICs) 
-                    rawCounter += 1
-                    
-#                    if bDebug:
-#                        if row < 3: # 2:
-#                            print rawInfo, " => ", imageInfo
-#                        rawInfo = imageInfo = ""
-                        
-                except IndexError:
-                    # If end of array reached, will raise IndexError
-                    print "2T, IndexError, debug: %3i %3i %3i, %4i,  %6i " % (row, column, asicOffset, lookupTableAsicDistance, rawDataOffset)
-                    break
-                except Exception as e:
-                    print "Error while extracting image: ", e, "\nExiting.."
-                    exit()
-
-        # Check whether this is the last image in the image data..
-        #    NOTE: the 8192 pixels come from a region spanning 65,536 pixel in the quadrant data
-        try:
-            self._16BitWordArray[dataBeginning + 65536]
-            # Will only get here if there is a next image available..
-            bNextImageAvailable = True
-        except IndexError:
-            pass    # Last Image detected in this train
-        return bNextImageAvailable
-
-    def retrieveFirstImage(self, dataBeginning):
+    def retrieveImage(self, dataBeginning):
         """ Faster implementation by adopting super module algorithm
             Extracts one image beginning at argument dataBeginning in the member array 
             self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
@@ -470,10 +389,6 @@ class BlitQT(FigureCanvas):
             print "Debug info: %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
             sys.exit()
 
-        # TODO: Don't swapping 1st row with last row, second row with second last row, etc for Two Tile System
-        # TODO: BUT, must swap rows for Super Module !
-#        self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
-
         # Create array for 2 Tile data; reshape into two dimensional array
         self.imageArray = np.zeros(32*256, dtype=np.uint16)
         self.imageArray = self.imageArray.reshape(32, 256)
@@ -499,70 +414,55 @@ class BlitQT(FigureCanvas):
         return bNextImageAvailable
 
     def processRxData(self, data):
-        """ Process (chunks of) UDP data into packets of a frame 
-            [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
+        """ 
+        Processes received data packets, decoding the Train Transfer Protocol information
+        to construct completed frames (trains) 
         """
-                
-        # Save the read frame number as it'll be modified to be RELATIVE before we reach the end of this function.. 
-        rawFrameNumber = -1
 
-        ''' DEBUGGING INFORMATION '''
-        if bDebug > 8:
-            if ( ( ord(data[-1]) & 0x80) >> 7 ) == 1:
-                print "The last eight bytes of each packet:"
-                print "-- -- -- -- -- -- -- -- -- -- -- --"
-                print "  -8, -7, -6, -5, -4, -3, -2, -1"
-            sDebug = ""
-            for i in range(8, 0, -1):
-                sDebug += "%4X" % ord( data[-i] )
-            print sDebug
-        
         try:
-            offset = 0
-            # Extract frame number (the penultimate last four bytes) - Needs to be modified to match trailer mode (i.e. offset-X..)
-#            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
-            frame_number = 0
-            # Extract packet number (the ante pre-penultimate byte; if offset-1 is last, it's offset-4)
-            packet_number = ord(data[offset-4])
-
-            trailer_info = ord(data[-1])
-#            print "trailer_info: ", trailer_info
-            # Extract Start Of Frame, End of Frame
-#            frm_sof = (packet_number & 0x80000000) >> 31
-#            frm_eof = (packet_number & 0x40000000) >> 30
-            frm_sof = (trailer_info & 0x80) >> 7
-            frm_eof = (trailer_info & 0x40) >> 6
-#            packet_number = packet_number & 0x3FFFFFFF
+            # Extract Trailer information
+            trailerInfo = np.zeros(2, dtype=np.uint32)
+            trailerInfo = np.fromstring(data[-8:], dtype=np.uint32)
             
-#            print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
-            # rawFrameNumber = train number read from packet
-            # frame_number = train number relative to execution of this software
-            rawFrameNumber = frame_number
+            # Extract train/frame number (the second last 32 bit word from the raw data)
+            frameNumber = trailerInfo[0]
+            # Extract packet number (last 32 bit word)
+            packetNumber = trailerInfo[1] & 0x3FFFFFFF
+
+            # Extract Start Of Frame, End of Frame
+            sof = (trailerInfo[1] >> (31)) & 0x1
+            eof = (trailerInfo[1] >> (30)) & 0x1
+
+            if bDebug > 0:
+                if sof == 1:
+                    print "-=-=-=-=- FrameNumber PacketNumber"
+                print "trailerInfo: %8X %8X " % (trailerInfo[0], trailerInfo[1])
+                if eof == 1:
+                    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-" 
             
             if self.first_frm_num == -1:
-                self.first_frm_num = frame_number
+                self.first_frm_num = frameNumber
                 
-            frame_number = frame_number - self.first_frm_num
+            frameNumber = frameNumber - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packet_number != (self.packetNumber +1):
+            if packetNumber != (self.packetNumber +1):
+                
                 # packet numbering not consecutive
-                print "Warning: Previous packet number: %3i This packet number: %3i" % (self.packetNumber, packet_number)
+                if packetNumber > self.packetNumber:
+                    
+                    # this packet lost between this packet and the last packet received
+                    print "Warning: Previous packet number: %3i while current packet number: %3i" % (self.packetNumber, packetNumber)
 
             # Update current packet number
-            self.packetNumber = packet_number
+            self.packetNumber = packetNumber
 
-            if frm_eof == 1:
-                self.j=self.j+1
-            else:
-                pass
-            
             # Not yet end of file: copy current packet contents onto (previous) packet contents
-            # Last 8 bytes are frame number and packet number - omitting those..
+            # Last 8 bytes are frame number and packet number - omit these
             self.rawImageData = self.rawImageData + data[0:-8]
 
             # Return train number and end of frame
-            return rawFrameNumber, frm_eof
+            return frameNumber, eof
         except Exception as e:
             print "processRxData() error: ", e
             return -1, -1

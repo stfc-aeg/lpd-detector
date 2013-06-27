@@ -57,8 +57,6 @@ class LpdImageObject(object):
         self.rawImageData = ""
         self.frameNumber = frameNumber
         self.timeStampSof = 0.0
-#        self.timeStampEof = 0.0
-#        self.packetNumber = -1
 
     ### Create timestamp with seconds in fraction of 9 decimal points
 #dt = datetime.datetime.now().strftime("%m%d-%H:%M:%S")
@@ -78,7 +76,6 @@ class RxThread(QtCore.QThread):
         ###############################################
         # Initialising variables used by processRxData..
         self.first_frm_num = -1
-        self.j = 0
         
         ###############################################
         QtCore.QThread.__init__(self)
@@ -98,13 +95,13 @@ class RxThread(QtCore.QThread):
         try:
             while 1:
                 foundEof = 0
-                lpdImage = LpdImageObject(frameCount)
+                lpdFrame = LpdImageObject(frameCount)
                 while foundEof == 0:
                     stream = self.sock.recv(9000)
-                    foundEof  = self.processRxData(lpdImage, stream)
+                    foundEof  = self.processRxData(lpdFrame, stream)
                     if foundEof:
                         # Complete frame received, transmit frame along with meta data saved in LpdImageObject object
-                        self.rxSignal.emit(lpdImage)
+                        self.rxSignal.emit(lpdFrame)
                         # Increment frame counter
                         frameCount += 1
                         
@@ -112,79 +109,71 @@ class RxThread(QtCore.QThread):
             print "processRxData() failed: ", e, "\nExiting.."
             sys.exit()
 
-    def processRxData(self, lpdImage, data):
-        """ Process (chunks of) UDP data into packets of a frame 
-            [Code inherited from Rob - See: udp_rx_ll_mon_header_2_CA.py]
+    def processRxData(self, lpdFrame, data):
+        """ 
+        Processes received data packets, decoding the Train Transfer Protocol information
+        to construct completed frames (trains) 
         """
 
-        # Save the read train number as it'll be modified to be RELATIVE before we reach the end of this function.. 
-        rawFrameNumber = -1
-
         try:
-            offset = 0
-            # Extract train number (the first four bytes)
-#            frame_number = (ord(data[offset+3]) << 24) + (ord(data[offset+2]) << 16) + (ord(data[offset+1]) << 8) + ord(data[offset+0])
-            frame_number = 0
-            # Extract packet number (the following four bytes)
-            packet_number = ord(data[offset-4]) #(ord(data[offset+7]) << 24) + (ord(data[offset+6]) << 16) + (ord(data[offset+5]) << 8) + ord(data[offset+4])
-#            packet_number = 0
-            trailer_info = ord(data[-1])
-#            print "trailer_info: ", trailer_info
-            # Extract Start Of Frame, End of Frame
-            frm_sof = (trailer_info & 0x80) >> 7
-            frm_eof = (trailer_info & 0x40) >> 6
-#            packet_number = packet_number & 0x3FFFFFFF
+            # Extract Trailer information
+            trailerInfo = np.zeros(2, dtype=np.uint32)
+            trailerInfo = np.fromstring(data[-8:], dtype=np.uint32)
             
-            if bDebug > 8:
-                print "sof/eof = %4X, %4X" % (frm_sof, frm_eof),
-            # frame_number = train number relative to execution of this software
-            lpdImage.frameNumber = frame_number
+            # Extract train/frame number (the second last 32 bit word from the raw data)
+            frameNumber = trailerInfo[0]
+            # Extract packet number (last 32 bit word)
+            packetNumber = trailerInfo[1] & 0x3FFFFFFF
+
+            # Extract Start Of Frame, End of Frame
+            sof = (trailerInfo[1] >> (31)) & 0x1
+            eof = (trailerInfo[1] >> (30)) & 0x1
+
+            if bDebug > 0:
+                if sof == 1:
+                    print "-=-=-=-=- FrameNumber PacketNumber"
+                print "trailerInfo: %8X %8X " % (trailerInfo[0], trailerInfo[1])
+                if eof == 1:
+                    print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-" 
+            
+            #TODO: Restore this link if frame number coming from fem before absolute?          
+            # frameNumber = train number relative to execution of this software
+            #lpdFrame.frameNumber = frameNumber
             
             if self.first_frm_num == -1:
-                self.first_frm_num = frame_number
+                self.first_frm_num = frameNumber
                 
-            frame_number = frame_number - self.first_frm_num
+            frameNumber = frameNumber - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packet_number != (self.packetNumber +1):
+            if packetNumber != (self.packetNumber +1):
+                
                 # packet numbering not consecutive
-                if packet_number > self.packetNumber:
+                if packetNumber > self.packetNumber:
+                    
                     # this packet lost between this packet and the last packet received
-                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
+                    print "Warning: Previous packet number: %3i while current packet number: %3i" % (self.packetNumber, packetNumber)
 
             # Update current packet number
-            self.packetNumber = packet_number
+            self.packetNumber = packetNumber
 
             # Timestamp start of frame (when we received first data of train)
-            if frm_sof == 1:
-                
+            if sof == 1:
+
+                lpdFrame.timeStampSof = time.time()
                 # It's the start of a new train, clear any data left from previous train..
-                lpdImage.rawImageData = ""
-                
-                if bTimeStamp:
-                    lpdImage.timeStampSof = time.time()
+                lpdFrame.rawImageData = ""                
 
-            if frm_eof == 1:
-                self.j=self.j+1
-
-                if bTimeStamp:
-                    self.timeStampEof = time.time()
-                    print "UDP data receive time:               %.9f" % (self.timeStampEof - lpdImage.timeStampSof)
-            else:
-                pass
+            if eof == 1:
+                lpdFrame.timeStampEof = time.time()
             
-            # Not yet end of file: copy current packet contents onto (previous) packet contents
-            # Last 8 bytes are train number and packet number - omitting those..
-            # both are of type string..
-            lpdImage.rawImageData += data[0:-8]
-            # Return train number and end of train
-            #return rawFrameNumber, frm_eof
+            # Append current packet data onto raw image omitting trailer info
+            lpdFrame.rawImageData += data[0:-8]
             
-            return frm_eof
+            return eof
         except Exception as e:
             print "processRxData() error: ", e
             return -1
-
 
 
 class BlitQT(FigureCanvas):
@@ -311,11 +300,11 @@ class BlitQT(FigureCanvas):
         # Create 16 bit, Little-Endian, integer type using numpy
         _16BitLittleEndianType = np.dtype('<i2')
 
-        # Simultaneously extract 32 bit words and swap the byte order
+        # Simultaneously extract 16 bit words and swap the byte order
         #     eg: ABCD => DCBA
         self._16BitWordArray = np.fromstring(dataRx.rawImageData, dtype=_16BitLittleEndianType)
     
-        if bDebug > 5:
+        if (bDebug > 2) and (bDebug < 8):
             print "Extracted 16 bit words: ", len(self._16BitWordArray), ". Array contents:"
             self.display16BitArrayInHex()
             print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
@@ -323,7 +312,6 @@ class BlitQT(FigureCanvas):
         if bDebug > 7:
             if bTimeStamp:
                 time2 = time.time()
-            #TODO: Checking the Gain bits slows down displaying the read out data..
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
             gainCounter = [0, 0, 0, 0]
@@ -370,7 +358,7 @@ class BlitQT(FigureCanvas):
             dataBeginning = self.imageSize*currentPlot
 
             # Get the first image of the image
-            bNextImageAvailable = self.retrieveFirstSuperModuleImageFromAsicData(dataBeginning)
+            bNextImageAvailable = self.retrieveImage(dataBeginning)
 
             # The first image, imageArray, has now been stripped from the image
             # Reshape image into 256 x 256 pixel array
@@ -449,8 +437,8 @@ class BlitQT(FigureCanvas):
             # Increment currentPlot
             currentPlot += 1
             if bTimeStamp:
-                time3 = time.time()
-                print "%.9f" %(time3 - timeD1)
+                timeD2 = time.time()
+                print "%.9f" %(timeD2 - timeD1)
         else:
             # Finished drawing subplots
 
@@ -486,13 +474,15 @@ class BlitQT(FigureCanvas):
         """ display16BitArrayInHex displays each 16 bit ADC value (each index/byte)
             .. Unless data_len hardcoded to 160..
         """
-        if bDebug > 8:
+        if bDebug > 6:
             data_len = len(self._16BitWordArray)
-        elif bDebug > 7:
-            data_len = len(self._16BitWordArray) / 2
-        elif bDebug > 6:
-            data_len = len(self._16BitWordArray) / 4
         elif bDebug > 5:
+            data_len = len(self._16BitWordArray) / 2
+        elif bDebug > 4:
+            data_len = len(self._16BitWordArray) / 4
+        elif bDebug > 3:
+            data_len = len(self._16BitWordArray) / 8
+        elif bDebug > 2:
             data_len = 160
         
         currentArrayElement = ""
@@ -515,7 +505,7 @@ class BlitQT(FigureCanvas):
             exit(0)
 
 
-    def retrieveFirstSuperModuleImageFromAsicData(self, dataBeginning):
+    def retrieveImage(self, dataBeginning):
         """ Extracts one image beginning at argument dataBeginning in the member array 
             self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
             the current image is the last image in the data
@@ -538,8 +528,6 @@ class BlitQT(FigureCanvas):
 
         rawOffset = dataBeginning
 
-        if bTimeStamp:
-            t1 = time.time()
         try:
             for asicRow in xrange(numRowsPerAsic):
                 for asicCol in xrange(numColsPerAsic):
@@ -568,21 +556,24 @@ class BlitQT(FigureCanvas):
         
 if __name__ == "__main__":
 
-    # Define legal argument ranges
-    reservedRange = range(2**17)
-    delayRange = range(2**3)
-
+    # Define default values
+    femHost = None
+    femPort = None
+    bTimeStamp = False
+    bDisplayPlotData = False
+    bHDF5 = False
+    bDebug = 0
+    
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="superModuleReceiveTest.py - Receive data from a Super Module. ",
                                      epilog="If no flags are specified, femhost and femport are set according to machineConfiguration.py, everything else's disabled.")
 
-    parser.add_argument("--femhost",        help="Set fem host IP e.g 10.0.0.1",                    type=str)
-    parser.add_argument("--femport",        help="Set fem port eg 61649",                           type=int)
-    parser.add_argument("--timeinfo",       help="Display timing info (0=disable, 1=enable)",       type=int, choices=[0, 1])
-    parser.add_argument("--plotdata",       help="Plot received data (0=disable, 1=enable)",        type=int, choices=[0, 1])
-    parser.add_argument("--writedata",      help="Write data to hdf5 file (0=disable, 0> = number of images per file)",   type=int)
-    parser.add_argument("--debuginfo",      help="Enable debug info (0=disable, 1=enable)",         type=int, choices=range(9))
-    
+    parser.add_argument("--femhost",        help="Set fem host IP e.g 10.0.0.1",                                type=str, default=femHost)
+    parser.add_argument("--femport",        help="Set fem port eg 61649",                                       type=int, default=femPort)
+    parser.add_argument("--timeinfo",       help="Display timing info (0=disable, 1=enable)",                   type=int, choices=[0, 1], default=0)
+    parser.add_argument("--plotdata",       help="Plot received data (0=disable, 1=enable)",                    type=int, choices=[0, 1], default=0)
+    parser.add_argument("--writedata",      help="Write data to hdf5 file (0=disable, 0> = number images/file)",type=int, default=0)
+    parser.add_argument("--debuginfo",      help="Enable debug info (0=disable, 1=enable)",                     type=int, choices=range(9), default=0)
     args = parser.parse_args()
 
     # Temp debug info
@@ -591,40 +582,32 @@ if __name__ == "__main__":
     if args.femhost:
         femHost = args.femhost
         print "femhost",
-    else:
-        femHost = None
+
     if args.femport:
         femPort = int(args.femport)
         print "femPort",
-    else:
-        femPort = None
+
     if args.timeinfo:
         print "timeinfo",
         bTimeStamp = True
-    else:
-        bTimeStamp = False
+        
     if args.plotdata:
         print "plotdata",
         bDisplayPlotData = True
-    else:
-        bDisplayPlotData = False
+        
     if args.writedata:
         print "writedata",
         bHDF5 = True
         numberPlotsPerFile = args.writedata
-    else:
-        bHDF5 = False
-    if args.debuginfo is not None:
+        
+    if args.debuginfo:
         bDebug = args.debuginfo
-    else:
-        bDebug = 0
 
     # Temp debug info
     print " <--"
-#    print "numberPlotsPerFile: ", numberPlotsPerFile
     
     app = QtGui.QApplication(sys.argv)
-    widget = BlitQT(femHost, femPort)#, displayTiming, displayPlotData)
+    widget = BlitQT(femHost, femPort)
     widget.show()
     
     sys.exit(app.exec_())
