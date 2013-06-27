@@ -17,6 +17,13 @@ from FemApi.FemSysaceConfig import FemSysaceConfig
 
 defaults.parseArgs()
 
+# Configuration defaults
+chunkSize = 512
+
+# Put these somewhere better
+CMD_WRITE_TO_CF = 2
+CMD_GET_FWADDR = 4
+
 # TODO: Accept these as parameters!
 # ----------------------------------
 # 'Firmware' file to upload
@@ -33,13 +40,9 @@ slot = 1
 size = os.path.getsize(filename)
 fileTime = int(os.path.getmtime(filename))
 
-#if (size==0):
-#    print "FILE EMPTY, ABORTING"
-#    exit()
-
-# Put these somewhere better
-CMD_WRITE_TO_CF = 2
-CMD_GET_FWADDR = 4
+if (size==0):
+    print "FILE EMPTY, ABORTING"
+    sys.exit(1)
 
 # Connect to FEM
 try:
@@ -62,11 +65,24 @@ config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, 0, 0, 0,
 
 # Upload metadata to addr
 configPayload = config.decode()
-print type(configPayload), configPayload
 theFem.rawWrite(theAddr=addr, thePayload=configPayload)
 
 # Chunk and upload image to addr + sizeof(metadata)
-# TODO
+f = open(filename, 'rb')
+if not f:
+    print "Cannot open " + filename
+    sys.exit(1)
+    
+thisChunk = 1
+while True:
+    chunk = f.read(chunkSize)
+    if not chunk: break
+    theFem.rawWrite(theAddr=addr, thePayload=chunk)
+    addr += chunkSize
+    thisChunk += 1
+    print "Wrote chunk ", thisChunk
+    
+f.close()
 
 # Issue firmware upload command
 #theFem.commandSend(CMD_WRITE_TO_CF, 0)
