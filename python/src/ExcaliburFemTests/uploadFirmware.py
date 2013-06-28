@@ -38,6 +38,8 @@ slot = 1
 
 # Get file size & last modified date
 size = os.path.getsize(filename)
+import struct
+
 fileTime = int(os.path.getmtime(filename))
 
 if (size==0):
@@ -54,18 +56,20 @@ except FemClientError as errString:
 # Query FEM where to upload metadata / image bundle to
 response = theFem.commandSend(CMD_GET_FWADDR, 0);
 addr = response.payload[1]
-print "Uploading firmware metadata to "+ hex(addr)
-print "SystemACE slot: ", slot
+print ""
+print ""
+print "Upload address:      "+ hex(addr)
+print "SystemACE slot:     ", slot
 print "Image size (bytes): ", size
 
 # Build metadata
-uploadTime = int(time.time())
-#config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, desc, fileTime, uploadTime, 0, 0, 0);
-config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, 0, 0, 0, 0, fileTime, uploadTime, 0, 0, 0);
+uploadTime = time.time()
+config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, desc, fileTime, int(uploadTime), 0, 0, 0);
 
 # Upload metadata to addr
-configPayload = config.decode()
+configPayload = config.decodeAsInt()
 theFem.rawWrite(theAddr=addr, thePayload=configPayload)
+addr += config.getSize()
 
 # Chunk and upload image to addr + sizeof(metadata)
 f = open(filename, 'rb')
@@ -74,15 +78,31 @@ if not f:
     sys.exit(1)
     
 thisChunk = 1
+print "Chunk size:         ", chunkSize
+print "Uploading:          ",
 while True:
     chunk = f.read(chunkSize)
     if not chunk: break
-    theFem.rawWrite(theAddr=addr, thePayload=chunk)
+    
+    # mangle (bad because it will only work with exact sizes of chunk :(
+    #format = '!%dI' % (chunkSize / 4)
+    #payload = struct.unpack(format, chunk)
+    #print type(payload), len(payload), type(payload[0])
+    #theFem.rawWrite(theAddr=addr, thePayload=payload)
+    
+    # Better
+    payload = [ord(val) for val in chunk]
+    theFem.directWrite(theAddr=addr, thePayload=payload)
     addr += chunkSize
+    
     thisChunk += 1
-    print "Wrote chunk ", thisChunk
+    print ".",
     
 f.close()
+print ""
+
+finishTime = time.time()
+print "Upload time:         " + str(finishTime - uploadTime) + "s"
 
 # Issue firmware upload command
 #theFem.commandSend(CMD_WRITE_TO_CF, 0)
