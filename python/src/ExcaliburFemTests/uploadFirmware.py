@@ -18,7 +18,7 @@ from FemApi.FemSysaceConfig import FemSysaceConfig
 defaults.parseArgs()
 
 # Configuration defaults
-chunkSize = 512
+chunkSize = 768432
 
 # Put these somewhere better
 CMD_WRITE_TO_CF = 2
@@ -27,7 +27,7 @@ CMD_GET_FWADDR = 4
 # TODO: Accept these as parameters!
 # ----------------------------------
 # 'Firmware' file to upload
-filename = "test.txt"
+filename = "../../rev0.ace"
 
 # Description
 desc = "TEST_UPLOAD"
@@ -57,7 +57,6 @@ except FemClientError as errString:
 response = theFem.commandSend(CMD_GET_FWADDR, 0);
 addr = response.payload[1]
 print ""
-print ""
 print "Upload address:      "+ hex(addr)
 print "SystemACE slot:     ", slot
 print "Image size (bytes): ", size
@@ -77,32 +76,23 @@ if not f:
     print "Cannot open " + filename
     sys.exit(1)
     
-thisChunk = 1
-print "Chunk size:         ", chunkSize
-print "Uploading:          ",
+print "Chunk size (bytes): ", chunkSize
+
+print "UPLOADING..."
 while True:
     chunk = f.read(chunkSize)
     if not chunk: break
-    
-    # mangle (bad because it will only work with exact sizes of chunk :(
-    #format = '!%dI' % (chunkSize / 4)
-    #payload = struct.unpack(format, chunk)
-    #print type(payload), len(payload), type(payload[0])
-    #theFem.rawWrite(theAddr=addr, thePayload=payload)
-    
-    # Better
+
     payload = [ord(val) for val in chunk]
     theFem.directWrite(theAddr=addr, thePayload=payload)
     addr += chunkSize
     
-    thisChunk += 1
-    print ".",
-    
 f.close()
-print ""
 
 finishTime = time.time()
-print "Upload time:         " + str(finishTime - uploadTime) + "s"
+duration = finishTime - uploadTime
+print "Upload time:         " + str(duration) + "s"
+print "Upload speed:        " + str((size/duration)/1024) + "kb/s, " + str((size/duration)/1024/1024) + "Mb/s"
 
 # Issue firmware upload command
 #theFem.commandSend(CMD_WRITE_TO_CF, 0)
