@@ -115,7 +115,7 @@ class UdpReceiver(QtCore.QObject):
         self.sock.bind((listenAddr, listenPort))
 
         print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-        print "UDP Receiver thread listening on address %s port %s  (%i frames/file)" % (listenAddr, listenPort, numFrames)
+        print "UDP Receiver thread listening on address %s port %s  (%i frame(s)/file)" % (listenAddr, listenPort, numFrames)
 
     def closeConnection(self):
 
@@ -153,7 +153,7 @@ class UdpReceiver(QtCore.QObject):
         '''
 
         try:
-            #Extract Trailer information
+            # Extract Trailer information
             trailerInfo = np.zeros(2, dtype=np.uint32)
             trailerInfo = np.fromstring(data[-8:], dtype=np.uint32)
             
@@ -292,27 +292,21 @@ class FrameProcessor(QtCore.QObject):
 
         fileName = self.dataFilePath
 
+        postFix = 0
+        # Check if filename already exists; amend if it does
+        while os.path.exists(fileName):
+            fileName = self.dataFilePath[:-5] + str("_") + str(postFix) + self.dataFilePath[-5:]
+            postFix += 1
+        
         try:
             self.hdfFile = h5py.File(fileName, 'w')
-        except IOError as e:
-            # Did it fail because file previous used?
-            bFileOk = False
-            sPart = 0
-            while bFileOk != True:
-                try:
-                    fileName = self.dataFilePath[:-5] + str("_") + str(sPart) + self.dataFilePath[-5:]
-                    self.hdfFile = h5py.File(fileName, 'w')
-                except IOError as e:
-                    # filename exists, increment and try again
-                    sPart += 1
-                except Exception as e:
-                    print "Failed to open HDF file with error: %s" % e
-                    raise(e)
-                else:
-                    bFileOk = True
-            
-        if self.debugLevel > 0:
-            print "Created HDF5 data file %s" % fileName
+        except Exception as e:
+            print "Failed to open HDF file with error: %s" % e
+            raise(e)
+        else:
+            if self.debugLevel > 0:
+                print "Created HDF5 data file: %s " % fileName
+        
 
         # Create group structure
         self.lpdGroup = self.hdfFile.create_group('lpd')

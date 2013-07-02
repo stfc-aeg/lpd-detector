@@ -98,7 +98,7 @@ class RxThread(QtCore.QThread):
             sof = (trailerInfo[1] >> (31)) & 0x1
             eof = (trailerInfo[1] >> (30)) & 0x1
 
-            if debugInfo > 1:
+            if debugLevel > 1:
                 if sof == 1:
                     print "-=-=-=-=- FrameNumber PacketNumber"
                 print "trailerInfo: %8X %8X " % (trailerInfo[0], trailerInfo[1])
@@ -167,15 +167,16 @@ class BlitQT(FigureCanvas):
         # Define plotted image dimensions: 
         self.nrows = 32
         self.ncols = 256     # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors in 2-Tile System: 16 x 16 = 256 columns
-        self.imageSize = self.nrows * self.ncols
+        self.twoTileImageSize = self.nrows * self.ncols
+        self.fullImageSize  = 65536
 
         # Create an array to contain 8192 elements (32 x 16 x 16)
-        self.imageArray = np.zeros(self.imageSize, dtype=np.uint16)
+        self.imageArray = np.zeros(self.twoTileImageSize, dtype=np.uint16)
         
         # Create hdf file - if HDF5 Library present
         if bHDF5:
             dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            fileName = "/tmp/lpdSuperModule-%s.hdf5" % dateString
+            fileName = "/tmp/lpdTwoTile-%s.hdf5" % dateString
 
             self.hdfFile = h5py.File(fileName, 'w')
             self.imageDs = self.hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
@@ -267,28 +268,28 @@ class BlitQT(FigureCanvas):
 
         ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
         # Create 16 bit, Little-Endian, integer type using numpy
-        _16BitLittleEndianType = np.dtype('<i2')
+        pixelDataType = np.dtype('<i2')
 
         # Simultaneously extract 16 bit words and swap the byte order
         #     eg: ABCD => DCBA
-        self._16BitWordArray = np.fromstring(dataRx.rawImageData, dtype=_16BitLittleEndianType)
+        self.pixelDataArray = np.fromstring(dataRx.rawImageData, dtype=pixelDataType)
     
-        if (debugInfo > 2) and (debugInfo < 8):
-            print "Extracted 16 bit words: ", len(self._16BitWordArray), ". Array contents:"
+        if (debugLevel > 2) and (debugLevel < 8):
+            print "Extracted 16 bit words: ", len(self.pixelDataArray), ". Array contents:"
             self.display16BitArrayInHex()
             print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-        if debugInfo > 7:
+        if debugLevel > 7:
             if bTimeStamp:
                 time2 = time.time()
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
             gainCounter = [0, 0, 0, 0]
 
-            for idx in range( len(self._16BitWordArray) ):
+            for idx in range( len(self.pixelDataArray) ):
 
                 # Check bits 12-13: 
-                gainBits = self._16BitWordArray[idx] & 0x3000
+                gainBits = self.pixelDataArray[idx] & 0x3000
                 if gainBits > 0:
                     # Gain isn't x100, determine its type
                     gain = gainBits >> 12
@@ -324,7 +325,7 @@ class BlitQT(FigureCanvas):
             if bTimeStamp:
                 timeD1 = time.time()
             
-            dataBeginning = 65536*currentPlot
+            dataBeginning = self.fullImageSize * currentPlot
 
             # Get the first image of the train
             bNextImageAvailable = self.retrieveImage(dataBeginning)
@@ -342,10 +343,10 @@ class BlitQT(FigureCanvas):
             self.data = self.data & 0xfff
             
             if bDisplayPlotData:
-#                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( self._16BitWordArray[dataBeginning:] )
+#                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( self.pixelDataArray[dataBeginning:] )
 #                # Set title as train number, current image number
 #                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
-                print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self._16BitWordArray[dataBeginning:] ),
+                print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ),
                 if bTimeStamp is False:
                     print ""
 
@@ -376,12 +377,12 @@ class BlitQT(FigureCanvas):
                     # Reset loop counter, determine new file name
                     loopCounter = 0
                     dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-                    fileName = "/tmp/lpdSuperModule-%s.hdf5" % dateString
+                    fileName = "/tmp/lpdTwoTile-%s.hdf5" % dateString
                     
                     if self.hdfFile.filename == fileName:
                         # Modify new name to avoid overwritten old..
                         fileName = fileName[:-5] + '_' + str(self.imageCounter) + fileName[-5:]
-                        if debugInfo > 0:
+                        if debugLevel > 0:
                             print "\nPrevious filename: '" + self.hdfFile.filename + "'"
                             print "New use filename:  '" + fileName + "'"
                     
@@ -443,15 +444,15 @@ class BlitQT(FigureCanvas):
         """ display16BitArrayInHex displays each 16 bit ADC value (each index/byte)
             .. Unless data_len hardcoded to 160..
         """
-        if debugInfo > 6:
-            data_len = len(self._16BitWordArray)
-        elif debugInfo > 5:
-            data_len = len(self._16BitWordArray) / 2
-        elif debugInfo > 4:
-            data_len = len(self._16BitWordArray) / 4
-        elif debugInfo > 3:
-            data_len = len(self._16BitWordArray) / 8
-        elif debugInfo > 2:
+        if debugLevel > 6:
+            data_len = len(self.pixelDataArray)
+        elif debugLevel > 5:
+            data_len = len(self.pixelDataArray) / 2
+        elif debugLevel > 4:
+            data_len = len(self.pixelDataArray) / 4
+        elif debugLevel > 3:
+            data_len = len(self.pixelDataArray) / 8
+        elif debugLevel > 2:
             data_len = 160
         
         currentArrayElement = ""
@@ -462,7 +463,7 @@ class BlitQT(FigureCanvas):
                 if (idx %16 == 0):
                     print "%6d : " % idx,
                     
-                currentArrayElement =  currentArrayElement + "   %04X " % self._16BitWordArray[idx]
+                currentArrayElement =  currentArrayElement + "   %04X " % self.pixelDataArray[idx]
                 
                 if (idx % 16 == 15):
                     print currentArrayElement
@@ -477,7 +478,7 @@ class BlitQT(FigureCanvas):
     def retrieveImage(self, dataBeginning):
         """ Faster implementation by adopting super module algorithm
             Extracts one image beginning at argument dataBeginning in the member array 
-            self._16BitWordArray array. Returns boolean bImageAvailable indicating whether
+            self.pixelDataArray array. Returns boolean bImageAvailable indicating whether
             the current image is the last image in the data
         """
         # Boolean variable to track whether there is a image after this one in the data
@@ -502,7 +503,7 @@ class BlitQT(FigureCanvas):
             for asicRow in xrange(numRowsPerAsic):
                 for asicCol in xrange(numColsPerAsic):
                     
-                    self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self._16BitWordArray[rawOffset:(rawOffset + numAsics)].reshape(8,16)
+                    self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelDataArray[rawOffset:(rawOffset + numAsics)].reshape(8,16)
                     rawOffset += numAsics
 
         except IndexError:
@@ -530,7 +531,7 @@ class BlitQT(FigureCanvas):
 
         # Last image in the data?
         try:
-            self._16BitWordArray[dataBeginning + self.imageSize]
+            self.pixelDataArray[dataBeginning + self.twoTileImageSize]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:
@@ -547,18 +548,18 @@ if __name__ == "__main__":
     bColorbarVisible = False
     bDisplayPlotData = False
     bHDF5            = False
-    debugInfo        = 0
+    debugLevel        = 0
     plotRows         = 4
     plotCols         = 1
     
     # Create parser object and arguments
-    parser = argparse.ArgumentParser(description="superModuleReceiveTest.py - Receive data from a Super Module. ",
+    parser = argparse.ArgumentParser(description="twoTileReceiveTest.py - Receive data from a Two Tile System. ",
                                      epilog="If no flags are specified, femhost and femport are set according to machineConfiguration.py, everything else's disabled.")
 
     parser.add_argument("--canvasrows",     help="Set rows of plots (eg 2 rows)",                               type=int, default=plotRows)
     parser.add_argument("--canvascols",     help="Set columns of plots (eg 2 columns)",                         type=int, default=plotCols)
     parser.add_argument("--colorbar",       help="Enable colorbar (0=disable, 1=enable)",                       type=int, default=bColorbarVisible)
-    parser.add_argument("--debuginfo",      help="Enable debug info (0=disable, 1=enable)",                     type=int, choices=range(9), default=0)
+    parser.add_argument("--debuglevel",      help="Enable debug info (0=disable, 1=enable)",                     type=int, choices=range(9), default=0)
     parser.add_argument("--femhost",        help="Set fem host IP (e.g 10.0.0.1)",                              type=str, default=femHost)
     parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                     type=int, default=femPort)
     parser.add_argument("--plotdata",       help="Plot received data (0=disable, 1=enable)",                    type=int, choices=[0, 1], default=0)
@@ -595,9 +596,9 @@ if __name__ == "__main__":
             print "(no HDF5 lib)",
             bHDF5 = False
         
-    if args.debuginfo:
-        print "debuginfo(%i)" % args.debuginfo,
-        debugInfo = args.debuginfo
+    if args.debuglevel:
+        print "debuglevel(%i)" % args.debuglevel,
+        debugLevel = args.debuglevel
 
     if args.canvasrows:
         print "plotRows(%i)" % args.canvasrows,
@@ -608,7 +609,7 @@ if __name__ == "__main__":
         plotCols = args.canvascols
         
     if args.colorbar:
-        print "colorbar"
+        print "colorbar",
         bColorbarVisible = True
 
     # Calculate number of plots to draw
