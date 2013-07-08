@@ -9,13 +9,14 @@ Created on June 24 - 2013
 
 @author: mt47
 '''
-import sys, os.path, time
+import sys, os.path, time, binascii
 
 import ExcaliburFemTests.defaults as defaults
 from FemClient.FemClient import *
 from FemApi.FemSysaceConfig import FemSysaceConfig
 
 defaults.parseArgs()
+crc = 0
 
 # Configuration defaults
 chunkSize = 768432
@@ -56,19 +57,14 @@ except FemClientError as errString:
 # Query FEM where to upload metadata / image bundle to
 response = theFem.commandSend(CMD_GET_FWADDR, 0);
 addr = response.payload[1]
+cfgAddr = addr
 print ""
 print "Upload address:      "+ hex(addr)
 print "SystemACE slot:     ", slot
 print "Image size (bytes): ", size
 
-# Build metadata
 uploadTime = time.time()
-config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, desc, fileTime, int(uploadTime), 0, 0, 0);
-
-# Upload metadata to addr
-configPayload = config.decodeAsInt()
-theFem.rawWrite(theAddr=addr, thePayload=configPayload)
-addr += config.getSize()
+addr += FemSysaceConfig.configSize()
 
 # Chunk and upload image to addr + sizeof(metadata)
 f = open(filename, 'rb')
@@ -84,15 +80,25 @@ while True:
     if not chunk: break
 
     payload = [ord(val) for val in chunk]
-    theFem.directWrite(theAddr=addr, thePayload=payload)
+#    theFem.directWrite(theAddr=addr, thePayload=payload)
     addr += chunkSize
-    
+
+    crc = binascii.crc32(chunk, crc)    
+
 f.close()
+
+crc = crc &0xFFFFFFFF
 
 finishTime = time.time()
 duration = finishTime - uploadTime
 print "Upload time:         " + str(duration) + "s"
 print "Upload speed:        " + str((size/duration)/1024) + "kb/s, " + str((size/duration)/1024/1024) + "Mb/s"
+print "CRC32:               " + hex(crc)
+
+# Upload metadata with updated crc
+config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, desc, fileTime, int(uploadTime), 0, crc, 0);
+configPayload = config.decodeAsInt()
+theFem.rawWrite(theAddr=cfgAddr, thePayload=configPayload)
 
 # Issue firmware upload command
 #theFem.commandSend(CMD_WRITE_TO_CF, 0)

@@ -13,9 +13,12 @@ class FemSysaceConfig():
 
     configFormat = '!3I32s5I'
     intConfigFormat = '!3I8I5I'
-    
 
     HEADER_MAGIC_WORD = 0xB0BAFE77
+
+    @classmethod
+    def configSize(cls):
+        return struct.calcsize(FemSysaceConfig.configFormat)
 
     def __init__(self, magic=None, imgSize=None, slot=None, strDesc=None, filedate=None, uploaddate=None, bytesWritten=None, crc=None, status=None, encoded=None):
         '''
@@ -42,7 +45,6 @@ class FemSysaceConfig():
             self.encode()
             
     def encode(self):
-        
         self.encoded = struct.pack(FemSysaceConfig.configFormat, *(self.getConfig()))
         return self.encoded
     
@@ -52,13 +54,14 @@ class FemSysaceConfig():
     def decodeAsInt(self):
         return struct.unpack(self.intConfigFormat, self.encoded)
     
-    def getSize(self):
-        return len(self.encoded)
-    
     def getConfig(self):
         
         config = [self.magic, self.imgSize, self.slot, self.strDesc, self.filedate, self.uploaddate, self.bytesWritten, self.crc, self.status]
         return config
+    
+    def updateCrc(self, crc=None):
+        self.crc = crc
+        self.encode()
     
     def __str__(self):
     
