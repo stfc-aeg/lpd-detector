@@ -105,8 +105,7 @@ class LpdAsicControl(object):
                                   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15, ]
 
 
-    def __init__(self, xmlObject, preambleBit=None, fromFile=False, strict=True):
-        
+    def __init__(self, xmlObject, pixelFeedbackOverride=-1, pixelSelfTestOverride=-1, debugLevel=0, preambleBit=None, fromFile=False, strict=True):
         # Check that preambleBit argument was supplied
         # Currently (16/01/2013) serial clock must be kept high for six bits
         #    BEFORE the first slow control bit is sent. If these number of bits changes in the future,
@@ -144,8 +143,8 @@ class LpdAsicControl(object):
                            }
 
         # Variables used to override feedback_select_default, self_test_decoder_default, if different value(s) supplied by setOverrideValues() function
-        self.overrideFeedback = -1    # overrides feedback_select_default
-        self.overrideSelfTest = -1    # overrides self_test_decoder_default        
+        self.overrideFeedback = pixelFeedbackOverride    # Overrides feedback_select_default
+        self.overrideSelfTest = pixelSelfTestOverride    # Overrides self_test_decoder_default
 
         ''' Debug information '''
         if self.bDebug:
@@ -237,9 +236,6 @@ class LpdAsicControl(object):
         '''
             Encodes the slow control command(s)..
         '''
-
-        # Intialise tree depth (used for debugging only)
-        self.depth = 0
         
         # Parse the tree, starting at the root element, populating the dictionary
         # self.paramsDict according to the XML tags
@@ -264,7 +260,7 @@ class LpdAsicControl(object):
         intAttrib = theElement.get(theAttrib, default='-2')
         
         if self.bDebug:
-            print " is: %3s" % intAttrib + ".",
+            print " is: %15s" % intAttrib + ".",
         # Convert count to integer or raise an exception if this failed
         try:
             attrib = int(intAttrib)
@@ -274,19 +270,6 @@ class LpdAsicControl(object):
         # Return integer attrib value    
         return attrib
 
-    def setOverrideValues(self, pixelFeedbackOverride=0, pixelSelfTestOverride=0):
-        '''
-            Allow external class to set any override values
-            NOTE: Ensure to call this function before parseElement() or override values will be ignored
-        '''
-        # Update feedback_select_default if override value is non-zero
-        if pixelFeedbackOverride > 0:
-            self.overrideFeedback = pixelFeedbackOverride
-        
-        # Update self_test_decoder_default if override value is non-zero
-        if pixelSelfTestOverride > 0:
-            self.overrideSelfTest = pixelSelfTestOverride
-    
     def doLookupTableCheck(self, dictKey, idx):
         '''
             Accepts the dictionary key 'dictKey' and associated index 'idx' and performs the dictionary lookup for the four different keys that have a dictionary lookup table.
@@ -315,8 +298,7 @@ class LpdAsicControl(object):
             NOTE: pixels run 1-512, index 1-47 but to match Python's lists they're numbered 0-511, 0-46.
         '''
         
-        # Increment tree depth counter
-        self.depth = self.depth + 1
+        if self.bDebug: print "############################################ parseElement() ############################################"
 
         # The structure of the parameters dictionary is:
         # paramsDict = {'dictKey' : [width, posn, value(s), [bPixelTagRequired, bValueTagRequired, bIndexTagRequired]]}
@@ -333,130 +315,97 @@ class LpdAsicControl(object):
             # strict syntax checking is enabled
             if cmd in self.paramsDict:
 
-                if self.bDebug:
-                    print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n", cmd,
+                if self.bDebug: print "\n%28s" % cmd,
                 
-                # get parameter values
+                # Get parameter values; Extract required tags
                 pmValues = self.getParamValue(cmd)
-
-                # Extract required tags
-                bPixel = pmValues[LpdAsicControl.TAGS][0]
-                bValue = pmValues[LpdAsicControl.TAGS][1]
-                bIndex = pmValues[LpdAsicControl.TAGS][2]
+                (bPixel, bValue, bIndex) = (pmValues[LpdAsicControl.TAGS][0], pmValues[LpdAsicControl.TAGS][1], pmValues[LpdAsicControl.TAGS][2])
                 
-                # Check that the user has not supplied attribute(s) that are not valid with the current key
-                #    e.g. pixel attribute is not valid for any of the _default tags
+                # Check against key containing illegal attribute(s) (e.g. _default key containing pixel attribute)
                 if not bPixel:
                     pixel = self.getAttrib(child, 'pixel')
-                    if pixel != -2:
-                        # pixel attribute incorrectly provided
-                        raise LpdAsicControlError("%s cannot use 'pixel' attribute" % (child.tag))
+                    if pixel != -2: raise LpdAsicControlError("%s cannot use 'pixel' attribute" % (child.tag))
                 if not bIndex:
                     index = self.getAttrib(child, 'index')
-                    if index != -2:
-                        # index attribute incorrectly provided
-                        raise LpdAsicControlError("%s cannot use 'index' attribute" % (child.tag))
-
+                    if index != -2: raise LpdAsicControlError("%s cannot use 'index' attribute" % (child.tag))
                     
                 # Get value attribute (always present)
                 value = self.getAttrib(child, 'value')
-                if value == -2:
-                    # Fail if there is no value present
-                    raise LpdAsicControlError("Unable to find the required 'value' tag for key '%s'!" % cmd)
+                if value == -2: raise LpdAsicControlError("Unable to find the required 'value' tag for key '%s'!" % cmd)
                 
-                if self.bDebug:
-                    print "value = ", value,
-                
-                # Is there a pixel tag?
-                if bPixel:
-                    # Yes - Get pixel
-                    pixel = self.getAttrib(child, 'pixel')
-                    
-                    # Use pixel number to obtain pixel order using the lookup table function
-                    orderedPxl = self.doLookupTableCheck(cmd, pixel)
-                    
-                    if self.bDebug:
-                        print " pixel, orderedPxl = %3i, %3i" % (pixel, orderedPxl),
-                    # Update pixel entry of the dictionary key
-                    self.setParamValue(cmd, orderedPxl, value)
+                if self.bDebug: print "value = ", value,
 
+                (thisValue, thisAttrib) = (-1, "")
+                # If pixel tag, obtain pixel value
+                if bPixel:
+                    thisValue = self.getAttrib(child, 'pixel')
+                    (thisIndex, thisAttrib) = (self.doLookupTableCheck(cmd, thisValue), "pixel")
                 else:
                     # No pixel; Is there an index tag?
                     if bIndex:
-                        index = self.getAttrib(child, 'index')
-                        
-                        # Use index to obtain index order using the lookup table function
-                        orderedIdx = self.doLookupTableCheck(cmd, index)
-                        
-                        if self.bDebug:
-                            print " index, orderedIdx = %3i, %3i" % (index, orderedIdx)
-                        # Update index entry of the dictionary key
-                        self.setParamValue(cmd, orderedIdx, value)
+                        thisValue = self.getAttrib(child, 'index')
+                        (thisIndex, thisAttrib) = (self.doLookupTableCheck(cmd, thisValue), "index")
                     else:
-                        # No pixel, no index tags: therefore the key's value
-                        #     is a simple integer to update
-                        self.setParamValue(cmd, 0, value)
-                
+                        # Not pixel, index tags: therefore the key's value is an integer
+                        (thisIndex, thisAttrib) = (0, "(int)")
+                        
+                # Update pixel entry of the dictionary key
+                self.setParamValue(cmd, thisIndex, value)
+
+                if self.bDebug:
+                    if thisAttrib != "(int)": print " attrib: %5s = %3i, lookedup => %3i" % (thisAttrib, thisValue, thisIndex),
+                    else:
+                        print "",
+
             else:
-                if self.strict:
-                    raise LpdAsicControlError('Illegal command %s specified' % (child.tag))
+                if self.strict: raise LpdAsicControlError('Illegal command %s specified' % (child.tag))
         
-        if self.bDebug:
-            print "\n\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
+        if self.bDebug: print "\n\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~ check _default ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~"
             
 
         # Pass through XXX_default keys and change their value from -1 to 0 unless already set
         for key in self.paramsDict:
-            # Is this a XXX_default key?
-            if key.endswith("_default"):
-                if self.bDebug:
-                    print "1st Pass: Found _default key: ", key, " = ",
 
-                # has setOverride..() function been called?
+            if key.endswith("_default"):
+                
+                if self.bDebug: print "1st Pass:  _default key: %28s" % key, " = ",
+
+                # Use overrides if set by API
                 if key == 'feedback_select_default':
-                    if self.overrideFeedback > -1:
-                        # Override value set by setOverride..() function, updating dictionary..
-                        self.setParamValue(key, 0, self.overrideFeedback)
-                        
-                # Check for self test decode default
+                    if self.overrideFeedback > -1: self.setParamValue(key, 0, self.overrideFeedback)
                 if key == 'self_test_decoder_default':
-                    if self.overrideSelfTest > -1:
-                        # Override value set by setOverride..() function, updating dictionary..
-                        self.setParamValue(key, 0, self.overrideSelfTest)
+                    if self.overrideSelfTest > -1: self.setParamValue(key, 0, self.overrideSelfTest)
 
                 # Obtain _default's value
                 defaultKeyValue = self.getParamValue(key)
-                if self.bDebug:
-                    print defaultKeyValue,
+                
+                if self.bDebug: print defaultKeyValue,
 
                 # Is XXX_default's value not specified ?
                 if defaultKeyValue[LpdAsicControl.VALUES] == -1:
                     # Default not set; set it's value to 0
                     self.setParamValue(key, 0, 0)
-                    if self.bDebug:
-                        print " now = ", self.getParamValue(key)[LpdAsicControl.VALUES]
+                    
+                    if self.bDebug: print " now = ", self.getParamValue(key)[LpdAsicControl.VALUES]
                 else:
-                    if self.bDebug:
-                        print " (no change)"
+                    if self.bDebug: print " (no change)"
                     
 
-        if self.bDebug:
-            print "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+        if self.bDebug: print "\n- - - - - - - - - - - - - - - - - - - - - update using _default  - - - - - - - - - - - - - - - - - - - -"
         
         # Check _default keys and updated the corresponding keys unless where the associated keys have explicitly set value(s)
         #    e.g. if daq_bias_default = 4 then all values of daq_bias will become 4 (unless set explicitly)
 
         for key in self.paramsDict:
-            # Is this a XXX_default key?
+            
             if key.endswith("_default"):
 
-                if self.bDebug:
-                    print "2nd Pass: Found _default key: ", key, " = ",
-
+                if self.bDebug: print "2nd Pass: Found _default key: %28s" % key, " = ",
+                    
                 # Obtain key value
                 defaultKeyValue = self.getParamValue(key)
-                if self.bDebug:
-                    print defaultKeyValue
+                
+                if self.bDebug: print defaultKeyValue
                 
                 # Derive corresponding key's name
                 #    e.g. key = "mux_decoder_default"; sectionKey = "mux_decoder"
@@ -472,37 +421,18 @@ class LpdAsicControl(object):
                         self.setParamValue(sectionKey, idx, defaultKeyValue[LpdAsicControl.VALUES])
             else:
                 # All keys that does not end with "_default", and that does not contain a list of values
-                #    eg:
-                #        self_test_enable, spare_bits, filter_control, adc_clock_delay, digital_control
+                #    eg:     self_test_enable, spare_bits, filter_control, adc_clock_delay, digital_control
 
                 keyValue = self.getParamValue(key)
 
                 if isinstance(keyValue[LpdAsicControl.VALUES], types.IntType):
-                    if self.bDebug:
-                        print "%21s: It's an integer type" % key
+                    
+                    if self.bDebug: print "2nd Pass: Found integer type: %21s" % key
                     
                     # Has the value been set already?
                     if keyValue[LpdAsicControl.VALUES] == -1:
                         # Not set; Set it to 0
                         self.setParamValue(key, 0, 0)
-                    
-        # Back up one level in the tree              
-        self.depth = self.depth - 1
-
-        
-#        print self.paramsDict['mux_decoder_default']
-#        print self.paramsDict['mux_decoder']             
-#        print self.paramsDict['feedback_select_default'] 
-#        print self.paramsDict['feedback_select']         
-#        print self.paramsDict['self_test_decoder_default']
-#        print self.paramsDict['self_test_decoder']       
-#        print self.paramsDict['self_test_enable']        
-#        print self.paramsDict['daq_bias_default']        
-#        print self.paramsDict['daq_bias']                
-#        print self.paramsDict['spare_bits']              
-#        print self.paramsDict['filter_control']          
-#        print self.paramsDict['adc_clock_delay']         
-#        print self.paramsDict['digital_control']         
 
  
     def buildBitstream(self):
@@ -518,9 +448,6 @@ class LpdAsicControl(object):
 #        debugComparisonKey = "daq_bias" 
 #        debugComparisonKey = "self_test_decoder"
 #        debugComparisonKey = "digital_control"
-
-        #TODO: MAKE THIS AN CLASS ARGUMENT !!
-        self.preambleBit = 6
 
         # Initialise empty list to contain binary command values for this part of the tree
         encodedSequence = [0] * LpdAsicControl.SEQLENGTH
@@ -735,27 +662,22 @@ class LpdAsicControl(object):
             
             I.e. numBits = 1; returns 1,    2 = > 3, 3 => 7, 4 = > 15
         '''
-        
-        sum = 0
+        theSum = 0
         for idx in range(numBits):
-            sum = sum | (1 << idx)
-            
-        return sum
+            theSum = theSum | (1 << idx)
+        return theSum
     
     def displayDictionaryValues(self):
         '''
             Debug function, used to display the dictionary values
         '''
         if self.bDebug:
-            print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
+            print "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- displayDictValues -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
             for cmd in self.paramsDict:
                 # Get dictionary key's values
                 dictKey = self.getParamValue(cmd)
                 
-                print "dictKey: ", cmd,
-                if len(cmd) < 12:
-                    print "\t",
-                print " \tpos'n: ", dictKey[LpdAsicControl.POSN], "\t [",
+                print "dictKey: %28s" % cmd, " pos'n:  %4i" % dictKey[LpdAsicControl.POSN], "\t [",
                 # Is the third variable a list or an integer?
                 if isinstance(dictKey[LpdAsicControl.VALUES], types.ListType):
                     # it's a list

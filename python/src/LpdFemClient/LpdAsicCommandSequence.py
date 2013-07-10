@@ -88,7 +88,7 @@ class LpdAsicCommandSequence():
         FEM BRAM structure, which is returned as a list of integers. 
         '''
         
-        # Intialise tree depth (used for debugging only)
+        # Intialise tree depth (used for debugging only)    #TODO: Redundant?
         self.depth = 0
         
         # Parse the tree, starting at the root element, obtaining the packed
@@ -246,7 +246,37 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
     '''
     Unit test class for LpdAsicCommandSequence.
     '''
-    
+
+    #TODO: Doesn't appear to count <nop/> tag double though..
+    def testSingleNopInXmlString(self):
+        '''
+            Unit test devised to test whether the <nop/> tag is adding too many nops..
+        '''
+
+        # Command sequence definition to encode
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_command_sequence name="TestNops">
+                                <nop/>
+                                <nop/>
+                                <nop/>
+                                <nop/>
+                                <nop/>
+                                <stand_by nop="3"/>
+                                <loop count="2">
+                                    <reset_trigger_pointer nop="2"/>
+                                </loop>
+                            </lpd_command_sequence>
+        '''
+        # Expected encoded values
+        expectedSeq = [2097152, 2097152, 2097152, 2097152, 2097152, 14684160, 10539008, 10539008]
+        
+        # Parse XML and encode
+        stringCmdSeq = LpdAsicCommandSequence(stringCmdXml)
+        stringEncodedSeq = stringCmdSeq.encode()
+        
+        # Test that encoded sequence matches expected
+        self.assertEqual(stringEncodedSeq, expectedSeq, 'Unexpected encoded result for string command sequence')
+            
     def testStringParse(self):
         '''
         Tests that parsing a command sequence specified as a string argument
@@ -370,7 +400,6 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
         expectedSeq = [0x221000,  0x222000,  0x223000,  0x224000,  0x225000,  0x200000]
 
         self.assertEqual( stringEncodedSeq, expectedSeq, 'Unexpected encoder results for testForceGainNewCommands()')
-
 
 if __name__ == '__main__':
          

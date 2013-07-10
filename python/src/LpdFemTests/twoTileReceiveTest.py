@@ -29,22 +29,24 @@ from networkConfiguration import *
 from PyQt4 import QtCore, QtGui
 
 
-class LpdImageObject(object):
+class LpdFrameObject(object):
     '''
-        LpdImageObject - data container class to contain UDP payload and meta data
-        (such as timestamp, packet, etc)
+        LpdFrameObject - data container class to contain UDP payload and meta data
+        (such as timestamps)
     '''
     def __init__(self, frameNumber):
         # Create a string to contain payload of all UDP packets
         self.rawImageData = ""
         self.frameNumber = frameNumber
         self.timeStampSof = 0.0
+        self.timeStampEof = 0.0
 
-class RxThread(QtCore.QThread):
+
+class ReceiveThread(QtCore.QThread):
     
     def __init__(self, rxSignal, femHost, femPort):
         
-        # Initialising variable used by processRxData
+        # Initialising variable used by processData
         self.first_frm_num = -1
         
         QtCore.QThread.__init__(self)
@@ -64,21 +66,21 @@ class RxThread(QtCore.QThread):
         try:
             while 1:
                 foundEof = 0
-                lpdFrame = LpdImageObject(frameCount)
+                lpdFrame = LpdFrameObject(frameCount)
                 while foundEof == 0:
                     stream = self.sock.recv(9000)
-                    foundEof  = self.processRxData(lpdFrame, stream)
+                    foundEof  = self.processData(lpdFrame, stream)
                     if foundEof:
-                        # Complete frame received, transmit frame along with meta data saved in LpdImageObject object
+                        # Complete frame received, transmit frame along with meta data saved in LpdFrameObject object
                         self.rxSignal.emit(lpdFrame)
                         # Increment frame counter
                         frameCount += 1
                         
         except Exception as e:
-            print "processRxData() failed: ", e, "\nExiting.."
+            print "processData() failed: ", e, "\nExiting.."
             sys.exit()
 
-    def processRxData(self, lpdFrame, data):
+    def processData(self, lpdFrame, data):
         """ 
         Processes received data packets, decoding the Train Transfer Protocol information
         to construct completed frames (trains) 
@@ -141,10 +143,10 @@ class RxThread(QtCore.QThread):
             
             return eof
         except Exception as e:
-            print "processRxData() error: ", e
-            return -1
+            print "processData() error: ", e
+            raise e
 
-class BlitQT(FigureCanvas):
+class ImageDisplay(FigureCanvas):
 
     ''' Change font size '''
     matplotlib.rcParams.update({'font.size': 8})
@@ -186,61 +188,58 @@ class BlitQT(FigureCanvas):
             self.imageNumberDs = self.hdfFile.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         FigureCanvas.__init__(self, Figure())
-        
-        # Only create plots if user selected data to be plotted..
-        if bDisplayPlotData:
 
-            # Generate list of xticks, yticks to label the x, y axis
-            xlist = []
-            for i in range(16, 256, 16):
-                xlist.append(i)
-                
-            ylist = []
-            for i in range(8, 32, 8):
-                ylist.append(i)
+        # Generate list of xticks, yticks to label the x, y axis
+        xlist = []
+        for i in range(16, 256, 16):
+            xlist.append(i)
             
-            print "Preparing graphics.."
+        ylist = []
+        for i in range(8, 32, 8):
+            ylist.append(i)
+        
+        print "Preparing graphics.."
+        
+        # Create a list for axes object and one for image objects, to store that info for each image
+        self.ax = []
+        self.img = []
+        
+        # Because subplotting has been selected, need a list of axes to cover multiple subplots
+        for idx in range(plotMaxPlots):
+
+            axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
+            self.ax.extend([axesObject])
             
-            # Create a list for axes object and one for image objects, to store that info for each image
-            self.ax = []
-            self.img = []
+            self.ax[idx].set_xticks(xlist)
+            self.ax[idx].set_yticks(ylist)
             
-            # Because subplotting has been selected, need a list of axes to cover multiple subplots
-            for idx in range(plotMaxPlots):
-    
-                axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
-                self.ax.extend([axesObject])
-                
-                self.ax[idx].set_xticks(xlist)
-                self.ax[idx].set_yticks(ylist)
-                
-                # Set the title of each plot temporarily
-                self.ax[idx].set_title("Image %i" % idx)
-                                
-                self.cnt = 0
-                self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
+            # Set the title of each plot temporarily
+            self.ax[idx].set_title("Image %i" % idx)
                             
-                imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
-                self.img.extend([imgObject])
+            self.cnt = 0
+            self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
+                        
+            imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
+            self.img.extend([imgObject])
 
-                if bColorbarVisible:
-                    # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
-                    axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
-                    cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
-        
-                    # Set the colour bar
-                    self.img[idx].colorbar = cb
+            if bColorbarVisible:
+                # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
+                axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
+                cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
     
-                # Add vertical lines to differentiate between the ASICs
-                for i in range(16, self.ncols, 16):
-                    self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
-                
-                # Add vertical lines to differentiate between the two tiles
-                self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
-                
-                self.draw()
+                # Set the colour bar
+                self.img[idx].colorbar = cb
 
-        self.dataRxSignal.connect(self.handleDataRx)
+            # Add vertical lines to differentiate between the ASICs
+            for i in range(16, self.ncols, 16):
+                self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
+            
+            # Add vertical lines to differentiate between the two tiles
+            self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
+            
+            self.draw()
+
+        self.dataRxSignal.connect(self.handleFrame)
                 
         self.tstart = time.time()
 
@@ -254,17 +253,17 @@ class BlitQT(FigureCanvas):
             if femPort == None:
                 femPort = int(networkConfig.tenGig0DstPrt)
 
-        self.rxThread = RxThread(self.dataRxSignal, femHost, femPort)
+        self.rxThread = ReceiveThread(self.dataRxSignal, femHost, femPort)
         self.rxThread.start()
 
 
-    def handleDataRx(self, dataRx):
+    def handleFrame(self, lpdFrame):
 
         # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
         if bTimeStamp:
             timeX1 = time.time()
         
-        print "Raw Image Data Received:     ", len(dataRx.rawImageData), "(bytes)"
+        print "Raw Image Data Received:     ", len(lpdFrame.rawImageData), "(bytes)"
 
         ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
         # Create 16 bit, Little-Endian, integer type using numpy
@@ -272,7 +271,7 @@ class BlitQT(FigureCanvas):
 
         # Simultaneously extract 16 bit words and swap the byte order
         #     eg: ABCD => DCBA
-        self.pixelDataArray = np.fromstring(dataRx.rawImageData, dtype=pixelDataType)
+        self.pixelDataArray = np.fromstring(lpdFrame.rawImageData, dtype=pixelDataType)
     
         if (debugLevel > 2) and (debugLevel < 8):
             print "Extracted 16 bit words: ", len(self.pixelDataArray), ". Array contents:"
@@ -335,28 +334,26 @@ class BlitQT(FigureCanvas):
             try:
                 self.data = self.imageArray.reshape(self.nrows, self.ncols)
             except Exception as e:
-                print "handleDataRx() failed to reshape imageArray: ", e, "\nExiting.."
+                print "handleFrame() failed to reshape imageArray: ", e, "\nExiting.."
                 print "len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols
                 exit()
             
             # Mask out gain bits from data
             self.data = self.data & 0xfff
             
-            if bDisplayPlotData:
-#                print "Train %i Image %i" % (frameNumber, currentPlot), " data left: ", len( self.pixelDataArray[dataBeginning:] )
-#                # Set title as train number, current image number
-#                self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
-                print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ),
-                if bTimeStamp is False:
-                    print ""
+#            # Set title as train number, current image number
+#            self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
+            print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ),
+            if bTimeStamp is False:
+                print ""
 
-                self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
-                
-                # Load image into figure
-                self.img[currentPlot].set_data(self.data)
-    
-                self.ax[currentPlot].draw_artist(self.img[currentPlot])
-                self.blit(self.ax[currentPlot].bbox)
+            self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
+            
+            # Load image into figure
+            self.img[currentPlot].set_data(self.data)
+
+            self.ax[currentPlot].draw_artist(self.img[currentPlot])
+            self.blit(self.ax[currentPlot].bbox)
 
             # Write image to file - if HDF5 Library present
             if bHDF5:
@@ -364,7 +361,7 @@ class BlitQT(FigureCanvas):
                 self.imageDs[loopCounter,...] = self.data
                 
                 self.timeStampDs.resize((loopCounter+1, ))
-                self.timeStampDs[loopCounter] = dataRx.timeStampSof
+                self.timeStampDs[loopCounter] = lpdFrame.timeStampSof
                 
                 self.trainNumberDs.resize((loopCounter+1, ))
                 self.trainNumberDs[loopCounter] = self.trainNumber
@@ -416,18 +413,17 @@ class BlitQT(FigureCanvas):
             self.trainNumber += 1
 
         # 'Reset' rawImageData variable
-        dataRx.rawImageData = dataRx.rawImageData[0:0]
+        lpdFrame.rawImageData = lpdFrame.rawImageData[0:0]
         if bTimeStamp:
             timeX2 = time.time()
             print "Total time = ",(timeX2 - timeX1)
 
         print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
         
-        if bDisplayPlotData:
-            if self.cnt == 0:
-                self.draw()
-            else:
-                self.cnt += 1
+        if self.cnt == 0:
+            self.draw()
+        else:
+            self.cnt += 1
 
     def __del__(self):
         # Close file if HDF5 Library present
@@ -545,8 +541,7 @@ if __name__ == "__main__":
     femHost          = None
     femPort          = None
     bTimeStamp       = False
-    bColorbarVisible = False
-    bDisplayPlotData = False
+    bColorbarVisible = True
     bHDF5            = False
     debugLevel        = 0
     plotRows         = 4
@@ -554,17 +549,16 @@ if __name__ == "__main__":
     
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="twoTileReceiveTest.py - Receive data from a Two Tile System. ",
-                                     epilog="If no flags are specified, femhost and femport are set according to machineConfiguration.py, everything else's disabled.")
+                                     epilog="The flags femhost and femport are set according to machineConfiguration.py by default, all other flags' default value denoted by 'D: x'.")
 
-    parser.add_argument("--canvasrows",     help="Set rows of plots (eg 2 rows)",                               type=int, default=plotRows)
-    parser.add_argument("--canvascols",     help="Set columns of plots (eg 2 columns)",                         type=int, default=plotCols)
-    parser.add_argument("--colorbar",       help="Enable colorbar (0=disable, 1=enable)",                       type=int, default=bColorbarVisible)
-    parser.add_argument("--debuglevel",      help="Enable debug info (0=disable, 1=enable)",                     type=int, choices=range(9), default=0)
-    parser.add_argument("--femhost",        help="Set fem host IP (e.g 10.0.0.1)",                              type=str, default=femHost)
-    parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                     type=int, default=femPort)
-    parser.add_argument("--plotdata",       help="Plot received data (0=disable, 1=enable)",                    type=int, choices=[0, 1], default=0)
-    parser.add_argument("--timeinfo",       help="Display timing info (0=disable, 1=enable)",                   type=int, choices=[0, 1], default=0)
-    parser.add_argument("--writedata",      help="Write data to hdf5 file (0=disable, 0> = number images/file)",type=int, default=0)
+    parser.add_argument("--canvasrows",     help="Set rows of plots (D: 4)",                                            type=int, default=plotRows)
+    parser.add_argument("--canvascols",     help="Set columns of plots (D: 1)",                                         type=int, default=plotCols)
+    parser.add_argument("--colorbar",       help="Enable colorbar (0=Disable, 1=Enable; D: 1)",                         type=int, default=bColorbarVisible)
+    parser.add_argument("--debuglevel",     help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=range(9), default=0)
+    parser.add_argument("--femhost",        help="Set fem host IP (e.g 10.0.0.1)",                                      type=str, default=femHost)
+    parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                             type=int, default=femPort)
+    parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
+    parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
     args = parser.parse_args()
 
     # Temp debug info
@@ -581,10 +575,6 @@ if __name__ == "__main__":
     if args.timeinfo:
         print "timeinfo",
         bTimeStamp = True
-        
-    if args.plotdata:
-        print "plotdata",
-        bDisplayPlotData = True
         
     if args.writedata:
         # Only allow file write if HDF5 library installed..
@@ -619,7 +609,7 @@ if __name__ == "__main__":
     print " <--"
     
     app = QtGui.QApplication(sys.argv)
-    widget = BlitQT(femHost, femPort)
+    widget = ImageDisplay(femHost, femPort)
     widget.show()
     
     sys.exit(app.exec_())
