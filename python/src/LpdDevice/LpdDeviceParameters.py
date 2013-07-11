@@ -95,23 +95,23 @@ class LpdDeviceParameters(object):
 
         # Internal parameters used in the LpdDevice class but not passed down into the underlying client object
         
-        self.expectedParameters['femHost']    = AttributeContainer(str, 'FEM Host', 'FEM hostname or IP address',
-                                                                None, None, '127.0.0.1',
-                                                                AccessWrite, AssignmentOptional, InternalParam, 
-                                                                'AllOk.Disconnected')
-        self.expectedParameters['femPort']    = AttributeContainer(int, 'FEM Port', 'FEM port number',
-                                                                0, 65535, 6969,
-                                                                AccessWrite, AssignmentOptional, InternalParam,
-                                                                'AllOk.Disconnected')
-        self.expectedParameters['femTimeout'] = AttributeContainer(int, 'FEM Timeout', 'FEM connection timeout',
-                                                                0, 1000, 30,
-                                                                AccessWrite, AssignmentOptional, InternalParam,
-                                                                'AllOk.Disconnected')
+        self.expectedParameters['femHost']           = AttributeContainer(str, 'FEM Host', 'FEM hostname or IP address',
+                                                                    None, None, '127.0.0.1',
+                                                                    AccessWrite, AssignmentOptional, InternalParam, 
+                                                                    'AllOk.Disconnected')
+        self.expectedParameters['femPort']           = AttributeContainer(int, 'FEM Port', 'FEM port number',
+                                                                    0, 65535, 6969,
+                                                                    AccessWrite, AssignmentOptional, InternalParam,
+                                                                    'AllOk.Disconnected')
+        self.expectedParameters['femTimeout']        = AttributeContainer(int, 'FEM Timeout', 'FEM connection timeout',
+                                                                    0, 1000, 30,
+                                                                    AccessWrite, AssignmentOptional, InternalParam,
+                                                                    'AllOk.Disconnected')
         self.expectedParameters['femAsicModuleType'] = AttributeContainer(int, 'FemAsicModuleType', 
-                                                                'Selects type of ASIC module 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone',
-                                                                0, 3, 0,
-                                                                AccessWrite, AssignmentOptional, InternalParam, 
-                                                                'AllOk.Disconnected')
+                                                                    'Selects ASIC module type 0=Supermodule, 1=Single ASIC, 2=2-tile module, 3=Stand-alone',
+                                                                    0, 3, 0,
+                                                                    AccessWrite, AssignmentOptional, InternalParam, 
+                                                                    'AllOk.Disconnected')
 
         #
         # Power card control parameters
@@ -448,7 +448,7 @@ class LpdDeviceParameters(object):
                                                                         AccessRead, None, ExternalParam, None, 'Microamps', 'uA')
 
         #
-        # TenGig Ethernet UDP Parameters - two 10GiGE interfaces
+        # TenGig Ethernet UDP Parameters - one 10GiGE interface
         #
                             
         self.expectedParameters['tenGig0SourceMac']     = AttributeContainer(str, 'TenGigE0SourceMAC', '10GigE 0 UDP Source MAC Address',
@@ -474,31 +474,7 @@ class LpdDeviceParameters(object):
         self.expectedParameters['tenGig0DestPort']      = AttributeContainer(int, 'TenGigE0DestPort', '10GigE 0 UDP Destination Port',
                                                                       0, 65535, 61649,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
-        self.expectedParameters['tenGig1SourceMac']     = AttributeContainer(str, 'TenGigE1SourceMAC', '10GigE 1 UDP Source MAC Address',
-                                                                      None, None, '62-00-00-00-00-02',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
-        self.expectedParameters['tenGig1SourceIp']      = AttributeContainer(str, 'TenGigE1SourceIp', '10GigE 1 UDP Source IP Address',
-                                                                      None, None, '10.0.2.1',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
-        self.expectedParameters['tenGig1SourcePort']    = AttributeContainer(int, 'TenGigE1SourcePort', '10GigE 1 UDP Source Port',
-                                                                      0, 65535, 8,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
-        self.expectedParameters['tenGig1DestMac']       = AttributeContainer(str, 'TenGigE1DestMAC', '10GigE 1 UDP Destination MAC Address',
-                                                                      None, None, '00-07-43-01-01-02',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-       
-        self.expectedParameters['tenGig1DestIp']        = AttributeContainer(str, 'TenGigE1DestIp', '10GigE 1 UDP Destination IP Address',
-                                                                      None, None, '10.0.2.2',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
-        self.expectedParameters['tenGig1DestPort']      = AttributeContainer(int, 'TenGigE1DestPort', '10GigE 1 UDP Destination Port',
-                                                                      0, 65535, 61649,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
+                
         self.expectedParameters['tenGigInterframeGap']  = AttributeContainer(int, 'TenGigInterframeGap', '10GigE Inter-frame gap timer [clock cycles]',
                                                                       0, 0xFFFFFFFF, 0x0,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
@@ -513,185 +489,171 @@ class LpdDeviceParameters(object):
         # production firmware iterations
         #
         
-        #TODO: Redundant because there is no action if set to False?
-        self.expectedParameters['femFastCtrlDynamic']           = AttributeContainer(bool, 'FemFastCtrlDynamic', 'Enables fast control with dynamic vetos',
+        self.expectedParameters['femEnableTenGig']      = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
                                                                       (True, False), None, True,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femEnableTenGig']              = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
-                                                                      (True, False), None, True,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
-        self.expectedParameters['femDataSource']                = AttributeContainer(int, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (from Rxblock), 2=frame generator, 3=PPC (preprogrammed)',
+        self.expectedParameters['femDataSource']        = AttributeContainer(int, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (bypassing PPC), 2=Frame Generator, 3=PPC (pattern data)',
                                                                       0, 3, 0,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-#        self.expectedParameters['femAsicEnableMask']            = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
+#        self.expectedParameters['femAsicEnableMask']    = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
 #                                                                         0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
 #                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        self.expectedParameters['femAsicEnableMask']            = AttributeContainer(int, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
-                                                                         0, 0xFFFFFFFF, 99999999,
-                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+        self.expectedParameters['femAsicEnableMask']    = AttributeContainer(int, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
+                                                                      0, 0xFFFFFFFF, 99999999,
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         #TODO: Update description? # LCLS proved 130 fine, crashes at 250
-        self.expectedParameters['femAsicColumns']               = AttributeContainer(int, 'FemAsicColumns', 'Sets ASIC RX readout size (time-slices) per trigger',
+        self.expectedParameters['numberImages']                 = AttributeContainer(int, 'NumberImages', 'Sets the number of images per trigger',
                                                                          0, 130, 4,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femAsicGainOverride']          = AttributeContainer(int, 'FemAsicGainOverride', 'Overrides ASIC gain selection algorithm (0=normal, 8=x100, 9=x10, 11=x1',
-                                                                         (0, 8, 9, 11), None, 0,
+        self.expectedParameters['femAsicGain']                  = AttributeContainer(int, 'FemAsicGain', 'Set the ASIC gain selection mode (0=ASIC algorithm, 8=x100, 9=x10, 11=x1)',
+                                                                         (0, 3, 2, 1), None, 0,
+#                                                                         (0, 8, 9, 11), None, 0,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femAsicSlowControlParams']     = AttributeContainer(str, 'FemAsicSlowControlParams', 'ASIC slow control parameter definition in XML syntax',
-                                                                            None, None, 'asicSlowControl.xml',
-                                                                            AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+        self.expectedParameters['femAsicSetupParams']           = AttributeContainer(str, 'FemAsicSetupParams', 'ASIC Setup Parameters defined in XML syntax',
+                                                                          None, None, 'asicSlowControl.xml',
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femAsicFastCmdSequence']       = AttributeContainer(str, 'FemAsicFastCmdSequence', 'ASIC fast command (readout) sequence definition in XML syntax',
+        self.expectedParameters['femAsicCmdSequence']           = AttributeContainer(str, 'FemAsicCmdSequence', 'ASIC Command Words defined in XML syntax',
                                                                           None, None, 'asicFastCommandSequence.xml',
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int, 'FemAsicPixelFeedbackOverride', 'ASIC per-pixel override of feedback selection: 0 = high(5p), 1= low(50p)',
-                                                                          0, 1, 0,
+        self.expectedParameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int, 'FemAsicPixelFeedbackOverride', 'ASIC pixel feedback override selection: 0=low(50pF), 1=high(5pF), -1=XML decides',
+                                                                          -1, 2, -1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam ,'AllOk.Idle')
         
-        self.expectedParameters['femAsicPixelSelfTestOverride'] = AttributeContainer(int, 'FemAsicPixelSelfTestOverride', 'ASIC per-pixel override of self-test enable: 1 = enabled',
-                                                                          0, 1, 0,
+        self.expectedParameters['femAsicPixelSelfTestOverride'] = AttributeContainer(int, 'FemAsicPixelSelfTestOverride', 'ASIC pixel self-test override selection: 0=off, 1-5=test selection, -1=XML decides',
+                                                                          -1, 5, -1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         #TODO: Not yet Implemented
-        self.expectedParameters['femReadoutOperatingMode']      = AttributeContainer(int, 'FemReadoutOperatingMode', 'FEM readout operating mode (e.g. normal, self-test scan etc, TBD',
+        self.expectedParameters['femReadoutOperatingMode']      = AttributeContainer(int, 'FemReadoutOperatingMode', 'FEM readout operating mode (e.g. Normal, Self-test scan etc, TBD',
                                                                           0, 255, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
         ############ Additional Variables ############
     
-        self.expectedParameters['femAsicDataType']                  = AttributeContainer(int, 'FemAsicDataType', 'ASIC data type 0=sensor data, 1=rx counting, 2=pseudorandom',
+        self.expectedParameters['femAsicDataType']              = AttributeContainer(int, 'FemAsicDataType', 'ASIC data type 0=Sensor data, 1=FEM internal counting, 2=ASIC pseudorandom',
                                                                           0, 2, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicLocalClock']                = AttributeContainer(int, 'FemAsicLocalClock', 'ASIC clock scaling 0=100 MHz, 1=scaled down clock (10 MHz)',
+        self.expectedParameters['femAsicLocalClock']            = AttributeContainer(int, 'FemAsicLocalClock', 'ASIC clock scaling 0=100 MHz (no scaling), 1=Scaled down clock (10 MHz)',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicSlowLoadMode']              = AttributeContainer(int, 'FemAsicSlowLoadMode', 'ASIC control load mode 0=parallel, 1=serial',
+        self.expectedParameters['femAsicSetupLoadMode']         = AttributeContainer(int, 'FemAsicSetupLoadMode', 'ASIC control load mode 0=parallel, 1=serial (being tested)',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicRxInvertData']              = AttributeContainer(bool, 'FemAsicRxInvertData', 'Invert ADC ASIC data',
+        self.expectedParameters['femInvertAdcData']             = AttributeContainer(bool, 'FemInvertAdcData', 'Enable Invert ADC ASIC data True=Invert Data',
                                                                           (True, False), None, False,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicRxFastStrobe']              = AttributeContainer(bool, 'FemAsicRxFastStrobe', 'Start ASIC capture using strobe derived from ASIC Command file',
+        self.expectedParameters['femAsicRxCmdWordStart']        = AttributeContainer(bool, 'FemAsicRxCmdWordStart', 'Enable ASIC readout started by Command Word in femAsicCmdSequence file',
                                                                           (True, False), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicRxDelayOddChannels']        = AttributeContainer(bool, 'FemAsicRxDelayOddChannels', 'Delay odd ASIC data channels by one clock to fix alignment',
-                                                                          (True, False), None, True,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-
-        self.expectedParameters['femAsicSlowClockPhase']            = AttributeContainer(int, 'FemAsicSlowClockPhase', 'ASIC additional phase adjustment of slow clock rsync wrt ASIC reset',
+        self.expectedParameters['femAsicSetupClockPhase']       = AttributeContainer(int, 'FemAsicSetupClockPhase', 'ASIC Setup Params additional phase adjustment of clock rsync wrt ASIC reset',
                                                                           0, 65535, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicSlowedClock']               = AttributeContainer(bool, 'FemAsicSlowedClock', 'ASIC readout phase is slowed down',
-                                                                          (True, False), None, False,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-
-        self.expectedParameters['femPpcMode']                       = AttributeContainer(int, 'FemPpcMode', 'Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout',
+        #TODO: Not yet implemented
+        self.expectedParameters['femPpcMode']                   = AttributeContainer(int, 'FemPpcMode', 'Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femPpcResetDelay']                 = AttributeContainer(int, 'FemPpcResetDelay', 'Delay after resetting ppc',
-                                                                          0, 10, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-
-        self.expectedParameters['femNumTestCycles']                 = AttributeContainer(int, 'FemNumTestCycles', 'Number of test cycles if LL Data Generator or PPC Data Direct selected',
+        self.expectedParameters['numberTrains']                 = AttributeContainer(int, 'NumberTrains', 'Number of trains [if LL Data Generator or PPC Data Direct selected]',
                                                                           0, 1024, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['tenGigFarmMode']                   = AttributeContainer(int, 'TenGigFarmMode', '10GigE farm mode 1=disabled, 2=fixed IP,multi port, 3=farm mode with nic lists',
+        self.expectedParameters['tenGigFarmMode']               = AttributeContainer(int, 'TenGigFarmMode', '10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists',
                                                                           1, 3, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femI2cBus']                        = AttributeContainer(int, 'FemI2cBus', 'Set Fem i2c internal bus 0x000=LM82, 0x100=EEPROM, 0x200=RHS Power Card, 0x300=LHS Power Card (2Tile System)',
+        self.expectedParameters['femI2cBus']                    = AttributeContainer(int, 'FemI2cBus', 'Set Fem i2c internal bus 0x000=LM82, 0x100=EEPROM, 0x200=RHS P-Card, 0x300=LHS P-Card (2Tile System)',
                                                                           (0x000,  0x100, 0x200, 0x300), None, 0x300,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femAsicVersion']                   = AttributeContainer(int, 'FemAsicVersion', 'ASIC version 1=version 1, 2=version 2',
+        self.expectedParameters['femAsicVersion']               = AttributeContainer(int, 'FemAsicVersion', 'ASIC Version 1=version 1, 2=version 2',
                                                                           1, 2, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-
-        self.expectedParameters['femAsicClockSource']               = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator, 1=Clock sync with xray',
-                                                                          0, 1, 0,
+        
+        #TODO: jac to verify merge of femBeamClockSource functionality into this variable:
+        self.expectedParameters['femAsicClockSource']           = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz)',
+                                                                          0, 2, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femBeamClockSource']               = AttributeContainer(int, 'FemBeamClockSource', 'Xray sync clock source 0=XFEL, 1=PETRA',
-                                                                          0, 1, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-
-        self.expectedParameters['femBeamTriggerSource']             = AttributeContainer(int, 'FemBeamTriggerSource', 'Fem beam trigger source 0=XFEL Clock & Ctrl system, 1=Software',
-                                                                          0, 1, 1,
+        self.expectedParameters['femStartTrainSource']          = AttributeContainer(int, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=Petra (derived from PETRAIII clock)',
+                                                                          0, 2, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        self.expectedParameters['femBeamTriggerPetra']              = AttributeContainer(int, 'FemBeamTriggerPetra', 'Fem Petra beam trigger source 0=XFEL reset line as for LCLS, 1=special trigger for Petra derived from clock',
+        self.expectedParameters['femBeamTriggerPetra']          = AttributeContainer(int, 'FemBeamTriggerPetra', 'Fem Petra beam trigger source 0=XFEL reset line as for LCLS, 1=special trigger for Petra derived from clock',
                                                                           0, 1, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femExternalTriggerStrobeDelay']    = AttributeContainer(int, 'FemExternalTriggerStrobeDelay', 'Fem external trigger strobe delay (in ASIC clock periods)',
+        self.expectedParameters['femStartTrainDelay']           = AttributeContainer(int, 'FemStartTrainDelay', 'Delay between trigger arrival and start of train (in ASIC clock periods)',
                                                                           0, 65536, 100,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femExternalTriggerStrobeInhibit']  = AttributeContainer(int, 'FemExternalTriggerStrobeInhibit', 'Fem external trigger strobe inhibit (in ASIC clock periods)',
+        self.expectedParameters['femStartTrainInhibit']         = AttributeContainer(int, 'FemStartTrainInhibit', 'Inhibit period after each trigger (in ASIC clock cycles) which holds off further triggers to allow data to be readout',
                                                                           0, 65536, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femDelaySensors']                  = AttributeContainer(int, 'FemDelaySensors', 'Fem delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB',
-                                                                          0, 0xFFFF, 0xFFFF,
+        self.expectedParameters['femAsicGainOverride']          = AttributeContainer(bool, 'FemAsicGainOverride', 'Enable Fem gain selection override False=Gain set by femAsicGain, True=Gain set by Asic Command Sequence XML tag(s)',
+                                                                          (True, False), None, False,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        self.expectedParameters['femGainFromFastCmd']               = AttributeContainer(int, 'FemGainFromFastCmd', 'Fem Gain Selection Mode 0=Asic gain selected by register, 1=Asic gain selected by fast cmd file commands',
-                                                                          0, 1, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-
-        self.expectedParameters['femDebugLevel']                    = AttributeContainer(int, 'FemDebugLevel', 'Set the debug level',
+        self.expectedParameters['femDebugLevel']                = AttributeContainer(int, 'FemDebugLevel', 'Set the debug level',
                                                                           0, 6, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        #TODO: Decide range of values?
-        self.expectedParameters['tenGig0DataGenerator']             = AttributeContainer(int, 'TenGig0DataGenerator', '10GigE 0 Data generator 1=DataGen 2=PPC DDR2',
+
+        self.expectedParameters['tenGig0DataGenerator']         = AttributeContainer(int, 'TenGig0DataGenerator', '10GigE 0 Data generator 1=Data Generator 2=PPC DDR2; Only relevant if femDataSource=2 [Frame Generator]',
                                                                           1, 2, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        #TODO: Decide range of values?
-        self.expectedParameters['tenGig0DataFormat']                = AttributeContainer(int, 'TenGig0DataFormat', '10GigE 0 Data format type 0=counting data',
+        
+        self.expectedParameters['tenGig0DataFormat']            = AttributeContainer(int, 'TenGig0DataFormat', '10GigE 0 Data format type 0=counting data; Only relevant if femDataSource=2 [Frame Generator]',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        #TODO: Decide range of values?
-        self.expectedParameters['tenGig0FrameLength']               = AttributeContainer(int, 'TenGig0FrameLength', '10GigE 0 Frame length in bytes',
+
+        self.expectedParameters['tenGig0FrameLength']           = AttributeContainer(int, 'TenGig0FrameLength', '10GigE 0 Frame length in bytes; Only relevant if femDataSource=2 [Frame Generator]',
                                                                           0, 0xFFFFFF, 0x10000,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        #TODO: Decide range of values?
-        self.expectedParameters['tenGig0NumberOfFrames']            = AttributeContainer(int, 'TenGig0NumberOfFrames', '10GigE 0 Number of frames to send in each cycle',
+        
+        self.expectedParameters['tenGig0NumberOfFrames']        = AttributeContainer(int, 'TenGig0NumberOfFrames', '10GigE 0 Number of frames to send in each cycle; Only relevant if femDataSource=2 [Frame Generator]',
                                                                           0, 512, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
 
-        #
+        self.expectedParameters['femStartTrainPolarity']        = AttributeContainer(int, 'FemStartTrainPolarity', 'Set polarity of the external signal indicating start of train 0=No inversion, 1=Invert signal',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
+        self.expectedParameters['femVetoPolarity']              = AttributeContainer(int, 'FemVetoPolarity', 'Set polarity of the external veto signal 0=No inversion, 1=Invert signal',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+
+        # 
         # Firmware version variables - used to obtain read only, firmware version numbers
         #
 
-        self.expectedParameters['femV5FirmwareVersion']        = AttributeContainer(int, 'FemV5FirmwareVersion', 'FEM V5 Firmware Version',
-                                                                        0, 4294967295,  None,
-                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
+        self.expectedParameters['femV5FirmwareVersion']         = AttributeContainer(int, 'FemV5FirmwareVersion', 'FEM V5 Firmware Version',
+                                                                          0, 4294967295,  None,
+                                                                          AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
 
-        self.expectedParameters['femBotSp3FirmwareVersion']        = AttributeContainer(int, 'FemBotSp3FirmwareVersion', 'FEM Bottom SP3 FPGA Firmware Version',
-                                                                        0, 4294967295,  None,
-                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
+        self.expectedParameters['femBotSp3FirmwareVersion']     = AttributeContainer(int, 'FemBotSp3FirmwareVersion', 'FEM Bottom SP3 FPGA Firmware Version',
+                                                                          0, 4294967295,  None,
+                                                                          AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
 
-        self.expectedParameters['femTopSp3FirmwareVersion']        = AttributeContainer(int, 'FemTopSp3FirmwareVersion', 'FEM Top SP3 FPGA Firmware Version',
-                                                                        0, 4294967295,  None,
-                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
+        self.expectedParameters['femTopSp3FirmwareVersion']     = AttributeContainer(int, 'FemTopSp3FirmwareVersion', 'FEM Top SP3 FPGA Firmware Version',
+                                                                          0, 4294967295,  None,
+                                                                          AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
 
-        self.expectedParameters['femCfgSp3FirmwareVersion']        = AttributeContainer(int, 'FemCfgSp3FirmwareVersion', 'FEM Config SP3 FPGA Firmware Version',
-                                                                        0, 4294967295,  None,
-                                                                        AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
+        self.expectedParameters['femCfgSp3FirmwareVersion']     = AttributeContainer(int, 'FemCfgSp3FirmwareVersion', 'FEM Config SP3 FPGA Firmware Version',
+                                                                          0, 4294967295,  None,
+                                                                          AccessRead, None, ExternalParam, 'AllOk.Idle', None, None)
     
     def get(self):
         '''

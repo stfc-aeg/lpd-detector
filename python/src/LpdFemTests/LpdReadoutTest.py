@@ -34,73 +34,71 @@ def LpdReadoutTest(femHost=None, femPort=None):
     ################################################################
     
     AsicVersion = 2    # 1 or 2
-    xmlConfiguration = 2   # 0 = test, 1=short exposure, 2= long exposure, 3= pseudorandom, 4 = all 3 gain readout short exposure, 5 = all 3 gain readout long exposure
+    xmlConfig   = 2   # 0=test, 1=short exposure, 2=long exposure, 3=pseudorandom, 4=all 3 gain readout with short exposure, 5=all 3 gain readout with long exposure
 	# (also for pseudo random  select that in asic data type and disable fast strobe for asicrx start)
 
     if AsicVersion == 1:
-        femAsicSlowedClockFlag = True	# must ensure fast cmd file corresponds with readout clock selection
-        if xmlConfiguration == 1:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl_jacv1.xml'
-        elif xmlConfiguration == 2:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_AsicControl_jacv1.xml' 
-        elif xmlConfiguration == 3:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/asic_pseudo_random_asicv1.xml' 
+
+        if xmlConfig == 1:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V1.xml'
+        elif xmlConfig == 2:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V1.xml' 
+        elif xmlConfig == 3:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/asic_pseudo_random_asicv1.xml'
         else:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
-            FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
+            asicSetupParams = 'Config/SetupParams/Setup_SingleFrame.xml'
+            asicCmdSequence = 'Config/CmdSequence/Command_SingleFrame.xml'
     elif AsicVersion == 2:
-        femAsicSlowedClockFlag = False	# must ensure fast cmd file corresponds with readout clock selection
-        if xmlConfiguration == 1:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_asicv2_jacv1.xml' # 'ConfigFiles/short_exposure_500_images_A.xml'  #  'ConfigFiles/AutoResets_ShortExposures_asicv2_B.xml'
-        elif xmlConfiguration == 2:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExposure_asicv2_jacv1.xml' 
-#            FastCmdXmlString     = 'ConfigFiles/ManualReset_longExp_varImgsPerTrain.xml'    # check num img per train - 120 fine, 140 then mounted Tiles dont read out
-        elif xmlConfiguration == 3:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/asic_pseudo_random_asicv2.xml' 
-        elif xmlConfiguration == 4:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/short_exposure_all_3gains_asicv2_B.xml' 
-        elif xmlConfiguration == 5:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_lowpower.xml'
-            FastCmdXmlString     = 'ConfigFiles/long_exposure_all_3gains_asicv2_C.xml' 
-        else:
-            SlowControlXmlString = 'ConfigFiles/AsicSlowParameters_SingleFrameTestPulse.xml'
-            FastCmdXmlString = 'ConfigFiles/CmdsSingleFrameTestPulse.xml'
-            
-    print SlowControlXmlString
-    print FastCmdXmlString
+
+        if xmlConfig == 1:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'
+        elif xmlConfig == 2:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml' 
+#            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_100Images.xml'    # check num img per train - 120 fine, 140 then mounted Tiles dont read out
+        elif xmlConfig == 3:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/asic_pseudo_random_asicv2.xml'
+        elif xmlConfig == 4:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/short_exposure_all_3gains_asicv2_B.xml'
+        elif xmlConfig == 5:
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicCmdSequence = 'Config/CmdSequence/long_exposure_all_3gains_asicv2_C.xml'
+
+    print "================    XML Filenames   ================"
+    print asicSetupParams
+    print asicCmdSequence
     
     ################################################################
 
 # The second of the two command sequence configurations provided by Matt:
-#        FastCmdXmlString     = 'ConfigFiles/AutoResets_ShortExposures_AsicControl.xml'
+#        asicCmdSequence = 'Config/CmdSequence/AutoResets_ShortExposures_AsicControl.xml'
 
     #TODO: Temporary hack, pass filename instead of XML string
     # Read Slow Control (LpdAsicControl) XML file into a string
-#    ff = open('ConfigFiles/preambleDelaySlowControl.xml', 'r')
-#    SlowControlXmlString = ff.read(-1)
+#    ff = open('Config/preambleDelaySlowControl.xml', 'r')
+#    asicSetupParams = ff.read(-1)
 #    ff.close ()
     
     #TODO: Temporary hack, pass filename instead of XML string
     # Read Asic Command Sequence (LpdAsicCommandSequence) XML file into a string
-#    ff = open('ConfigFiles/playingWivLasers.xml', 'r')
-#    FastCmdXmlString = ff.read(-1)
+#    ff = open('Config/playingWivLasers_jacv3.xml', 'r')
+#    asicCmdSequence = ff.read(-1)
 #    ff.close ()
 
-    rc = theDevice.paramSet('femAsicSlowControlParams', SlowControlXmlString)
+    rc = theDevice.paramSet('femAsicSetupParams', asicSetupParams)
     if rc != LpdDevice.ERROR_OK:
-        print "femAsicSlowControlParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        print "femAsicSetupParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         errorCount += 1
     
-    rc = theDevice.paramSet('femAsicFastCmdSequence', FastCmdXmlString)
+    rc = theDevice.paramSet('femAsicCmdSequence', asicCmdSequence)
     if rc != LpdDevice.ERROR_OK:
-        print "femAsicFastCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        print "femAsicCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         errorCount += 1
 
     ######################################################
@@ -145,7 +143,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
     
 #    rc = theDevice.paramSet('femAsicEnableMask', [0x00FF0000, 0x00000000, 0x00000000, 0x000000FF])    # Enable 2 Tile System's ASICs
 #    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF])    # Enable everything
-#    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])      # Supermodule with three tiles
+#    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])    # Supermodule with three tiles
     param = 'femAsicEnableMask'
     rc = theDevice.paramSet(param, 9999)
     if rc != LpdDevice.ERROR_OK:
@@ -153,19 +151,13 @@ def LpdReadoutTest(femHost=None, femPort=None):
         errorCount += 1
     
     param = 'femAsicPixelSelfTestOverride'
-    rc = theDevice.paramSet(param, 0)   # per-pixel override of self-test enable: 1 = enabled
+    rc = theDevice.paramSet(param, -1)   # per-pixel override of self-test enable: 0=Disable, 1=Enabled [-1=Don't Care/XML decides]
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
     
     param = 'femAsicPixelFeedbackOverride'
-    rc = theDevice.paramSet(param, 0)   # per-pixel override of feedback selection: 0 = high(10p), 1= low(50p)'
-    if rc != LpdDevice.ERROR_OK:
-        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-        errorCount += 1
-    
-    param = 'femPpcResetDelay'
-    rc = theDevice.paramSet(param, 0)   # Delay after resetting ppc
+    rc = theDevice.paramSet(param, -1)   # per-pixel override of feedback selection: 0= low(50p), 1= high(5p) [-1=Don't Care/XML decices] # Verified 4/7/2013, ckd
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -188,8 +180,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femAsicColumns'
-    rc = theDevice.paramSet(param, 4)   # Time-slices per trigger (images per train) - combine with ASIC command XML tag
+    param = 'numberImages'
+    rc = theDevice.paramSet(param, 4)   # Images per trigger - combine with ASIC command XML tag
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -200,25 +192,19 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femAsicSlowedClock'
-    rc = theDevice.paramSet(param, femAsicSlowedClockFlag)           # True for V1 asic, False for V2 asic
-    if rc != LpdDevice.ERROR_OK:
-        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-        errorCount += 1
-
-    param = 'femAsicSlowLoadMode'
+    param = 'femAsicSetupLoadMode'
     rc = theDevice.paramSet(param, 0)   # ASIC control load mode 0=parallel, 1=serial
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femAsicRxInvertData'
-    rc = theDevice.paramSet(param, False)   # Invert ADC ASIC Data
+    param = 'femInvertAdcData'
+    rc = theDevice.paramSet(param, False)   # True = Invert ADC ASIC Data, False = Don't
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femAsicRxFastStrobe'
+    param = 'femAsicRxCmdWordStart'
     rc = theDevice.paramSet(param, True)    # Start ASIC capture using strobe derived from ASIC Command file
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
@@ -269,14 +255,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femAsicGainOverride'
-    rc = theDevice.paramSet(param, 9)   # (Default value is 0)   0 = algorithm ; 8 = x100 ; 9 = x10 ; 11 = x1
-    if rc != LpdDevice.ERROR_OK:
-        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-        errorCount += 1
-
-    param = 'femFastCtrlDynamic'
-    rc = theDevice.paramSet(param, True)    # Enables Fast Control with Dynamic Vetoes
+    param = 'femAsicGain'
+    rc = theDevice.paramSet(param, 2)   # (Default value is 0)   0 = algorithm ; 3 = x100 ; 2 = x10 ; 1 = x1
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -287,20 +267,14 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femAsicRxDelayOddChannels'
-    rc = theDevice.paramSet(param, True)    # Delay odd ASIC data channels by one clock to fix alignment
-    if rc != LpdDevice.ERROR_OK:
-        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-        errorCount += 1
-
-    param = 'femAsicSlowClockPhase'
+    param = 'femAsicSetupClockPhase'
     rc = theDevice.paramSet(param, 0)   # additional phase adjustment of slow clock rsync wrt ASIC reset
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femNumTestCycles'
-    rc = theDevice.paramSet(param, 10)   # number of test cycles if LL Data Generator / PPC Data Direct selected
+    param = 'numberTrains'
+    rc = theDevice.paramSet(param, 5)   # number of test cycles if LL Data Generator / PPC Data Direct selected
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -327,15 +301,9 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femExternalTriggerStrobeDelay'
+    param = 'femStartTrainDelay'
     triggerDelay = (2+88)
     rc = theDevice.paramSet(param, triggerDelay)    # Fem external trigger strobe delay (in ASIC clock periods)
-    if rc != LpdDevice.ERROR_OK:
-        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-        errorCount += 1
-
-    param = 'femDelaySensors'
-    rc = theDevice.paramSet(param, 0xffff)  # delay timing of 16 sensors; bit = 1 adds 1 clock delay; sensor mod 1 is LSB
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -346,20 +314,14 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femBeamClockSource'
-    rc = theDevice.paramSet(param, 0)   #  Xray sync clock source 0=XFEL, 1=PETRA
+    param = 'femStartTrainSource'
+    rc = theDevice.paramSet(param, 1)   #  0=XFEL Clock & Ctrl command/reset, 1=Software, 2=PETRA III
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femBeamTriggerSource'
-    rc = theDevice.paramSet(param, 1)   #  0=XFEL Clock & Ctrl system, 1=Software
-    if rc != LpdDevice.ERROR_OK:
-        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-        errorCount += 1
-
-    param = 'femGainFromFastCmd'
-    rc = theDevice.paramSet(param, 0)   #0=asicrx gain select fixed by register, 1=asicrx gain select taken from fast cmd file commands on the fly
+    param = 'femAsicGainOverride'
+    rc = theDevice.paramSet(param, False)   #False=asicrx gain select fixed by register, True=asicrx gain select taken from fast cmd file commands on the fly
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -370,11 +332,24 @@ def LpdReadoutTest(femHost=None, femPort=None):
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
-    param = 'femExternalTriggerStrobeInhibit'
+    param = 'femStartTrainInhibit'
     rc = theDevice.paramSet(param, 0)   # Inhibit in ASIC clock cycles 
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
+
+    param = 'femStartTrainPolarity'
+    rc = theDevice.paramSet(param, 1)   #  0=Don't invert, 1=Invert
+    if rc != LpdDevice.ERROR_OK:
+        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+        errorCount += 1
+
+    param = 'femVetoPolarity'
+    rc = theDevice.paramSet(param, 0)   #  0=Don't invert, 1=Invert
+    if rc != LpdDevice.ERROR_OK:
+        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+        errorCount += 1
+
 
     ######################################################
     # Check for errors before proceeding..
@@ -387,23 +362,47 @@ def LpdReadoutTest(femHost=None, femPort=None):
         # No errors encountered, proceeding
 
         ######################################################
+        # Read back the "Expert" Level variables settings
+        ######################################################
+    
+        if bDebug:
+
+            print "================ 'Expert' Variables ================"
+            paramExpertVariables = ['tenGig0SourceMac', 'tenGig0SourceIp', 'tenGig0SourcePort', 'tenGig0DestMac', 'tenGig0DestIp', 'tenGig0DestPort', 'tenGig0DataFormat',
+                                    'tenGig0DataGenerator', 'tenGig0FrameLength', 'tenGig0NumberOfFrames', 'tenGigFarmMode', 'tenGigInterframeGap', 'tenGigUdpPacketLen', 
+                                    'femAsicSetupClockPhase', 'femAsicVersion', 'femBeamTriggerPetra', 'femDebugLevel', 'femEnableTenGig',
+                                    'femStartTrainPolarity', 'femVetoPolarity']
+            #TODO: Remove if redundant?
+#            param = 'femI2cBus'
+
+        for param in paramExpertVariables:
+            (rc, value) = theDevice.paramGet(param)
+            if rc != LpdDevice.ERROR_OK:
+                print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+            else:
+                print "{0:<32} = {1:<10}".format(param, value.__repr__())
+        
+
+
+        ######################################################
         # Read back all User Level variables
         ######################################################
         
-        paramUserVariables = ['tenGig0SourceMac', 'tenGig0SourceIp', 'tenGig0SourcePort', 'tenGig0DestMac', 'tenGig0DestIp', 'tenGig0DestPort', 'tenGig0DataFormat',
-                     'tenGig0DataGenerator', 'tenGig0NumberOfFrames', 'femAsicColumns', 'femAsicDataType', 'femAsicLocalClock', 'femAsicModuleType',
-                     'femAsicRxFastStrobe', 'femAsicRxInvertData', 'femAsicSlowedClock', 'femAsicSlowLoadMode', 'femDataSource', 'femAsicPixelSelfTestOverride',
-                     'femAsicPixelFeedbackOverride', 'femPpcResetDelay']
+        paramUserVariables = ['femAsicClockSource', 'femAsicDataType', 'femAsicGain', 'femAsicGainOverride', 'femAsicLocalClock', 'femAsicModuleType', 
+                              'femAsicPixelFeedbackOverride', 'femAsicPixelSelfTestOverride', 'femAsicRxCmdWordStart', 'femAsicSetupLoadMode',
+                              'femStartTrainSource', 'femDataSource', 'femInvertAdcData', 'numberImages', 'numberTrains', 'femStartTrainDelay', 'femStartTrainInhibit']
         #TODO: Add when implemented? [if implemented..]
 #        param = 'femPpcMode'
-        
+
+        print "================ 'User'   Variables ================"
+
         for param in paramUserVariables:
             (rc, value) = theDevice.paramGet(param)
             if rc != LpdDevice.ERROR_OK:
                 print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
             else:
-                print "{0:<32} = {1:<10}".format(param, value)
-        
+                print "{0:<32} = {1:<10}".format(param, value.__repr__())
+
         
         #TODO: Uncomment/restore relevant LpdFemClient code when Karabo fixes array bug
 #        param = 'femAsicEnableMask'
@@ -413,8 +412,8 @@ def LpdReadoutTest(femHost=None, femPort=None):
 #        else:
 #            print "{0:<32} = [{1:<8}, {1:<8}, {1:<8}, {1:<8}]".format(param,value[0], value[1], value[2], value[3])
     
-        # Check XML string variables read back, but don't display their [long-winded] strings
-        paramUserExtraVariables = ['femAsicFastCmdSequence',  'femAsicSlowControlParams'] 
+        # Check XML string variables read back, but don't display their [long-winded] XML strings
+        paramUserExtraVariables = ['femAsicCmdSequence',  'femAsicSetupParams'] 
 
 
         for param in paramUserExtraVariables:
@@ -425,26 +424,6 @@ def LpdReadoutTest(femHost=None, femPort=None):
 #                print "{0:<32} = {1:<10}".format(param, value)
         
     
-        ######################################################
-        # Read back the "Expert" Level variables settings
-        ######################################################
-    
-        if bDebug:
-            
-            paramExpertVariables = ['tenGig0FrameLength', 'tenGigFarmMode', 'tenGigInterframeGap', 'tenGigUdpPacketLen', 'femAsicGainOverride',
-                                    'femAsicRxDelayOddChannels', 'femAsicSlowClockPhase', 'femAsicVersion', 'femDebugLevel', 'femEnableTenGig',
-                                    'femFastCtrlDynamic', 'femNumTestCycles', 'femDelaySensors', 'femAsicClockSource', 'femBeamTriggerSource',
-                                    'femGainFromFastCmd', 'femBeamTriggerPetra', 'femExternalTriggerStrobeDelay', 'femExternalTriggerStrobeInhibit']
-            #TODO: Remove if redundant?
-#            param = 'femI2cBus'
-
-        for param in paramExpertVariables:
-            (rc, value) = theDevice.paramGet(param)
-            if rc != LpdDevice.ERROR_OK:
-                print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-            else:
-                print "{0:<32} = {1:<10}".format(param, value)
-        
     
         ######################################################
         # Configure the FEM
