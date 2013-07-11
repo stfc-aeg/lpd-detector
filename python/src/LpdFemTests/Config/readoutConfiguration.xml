@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+
+<lpd_readout_config name="twoTileReadoutConfiguration.xml">
+
+    <!-- 'Expert' Variables: -->
+    <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
+    <tenGig0SourceIp type="str" val="10.0.0.2"/>
+    <tenGig0SourcePort type="int" val="0"/>
+    <tenGig0DestMac type="str" val="00-07-43-10-65-A0"/>   <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
+    <tenGig0DestIp type="str" val="10.0.0.1"/>
+    <tenGig0DestPort type="int" val="61649"/>
+    <tenGig0DataFormat type="int" val="0"/>         <!-- Data format type, 0=counting data - doesn't affect "normal" data" -->
+    <tenGig0DataGenerator type="int" val="1"/>      <!-- Data generator 1=DataGen 2=PPC DDR2 -->
+    <tenGig0FrameLength type="int" val="0x10000"/>
+    <tenGig0NumberOfFrames type="int" val="1"/>     <!--  Number of frames to send in each cycle -->
+    <tenGigFarmMode type="int" val="1"/>
+    <tenGigInterframeGap type="int" val="0"/>
+    <tenGigUdpPacketLen type="int" val="8000"/>
+
+    <femAsicSetupClockPhase type="int" val="0"/>    <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
+    <femAsicVersion type="int" val="2"/>
+    <femBeamTriggerPetra type="int" val=" 1"/>                   <!--  0=XFEL reset line as for LCLS, 1=special trigger for Petra -->
+    <femDebugLevel type="int" val="0"/>
+    <femEnableTenGig type="bool" val="True"/>       <!-- Enables transmission of image data via 10GigE UDP interface -->
+    <femStartTrainPolarity type="int" val="1"/>     <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
+    <femVetoPolarity type="int" val="0"/>           <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
+
+
+    <!-- 'User' Variables: -->
+    <femAsicClockSource type="int" val="0"/>              <!-- 0=FEM local clock 1=Sync with Xray 2=Petra clock sync-->
+    <femAsicDataType type="int" val="0"/>                 <!-- 0=Normal Data, 1=Counting data, 2=Pseudo random -->
+    <!-- femAsicEnableMask type="int" val="9999"/> -->    <!-- Not set while API can't pass array -->
+    <femAsicGain type="int" val="2"/>                     <!-- 0=normal, 3=100x, 2=10x, 1=1x -->
+    <femAsicGainOverride type="bool" val="False"/>        <!-- FEM Gain Selection Mode; False=Register, True=Asic Command Word XML decides -->
+    
+    <femAsicLocalClock type="int" val="0"/>               <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
+    <femAsicModuleType type="int" val="0"/>               <!-- 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone' -->
+    <femAsicPixelFeedbackOverride type="int" val="-1"/>   <!--  Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
+    <femAsicPixelSelfTestOverride type="int" val="-1"/>   <!--  Override self-test enable: 1 = enabled -->
+    <femAsicRxCmdWordStart type="bool" val="True"/>       <!-- Enable ASIC readout started by Command Word from XML file -->
+    <femAsicSetupLoadMode type="int" val="0"/>            <!-- ASIC control load mode 0=parallel, 1=serial -->
+    <femStartTrainSource type="int" val="1"/>             <!-- Train start signal source 0=XFEL Clock & Ctrl system, 1=Software, 2=Petra III -->
+    <femDataSource type="int" val="1"/>                   <!-- 0=ASIC [via PPC], 1=ASIC [from Rxblock], 2=frame generator, 3=PPC [preprogrammed] -->
+    <femInvertAdcData type="bool" val="False"/>
+    <numberImages type="int" val="4"/>                    <!-- Set the number of images - combine with Asic Command Word(s) <trigger_flag_set/> -->
+    <numberTrains type="int" val="5"/>                    <!-- number of trains [if LL Data Generator / PPC Data Direct selected] -->
+    <femStartTrainDelay type="int" val=" 90"/>            <!--  Fem external trigger strobe delay [in ASIC clock periods] -->
+    <femStartTrainInhibit type="int" val="0"/>            <!-- Inhibit in ASIC clock cycles  -->
+
+    <!-- <femI2cBus type="int" val="0x300"/> Obsolete?--> 
+    <!-- <femPpcMode type="int" val="0"/> To be Implemented-->
+
+</lpd_readout_config>
+
+

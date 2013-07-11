@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="superModRandomData.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdAsicCommandSequence.xsd">
+
+    <!-- Rules for lpd command sequence  jac 
+
+        There MUST be a single <nop/> immediately before <sync_reset/>, <read_out_data/> and <asic_slow_readout_start/> 
+        There MUST be exactly 1 <nop/> between <sync_reset/> and <read_out_data/> 
+
+        For readout add enough nops to ensure all data is clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) plus allow extra 1000 nops for offset from readout cmd to start of asic header
+
+        If reading out V1 ASIC need  <asic_slow_readout_start/> in cmd sequence to slow clock during readout phase
+        Must also set femAsicSlowedClock parameter in LpdReadoutTest.py to TRUE
+
+    -->
+	<sync_reset/> <!-- Start Config chip -->
+	<nop/>
+	<reset_state_machine/>
+	<sync_reset/>
+	<test_mode_d/>	
+	<nop count="4"/>
+	<asic_slow_readout_start/>
+	<nop count="4"/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/> 
+	<!-- Add additional NOPS to allow sufficient data to be clocked out of the ASICs -->
+	<loop count="11">
+		<nop/>
+		<nop count="501"/>
+	</loop>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+</lpd_command_sequence>
