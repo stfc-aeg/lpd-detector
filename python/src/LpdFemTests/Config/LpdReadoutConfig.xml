@@ -43,8 +43,8 @@
     <femInvertAdcData type="bool" val="False"/>
     <numberImages type="int" val="4"/>                    <!-- Set the number of images - combine with Asic Command Word(s) <trigger_flag_set/> -->
     <numberTrains type="int" val="3"/>                    <!-- number of trains [if LL Data Generator / PPC Data Direct selected] -->
-    <startTrainDelay type="int" val=" 90"/>               <!--  Fem external trigger strobe delay [in ASIC clock periods] -->
-    <startTrainInhibit type="int" val="0"/>               <!-- Inhibit in ASIC clock cycles  -->
+    <femStartTrainDelay type="int" val=" 90"/>               <!--  Fem external trigger strobe delay [in ASIC clock periods] -->
+    <femStartTrainInhibit type="int" val="0"/>               <!-- Inhibit in ASIC clock cycles  -->
 
     <!-- <femI2cBus type="int" val="0x300"/> Obsolete?--> 
     <!-- <femPpcMode type="int" val="0"/> To be Implemented-->
