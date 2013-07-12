@@ -16,6 +16,20 @@ from FemClient.FemClient import *
 from FemApi.FemSysaceConfig import FemSysaceConfig
 import ExcaliburFemTests
 
+# TODO: MOVE THESE SOMEWHERE!
+CMD_WRITE_TO_CF = 2
+CMD_GET_FWADDR = 4
+CMD_VERIFY = 6    
+FWIMAGE_OK = 0
+FWIMAGE_BUSY = 1
+FWIMAGE_BAD_MAGIC = 2
+FWIMAGE_BAD_SLOT = 3
+FWIMAGE_BAD_CRC = 4
+FWIMAGE_FS_OPEN_FAILED = 5
+FWIMAGE_FS_WRITE_FAILED = 6
+FWIMAGE_FS_READ_FAILED = 7
+FWIMAGE_FS_CLOSE_FAILED = 8
+
 def uploadFirmware(femHost, femPort, filename, desc, slot):
 
     crc = 0
@@ -32,21 +46,6 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     
     # Configuration defaults
     chunkSize = 768432
-    
-    # TODO: MOVE THESE SOMEWHERE!
-    CMD_WRITE_TO_CF = 2
-    CMD_GET_FWADDR = 4
-    CMD_VERIFY = 6
-    
-    FWIMAGE_OK = 0
-    FWIMAGE_BUSY = 1
-    FWIMAGE_BAD_MAGIC = 2
-    FWIMAGE_BAD_SLOT = 3
-    FWIMAGE_BAD_CRC = 4
-    FWIMAGE_FS_OPEN_FAILED = 5
-    FWIMAGE_FS_WRITE_FAILED = 6
-    FWIMAGE_FS_READ_FAILED = 7
-    FWIMAGE_FS_CLOSE_FAILED = 8
     
     # Get file size & last modified date
     size = os.path.getsize(filename)
@@ -113,7 +112,6 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     print ""
     print "Upload completed successfully."
     
-    
     # Upload metadata with updated crc
     config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, desc, fileTime, int(uploadTime), 0, crc, 0);
     configPayload = config.decodeAsInt()
@@ -122,45 +120,43 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     # Poll status for completion / error
     print "Writing image to CF...",
     sys.stdout.flush()
-    theFem.commandSend(CMD_WRITE_TO_CF, 0)
-    status = FWIMAGE_BUSY;
-    while(status == FWIMAGE_BUSY):
-        time.sleep(1)
-        response = theFem.rawRead(cfgAddr + 0x3C, 1)
-        status = response[0]
-    
-    if (status == FWIMAGE_OK):
-        print "COMPLETED OK"
-    else:
-        print "ERROR CODE: ", status
+    status = doFemCmdAndPollForCompletion(theFem, CMD_WRITE_TO_CF, cfgAddr, 0x3C, 1)
     
     # Verify image on CF
     print "Verifying image on CF...",
     sys.stdout.flush()
-    response = theFem.commandSend(CMD_VERIFY, 0)
-    status = FWIMAGE_BUSY;
-    while(status == FWIMAGE_BUSY):
-        time.sleep(1)
-        response = theFem.rawRead(cfgAddr + 0x3C, 1)
-        status = response[0]
-    
-    if (status == FWIMAGE_OK):
-        print "COMPLETED OK"
-    else:
-        print "ERROR CODE: ", status
+    status = doFemCmdAndPollForCompletion(theFem, CMD_VERIFY, cfgAddr, 0x3C, 1)
     
     # Compare CRCs
     response = theFem.rawRead(cfgAddr + 0x38, 1)
     verifiedCrc = response[0]
+    print "********************************************"
     if (verifiedCrc == crc):
-        print "CRC CHECK PASSED, UPLOAD SUCCESSFUL!"
+        print "CRC CHECK OK, IMAGE UPLOAD SUCCESSFUL"
     else:
-        print "CRC CHECK FAILED!  UPLOAD CRC= " + hex(crc) + ", VERIFIED CRC= " + hex(verifiedCrc)
+        print "CRC FAILED!  UPLOAD CRC= " + hex(crc) + ", VERIFIED CRC= " + hex(verifiedCrc)
+    print "********************************************"
     
     return
 
 # ----------------------
 
+# Sends a FEM command and then polls it at specified interval for completion
+def doFemCmdAndPollForCompletion(fem, cmd, cfgAddr, offset, interval):
+    response = fem.commandSend(cmd, 0)
+    status = FWIMAGE_BUSY;
+    while(status == FWIMAGE_BUSY):
+        time.sleep(interval)
+        response = fem.rawRead(cfgAddr + offset, 1)
+        status = response[0]
+
+    if (status == FWIMAGE_OK):
+        print "Done!"
+    else:
+        print "Error: ", status
+    return status
+
+# ----------------------    
 
 if __name__ == "__main__":
 
