@@ -32,8 +32,21 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     
     # Configuration defaults
     chunkSize = 768432
+    
+    # TODO: MOVE THESE SOMEWHERE!
     CMD_WRITE_TO_CF = 2
     CMD_GET_FWADDR = 4
+    CMD_VERIFY = 6
+    
+    FWIMAGE_OK = 0
+    FWIMAGE_BUSY = 1
+    FWIMAGE_BAD_MAGIC = 2
+    FWIMAGE_BAD_SLOT = 3
+    FWIMAGE_BAD_CRC = 4
+    FWIMAGE_FS_OPEN_FAILED = 5
+    FWIMAGE_FS_WRITE_FAILED = 6
+    FWIMAGE_FS_READ_FAILED = 7
+    FWIMAGE_FS_CLOSE_FAILED = 8
     
     # Get file size & last modified date
     size = os.path.getsize(filename)
@@ -74,6 +87,9 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     
     print "Uploading:          ",
     while True:
+        print "#",
+        sys.stdout.flush()
+        
         chunk = f.read(chunkSize)
         if not chunk: break
     
@@ -82,9 +98,6 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
         addr += chunkSize
     
         crc = binascii.crc32(chunk, crc)    
-        
-        print "#",
-        sys.stdout.flush()
     
     f.close()
     
@@ -97,6 +110,9 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     print "Upload time:         " + str(duration) + "s"
     print "Upload speed:        " + str((size / duration) / 1024) + "kb/s, " + str((size / duration) / 1024 / 1024) + "Mb/s"
     print "CRC32:               " + hex(crc)
+    print ""
+    print "Upload completed successfully."
+    
     
     # Upload metadata with updated crc
     config = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, size, slot, desc, fileTime, int(uploadTime), 0, crc, 0);
@@ -105,6 +121,41 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     
     # Issue firmware upload command
     theFem.commandSend(CMD_WRITE_TO_CF, 0)
+    
+    # Poll status for completion / error
+    print "Writing image to CF...",
+    status = FWIMAGE_BUSY;
+    while(status == FWIMAGE_BUSY):
+        time.sleep(1)
+        response = theFem.rawRead(cfgAddr + 0x3C, 1)
+        status = response[0]
+    
+    if (status == FWIMAGE_OK):
+        print "COMPLETED OK"
+    else:
+        print "ERROR CODE: ", status
+    
+    # Verify image on CF
+    response = theFem.commandSend(CMD_VERIFY, 0)
+    print "Verifying image on CF...",
+    status = FWIMAGE_BUSY;
+    while(status == FWIMAGE_BUSY):
+        time.sleep(1)
+        response = theFem.rawRead(cfgAddr + 0x3C, 1)
+        status = response[0]
+    
+    if (status == FWIMAGE_OK):
+        print "COMPLETED OK"
+    else:
+        print "ERROR CODE: ", status
+    
+    # Compare CRCs
+    response = theFem.rawRead(cfgAddr + 0x38, 1)
+    verifiedCrc = response[0]
+    if (verifiedCrc == crc):
+        print "CRC CHECK PASSED, UPLOAD SUCCESSFUL!"
+    else:
+        print "CRC CHECK FAILED!  UPLOAD CRC= " + hex(crc) + ", VERIFIED CRC= " + hex(verifiedCrc)
     
     return
 
