@@ -119,11 +119,10 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
     configPayload = config.decodeAsInt()
     theFem.rawWrite(theAddr=cfgAddr, thePayload=configPayload)
     
-    # Issue firmware upload command
-    theFem.commandSend(CMD_WRITE_TO_CF, 0)
-    
     # Poll status for completion / error
     print "Writing image to CF...",
+    sys.stdout.flush()
+    theFem.commandSend(CMD_WRITE_TO_CF, 0)
     status = FWIMAGE_BUSY;
     while(status == FWIMAGE_BUSY):
         time.sleep(1)
@@ -136,8 +135,9 @@ def uploadFirmware(femHost, femPort, filename, desc, slot):
         print "ERROR CODE: ", status
     
     # Verify image on CF
-    response = theFem.commandSend(CMD_VERIFY, 0)
     print "Verifying image on CF...",
+    sys.stdout.flush()
+    response = theFem.commandSend(CMD_VERIFY, 0)
     status = FWIMAGE_BUSY;
     while(status == FWIMAGE_BUSY):
         time.sleep(1)
