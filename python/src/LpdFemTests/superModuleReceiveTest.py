@@ -7,7 +7,7 @@
 # For detailed comments on animation and the techniqes used here, see
 # the wiki entry http://www.scipy.org/Cookbook/Matplotlib/Animations
 
-import sys, time, datetime, argparse
+import sys, time, datetime, argparse, socket
 
 import numpy as np
 from matplotlib.figure import Figure
@@ -19,12 +19,10 @@ try:
     import h5py
 except:
     print "No HDF5 Library detected - Disabling file writing"
-    bNoHdf5LibraryPresent = False
+    bNoHdf5Library = True
 else:
     print "HDF5 Library present."
-    bNoHdf5LibraryPresent = True
-
-from networkConfiguration import *
+    bNoHdf5Library = False
 
 from PyQt4 import QtCore, QtGui
 
@@ -44,7 +42,7 @@ class LpdFrameObject(object):
 
 class ReceiveThread(QtCore.QThread):
     
-    def __init__(self, rxSignal, femHost, femPort):
+    def __init__(self, rxSignal, femHost='10.0.0.1', femPort=61649):
         
         # Initialising variable used by processData
         self.first_frm_num = -1
@@ -153,7 +151,7 @@ class ImageDisplay(FigureCanvas):
     
     dataRxSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, femHost=None, femPort=None):
+    def __init__(self, femHost='10.0.0.1', femPort=61649):
 
         print "Initialising.. "
         
@@ -244,16 +242,6 @@ class ImageDisplay(FigureCanvas):
         self.dataRxSignal.connect(self.handleFrame)
                 
         self.tstart = time.time()
-
-        # Was either femHost and femPort NOT provided by parser?
-        if (femHost == None) or (femPort == None):
-            # At least one not supplied by the command line; Use networkConfiguration class
-            networkConfig = networkConfiguration()
-            
-            if femHost == None:
-                femHost = networkConfig.tenGig0DstIp
-            if femPort == None:
-                femPort = int(networkConfig.tenGig0DstPrt)
 
         self.rxThread = ReceiveThread(self.dataRxSignal, femHost, femPort)
         self.rxThread.start()
@@ -527,22 +515,22 @@ class ImageDisplay(FigureCanvas):
 if __name__ == "__main__":
 
     # Define default values
-    femHost          = None
-    femPort          = None
+    femHost          = '10.0.0.1'
+    femPort          = 61649
     bTimeStamp       = False
     bColorbarVisible = True
     bHDF5            = False
-    debugLevel        = 0
+    debugLevel       = 0
     plotRows         = 2
     plotCols         = 2
-    
+
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="superModuleReceiveTest.py - Receive data from a Super Module. ",
-                                     epilog="The flags femhost and femport are set according to machineConfiguration.py by default, all other flags' default value denoted by 'D: x'.")
+                                     epilog="Default: femhost=10.0.0.1 and femport=61649, all other flags' default values denoted by 'D: x'.")
 
     parser.add_argument("--canvasrows",     help="Set rows of plots (D: 2)",                                            type=int, default=plotRows)
     parser.add_argument("--canvascols",     help="Set columns of plots (D: 2)",                                         type=int, default=plotCols)
-    parser.add_argument("--colorbar",       help="Enable colorbar (0=Disable, 1=Enable; D: 1)",                         type=int, default=bColorbarVisible)
+    parser.add_argument("--colorbar",       help="Enable colorbar (0=Disable, 1=Enable; D: 1)",                         type=int, default=1)
     parser.add_argument("--debuglevel",     help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=range(9), default=0)
     parser.add_argument("--femhost",        help="Set fem host IP (e.g 10.0.0.1)",                                      type=str, default=femHost)
     parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                             type=int, default=femPort)
@@ -550,52 +538,41 @@ if __name__ == "__main__":
     parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
     args = parser.parse_args()
 
-    # Temp debug info
-    print "User selected: -->",
-    # Copy value(s) for the provided arguments
-    if args.femhost:
-        femHost = args.femhost
-        print "femhost",
-
-    if args.femport:
-        femPort = int(args.femport)
-        print "femPort",
+    femHost = args.femhost
+    femPort = args.femport
 
     if args.timeinfo:
-        print "timeinfo",
         bTimeStamp = True
         
-    if args.writedata:
-        # Only allow file write if HDF5 library installed..
-        if bNoHdf5LibraryPresent:
-            print "writedata(%i)" % args.writedata,
+    # Only allow file write if HDF5 library installed
+    if bNoHdf5Library:
+        bHDF5 = False
+    else:
+        if args.writedata == 0:
+            bHDF5 = False
+        else:
             bHDF5 = True
             numberPlotsPerFile = args.writedata
-        else:
-            print "(no HDF5 lib)",
-            bHDF5 = False
-        
-    if args.debuglevel:
-        print "debuglevel(%i)" % args.debuglevel,
-        debugLevel = args.debuglevel
 
-    if args.canvasrows:
-        print "plotRows(%i)" % args.canvasrows,
-        plotRows = args.canvasrows
+    debugLevel = args.debuglevel
+    plotRows = args.canvasrows
+    plotCols = args.canvascols
         
-    if args.canvascols:
-        print "plotCols(%i)" % args.canvascols,
-        plotCols = args.canvascols
-        
-    if args.colorbar:
-        print "colorbar",
-        bColorbarVisible = True
+    if args.colorbar == 0:
+        bColorbarVisible = False
 
     # Calculate number of plots to draw
     plotMaxPlots = plotRows * plotCols
 
-    # Temp debug info
-    print " <--"
+    if debugLevel > 0:
+        print "host: ", femHost
+        print "port: ", femPort
+        print "time: ", bTimeStamp
+        print "color: ", bColorbarVisible
+        print "file: ", bHDF5
+        print "debugLevel(%i)" % debugLevel
+        print "plotCols(%i)" % args.canvascols
+        print "plotRows(%i)" % args.canvasrows
     
     app = QtGui.QApplication(sys.argv)
     widget = ImageDisplay(femHost, femPort)

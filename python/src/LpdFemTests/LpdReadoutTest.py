@@ -4,22 +4,23 @@
 '''
 
 from LpdDevice.LpdDevice import LpdDevice
-from networkConfiguration import networkConfiguration
-import sys
+from EthernetUtility import EthernetUtility 
+import argparse, sys
 
 
-def LpdReadoutTest(femHost=None, femPort=None):
+def LpdReadoutTest(tenGig, femHost, femPort, destIp):
     
     theDevice = LpdDevice()
 
-    networkConfig = networkConfiguration()
-
-    # Was either femHost or femPort NOT provided to this class?
-    if (femHost == None) or (femPort == None):
-        # At least one wasn't supplied from the command line; Use networkConfiguration class
-        femHost = networkConfig.ctrl0SrcIp
-        femPort = int(networkConfig.ctrlPrt)
-
+    tenGigConfig   = EthernetUtility("eth%i" % tenGig)
+    tenGigDestIp   = tenGigConfig.ipAddressGet()
+    tenGigDestMac  = tenGigConfig.macAddressGet()
+    # Determine destination IP from tenGig unless supplied by parser
+    if destIp:
+        tenGigSourceIp = destIp
+    else:
+        tenGigSourceIp = tenGigConfig.obtainDestIpAddress(tenGigDestIp)
+        
     rc = theDevice.open(femHost, femPort)
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
@@ -112,7 +113,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
         errorCount += 1
     
     param = 'tenGig0SourceIp'
-    rc = theDevice.paramSet(param, networkConfig.tenGig0SrcIp)
+    rc = theDevice.paramSet(param, tenGigSourceIp)   #networkConfig.tenGig0SrcIp)
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -124,13 +125,13 @@ def LpdReadoutTest(femHost=None, femPort=None):
         errorCount += 1
     
     param = 'tenGig0DestMac'
-    rc = theDevice.paramSet(param, networkConfig.tenGig0DstMac)
+    rc = theDevice.paramSet(param, tenGigDestMac)   #networkConfig.tenGig0DstMac)
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
     
     param = 'tenGig0DestIp'
-    rc = theDevice.paramSet(param, networkConfig.tenGig0DstIp)
+    rc = theDevice.paramSet(param, tenGigDestIp)    #networkConfig.tenGig0DstIp)
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -315,19 +316,13 @@ def LpdReadoutTest(femHost=None, femPort=None):
         errorCount += 1
 
     param = 'femStartTrainSource'
-    rc = theDevice.paramSet(param, 1)   #  0=XFEL Clock & Ctrl command/reset, 1=Software, 2=PETRA III
+    rc = theDevice.paramSet(param, 1)   #  0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=PETRA III
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
 
     param = 'femAsicGainOverride'
     rc = theDevice.paramSet(param, False)   #False=asicrx gain select fixed by register, True=asicrx gain select taken from fast cmd file commands on the fly
-    if rc != LpdDevice.ERROR_OK:
-        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-        errorCount += 1
-
-    param = 'femBeamTriggerPetra'
-    rc = theDevice.paramSet(param, 1)   # 0=XFEL reset line as for LCLS, 1=special trigger for Petra
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
@@ -370,7 +365,7 @@ def LpdReadoutTest(femHost=None, femPort=None):
             print "================ 'Expert' Variables ================"
             paramExpertVariables = ['tenGig0SourceMac', 'tenGig0SourceIp', 'tenGig0SourcePort', 'tenGig0DestMac', 'tenGig0DestIp', 'tenGig0DestPort', 'tenGig0DataFormat',
                                     'tenGig0DataGenerator', 'tenGig0FrameLength', 'tenGig0NumberOfFrames', 'tenGigFarmMode', 'tenGigInterframeGap', 'tenGigUdpPacketLen', 
-                                    'femAsicSetupClockPhase', 'femAsicVersion', 'femBeamTriggerPetra', 'femDebugLevel', 'femEnableTenGig',
+                                    'femAsicSetupClockPhase', 'femAsicVersion', 'femDebugLevel', 'femEnableTenGig',
                                     'femStartTrainPolarity', 'femVetoPolarity']
             #TODO: Remove if redundant?
 #            param = 'femI2cBus'
@@ -449,15 +444,35 @@ def LpdReadoutTest(femHost=None, femPort=None):
 
 
 if __name__ == '__main__':
-    
-    # Check command line for host and port info    
-    if len(sys.argv) == 3:
-        femHost = sys.argv[1]
-        femPort = int(sys.argv[2])
-    else:
-        # Nothing provided from command line; Use defaults
-        femHost = None
-        femPort = None        
 
-    LpdReadoutTest(femHost, femPort)
+    # Default values
+    femHost = '192.168.2.2'
+    femPort = 6969  # oneGig port
+    tenGig  = 2     # eth2 on devgpu02
+    destIp  = None  # Default: Assume tenGig destination IP is one increment above eth2's IP
+    
+    # Create parser object and arguments
+    parser = argparse.ArgumentParser(description="LpdReadoutTest.py - configure and readout an LPD detector. ",
+                                     epilog="Defaults: tenGig=(eth)2, destip=10.0.0.2, femhost=192.168.2.2, femport=6969")
+
+    parser.add_argument("--tengig",     help="Set tenGig ethernet card (e.g. 2 for eth2)",  type=int, default=tenGig)
+    parser.add_argument("--destip",     help="Set destination IP (eg 10.0.0.2)",            type=str, default=destIp)
+    parser.add_argument("--femhost",    help="Set fem host IP (e.g.  192.168.2.2)",         type=str, default=femHost)
+    parser.add_argument("--femport",    help="Set fem port (eg 61649)",                     type=int, default=femPort)
+    args = parser.parse_args()
+
+    # Copy value(s) for the provided arguments
+    if args.tengig != None:
+        tenGig = args.tengig
+
+    if args.femhost:
+        femHost = args.femhost
+
+    if args.femport:
+        femPort = args.femport
+
+    if args.destip:
+        destIp = args.destip
+
+    LpdReadoutTest(tenGig, femHost, femPort, destIp)
 

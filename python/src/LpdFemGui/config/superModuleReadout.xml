@@ -9,16 +9,14 @@
     <tenGig0DestIp type="str" val="10.0.0.1"/>
     <tenGig0DestPort type="int" val="61649"/>
     <femAsicEnableMask type="int" val="9999"/>      
-    <femPpcResetDelay type="int" val="0"/>
     <femAsicDataType type="int" val="0"/>
     <femAsicModuleType type="int" val="0"/>
     <femDataSource type="int" val="1"/>
-    <femAsicColumns type="int" val="4"/>
+    <numberImages type="int" val="4"/>
     <femAsicLocalClock type="int" val="0"/>
-    <femAsicSlowedClock type="bool" val="False"/>
-    <femAsicSlowLoadMode type="int" val="0"/>
-    <femAsicRxInvertData type="bool" val="False"/>
-    <femAsicRxFastStrobe type="bool" val="True"/>
+    <femAsicSetupLoadMode type="int" val="0"/>
+    <femInvertAdcData type="bool" val="False"/>
+    <femAsicRxCmdWordStart type="bool" val="True"/>
     <femAsicVersion type="int" val="2"/>
     <femPpcMode type="int" val="0"/>
     <tenGig0DataGenerator type="int" val="1"/>
@@ -26,19 +24,15 @@
     <tenGig0NumberOfFrames type="int" val="1"/>
     <tenGigInterframeGap type="int" val="0"/>
     <tenGigUdpPacketLen type="int" val="8000"/>
-    <femAsicGainOverride type="int" val="8"/> 
-    <femFastCtrlDynamic type="bool" val="True"/>
+    <femAsicGain type="int" val="3"/>
     <femEnableTenGig type="bool" val="True"/>
-    <femAsicRxDelayOddChannels type="bool" val="True"/>
-    <femAsicSlowClockPhase type="int" val="0"/>
-    <!--  <femNumTestCycles type="int" val="8"/>  -->
+    <femAsicSetupClockPhase type="int" val="0"/>
     <tenGigFarmMode type="int" val="1"/>
     <femI2cBus type="int" val="0x300"/>
     <femDebugLevel type="int" val="0"/>
     <tenGig0FrameLength type="int" val="0x10000"/>
-    <femAsicClockSource type="int" val="0"/> <!--  0=FEM local clock 1=External -->
-    <femBeamClockSource type="int" val="0"/> <!--  0=XFEL 1=PETRA ??? TBD -->
-    <femDelaySensors type="int" val="0xFFEF"/>
-    <femGainFromFastCmd type="int" val="0"/>
+    <femAsicClockSource type="int" val="0"/> <!--  0=FEM local clock, 1=XFEL 2=Petra -->
+    <femStartTrainSource type="int" val="1"/> <!--  0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra -->
+    <femAsicGainOverride type="bool" val="False"/> <!-- False=set by femAsicGain, True=set by ASIC Cmd Sequence XML tag(s) -->
         
 </lpd_readout_config>

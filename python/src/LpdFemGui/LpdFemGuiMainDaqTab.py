@@ -54,11 +54,11 @@ class LpdFemGuiMainDaqTab(object):
         gainOverride = self.appMain.getCachedParam('femAsicGainOverride')
         if gainOverride == 0:
             self.ui.gainModeAutoSel.setChecked(True)
-        elif gainOverride == 8:
+        elif gainOverride == 3:
             self.ui.gainModex100Sel.setChecked(True)
-        elif gainOverride == 9:
+        elif gainOverride == 2:
             self.ui.gainModex10Sel.setChecked(True)
-        elif gainOverride == 11:
+        elif gainOverride == 1:
             self.ui.gainModex1Sel.setChecked(True)
         else:
             pass
@@ -160,11 +160,11 @@ class LpdFemGuiMainDaqTab(object):
         if self.ui.gainModeAutoSel.isChecked():
             gainOverride = 0
         elif self.ui.gainModex100Sel.isChecked():
-            gainOverride = 8
+            gainOverride = 3
         elif self.ui.gainModex10Sel.isChecked():
-            gainOverride = 9
+            gainOverride = 2
         elif self.ui.gainModex1Sel.isChecked():
-            gainOverride = 11
+            gainOverride = 1
         else:
             self.msgPrint("Illegal gain override selection - should not happen")
             return

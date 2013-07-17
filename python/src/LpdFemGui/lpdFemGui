@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export LPD_FEM_SW_PATH=/home/tcn45/xfel/lpd-fem
+export LPD_FEM_SW_PATH=/u/ckd27546/workspace/lpdSoftware/
 export LPD_FEM_GUI_PATH=$LPD_FEM_SW_PATH/LpdFemGui
 
 export PYTHONPATH=$LPD_FEM_SW_PATH/LpdFemGui:$LPD_FEM_SW_PATH:${PYTHONPATH:-}

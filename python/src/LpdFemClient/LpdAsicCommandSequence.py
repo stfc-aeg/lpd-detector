@@ -167,8 +167,9 @@ class LpdAsicCommandSequence():
                         if count > 1024:
                             raise LpdAsicCommandSequenceError("NOP command's count attribute exceeded 1024")
                         cmdWord = (count - 1 << self.nop_pos) | cmdWord
-                        # Count number of nops
-                        localNopsSum += count
+                        # Count number of nops - if not <nop/> without count attribute
+                        if count > 1:
+                            localNopsSum += count
                         count = 1
                         
                     else:
@@ -259,7 +260,7 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
                                 <nop/>
                                 <nop/>
                                 <nop/>
-                                <nop/>
+                                <nop count="3"/>
                                 <nop/>
                                 <stand_by nop="3"/>
                                 <loop count="2">
@@ -268,15 +269,15 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
                             </lpd_command_sequence>
         '''
         # Expected encoded values
-        expectedSeq = [2097152, 2097152, 2097152, 2097152, 2097152, 14684160, 10539008, 10539008]
+        expectedSeq = [2097152, 2097152, 2097152, 10485760, 2097152, 14684160, 10539008, 10539008]
         
         # Parse XML and encode
         stringCmdSeq = LpdAsicCommandSequence(stringCmdXml)
         stringEncodedSeq = stringCmdSeq.encode()
-        
+
         # Test that encoded sequence matches expected
         self.assertEqual(stringEncodedSeq, expectedSeq, 'Unexpected encoded result for string command sequence')
-            
+        
     def testStringParse(self):
         '''
         Tests that parsing a command sequence specified as a string argument
