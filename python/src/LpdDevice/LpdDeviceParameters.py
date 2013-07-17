@@ -505,7 +505,7 @@ class LpdDeviceParameters(object):
                                                                       0, 0xFFFFFFFF, 99999999,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-        #TODO: Update description? # LCLS proved 130 fine, crashes at 250
+        #TODO: LCLS proved 130 fine, crashes at 250
         self.expectedParameters['numberImages']                 = AttributeContainer(int, 'NumberImages', 'Sets the number of images per trigger',
                                                                          0, 130, 4,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
@@ -524,7 +524,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int, 'FemAsicPixelFeedbackOverride', 'ASIC pixel feedback override selection: 0=low(50pF), 1=high(5pF), -1=XML decides',
-                                                                          -1, 2, -1,
+                                                                          -1, 1, -1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam ,'AllOk.Idle', "once, set")
         
         self.expectedParameters['femAsicPixelSelfTestOverride'] = AttributeContainer(int, 'FemAsicPixelSelfTestOverride', 'ASIC pixel self-test override selection: 0=off, 1-5=test selection, -1=XML decides',
@@ -583,17 +583,12 @@ class LpdDeviceParameters(object):
                                                                           1, 2, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-        #TODO: jac to verify merge of femBeamClockSource functionality into this variable:
         self.expectedParameters['femAsicClockSource']           = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz)',
                                                                           0, 2, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femStartTrainSource']          = AttributeContainer(int, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=Petra (derived from PETRAIII clock)',
-                                                                          0, 2, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['femBeamTriggerPetra']          = AttributeContainer(int, 'FemBeamTriggerPetra', 'Fem Petra beam trigger source 0=XFEL reset line as for LCLS, 1=special trigger for Petra derived from clock',
-                                                                          0, 1, 1,
+        self.expectedParameters['femStartTrainSource']          = AttributeContainer(int, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra (derived from PETRAIII clock)',
+                                                                          0, 3, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femStartTrainDelay']           = AttributeContainer(int, 'FemStartTrainDelay', 'Delay between trigger arrival and start of train (in ASIC clock periods)',
