@@ -310,6 +310,7 @@ class LpdDevice(object):
                     
         else:
             rc = LpdDevice.ERROR_PARAM_UNKNOWN
+            self.errorString = 'Attempted to set unknown parameter %s' % (param)
         
         return rc
     
@@ -393,6 +394,7 @@ class LpdDevice(object):
                     
         else:
             rc = LpdDevice.ERROR_PARAM_UNKNOWN
+            self.errorString = 'Attempted to get unknown parameter %s' % (param)
             
         return (rc, value)
     
