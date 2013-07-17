@@ -19,7 +19,6 @@
 
     <femAsicSetupClockPhase type="int" val="0"/>    <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
     <femAsicVersion type="int" val="2"/>
-    <femBeamTriggerPetra type="int" val=" 1"/>                   <!--  0=XFEL reset line as for LCLS, 1=special trigger for Petra -->
     <femDebugLevel type="int" val="0"/>
     <femEnableTenGig type="bool" val="True"/>       <!-- Enables transmission of image data via 10GigE UDP interface -->
     <femStartTrainPolarity type="int" val="1"/>     <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
