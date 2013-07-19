@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-   <lpd_slow_ctrl_sequence name="preambleDelaySlowControl.xml"
+   <lpd_setup_params name="Setup_Preamble.xml"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-   xsi:noNamespaceSchemaLocation="lpdAsicCommandSequence.xsd">
+   xsi:noNamespaceSchemaLocation="lpdAsicSetupParams.xsd">
    <!-- This file is hand edited -->
 
    <mux_decoder_default value="0"/>
@@ -65,4 +65,4 @@
    <adc_clock_delay value="0"/>
    <digital_control value="5406687746"/>
 
-</lpd_slow_ctrl_sequence> 
+</lpd_setup_params> 

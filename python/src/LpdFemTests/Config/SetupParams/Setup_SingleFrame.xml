@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-   <lpd_slow_ctrl_sequence name="AsicSlowParameters.xml"
+   <lpd_setup_params name="Setup_SingleFrame.xml"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-   xsi:noNamespaceSchemaLocation="lpdAsicCommandSequence.xsd">
+   xsi:noNamespaceSchemaLocation="lpdAsicSetupParams.xsd">
    <!-- This file is hand edited -->
 
    <mux_decoder_default value="0"/>
@@ -107,4 +107,4 @@
    
    
 
-</lpd_slow_ctrl_sequence> 
+</lpd_setup_params> 

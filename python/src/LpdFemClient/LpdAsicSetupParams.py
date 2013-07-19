@@ -168,7 +168,7 @@ class LpdAsicSetupParams(object):
             raise LpdAsicSetupParamsError('Error parsing XML: %s' % e)
             
         # Get the root of the tree and verify it is an lpd_command_sequence
-        if self.root.tag != 'lpd_slow_ctrl_sequence':
+        if self.root.tag != 'lpd_setup_params':
             raise LpdAsicSetupParamsError('Root element is not an LPD slow control command')
 
 
@@ -733,7 +733,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         digitalControlIdx3 = 18
 
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <self_test_decoder pixel="%i" value="5"/>
                                 <self_test_decoder_default value="%i"/>
                                 <mux_decoder pixel="2" value="0"/>
@@ -745,7 +745,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                 
                                 <digital_control value="18"/>
                                 <spare_bits value="%i"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         ''' % (selfTestPixelIndex, selfTestDecoderDefault, daqBiasIdx47Value, daqBiasDefault, digitalControlIdx3)
 
   
@@ -833,9 +833,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
 
         # Strictly not necessary except for the class constructor requiring a XML file or string
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="testOutOfRangeKeyValueFails">
+                            <lpd_setup_params name="testOutOfRangeKeyValueFails">
                                 <self_test_decoder_default value="7"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''        
         # setParamValue(dictKey, index, value)
         dictKey = "self_test_decoder_default"
@@ -909,9 +909,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
 
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="testInvalidAttributeFails1">
+                            <lpd_setup_params name="testInvalidAttributeFails1">
                                 <self_test_decoder_default pixel="5" value="7"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -919,9 +919,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
 
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="testInvalidAttributeFails2">
+                            <lpd_setup_params name="testInvalidAttributeFails2">
                                 <daq_bias pixel="5" value="7"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -929,9 +929,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
 
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="testInvalidAttributeFails3">
+                            <lpd_setup_params name="testInvalidAttributeFails3">
                                 <daq_bias_default index="15" value="31"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -945,9 +945,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
             
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <self_test_decoder_default value="7"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -983,9 +983,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <feedback_select_default value="1"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -1017,10 +1017,10 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <feedback_select_default value="1"/>
                                 <self_test_decoder_default value="2"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -1052,9 +1052,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <mux_decoder_default value="5"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -1093,9 +1093,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <daq_bias_default value="1"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -1129,9 +1129,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
 
 
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <daq_bias_default value="31"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
 
         # Parse XML and encode
@@ -1169,9 +1169,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <self_test_enable value="1"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
 
         # Parse XML and encode
@@ -1201,9 +1201,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <spare_bits value="31"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML and encode
@@ -1237,9 +1237,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         
         filterValue = 1048575
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <filter_control value="%i"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         ''' % filterValue
     
         # Parse XML and encode
@@ -1280,7 +1280,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         adcValue = filterValue
         digitalControlValue = 0xFFFFFFFFFF
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <mux_decoder_default value="7"/>
                                 <feedback_select_default value="1"/>
                                 <self_test_decoder_default value="7"/>
@@ -1290,7 +1290,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                 <filter_control value="%i"/>
                                 <adc_clock_delay value="%i"/>
                                 <digital_control value="%i"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
 
         # Parse XML and encode
@@ -1318,7 +1318,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <mux_decoder pixel="511" value="3"/>
                                 <mux_decoder pixel="495" value="1"/>
                                 <mux_decoder pixel="479" value="2"/>
@@ -1332,7 +1332,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                 <mux_decoder pixel="32" value="4"/>
                                 <mux_decoder pixel="64" value="1"/>
                                 <mux_decoder pixel="96" value="1"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
 #                                <mux_decoder_default value="7"/>
     
@@ -1366,7 +1366,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             Test a set of specific mux_decoder key values
         '''
     
-        thisFile = '/tests/preambleDelaySlowControl.xml'
+        thisFile = '/tests/SetupParamsUnitTest.xml'
         currentDir = os.getcwd()
         if currentDir.endswith("LpdFemClient"):
             thisFile = currentDir + thisFile
@@ -1407,7 +1407,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_slow_ctrl_sequence name="TestString">
+                            <lpd_setup_params name="TestString">
                                 <mux_decoder pixel="511" value="3"/>
                                 <feedback_select_default value="1"/>
                                 <self_test_decoder_default value="2"/>
@@ -1423,7 +1423,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                 <mux_decoder pixel="32" value="4"/>
                                 <mux_decoder pixel="64" value="1"/>
                                 <mux_decoder pixel="96" value="1"/>
-                            </lpd_slow_ctrl_sequence>
+                            </lpd_setup_params>
         '''
     
         # Parse XML, apply external override values and encode

@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="AutoResets_ShortExposures_AsicControl.xml"
+<lpd_command_sequence name="Command_ShortExposure_Matt2.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 

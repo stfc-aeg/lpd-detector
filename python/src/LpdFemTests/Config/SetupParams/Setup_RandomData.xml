@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="superModRandomData.xml"
+<lpd_setup_params name="Setup_RandomData.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:noNamespaceSchemaLocation="lpdAsicCommandSequence.xsd">
+	xsi:noNamespaceSchemaLocation="lpdAsicSetupParams.xsd">
 
     <!-- Rules for lpd command sequence  jac 
 
@@ -34,4 +34,4 @@
 	<nop/>
 	<reset_state_machine/>
 	<nop/>
-</lpd_command_sequence>
+</lpd_setup_params>

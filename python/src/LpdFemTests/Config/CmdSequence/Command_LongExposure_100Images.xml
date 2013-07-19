@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="ManualReset_longExposure_asicv2.xml"
+<lpd_command_sequence name="Command_LongExposure_100Images.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 

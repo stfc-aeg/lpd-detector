@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<lpd_readout_config name="twoTileReadoutConfiguration.xml">
+<lpd_readout_config name="readoutConfiguration.xml">
 
     <!-- 'Expert' Variables: -->
     <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
