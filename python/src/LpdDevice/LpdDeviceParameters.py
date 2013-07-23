@@ -510,9 +510,8 @@ class LpdDeviceParameters(object):
                                                                          0, 130, 4,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-        self.expectedParameters['femAsicGain']                  = AttributeContainer(int, 'FemAsicGain', 'Set the ASIC gain selection mode (0=ASIC algorithm, 8=x100, 9=x10, 11=x1)',
+        self.expectedParameters['femAsicGain']                  = AttributeContainer(int, 'FemAsicGain', 'Set the ASIC gain selection mode (0=ASIC algorithm, 3=x100, 2=x10, 1=x1)',
                                                                          (0, 3, 2, 1), None, 0,
-#                                                                         (0, 8, 9, 11), None, 0,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['femAsicSetupParams']           = AttributeContainer(str, 'FemAsicSetupParams', 'ASIC Setup Parameters defined in XML syntax',
@@ -573,10 +572,6 @@ class LpdDeviceParameters(object):
 
         self.expectedParameters['tenGigFarmMode']               = AttributeContainer(int, 'TenGigFarmMode', '10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists',
                                                                           1, 3, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femI2cBus']                    = AttributeContainer(int, 'FemI2cBus', 'Set Fem i2c internal bus 0x000=LM82, 0x100=EEPROM, 0x200=RHS P-Card, 0x300=LHS P-Card (2Tile System)',
-                                                                          (0x000,  0x100, 0x200, 0x300), None, 0x300,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femAsicVersion']               = AttributeContainer(int, 'FemAsicVersion', 'ASIC Version 1=version 1, 2=version 2',

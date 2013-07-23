@@ -57,7 +57,7 @@ class LpdPowerCardManager(object):
             enableParamName = 'asicPowerEnable' + str(powerCard)
             (rc, enableVal) = self.device.paramGet(enableParamName)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to retrieve power card %d LV enable status (rc=%d): %s", powerCard, rc, self.device.errorStringGet())
+                self.appMain.msgPrint("Unable to retrieve power card %d LV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
             lvEnables.append(enableVal)
         
         self.lvEnabled = True
@@ -74,8 +74,8 @@ class LpdPowerCardManager(object):
             paramName = 'sensorBiasEnable' + str(powerCard)
             rc = self.device.paramSet(paramName, state)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to set HV to %d for card %d (rc=%d) : %s", int(state), powerCard, rc,
-                                      self.device.errorStringGet())
+                self.appMain.msgPrint("Unable to set HV to %d for card %d (rc=%d) : %s" % (int(state), powerCard, rc,
+                                      self.device.errorStringGet()))
                 
         self.statusUpdate()
         
@@ -86,7 +86,7 @@ class LpdPowerCardManager(object):
             enableParamName = 'sensorBiasEnable' + str(powerCard)
             (rc, enableVal) = self.device.paramGet(enableParamName)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to retrieve power card %d HV enable status (rc=%d): %s", powerCard, rc, self.device.errorStringGet())
+                self.appMain.msgPrint("Unable to retrieve power card %d HV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
             hvEnables.append(enableVal)
         
         self.hvEnabled = True
@@ -103,8 +103,8 @@ class LpdPowerCardManager(object):
             paramName = 'sensorBias' + str(powerCard)
             rc = self.device.paramSet(paramName, bias)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to set HV bias for card %d (rc=%d) : %s", powerCard, rc,
-                                      self.device.errorStringGet())
+                self.appMain.msgPrint("Unable to set HV bias for card %d (rc=%d) : %s" % (powerCard, rc,
+                                      self.device.errorStringGet()))
                 
         self.statusUpdate()
 
@@ -152,5 +152,4 @@ class LpdPowerCardManager(object):
     def powerStateGet(self):
         
         return self.powerState
-    
-        
+

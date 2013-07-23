@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
-   <lpd_slow_ctrl_sequence name="AsicSlowParameters.xml"
+   <lpd_setup_params name="Setup_LowPower.xml"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-   xsi:noNamespaceSchemaLocation="lpdSlowCtrlSequence.xsd">
+   xsi:noNamespaceSchemaLocation="lpdAsicSetupParams.xsd">
    <!-- This file is hand edited 
 		bias settings needed for lower power on 2-tile to avoid asic v2 tile current tripping -->
 
    <mux_decoder_default value="0"/>
-   <feedback_select_default value="1"/>
+   <feedback_select_default value="0"/>
    <self_test_decoder_default value="0"/>
    <self_test_enable value="1"/>
 
@@ -94,4 +94,4 @@
    
    
 
-</lpd_slow_ctrl_sequence> 
+</lpd_setup_params> 

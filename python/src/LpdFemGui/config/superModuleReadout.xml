@@ -1,38 +1,52 @@
 <?xml version="1.0"?>
 
-<lpd_readout_config name="Basic Config">
+<lpd_readout_config name="readoutConfiguration.xml">
 
+    <!-- 'Expert' Variables: -->
     <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
     <tenGig0SourceIp type="str" val="10.0.0.2"/>
     <tenGig0SourcePort type="int" val="0"/>
-    <tenGig0DestMac type="str" val="00-07-43-10-65-A0"/>
+    <tenGig0DestMac type="str" val="00-07-43-10-65-A0"/>  <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
     <tenGig0DestIp type="str" val="10.0.0.1"/>
     <tenGig0DestPort type="int" val="61649"/>
-    <femAsicEnableMask type="int" val="9999"/>      
-    <femAsicDataType type="int" val="0"/>
-    <femAsicModuleType type="int" val="0"/>
-    <femDataSource type="int" val="1"/>
-    <numberImages type="int" val="4"/>
-    <femAsicLocalClock type="int" val="0"/>
-    <femAsicSetupLoadMode type="int" val="0"/>
-    <femInvertAdcData type="bool" val="False"/>
-    <femAsicRxCmdWordStart type="bool" val="True"/>
-    <femAsicVersion type="int" val="2"/>
-    <femPpcMode type="int" val="0"/>
-    <tenGig0DataGenerator type="int" val="1"/>
-    <tenGig0DataFormat type="int" val="0"/>
-    <tenGig0NumberOfFrames type="int" val="1"/>
+    <tenGig0DataFormat type="int" val="0"/>              <!-- Data format type, 0=counting data - doesn't affect sensor data -->
+    <tenGig0DataGenerator type="int" val="1"/>           <!-- Data generator 1=DataGen 2=PPC DDR2 -->
+    <tenGig0FrameLength type="int" val="0x10000"/>       <!-- 10GigE 0 Frame length in bytes -->
+    <tenGig0NumberOfFrames type="int" val="1"/>          <!-- Number of frames to send in each cycle -->
+    <tenGigFarmMode type="int" val="1"/>                 <!-- 10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists-->
     <tenGigInterframeGap type="int" val="0"/>
     <tenGigUdpPacketLen type="int" val="8000"/>
-    <femAsicGain type="int" val="3"/>
-    <femEnableTenGig type="bool" val="True"/>
-    <femAsicSetupClockPhase type="int" val="0"/>
-    <tenGigFarmMode type="int" val="1"/>
-    <femI2cBus type="int" val="0x300"/>
+
+    <femAsicSetupClockPhase type="int" val="0"/>         <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
+    <femAsicVersion type="int" val="2"/>
     <femDebugLevel type="int" val="0"/>
-    <tenGig0FrameLength type="int" val="0x10000"/>
-    <femAsicClockSource type="int" val="0"/> <!--  0=FEM local clock, 1=XFEL 2=Petra -->
-    <femStartTrainSource type="int" val="1"/> <!--  0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra -->
-    <femAsicGainOverride type="bool" val="False"/> <!-- False=set by femAsicGain, True=set by ASIC Cmd Sequence XML tag(s) -->
-        
+    <femEnableTenGig type="bool" val="True"/>            <!-- Enables transmission of image data via 10GigE UDP interface -->
+    <femStartTrainPolarity type="int" val="1"/>          <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
+    <femVetoPolarity type="int" val="0"/>                <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
+
+    <!-- 'User' Variables: -->
+    <femAsicClockSource type="int" val="0"/>              <!-- 0=FEM local oscillator 1=Sync with Xray 2=Petra clock sync-->
+    <femAsicDataType type="int" val="0"/>                 <!-- 0=Sensor Data, 1=Fem Internal counting, 2=ASIC Pseudo random -->
+    <!-- femAsicEnableMask type="int" val="9999"/> -->    <!-- Not set while API can't pass array -->
+    <femAsicGain type="int" val="2"/>                     <!-- 0=normal, 3=100x, 2=10x, 1=1x -->
+    <femAsicGainOverride type="bool" val="False"/>        <!-- FEM Gain Selection Mode; False=Gain set by femAsicGain, True=Asic Command Word decides -->
+    
+    <femAsicLocalClock type="int" val="0"/>               <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
+    <femAsicModuleType type="int" val="0"/>               <!-- 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone' -->
+    <femAsicPixelFeedbackOverride type="int" val="-1"/>   <!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
+    <femAsicPixelSelfTestOverride type="int" val="-1"/>   <!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
+    <femAsicRxCmdWordStart type="bool" val="True"/>       <!-- Enable ASIC readout started by ASIC Command Word <read_out_data/> -->
+    <femAsicSetupLoadMode type="int" val="0"/>            <!-- ASIC control load mode 0=parallel, 1=serial -->
+    <femStartTrainSource type="int" val="1"/>             <!-- Train start signal source 0=XFEL Clock & Ctrl system, 1=Software, 2=LCLS, 3=Petra III -->
+    <femDataSource type="int" val="1"/>                   <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
+    <femInvertAdcData type="bool" val="False"/>           <!-- Enable invert ADC ASIC data True=Inverted data -->
+    <numberImages type="int" val="4"/>                    <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
+    <numberTrains type="int" val="5"/>                    <!-- Set number of trains [if LL Data Generator / PPC Data Direct selected] -->
+    <femStartTrainDelay type="int" val=" 90"/>            <!-- Delay between trigger arrival and start of train [in ASIC clock periods] -->
+    <femStartTrainInhibit type="int" val="0"/>            <!-- Inhibit period after each trigger [in ASIC clock cycles]  -->
+
+    <!-- <femPpcMode type="int" val="0"/> To be Implemented-->
+
 </lpd_readout_config>
+
+

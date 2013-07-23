@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Thu May  2 00:37:28 2013
-#      by: PyQt4 UI code generator 4.9.1
+# Created: Tue Jul 23 13:39:39 2013
+#      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -30,7 +30,7 @@ class Ui_MainWindow(object):
         self.setupGroupBox.setGeometry(QtCore.QRect(10, 100, 761, 191))
         self.setupGroupBox.setObjectName(_fromUtf8("setupGroupBox"))
         self.verticalLayoutWidget_2 = QtGui.QWidget(self.setupGroupBox)
-        self.verticalLayoutWidget_2.setGeometry(QtCore.QRect(0, 10, 761, 171))
+        self.verticalLayoutWidget_2.setGeometry(QtCore.QRect(0, 10, 783, 171))
         self.verticalLayoutWidget_2.setObjectName(_fromUtf8("verticalLayoutWidget_2"))
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.verticalLayoutWidget_2)
         self.verticalLayout_3.setContentsMargins(6, -1, 6, -1)
@@ -215,7 +215,7 @@ class Ui_MainWindow(object):
         self.operateGroupBox.setGeometry(QtCore.QRect(10, 10, 371, 91))
         self.operateGroupBox.setObjectName(_fromUtf8("operateGroupBox"))
         self.verticalLayoutWidget = QtGui.QWidget(self.operateGroupBox)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 20, 371, 71))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 20, 413, 71))
         self.verticalLayoutWidget.setObjectName(_fromUtf8("verticalLayoutWidget"))
         self.verticalLayout_2 = QtGui.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout_2.setSpacing(2)
@@ -1828,7 +1828,7 @@ class Ui_MainWindow(object):
         self.connectAddr.setMaxLength(200)
         self.connectAddr.setFrame(True)
         self.connectAddr.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
-        self.connectAddr.setPlaceholderText(_fromUtf8(""))
+        self.connectAddr.setProperty("placeholderText", _fromUtf8(""))
         self.connectAddr.setObjectName(_fromUtf8("connectAddr"))
         self.connectLayout.addWidget(self.connectAddr)
         self.label_2 = QtGui.QLabel(self.horizontalLayoutWidget)
@@ -1843,7 +1843,7 @@ class Ui_MainWindow(object):
         self.connectPort.setMaximumSize(QtCore.QSize(60, 16777215))
         self.connectPort.setText(_fromUtf8(""))
         self.connectPort.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
-        self.connectPort.setPlaceholderText(_fromUtf8(""))
+        self.connectPort.setProperty("placeholderText", _fromUtf8(""))
         self.connectPort.setObjectName(_fromUtf8("connectPort"))
         self.connectLayout.addWidget(self.connectPort)
         self.connectButton = QtGui.QPushButton(self.horizontalLayoutWidget)
@@ -1940,8 +1940,8 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "STFC LPD Readout GUI", None, QtGui.QApplication.UnicodeUTF8))
         self.setupGroupBox.setTitle(QtGui.QApplication.translate("MainWindow", "Setup", None, QtGui.QApplication.UnicodeUTF8))
-        self.fastParamLabel.setText(QtGui.QApplication.translate("MainWindow", "Fast Cmd Seq:", None, QtGui.QApplication.UnicodeUTF8))
-        self.slowParamLabel.setText(QtGui.QApplication.translate("MainWindow", "Slow Params:", None, QtGui.QApplication.UnicodeUTF8))
+        self.fastParamLabel.setText(QtGui.QApplication.translate("MainWindow", "Asic Cmd Seq:", None, QtGui.QApplication.UnicodeUTF8))
+        self.slowParamLabel.setText(QtGui.QApplication.translate("MainWindow", "Setup Params:", None, QtGui.QApplication.UnicodeUTF8))
         self.fastParamBtn.setText(QtGui.QApplication.translate("MainWindow", "Select...", None, QtGui.QApplication.UnicodeUTF8))
         self.dataPathBtn.setText(QtGui.QApplication.translate("MainWindow", "Select...", None, QtGui.QApplication.UnicodeUTF8))
         self.readoutParamBtn.setText(QtGui.QApplication.translate("MainWindow", "Select...", None, QtGui.QApplication.UnicodeUTF8))

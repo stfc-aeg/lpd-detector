@@ -92,7 +92,6 @@ class LpdFemClient(FemClient):
                             2: 9,   # x10
                             1: 11}  # x1
     
-    
     def __init__(self, hostAddr=None, timeout=None, asicModuleType=0):
         '''
             Constructor for LpdFemClient class
@@ -100,9 +99,6 @@ class LpdFemClient(FemClient):
 
         # Call superclass initialising function
         super(LpdFemClient, self).__init__(hostAddr, timeout)
-        
-        # Fem has three internal i2c buses
-        self.femI2cBus = 0x300                          # 0x200 = RHS Power Card,  0x300 = LHS Power Card
 
         ######## API variables extracted from jac's functions ########
         self.femAsicEnableMask              = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
@@ -800,7 +796,7 @@ class LpdFemClient(FemClient):
             encodedString = LpdAsicSetupParamsParams.encode()
         except LpdAsicSetupParamsError as e:
             raise FemClientError(str(e))
-            
+        
         no_of_bits = 3911
                   
         load_mode = self.femAsicSetupLoadMode
@@ -1362,8 +1358,7 @@ class LpdFemClient(FemClient):
 
     def get_ext_trig_strobe_delay(self):
         ''' Returns the delay of ext trigger strobe (in nr asic clock periods e.g. 10 nsec for xfel) '''
-        value = self.rdmaRead(self.trig_strobe+2, 1)[0]  
-        return value        
+        return self.rdmaRead(self.trig_strobe+2, 1)[0]  
 
     def set_ext_trig_strobe_inhibit(self, value):
         ''' Gets the length of inhibit preventing further readout after an ext trigger strobe (in nr asic clock periods e.g. 10 nsec for xfel) '''
@@ -1371,23 +1366,19 @@ class LpdFemClient(FemClient):
 
     def get_ext_trig_strobe_inhibit(self):
         ''' Gets the length of inhibit preventing further readout after an ext trigger strobe (in nr asic clock periods e.g. 10 nsec for xfel) '''
-        value = self.rdmaRead(self.trig_strobe+3, 1)[0]  
-        return value        
+        return self.rdmaRead(self.trig_strobe+3, 1)[0]  
 
     def get_ext_trig_strobe_count(self):
         ''' Gets the count nr of ext trigger strobes received (incl those inhibited) [READONLY] '''
-        value = self.rdmaRead(self.trig_strobe+17, 1)[0]
-        return value
+        return self.rdmaRead(self.trig_strobe+17, 1)[0]
 
     def get_ext_trig_strobe_accepted_count(self):
         ''' Gets the count nr of ext trigger strobes accepted i.e. not inibited [READONLY] '''
-        value = self.rdmaRead(self.trig_strobe+18, 1)[0]
-        return value
+        return self.rdmaRead(self.trig_strobe+18, 1)[0]
 
     def get_v5_firmware_vers(self):
         ''' Gets the firmware version loaded in main V5 FPGA [READONLY]   '''
-        value = self.rdmaRead(self.fem_ctrl_0+17, 1)[0]
-        return value
+        return self.rdmaRead(self.fem_ctrl_0+17, 1)[0]
 
     def get_bot_sp3_firmware_vers(self):
         ''' Gets the firmware version loaded in BOT SP3 FPGA [READONLY]   '''
@@ -1422,8 +1413,7 @@ class LpdFemClient(FemClient):
 
     def get_ext_trig_strobe_max(self):
         ''' Returns the nr of ext strobes to trigger readout '''
-        value = self.rdmaRead(self.trig_strobe+4, 1)[0]
-        return value
+        return self.rdmaRead(self.trig_strobe+4, 1)[0]
 
     def set_ext_trig_strobe_polarity(self, value):
         ''' Selects ext trigger strobe polarity '''
@@ -1438,8 +1428,7 @@ class LpdFemClient(FemClient):
  
     def get_delay_sensors(self):
         ''' Returns delays timing of 16 sensors ; bit = 1 adds 1 clock delay ; lsb = sensor tile 1;'''
-        value = self.rdmaRead(self.fem_ctrl_0+15, 1)[0]
-        return value           
+        return self.rdmaRead(self.fem_ctrl_0+15, 1)[0]
 
     def enable_femAsicGainOverride(self):
         ''' Enables gain selection using fast commands '''
@@ -1546,75 +1535,70 @@ class LpdFemClient(FemClient):
         '''
             Execute run
         '''
+        try:
+            if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc, wait for ppc to be ready to read out
+                print "Start Run with PPC1 Readout ..."
+                if (self.femPpcResetDelay == 0):
+                    while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
+                        print "Waiting for PPC readout to be ready...",
+                        sys.stdout.flush()
+            else:
+                print "Start Run in PPC1 BYPASS mode..."
+    
+            print "=========================================================" 
+            print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
+    
+            if self.femStartTrainSource == 1:  # If S/W send triggers manually         
+                self.enable_ext_trig_strobe()   # Enable and disable to reset trigger strobe counters!
+                self.disable_ext_trig_strobe()
+                
+                for i in range (1, self.numberTrains+1):
+                    print "Train nr %d" % i
+                    self.send_trigger() 
+                    time.sleep(0.5)             # Need to check if images are all readout before sending next train
+                    #print "Train nr %4d" % i,
+                    #sys.stdout.flush()  
+    
+            else:   # Else start run and use external c&c strobes
+                print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
+                self.enable_ext_trig_strobe()
+                nr_ext_trig_strobes = 0
+                nr_ext_trig_strobes_accepted = 0
+                
+                while nr_ext_trig_strobes_accepted < self.numberTrains:
+                    nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
+                self.disable_ext_trig_strobe()
+                print "Run is STOPPED" 
+    
+            print "======== Train Cycle Completed ===========" 
+            #time.sleep(2)   # just to see output before dumping registers
+    
+            print "     V5 FPGA Firmware vers = %08x" % self.get_v5_firmware_vers()
+            print "BOT SP3 FPGA Firmware vers = %08x" % self.get_bot_sp3_firmware_vers()
+            print "TOP SP3 FPGA Firmware vers = %08x" % self.get_top_sp3_firmware_vers()
+            print "CFG SP3 FPGA Firmware vers = %08x" % self.get_cfg_sp3_firmware_vers()
+    
+            if self.femDebugLevel > 0:
+                print "Register Settings"
+                self.dump_registers()
+            else:
+                time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
+    
+            print "Summary of Data Readout..."
+    
+            # 10g ll monitor
+            print "10G LLink Monitor"
+            self.read_ll_monitor(self.llink_mon_0, 156.25e6)
+    
+            print "Asic Rx LLink Monitor"
+            self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
+    
+            print "======== Run Completed ==========="
         
-        if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc, wait for ppc to be ready to read out
-            print "Start Run with PPC1 Readout ..."
-            if (self.femPpcResetDelay == 0):
-                while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
-                    print "Waiting for PPC readout to be ready...",
-                    sys.stdout.flush()
-        else:
-            print "Start Run in PPC1 BYPASS mode..."
-
-        print "=========================================================" 
-        print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
-
-        if self.femStartTrainSource == 1:  # If S/W send triggers manually         
-            self.enable_ext_trig_strobe()   # Enable and disable to reset trigger strobe counters!
-            self.disable_ext_trig_strobe()
-            
-            for i in range (1, self.numberTrains+1):
-                print "Train nr %d" % i
-                self.send_trigger() 
-                time.sleep(0.5)             # Need to check if images are all readout before sending next train
-                #print "Train nr %4d" % i,
-                #sys.stdout.flush()  
-
-        else:   # Else start run and use external c&c strobes
-            print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
-            self.enable_ext_trig_strobe()
-            nr_ext_trig_strobes = 0
-            nr_ext_trig_strobes_accepted = 0
-            
-            while nr_ext_trig_strobes_accepted < self.numberTrains:
-                nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
-            self.disable_ext_trig_strobe()
-            print "Run is STOPPED" 
-
-        print "======== Train Cycle Completed ===========" 
-        #time.sleep(2)   # just to see output before dumping registers
-
-        print ""
-        print "     V5 FPGA Firmware vers = %08x" % self.get_v5_firmware_vers()
-        print "BOT SP3 FPGA Firmware vers = %08x" % self.get_bot_sp3_firmware_vers()
-        print "TOP SP3 FPGA Firmware vers = %08x" % self.get_top_sp3_firmware_vers()
-        print "CFG SP3 FPGA Firmware vers = %08x" % self.get_cfg_sp3_firmware_vers()
-
-        # Read out all registers (Both 2 tile & supermodule run fine without) 
-#        if self.femDebugLevel > 0:
-#            print "Register Settings"
-#            self.dump_registers()
-
-        if self.numberTrains > 0 and self.femDebugLevel > 0:
-            print ""
-            print "Register Settings"
-            self.dump_registers()
-        else:
-            time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
-
-        print ""
-        print "Summary of Data Readout..."
-
-        # 10g ll monitor
-        print ""
-        print "10G LLink Monitor"
-        self.read_ll_monitor(self.llink_mon_0, 156.25e6)
-
-        print "Asic Rx LLink Monitor"
-        print ""
-        self.read_ll_monitor(self.llink_mon_asicrx, 200.0e6)
-
-        print "======== Run Completed ===========" 
+        except FemClientError as e:
+            raise e
+        except Exception as e:
+            raise FemClientError(str(e))
 
     def tenGig0SourceMacGet(self):
         '''
@@ -2041,18 +2025,6 @@ class LpdFemClient(FemClient):
             Set the 10 Gig Ethernet Farm Mode
         '''
         self.tenGigFarmMode = aValue
-
-    def femI2cBusGet(self):
-        '''
-            Get femI2cBus
-        '''
-        return self.femI2cBus
-
-    def femI2cBusSet(self, aValue):
-        '''
-            Set femI2cBus
-        '''
-        self.femI2cBus = aValue
 
     def femDebugLevelGet(self):
         '''

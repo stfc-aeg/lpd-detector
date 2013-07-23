@@ -50,7 +50,7 @@
         <rect>
          <x>0</x>
          <y>10</y>
-         <width>761</width>
+         <width>783</width>
          <height>171</height>
         </rect>
        </property>
@@ -88,7 +88,7 @@
              </size>
             </property>
             <property name="text">
-             <string>Fast Cmd Seq:</string>
+             <string>Asic Cmd Seq:</string>
             </property>
            </widget>
           </item>
@@ -114,7 +114,7 @@
              </size>
             </property>
             <property name="text">
-             <string>Slow Params:</string>
+             <string>Setup Params:</string>
             </property>
            </widget>
           </item>
@@ -208,7 +208,7 @@
              <string>Auto</string>
             </property>
             <attribute name="buttonGroup">
-             <string notr="true">gainOverrideButtonGroup</string>
+             <string>gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -218,7 +218,7 @@
              <string>5pF</string>
             </property>
             <attribute name="buttonGroup">
-             <string notr="true">pixelFbkButtonGroup</string>
+             <string>pixelFbkButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -381,7 +381,7 @@
              <string>x100</string>
             </property>
             <attribute name="buttonGroup">
-             <string notr="true">gainOverrideButtonGroup</string>
+             <string>gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -391,7 +391,7 @@
              <string>x1</string>
             </property>
             <attribute name="buttonGroup">
-             <string notr="true">gainOverrideButtonGroup</string>
+             <string>gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -401,7 +401,7 @@
              <string>x10</string>
             </property>
             <attribute name="buttonGroup">
-             <string notr="true">gainOverrideButtonGroup</string>
+             <string>gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -424,7 +424,7 @@
              <string>50pF</string>
             </property>
             <attribute name="buttonGroup">
-             <string notr="true">pixelFbkButtonGroup</string>
+             <string>pixelFbkButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -479,7 +479,7 @@
         <rect>
          <x>0</x>
          <y>20</y>
-         <width>371</width>
+         <width>413</width>
          <height>71</height>
         </rect>
        </property>
@@ -4403,7 +4403,7 @@
            <property name="alignment">
             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
            </property>
-           <property name="placeholderText">
+           <property name="placeholderText" stdset="0">
             <string/>
            </property>
           </widget>
@@ -4435,7 +4435,7 @@
            <property name="alignment">
             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
            </property>
-           <property name="placeholderText">
+           <property name="placeholderText" stdset="0">
             <string/>
            </property>
           </widget>
@@ -4630,7 +4630,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="gainOverrideButtonGroup"/>
   <buttongroup name="pixelFbkButtonGroup"/>
+  <buttongroup name="gainOverrideButtonGroup"/>
  </buttongroups>
 </ui>

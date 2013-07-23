@@ -99,6 +99,7 @@ class LpdFemGui:
                           'evrRecordEnable'   : True,
                           'femAsicGainOverride' : 8,
                           'femAsicPixelFeedbackOverride' : 0,
+                          'asicModuleType' : 0,
                          }
 
         # List of parameter names that don't need to force a system reconfigure
@@ -134,7 +135,8 @@ class LpdFemGui:
             
     def deviceConnect(self, addressStr, portStr):
         
-        rc = self.device.open(addressStr, int(portStr), timeout=self.cachedParams['connectionTimeout'])
+        rc = self.device.open(addressStr, int(portStr), timeout=self.cachedParams['connectionTimeout'],
+                              asicModuleType=self.cachedParams['asicModuleType'])
         if rc != LpdDevice.ERROR_OK:
             self.deviceState = LpdFemGui.DeviceDisconnected
             self.deviceErrString = "ERROR: connection failed: %s" % self.device.errorStringGet()
@@ -201,7 +203,7 @@ class LpdFemGui:
         # Set up number of frames based on cached parameter value of number of trains
         self.numFrames = self.cachedParams['numTrains']
         self.loadedConfig['numTrains'] = self.numFrames
-        rc = self.device.paramSet('femNumTestCycles', self.numFrames)
+        rc = self.device.paramSet('numberTrains', self.numFrames)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femNumTestCycles failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
@@ -210,7 +212,7 @@ class LpdFemGui:
         # Set up trigger source (internal vs external)
         externalTrigger = self.cachedParams['externalTrigger']
         beamTriggerSource = 1 if externalTrigger == False else 0
-        rc = self.device.paramSet('femBeamTriggerSource', beamTriggerSource)
+        rc = self.device.paramSet('femStartTrainSource', beamTriggerSource)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femBeamTriggerSource failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
@@ -218,7 +220,7 @@ class LpdFemGui:
         
         # Set up external trigger delay
         triggerDelay = self.cachedParams['triggerDelay']
-        rc = self.device.paramSet('femExternalTriggerStrobeDelay', triggerDelay)
+        rc = self.device.paramSet('femStartTrainDelay', triggerDelay)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femExternalTriggerStrobeDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
@@ -234,9 +236,9 @@ class LpdFemGui:
 
         # Set up ASIC gain mode override
         gainOverride = self.cachedParams['femAsicGainOverride']
-        rc = self.device.paramSet('femAsicGainOverride', gainOverride)
+        rc = self.device.paramSet('femAsicGain', gainOverride)
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femASicGainOverride faied (rc=%d) %s", (rc, self.device.errorStringGet()))
+            self.msgPrint("Setting parameter femAsicGainOverride faied (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
 
@@ -249,7 +251,7 @@ class LpdFemGui:
         
         # Set ASIC slow parameters file
         self.msgPrint("Loading ASIC slow parameters from file %s" % self.cachedParams['slowParamFile'])
-        rc = self.device.paramSet('femAsicSlowControlParams', self.cachedParams['slowParamFile'])
+        rc = self.device.paramSet('femAsicSetupParams', self.cachedParams['slowParamFile'])
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting ASIC slow parameter file to %s failed (rc=%d) : %s" % 
                           (self.cachedParams['slowParamFile'], rc, self.device.errorStringGet()))
@@ -258,7 +260,7 @@ class LpdFemGui:
             
         # Set ASIC fast command sequence file
         self.msgPrint("Loading ASIC fast command sequence from file %s" % self.cachedParams['fastParamFile'])
-        rc = self.device.paramSet('femAsicFastCmdSequence', self.cachedParams['fastParamFile'])
+        rc = self.device.paramSet('femAsicCmdSequence', self.cachedParams['fastParamFile'])
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting ASIC fast command sequence file to %s failed (rc=%d) : %s" % 
                           (self.cachedParams['fastParamFile'], rc, self.device.errorStringGet()))

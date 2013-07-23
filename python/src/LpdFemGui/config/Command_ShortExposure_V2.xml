@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="ManualReset_longExposure_AsicControl.xml"
+<lpd_command_sequence name="Command_ShortExposure_V2.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 
@@ -8,11 +8,14 @@
         There MUST be a single <nop/> immediately before <sync_reset/>, <read_out_data/> and <asic_slow_readout_start/> 
         There MUST be exactly 1 <nop/> between <sync_reset/> and <read_out_data/> 
 
-        For readout add enough <nop/>s to ensure all data is clocked out of the ASICs before <reset_state_machine/> 
-        840 <nop/>s per image (512 pixels x 3 x 12 bits) plus allow extra 1000 <nop/>s for offset from readout cmd to start of asic header
+        For readout add enough nops to ensure all data is clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) plus a few extra
 
         If reading out V1 ASIC need  <asic_slow_readout_start/> in cmd sequence to slow clock during readout phase
         Must also set femAsicSlowedClock parameter in LpdReadoutTest.py to TRUE
+
+		for asic v2 so no slow clock for readout
+
     -->
 
 	<nop/>
@@ -22,78 +25,70 @@
 	<nop/>
 	<sync_reset/>
 	<nop/>
-	<on_chip_reset_disable/>
+	<on_chip_reset_enable/>
 	<nop/>
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>
 	<clear_skip_register/>
-	<nop/>
-	<reset_pre_amp/>
-	<reset_gain_front/>
-	<reset_gain_back/>
 	<start_write_pointer/>
-	<remove_reset_pre_amp/>
-	<remove_reset_gain_stage1/>
-	<remove_reset_gain_stage2/>
+	<nop/>
+	<nop/>
 	<start_trigger_pointer/> 
-	<nop count="4"/>
+	<nop/>
 	<trigger_flag_set/>
-	<nop count="9"/>
 	<trigger_flag_set/>
-	<nop count="9"/>
 	<trigger_flag_set/>
-	<nop count="9"/>
 	<trigger_flag_set/>
-	<nop count="2"/>
+	<nop/>
+	<nop/>
+	<on_chip_reset_disable/>
 	<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>
 	<nop/>
-	<asic_slow_readout_start/>
 	<nop/>
+	<nop/>
+	<!--nop/-->
 	<sync_reset/>
 	<nop/>
 	<read_out_data/>
-	<loop count="6">
-		<nop count="840"/>
+	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) -->
+	<loop count="4">
+		<nop/>
+		<nop count="838"/>
 	</loop>
-	<nop count="1000"/>
+    <nop count="31"/>   # one extra row
 	<stop_read_out/>
 	<nop count="33"/>
-	
-	<!-- Matt's command sequence configuration:
-	Command Sequence
-	Manual Resets – Long Exposure
+
+	<!-- Matt's configuration:	
+	Auto Resets – Short Exposures
 	Part 1 (100MHz)
 	Sync Reset
 	NOP
 	Reset SM
 	Sync Reset
 	NOP
-	On chip rst dis
+	On chip rst en
 	NOP
 	Rst write ptr
 	Rst trig ptr
 	Clr skip reg
+	Start wrt ptr
 	NOP
-	Rst preamp
-	Rst gain front
-	Rst gain back
-	Rem rst preamp
-	Rem rst gain st1
-	Rem rst gain st2
+	NOP
 	Start trig ptr
-	NOPx4
+	NOP
 	Trig flag set
-	NOPx9
 	Trig flag set
-	NOPx9
 	Trig flag set
-	NOPx9
 	Trig flag set
-	NOPx2
+	NOP
+	NOP
+	On chip rst dis
 	Rst preamp
 	Rst gain front
 	Rst gain back
