@@ -10,7 +10,7 @@ Created 16 October 2012
 # Import Python standard modules
 # log required when calculating temperature
 from math import log#, ceil
-import pprint, time, sys
+import pprint, time, sys, os
 from functools import partial
 
 from FemClient.FemClient import *
@@ -121,6 +121,8 @@ class LpdFemClient(FemClient):
 
         self.lpd_image_size                 = 0x20000           # size of buffer in ppc for partial image is 128 KB
 
+        self.nr_asics_per_sensor = 8
+
         self.asicRxPseudoRandomStart        = (80+50+1)         # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word), also need extra clock for sensor delay FF
         self.asicRx2tileStart               = (810+1+1)         # asic_rx_start_2tile ; added 1 clock delay to compensate for new delay of sensor groups ; add another clock step after fixing clock distribution timing in sp3 io v0109
         self.asicRxSingleStart              = 0                 # asic_rx_start_single_asic
@@ -141,8 +143,8 @@ class LpdFemClient(FemClient):
         self.femAsicLocalClock                      = 0         # 0 = no scaling (100 MHz), 1 = scaled down clock  [10 MHz (set by dcm params)]
         self.femFastCtrlDynamic                     = True      # True = New dynamic commands
         self.femAsicSetupLoadMode                   = 0         # 0 = parallel load, 1 = daisy chain
-        self.numberImages                           = 4         # nr of images to capture per train
-        self.femAsicGain                            = 8         # gain    algorithm selection     F/W value, API correspodning value 
+        self.numberImages                           = 4         # Number of images to capture per train
+        self.femAsicGain                            = 8         # Gain    algorithm selection     F/W value, API correspodning value 
         #                                                       #   0000  normal gain selection     0,        0
         #                                                       #   1000  force select x100         8,        3
         #                                                       #   1001  force select x10          9,        2
@@ -151,20 +153,18 @@ class LpdFemClient(FemClient):
         self.femInvertAdcData                       = False     # True  = invert adc output data (by subtracting value from $FFF)
         self.femAsicRxCmdWordStart                  = True      # True  = Start asic rx data capture using strobe derived from fast command file
                                                                 # False = Start asic rx data capture using fixed delay value 
-        self.femAsicSetupClockPhase                 = 0         # additional phase adjustment of slow clock rsync wrt asic reset
+        self.femAsicSetupClockPhase                 = 0         # Additional phase adjustment of slow clock rsync wrt asic reset
         self.femAsicSlowedClock                     = False     # False = asic readout phase uses same clock as capture phase
                                                                 # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
         #TODO:  FOR FUTURE USE
         self.femAsicVersion                         = 2         # 1 = version 1, 2 = version 2
-        self.femAsicClockSource                     = 0         # 0 = Fem local oscillator, 1 = Clock sync with xray 
+        self.femAsicClockSource                     = 0         # 0 = Fem local oscillator, 1 = xfel, 2 = petra
 
-        self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = petra , 1 =  xfel
-        self.femStartTrainSource                    = 1         # 0 = xfel clock and controls system, 1 = s/w
-        self.femBeamTriggerPetra                    = 1         # 1 = special trigger for petra derived from clock; 0 = xfel reset line as for LCLS
+        self.femStartTrainSource                    = 1         # 0 = XFEL clock and controls system, 1 = Software, 2 = LCLS, 3 = PETRAIII
 
-        self.ext_trig_strobe_delay                  = (2+88)    # delay of ext trigger strobe (in asic clock periods)
-        self.ext_trig_strobe_polarity               = 1         # 0 = use inverted ext strobe 
-        self.petra_shutter_polarity                 = 0         # 0 = use inverted ext strobe !
+        self.ext_trig_strobe_delay                  = (2+88)    # Delay of ext trigger strobe (in asic clock periods)
+        self.ext_trig_strobe_polarity               = 0         # 1 = use inverted signal 
+        self.petra_shutter_polarity                 = 0         # 1 = use inverted signal
 
         self.femDelaySensors                        = 0xffff    # delay timing of 16 sensors ; bit = 1 adds 1 clock delay ; sensor mod 1 is lsb
         self.femAsicGainOverride                    = False     # False = asicrx gain sel fixed by register, True =  asicrx gain sel taken from fast cmd file commands on the fly
@@ -189,11 +189,11 @@ class LpdFemClient(FemClient):
         self.tenGigUdpPacketLen         = 8000  # default udp packet length in bytes (can be overriden in asic runs)
 
         self.tenGig0 = {'SourceMac'  : '62-00-00-00-00-01',
-                        'SourceIp'    : '10.0.0.2',         
-                        'SourcePort'  : '0',                
+                        'SourceIp'    : '10.0.0.2', 
+                        'SourcePort'  : '0',
                         'DestMac'     : '00-07-43-10-65-A0',
-                        'DestIp'      : '10.0.0.1',         
-                        'DestPort'    : '61649',            
+                        'DestIp'      : '10.0.0.1',
+                        'DestPort'    : '61649',
                         'femEnable'   : True,                    # enable this link
                         'link_nr'     : 1,                       # link number
                         'data_gen'    : 1,                       # data generator  1=DataGen, 2=PPC DDR2  (Used if femDataSource=2)  
@@ -648,7 +648,7 @@ class LpdFemClient(FemClient):
             self.register_clear_bit(self.fem_ctrl_0+11, 1)
  
         # MUST release petra DCM BEFORE releasing asic DCM!
-        self.register_clear_bit(self.fem_ctrl_0+11, 17)  # Releases reset on petra dcm    
+        self.register_clear_bit(self.fem_ctrl_0+11, 17)  # Releases reset on petra dcm
         self.register_clear_bit(self.fem_ctrl_0+11, 16)  # Releases reset on asic dcm
 
         # Release SP3 IO DCM last of all
@@ -664,7 +664,7 @@ class LpdFemClient(FemClient):
         self.set_ext_trig_strobe_polarity(self.ext_trig_strobe_polarity) 
                
         # Trigger strobe for Petra test is derived from petra clock
-        if self.femBeamTriggerPetra == 1:
+        if self.femStartTrainSource == 3:
             self.enable_petra_trig_strobe()  
         else:
             self.disable_petra_trig_strobe()  
@@ -789,26 +789,49 @@ class LpdFemClient(FemClient):
             self.disable_femAsicGainOverride()   # Using S/W register
 
     def config_asic_slow_xml(self):
-        ''' Configure Asic Control parameters from xml '''                                        
-        
+        ''' Configure Asic Control parameters from xml '''
+
+        encodedString = [0] * self.nr_asics_per_sensor
+
+        femAsicSetupParams_xmlfile = [0] * self.nr_asics_per_sensor
+
+        if self.femAsicSetupLoadMode == 0: # only one file from api is loaded in every asic
+            for asic_nr in range(0, self.nr_asics_per_sensor):
+                femAsicSetupParams_xmlfile[asic_nr] = self.femAsicSetupParams      
+        else:
+            #TODO: Don't just hard-code it.. (use os.environ['PYTHONPATH'] except it contains multiple folders for LpdFemGui..!)
+            filePath = '/u/ckd27546/workspace/lpdSoftware/LpdFemTests/'
+            # Hack by jac to have 8 different xml files for the 8 asics on a sensor tile
+            # note that BRAM will shift out Asic8 data first in chain and Asic 1 last
+            femAsicSetupParams_xmlfile[0] = filePath + "Config/SetupParams/Setup_LowPower_Asic8.xml"
+            femAsicSetupParams_xmlfile[1] = filePath + "Config/SetupParams/Setup_LowPower_Asic7.xml"
+            femAsicSetupParams_xmlfile[2] = filePath + "Config/SetupParams/Setup_LowPower_Asic6.xml"
+            femAsicSetupParams_xmlfile[3] = filePath + "Config/SetupParams/Setup_LowPower_Asic5.xml"
+            femAsicSetupParams_xmlfile[4] = filePath + "Config/SetupParams/Setup_LowPower_Asic4.xml"
+            femAsicSetupParams_xmlfile[5] = filePath + "Config/SetupParams/Setup_LowPower_Asic3.xml"
+            femAsicSetupParams_xmlfile[6] = filePath + "Config/SetupParams/Setup_LowPower_Asic2.xml"
+            femAsicSetupParams_xmlfile[7] = filePath + "Config/SetupParams/Setup_LowPower_Asic1.xml"
+
         try:
-            #TODO: Temporary hack, filename passed from API (not XML string)
-            LpdAsicSetupParamsParams = LpdAsicSetupParams( self.femAsicSetupParams, self.femAsicPixelFeedbackOverride, self.femAsicPixelSelfTestOverride, preambleBit=6, fromFile=True) #False)
-            encodedString = LpdAsicSetupParamsParams.encode()
+            for asic_nr in range(0, self.nr_asics_per_sensor):
+                #TODO: Temporary hack, filename passed from API (not XML string)
+                LpdAsicSetupParamsParams = LpdAsicSetupParams( femAsicSetupParams_xmlfile[asic_nr], self.femAsicPixelFeedbackOverride, 
+                                                               self.femAsicPixelSelfTestOverride, preambleBit=6, fromFile=True) #False)
+                encodedString[asic_nr] = LpdAsicSetupParamsParams.encode()
         except LpdAsicSetupParamsError as e:
             raise FemClientError(str(e))
-        
-        no_of_bits = 3911
-                  
+
+        no_of_bits = 3911   # includes 6 dummy bits needed at start of stream
+
         load_mode = self.femAsicSetupLoadMode
 
         # clear the bram (move to  fem_slow_ctrl_setup)
-        #slow_bram_size = 512;   # size in 32b words
+        #slow_bram_size = 1024;   # size in 32b words
         #self.zero_regs(self.slow_ctr_1, slow_bram_size)  
 
         # Load in BRAM
         self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, encodedString, no_of_bits, load_mode)
-    
+
     def config_asic_fast_xml(self):
         ''' Configure Asic Command Sequence from xml '''
 
@@ -830,8 +853,8 @@ class LpdFemClient(FemClient):
             self.fem_fast_bram_setup(self.fast_cmd_1, encodedSequence, no_of_words)
             self.fem_fast_cmd_setup_new(self.fast_cmd_0, no_of_words+no_of_nops)
         else:
-            #TODO: Imlement action for False value?
-            raise FemClientError("femFastCtrlDynamic == False; Not implementation (stick with True?)")
+            #TODO: Implement action for False value?
+            raise FemClientError("femFastCtrlDynamic == False; Not implemented (stick with True?)")
 
     def config_asic_datarx(self):
         ''' Configure Asic data rx module '''
@@ -881,7 +904,7 @@ class LpdFemClient(FemClient):
                 if self.femAsicSlowedClock:
                     #TODO: Still testing?
                     # Testing timing difference with slowed down readout
-                    asic_rx_start_delay = self.asicRx2tileStart - 2 
+                    asic_rx_start_delay = self.asicRx2tileStart - 2
                 else:
                     asic_rx_start_delay = self.asicRx2tileStart
 
@@ -900,7 +923,7 @@ class LpdFemClient(FemClient):
         # adjust capture point start to Nth image
         #asic_rx_start_delay = asic_rx_start_delay + 0 * self.nr_clocks_to_readout_image
 
-        #print "asic_rx_start_delay = %s " % asic_rx_start_delay          
+        #print "asic_rx_start_delay = %s " % asic_rx_start_delay
         
         if self.femAsicRxCmdWordStart:
             self.rdmaWrite(self.fem_ctrl_0+14, asic_rx_start_delay) # NEW using strobe from fast command file         
@@ -1047,14 +1070,14 @@ class LpdFemClient(FemClient):
         self.dump_regs_hex(self.fast_cmd_0, 16)
 
         print "Dump of FEM Registers : ASIC FAST BRAM"
-        self.dump_regs_hex(self.fast_cmd_1, 50)
+        self.dump_regs_hex(self.fast_cmd_1, 100)
         #self.dump_regs_hex(self.fast_cmd_1+4096-16, 30) # Looking at end of Fast BRAM
 
         print "Dump of FEM Registers : ASIC SLOW CTRL"
-        self.dump_regs_hex(self.slow_ctr_0, 16)
+        self.dump_regs_hex(self.slow_ctr_0, 18)
 
         print "Dump of FEM Registers : ASIC SLOW BRAM"
-        self.dump_regs_hex(self.slow_ctr_1, 130)
+        self.dump_regs_hex(self.slow_ctr_1, 1024)
 
         print "Dump of Ext Trigger Strobe Registers : TRIG STROBE"
         self.dump_regs_hex(self.trig_strobe, 20)
@@ -1077,21 +1100,80 @@ class LpdFemClient(FemClient):
         except FemClientError:
             print "WARNING: CFG SP3 dump_regs_hex failed"
 
-    def fem_slow_ctrl_setup(self, base_addr_0, base_addr_1, slow_ctrl_data, no_of_bits, load_mode):
+    def fem_slow_ctrl_setup(self, base_addr_0, base_addr_1, dataTuple, no_of_bits, load_mode):
         ''' Slow control set up function '''
 
-        # Asic slow control load mode
-        self.rdmaWrite(base_addr_0+0, load_mode)
+        # Asic Setup Parameters load mode (0 = parallel, 1 = daisy chain)
+        # fixed jac ; bit 1 is load mode select  ; bit 0 is a s/w trigger to start loading 
+        if load_mode == 1:
+            self.register_set_bit(base_addr_0+0, 1)
+        else:
+            self.register_clear_bit(base_addr_0+0, 1)  
         
-        dataTuple = tuple(slow_ctrl_data)   # Do not construct tuple from list like in fem_fast_.. func
-        
-        self.rdmaWrite(base_addr_1, dataTuple)  # Slow Control RAM
+        if load_mode == 0:  # parallel load same in all 8 asics (and same in all sensor modules)     
+            #print "Slow Ctrl RAM"
+            self.rdmaWrite(base_addr_1, dataTuple[0])
 
-        # Clear bram after data
-        data_len = len(dataTuple)
-        rem_len = data_len + 20 # Just clear a few locations beyond last valid data
-        self.zero_regs(self.slow_ctr_1+data_len, rem_len)  
-        #print "slow dataTuple len = %d : rem_len = %d" % (data_len, rem_len)        
+            # clear bram after data
+            data_len = len(dataTuple[0])
+            rem_len = 20 # just clear a few locations beyond last valid data
+            self.zero_regs(self.slow_ctr_1+data_len, rem_len)
+            #print 'slow dataTuple len = %d : rem_len = %d' %(data_len, rem_len)
+
+        else:
+            # TESTING daisy chain loading
+            # only 1 xml file is implemented so far so just same slow params in all asic blocks
+            
+            # slow bit block for 1st asic needs 6 dummy bits at the start
+            # these need to be removed from any subsequent asic blocks 
+            
+            # New implementation in python script:
+            # Translate 32bit values from .xml parsing  into "bit" lists of 0's and 1's
+            # Manipulate these lists using list functions. Eg concatenate lists with list.extend, remove bits
+            # Then convert back to 32bit words for loading in bram
+            # Much easier using python lists than trying to make it like c style bit fields !
+            
+            # note that Asic8 data is filled first in BRAM as this needs to get shifted to last asic in chain
+            
+            asic_params = [0] * self.nr_asics_per_sensor
+            
+            for asic_nr in range(0, self.nr_asics_per_sensor): 
+                asic_params[asic_nr] = list() 
+            
+            #asic_1 = list()
+            # convert to list of bits for manipulation
+            asic_params[asic_nr] = self.convert_to_bitlist(dataTuple[asic_nr])
+            
+            # remove unused bits in last word         
+            del asic_params[asic_nr][-(32-7):]
+            
+            #print str(asic_1)[1:-1]
+            #for i in range(0,len(asic_1)):          
+            #  print 'i = %d ; asic_1[i] = %d ' %(i, asic_1[i])  
+            
+            # and remove initial 6 dummy bits from subsequent asic blocks 
+            if asic_nr > 0:
+                #asic_n = list(asic_1)
+                for j in range(0,6):          
+                    del asic_params[asic_nr][j]
+            
+            # add remaining asic blocks in chain
+            asic_daisy_chain = list(asic_params[0]) 
+            for asic_nr in range(1, self.nr_asics_per_sensor):
+                asic_daisy_chain.extend(asic_params[asic_nr])
+            
+            # back to format that can be loaded in bram          
+            packedbits = self.convert_to_packedbits(asic_daisy_chain)
+            
+            #for i in range(0,len(packedbits)):          
+            #  print 'i = %d ; packedbits = %08x ' %(i, packedbits[i])  
+               
+            self.rdmaWrite(base_addr_1, packedbits)
+            
+            # clear bram after data
+            data_len = len(packedbits)
+            rem_len = 20 # just clear a few locations beyond last valid data
+            self.zero_regs(self.slow_ctr_1+data_len, rem_len)  
         
         # load control registers
         
@@ -1099,11 +1181,43 @@ class LpdFemClient(FemClient):
         max_no_of_bits = 32*1024
         if no_of_bits > max_no_of_bits:
             no_of_bits = max_no_of_bits
-        
-        no_of_bits    = no_of_bits + 1    # Fix added  jc
+
+        if load_mode == 1:   
+            # daisy chain multiple asics; only 1st asic block needs the 6 dummy bits   
+            no_of_bits = no_of_bits + (self.nr_asics_per_sensor-1) * (no_of_bits - 6) 
+
+        no_of_bits    = no_of_bits + 1    # keep fix added  jac
         control_reg_1 = base_addr_0 + 1
         
         self.rdmaWrite(control_reg_1, no_of_bits)
+
+    def convert_to_bitlist(self, dataTuple):
+        ''' Convert tuple of slow bit patterns to list '''
+    
+        bitList = list()
+
+        for i in range(0,len(dataTuple)):          
+            #print 'i = %d ; dataTuple = %08x ' %(i, dataTuple[i])  
+            for j in range(0,32):
+                if (dataTuple[i] & 1<<j):
+                    bitList.append(1)
+                else:
+                    bitList.append(0)
+        return bitList        
+
+    def convert_to_packedbits(self, bitList):
+        ''' Convert list back to slow bit patterns for loading to bram '''
+
+        packedbits = list()
+        
+        #print ' len bitList = %d ' %(len(bitList))
+        for i in range(0,len(bitList)): 
+            if i%32 == 0:
+                packedbits.append(0)
+            packedbits[i/32] |= bitList[i] << (i%32) 
+            #print 'i = %d ; bitList[i] = %d ; packedbits[i/32] = %08x ' %(i, bitList[i], packedbits[i/32])  
+            
+        return packedbits  
 
     def fem_fast_bram_setup(self, base_addr_1, fast_cmd_data, no_of_words):
         ''' Fast cmd set up function '''
@@ -1122,7 +1236,7 @@ class LpdFemClient(FemClient):
         data_len  = len(dataTuple)
 
         # Load command sequence pattern memory
-        self.rdmaWrite(base_addr_1, dataTuple)	# Old PPC server code has problems with large dataTuples
+        self.rdmaWrite(base_addr_1, dataTuple)    # Old PPC server code has problems with large dataTuples
 
         rem_len = data_len + 30                 # Just clear a few locations beyond last valid data
         self.zero_regs(base_addr_1+data_len, rem_len)  
@@ -1318,13 +1432,22 @@ class LpdFemClient(FemClient):
         ''' Zero regs eg bram '''
         
         #for i in range(0, nr_regs):
-        #    self.rdmaWrite(base_addr+i, 0) 
+        #    self.rdmaWrite(base_addr+i, 0)
 
 # Use block rdma write which should be much faster
         zero_lst = []
         for i in range(nr_regs):
             zero_lst.append(0)
         self.rdmaWrite(base_addr, zero_lst) 
+
+    def fill_regs(self, base_addr, nr_regs, value):
+        ''' Fill regs with fixed value eg bram '''
+        
+# Use block rdma write which should be much faster
+        reg_lst = []
+        for i in range(nr_regs):
+            reg_lst.append(value)
+        self.rdmaWrite(base_addr, reg_lst) 
 
     def register_set_bit(self, reg_addr, bit_nr):
         ''' Set bit in register '''
@@ -1418,10 +1541,10 @@ class LpdFemClient(FemClient):
 
     def set_ext_trig_strobe_polarity(self, value):
         ''' Selects ext trigger strobe polarity '''
-        if value == 1:
-            self.register_set_bit(self.fem_ctrl_0+11, 9)  
+        if value == 0:
+            self.register_set_bit(self.fem_ctrl_0+11, 9)
         else:
-            self.register_clear_bit(self.fem_ctrl_0+11, 9)  # invert when bit is cleared!
+            self.register_clear_bit(self.fem_ctrl_0+11, 9)
 
     def set_delay_sensors(self, value):
         ''' Delays timing of 16 sensors; bit = 1 adds 1 clock delay; lsb = sensor tile 1;  '''
@@ -1449,10 +1572,10 @@ class LpdFemClient(FemClient):
 
     def set_petra_shutter_polarity(self, value):
         ''' Selects ext trigger strobe polarity '''
-        if value == 1:
-            self.register_set_bit(self.fem_ctrl_0+11, 10)  
+        if value == 0:
+            self.register_set_bit(self.fem_ctrl_0+11, 10)
         else:
-            self.register_clear_bit(self.fem_ctrl_0+11, 10)  # invert when bit is cleared!
+            self.register_clear_bit(self.fem_ctrl_0+11, 10)
 
     '''
         --------------------------------------------------------
@@ -1942,18 +2065,6 @@ class LpdFemClient(FemClient):
             Set the Fem Beam Trigger Source
         '''
         self.femStartTrainSource = aValue
-
-    def femBeamTriggerPetraGet(self):
-        '''
-            Get the Fem Petra Beam Trigger Source
-        '''
-        return self.femBeamTriggerPetra
-
-    def femBeamTriggerPetraSet(self, aValue):
-        '''
-            Set the Fem Petra Beam Trigger Source
-        '''
-        self.femBeamTriggerPetra = aValue
 
     def femStartTrainDelayGet(self):
         '''
