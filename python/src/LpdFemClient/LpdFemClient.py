@@ -71,10 +71,11 @@ class LpdFemClient(FemClient):
    
     ########## Enumerated values for API variables ##########
 
-    ASIC_MODULE_TYPE_SUPERMODULE    = 0     # (0) Supermodule
-    ASIC_MODULE_TYPE_SINGLE_ASIC    = 1     # (1) Single ASIC test module
-    ASIC_MODULE_TYPE_TWO_TILE       = 2     # (2) 2-Tile module
-    ASIC_MODULE_TYPE_STANDALONE     = 3     # (3) FEM Standalone
+    ModuleTypeSuperModule   = 0     # (0) Supermodule
+    ModuleTypeSingleAsic    = 1     # (1) Single ASIC test module
+    ModuleTypeTwoTile       = 2     # (2) 2-Tile module
+    ModuleTypeFem           = 3     # (3) FEM Standalone
+    ModuleTypeRawData       = 4     # (4) Super Module Raw Data
 
     RUN_TYPE_ASIC_DATA_VIA_PPC      = 0     # (0) ASIC data (via PPC) [Standard Operation]
     RUN_TYPE_ASIC_DATA_DIRECT       = 1     # (1) ASIC data direct from Rx block
@@ -125,7 +126,7 @@ class LpdFemClient(FemClient):
         self.asicRxSingleStart              = 0                 # asic_rx_start_single_asic
         self.asicRxHeaderBits               = 12                # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
         # offsets in bits for different gains for slow asic readout 
-        self.asicRxOffsetSlowReadout_x100   =  (24 - 16*3*12)   #  NB first row of 16 pixels to be ignored  # 24   # skips first row of 16 pixels for x100
+        self.asicRxOffsetSlowReadout_x100   = (24 - 16*3*12)    #  NB first row of 16 pixels to be ignored  # 24   # skips first row of 16 pixels for x100
         self.asicRxOffsetSlowReadout_x10    = -12               # keep first row of 16 pixels # 564 (skip first row of 16 pixels)
         self.asicRxOffsetSlowReadout_x1     = -12               # keep first row of 16 pixels # 564 (skip first row of 16 pixels) 
 
@@ -133,9 +134,9 @@ class LpdFemClient(FemClient):
 
         ########## Parameters now (mostly) exposed in API ##########
 
-        self.femAsicModuleType  = self.ASIC_MODULE_TYPE_SUPERMODULE  # (0) Supermodule
-        self.femDataSource      = self.RUN_TYPE_ASIC_DATA_VIA_PPC    # (0) ASIC data (via PPC) [Standard Operation]
-        self.femAsicDataType    = self.ASIC_DATA_TYPE_ASIC_SENSOR    # (0) Asic sensor data [Standard Operation Real Data]
+        self.femAsicModuleType  = self.ModuleTypeSuperModule        # (0) Supermodule
+        self.femDataSource      = self.RUN_TYPE_ASIC_DATA_VIA_PPC   # (0) ASIC data (via PPC) [Standard Operation]
+        self.femAsicDataType    = self.ASIC_DATA_TYPE_ASIC_SENSOR   # (0) Asic sensor data [Standard Operation Real Data]
         
         self.femAsicLocalClock                      = 0         # 0 = no scaling (100 MHz), 1 = scaled down clock  [10 MHz (set by dcm params)]
         self.femFastCtrlDynamic                     = True      # True = New dynamic commands
@@ -158,7 +159,7 @@ class LpdFemClient(FemClient):
         self.femAsicClockSource                     = 0         # 0 = Fem local oscillator, 1 = Clock sync with xray 
 
         self.femBeamClockSource                     = 0         # xray sync clk source ; 0 = petra , 1 =  xfel
-        self.femStartTrainSource                   = 1         # 0 = xfel clock and controls system, 1 = s/w
+        self.femStartTrainSource                    = 1         # 0 = xfel clock and controls system, 1 = s/w
         self.femBeamTriggerPetra                    = 1         # 1 = special trigger for petra derived from clock; 0 = xfel reset line as for LCLS
 
         self.ext_trig_strobe_delay                  = (2+88)    # delay of ext trigger strobe (in asic clock periods)
@@ -188,25 +189,25 @@ class LpdFemClient(FemClient):
         self.tenGigUdpPacketLen         = 8000  # default udp packet length in bytes (can be overriden in asic runs)
 
         self.tenGig0 = {'SourceMac'  : '62-00-00-00-00-01',
-                       'SourceIp'    : '10.0.0.2',         
-                       'SourcePort'  : '0',                
-                       'DestMac'     : '00-07-43-10-65-A0',
-                       'DestIp'      : '10.0.0.1',         
-                       'DestPort'    : '61649',            
-                       'femEnable'   : True,                    # enable this link
-                       'link_nr'     : 1,                       # link number
-                       'data_gen'    : 1,                       # data generator  1 = DataGen 2 = PPC DDR2  (used if run params data source is non asic)  
-                       'data_format' : 0,                       # data format type  (0 for counting data)  
-                       'frame_len'   : 0x10000,                 # frame len in bytes
-                       'num_frames'  : 1,                       # number of frames to send in each cycle
-                       #TODO: Add these to the API?
-                       'num_prts'    : 2,                       # number of ports to loop over before repeating
-                       'delay'       : 0,                       # delay offset wrt previous link in secs
-                       'nic_list'    : [ '61649@192.168.3.1' ]  
-                      }
+                        'SourceIp'    : '10.0.0.2',         
+                        'SourcePort'  : '0',                
+                        'DestMac'     : '00-07-43-10-65-A0',
+                        'DestIp'      : '10.0.0.1',         
+                        'DestPort'    : '61649',            
+                        'femEnable'   : True,                    # enable this link
+                        'link_nr'     : 1,                       # link number
+                        'data_gen'    : 1,                       # data generator  1=DataGen, 2=PPC DDR2  (Used if femDataSource=2)  
+                        'data_format' : 0,                       # data format type  (0 for counting data)  
+                        'frame_len'   : 0x10000,                 # frame len in bytes
+                        'num_frames'  : 1,                       # number of frames to send in each cycle
+                        #TODO: Add these to the API?
+                        'num_prts'    : 2,                       # number of ports to loop over before repeating
+                        'delay'       : 0,                       # delay offset wrt previous link in secs
+                        'nic_list'    : [ '61649@192.168.3.1' ]
+                        }
         
-        # Supermodule has two power cards, everyone else only one
-        if asicModuleType == 0:
+        # Supermodule has two power cards, everything else only one
+        if (asicModuleType ==  LpdFemClient.ModuleTypeSuperModule) or (asicModuleType ==  LpdFemClient.ModuleTypeRawData):
             numberPowerCards= 2
             numberSensorsPerCard = 8
             powerCardI2cBus = [3, 2]
@@ -874,7 +875,7 @@ class LpdFemClient(FemClient):
         if self.femAsicDataType == self.ASIC_DATA_TYPE_PSEUDO_RANDOM:
             asic_rx_start_delay = self.asicRxPseudoRandomStart
         else:
-            if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SINGLE_ASIC:
+            if self.femAsicModuleType == self.ModuleTypeSingleAsic:
                 asic_rx_start_delay = self.asicRxSingleStart
             else:
                 if self.femAsicSlowedClock:
