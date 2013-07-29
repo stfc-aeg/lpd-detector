@@ -28,8 +28,8 @@ class LpdFemGuiMainDaqTab(object):
         
         # Initialise default fields based on appMain object cached parameters
         self.ui.readoutParamEdit.setText(self.appMain.getCachedParam('readoutParamFile'))
-        self.ui.fastParamEdit.setText(self.appMain.getCachedParam('fastParamFile'))
-        self.ui.slowParamEdit.setText(self.appMain.getCachedParam('slowParamFile'))
+        self.ui.fastParamEdit.setText(self.appMain.getCachedParam('cmdSequenceFile'))
+        self.ui.slowParamEdit.setText(self.appMain.getCachedParam('setupParamFile'))
         self.ui.dataPathEdit.setText(self.appMain.getCachedParam('dataFilePath'))
         self.ui.numTrainsEdit.setText(str(self.appMain.getCachedParam('numTrains')))
         if self.appMain.getCachedParam('externalTrigger') == True:
@@ -97,16 +97,16 @@ class LpdFemGuiMainDaqTab(object):
             self.mainWindow.updateEnabledWidgets()
 
     def slowParamFileSelect(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select slow parameter file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select setup parameter file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
         if fileName != "":
-            self.appMain.setCachedParam('slowParamFile', str(fileName))
+            self.appMain.setCachedParam('setupParamFile', str(fileName))
             self.ui.slowParamEdit.setText(fileName)
             self.mainWindow.updateEnabledWidgets()
         
     def fastParamFileSelect(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select fast parameter file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select command sequence file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
         if fileName != "":
-            self.appMain.setCachedParam('fastParamFile', str(fileName))
+            self.appMain.setCachedParam('cmdSequenceFile', str(fileName))
             self.ui.fastParamEdit.setText(fileName)
             self.mainWindow.updateEnabledWidgets()
         

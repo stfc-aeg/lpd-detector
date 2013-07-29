@@ -58,7 +58,7 @@ class LpdFemGui:
         self.mainWindow.show()
 
         # Create the live view window but don't show it
-        self.liveViewWindow = LpdFemGuiLiveViewWindow()
+        self.liveViewWindow = LpdFemGuiLiveViewWindow(asicModuleType=self.cachedParams['asicModuleType'])
             
         # Redirect stdout to PrintRedirector
         sys.stdout = PrintRedirector(self.msgPrint)
@@ -79,8 +79,8 @@ class LpdFemGui:
                           'femAddr'           : '192.168.2.2',
                           'femPort'           : 6969,
                           'readoutParamFile'  : self.defaultConfigPath + '/superModuleReadout.xml',
-                          'fastParamFile'     : self.defaultConfigPath + '/ManualReset_longExposure_AsicControl.xml',
-                          'slowParamFile'     : self.defaultConfigPath + '/AsicSlowParameters.xml',
+                          'cmdSequenceFile'   : self.defaultConfigPath + '/Command_LongExposure_V2.xml',
+                          'setupParamFile'    : self.defaultConfigPath + '/Setup_LowPower.xml',
                           'dataFilePath'      : '/tmp',
                           'hvBiasVolts'       : 50.0,
                           'numTrains'         : 8,
@@ -99,7 +99,7 @@ class LpdFemGui:
                           'evrRecordEnable'   : True,
                           'femAsicGainOverride' : 8,
                           'femAsicPixelFeedbackOverride' : 0,
-                          'asicModuleType' : 0,
+                          'asicModuleType'      : 0,
                          }
 
         # List of parameter names that don't need to force a system reconfigure
@@ -180,7 +180,7 @@ class LpdFemGui:
         self.loadedConfig= {} 
         
         # Load readout parameters from file       
-        self.msgPrint("Loading readout parameters from file %s" % self.cachedParams['readoutParamFile'])
+        self.msgPrint("Loading Readout Params from file %s" % self.cachedParams['readoutParamFile'])
         try:
             readoutConfig = LpdReadoutConfig(self.cachedParams['readoutParamFile'], fromFile=True)
         except LpdReadoutConfigError as e:
@@ -198,7 +198,7 @@ class LpdFemGui:
             try:
                 self.loadedConfig[param] = value
             except Exception as e:
-                print >> sys.stderr, "%s", e
+                print >> sys.stderr, "%s" % e
 
         # Set up number of frames based on cached parameter value of number of trains
         self.numFrames = self.cachedParams['numTrains']
@@ -249,21 +249,21 @@ class LpdFemGui:
         except Exception as e:
             print >> sys.stderr, "Got exception storing reaodut config variables", e 
         
-        # Set ASIC slow parameters file
-        self.msgPrint("Loading ASIC slow parameters from file %s" % self.cachedParams['slowParamFile'])
-        rc = self.device.paramSet('femAsicSetupParams', self.cachedParams['slowParamFile'])
+        # Set ASIC setup parameters file
+        self.msgPrint("Loading Setup Params from file %s" % self.cachedParams['setupParamFile'])
+        rc = self.device.paramSet('femAsicSetupParams', self.cachedParams['setupParamFile'])
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting ASIC slow parameter file to %s failed (rc=%d) : %s" % 
-                          (self.cachedParams['slowParamFile'], rc, self.device.errorStringGet()))
+            self.msgPrint("Setting ASIC setup parameter file to %s failed (rc=%d) : %s" % 
+                          (self.cachedParams['setupParamFile'], rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
             
-        # Set ASIC fast command sequence file
-        self.msgPrint("Loading ASIC fast command sequence from file %s" % self.cachedParams['fastParamFile'])
-        rc = self.device.paramSet('femAsicCmdSequence', self.cachedParams['fastParamFile'])
+        # Set ASIC command word sequence file
+        self.msgPrint("Loading Command Seq from file %s" % self.cachedParams['cmdSequenceFile'])
+        rc = self.device.paramSet('femAsicCmdSequence', self.cachedParams['cmdSequenceFile'])
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting ASIC fast command sequence file to %s failed (rc=%d) : %s" % 
-                          (self.cachedParams['fastParamFile'], rc, self.device.errorStringGet()))
+            self.msgPrint("Setting ASIC command word sequence file to %s failed (rc=%d) : %s" % 
+                          (self.cachedParams['cmdSequenceFile'], rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
         

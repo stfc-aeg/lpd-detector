@@ -169,7 +169,7 @@ class LpdAsicCommandSequence():
                         cmdWord = (count - 1 << self.nop_pos) | cmdWord
                         # Count number of nops - if not <nop/> without count attribute
                         if count > 1:
-                            localNopsSum += count
+                            localNopsSum += (count - 1)
                         count = 1
                         
                     else:

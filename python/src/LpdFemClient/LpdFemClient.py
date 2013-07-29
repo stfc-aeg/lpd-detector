@@ -71,11 +71,11 @@ class LpdFemClient(FemClient):
    
     ########## Enumerated values for API variables ##########
 
-    ModuleTypeSuperModule   = 0     # (0) Supermodule
-    ModuleTypeSingleAsic    = 1     # (1) Single ASIC test module
-    ModuleTypeTwoTile       = 2     # (2) 2-Tile module
-    ModuleTypeFem           = 3     # (3) FEM Standalone
-    ModuleTypeRawData       = 4     # (4) Super Module Raw Data
+    ASIC_MODULE_TYPE_SUPER_MODULE   = 0     # (0) Supermodule
+    ASIC_MODULE_TYPE_SINGLE_ASIC    = 1     # (1) Single ASIC test module
+    ASIC_MODULE_TYPE_TWO_TILE       = 2     # (2) 2-Tile module
+    ASIC_MODULE_TYPE_STAND_ALONE    = 3     # (3) FEM Standalone
+    ASIC_MODULE_TYPE_RAW_DATA       = 4     # (4) Super Module Raw Data
 
     RUN_TYPE_ASIC_DATA_VIA_PPC      = 0     # (0) ASIC data (via PPC) [Standard Operation]
     RUN_TYPE_ASIC_DATA_DIRECT       = 1     # (1) ASIC data direct from Rx block
@@ -136,7 +136,7 @@ class LpdFemClient(FemClient):
 
         ########## Parameters now (mostly) exposed in API ##########
 
-        self.femAsicModuleType  = self.ModuleTypeSuperModule        # (0) Supermodule
+        self.femAsicModuleType  = self.ASIC_MODULE_TYPE_SUPER_MODULE        # (0) Supermodule
         self.femDataSource      = self.RUN_TYPE_ASIC_DATA_VIA_PPC   # (0) ASIC data (via PPC) [Standard Operation]
         self.femAsicDataType    = self.ASIC_DATA_TYPE_ASIC_SENSOR   # (0) Asic sensor data [Standard Operation Real Data]
         
@@ -207,7 +207,7 @@ class LpdFemClient(FemClient):
                         }
         
         # Supermodule has two power cards, everything else only one
-        if (asicModuleType ==  LpdFemClient.ModuleTypeSuperModule) or (asicModuleType ==  LpdFemClient.ModuleTypeRawData):
+        if (asicModuleType ==  LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE) or (asicModuleType ==  LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA):
             numberPowerCards= 2
             numberSensorsPerCard = 8
             powerCardI2cBus = [3, 2]
@@ -898,7 +898,7 @@ class LpdFemClient(FemClient):
         if self.femAsicDataType == self.ASIC_DATA_TYPE_PSEUDO_RANDOM:
             asic_rx_start_delay = self.asicRxPseudoRandomStart
         else:
-            if self.femAsicModuleType == self.ModuleTypeSingleAsic:
+            if self.femAsicModuleType == self.ASIC_MODULE_TYPE_SINGLE_ASIC:
                 asic_rx_start_delay = self.asicRxSingleStart
             else:
                 if self.femAsicSlowedClock:

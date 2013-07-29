@@ -5,6 +5,7 @@ Created on Apr 19, 2013
 '''
 
 from LpdDataContainers import *
+from LpdFemClient.LpdFemClient import LpdFemClient
 
 import os, sys, time, socket
 import numpy as np
@@ -14,10 +15,7 @@ import h5py
 
 #Display received data in plots
 bDisplayPlotData = True
-
-# Debugging enabled if set above 0
-bDebug = 0
-        
+  
 class LpdFemDataReceiver():
     
     def __init__(self, liveViewSignal, runStatusSignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
@@ -214,7 +212,7 @@ class UdpReceiver(QtCore.QObject):
         
 
 class FrameProcessor(QtCore.QObject):
-
+    
     def __init__(self, numFrames, cachedParams, liveViewSignal):
 
         QtCore.QObject.__init__(self)
@@ -222,14 +220,14 @@ class FrameProcessor(QtCore.QObject):
         self.numFrames = numFrames
         self.evrData = None
         
-        self.runNumber = cachedParams['runNumber']
+        self.runNumber       = cachedParams['runNumber']
         self.fileWriteEnable = cachedParams['fileWriteEnable']
-        self.dataFilePath = cachedParams['dataFilePath']
-        self.liveViewEnable = cachedParams['liveViewEnable']
+        self.dataFilePath    = cachedParams['dataFilePath']
+        self.liveViewEnable  = cachedParams['liveViewEnable']
         self.liveViewDivisor = cachedParams['liveViewDivisor']
         self.liveViewOffset  = cachedParams['liveViewOffset']
-
-        self.liveViewSignal = liveViewSignal
+        self.asicModuleType  = cachedParams['asicModuleType']
+        self.liveViewSignal  = liveViewSignal
 
         # Run start time
         self.tstart = time.time()
@@ -241,12 +239,26 @@ class FrameProcessor(QtCore.QObject):
         self.totalProcessingTime = 0.0
 
         # Define plotted image dimensions: 
-        self.nrows = 32*8   # 32 rows * 8 ASICs = 256 
-        self.ncols = 256    # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors / Row: 16 x 8 x 2 = 256 columns
-        self.imageSize = self.nrows * self.ncols
+        if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
+            self.nrows = 256
+            self.ncols = 256
+        elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
+            self.nrows = 32
+            self.ncols = 256
+        elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
+            self.nrows = 256 
+            self.ncols = 256
+        else:
+            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.asicModuleType
+            
+        # Define Module and Full Lpd size (Module differs if 2-tile, SuperMod, Fem, etc)
+        self.imageModuleSize = self.nrows * self.ncols
+        self.imageFullLpdSize = 256 * 256
 
-        # Create an array to contain 65536 elements (32 x 8 x 16 x 16 = super module image)
-        self.imageArray = np.zeros(self.imageSize, dtype=np.uint16)
+        # Create an image array to contain the elements of the module type 
+        # Super Module = (32 x 8 x 16 x 16) = 65536 elements
+        # 2Tile System = (32 * 16 * 16)     = 8192 elements
+        self.imageArray = np.zeros(self.imageModuleSize, dtype=np.uint16)
         
         # Create HDF file if requested
         if self.fileWriteEnable:            
@@ -286,7 +298,7 @@ class FrameProcessor(QtCore.QObject):
         # Write the XML configuration files into the metadata group        
         self.xmlDs = {}
         str_type = h5py.new_vlen(str)
-        for paramFile in ('readoutParamFile', 'fastParamFile', 'slowParamFile'):
+        for paramFile in ('readoutParamFile', 'cmdSequenceFile', 'setupParamFile'):
             self.xmlDs['paramFile'] = self.metaGroup.create_dataset(paramFile, shape=(1,), dtype=str_type)
             try:
                 with open(cachedParams[paramFile], 'r') as xmlFile:
@@ -320,14 +332,10 @@ class FrameProcessor(QtCore.QObject):
         # Loop over the specified number of plots
         while bNextImageAvailable:
 
-            imageOffset = self.imageSize * currentImage
+            imageOffset = self.imageFullLpdSize * currentImage
 
             # Get the first image of the image
             bNextImageAvailable = self.unpackImage(imageOffset)
-
-            # Mask out gain bits from data
-            # TODO REMOVE THIS
-            #self.imageArray = self.imageArray & 0xfff
             
             # Write image to file if selected
             if self.fileWriteEnable:
@@ -398,45 +406,73 @@ class FrameProcessor(QtCore.QObject):
         """
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
-
-        numAsicCols = 16
-        numAsicRows = 8
-        numAsics = numAsicCols * numAsicRows
-        numColsPerAsic = 16
-        numRowsPerAsic = 32
-
-        numPixelsPerAsic = numColsPerAsic * numRowsPerAsic
-        numPixels = numAsics * numPixelsPerAsic
-
-        # Create linear array for unpacked pixel data
-        self.imageArray = np.zeros(numPixels, dtype=np.uint16)
-        self.imageArray = np.reshape(self.imageArray, (numAsicRows * numRowsPerAsic, numAsicCols * numColsPerAsic))
-
-        rawOffset = imageOffset
-
-        try:
-            for asicRow in xrange(numRowsPerAsic):
-                for asicCol in xrange(numColsPerAsic):
-                    
-                    self.imageArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelData[rawOffset:(rawOffset + numAsics)].reshape(8,16)
-                    rawOffset += numAsics
         
-        except IndexError:
-            print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
-        except Exception as e:
-            print "Error while extracting image: ", e
-
-        # Image now upside down, reverse the order
-        self.imageArray[:,:] = self.imageArray[::-1,:]
+        # Check Asic Module type to determine how to process data
+        if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
+            # Raw data - no not re-order
+            self.imageArray = self.pixelData[imageOffset:imageOffset + self.imageFullLpdSize].reshape(256, 256)
+        else:
+            # Not raw data, proceed to reorder data
+            numAsicCols = 16
+            numAsicRows = 8
+            numAsics = numAsicCols * numAsicRows
+            numColsPerAsic = 16
+            numRowsPerAsic = 32
+    
+            numPixelsPerAsic = numColsPerAsic * numRowsPerAsic
+            numPixels = numAsics * numPixelsPerAsic
+    
+            # Create linear array for unpacked pixel data
+            self.imageLpdFullArray = np.zeros(numPixels, dtype=np.uint16)
+            self.imageLpdFullArray = np.reshape(self.imageLpdFullArray, (numAsicRows * numRowsPerAsic, numAsicCols * numColsPerAsic))
+    
+            rawOffset = imageOffset
+    
+            try:
+                for asicRow in xrange(numRowsPerAsic):
+                    for asicCol in xrange(numColsPerAsic):
+                        
+                        self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelData[rawOffset:(rawOffset + numAsics)].reshape(8,16)
+                        rawOffset += numAsics
+            
+            except IndexError:
+                print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
+            except Exception as e:
+                print "Error while extracting image: ", e, " -> imgOffset: ", imageOffset
+    
+            # Module specific data processing
+            if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
+                
+                # Super Module - Image now upside down, reverse the order
+                self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
+                self.imageArray = self.imageLpdFullArray.copy()
+            elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
+                
+                #Two Tile
+                # Create array for 2 Tile data; reshape into two dimensional array
+                self.imageArray = np.zeros(self.imageModuleSize, dtype=np.uint16)
+                self.imageArray = self.imageArray.reshape(32, 256)
+        
+                # Copy the two Tiles that exists in the two tile system
+                try:
+                    # LHS Tile located in the second ASIC row, second ASIC column
+                    self.imageArray[0:32, 0:128]   = self.imageLpdFullArray[32:32+32, 256-1:128-1:-1]
+                    # RHS Tile located in the seventh ASIC row, second ASIC column
+                    self.imageArray[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
+                except Exception as e:
+                    print "Error accessing 2 Tile data: ", e
+                    print "imageOffset: ", imageOffset
+                    sys.exit()
 
         # Last image in the data?
         try:
-            self.pixelData[imageOffset + self.imageSize]
+            self.pixelData[imageOffset + self.imageFullLpdSize]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:
             pass   # Last Image in this train detected
         return bNextImageAvailable
+        
         
 
 class DataMonitor(QtCore.QObject):

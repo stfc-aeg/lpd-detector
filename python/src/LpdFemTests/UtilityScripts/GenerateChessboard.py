@@ -1,5 +1,6 @@
 '''
-    This script basically generates a copy of Setup_LowPower.xml but it plays around with the mux_decoder individual pixel settings
+    This script basically generates a copy of Setup_LowPower.xml but it plays around with 
+    the mux_decoder individual pixel settings to create a chessboard pattern across all ASICs
 
     Author: ckd27546
 '''

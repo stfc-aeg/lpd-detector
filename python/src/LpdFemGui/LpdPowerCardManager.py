@@ -13,7 +13,6 @@ class LpdPowerCardManager(object):
     classdocs
     '''
 
-
     def __init__(self, appMain, device):
         '''
         Constructor
@@ -24,11 +23,20 @@ class LpdPowerCardManager(object):
         self.lvEnabled = False
         self.hvEnabled = False
         self.hvBias = 0.0
-        
-        # Specify number of power cards present
-        # TODO - tie this to the module type
-        self.numPowerCards = 2
-        self.numSensorsPerCard = 8
+
+        # Specify number of power cards, sensors present
+        if self.appMain.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
+            self.numPowerCards = 2
+            self.numSensorsPerCard = 8
+        elif self.appMain.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
+            self.numPowerCards = 1
+            self.numSensorsPerCard = 2
+        elif self.appMain.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
+            self.numPowerCards = 2
+            self.numSensorsPerCard = 8
+        else:
+            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.appMain.cachedParams['asicModuleType']
+            
         self.numSensors = self.numSensorsPerCard * self.numPowerCards
         
         self.cardParamList = ['powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent', 

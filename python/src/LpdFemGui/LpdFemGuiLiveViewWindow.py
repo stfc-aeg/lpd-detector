@@ -5,6 +5,7 @@ Created on Apr 22, 2013
 '''
 
 from LpdDataContainers import LpdImageContainer
+from LpdFemClient.LpdFemClient import LpdFemClient
 
 from PyQt4 import QtCore, QtGui
 from utilities import *
@@ -23,9 +24,29 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
     
     matplotlib.rcParams.update({'font.size': 8})
     
-    def __init__(self, parent=None):
-        
+    def __init__(self, parent=None, asicModuleType=0):
+ 
         QtGui.QDialog.__init__(self, parent)
+
+        self.asicModuleType = asicModuleType
+
+        # Set nrows, ncols and moduleType according asicModuleType
+        if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
+            moduleType = "Super Module"
+            self.nrows = 256 
+            self.ncols = 256
+        elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
+            moduleType = "2-Tile System"
+            self.nrows = 32
+            self.ncols = 256
+        elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
+            moduleType = "Super Module [Raw Data]"
+            self.nrows = 256 
+            self.ncols = 256
+        else:
+            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.asicModuleType
+        
+        self.setWindowTitle('Plotting data from %s' % moduleType)
 
         self.plotFrame =QtGui.QWidget()
         
@@ -48,29 +69,48 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
         self.axes.set_xticks([])
         self.axes.set_yticks([])
        
-        self.nrows = 32*8   # 32 rows * 8 ASICs = 256 
-        self.ncols = 256    # 16 columns/ASIC, 8 ASICs / sensor, 2 sensors / Row: 16 x 8 x 2 = 256 columns
         self.imageSize = self.nrows * self.ncols
 
         # Create an empty plot
         self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)                   
         self.imgObject = self.axes.imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
 
+        # Position colorbar according to selected asicModuleType
+        if self.asicModuleType == 2:
+            cBarPosn = 'horizontal'
+            # Place 2-Tile plot closer to center of figure
+            self.axes.set_position([0.125, 0.4, 0.8, 0.5])
+        else: 
+            cBarPosn = 'vertical'
+
         # Create nd show a colourbar
-        axc, kw = matplotlib.colorbar.make_axes(self.axes)
-        cb = matplotlib.colorbar.Colorbar(axc, self.imgObject)
+        axc, kw = matplotlib.colorbar.make_axes(self.axes, orientation=cBarPosn)
+        cb = matplotlib.colorbar.Colorbar(axc, self.imgObject, orientation=cBarPosn)
         self.imgObject.colorbar = cb
 
-        # Add vertical lines to differentiate between the ASICs
-        for i in range(16, self.ncols, 16):
-            self.axes.vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
-        
-        # Add vertical lines to differentiate between two tiles
-        self.axes.vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
-        
-        for i in range(32, self.nrows, 32):
-            self.axes.hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
-        
+        # Add lines according to module type
+        if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
+             
+            # Add vertical lines to differentiate between the ASICs
+            for i in range(16, self.ncols, 16):
+                self.axes.vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
+            
+            # Add vertical lines to differentiate between the two tiles
+            self.axes.vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
+            
+        elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
+                
+                # Add vertical lines to differentiate between the ASICs
+                for i in range(16, self.ncols, 16):
+                    self.axes.vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
+                
+                # Add vertical lines to differentiate between tiles
+                self.axes.vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
+                
+                for i in range(32, self.nrows, 32):
+                    self.axes.hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
+
+
         self.canvas.draw()
 
         # Bind the 'pick' event for clicking on one of the bars

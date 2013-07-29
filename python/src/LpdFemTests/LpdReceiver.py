@@ -7,6 +7,8 @@
 # For detailed comments on animation and the techniqes used here, see
 # the wiki entry http://www.scipy.org/Cookbook/Matplotlib/Animations
 
+from LpdFemClient.LpdFemClient import LpdFemClient
+
 import sys, time, datetime, argparse, socket
 
 import numpy as np
@@ -151,49 +153,31 @@ class ImageDisplay(FigureCanvas):
     
     dataRxSignal = QtCore.pyqtSignal(object)
 
-    ModuleTypeSuperModule = 0
-    ModuleTypeAsic        = 1
-    ModuleTypeTwoTile     = 2
-    ModuleTypeFem         = 3
-    ModuleTypeRawData     = 4
-
     def __init__(self, femHost, femPort, asicModuleType):
         
         self.asicModuleType = asicModuleType
         
         self.moduleString = {0 : "SuperModule", 1 : "Asic", 2 : "TwoTile ", 3 : "Fem", 4 : "RawData"}
         
-        if self.asicModuleType == self.ModuleTypeSuperModule:            
+        if self.asicModuleType == LpdFemClient.ModuleTypeSuperModule:            
             asicTilesPerColumn = 8
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (32, 256, 32)
-            
-        elif self.asicModuleType == self.ModuleTypeAsic:
-            #TODO: Implement this?
-            print "ASIC module: Asic not implemented. Exiting..\n"
-            sys.exit()
-#            asicTilesPerColumn = 1 # Has implications for both rows and columns..
-#            (xStart, xStop, xStep)  = (16, 32, 16)
-#            (yStart, yStop, yStep)  = (8, 32, 8)
-            
-        elif self.asicModuleType == self.ModuleTypeTwoTile:
+                        
+        elif self.asicModuleType == LpdFemClient.ModuleTypeTwoTile:
             asicTilesPerColumn = 1
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (8, 32, 8)
             
-        elif self.asicModuleType == self.ModuleTypeFem:
-            #TODO: Implement this?
-            print "ASIC module: Fem not yet implemented. Exiting..\n"
-            sys.exit()
-#            asicTilesPerColumn = 0
-#            (xStart, xStop, xStep) = (?,?,?)
-#            (yStart, yStop, yStep)  = (8, 32, 8)
-
-        elif asicModuleType == self.ModuleTypeRawData:
+        elif self.asicModuleType == LpdFemClient.ModuleTypeRawData:
             asicTilesPerColumn = 8
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (32, 256, 32)
 
+        else:
+            print "Error: Selected ASIC module (type = %r) not supported." %  self.asicModuleType
+            sys.exit()
+            
         print "Initialising.. "
         
         # Dummy train counter
@@ -514,56 +498,12 @@ class ImageDisplay(FigureCanvas):
             self.pixelDataArray array. Returns boolean bImageAvailable indicating whether
             the current image is the last image in the data
         """
-#        # Boolean variable to track whether there is a image after this one in the data
-#        bNextImageAvailable = False
-#
-#        numCols = 16
-#        numRows = 8
-#        numAsics = numCols * numRows
-#        numColsPerAsic = 16
-#        numRowsPerAsic = 32
-#
-#        numPixelsPerAsic = numColsPerAsic * numRowsPerAsic
-#        numPixels = numAsics * numPixelsPerAsic
-#
-#        # Create linear array for unpacked pixel data
-#        self.imageArray = np.zeros(numPixels, dtype=np.uint16)
-#        self.imageArray = np.reshape(self.imageArray, (numRows * numRowsPerAsic, numCols * numColsPerAsic))
-#
-#        rawOffset = dataBeginning
-#
-#        try:
-#            for asicRow in xrange(numRowsPerAsic):
-#                for asicCol in xrange(numColsPerAsic):
-#                    
-#                    self.imageArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelDataArray[rawOffset:(rawOffset + numAsics)].reshape(8,16)
-#                    rawOffset += numAsics
-#
-#        except IndexError:
-#            print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
-#            sys.exit()
-#        except Exception as e:
-#            print "Error while extracting image: ", e, "\nExiting.."
-#            print "Debug info: %6i %6i %6i %6i %6i %6i " % (asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics)
-#            sys.exit()
-#
-#        # Image now upside down, reverse the order
-#        self.imageArray[:,:] = self.imageArray[::-1,:]
-#
-#        # Last image in the data?
-#        try:
-#            self.pixelDataArray[dataBeginning + self.superModuleImageSize]
-#            # Will only get here if there is a next image available..
-#            bNextImageAvailable = True
-#        except IndexError:
-#            pass   # Last Image in this train detected
-#        return bNextImageAvailable
 
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
         
         # Check Asic Module type to determine how to process data
-        if self.asicModuleType == 4:
+        if self.asicModuleType == LpdFemClient.ModuleTypeRawData:
             # Raw data - no not re-order
             self.imageArray = self.pixelDataArray[dataBeginning:dataBeginning + self.superModuleImageSize].reshape(256, 256)
         else:
@@ -596,13 +536,13 @@ class ImageDisplay(FigureCanvas):
                 print "Error while extracting image: ", e, " -> imgOffset: ", dataBeginning
     
             # Module specific data processing
-            if self.asicModuleType == 0:    #super module
+            if self.asicModuleType == LpdFemClient.ModuleTypeSuperModule:
                 
                 # Super Module - Image now upside down, reverse the order
                 self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
                 self.imageArray = self.imageLpdFullArray.copy()
                 
-            elif self.asicModuleType == 2:  # 2-Tile
+            elif self.asicModuleType == LpdFemClient.ModuleTypeTwoTile:
                 
                 #Two Tile
                 # Create array for 2 Tile data; reshape into two dimensional array
@@ -646,7 +586,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="superModuleReceiveTest.py - Receive data from a Super Module. ",
                                      epilog="Default: femhost=10.0.0.1, femport=61649 and asicModule=0, all other flags' default values denoted by 'D: x'.")
 
-    parser.add_argument("--asicmodule",     help="Set ASIC Module (0=supermodule, 1=Asic, 2=2-Tile , 3=fem, 4=Raw data)", type=int, choices=[0, 1, 2, 3, 4], default=asicModule)
+    parser.add_argument("--asicmodule",     help="Set ASIC Module (0=Supermodule, 2=2-Tile, 4=Raw data; D: 0)",         type=int, choices=[0, 2, 4], default=asicModule)
     parser.add_argument("--canvasrows",     help="Set rows of plots (D: 2)",                                            type=int, default=plotRows)
     parser.add_argument("--canvascols",     help="Set columns of plots (D: 2)",                                         type=int, default=plotCols)
     parser.add_argument("--colorbar",       help="Enable colorbar (0=Disable, 1=Enable; D: 1)",                         type=int, default=1)
