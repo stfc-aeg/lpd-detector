@@ -157,19 +157,19 @@ class ImageDisplay(FigureCanvas):
         
         self.asicModuleType = asicModuleType
         
-        self.moduleString = {0 : "SuperModule", 1 : "Asic", 2 : "TwoTile ", 3 : "Fem", 4 : "RawData"}
+        self.moduleString = {0 : "SuperModule", 1 : "Asic", 2 : "TwoTile", 3 : "Fem", 4 : "RawData"}
         
-        if self.asicModuleType == LpdFemClient.ModuleTypeSuperModule:            
+        if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
             asicTilesPerColumn = 8
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (32, 256, 32)
                         
-        elif self.asicModuleType == LpdFemClient.ModuleTypeTwoTile:
+        elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
             asicTilesPerColumn = 1
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (8, 32, 8)
             
-        elif self.asicModuleType == LpdFemClient.ModuleTypeRawData:
+        elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             asicTilesPerColumn = 8
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (32, 256, 32)
@@ -204,7 +204,7 @@ class ImageDisplay(FigureCanvas):
         # Create hdf file - if HDF5 Library present
         if bHDF5:
             dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[asicModuleType], dateString)
+            fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[self.asicModuleType], dateString)
 
             self.hdfFile = h5py.File(fileName, 'w')
             self.imageDs = self.hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
@@ -396,7 +396,7 @@ class ImageDisplay(FigureCanvas):
                     # Reset loop counter, determine new file name
                     loopCounter = 0
                     dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-                    fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[asicModuleType], dateString)
+                    fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[self.asicModuleType], dateString)
                     
                     if self.hdfFile.filename == fileName:
                         # Modify new name to avoid overwritten old..
@@ -503,7 +503,7 @@ class ImageDisplay(FigureCanvas):
         bNextImageAvailable = False
         
         # Check Asic Module type to determine how to process data
-        if self.asicModuleType == LpdFemClient.ModuleTypeRawData:
+        if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             # Raw data - no not re-order
             self.imageArray = self.pixelDataArray[dataBeginning:dataBeginning + self.superModuleImageSize].reshape(256, 256)
         else:
@@ -536,13 +536,13 @@ class ImageDisplay(FigureCanvas):
                 print "Error while extracting image: ", e, " -> imgOffset: ", dataBeginning
     
             # Module specific data processing
-            if self.asicModuleType == LpdFemClient.ModuleTypeSuperModule:
+            if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
                 
                 # Super Module - Image now upside down, reverse the order
                 self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
                 self.imageArray = self.imageLpdFullArray.copy()
                 
-            elif self.asicModuleType == LpdFemClient.ModuleTypeTwoTile:
+            elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
                 
                 #Two Tile
                 # Create array for 2 Tile data; reshape into two dimensional array
