@@ -800,7 +800,7 @@ class LpdFemClient(FemClient):
                 femAsicSetupParams_xmlfile[asic_nr] = self.femAsicSetupParams      
         else:
             #TODO: Don't just hard-code it.. (use os.environ['PYTHONPATH'] except it contains multiple folders for LpdFemGui..!)
-            filePath = '/u/ckd27546/workspace/lpdSoftware/LpdFemTests/'
+            filePath = '' # '/u/ckd27546/workspace/lpdSoftware/LpdFemTests/'
             # Hack by jac to have 8 different xml files for the 8 asics on a sensor tile
             # note that BRAM will shift out Asic8 data first in chain and Asic 1 last
             femAsicSetupParams_xmlfile[0] = filePath + "Config/SetupParams/Setup_LowPower_Asic8.xml"
@@ -1140,22 +1140,22 @@ class LpdFemClient(FemClient):
             for asic_nr in range(0, self.nr_asics_per_sensor): 
                 asic_params[asic_nr] = list() 
             
-            #asic_1 = list()
-            # convert to list of bits for manipulation
-            asic_params[asic_nr] = self.convert_to_bitlist(dataTuple[asic_nr])
+                #asic_1 = list()
+                # convert to list of bits for manipulation
+                asic_params[asic_nr] = self.convert_to_bitlist(dataTuple[asic_nr])
             
-            # remove unused bits in last word         
-            del asic_params[asic_nr][-(32-7):]
+                # remove unused bits in last word         
+                del asic_params[asic_nr][-(32-7):]
             
-            #print str(asic_1)[1:-1]
-            #for i in range(0,len(asic_1)):          
-            #  print 'i = %d ; asic_1[i] = %d ' %(i, asic_1[i])  
+                #print str(asic_1)[1:-1]
+                #for i in range(0,len(asic_1)):          
+                #  print 'i = %d ; asic_1[i] = %d ' %(i, asic_1[i])  
             
-            # and remove initial 6 dummy bits from subsequent asic blocks 
-            if asic_nr > 0:
-                #asic_n = list(asic_1)
-                for j in range(0,6):          
-                    del asic_params[asic_nr][j]
+                # and remove initial 6 dummy bits from subsequent asic blocks 
+                if asic_nr > 0:
+                   #asic_n = list(asic_1)
+                   for j in range(0,6):          
+                        del asic_params[asic_nr][j]
             
             # add remaining asic blocks in chain
             asic_daisy_chain = list(asic_params[0]) 
