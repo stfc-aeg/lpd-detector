@@ -73,11 +73,11 @@ def basicFileProcessor():
 			# Go through each index and divide by number of images
 			for idx in range(len(pixelArray)):
 				
-				# Use floating point division but round to nearest integer
-				pixelArray[idx] = int( round(pixelArray[idx] / (numTrains + 0.0) ))
+				# Slower using floating point division but round to nearest integer
+#				pixelArray[idx] = int( round(pixelArray[idx] / (numTrains + 0.0) ))
 				
 				#Quicker (~0.5 seconds)  using integer point precision..
-				#pixelArray[idx] = pixelArray[idx] / numTrains
+				pixelArray[idx] = pixelArray[idx] / numTrains
 	
 			# Close file
 			hdfFile.close()
