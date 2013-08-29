@@ -9,8 +9,6 @@
 import argparse
 import numpy as np
 import h5py
-#import matplotlib
-#import matplotlib.pyplot as plt
 import os, sys, time
 import glob
 
@@ -36,19 +34,23 @@ def dumpRunParameters():
 	
 			
 			for fileName in targetFiles:
-				# Open file
-				hdfFile = h5py.File(fileName, 'r')
-				# Read in the meta data
-				meta = hdfFile['/lpd/metadata']
-				# Count number of meta parameters
-				numParams = meta.attrs.items()
-	
-				# Clear values from previous iteration
-				paramValues = [-1, -1, -1, -1, -1, -1, -1]
-				
-				keys = meta.attrs.keys()
-				values = meta.attrs.values()
-				
+
+				try:
+					# Open file
+					hdfFile = h5py.File(fileName, 'r')
+					# Read in the meta data
+					meta = hdfFile['/lpd/metadata']
+					# Count number of meta parameters
+					numParams = meta.attrs.items()
+		
+					# Clear values from previous iteration
+					paramValues = [-1, -1, -1, -1, -1, -1, -1]
+					
+					keys = meta.attrs.keys()
+					values = meta.attrs.values()
+				except Exception as e:
+					print "Error processing file %r: %r" % (fileName, e)
+					continue
 				# Iterate over meta data and pick out the interesting info
 				for idx in range(len(numParams)):
 	
@@ -69,16 +71,11 @@ def dumpRunParameters():
 	
 						#Map 0, 8, 9, 11 => default, 100x, 10x, 1x
 						strDescribe = ""
-						if femAsicGainOverride == 0:
-							strDescribe = "(default) "
-						elif femAsicGainOverride == 8:
-							strDescribe = "(100x)    "
-						elif femAsicGainOverride == 9:
-							strDescribe = "(10x)     "
-						elif femAsicGainOverride == 11:
-							strDescribe = "(1x)      "
-						else:
-							strDescribe == "(Invalid)"
+						if femAsicGainOverride == 0:           							strDescribe = "(default) "
+						elif (femAsicGainOverride == 8)  or (femAsicGainOverride == 3): strDescribe = "(100x)    "
+						elif (femAsicGainOverride == 9)  or (femAsicGainOverride == 2): strDescribe = "(10x)     "
+						elif (femAsicGainOverride == 11) or (femAsicGainOverride == 1): strDescribe = "(1x)      "
+						else:															strDescribe == "(Invalid)"
 	
 						paramValues[3] = str(femAsicGainOverride) + strDescribe 
 						

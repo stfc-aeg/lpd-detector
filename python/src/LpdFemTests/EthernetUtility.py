@@ -17,10 +17,9 @@ class EthernetUtility():
         for line in self.ethernetInterface.readlines():
             if 'HWaddr' in line:
                 self.macLine = line
-#                print "macLine: ", self.macLine
             if 'inet addr:' in line:
                 self.ipLine = line
-#                print "ipLine: ", self.ipLine
+
         self.ethernetInterface.close()
     
     def macAddressGet(self):
