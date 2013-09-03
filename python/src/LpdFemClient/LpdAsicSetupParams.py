@@ -105,7 +105,7 @@ class LpdAsicSetupParams(object):
                                   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15, ]
 
 
-    def __init__(self, xmlObject, pixelFeedbackOverride=-1, pixelSelfTestOverride=-1, debugLevel=0, preambleBit=None, fromFile=False, strict=True):
+    def __init__(self, xmlObject, pixelFeedbackOverride=-1, pixelSelfTestOverride=-1, debugLevel=False, preambleBit=None, fromFile=False, strict=True):
         # Check that preambleBit argument was supplied
         # Currently (16/01/2013) serial clock must be kept high for six bits
         #    BEFORE the first slow control bit is sent. If these number of bits changes in the future,
@@ -115,13 +115,16 @@ class LpdAsicSetupParams(object):
         else:
             self.preambleBit = preambleBit
 
+        # load mode (0=parallel, 1=serial)
+        self.loadMode = -1
+        self.asicNumber = -1
         
         strict = True
         # Set the strict syntax flag to specified value (defaults to true)
         self.strict = strict
         
         ''' Debug info: '''
-        self.bDebug = False
+        self.bDebug = debugLevel
 
         if self.bDebug:
             print "debugging enabled."
@@ -140,6 +143,10 @@ class LpdAsicSetupParams(object):
                            'filter_control'              : [20, 3825,   -1,         0, [False, True, False]],       # Special Case: 20 bits cover everything
                            'adc_clock_delay'             : [20, 3845,   -1,         0, [False, True, False]],       # Special Case: 20 bits cover everything
                            'digital_control'             : [40, 3865,   -1,         0, [False, True, False]],       # Special Case: 40 bits cover everything
+                           # load mode specific values:
+                           'load_mode'                   : [1,  -1,     -1,         0, [False, True, False]],       # Load mode: 0=Parallel, 1=Serial
+                           'asic_number'                 : [1,  -1,     -1,         0, [False, True, False]],       # Specify which ASIC to configure (0-127)
+                           
                            }
 
         # Variables used to override feedback_select_default, self_test_decoder_default, if different value(s) supplied by setOverrideValues() function
@@ -348,9 +355,20 @@ class LpdAsicSetupParams(object):
                     else:
                         # Not pixel, index tags: therefore the key's value is an integer
                         (thisIndex, thisAttrib) = (0, "(int)")
-                        
-                # Update pixel entry of the dictionary key
-                self.setParamValue(cmd, thisIndex, value)
+                
+                # Is this a "global" dictionary key?
+                if cmd == "load_mode":
+                    # Check load mode not already set
+                    if self.loadMode != -1:
+                        raise LpdAsicSetupParamsError("Already set 'load_mode'! Was: %s. Attempted: %s" % (self.loadMode, value) )
+                    self.loadMode = value
+#                    print " *** setting load mode = ", value
+                elif cmd == "asic_number":
+                    self.asicNumber = value
+#                    print " *** setting ASIC number = ", value
+                else:
+                    # Update corresponding dictionary key entry
+                    self.setParamValue(cmd, thisIndex, value)
 
                 if self.bDebug:
                     if thisAttrib != "(int)": print " attrib: %5s = %3i, lookedup => %3i" % (thisAttrib, thisValue, thisIndex),
@@ -449,9 +467,16 @@ class LpdAsicSetupParams(object):
 #        debugComparisonKey = "self_test_decoder"
 #        debugComparisonKey = "digital_control"
 
+        #find load mode
+#        print  "*** ", self.loadMode
         # Initialise empty list to contain binary command values for this part of the tree
-        encodedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-        
+        if self.loadMode == 0:
+            # Parallel mode,  the same 3905 bits will be loaded into every ASIC
+            encodedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+        else:
+            # Serial mode, need 3905 bits * 128 ASICs
+            encodedSequence = [0] * LpdAsicSetupParams.SEQLENGTH * 128
+
         # Loop over dictionary entries 
         for dictKey in self.paramsDict:
 
@@ -485,7 +510,7 @@ class LpdAsicSetupParams(object):
 
                     # Create a bit array to save all the slow control words, bit by bit
                     bitwiseArray = [0] * (3905 + self.preambleBit)
-
+                    
                     ''' 
                         LIST TYPE: FIRST LOOP
                     '''
@@ -720,608 +745,766 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
     Unit test class for LpdAsicSetupParams.
     '''
 
-
-    def testStringParse(self):
-        '''
-            Tests that updating a parameter works as expected
-        '''
-        
-        selfTestPixelIndex = 1
-        daqBiasIdx47Value = 11
-        daqBiasDefault = 31
-        selfTestDecoderDefault = 7
-        digitalControlIdx3 = 18
-
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <self_test_decoder pixel="%i" value="5"/>
-                                <self_test_decoder_default value="%i"/>
-                                <mux_decoder pixel="2" value="0"/>
-                                <mux_decoder_default value="3"/>
-                                
-                                <daq_bias index="46" value="%i"/>
-                                <daq_bias_default value="%i"/>
-                                <daq_bias index="2" value="0"/>
-                                
-                                <digital_control value="18"/>
-                                <spare_bits value="%i"/>
-                            </lpd_setup_params>
-        ''' % (selfTestPixelIndex, selfTestDecoderDefault, daqBiasIdx47Value, daqBiasDefault, digitalControlIdx3)
-
-  
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        paramsObj.encode()
-
-        # Display an excerp of each dictionary key's value:
-        paramsObj.displayDictionaryValues()
-  
-        # Setup and compare the unit tests..        
-        dictKey = "self_test_decoder_default"
-        index = 0
-        value = selfTestDecoderDefault
-        
-        # Expected encoded values
-#        expectedVals = [3, -1, value, 0, [False, True, False]]
-        expectedVals = paramsObj.fetchParamsDictionary()['self_test_decoder_default']
-        # The actual values
-        selfTestDecoderDefaultVals = paramsObj.getParamValue(dictKey)
-
-#        print "\n", selfTestDecoderDefaultVals, "\n", expectedVals
-        self.assertEqual(selfTestDecoderDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
-        
-        # 'self_test_decoder'                    : [5, 3585, [-1] * 47],
-        dictKey = 'self_test_decoder'
-        index = selfTestPixelIndex
-        value = 5
-        
-        expectedVals = [3, 1537, [selfTestDecoderDefault] * 512, 1, [True, True, False]]
-        expectedVals[2][ LpdAsicSetupParams.pixelSelfTestLookupTable[index] ] = value
-
-#        print "\n497: ", LpdAsicSetupParams.pixelSelfTestLookupTable[497]
-        
-        self_test_decoderVals = paramsObj.getParamValue(dictKey)
-        
-#        print "\n", self_test_decoderVals, "\n", expectedVals
-        self.assertEqual(self_test_decoderVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
-        
-
-        # daq_bias_default
-        dictKey = "daq_bias_default"
-        index = 0
-        value = daqBiasDefault
-        
-        expectedVals = [5, -1, value, 0, [False, True, False]]
-        
-        daqBiasDefaultVals = paramsObj.getParamValue(dictKey)
-        
-#        print "\n", daqBiasDefaultVals, "\n", expectedVals
-        self.assertEqual(daqBiasDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
-        
-        # 'daq_bias'                    : [5, 3585, [-1] * 47],
-        dictKey = 'daq_bias'
-        value = daqBiasIdx47Value
-        
-        expectedVals = [5, 3585, [daqBiasDefault] * 47, 0, [False, True, True]]
-
-        expectedVals[2][ LpdAsicSetupParams.biasCtrlLookupTable[2] ] = 0
-        expectedVals[2][ LpdAsicSetupParams.biasCtrlLookupTable[46] ] = value
-        
-        daq_biasVals = paramsObj.getParamValue(dictKey)
-
-#        print "\nEnc: ", daq_biasVals, "\nExp: ", expectedVals
-        self.assertEqual(daq_biasVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
-
-        # 'digital_control'
-        dictKey = 'digital_control'
-        index = 3
-        value = digitalControlIdx3
-        
-        expectedVals = [40, 3865, value, 0, [False, True, False]]
-        expectedVals[2] = value
-
-        digitalControlVals = paramsObj.getParamValue(dictKey)
-        
-#        print "\n", digitalControlVals, "\n", expectedVals
-        self.assertEqual(digitalControlVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
-
-    
-    def testOutOfRangeKeyValueFails(self):
-        '''
-        Tests that updating a parameter will fail if value exceeds valid range
-        '''
-
-        # Strictly not necessary except for the class constructor requiring a XML file or string
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="testOutOfRangeKeyValueFails">
-                                <self_test_decoder_default value="7"/>
-                            </lpd_setup_params>
-        '''        
-        # setParamValue(dictKey, index, value)
-        dictKey = "self_test_decoder_default"
-        index = 0
-        value = 8
-    
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        dictKey = "self_test_decoder"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        dictKey = "mux_decoder_default"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        dictKey = "mux_decoder"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-        
-        # Test 1 bit widths
-        dictKey = "feedback_select_default"
-        value = 2
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        dictKey = "feedback_select"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        dictKey = "self_test_enable"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        # Test 5 bit widths
-        dictKey = "daq_bias_default"
-        value = 32
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        dictKey = "daq_bias"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        dictKey = "spare_bits"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        # Test 20 bit width
-        dictKey = "filter_control"
-        value = 1048575+1
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-        
-        dictKey = "adc_clock_delay"
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-        # Test 40 bit width
-        dictKey = "digital_control"
-        value = 1099511627776
-        with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
-            paramsObj.setParamValue(dictKey, index, value)
-
-    def testInvalidAttributeFails(self):
-        '''
-            Tests that providing a tag with an attribute that isn't required will raise an exception
-        '''
-
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="testInvalidAttributeFails1">
-                                <self_test_decoder_default pixel="5" value="7"/>
-                            </lpd_setup_params>
-        '''
-    
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
-
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="testInvalidAttributeFails2">
-                                <daq_bias pixel="5" value="7"/>
-                            </lpd_setup_params>
-        '''
-    
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
-
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="testInvalidAttributeFails3">
-                                <daq_bias_default index="15" value="31"/>
-                            </lpd_setup_params>
-        '''
-    
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
-
-    
-    def testSelfTestDecoderDefaultSetValueSeven(self):
-        '''
-            Test that the key self_test_decoder_default works
-        '''
+    if True:
+        def testStringParse(self):
+            '''
+                Tests that updating a parameter works as expected
+            '''
             
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <self_test_decoder_default value="7"/>
-                            </lpd_setup_params>
-        '''
+            selfTestPixelIndex = 1
+            daqBiasIdx47Value = 11
+            daqBiasDefault = 31
+            selfTestDecoderDefault = 7
+            digitalControlIdx3 = 18
     
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # Display an excerp of each dictionary key's value:
-        paramsObj.displayDictionaryValues()        
-
-        # Construct a list of how sequence should look like
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        for idx in range(48,112):
-            expectedSequence[idx] = 0xEEEEEEEE
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-
-        # Toggle display of debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-
-        self.assertEqual(encSeq, expectedSequence, 'testSelfTestDecoderDefaultSetValueSeven() failed !')
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
     
+                                    <self_test_decoder pixel="%i" value="5"/>
+                                    <self_test_decoder_default value="%i"/>
+                                    <mux_decoder pixel="2" value="0"/>
+                                    <mux_decoder_default value="3"/>
+                                    
+                                    <daq_bias index="46" value="%i"/>
+                                    <daq_bias_default value="%i"/>
+                                    <daq_bias index="2" value="0"/>
+                                    
+                                    <digital_control value="18"/>
+                                    <spare_bits value="%i"/>
+                                </lpd_setup_params>
+            ''' % (selfTestPixelIndex, selfTestDecoderDefault, daqBiasIdx47Value, daqBiasDefault, digitalControlIdx3)
     
-    def testFeedbackSelectDefaultSetValueOne(self):
-        '''
-            Test that the key feedback_select_default works
-        '''
+      
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            paramsObj.encode()
+    
+            # Display an excerp of each dictionary key's value:
+            paramsObj.displayDictionaryValues()
+      
+            # Setup and compare the unit tests..        
+            dictKey = "self_test_decoder_default"
+            index = 0
+            value = selfTestDecoderDefault
+            
+            # Expected encoded values
+    #        expectedVals = [3, -1, value, 0, [False, True, False]]
+            expectedVals = paramsObj.fetchParamsDictionary()['self_test_decoder_default']
+            # The actual values
+            selfTestDecoderDefaultVals = paramsObj.getParamValue(dictKey)
+    
+    #        print "\n", selfTestDecoderDefaultVals, "\n", expectedVals
+            self.assertEqual(selfTestDecoderDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+            
+            # 'self_test_decoder'                    : [5, 3585, [-1] * 47],
+            dictKey = 'self_test_decoder'
+            index = selfTestPixelIndex
+            value = 5
+            
+            expectedVals = [3, 1537, [selfTestDecoderDefault] * 512, 1, [True, True, False]]
+            expectedVals[2][ LpdAsicSetupParams.pixelSelfTestLookupTable[index] ] = value
+    
+    #        print "\n497: ", LpdAsicSetupParams.pixelSelfTestLookupTable[497]
+            
+            self_test_decoderVals = paramsObj.getParamValue(dictKey)
+            
+    #        print "\n", self_test_decoderVals, "\n", expectedVals
+            self.assertEqual(self_test_decoderVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+            
+    
+            # daq_bias_default
+            dictKey = "daq_bias_default"
+            index = 0
+            value = daqBiasDefault
+            
+            expectedVals = [5, -1, value, 0, [False, True, False]]
+            
+            daqBiasDefaultVals = paramsObj.getParamValue(dictKey)
+            
+    #        print "\n", daqBiasDefaultVals, "\n", expectedVals
+            self.assertEqual(daqBiasDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+            
+            # 'daq_bias'                    : [5, 3585, [-1] * 47],
+            dictKey = 'daq_bias'
+            value = daqBiasIdx47Value
+            
+            expectedVals = [5, 3585, [daqBiasDefault] * 47, 0, [False, True, True]]
+    
+            expectedVals[2][ LpdAsicSetupParams.biasCtrlLookupTable[2] ] = 0
+            expectedVals[2][ LpdAsicSetupParams.biasCtrlLookupTable[46] ] = value
+            
+            daq_biasVals = paramsObj.getParamValue(dictKey)
+    
+    #        print "\nEnc: ", daq_biasVals, "\nExp: ", expectedVals
+            self.assertEqual(daq_biasVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+    
+            # 'digital_control'
+            dictKey = 'digital_control'
+            index = 3
+            value = digitalControlIdx3
+            
+            expectedVals = [40, 3865, value, 0, [False, True, False]]
+            expectedVals[2] = value
+    
+            digitalControlVals = paramsObj.getParamValue(dictKey)
+            
+    #        print "\n", digitalControlVals, "\n", expectedVals
+            self.assertEqual(digitalControlVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+    
+        def testOutOfRangeKeyValueFails(self):
+            '''
+            Tests that updating a parameter will fail if value exceeds valid range
+            '''
+    
+            # Strictly not necessary except for the class constructor requiring a XML file or string
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="testOutOfRangeKeyValueFails">
+                                    <self_test_decoder_default value="7"/>
+                                    <load_mode value="0"/>
+                                </lpd_setup_params>
+            '''        
+            # setParamValue(dictKey, index, value)
+            dictKey = "self_test_decoder_default"
+            index = 0
+            value = 8
         
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <feedback_select_default value="1"/>
-                            </lpd_setup_params>
-        '''
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
     
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        for idx in range(48,112):
-            expectedSequence[idx] = 0x11111111
-        
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-        
-        self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectDefaultSetValueOne() failed !')
+            dictKey = "self_test_decoder"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
     
-    def testFeedbackSelectAndSelfTestDecoderDefaultsCombined(self):
-        '''
-            Test that the keys feedback_select_default and self_test_decoder_default work together
-        '''
-        
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <feedback_select_default value="1"/>
-                                <self_test_decoder_default value="2"/>
-                            </lpd_setup_params>
-        '''
+            dictKey = "mux_decoder_default"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
     
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        for idx in range(48,112):
-            expectedSequence[idx] = 0x55555555
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-        
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-        
-        self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectAndSelfTestDecoderDefaultsCombined() failed !')
+            dictKey = "mux_decoder"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+            
+            # Test 1 bit widths
+            dictKey = "feedback_select_default"
+            value = 2
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
     
-    def testMuxDecoderDefault(self):
-        '''
-            Test that the key mux_decoder_default works
-        '''
-        
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <mux_decoder_default value="5"/>
-                            </lpd_setup_params>
-        '''
+            dictKey = "feedback_select"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
     
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        for idx in range(48):
-            indexNo = idx % 3
-            if indexNo == 0:
-                expectedSequence[idx] = 0x6DB6DB6D
-            elif indexNo == 1:
-                expectedSequence[idx] = 0xDB6DB6DB
+            dictKey = "self_test_enable"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+    
+            # Test 5 bit widths
+            dictKey = "daq_bias_default"
+            value = 32
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+    
+            dictKey = "daq_bias"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+    
+            dictKey = "spare_bits"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+    
+            # Test 20 bit width
+            dictKey = "filter_control"
+            value = 1048575+1
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+            
+            dictKey = "adc_clock_delay"
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+    
+            # Test 40 bit width
+            dictKey = "digital_control"
+            value = 1099511627776
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+    
+        def testInvalidAttributeFails(self):
+            '''
+                Tests that providing a tag with an attribute that isn't required will raise an exception
+            '''
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="testInvalidAttributeFails1">
+                                    <self_test_decoder_default pixel="5" value="7"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="testInvalidAttributeFails2">
+                                    <daq_bias pixel="5" value="7"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="testInvalidAttributeFails3">
+                                    <daq_bias_default index="15" value="31"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            self.assertRaises(LpdAsicSetupParamsError, paramsObj.encode)
+    
+        
+        def testSelfTestDecoderDefaultSetValueSeven(self):
+            '''
+                Test that the key self_test_decoder_default works
+            '''
+                
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <self_test_decoder_default value="7"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # Display an excerp of each dictionary key's value:
+            paramsObj.displayDictionaryValues()        
+    
+            # Construct a list of how sequence should look like
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            for idx in range(48,112):
+                expectedSequence[idx] = 0xEEEEEEEE
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+    
+            # Toggle display of debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+    
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+    
+            self.assertEqual(encSeq, expectedSequence, 'testSelfTestDecoderDefaultSetValueSeven() failed !')
+        
+        def testFeedbackSelectDefaultSetValueOne(self):
+            '''
+                Test that the key feedback_select_default works
+            '''
+            
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <feedback_select_default value="1"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            for idx in range(48,112):
+                expectedSequence[idx] = 0x11111111
+            
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+    
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+    
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+            
+            self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectDefaultSetValueOne() failed !')
+        
+        def testFeedbackSelectAndSelfTestDecoderDefaultsCombined(self):
+            '''
+                Test that the keys feedback_select_default and self_test_decoder_default work together
+            '''
+            
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <feedback_select_default value="1"/>
+                                    <self_test_decoder_default value="2"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            for idx in range(48,112):
+                expectedSequence[idx] = 0x55555555
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+            
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+    
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+            
+            self.assertEqual(encSeq, expectedSequence, 'testFeedbackSelectAndSelfTestDecoderDefaultsCombined() failed !')
+        
+        def testMuxDecoderDefault(self):
+            '''
+                Test that the key mux_decoder_default works
+            '''
+            
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <mux_decoder_default value="5"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            for idx in range(48):
+                indexNo = idx % 3
+                if indexNo == 0:
+                    expectedSequence[idx] = 0x6DB6DB6D
+                elif indexNo == 1:
+                    expectedSequence[idx] = 0xDB6DB6DB
+                else:
+                    expectedSequence[idx] = 0xB6DB6DB6
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+            
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+    
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+    
+            self.assertEqual(encSeq, expectedSequence, 'testMuxDecoderDefault() failed !')
+    
+        
+        def testDaqBiasDefault(self):
+            '''
+                Test that the key daq_bias_default works
+            '''
+            
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <daq_bias_default value="1"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            expectedSequence[112] = 0x42108420
+            expectedSequence[113] = 0x10842108
+            expectedSequence[114] = 0x84210842
+            expectedSequence[115] = 0x21084210
+            expectedSequence[116] = 0x08421084
+            expectedSequence[117] = 0x42108421
+            expectedSequence[118] = 0x10842108
+            expectedSequence[119] = 0x842
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+            
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+                
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+                
+            self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 1) failed !')
+    
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <daq_bias_default value="31"/>
+                                </lpd_setup_params>
+            '''
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+                
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            expectedSequence[112] = 0xFFFFFFFE
+            expectedSequence[113] = 0xFFFFFFFF
+            expectedSequence[114] = 0xFFFFFFFF
+            expectedSequence[115] = 0xFFFFFFFF
+            expectedSequence[116] = 0xFFFFFFFF
+            expectedSequence[117] = 0xFFFFFFFF
+            expectedSequence[118] = 0xFFFFFFFF
+            expectedSequence[119] = 0xFFF
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+    
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+                
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+                
+            self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 31) failed !')
+        
+        def testSelfTestEnable(self):
+            '''
+                Test that the key self_test_enable works
+            '''
+            
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <self_test_enable value="1"/>
+                                </lpd_setup_params>
+            '''
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+            expectedSequence[112] = 0x1
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+    
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+                
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+    
+            self.assertEqual(encSeq, expectedSequence, 'testSelfTestEnable() failed !')
+    
+        def testSpareBits(self):
+            '''
+                Test that the key spare_bits works
+            '''
+            
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <spare_bits value="31"/>
+                                </lpd_setup_params>
+            '''
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            # 3820 / 32 = 119; 3820 % 32 = 12
+            expectedSequence[119] = 31 << 12
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+            
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+                
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+    
+            self.assertEqual(encSeq, expectedSequence, 'testSpareBits() failed !')
+    
+        
+        def testFilterControl(self):
+            '''
+                Test that the key filter_control works
+            '''
+            
+            filterValue = 1048575
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <filter_control value="%i"/>
+                                </lpd_setup_params>
+            ''' % filterValue
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            thisIndex = paramsObj.generateBitMask(15)
+            
+            overflow = ( filterValue >> (32 - 17))
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            # 3825 / 32 = 119; 3825 % 32 = 17
+            expectedSequence[119] = ( (filterValue & thisIndex) << 17)
+            expectedSequence[120] = overflow
+    
+            # Bit shift expected sequence by 6 bits
+            expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+    
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+                
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+                
+            self.assertEqual(encSeq, expectedSequence, 'testFilterControl() failed !')
+            
+        def testAllKeysAllValues(self):
+            '''
+                Test all the keys
+            '''
+            
+            daq_biasValue = 31
+            filterValue = 0xFFFFF
+            adcValue = filterValue
+            digitalControlValue = 0xFFFFFFFFFF
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <mux_decoder_default value="7"/>
+                                    <feedback_select_default value="1"/>
+                                    <self_test_decoder_default value="7"/>
+                                    <self_test_enable value="1"/>
+                                    <daq_bias_default value="%i"/>
+                                    <spare_bits value="31"/>
+                                    <filter_control value="%i"/>
+                                    <adc_clock_delay value="%i"/>
+                                    <digital_control value="%i"/>
+                                </lpd_setup_params>
+            ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0xFFFFFFFF] * LpdAsicSetupParams.SEQLENGTH
+            expectedSequence[0]= 0xFFFFFFC0
+            expectedSequence[ LpdAsicSetupParams.SEQLENGTH-1] = 0x7F
+            
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+    
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+    
+            self.assertEqual(encSeq, expectedSequence, 'testAllKeysAllValues() failed !')
+        
+        def testSpecificMuxDecoderValues(self):
+            '''
+                Test a set of specific mux_decoder key values
+            '''
+            
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <mux_decoder pixel="511" value="3"/>
+                                    <mux_decoder pixel="495" value="1"/>
+                                    <mux_decoder pixel="479" value="2"/>
+                                    <mux_decoder pixel="463" value="5"/>
+                                    <mux_decoder pixel="447" value="4"/>
+                                    <mux_decoder pixel="431" value="7"/>
+                                    <mux_decoder pixel="415" value="6"/>
+                                    <mux_decoder pixel="319" value="6"/>
+                                    <mux_decoder pixel="159" value="4"/>
+                                    <mux_decoder pixel="0" value="2"/>
+                                    <mux_decoder pixel="32" value="4"/>
+                                    <mux_decoder pixel="64" value="1"/>
+                                    <mux_decoder pixel="96" value="1"/>
+                                </lpd_setup_params>
+            '''
+    #                                <mux_decoder_default value="7"/>
+        
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+            encSeq = paramsObj.encode()
+    
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            for idx in range(48):
+                expectedSequence[idx] = 0x0
+            expectedSequence[0] =  0x3E6A980
+            expectedSequence[1] =  0xC00
+            expectedSequence[2] =  0x100
+            expectedSequence[47] = 0x22080000
+            expectedSequence[48] = 0x10
+            
+            # Toggle display debug information
+            if True:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+    
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+    
+            self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
+    
+        def testNewCfgIncludingPreambleDelay(self):
+            '''
+                Test a set of specific mux_decoder key values
+            '''
+        
+            thisFile = '/tests/SetupParamsUnitTest.xml'
+            currentDir = os.getcwd()
+            if currentDir.endswith("LpdFemClient"):
+                thisFile = currentDir + thisFile
             else:
-                expectedSequence[idx] = 0xB6DB6DB6
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
+                thisFile = currentDir + "/LpdFemClient" + thisFile
         
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-
-        self.assertEqual(encSeq, expectedSequence, 'testMuxDecoderDefault() failed !')
-
+            theParams = LpdAsicSetupParams(thisFile, preambleBit=6, fromFile=True)
+            encSeq = theParams.encode()
+            
+            # How the sequence should end up looking
+            expectedSequence = [0x00000000] * LpdAsicSetupParams.SEQLENGTH
+            expectedSequence[LpdAsicSetupParams.SEQLENGTH-1] =  0x20
     
-    def testDaqBiasDefault(self):
-        '''
-            Test that the key daq_bias_default works
-        '''
-        
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <daq_bias_default value="1"/>
-                            </lpd_setup_params>
-        '''
+            expectedSequence[112] = 0x4B7B9EB0
+            expectedSequence[113] = 0xBB3687A6
+            expectedSequence[114] = 0x3EF5354F
+            expectedSequence[115] = 0x07A3CA53
+            expectedSequence[116] = 0xDD6B419B
+            expectedSequence[117] = 0xF64ADED4
+            expectedSequence[118] = 0xFBDC8DA3
+            expectedSequence[119] = 0x0003B9EC
+            expectedSequence[120] = 0x00000400
+            expectedSequence[121] = 0x40E1C240
     
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        expectedSequence[112] = 0x42108420
-        expectedSequence[113] = 0x10842108
-        expectedSequence[114] = 0x84210842
-        expectedSequence[115] = 0x21084210
-        expectedSequence[116] = 0x08421084
-        expectedSequence[117] = 0x42108421
-        expectedSequence[118] = 0x10842108
-        expectedSequence[119] = 0x842
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-        
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-            
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-            
-        self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 1) failed !')
-
-
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <daq_bias_default value="31"/>
-                            </lpd_setup_params>
-        '''
-
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-            
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        expectedSequence[112] = 0xFFFFFFFE
-        expectedSequence[113] = 0xFFFFFFFF
-        expectedSequence[114] = 0xFFFFFFFF
-        expectedSequence[115] = 0xFFFFFFFF
-        expectedSequence[116] = 0xFFFFFFFF
-        expectedSequence[117] = 0xFFFFFFFF
-        expectedSequence[118] = 0xFFFFFFFF
-        expectedSequence[119] = 0xFFF
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-            
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-            
-        self.assertEqual(encSeq, expectedSequence, 'testDaqBiasDefault() (value = 31) failed !')
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
     
-    def testSelfTestEnable(self):
-        '''
-            Test that the key self_test_enable works
-        '''
-        
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <self_test_enable value="1"/>
-                            </lpd_setup_params>
-        '''
-
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-        expectedSequence[112] = 0x1
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-            
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-
-        self.assertEqual(encSeq, expectedSequence, 'testSelfTestEnable() failed !')
-
-    def testSpareBits(self):
-        '''
-            Test that the key spare_bits works
-        '''
-        
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <spare_bits value="31"/>
-                            </lpd_setup_params>
-        '''
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
     
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        # 3820 / 32 = 119; 3820 % 32 = 12
-        expectedSequence[119] = 31 << 12
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-        
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-            
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-
-        self.assertEqual(encSeq, expectedSequence, 'testSpareBits() failed !')
-
+            self.assertEqual(encSeq, expectedSequence, 'testNewCfgIncludingPreambleDelay() failed !')
     
-    def testFilterControl(self):
-        '''
-            Test that the key filter_control works
-        '''
-        
-        filterValue = 1048575
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <filter_control value="%i"/>
-                            </lpd_setup_params>
-        ''' % filterValue
-    
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        thisIndex = paramsObj.generateBitMask(15)
-        
-        overflow = ( filterValue >> (32 - 17))
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        # 3825 / 32 = 119; 3825 % 32 = 17
-        expectedSequence[119] = ( (filterValue & thisIndex) << 17)
-        expectedSequence[120] = overflow
-
-        # Bit shift expected sequence by 6 bits
-        expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
+        def testExternalOverrideValues(self):
+            '''
+                Test a set of specific mux_decoder key values
+            '''
             
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-            
-        self.assertEqual(encSeq, expectedSequence, 'testFilterControl() failed !')
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <load_mode value="0"/>
+                                    <mux_decoder pixel="511" value="3"/>
+                                    <feedback_select_default value="1"/>
+                                    <self_test_decoder_default value="2"/>
+                                    <mux_decoder pixel="495" value="1"/>
+                                    <mux_decoder pixel="479" value="2"/>
+                                    <mux_decoder pixel="463" value="5"/>
+                                    <mux_decoder pixel="447" value="4"/>
+                                    <mux_decoder pixel="431" value="7"/>
+                                    <mux_decoder pixel="415" value="6"/>
+                                    <mux_decoder pixel="319" value="6"/>
+                                    <mux_decoder pixel="159" value="4"/>
+                                    <mux_decoder pixel="0" value="2"/>
+                                    <mux_decoder pixel="32" value="4"/>
+                                    <mux_decoder pixel="64" value="1"/>
+                                    <mux_decoder pixel="96" value="1"/>
+                                </lpd_setup_params>
+            '''
         
-    def testAllKeysAllValues(self):
-        '''
-            Test all the keys
-        '''
-        
-        daq_biasValue = 31
-        filterValue = 0xFFFFF
-        adcValue = filterValue
-        digitalControlValue = 0xFFFFFFFFFF
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <mux_decoder_default value="7"/>
-                                <feedback_select_default value="1"/>
-                                <self_test_decoder_default value="7"/>
-                                <self_test_enable value="1"/>
-                                <daq_bias_default value="%i"/>
-                                <spare_bits value="31"/>
-                                <filter_control value="%i"/>
-                                <adc_clock_delay value="%i"/>
-                                <digital_control value="%i"/>
-                            </lpd_setup_params>
-        ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
-
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0xFFFFFFFF] * LpdAsicSetupParams.SEQLENGTH
-        expectedSequence[0]= 0xFFFFFFC0
-        expectedSequence[ LpdAsicSetupParams.SEQLENGTH-1] = 0x7F
-        
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-
-        self.assertEqual(encSeq, expectedSequence, 'testAllKeysAllValues() failed !')
+            # Parse XML, apply external override values and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, pixelFeedbackOverride=1, pixelSelfTestOverride=4, preambleBit=6)
+            encSeq = paramsObj.encode()
     
-    def testSpecificMuxDecoderValues(self):
+            # How the sequence should end up looking
+            expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+    
+            for idx in range(48):
+                expectedSequence[idx] = 0x0
+            expectedSequence[0] =  0x3E6A980
+            expectedSequence[1] =  0xC00
+            expectedSequence[2] =  0x100
+            expectedSequence[47] = 0x22080000
+            expectedSequence[48] = 0xCCCCCCD0
+            for idx in range(49, 112):
+                expectedSequence[idx] = 0xCCCCCCCC
+            expectedSequence[112] = 0xC
+            
+            # Toggle display debug information
+            if False:
+                print "\n\nEncoded Sequence: (len)", len(encSeq)
+                self.displaySequence(encSeq)
+    
+                print "\nExpected Sequence: (len)", len(expectedSequence)
+                self.displaySequence(expectedSequence)
+    
+            self.assertEqual(encSeq, expectedSequence, 'testExternalOverrideValues() failed !')
+
+    def testSerialLoadMode(self):
         '''
             Test a set of specific mux_decoder key values
         '''
         
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_setup_params name="TestString">
+                                <load_mode value="1"/>
+                                <asic_number value="1"/>
                                 <mux_decoder pixel="511" value="3"/>
                                 <mux_decoder pixel="495" value="1"/>
                                 <mux_decoder pixel="479" value="2"/>
+                                <asic_number value="19"/>
                                 <mux_decoder pixel="463" value="5"/>
                                 <mux_decoder pixel="447" value="4"/>
                                 <mux_decoder pixel="431" value="7"/>
@@ -1337,13 +1520,14 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
 #                                <mux_decoder_default value="7"/>
     
         # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6)
+#        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, debugLevel=True)
+        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, debugLevel=False)
         encSeq = paramsObj.encode()
 
         # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
+        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH * 128
 
-        for idx in range(48):
+        for idx in range(len(expectedSequence)):
             expectedSequence[idx] = 0x0
         expectedSequence[0] =  0x3E6A980
         expectedSequence[1] =  0xC00
@@ -1359,100 +1543,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             print "\nExpected Sequence: (len)", len(expectedSequence)
             self.displaySequence(expectedSequence)
 
-        self.assertEqual(encSeq, expectedSequence, 'testSpecificMuxDecoderValues() failed !')
-
-    def testNewCfgIncludingPreambleDelay(self):
-        '''
-            Test a set of specific mux_decoder key values
-        '''
-    
-        thisFile = '/tests/SetupParamsUnitTest.xml'
-        currentDir = os.getcwd()
-        if currentDir.endswith("LpdFemClient"):
-            thisFile = currentDir + thisFile
-        else:
-            thisFile = currentDir + "/LpdFemClient" + thisFile
-    
-        theParams = LpdAsicSetupParams(thisFile, preambleBit=6, fromFile=True)
-        encSeq = theParams.encode()
-        
-        # How the sequence should end up looking
-        expectedSequence = [0x00000000] * LpdAsicSetupParams.SEQLENGTH
-        expectedSequence[LpdAsicSetupParams.SEQLENGTH-1] =  0x20
-
-        expectedSequence[112] = 0x4B7B9EB0
-        expectedSequence[113] = 0xBB3687A6
-        expectedSequence[114] = 0x3EF5354F
-        expectedSequence[115] = 0x07A3CA53
-        expectedSequence[116] = 0xDD6B419B
-        expectedSequence[117] = 0xF64ADED4
-        expectedSequence[118] = 0xFBDC8DA3
-        expectedSequence[119] = 0x0003B9EC
-        expectedSequence[120] = 0x00000400
-        expectedSequence[121] = 0x40E1C240
-
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-
-        self.assertEqual(encSeq, expectedSequence, 'testNewCfgIncludingPreambleDelay() failed !')
-
-    def testExternalOverrideValues(self):
-        '''
-            Test a set of specific mux_decoder key values
-        '''
-        
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="TestString">
-                                <mux_decoder pixel="511" value="3"/>
-                                <feedback_select_default value="1"/>
-                                <self_test_decoder_default value="2"/>
-                                <mux_decoder pixel="495" value="1"/>
-                                <mux_decoder pixel="479" value="2"/>
-                                <mux_decoder pixel="463" value="5"/>
-                                <mux_decoder pixel="447" value="4"/>
-                                <mux_decoder pixel="431" value="7"/>
-                                <mux_decoder pixel="415" value="6"/>
-                                <mux_decoder pixel="319" value="6"/>
-                                <mux_decoder pixel="159" value="4"/>
-                                <mux_decoder pixel="0" value="2"/>
-                                <mux_decoder pixel="32" value="4"/>
-                                <mux_decoder pixel="64" value="1"/>
-                                <mux_decoder pixel="96" value="1"/>
-                            </lpd_setup_params>
-        '''
-    
-        # Parse XML, apply external override values and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, pixelFeedbackOverride=1, pixelSelfTestOverride=4, preambleBit=6)
-        encSeq = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-
-        for idx in range(48):
-            expectedSequence[idx] = 0x0
-        expectedSequence[0] =  0x3E6A980
-        expectedSequence[1] =  0xC00
-        expectedSequence[2] =  0x100
-        expectedSequence[47] = 0x22080000
-        expectedSequence[48] = 0xCCCCCCD0
-        for idx in range(49, 112):
-            expectedSequence[idx] = 0xCCCCCCCC
-        expectedSequence[112] = 0xC
-        
-        # Toggle display debug information
-        if False:
-            print "\n\nEncoded Sequence: (len)", len(encSeq)
-            self.displaySequence(encSeq)
-
-            print "\nExpected Sequence: (len)", len(expectedSequence)
-            self.displaySequence(expectedSequence)
-
-        self.assertEqual(encSeq, expectedSequence, 'testExternalOverrideValues() failed !')
+        self.assertEqual(encSeq, expectedSequence, 'testSerialLoadMode() failed !')
 
     def displaySequence(self, seq):
         '''
@@ -1460,9 +1551,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
             
         for idx in range(len(seq)):
-#            if idx < 112:
-#                continue
-            if (idx % 8 == 0):
+            if idx > 271:
+                continue
+            if (idx % 16 == 0):
                 print "\n%3i: " % idx,
             print "%9X" % seq[idx],
         print "\n"
