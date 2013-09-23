@@ -279,14 +279,14 @@ class LpdAsicSetupParams(object):
         sequence  = self.buildBitstream()
         t3 = time.time()
         
-        if self.bDebug: pass
-        print "parseElement() took ", t2-t1,  " and buildBitstream() took ", t3-t2
+
+#        print "parseElement() took ", t2-t1,  " and buildBitstream() took ", t3-t2
         # Return the command sequence
         return sequence
 
     def updateDictionary(self, cmd, child):
         '''
-        
+            Update dictionary with entry 'cmd' from XM tag 'child'
         '''
 
         if self.bDebug: print "\nupdateDictionary() %28s" % cmd,
@@ -376,21 +376,44 @@ class LpdAsicSetupParams(object):
                         print "All within same tile; listLength: ", listLength, "value = ", value
             else:
                 if self.bDebug and self.debugKey == cmd: 
-                    print "Neither tiles, asic specified; update lot/one? ",
                     print "bPixel = ", bPixel, "bIndex = ", bIndex, "thus",
-                    if bPixel or bIndex: "one element"
-                    else:                "the lot"
+                    if bPixel or bIndex: print "one element"
+                    else:                print "the lot"
                 
-                # target all tiles, ASICs, ..
-                for tile in range(self.numTilesToLoad):
-                    for asic in range(self.numAsicsPerTile):
-                        
-                        # Update specific element or the lot?
-                        if bPixel or bIndex:
+                # tile not specified
+                if asic > -2:
+                    # asic specified
+                    if bPixel or bIndex:
+                        # pixel/index specified, target that entry in specific asic for all tiles
+                        for tile in range( self.numTilesToLoad):
                             self.setParamValue(cmd, thisIndex, value, tileNum=tile, asicNum=asic)
-                        else:
+                            if bInfo:    
+#                                print "1 ASIC/all tiles: pixel or index"
+                                print (cmd, thisIndex, value, tile, asic)
+                    else:
+                        # target all entries within one specific asic for all tiles
+                        for tile in range( self.numTilesToLoad):
                             for idx in range(listLength):
                                 self.setParamValue(cmd, idx, value, tileNum=tile, asicNum=asic)
+                        if bInfo:    print "All entries within one specific asic for all tiles"
+                else:
+                    # target all ASICs, in all tiles
+                    for tile in range(self.numTilesToLoad):
+                        for asic in range(self.numAsicsPerTile):
+                            
+                            # Update specific element or the lot?
+                            if bPixel or bIndex:
+                                self.setParamValue(cmd, thisIndex, value, tileNum=tile, asicNum=asic)
+                            else:
+                                for idx in range(listLength):
+                                    self.setParamValue(cmd, idx, value, tileNum=tile, asicNum=asic)
+
+                    if bInfo: 
+                        if bPixel or bIndex:
+                            print "All tiles and ASICs; Specific entry"
+                        else:
+                            print "All entries for all tiles and ASICs; listLength: ", listLength, "value = ", value
+
                 
         
     def getAttrib(self, theElement, theAttrib):
@@ -514,7 +537,7 @@ class LpdAsicSetupParams(object):
                 sectionKeyValue = self.getParamValue(sectionKey)
                 sectionKeyLength = len(sectionKeyValue[LpdAsicSetupParams.VALUES][0][0])
 
-                if self.bDebug and (key in self.debugKeys): print "Up: (key=%s) " % sectionKey, "number of tiles, ASICs, indexes: ", self.numTiles, self.numAsicsPerTile, sectionKeyLength
+#                if self.bDebug and (key in self.debugKeys): print "Up: (key=%s) " % sectionKey, "number of tiles, ASICs, indexes: ", self.numTiles, self.numAsicsPerTile, sectionKeyLength
 
                 if self.bDebug and (key in self.debugKeys): print "Compare _default's key value:\n", defaultKeyValue[2], "\n"
 
@@ -529,7 +552,7 @@ class LpdAsicSetupParams(object):
                             if sectionKeyValue[LpdAsicSetupParams.VALUES][tile][asic][idx] == -1:
                                 
                                 if self.bDebug and (key in self.debugKeys) and (tile < 2) and (asic == 0) and (idx < 3):
-                                    print "T%2i,A%2i,I%2i: " % (tile, asic, idx), defaultKeyValue[LpdAsicSetupParams.VALUES][tile][asic],
+                                    print "T[%2i]A[%2i]I[%2i]: " % (tile, asic, idx), defaultKeyValue[LpdAsicSetupParams.VALUES][tile][asic], " ",
                                 
                                 # -1 denotes value hasn't been explicitly set; go ahead and update it
                                 self.setParamValue(sectionKey, idx, defaultKeyValue[LpdAsicSetupParams.VALUES][tile][asic], tileNum=tile, asicNum=asic)
@@ -553,7 +576,7 @@ class LpdAsicSetupParams(object):
                 else:
                     if isinstance(keyValue[LpdAsicSetupParams.VALUES][0][0], types.IntType):
 
-                        if self.bDebug: print "*** %22s" % key, "is an integer."
+#                        if self.bDebug: print "*** %22s" % key, "is an integer."
                                                 
                         if self.bDebug and (key in self.debugKeys): print "2nd Pass: Found integer type: %21s" % key
                         
@@ -565,7 +588,7 @@ class LpdAsicSetupParams(object):
                                     self.setParamValue(key, 0, 0, tileNum=tile, asicNum=asic)
                     else:
                         numElements = len( keyValue[LpdAsicSetupParams.VALUES][tile][asic])
-                        if self.bDebug: print "*** %22s" % key, "is a list of ", numElements, "elements."
+#                        if self.bDebug: print "*** %22s" % key, "is a list of ", numElements, "elements."
                         
                         # Has the value been set already?
                         for tile in range(self.numTilesToLoad):
@@ -579,65 +602,58 @@ class LpdAsicSetupParams(object):
         '''
             Loop over dictionary keys and building the word bitstream programmatically
         '''
-        encodedSequence = [[0 for sequence in xrange(LpdAsicSetupParams.SEQLENGTH)] for totalAsics in xrange(self.numTiles * self.numAsicsPerTile)]
+        
+        encodedSequence = [[0 for sequence in xrange(LpdAsicSetupParams.SEQLENGTH)] for totalAsics in xrange(self.numTilesToLoad * self.numAsicsPerTile)]
 
         if self.bDebug: print "--------------------------------------- buildBitstream ---------------------------------------"
-        if self.bDebug: print "Debug info: ", len( encodedSequence), len( encodedSequence[0]), type( encodedSequence), type( encodedSequence[0])
+#        if self.bDebug: print "Debug info: ", len( encodedSequence), len( encodedSequence[0]), type( encodedSequence), type( encodedSequence[0])
         
         #debugging information:
         timeStart =[]
-        timeFinish =[]
+        timeStop =[]
         timeKeyname=[]
         
-        # Loop over dictionary entries 
-        for dictKey in self.paramsDict:
+        # Loop over tiles and ASICs
+        for tile in range(self.numTilesToLoad):
+            for asic in range(self.numAsicsPerTile):
 
-            # If it is a XX_default key, do not process it
-            if dictKey.endswith("_default") or dictKey.endswith("_mode"):
-                continue
-            else:
-#                if dictKey != self.debugKey:
-#                    continue
-                
-                timeStart.append( time.time() )
-                timeKeyname.append( dictKey)
-                
-                if self.bDebug: print "%22s in buildBitstream:" % dictKey
+                # Create a bit array to save all the slow control words, bit by bit
+                bitwiseArray = [0] * (3905 + self.preambleBit)
 
-                # Get dictionary values for this key
-                cmdParams = self.getParamValue(dictKey)
-                # Word width (number of bits) of this key?
-                keyWidth = cmdParams[LpdAsicSetupParams.WIDTH]
-                # Where does current key reside within the sequence?
-                wordPosition = (cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit) / 32
-                # Slow Control Value(s)
-                slowControlWordContent = cmdParams[LpdAsicSetupParams.VALUES]
-
-                # bitPosition tracks the current bit position relative to the entire length of sequence (0 - 3904)
-                bitPosition = (cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit)
-                
-                #TODO: set preambleBit to 0 (self.preambleBit - self.preambleBit) unless it's that specific ASIC within the very first tile?
-                
-                # Skip - distance between two slow control words within  the same section
-                wordSkip = cmdParams[LpdAsicSetupParams.SKIP]
-
-                # Loop over tiles and ASICs
-                for tile in range(self.numTilesToLoad):
-                    for asic in range(self.numAsicsPerTile):
+                # Loop over dictionary entries 
+                for dictKey in self.paramsDict:
+        
+                    # If it is a XX_default key, do not process it
+                    if dictKey.endswith("_default") or dictKey.endswith("_mode"):
+                        continue
+                    else:
+        
+                        # Get dictionary values for this key
+                        cmdParams = self.getParamValue(dictKey)
+                        # Word width (number of bits) of this key?
+                        keyWidth = cmdParams[LpdAsicSetupParams.WIDTH]
+                        # Where does current key reside within the sequence?
+                        wordPosition = (cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit) / 32
+                        # Slow Control Value(s)
+                        slowControlWordContent = cmdParams[LpdAsicSetupParams.VALUES]
+        
+                        # bitPosition tracks the current bit position relative to the entire length of sequence (0 - 3904)
+                        bitPosition = (cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit)
                         
-                        if (tile == 0) and (asic == 0) and dictKey == "mux_decoder":
-                            bInfo = True
-                        else:
-                            bInfo = False
-                            
+                        #TODO: set preambleBit to 0 (self.preambleBit - self.preambleBit) unless it's that specific ASIC within the very first tile?
+                        
+                        # Skip - distance between two slow control words within  the same section
+                        wordSkip = cmdParams[LpdAsicSetupParams.SKIP]
+
+###                        
+                        if dictKey == "mux_decoder" and tile == 0 and asic == 0:                            bInfo = True
+                        else:                            bInfo = False
+                        
                         # Is this a list?
                         if isinstance(slowControlWordContent[tile][asic], types.ListType):
                             
                             # Determine number of entries in the nested list
                             numElements = len(slowControlWordContent[tile][asic])
-
-                            # Create a bit array to save all the slow control words, bit by bit
-                            bitwiseArray = [0] * (3905 + self.preambleBit)
                             
                             ''' LIST TYPE: Produce Bit Array '''
 
@@ -648,42 +664,42 @@ class LpdAsicSetupParams(object):
                                 bitMask = 2**(keyWidth-1)
                                 # Iterate over each slow control word for the current key
                                 for bitIdx in range(keyWidth):
-        
-                                    # bitShiftOffset determines number of bits to shift within current slow control word
-                                    bitShiftOffset = (keyWidth-1) - bitIdx
-
-                                    bitwiseArray[bitPosition + keyWidth*idx + bitIdx + wordSkip*idx] = ( (slowControlWordContent[tile][asic][idx] & bitMask) >> bitShiftOffset)
-                                    bitMask = bitMask >> 1
-
-                                    if bInfo and idx in (0, 1, 2, 3, 4, 5):
-                                        print "[%3i]: bitwiseArray[%4i] = ( (%6i & %4i) >> %4i)" % (idx, (bitPosition + keyWidth*idx + bitIdx + wordSkip*idx),  
-                                                                                                    slowControlWordContent[tile][asic][idx], bitMask, bitShiftOffset),
-                                        print " ==>> %3i" % bitwiseArray[bitPosition + keyWidth*idx + bitIdx + wordSkip*idx]
-                                        
-                            ''' LIST TYPE: Produce encoded sequence '''
-
-                            # Loop over the bitwiseArray and copy 32 bits at a time into the encoded sequence
-                            for idx in range( len(bitwiseArray) ):
-        
-                                # Determine location inside sequence; Determine relative position within current index (from MSB to LSB)
-                                wordPosition = idx / 32
-                                bitOffset = idx % 32
-
-                                # Add running total to sequence; increment bitPosition and check wordPosition 
-                                try:
-                                    encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] = encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] | (bitwiseArray[idx] << bitOffset)
                                     
-                                except:
-                                    print "(LIST)   BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << bitOffset) )
-                                    return
+#                                    if tile == 0 and asic == 0 and idx == 0: print "%22s, bitPosition: = %4i" % (dictKey, bitPosition)
+                                    try:
+                                        # bitShiftOffset determines number of bits to shift within current slow control word
+                                        bitShiftOffset = (keyWidth-1) - bitIdx
+    
+                                        bitwiseArray[bitPosition + keyWidth*idx + bitIdx + wordSkip*idx] = ( (slowControlWordContent[tile][asic][idx] & bitMask) >> bitShiftOffset)
+                                        bitMask = bitMask >> 1
+                                    except Exception as e:
+                                        print "%22s caused error: %s" % (dictKey, e)
+                                        
+#                                        try:
+#                                            bitwiseArray[bitPosition + keyWidth*idx + bitIdx + wordSkip*idx] 
+#                                        except Exception as e:
+#                                            print "bitwiseArray is error source:"
+#                                            print "bitwiseArray[bp:%4i + kw:%2i * i:%3i + bi%2i + wS:%3i * i:%3i] " % (bitPosition, keyWidth, idx, bitIdx, wordSkip, idx),
+#                                            print " ==>> [%5i] " % (bitPosition + keyWidth*idx + bitIdx + wordSkip*idx)
+#                                            print "length of array", len(bitwiseArray) 
+#                                            raise Exception
+#                                        
+#                                        try:
+#                                            (slowControlWordContent[tile][asic][idx] & bitMask) >> bitShiftOffset
+#                                        except Exception as e:
+#                                            print "slowControlWordContent is error source"
+#                                            print "slowControlWordContent[t:%2i][a:%1i][i:%3i] & %2i >> %3i "% (tile, asic, idx, bitMask, bitShiftOffset)
+#                                            raise Exception
+     
+                            ''' LIST TYPE: Produce encoded sequence '''
+#                            if bInfo:
+#                                timeStart.append( time.time() )
+#                            timeKeyname.append( dictKey)
 
-                                if bInfo:
-                                    if idx in range(6, 24):
-                                        print "bitwiseArray[%4i] goes into encodedSequence[%4i][%4i]) = %8X" % (idx, (tile*self.numAsicsPerTile + asic), wordPosition, 
-                                                                                                             encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition])
+#                            if bInfo:
+#                                timeStop.append( time.time() )
 
                         else:
-                            
                             ''' INTEGER TYPE '''
 
                             # Split the integer into bitwise array
@@ -695,46 +711,92 @@ class LpdAsicSetupParams(object):
                             # How many bits to use
                             numElements = cmdParams[LpdAsicSetupParams.WIDTH]
                             # Create a bit array to save each bit individually from the slow control word
-                            bitwiseArray = [0] * numElements
+#                            bitwiseArray = [0] * numElements
                             
                             ''' INTEGER TYPE: Produce Bit Array '''
 
                             bitMask = 2**(keyWidth-1)
                             # Loop over all the bits in the slow control word
                             for idx in range(numElements):
-        
+
+#                                if tile == 0 and asic == 0 and idx == 0: print "%22s, bitPosition: = %4i" % (dictKey, bitPosition)
+                                
+#                                if tile == 0 and asic == 0 and dictKey == "filter_control": 
+#                                    print "%22s, bitPosition: = %4i, " % (dictKey, bitPosition, ),
+#                                    print "bitwiseArray[bp:%4i + i:%3i + wS:%3i * i:%3i] " % (bitPosition, idx, wordSkip, idx),
+#                                    print " ==>> [%5i] " % (bitPosition + idx + wordSkip*idx)
+                                
                                 # bitShiftOffset determines number of bits to shift within current slow control word
                                 bitShiftOffset = (keyWidth-1) - idx
-
-                                # bitShiftOffset determines number of bits to shift with current slow control word (from MSB to LSB)
-                                bitwiseArray[ idx ] = ( (slowControlWordContent[tile][asic] & bitMask) >> bitShiftOffset)
-                                bitMask = bitMask >> 1
-                                
-                            ''' INTEGER TYPE: Produce encoded sequence '''
-                            
-                            # Loop over this new list and copy into the encoded sequence
-                            for idx in range(len(bitwiseArray)):
-        
-                                wordPosition = ((cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit) + idx) / 32
-                                bitOffset = ((cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit) + idx) % 32
-
-                                # Add running total to sequence; increment bitPosition and check wordPosition 
                                 try:
-                                    encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] = encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] | (bitwiseArray[idx] << bitOffset)
-                                except:
-                                    print "(integer!) BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << bitOffset) )
-                                    print "key = %s" % dictKey
-                                    return
-                timeFinish.append( time.time() )
-        
-        if len( timeStart) != (len( timeFinish)):
-            raise Exception("start and finish arrays did not match!")
-        summary = 0.0    
-        for index in range( len( timeFinish)):
-            thisAddition = timeFinish[index]-timeStart[index]
-            print "Debug info: %22s took %17f seconds." % (timeKeyname[index], thisAddition)
-            summary += thisAddition
-        print "buildBitstream() dictionary key processing average time: ", summary / ( len(timeStart) +0.0)
+                                    # bitShiftOffset determines number of bits to shift with current slow control word (from MSB to LSB)
+#                                    bitwiseArray[ idx ] = ( (slowControlWordContent[tile][asic] & bitMask) >> bitShiftOffset)
+                                    bitwiseArray[bitPosition + idx + wordSkip*idx] = ( (slowControlWordContent[tile][asic] & bitMask) >> bitShiftOffset)
+                                    bitMask = bitMask >> 1
+                                except Exception as e:
+                                    
+                                    print "key: %s. integer type, Error: %s\n" % (dictKey, e)
+
+                                    try:
+                                        bitwiseArray[bitPosition + idx + wordSkip*idx] 
+                                    except Exception as e:
+                                        print "bitwiseArray is error source:"
+                                        print "bitwiseArray[bp:%4i + i:%3i + wS:%3i * i:%3i] " % (bitPosition, idx, wordSkip, idx),
+                                        print " ==>> [%5i] " % (bitPosition + idx + wordSkip*idx)
+                                        print "length of array", len(bitwiseArray)
+                                        raise Exception
+                                    
+                                    try:
+                                        (slowControlWordContent[tile][asic]& bitMask) >> bitShiftOffset
+                                    except Exception as e:
+                                        print "slowControlWordContent is error source"
+                                        print "slowControlWordContent[t:%2i][a:%1i] & %2i >> %3i "% (tile, asic, bitMask, bitShiftOffset)
+                                        raise Exception
+                # IS THIS THE ONE?
+                bAnother = True
+                if bAnother:
+                    # Loop over the bitwiseArray and copy 32 bits at a time into the encoded sequence
+                    for idx in range( len(bitwiseArray) ):
+    
+                        # Determine location inside sequence; Determine relative position within current index (from MSB to LSB)
+                        wordPosition = idx / 32
+                        bitOffset = idx % 32
+    
+                        # Add running total to sequence; increment bitPosition and check wordPosition 
+                        try:
+                            encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] = encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] | (bitwiseArray[idx] << bitOffset)
+                            
+                        except:
+                            print "(LIST)   BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << bitOffset) )
+                            return
+                else:
+                    # OR THIS ONE?
+                    ''' INTEGER TYPE: Produce encoded sequence '''
+                    
+                    # Loop over this new list and copy into the encoded sequence
+                    for idx in range(len(bitwiseArray)):
+    
+                        wordPosition = ((cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit) + idx) / 32
+                        bitOffset = ((cmdParams[LpdAsicSetupParams.POSN] + self.preambleBit) + idx) % 32
+    
+                        # Add running total to sequence; increment bitPosition and check wordPosition 
+                        try:
+                            encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] = encodedSequence[tile*self.numAsicsPerTile + asic][wordPosition] | (bitwiseArray[idx] << bitOffset)
+                        except:
+                            print "(integer!) BANG! Key '%s' wordPosition = %i, idx = %i, bitwise sum = %i\n" % (dictKey, wordPosition, idx, (bitwiseArray[idx] << bitOffset) )
+                            print "key = %s" % dictKey
+                            print "encodedSequence[%3i* %3i + %3i][%4i] = " % (tile, self.numAsicsPerTile, asic, wordPosition), encodedSequence[tile*self.numAsicsPerTile + asic]
+                            return
+
+
+#        if len( timeStart) != (len( timeStop)):
+#            raise Exception("start and finish arrays did not match!")
+#        summary = 0.0    
+#        for index in range( len( timeStop)):
+#            thisAddition = timeStop[index]-timeStart[index]
+##            print "Debug info: %22s took %17f seconds." % (timeKeyname[index], thisAddition)
+#            summary += thisAddition
+#        print "buildBitstream() Encoded Sequence processing average time: ", summary / ( len(timeStart) +0.0)
         
         # Return the encoded sequence for this (partial) tree
         return encodedSequence
@@ -811,7 +873,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
     Unit test class for LpdAsicSetupParams.
     '''
 
-    if False:   #TODO: Too many recursive loops !
+    if True:
         def testStringParse(self):
             '''
                 Tests that updating a parameter works as expected
@@ -851,19 +913,15 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
       
             # Setup and compare the unit tests..        
             dictKey = "self_test_decoder_default"
-            index = 0
-            value = selfTestDecoderDefault
             
             # Expected encoded values
-    #        expectedVals = [3, -1, value, 0, [False, True, False]]
             expectedVals = paramsObj.fetchParamsDictionary()['self_test_decoder_default']
             # The actual values
             selfTestDecoderDefaultVals = paramsObj.getParamValue(dictKey)
     
-    #        print "\n", selfTestDecoderDefaultVals, "\n", expectedVals
-            self.assertEqual(selfTestDecoderDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+#            print "selfTestDecoderDefaultVals:\n", selfTestDecoderDefaultVals[2][0], "expectedVals:\n", expectedVals[2][0]
+            self.assertEqual(selfTestDecoderDefaultVals[2][0], expectedVals[2][0], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
             
-            # 'self_test_decoder'                    : [5, 3585, [-1] * 47],
             dictKey = 'self_test_decoder'
             index = selfTestPixelIndex
             value = 5
@@ -871,27 +929,22 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             expectedVals = [3, 1537, [selfTestDecoderDefault] * 512, 1, [True, True, False]]
             expectedVals[2][ LpdAsicSetupParams.pixelSelfTestLookupTable[index] ] = value
     
-    #        print "\n497: ", LpdAsicSetupParams.pixelSelfTestLookupTable[497]
-            
             self_test_decoderVals = paramsObj.getParamValue(dictKey)
             
-    #        print "\n", self_test_decoderVals, "\n", expectedVals
-            self.assertEqual(self_test_decoderVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
-            
-    
-            # daq_bias_default
+#            print "Encoded: \n", self_test_decoderVals[2][0][0], "Expected: \n", expectedVals[2]
+            self.assertEqual(self_test_decoderVals[2][0][0], expectedVals[2], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+
             dictKey = "daq_bias_default"
             index = 0
             value = daqBiasDefault
             
-            expectedVals = [5, -1, value, 0, [False, True, False]]
+            expectedVals = [5, -1, [value]*8, 0, [False, True, False]]
             
             daqBiasDefaultVals = paramsObj.getParamValue(dictKey)
             
-    #        print "\n", daqBiasDefaultVals, "\n", expectedVals
-            self.assertEqual(daqBiasDefaultVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+#            print "Encoded: \n", daqBiasDefaultVals[2][0], "Expected: \n", expectedVals[2]
+            self.assertEqual(daqBiasDefaultVals[2][0], expectedVals[2], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
             
-            # 'daq_bias'                    : [5, 3585, [-1] * 47],
             dictKey = 'daq_bias'
             value = daqBiasIdx47Value
             
@@ -902,23 +955,21 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             
             daq_biasVals = paramsObj.getParamValue(dictKey)
     
-    #        print "\nEnc: ", daq_biasVals, "\nExp: ", expectedVals
-            self.assertEqual(daq_biasVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+#            print "\nEnc: ", daq_biasVals[2][0][0], "\nExp: ", expectedVals[2]
+            self.assertEqual(daq_biasVals[2][0][0], expectedVals[2], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
     
-            # 'digital_control'
             dictKey = 'digital_control'
             index = 3
             value = digitalControlIdx3
             
-            expectedVals = [40, 3865, value, 0, [False, True, False]]
-            expectedVals[2] = value
+            expectedVals = [40, 3865, [value]*8, 0, [False, True, False]]
     
             digitalControlVals = paramsObj.getParamValue(dictKey)
             
-    #        print "\n", digitalControlVals, "\n", expectedVals
-            self.assertEqual(digitalControlVals, expectedVals, 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
+#            print "Encoded: \n", digitalControlVals[2][0], "\n", expectedVals[2]
+            self.assertEqual(digitalControlVals[2][0], expectedVals[2], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
-    bToggle = False
+    bToggle = True
     if bToggle:    
         def testOutOfRangeKeyValueFails(self):
             '''
@@ -1467,7 +1518,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         '''
             Test  that the external overrides functionality is working
         '''
-        t1 = time.time()
+
         stringCmdXml = '''<?xml version="1.0"?>
                             <lpd_setup_params name="testExternalOverrideValues">
                                 <load_mode value="1"/>
@@ -1488,14 +1539,13 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                 <mux_decoder pixel="96" value="1"/>
                             </lpd_setup_params>
         '''
-        print stringCmdXml
-        t2 = time.time()
+
         # Parse XML, apply external override values and encode
         paramsObj = LpdAsicSetupParams(stringCmdXml, pixelFeedbackOverride=1, pixelSelfTestOverride=4, preambleBit=6, 
-                                       #debugLevel=True
+#                                       debugLevel=True
                                        )
         encSeq = paramsObj.encode()
-        t3 = time.time()
+        
         # How the sequence should end up looking
         expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
 
@@ -1518,60 +1568,54 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             print "\nExpected Sequence: (len)", len(expectedSequence)
             self.displaySequence(expectedSequence)
         
-        t4 = time.time()
         self.assertEqual(encSeq[0], expectedSequence, 'testExternalOverrideValues() failed !')
-        t5 = time.time()
-        print "XML: ", t2-t1
-        print "t3-t2 ", t3-t2
-        print "(prep): ", t4-t3
-        print "assert: ", t5-t4
 
-    if bToggle:
-        def testAllKeysAllValues(self):
-            '''
-                Test all the keys
-            '''
-            x1 = time.time()
-            daq_biasValue = 31
-            filterValue = 0xFFFFF
-            adcValue = filterValue
-            digitalControlValue = 0xFFFFFFFFFF
-            stringCmdXml = '''<?xml version="1.0"?>
-                                <lpd_setup_params name="testAllKeysAllValues">
-                                    <load_mode value="0"/>
-                                    <mux_decoder_default value="7"/>
-                                    <feedback_select_default value="1"/>
-                                    <self_test_decoder_default value="7"/>
-                                    <self_test_enable value="1"/>
-                                    <daq_bias_default value="%i"/>
-                                    <spare_bits value="31"/>
-                                    <filter_control value="%i"/>
-                                    <adc_clock_delay value="%i"/>
-                                    <digital_control value="%i"/>
-                                </lpd_setup_params>
-            ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
-            x2 = time.time()
-    
-            # Parse XML and encode
-            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, debugLevel=False) #True)
-            encSeq = paramsObj.encode()
-            t1 = time.time()
-            # How the sequence should end up looking
-            expectedSequence = [0xFFFFFFFF] * LpdAsicSetupParams.SEQLENGTH
-            expectedSequence[0]= 0xFFFFFFC0
-            expectedSequence[ LpdAsicSetupParams.SEQLENGTH-1] = 0x7F
-            
-            # Toggle display debug information
-            if False:
-                print "\n\nEncoded Sequence: (len)", len(encSeq[0])
-                self.displaySequence(encSeq[0])
-    
-                print "\nExpected Sequence: (len)", len(expectedSequence)
-                self.displaySequence(expectedSequence)
-            
-            t2 = time.time()
-            self.assertEqual(encSeq[0], expectedSequence, 'testAllKeysAllValues() failed !')
-            t3 = time.time()
+#    if bToggle:
+    def testAllKeysAllValues(self):
+        '''
+            Test all the keys
+        '''
+        x1 = time.time()
+        daq_biasValue = 31
+        filterValue = 0xFFFFF
+        adcValue = filterValue
+        digitalControlValue = 0xFFFFFFFFFF
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_setup_params name="testAllKeysAllValues">
+                                <load_mode value="0"/>
+                                <mux_decoder_default value="7"/>
+                                <feedback_select_default value="1"/>
+                                <self_test_decoder_default value="7"/>
+                                <self_test_enable value="1"/>
+                                <daq_bias_default value="%i"/>
+                                <spare_bits value="31"/>
+                                <filter_control value="%i"/>
+                                <adc_clock_delay value="%i"/>
+                                <digital_control value="%i"/>
+                            </lpd_setup_params>
+        ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
+        x2 = time.time()
+
+        # Parse XML and encode
+        paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, debugLevel=False) #True)
+        encSeq = paramsObj.encode()
+        t1 = time.time()
+        # How the sequence should end up looking
+        expectedSequence = [0xFFFFFFFF] * LpdAsicSetupParams.SEQLENGTH
+        expectedSequence[0]= 0xFFFFFFC0
+        expectedSequence[ LpdAsicSetupParams.SEQLENGTH-1] = 0x7F
+        
+        # Toggle display debug information
+        if False:
+            print "\n\nEncoded Sequence: (len)", len(encSeq[0])
+            self.displaySequence(encSeq[0])
+
+            print "\nExpected Sequence: (len)", len(expectedSequence)
+            self.displaySequence(expectedSequence)
+        
+        t2 = time.time()
+        self.assertEqual(encSeq[0], expectedSequence, 'testAllKeysAllValues() failed !')
+        t3 = time.time()
 
 #        print "xml: ", x2-x1
 #        print "create object and encode: ", t1-x2
@@ -1630,56 +1674,68 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
 #
 #        self.assertEqual(encSeq, expectedSequence, 'testSerialLoadMode() failed !')
 
-#    def testNewSyntax(self):
-#        '''
-#            Test the new serial loading mode syntax works
-#        '''
-#        
-#        stringCmdXml = '''<?xml version="1.0"?>
-#                            <lpd_setup_params name="testNewSyntax">
-#                                <daq_bias tile="0" asic="1" index="45" value="5"/>
-#                                <load_mode value="1"/>
-#                            </lpd_setup_params>
-#        '''
-##                                <daq_bias_default tile="0" asic="1" value="5"/>
-#
-#
-##                                <daq_bias_default value="0"/>
-##                                <feedback_select tile="0" asic="0" pixel="496" value="1"/>
-##                                <feedback_select tile="0" asic="0" pixel="498" value="1"/>
-##                                <daq_bias tile="0" asic="0" index="0" value="1"/>
-##                                <feedback_select tile="0" asic="5" pixel="495" value="1"/>
-#    
-#        # Parse XML and encode
-#        paramsObj = LpdAsicSetupParams(stringCmdXml, 
-#                                       #pixelFeedbackOverride=1, pixelSelfTestOverride=2, 
-#                                       preambleBit=6, 
-#                                       #debugLevel=True
-#                                       )
-#        encSeq = paramsObj.encode()
-#
-#        # How the sequence should end up looking
-#        expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH# * 128
-#
-#        for idx in range(len(expectedSequence)):
-#            expectedSequence[idx] = 0x0
-#        expectedSequence[0] =  0x3E6A980
-#        expectedSequence[1] =  0xC00
+    def testNewSyntax(self):
+        '''
+            Test the new serial loading mode syntax works
+        '''
+        
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_setup_params name="testNewSyntax">
+                                <load_mode value="1"/>
+                                <mux_decoder tile="1" asic="1" pixel="495" value="1"/>
+                                <mux_decoder tile="1" asic="0" pixel="495" value="2"/>
+                                <mux_decoder tile="0" asic="7" pixel="479" value="3"/>
+                                <mux_decoder  asic="0" pixel="511" value="7"/>
+                            </lpd_setup_params>
+        '''
+
+#                                <daq_bias tile="0" asic="0" index="33" value="16"/>
+#                                <daq_bias tile="0" asic="0" index="37" value="1"/>
+##
+#                                <daq_bias tile="0" asic="1" index="46" value="5"/>
+#                                <daq_bias tile="0" asic="1" index="45" value="1"/>
+#                                <daq_bias_default tile="0" asic="2" value="9"/>
+
+    
+        # Parse XML and encode
+        paramsObj = LpdAsicSetupParams(stringCmdXml, 
+                                       #pixelFeedbackOverride=1, pixelSelfTestOverride=2, 
+                                       preambleBit=6, 
+                                       #debugLevel=True
+                                       )
+        encodedSequence = paramsObj.encode()
+
+        # How the sequence should end up looking
+        expectedSequence = [[0 for sequence in xrange(LpdAsicSetupParams.SEQLENGTH)] for totalAsics in xrange( 16*8)]
+        
+#        encodedSequence = [[0 for sequence in xrange(LpdAsicSetupParams.SEQLENGTH)] for totalAsics in xrange(self.numTilesToLoad * self.numAsicsPerTile)]
+
+        for idx in range(len(expectedSequence)):
+            if (idx % 8 == 0):
+                expectedSequence[idx][0] = 0x1C0# <mux_decoder  asic="0" pixel="511" value="7"/>
+        expectedSequence[8+1][0] =  0x800       # <mux_decoder tile="1" asic="1" pixel="495" value="1"/>
+        expectedSequence[7][0] =  0x6000        # <mux_decoder tile="0" asic="7" pixel="479" value="3"/>
+        expectedSequence[8][0] = 0x5C0          # <mux_decoder tile="1" asic="0" pixel="495" value="2"/>
 #        expectedSequence[2] =  0x100
 #        expectedSequence[47] = 0x22080000
 #        expectedSequence[48] = 0x10
-#        
-#        # Toggle display debug information
-#        if True:
-#            print "\n\nEncoded Sequence: (len)", len(encSeq)
-#            for index in range( 2): #len(encSeq)):
-#                print "index: ", index
-#                self.displaySequence(encSeq[index])
-#                time.sleep(1)
-##            print "\nExpected Sequence: (len)", len(expectedSequence)
-##            self.displaySequence(expectedSequence)
-#
-##        self.assertEqual(encSeq, expectedSequence, 'testNewSyntax() failed !')
+        
+        # Toggle display debug information
+        if False: #True:
+
+            (tile, asic) = (0, 0)
+            for index in range(  10): #len(encodedSequence)):
+                asic = (index % 8)
+                if (index  % 8 == 0) and (index != 0):
+                    tile += 1
+                print "Tile[%2i] ASIC[%1i]" % (tile, asic)
+    
+                self.displaySequence(encodedSequence[index])
+                self.displaySequence(expectedSequence[index])
+#                print expectedSequence
+                time.sleep(1)
+        else:
+            self.assertEqual(encodedSequence, expectedSequence, 'testNewSyntax() failed !')
 
     def displaySequence(self, seq):
         '''
