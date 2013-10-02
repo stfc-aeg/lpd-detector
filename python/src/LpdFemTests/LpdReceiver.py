@@ -285,7 +285,7 @@ class ImageDisplay(FigureCanvas):
         if bTimeStamp:
             timeX1 = time.time()
         
-        print "Raw Image Data Received:     ", len(lpdFrame.rawImageData), "(bytes)"
+        print "Raw Image Data Received: %16i" % len(lpdFrame.rawImageData), "(bytes)"
 
         ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
         # Create 16 bit, Little-Endian, integer type using numpy
@@ -365,7 +365,7 @@ class ImageDisplay(FigureCanvas):
             
 #            # Set title as train number, current image number
 #            self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
-            print "Train %i Image %i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ),
+            print "Train %2i Image %3i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ),
             if bTimeStamp is False:
                 print ""
 

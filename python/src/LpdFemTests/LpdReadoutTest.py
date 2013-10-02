@@ -115,10 +115,12 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         if xmlConfig == 1:
             asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
             asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'
+#            asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2_multipleImages.xml'
         elif xmlConfig == 2:
             asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
             asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml' 
-#            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_100Images.xml'    # check num img per train - 120 fine, 140 then mounted Tiles dont read out
+#            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_100Images.xml'
+#            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_MultipleImages.xml'
         elif xmlConfig == 3:
             asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
             asicCmdSequence = 'Config/CmdSequence/asic_pseudo_random_asicv2.xml'
@@ -131,6 +133,13 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         elif xmlConfig == 6:
             asicSetupParams = 'Config/SetupParams/Setup_Chessboard.xml'
             asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'
+        else:
+            asicSetupParams = "Config/SetupParams/Setup_Serial_8through1.xml"    # Left to right: ascending order
+            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml'
+#        asicSetupParams = "Config/SetupParams/Setup_Serial_1through8.xml"    # Left to right: ascending order
+#        asicSetupParams = "Config/SetupParams/Setup_Serial_8through1.xml"    # Left to right: ascending order
+            asicSetupParams = "Config/SetupParams/Setup_Serial_XFEL.xml"
+#            asicSetupParams = "Config/SetupParams/Setup_Serial_KLASSE.xml"
 
     configFilename = 'Config/readoutConfiguration.xml'
 
@@ -285,7 +294,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             print "configure() failed rc=%d : %s" % (rc, theDevice.errorStringGet())
             theDevice.close()
             sys.exit()
-     
+
         # Acquire image data
         rc = theDevice.start()
         if rc != LpdDevice.ERROR_OK:
@@ -335,5 +344,6 @@ if __name__ == '__main__':
     if args.destip:
         destIp = args.destip
 
+#    while 1:
+#        LpdReadoutTest(tenGig, femHost, femPort, destIp)
     LpdReadoutTest(tenGig, femHost, femPort, destIp)
-

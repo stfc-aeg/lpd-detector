@@ -243,6 +243,33 @@
 	<nop count="10"/>
 	<trigger_flag_set/> <!-- 120..-->
 
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/>
+	<nop count="10"/>
+	<trigger_flag_set/> <!-- 130 -->
+	<nop count="10"/>
+	<trigger_flag_set/> <!-- Fine.. -->
+	<nop count="10"/>
+	<trigger_flag_set/>
+
+
+
 	<nop count="2"/>
 	<reset_pre_amp/>
 	<reset_gain_front/>

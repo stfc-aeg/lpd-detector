@@ -789,48 +789,40 @@ class LpdFemClient(FemClient):
             self.disable_femAsicGainOverride()   # Using S/W register
 
     def config_asic_slow_xml(self):
-        ''' Configure Asic Control parameters from xml '''
+        ''' Configure Asic Setup Parameters from xml '''
 
         encodedString = [0] * self.nr_asics_per_sensor
 
-        femAsicSetupParams_xmlfile = [0] * self.nr_asics_per_sensor
-
-        if self.femAsicSetupLoadMode == 0: # only one file from api is loaded in every asic
-            for asic_nr in range(0, self.nr_asics_per_sensor):
-                femAsicSetupParams_xmlfile[asic_nr] = self.femAsicSetupParams      
-        else:
-            #TODO: Don't just hard-code it.. (use os.environ['PYTHONPATH'] except it contains multiple folders for LpdFemGui..!)
-            filePath = '' # '/u/ckd27546/workspace/lpdSoftware/LpdFemTests/'
-            # Hack by jac to have 8 different xml files for the 8 asics on a sensor tile
-            # note that BRAM will shift out Asic8 data first in chain and Asic 1 last
-            femAsicSetupParams_xmlfile[0] = filePath + "Config/SetupParams/Setup_LowPower_Asic8.xml"
-            femAsicSetupParams_xmlfile[1] = filePath + "Config/SetupParams/Setup_LowPower_Asic7.xml"
-            femAsicSetupParams_xmlfile[2] = filePath + "Config/SetupParams/Setup_LowPower_Asic6.xml"
-            femAsicSetupParams_xmlfile[3] = filePath + "Config/SetupParams/Setup_LowPower_Asic5.xml"
-            femAsicSetupParams_xmlfile[4] = filePath + "Config/SetupParams/Setup_LowPower_Asic4.xml"
-            femAsicSetupParams_xmlfile[5] = filePath + "Config/SetupParams/Setup_LowPower_Asic3.xml"
-            femAsicSetupParams_xmlfile[6] = filePath + "Config/SetupParams/Setup_LowPower_Asic2.xml"
-            femAsicSetupParams_xmlfile[7] = filePath + "Config/SetupParams/Setup_LowPower_Asic1.xml"
-
+        femAsicSetupParams_xmlfile = self.femAsicSetupParams
+        
         try:
-            for asic_nr in range(0, self.nr_asics_per_sensor):
-                #TODO: Temporary hack, filename passed from API (not XML string)
-                LpdAsicSetupParamsParams = LpdAsicSetupParams( femAsicSetupParams_xmlfile[asic_nr], self.femAsicPixelFeedbackOverride, 
-                                                               self.femAsicPixelSelfTestOverride, preambleBit=6, fromFile=True) #False)
-                encodedString[asic_nr] = LpdAsicSetupParamsParams.encode()
+            #TODO: Temporary hack, filename passed from API (not XML string)
+            LpdAsicSetupParamsParams = LpdAsicSetupParams( femAsicSetupParams_xmlfile, self.femAsicPixelFeedbackOverride, 
+                                                           self.femAsicPixelSelfTestOverride, preambleBit=6, loadMode=self.femAsicSetupLoadMode, 
+                                                           fromFile=True) #False)
+            encodedXml = LpdAsicSetupParamsParams.encode()
+            
+            if self.femAsicSetupLoadMode:   # 1=Serial
+                #TODO: Scale to use 128 ASICs when firmware is ready!
+                for asic_nr in range(0, self.nr_asics_per_sensor):
+                    encodedString[asic_nr] = encodedXml[asic_nr]
+            else:
+                # 0=Parallel
+                encodedString[0] = encodedXml[0]
+                
         except LpdAsicSetupParamsError as e:
             raise FemClientError(str(e))
 
         no_of_bits = 3911   # includes 6 dummy bits needed at start of stream
 
-        load_mode = self.femAsicSetupLoadMode
+#        load_mode = self.femAsicSetupLoadMode
 
         # clear the bram (move to  fem_slow_ctrl_setup)
         #slow_bram_size = 1024;   # size in 32b words
         #self.zero_regs(self.slow_ctr_1, slow_bram_size)  
 
         # Load in BRAM
-        self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, encodedString, no_of_bits, load_mode)
+        self.fem_slow_ctrl_setup(self.slow_ctr_0, self.slow_ctr_1, encodedString, no_of_bits, self.femAsicSetupLoadMode)
 
     def config_asic_fast_xml(self):
         ''' Configure Asic Command Sequence from xml '''
@@ -1153,9 +1145,7 @@ class LpdFemClient(FemClient):
             
                 # and remove initial 6 dummy bits from subsequent asic blocks 
                 if asic_nr > 0:
-                   #asic_n = list(asic_1)
-                   for j in range(0,6):          
-                        del asic_params[asic_nr][j]
+                    del asic_params[asic_nr][0:6]
             
             # add remaining asic blocks in chain
             asic_daisy_chain = list(asic_params[0]) 

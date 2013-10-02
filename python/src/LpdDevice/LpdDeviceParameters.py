@@ -507,7 +507,7 @@ class LpdDeviceParameters(object):
         
         #TODO: LCLS proved 130 fine, crashes at 250
         self.expectedParameters['numberImages']                 = AttributeContainer(int, 'NumberImages', 'Sets the number of images per trigger',
-                                                                         0, 130, 4,
+                                                                         0, 512, 4,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['femAsicGain']                  = AttributeContainer(int, 'FemAsicGain', 'Set the ASIC gain selection mode (0=ASIC algorithm, 3=x100, 2=x10, 1=x1)',

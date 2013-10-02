@@ -5,8 +5,6 @@
    <!-- This file is hand edited
         bias settings needed for lower power on 2-tile to avoid asic v2 tile current tripping -->
 
-   <load_mode value="0"/>  <!-- Load mode: 0=Parallel, 1=Serial -->
-
    <mux_decoder_default value="0"/>
    <feedback_select_default value="0"/>
    <self_test_decoder_default value="0"/>

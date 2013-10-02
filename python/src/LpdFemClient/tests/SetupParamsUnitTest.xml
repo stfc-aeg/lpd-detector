@@ -4,14 +4,10 @@
    xsi:noNamespaceSchemaLocation="lpdSlowCtrlSequence.xsd">
    <!-- This file is hand edited -->
 
-   <load_mode value="0"/>  <!-- Load mode: 0=Parallel, 1=Serial -->
-
    <mux_decoder_default value="0"/>
    <feedback_select_default value="0"/>
    <self_test_decoder_default value="0"/>
    <self_test_enable value="0"/>
-
-
 
    
    <!-- To match the original .txt file's output exactly...: -->
