@@ -25,7 +25,7 @@ class LpdFemUdpProducer(object):
     PatternTypePerAsic    = 0
     PatternTypePerPixel   = 1
     
-    def __init__(self, host, port, frames, images, module, pattern, interval, display):
+    def __init__(self, host, port, frames, images, module, pattern, interval, display, quiet):
         
         self.host = host
         self.port = port
@@ -35,6 +35,7 @@ class LpdFemUdpProducer(object):
         self.pattern = pattern
         self.interval = interval
         self.display = display
+        self.quiet = quiet
         
         # Initialise shape of data arrays in terms of ASICs and pixels
         self.numAsicRows = 8
@@ -140,8 +141,13 @@ class LpdFemUdpProducer(object):
         # Convert data stream to byte stream for transmission
         self.byteStream = pixelStream.tostring()
 
-
+        # Initialise monitoring variables
+        self.framesSent = 0
+        self.packetsSent = 0
+        self.totalBytesSent = 0
         
+        # Initialise the run state
+        self.running = False
         
     def run(self):
         
@@ -149,15 +155,20 @@ class LpdFemUdpProducer(object):
         startOfFrame    = 0x80000000
         endOfFrame      = 0x40000000
 
-        print "Starting LPD data transmission to address", self.host, "port", self.port, "..."
+        print "Starting LPD data transmission to address", self.host, "port", self.port, "..." 
+        
+        self.running = True
                 
         # Open UDP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
         # Create packet trailer
         trailer = np.zeros(2, dtype=np.uint32)
+       
+        self.framesSent = 0
+        self.packetsSent = 0
+        self.totalBytesSent = 0
         
-        totalBytesSent = 0
         runStartTime = time.time()
         
         for frame in range(self.frames):
@@ -191,9 +202,17 @@ class LpdFemUdpProducer(object):
                 packetCounter += 1
                 streamPosn += bytesToSend
                  
-            print "  Sent frame", frame, "packets", packetCounter, "bytes", bytesSent
-            totalBytesSent += bytesSent
+            if not self.quiet:
+                print "  Sent frame", frame, "packets", packetCounter, "bytes", bytesSent
+                 
+            self.framesSent     += 1
+            self.packetsSent    += packetCounter
+            self.totalBytesSent += bytesSent
 
+            # Break out of loop if external stop received
+            if self.running == False:
+                break
+            
             # Calculate wait time and sleep so that frames are sent at requested intervals            
             frameEndTime = time.time()
             waitTime = (frameStartTime + self.interval) - frameEndTime
@@ -205,11 +224,15 @@ class LpdFemUdpProducer(object):
         # Close socket
         sock.close()
         
-        print "%d frames completed, %d bytes sent in %.3f secs" % (self.frames, totalBytesSent, runTime)
+        print "%d frames completed, %d bytes sent in %.3f secs" % (self.framesSent, self.totalBytesSent, runTime)
         
         if self.display:
             self.displayImage()
-            
+    
+    def stop(self):
+        
+        self.running = False
+                
     def displayImage(self):
 
         import matplotlib.pyplot as plt
@@ -240,6 +263,8 @@ if __name__ == '__main__':
                         help="select frame interval in seconds")
     parser.add_argument('--display', "-d", action='store_true',
                         help="Enable diagnostic display of generated image")
+    parser.add_argument('--quiet', "-q", action="store_true",
+                        help="Suppress detailed print during operation")
     
     args = parser.parse_args()
 
