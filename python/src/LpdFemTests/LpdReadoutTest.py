@@ -6,6 +6,7 @@
 from LpdDevice.LpdDevice import LpdDevice
 from EthernetUtility import EthernetUtility 
 import argparse, sys
+from datetime import datetime
 
 # New imports
 from xml.etree.ElementInclude import ElementTree
@@ -119,8 +120,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         elif xmlConfig == 2:
             asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
             asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml' 
-#            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_100Images.xml'
-#            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_MultipleImages.xml'
+#            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_MultipleImages_512.xml'
         elif xmlConfig == 3:
             asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
             asicCmdSequence = 'Config/CmdSequence/asic_pseudo_random_asicv2.xml'
@@ -309,7 +309,8 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             theDevice.close()
             sys.exit()
 
-    print "Closing Fem connection.. "        
+    print "Closing Fem connection.. "
+    print "Debug timestamp: %s" % str( datetime.now())[11:-4]        
     theDevice.close()
 
 

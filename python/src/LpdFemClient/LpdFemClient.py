@@ -1236,24 +1236,24 @@ class LpdFemClient(FemClient):
         # patch to avoid timeouts using old version of the GbE server running on PPC
         # splitting rdma accesses up
 
-        ##tup1 = dataTuple[0:250]
-        ##tup2 = dataTuple[250:500]
-        ##tup3 = dataTuple[500:750]
-        ##tup4 = dataTuple[750:block_length]
-        ##tup1_len = len(tup1)
-        ##tup2_len = len(tup2)
-        ##tup3_len = len(tup3)
-        ##tup4_len = len(tup4)
+        tup1 = dataTuple[0:250]
+        tup2 = dataTuple[250:500]
+        tup3 = dataTuple[500:750]
+        tup4 = dataTuple[750:block_length]
+        tup1_len = len(tup1)
+        tup2_len = len(tup2)
+        tup3_len = len(tup3)
+        tup4_len = len(tup4)
 
-        ##print "dataTuple len = %d : block_length = %d" % (data_len, block_length)        
-        ##print "tup1 len = %d : tup2 len = %d ; tup3 len = %d : tup4 len = %d" % (tup1_len, tup2_len, tup3_len, tup4_len)        
+        print "dataTuple len = %d : block_length = %d" % (data_len, block_length)        
+        print "tup1 len = %d : tup2 len = %d ; tup3 len = %d : tup4 len = %d" % (tup1_len, tup2_len, tup3_len, tup4_len)        
 
         # load fast control pattern memory
-        ##print "Patching loading of Fast Cmd RAM"
-        ##self.rdmaWrite(base_addr_1, tup1)
-        ##self.rdmaWrite(base_addr_1+250, tup2)
-        ##self.rdmaWrite(base_addr_1+500, tup3)
-        ##self.rdmaWrite(base_addr_1+750, tup4)
+        print "Patching loading of Fast Cmd RAM"
+        self.rdmaWrite(base_addr_1, tup1)
+        self.rdmaWrite(base_addr_1+250, tup2)
+        self.rdmaWrite(base_addr_1+500, tup3)
+        self.rdmaWrite(base_addr_1+750, tup4)
         
     def fem_fast_cmd_setup_new(self, base_addr_0, no_of_words):
         ''' Asic Command Sequence set up function '''
@@ -1862,7 +1862,7 @@ class LpdFemClient(FemClient):
         #TODO: Temp hack to decouple ASIC mask vector from API
 #        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FFFF, 0x00000000]
         self.femAsicEnableMask = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
-#        self.femAsicEnableMask = [0x00000000, 0x0000FF00, 0x0000FFFF, 0x00000000]
+#        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x00000000, 0x00000000]
                 
     def numberImagesGet(self):
         '''

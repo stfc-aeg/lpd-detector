@@ -35,8 +35,8 @@
     <tenGig0NumberOfFrames type="int" val="1"/>           <!-- Number of frames to send in each cycle -->
 
     <!-- User Variables, 'Will Want Change': -->
-    <numberImages type="int" val="4"/>                    <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
-    <numberTrains type="int" val="2"/>                    <!-- Set number of trains [if LL Data Generator / PPC Data Direct selected] -->
+    <numberImages type="int" val="5"/>                    <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
+    <numberTrains type="int" val="1"/>                    <!-- Set number of trains [if LL Data Generator / PPC Data Direct selected] -->
 
     <!-- User Variables, 'May Want to Change': -->
     <femAsicGain type="int" val="2"/>                     <!-- 0=normal, 3=100x, 2=10x, 1=1x -->

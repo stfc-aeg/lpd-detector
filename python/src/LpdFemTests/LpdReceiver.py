@@ -10,6 +10,7 @@
 from LpdFemClient.LpdFemClient import LpdFemClient
 
 import sys, time, datetime, argparse, socket
+from datetime import datetime
 
 import numpy as np
 from matplotlib.figure import Figure
@@ -214,17 +215,17 @@ class ImageDisplay(FigureCanvas):
             self.imageNumberDs = self.hdfFile.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         FigureCanvas.__init__(self, Figure())
+    
+        (xlist, ylist) = ([], [])
+        if bColorbarVisible:
+            # Generate list of xticks to label the x axis
+            for i in range(xStart, xStop, xStep):
+                xlist.append(i)
+            
+            # Generate yticks if super module or raw data selected
+            for i in range(yStart, yStop, yStep):
+                ylist.append(i)
 
-        # Generate list of xticks to label the x axis
-        xlist = []
-        for i in range(xStart, xStop, xStep):
-            xlist.append(i)
-        
-        # Generate yticks if super module or raw data selected
-        ylist = []
-        for i in range(yStart, yStop, yStep):
-            ylist.append(i)
-        
         print "Preparing graphics.."
         
         # Create a list for axes object and one for image objects, to store that info for each image
@@ -245,7 +246,7 @@ class ImageDisplay(FigureCanvas):
                             
             self.cnt = 0
             self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
-                        
+
             imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
             self.img.extend([imgObject])
 
@@ -257,17 +258,17 @@ class ImageDisplay(FigureCanvas):
                 # Set the colour bar
                 self.img[idx].colorbar = cb
 
-            # Add vertical lines to differentiate between the ASICs
-            for i in range(16, self.ncols, 16):
-                self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
-            
-            # Add vertical lines to differentiate between two tiles
-            self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
-            
-            # Add horizontal lines only if super module or raw data selected
-            if (asicModuleType == 0) or (asicModuleType == 4):
-                for i in range(32, self.nrows, 32):
-                    self.ax[idx].hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
+                # Add vertical lines to differentiate between the ASICs
+                for i in range(16, self.ncols, 16):
+                    self.ax[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
+                
+                # Add vertical lines to differentiate between two tiles
+                self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
+                
+                # Add horizontal lines only if super module or raw data selected
+                if (asicModuleType == 0) or (asicModuleType == 4):
+                    for i in range(32, self.nrows, 32):
+                        self.ax[idx].hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
             
             self.draw()
 
@@ -285,7 +286,7 @@ class ImageDisplay(FigureCanvas):
         if bTimeStamp:
             timeX1 = time.time()
         
-        print "Raw Image Data Received: %16i" % len(lpdFrame.rawImageData), "(bytes)"
+        print "Raw Image Data Received: %16i" % len(lpdFrame.rawImageData), "(bytes, @%s)" % str( datetime.now())[11:-4]
 
         ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
         # Create 16 bit, Little-Endian, integer type using numpy
@@ -365,7 +366,7 @@ class ImageDisplay(FigureCanvas):
             
 #            # Set title as train number, current image number
 #            self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
-            print "Train %2i Image %3i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ),
+            print "Train %2i Image %3i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ), "%20s" % str( datetime.now())[11:-4],
             if bTimeStamp is False:
                 print ""
 
