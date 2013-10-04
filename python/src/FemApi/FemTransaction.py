@@ -162,10 +162,13 @@ class FemTransaction():
                     self.payload = ()
                 else:
                     (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
-                    if type(payload) == int:
+                    try:
+                        self.payload = tuple(payload)
+                    except TypeError:
                         payload = (payload,)
-                    
-                    self.payload = tuple(payload)
+                        self.payload = tuple(payload)
+                        
+                    self.payload = tuple(payload,)    
                     self.payloadLen = len(self.payload) * payloadMult
                     self.payloadFormatStr = str(len(self.payload)) + payloadFormat
 
