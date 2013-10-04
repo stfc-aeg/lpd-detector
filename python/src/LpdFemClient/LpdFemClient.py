@@ -1850,19 +1850,13 @@ class LpdFemClient(FemClient):
         '''
             Get the Asic Receive Enable Mask
         '''
-#TODO:        return self.femAsicEnableMaskDummy # Temp hack to decouple ASIC mask vector from API
-
-        return "By-passed"  #self.femAsicEnableMaskDummy
+        return self.femAsicEnableMask
 
     def femAsicEnableMaskSet(self, aValue):
         '''
             Set the Asic Receive Enable Mask
         '''
-        self.femAsicEnableMaskDummy = aValue
-        #TODO: Temp hack to decouple ASIC mask vector from API
-#        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x0000FFFF, 0x00000000]
-        self.femAsicEnableMask = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
-#        self.femAsicEnableMask = [0xFFFF0000, 0x00000000, 0x00000000, 0x00000000]
+        self.femAsicEnableMask = aValue
                 
     def numberImagesGet(self):
         '''

@@ -47,22 +47,37 @@ class LpdReadoutConfig():
             
             if valStr == None:
                 raise LpdReadoutConfigError("Parameter %s has no value specified" % param)
-            try:            
-                if paramType == 'int':
-                    val = int(valStr, 0)
-                elif paramType == 'bool':
-                    if valStr == 'True':
-                        val = True
-                    elif valStr == 'False':
-                        val = False
+            try:
+                valStr = valStr.split(",")
+                valLength = len( valStr)
+                val = []
+
+                for idx in range(valLength):
+
+                    if paramType == 'int':
+                        val.append( int(valStr[idx], 0))
+                    elif paramType == 'bool':
+                        if valStr[idx] == 'True':
+                            val.append( True)
+                        elif valStr[idx] == 'False':
+                            val.append( False)
+                        else:
+                            raise LpdReadoutConfigError("Parameter %s has illegal boolean value %s" % (param, valStr[idx]))
+                    elif paramType == 'str':
+                        val.append( str(valStr[idx]))
                     else:
-                        raise LpdReadoutConfigError("Parameter %s has illegal boolean value %s" % (param, valStr))
-                elif paramType == 'str':
-                    val = str(valStr)
-                else:
-                    raise LpdReadoutConfigError("Parameter %s has illegal type %s" % (param, paramType) )
+                        raise LpdReadoutConfigError("Parameter %s has illegal type %s" % (param, paramType) )
+
+                if valLength == 1:
+                    if paramType == 'int':
+                        val = val[0]
+                    elif paramType == 'bool':
+                        val = val[0]
+                    elif paramType == 'str':
+                        val = val[0]
+
             except ValueError:
-                raise LpdReadoutConfigError("Parameter %s with value %s cannot be converted to type %s" % (param, valStr, paramType))
+                raise LpdReadoutConfigError("Parameter %s with value %s cannot be converted to type %s" % (param, valStr[idx], paramType))
 
             yield (param, val)
         

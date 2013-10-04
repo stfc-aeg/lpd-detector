@@ -503,22 +503,18 @@ class LpdDeviceParameters(object):
         # production firmware iterations
         #
         
-        self.expectedParameters['femEnableTenGig']      = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
+        self.expectedParameters['femEnableTenGig']              = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
                                                                       (True, False), None, True,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-        self.expectedParameters['femDataSource']        = AttributeContainer(uint32, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (bypassing PPC), 2=Frame Generator, 3=PPC (pattern data)',
+        self.expectedParameters['femDataSource']                = AttributeContainer(uint32, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (bypassing PPC), 2=Frame Generator, 3=PPC (pattern data)',
                                                                       0, 3, 0,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-#        self.expectedParameters['femAsicEnableMask']    = AttributeContainer([int]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
-#                                                                         0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
-#                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        self.expectedParameters['femAsicEnableMask']    = AttributeContainer(uint32, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
-                                                                      0, 0xFFFFFFFF, 99999999,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        self.expectedParameters['femAsicEnableMask']            = AttributeContainer([uint32]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
+                                                                         0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
-        #TODO: LCLS proved 130 fine, crashes at 250
         self.expectedParameters['numberImages']                 = AttributeContainer(uint32, 'NumberImages', 'Sets the number of images per trigger',
                                                                          0, 512, 4,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
