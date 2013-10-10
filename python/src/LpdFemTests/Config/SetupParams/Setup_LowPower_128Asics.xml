@@ -566,99 +566,55 @@
    <mux_decoder  asic="2" pixel="470" value="4"/>
 
    <!-- Number "3" in Top Left of Asic in supermodule display/-->
-   <mux_decoder  asic="2" pixel="323" value="4"/>
-   <mux_decoder  asic="2" pixel="324" value="4"/>
-   <mux_decoder  asic="2" pixel="325" value="4"/>
-   <mux_decoder  asic="2" pixel="326" value="4"/>
-   <mux_decoder  asic="2" pixel="338" value="4"/>
-   <mux_decoder  asic="2" pixel="339" value="4"/>
-   <mux_decoder  asic="2" pixel="340" value="4"/>
-   <mux_decoder  asic="2" pixel="341" value="4"/>
-   <mux_decoder  asic="2" pixel="342" value="4"/>
-   <mux_decoder  asic="2" pixel="343" value="4"/>
-   <mux_decoder  asic="2" pixel="354" value="4"/>
-   <mux_decoder  asic="2" pixel="355" value="4"/>
-   <mux_decoder  asic="2" pixel="358" value="4"/>
-   <mux_decoder  asic="2" pixel="359" value="4"/>
-   <mux_decoder  asic="2" pixel="374" value="4"/>
-   <mux_decoder  asic="2" pixel="375" value="4"/>
-   <mux_decoder  asic="2" pixel="388" value="4"/>
-   <mux_decoder  asic="2" pixel="389" value="4"/>
-   <mux_decoder  asic="2" pixel="390" value="4"/>
-   <mux_decoder  asic="2" pixel="404" value="4"/>
-   <mux_decoder  asic="2" pixel="405" value="4"/>
-   <mux_decoder  asic="2" pixel="406" value="4"/>
-   <mux_decoder  asic="2" pixel="422" value="4"/>
-   <mux_decoder  asic="2" pixel="423" value="4"/>
-   <mux_decoder  asic="2" pixel="434" value="4"/>
-   <mux_decoder  asic="2" pixel="435" value="4"/>
-   <mux_decoder  asic="2" pixel="438" value="4"/>
-   <mux_decoder  asic="2" pixel="439" value="4"/>
-   <mux_decoder  asic="2" pixel="450" value="4"/>
-   <mux_decoder  asic="2" pixel="451" value="4"/>
-   <mux_decoder  asic="2" pixel="452" value="4"/>
-   <mux_decoder  asic="2" pixel="453" value="4"/>
-   <mux_decoder  asic="2" pixel="454" value="4"/>
-   <mux_decoder  asic="2" pixel="455" value="4"/>
-   <mux_decoder  asic="2" pixel="467" value="4"/>
-   <mux_decoder  asic="2" pixel="468" value="4"/>
-   <mux_decoder  asic="2" pixel="469" value="4"/>
-   <mux_decoder  asic="2" pixel="470" value="4"/>
-
-   <!-- Number "4" in Top Left of Asic in supermodule display/-->
+   <mux_decoder  asic="3" pixel="323" value="4"/>
+   <mux_decoder  asic="3" pixel="324" value="4"/>
+   <mux_decoder  asic="3" pixel="325" value="4"/>
    <mux_decoder  asic="3" pixel="326" value="4"/>
-   <mux_decoder  asic="3" pixel="327" value="4"/>
+   <mux_decoder  asic="3" pixel="338" value="4"/>
+   <mux_decoder  asic="3" pixel="339" value="4"/>
+   <mux_decoder  asic="3" pixel="340" value="4"/>
+   <mux_decoder  asic="3" pixel="341" value="4"/>
    <mux_decoder  asic="3" pixel="342" value="4"/>
    <mux_decoder  asic="3" pixel="343" value="4"/>
+   <mux_decoder  asic="3" pixel="354" value="4"/>
+   <mux_decoder  asic="3" pixel="355" value="4"/>
    <mux_decoder  asic="3" pixel="358" value="4"/>
    <mux_decoder  asic="3" pixel="359" value="4"/>
    <mux_decoder  asic="3" pixel="374" value="4"/>
    <mux_decoder  asic="3" pixel="375" value="4"/>
-   <mux_decoder  asic="3" pixel="386" value="4"/>
-   <mux_decoder  asic="3" pixel="387" value="4"/>
    <mux_decoder  asic="3" pixel="388" value="4"/>
    <mux_decoder  asic="3" pixel="389" value="4"/>
    <mux_decoder  asic="3" pixel="390" value="4"/>
-   <mux_decoder  asic="3" pixel="391" value="4"/>
-   <mux_decoder  asic="3" pixel="402" value="4"/>
-   <mux_decoder  asic="3" pixel="403" value="4"/>
    <mux_decoder  asic="3" pixel="404" value="4"/>
    <mux_decoder  asic="3" pixel="405" value="4"/>
    <mux_decoder  asic="3" pixel="406" value="4"/>
-   <mux_decoder  asic="3" pixel="407" value="4"/>
-   <mux_decoder  asic="3" pixel="418" value="4"/>
-   <mux_decoder  asic="3" pixel="419" value="4"/>
    <mux_decoder  asic="3" pixel="422" value="4"/>
    <mux_decoder  asic="3" pixel="423" value="4"/>
+   <mux_decoder  asic="3" pixel="434" value="4"/>
    <mux_decoder  asic="3" pixel="435" value="4"/>
-   <mux_decoder  asic="3" pixel="436" value="4"/>
    <mux_decoder  asic="3" pixel="438" value="4"/>
    <mux_decoder  asic="3" pixel="439" value="4"/>
+   <mux_decoder  asic="3" pixel="450" value="4"/>
+   <mux_decoder  asic="3" pixel="451" value="4"/>
    <mux_decoder  asic="3" pixel="452" value="4"/>
    <mux_decoder  asic="3" pixel="453" value="4"/>
    <mux_decoder  asic="3" pixel="454" value="4"/>
    <mux_decoder  asic="3" pixel="455" value="4"/>
+   <mux_decoder  asic="3" pixel="467" value="4"/>
+   <mux_decoder  asic="3" pixel="468" value="4"/>
    <mux_decoder  asic="3" pixel="469" value="4"/>
    <mux_decoder  asic="3" pixel="470" value="4"/>
-   <mux_decoder  asic="3" pixel="471" value="4"/>
 
-   <!-- Number "5" in Top Left of Asic in supermodule display/-->
-   <mux_decoder  asic="4" pixel="323" value="4"/>
-   <mux_decoder  asic="4" pixel="324" value="4"/>
-   <mux_decoder  asic="4" pixel="325" value="4"/>
+   <!-- Number "4" in Top Left of Asic in supermodule display/-->
    <mux_decoder  asic="4" pixel="326" value="4"/>
-   <mux_decoder  asic="4" pixel="338" value="4"/>
-   <mux_decoder  asic="4" pixel="339" value="4"/>
-   <mux_decoder  asic="4" pixel="340" value="4"/>
-   <mux_decoder  asic="4" pixel="341" value="4"/>
+   <mux_decoder  asic="4" pixel="327" value="4"/>
    <mux_decoder  asic="4" pixel="342" value="4"/>
    <mux_decoder  asic="4" pixel="343" value="4"/>
-   <mux_decoder  asic="4" pixel="354" value="4"/>
-   <mux_decoder  asic="4" pixel="355" value="4"/>
    <mux_decoder  asic="4" pixel="358" value="4"/>
    <mux_decoder  asic="4" pixel="359" value="4"/>
    <mux_decoder  asic="4" pixel="374" value="4"/>
    <mux_decoder  asic="4" pixel="375" value="4"/>
+   <mux_decoder  asic="4" pixel="386" value="4"/>
    <mux_decoder  asic="4" pixel="387" value="4"/>
    <mux_decoder  asic="4" pixel="388" value="4"/>
    <mux_decoder  asic="4" pixel="389" value="4"/>
@@ -669,22 +625,24 @@
    <mux_decoder  asic="4" pixel="404" value="4"/>
    <mux_decoder  asic="4" pixel="405" value="4"/>
    <mux_decoder  asic="4" pixel="406" value="4"/>
+   <mux_decoder  asic="4" pixel="407" value="4"/>
    <mux_decoder  asic="4" pixel="418" value="4"/>
    <mux_decoder  asic="4" pixel="419" value="4"/>
-   <mux_decoder  asic="4" pixel="434" value="4"/>
+   <mux_decoder  asic="4" pixel="422" value="4"/>
+   <mux_decoder  asic="4" pixel="423" value="4"/>
    <mux_decoder  asic="4" pixel="435" value="4"/>
-   <mux_decoder  asic="4" pixel="450" value="4"/>
-   <mux_decoder  asic="4" pixel="451" value="4"/>
+   <mux_decoder  asic="4" pixel="436" value="4"/>
+   <mux_decoder  asic="4" pixel="438" value="4"/>
+   <mux_decoder  asic="4" pixel="439" value="4"/>
    <mux_decoder  asic="4" pixel="452" value="4"/>
    <mux_decoder  asic="4" pixel="453" value="4"/>
    <mux_decoder  asic="4" pixel="454" value="4"/>
    <mux_decoder  asic="4" pixel="455" value="4"/>
-   <mux_decoder  asic="4" pixel="467" value="4"/>
-   <mux_decoder  asic="4" pixel="468" value="4"/>
    <mux_decoder  asic="4" pixel="469" value="4"/>
    <mux_decoder  asic="4" pixel="470" value="4"/>
+   <mux_decoder  asic="4" pixel="471" value="4"/>
 
-   <!-- Number "6" in Top Left of Asic in supermodule display/-->
+   <!-- Number "5" in Top Left of Asic in supermodule display/-->
    <mux_decoder  asic="5" pixel="323" value="4"/>
    <mux_decoder  asic="5" pixel="324" value="4"/>
    <mux_decoder  asic="5" pixel="325" value="4"/>
@@ -699,11 +657,8 @@
    <mux_decoder  asic="5" pixel="355" value="4"/>
    <mux_decoder  asic="5" pixel="358" value="4"/>
    <mux_decoder  asic="5" pixel="359" value="4"/>
-   <mux_decoder  asic="5" pixel="370" value="4"/>
-   <mux_decoder  asic="5" pixel="371" value="4"/>
    <mux_decoder  asic="5" pixel="374" value="4"/>
    <mux_decoder  asic="5" pixel="375" value="4"/>
-   <mux_decoder  asic="5" pixel="386" value="4"/>
    <mux_decoder  asic="5" pixel="387" value="4"/>
    <mux_decoder  asic="5" pixel="388" value="4"/>
    <mux_decoder  asic="5" pixel="389" value="4"/>
@@ -715,8 +670,9 @@
    <mux_decoder  asic="5" pixel="405" value="4"/>
    <mux_decoder  asic="5" pixel="406" value="4"/>
    <mux_decoder  asic="5" pixel="418" value="4"/>
+   <mux_decoder  asic="5" pixel="419" value="4"/>
    <mux_decoder  asic="5" pixel="434" value="4"/>
-   <mux_decoder  asic="5" pixel="439" value="4"/>
+   <mux_decoder  asic="5" pixel="435" value="4"/>
    <mux_decoder  asic="5" pixel="450" value="4"/>
    <mux_decoder  asic="5" pixel="451" value="4"/>
    <mux_decoder  asic="5" pixel="452" value="4"/>
@@ -728,22 +684,38 @@
    <mux_decoder  asic="5" pixel="469" value="4"/>
    <mux_decoder  asic="5" pixel="470" value="4"/>
 
-   <!-- Number "7" in Top Left of Asic in supermodule display/-->
+   <!-- Number "6" in Top Left of Asic in supermodule display/-->
    <mux_decoder  asic="6" pixel="323" value="4"/>
    <mux_decoder  asic="6" pixel="324" value="4"/>
+   <mux_decoder  asic="6" pixel="325" value="4"/>
+   <mux_decoder  asic="6" pixel="326" value="4"/>
+   <mux_decoder  asic="6" pixel="338" value="4"/>
    <mux_decoder  asic="6" pixel="339" value="4"/>
    <mux_decoder  asic="6" pixel="340" value="4"/>
+   <mux_decoder  asic="6" pixel="341" value="4"/>
+   <mux_decoder  asic="6" pixel="342" value="4"/>
+   <mux_decoder  asic="6" pixel="343" value="4"/>
+   <mux_decoder  asic="6" pixel="354" value="4"/>
    <mux_decoder  asic="6" pixel="355" value="4"/>
-   <mux_decoder  asic="6" pixel="356" value="4"/>
+   <mux_decoder  asic="6" pixel="358" value="4"/>
+   <mux_decoder  asic="6" pixel="359" value="4"/>
+   <mux_decoder  asic="6" pixel="370" value="4"/>
    <mux_decoder  asic="6" pixel="371" value="4"/>
-   <mux_decoder  asic="6" pixel="372" value="4"/>
+   <mux_decoder  asic="6" pixel="374" value="4"/>
+   <mux_decoder  asic="6" pixel="375" value="4"/>
+   <mux_decoder  asic="6" pixel="386" value="4"/>
+   <mux_decoder  asic="6" pixel="387" value="4"/>
    <mux_decoder  asic="6" pixel="388" value="4"/>
    <mux_decoder  asic="6" pixel="389" value="4"/>
+   <mux_decoder  asic="6" pixel="390" value="4"/>
+   <mux_decoder  asic="6" pixel="391" value="4"/>
+   <mux_decoder  asic="6" pixel="402" value="4"/>
+   <mux_decoder  asic="6" pixel="403" value="4"/>
+   <mux_decoder  asic="6" pixel="404" value="4"/>
    <mux_decoder  asic="6" pixel="405" value="4"/>
    <mux_decoder  asic="6" pixel="406" value="4"/>
-   <mux_decoder  asic="6" pixel="422" value="4"/>
-   <mux_decoder  asic="6" pixel="423" value="4"/>
-   <mux_decoder  asic="6" pixel="438" value="4"/>
+   <mux_decoder  asic="6" pixel="418" value="4"/>
+   <mux_decoder  asic="6" pixel="434" value="4"/>
    <mux_decoder  asic="6" pixel="439" value="4"/>
    <mux_decoder  asic="6" pixel="450" value="4"/>
    <mux_decoder  asic="6" pixel="451" value="4"/>
@@ -751,46 +723,26 @@
    <mux_decoder  asic="6" pixel="453" value="4"/>
    <mux_decoder  asic="6" pixel="454" value="4"/>
    <mux_decoder  asic="6" pixel="455" value="4"/>
-   <mux_decoder  asic="6" pixel="466" value="4"/>
    <mux_decoder  asic="6" pixel="467" value="4"/>
    <mux_decoder  asic="6" pixel="468" value="4"/>
    <mux_decoder  asic="6" pixel="469" value="4"/>
    <mux_decoder  asic="6" pixel="470" value="4"/>
-   <mux_decoder  asic="6" pixel="471" value="4"/>
 
-   <!-- Number "8" in Top Left of Asic in supermodule display/-->
+   <!-- Number "7" in Top Left of Asic in supermodule display/-->
    <mux_decoder  asic="7" pixel="323" value="4"/>
    <mux_decoder  asic="7" pixel="324" value="4"/>
-   <mux_decoder  asic="7" pixel="325" value="4"/>
-   <mux_decoder  asic="7" pixel="326" value="4"/>
-   <mux_decoder  asic="7" pixel="338" value="4"/>
    <mux_decoder  asic="7" pixel="339" value="4"/>
    <mux_decoder  asic="7" pixel="340" value="4"/>
-   <mux_decoder  asic="7" pixel="341" value="4"/>
-   <mux_decoder  asic="7" pixel="342" value="4"/>
-   <mux_decoder  asic="7" pixel="343" value="4"/>
-   <mux_decoder  asic="7" pixel="354" value="4"/>
    <mux_decoder  asic="7" pixel="355" value="4"/>
-   <mux_decoder  asic="7" pixel="358" value="4"/>
-   <mux_decoder  asic="7" pixel="359" value="4"/>
-   <mux_decoder  asic="7" pixel="370" value="4"/>
+   <mux_decoder  asic="7" pixel="356" value="4"/>
    <mux_decoder  asic="7" pixel="371" value="4"/>
-   <mux_decoder  asic="7" pixel="374" value="4"/>
-   <mux_decoder  asic="7" pixel="375" value="4"/>
-   <mux_decoder  asic="7" pixel="387" value="4"/>
+   <mux_decoder  asic="7" pixel="372" value="4"/>
    <mux_decoder  asic="7" pixel="388" value="4"/>
    <mux_decoder  asic="7" pixel="389" value="4"/>
-   <mux_decoder  asic="7" pixel="390" value="4"/>
-   <mux_decoder  asic="7" pixel="403" value="4"/>
-   <mux_decoder  asic="7" pixel="404" value="4"/>
    <mux_decoder  asic="7" pixel="405" value="4"/>
    <mux_decoder  asic="7" pixel="406" value="4"/>
-   <mux_decoder  asic="7" pixel="418" value="4"/>
-   <mux_decoder  asic="7" pixel="419" value="4"/>
    <mux_decoder  asic="7" pixel="422" value="4"/>
    <mux_decoder  asic="7" pixel="423" value="4"/>
-   <mux_decoder  asic="7" pixel="434" value="4"/>
-   <mux_decoder  asic="7" pixel="435" value="4"/>
    <mux_decoder  asic="7" pixel="438" value="4"/>
    <mux_decoder  asic="7" pixel="439" value="4"/>
    <mux_decoder  asic="7" pixel="450" value="4"/>
@@ -799,11 +751,12 @@
    <mux_decoder  asic="7" pixel="453" value="4"/>
    <mux_decoder  asic="7" pixel="454" value="4"/>
    <mux_decoder  asic="7" pixel="455" value="4"/>
+   <mux_decoder  asic="7" pixel="466" value="4"/>
    <mux_decoder  asic="7" pixel="467" value="4"/>
    <mux_decoder  asic="7" pixel="468" value="4"/>
    <mux_decoder  asic="7" pixel="469" value="4"/>
    <mux_decoder  asic="7" pixel="470" value="4"/>
-
+   <mux_decoder  asic="7" pixel="471" value="4"/>
 
 
 
