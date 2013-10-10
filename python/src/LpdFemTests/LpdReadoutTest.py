@@ -133,8 +133,9 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'
 #            asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2_multipleImages.xml'
         elif xmlConfig == 2:
-            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
-            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml' 
+#            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower_128Asics.xml'
+            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml'
 #            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_MultipleImages_512.xml'
         elif xmlConfig == 3:
             asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'

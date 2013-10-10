@@ -803,9 +803,10 @@ class LpdFemClient(FemClient):
             encodedXml = LpdAsicSetupParamsParams.encode()
             
             if self.femAsicSetupLoadMode:   # 1=Serial
+                adjust = 0  # Increase by 8 to view next tile's ASICs (e.g. 8=Tile1's, 16=T2, 24=T3, etc)
                 #TODO: Scale to use 128 ASICs when firmware is ready!
-                for asic_nr in range(0, self.nr_asics_per_sensor):
-                    encodedString[asic_nr] = encodedXml[asic_nr]
+                for asic_nr in range(0 +adjust, self.nr_asics_per_sensor+adjust):
+                    encodedString[asic_nr-adjust] = encodedXml[asic_nr]
             else:
                 # 0=Parallel
                 encodedString[0] = encodedXml[0]

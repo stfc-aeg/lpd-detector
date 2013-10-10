@@ -16,7 +16,9 @@
 
     <femEnableTenGig 		type="bool" val="True"/>        <!-- Enables transmission of image data via 10GigE UDP interface -->
     <femDataSource 			type="int"  val="1"/>           <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
+
     <femAsicEnableMask 		type="int"  val="0xFFFF0000, 0x00000000, 0x00000000, 0x00000000"/>            <!-- .. -->
+
     <femAsicPixelFeedbackOverride type="int" val="-1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
     <femAsicPixelSelfTestOverride type="int" val="-1"/>   	<!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
     <femAsicDataType 		type="int"  val="0"/>           <!-- 0=Sensor Data, 1=Fem Internal counting, 2=ASIC Pseudo random -->
