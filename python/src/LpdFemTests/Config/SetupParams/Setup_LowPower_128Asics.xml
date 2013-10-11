@@ -446,7 +446,386 @@
    		LABEL THE TILE 10 ACROSS ITS 8 ASICs 
    -->
 
-  <!-- AND SO ON .. -->
+   <!-- COMMENT: TILE 10, Labelled Numeral 10 -->
+   <!-- Draw vertical line between pixels 115 and 227 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="115" value="4"/>
+   <mux_decoder tile="10" pixel="131" value="4"/>
+   <mux_decoder tile="10" pixel="147" value="4"/>
+   <mux_decoder tile="10" pixel="163" value="4"/>
+   <mux_decoder tile="10" pixel="179" value="4"/>
+   <mux_decoder tile="10" pixel="195" value="4"/>
+   <mux_decoder tile="10" pixel="211" value="4"/>
+   <mux_decoder tile="10" pixel="227" value="4"/>
+   <!-- Draw vertical line between pixels 119 and 231 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="119" value="4"/>
+   <mux_decoder tile="10" pixel="135" value="4"/>
+   <mux_decoder tile="10" pixel="151" value="4"/>
+   <mux_decoder tile="10" pixel="167" value="4"/>
+   <mux_decoder tile="10" pixel="183" value="4"/>
+   <mux_decoder tile="10" pixel="199" value="4"/>
+   <mux_decoder tile="10" pixel="215" value="4"/>
+   <mux_decoder tile="10" pixel="231" value="4"/>
+   <!-- Draw vertical line between pixels 132 and 148 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="132" value="4"/>
+   <mux_decoder tile="10" pixel="148" value="4"/>
+   <!-- Draw vertical line between pixels 165 and 181 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="165" value="4"/>
+   <mux_decoder tile="10" pixel="181" value="4"/>
+   <!-- Draw vertical line between pixels 198 and 214 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="198" value="4"/>
+   <mux_decoder tile="10" pixel="214" value="4"/>
+   <!-- Draw horizontal line between pixels 100 and 102 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="100" value="4"/>
+   <mux_decoder tile="10" pixel="101" value="4"/>
+   <mux_decoder tile="10" pixel="102" value="4"/>
+   <!-- Draw horizontal line between pixels 244 and 246 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="244" value="4"/>
+   <mux_decoder tile="10" pixel="245" value="4"/>
+   <mux_decoder tile="10" pixel="246" value="4"/>
+   <!-- Draw vertical line between pixels  97 and 241 in tile: 10 asic: None -->
+   <mux_decoder tile="10" pixel="97" value="4"/>
+   <mux_decoder tile="10" pixel="113" value="4"/>
+   <mux_decoder tile="10" pixel="129" value="4"/>
+   <mux_decoder tile="10" pixel="145" value="4"/>
+   <mux_decoder tile="10" pixel="161" value="4"/>
+   <mux_decoder tile="10" pixel="177" value="4"/>
+   <mux_decoder tile="10" pixel="193" value="4"/>
+   <mux_decoder tile="10" pixel="209" value="4"/>
+   <mux_decoder tile="10" pixel="225" value="4"/>
+   <mux_decoder tile="10" pixel="241" value="4"/>
+
+   <!--
+   		LABEL THE TILE 11 ACROSS ITS 8 ASICs 
+   -->
+   <!-- COMMENT: TILE 11, Labelled Numeral 11 -->
+   <!-- COMMENT: TILE 11, Labelled Numeral 11 -->
+   <!-- Draw vertical line between pixels  33 and 241 in tile: 11 asic: None -->
+   <mux_decoder tile="11" pixel="33" value="4"/>
+   <mux_decoder tile="11" pixel="49" value="4"/>
+   <mux_decoder tile="11" pixel="65" value="4"/>
+   <mux_decoder tile="11" pixel="81" value="4"/>
+   <mux_decoder tile="11" pixel="97" value="4"/>
+   <mux_decoder tile="11" pixel="113" value="4"/>
+   <mux_decoder tile="11" pixel="129" value="4"/>
+   <mux_decoder tile="11" pixel="145" value="4"/>
+   <mux_decoder tile="11" pixel="161" value="4"/>
+   <mux_decoder tile="11" pixel="177" value="4"/>
+   <mux_decoder tile="11" pixel="193" value="4"/>
+   <mux_decoder tile="11" pixel="209" value="4"/>
+   <mux_decoder tile="11" pixel="225" value="4"/>
+   <mux_decoder tile="11" pixel="241" value="4"/>
+   <!-- Draw horizontal line between pixels  34 and  36 in tile: 11 asic: None -->
+   <mux_decoder tile="11" pixel="34" value="4"/>
+   <mux_decoder tile="11" pixel="35" value="4"/>
+   <mux_decoder tile="11" pixel="36" value="4"/>
+   <!-- Draw horizontal line between pixels  50 and  52 in tile: 11 asic: None -->
+   <mux_decoder tile="11" pixel="50" value="4"/>
+   <mux_decoder tile="11" pixel="51" value="4"/>
+   <mux_decoder tile="11" pixel="52" value="4"/>
+
+   <mux_decoder  tile="11" pixel="102" value="4"/>
+   <mux_decoder  tile="11" pixel="103" value="4"/>
+   <mux_decoder  tile="11" pixel="118" value="4"/>
+   <mux_decoder  tile="11" pixel="119" value="4"/>
+   <mux_decoder  tile="11" pixel="134" value="4"/>
+   <mux_decoder  tile="11" pixel="135" value="4"/>
+   <mux_decoder  tile="11" pixel="150" value="4"/>
+   <mux_decoder  tile="11" pixel="151" value="4"/>
+   <mux_decoder  tile="11" pixel="166" value="4"/>
+   <mux_decoder  tile="11" pixel="167" value="4"/>
+   <mux_decoder  tile="11" pixel="182" value="4"/>
+   <mux_decoder  tile="11" pixel="183" value="4"/>
+   <mux_decoder  tile="11" pixel="195" value="4"/>
+   <mux_decoder  tile="11" pixel="196" value="4"/>
+   <mux_decoder  tile="11" pixel="197" value="4"/>
+   <mux_decoder  tile="11" pixel="198" value="4"/>
+   <mux_decoder  tile="11" pixel="199" value="4"/>
+   <mux_decoder  tile="11" pixel="212" value="4"/>
+   <mux_decoder  tile="11" pixel="213" value="4"/>
+   <mux_decoder  tile="11" pixel="214" value="4"/>
+   <mux_decoder  tile="11" pixel="215" value="4"/>
+   <mux_decoder  tile="11" pixel="229" value="4"/>
+   <mux_decoder  tile="11" pixel="230" value="4"/>
+   <mux_decoder  tile="11" pixel="231" value="4"/>
+   <mux_decoder  tile="11" pixel="246" value="4"/>
+   <mux_decoder  tile="11" pixel="247" value="4"/>
+
+
+   <!--
+   		LABEL THE TILE 12 ACROSS ITS ASICs 
+   
+   -->
+   <!-- COMMENT: TILE 12, Labelled Numeral 12 -->
+   <!-- Draw vertical line between pixels  33 and 241 in tile: 12 asic: None -->
+   <mux_decoder tile="12" pixel="33" value="4"/>
+   <mux_decoder tile="12" pixel="49" value="4"/>
+   <mux_decoder tile="12" pixel="65" value="4"/>
+   <mux_decoder tile="12" pixel="81" value="4"/>
+   <mux_decoder tile="12" pixel="97" value="4"/>
+   <mux_decoder tile="12" pixel="113" value="4"/>
+   <mux_decoder tile="12" pixel="129" value="4"/>
+   <mux_decoder tile="12" pixel="145" value="4"/>
+   <mux_decoder tile="12" pixel="161" value="4"/>
+   <mux_decoder tile="12" pixel="177" value="4"/>
+   <mux_decoder tile="12" pixel="193" value="4"/>
+   <mux_decoder tile="12" pixel="209" value="4"/>
+   <mux_decoder tile="12" pixel="225" value="4"/>
+   <mux_decoder tile="12" pixel="241" value="4"/>
+   <!-- Draw horizontal line between pixels  34 and  36 in tile: 12 asic: None -->
+   <mux_decoder tile="12" pixel="34" value="4"/>
+   <mux_decoder tile="12" pixel="35" value="4"/>
+   <mux_decoder tile="12" pixel="36" value="4"/>
+   <!-- Draw horizontal line between pixels  50 and  52 in tile: 12 asic: None -->
+   <mux_decoder tile="12" pixel="50" value="4"/>
+   <mux_decoder tile="12" pixel="51" value="4"/>
+   <mux_decoder tile="12" pixel="52" value="4"/>
+
+   <mux_decoder  tile="12" pixel="98" value="4"/>
+   <mux_decoder  tile="12" pixel="99" value="4"/>
+   <mux_decoder  tile="12" pixel="100" value="4"/>
+   <mux_decoder  tile="12" pixel="101" value="4"/>
+   <mux_decoder  tile="12" pixel="102" value="4"/>
+   <mux_decoder  tile="12" pixel="103" value="4"/>
+   <mux_decoder  tile="12" pixel="114" value="4"/>
+   <mux_decoder  tile="12" pixel="115" value="4"/>
+   <mux_decoder  tile="12" pixel="116" value="4"/>
+   <mux_decoder  tile="12" pixel="117" value="4"/>
+   <mux_decoder  tile="12" pixel="118" value="4"/>
+   <mux_decoder  tile="12" pixel="119" value="4"/>
+   <mux_decoder  tile="12" pixel="131" value="4"/>
+   <mux_decoder  tile="12" pixel="132" value="4"/>
+   <mux_decoder  tile="12" pixel="148" value="4"/>
+   <mux_decoder  tile="12" pixel="149" value="4"/>
+   <mux_decoder  tile="12" pixel="165" value="4"/>
+   <mux_decoder  tile="12" pixel="166" value="4"/>
+   <mux_decoder  tile="12" pixel="182" value="4"/>
+   <mux_decoder  tile="12" pixel="183" value="4"/>
+   <mux_decoder  tile="12" pixel="198" value="4"/>
+   <mux_decoder  tile="12" pixel="199" value="4"/>
+   <mux_decoder  tile="12" pixel="210" value="4"/>
+   <mux_decoder  tile="12" pixel="211" value="4"/>
+   <mux_decoder  tile="12" pixel="214" value="4"/>
+   <mux_decoder  tile="12" pixel="215" value="4"/>
+   <mux_decoder  tile="12" pixel="226" value="4"/>
+   <mux_decoder  tile="12" pixel="227" value="4"/>
+   <mux_decoder  tile="12" pixel="228" value="4"/>
+   <mux_decoder  tile="12" pixel="229" value="4"/>
+   <mux_decoder  tile="12" pixel="230" value="4"/>
+   <mux_decoder  tile="12" pixel="231" value="4"/>
+   <mux_decoder  tile="12" pixel="243" value="4"/>
+   <mux_decoder  tile="12" pixel="244" value="4"/>
+   <mux_decoder  tile="12" pixel="245" value="4"/>
+   <mux_decoder  tile="12" pixel="246" value="4"/>
+
+
+   <!--
+   		LABEL THE TILE 13 ACROSS ITS ASICs 
+   
+   -->
+   <!-- COMMENT: TILE 13, Labelled Numeral 13 -->
+   <!-- Draw vertical line between pixels  33 and 241 in tile: 13 asic: None -->
+   <mux_decoder tile="13" pixel="33" value="4"/>
+   <mux_decoder tile="13" pixel="49" value="4"/>
+   <mux_decoder tile="13" pixel="65" value="4"/>
+   <mux_decoder tile="13" pixel="81" value="4"/>
+   <mux_decoder tile="13" pixel="97" value="4"/>
+   <mux_decoder tile="13" pixel="113" value="4"/>
+   <mux_decoder tile="13" pixel="129" value="4"/>
+   <mux_decoder tile="13" pixel="145" value="4"/>
+   <mux_decoder tile="13" pixel="161" value="4"/>
+   <mux_decoder tile="13" pixel="177" value="4"/>
+   <mux_decoder tile="13" pixel="193" value="4"/>
+   <mux_decoder tile="13" pixel="209" value="4"/>
+   <mux_decoder tile="13" pixel="225" value="4"/>
+   <mux_decoder tile="13" pixel="241" value="4"/>
+   <!-- Draw horizontal line between pixels  34 and  36 in tile: 13 asic: None -->
+   <mux_decoder tile="13" pixel="34" value="4"/>
+   <mux_decoder tile="13" pixel="35" value="4"/>
+   <mux_decoder tile="13" pixel="36" value="4"/>
+   <!-- Draw horizontal line between pixels  50 and  52 in tile: 13 asic: None -->
+   <mux_decoder tile="13" pixel="50" value="4"/>
+   <mux_decoder tile="13" pixel="51" value="4"/>
+   <mux_decoder tile="13" pixel="52" value="4"/>
+
+   <mux_decoder  tile="13" pixel="99" value="4"/>
+   <mux_decoder  tile="13" pixel="100" value="4"/>
+   <mux_decoder  tile="13" pixel="101" value="4"/>
+   <mux_decoder  tile="13" pixel="102" value="4"/>
+   <mux_decoder  tile="13" pixel="114" value="4"/>
+   <mux_decoder  tile="13" pixel="115" value="4"/>
+   <mux_decoder  tile="13" pixel="116" value="4"/>
+   <mux_decoder  tile="13" pixel="117" value="4"/>
+   <mux_decoder  tile="13" pixel="118" value="4"/>
+   <mux_decoder  tile="13" pixel="119" value="4"/>
+   <mux_decoder  tile="13" pixel="130" value="4"/>
+   <mux_decoder  tile="13" pixel="131" value="4"/>
+   <mux_decoder  tile="13" pixel="134" value="4"/>
+   <mux_decoder  tile="13" pixel="135" value="4"/>
+   <mux_decoder  tile="13" pixel="150" value="4"/>
+   <mux_decoder  tile="13" pixel="151" value="4"/>
+   <mux_decoder  tile="13" pixel="164" value="4"/>
+   <mux_decoder  tile="13" pixel="165" value="4"/>
+   <mux_decoder  tile="13" pixel="166" value="4"/>
+   <mux_decoder  tile="13" pixel="180" value="4"/>
+   <mux_decoder  tile="13" pixel="181" value="4"/>
+   <mux_decoder  tile="13" pixel="182" value="4"/>
+   <mux_decoder  tile="13" pixel="198" value="4"/>
+   <mux_decoder  tile="13" pixel="199" value="4"/>
+   <mux_decoder  tile="13" pixel="210" value="4"/>
+   <mux_decoder  tile="13" pixel="211" value="4"/>
+   <mux_decoder  tile="13" pixel="214" value="4"/>
+   <mux_decoder  tile="13" pixel="215" value="4"/>
+   <mux_decoder  tile="13" pixel="226" value="4"/>
+   <mux_decoder  tile="13" pixel="227" value="4"/>
+   <mux_decoder  tile="13" pixel="228" value="4"/>
+   <mux_decoder  tile="13" pixel="229" value="4"/>
+   <mux_decoder  tile="13" pixel="230" value="4"/>
+   <mux_decoder  tile="13" pixel="231" value="4"/>
+   <mux_decoder  tile="13" pixel="243" value="4"/>
+   <mux_decoder  tile="13" pixel="244" value="4"/>
+   <mux_decoder  tile="13" pixel="245" value="4"/>
+   <mux_decoder  tile="13" pixel="246" value="4"/>
+
+
+   <!--
+   		LABEL THE TILE 14 ACROSS ITS ASICs 
+   
+   -->
+   <!-- COMMENT: TILE 14, Labelled Numeral 14 -->
+   <!-- Draw vertical line between pixels  33 and 241 in tile: 14 asic: None -->
+   <mux_decoder tile="14" pixel="33" value="4"/>
+   <mux_decoder tile="14" pixel="49" value="4"/>
+   <mux_decoder tile="14" pixel="65" value="4"/>
+   <mux_decoder tile="14" pixel="81" value="4"/>
+   <mux_decoder tile="14" pixel="97" value="4"/>
+   <mux_decoder tile="14" pixel="113" value="4"/>
+   <mux_decoder tile="14" pixel="129" value="4"/>
+   <mux_decoder tile="14" pixel="145" value="4"/>
+   <mux_decoder tile="14" pixel="161" value="4"/>
+   <mux_decoder tile="14" pixel="177" value="4"/>
+   <mux_decoder tile="14" pixel="193" value="4"/>
+   <mux_decoder tile="14" pixel="209" value="4"/>
+   <mux_decoder tile="14" pixel="225" value="4"/>
+   <mux_decoder tile="14" pixel="241" value="4"/>
+   <!-- Draw horizontal line between pixels  34 and  36 in tile: 14 asic: None -->
+   <mux_decoder tile="14" pixel="34" value="4"/>
+   <mux_decoder tile="14" pixel="35" value="4"/>
+   <mux_decoder tile="14" pixel="36" value="4"/>
+   <!-- Draw horizontal line between pixels  50 and  52 in tile: 14 asic: None -->
+   <mux_decoder tile="14" pixel="50" value="4"/>
+   <mux_decoder tile="14" pixel="51" value="4"/>
+   <mux_decoder tile="14" pixel="52" value="4"/>
+
+
+   <mux_decoder  tile="14" pixel="102" value="4"/>
+   <mux_decoder  tile="14" pixel="103" value="4"/>
+   <mux_decoder  tile="14" pixel="117" value="4"/>
+   <mux_decoder  tile="14" pixel="118" value="4"/>
+   <mux_decoder  tile="14" pixel="134" value="4"/>
+   <mux_decoder  tile="14" pixel="135" value="4"/>
+   <mux_decoder  tile="14" pixel="150" value="4"/>
+   <mux_decoder  tile="14" pixel="151" value="4"/>
+   <mux_decoder  tile="14" pixel="162" value="4"/>
+   <mux_decoder  tile="14" pixel="163" value="4"/>
+   <mux_decoder  tile="14" pixel="164" value="4"/>
+   <mux_decoder  tile="14" pixel="165" value="4"/>
+   <mux_decoder  tile="14" pixel="166" value="4"/>
+   <mux_decoder  tile="14" pixel="167" value="4"/>
+   <mux_decoder  tile="14" pixel="178" value="4"/>
+   <mux_decoder  tile="14" pixel="179" value="4"/>
+   <mux_decoder  tile="14" pixel="180" value="4"/>
+   <mux_decoder  tile="14" pixel="181" value="4"/>
+   <mux_decoder  tile="14" pixel="182" value="4"/>
+   <mux_decoder  tile="14" pixel="183" value="4"/>
+   <mux_decoder  tile="14" pixel="194" value="4"/>
+   <mux_decoder  tile="14" pixel="195" value="4"/>
+   <mux_decoder  tile="14" pixel="198" value="4"/>
+   <mux_decoder  tile="14" pixel="199" value="4"/>
+   <mux_decoder  tile="14" pixel="211" value="4"/>
+   <mux_decoder  tile="14" pixel="212" value="4"/>
+   <mux_decoder  tile="14" pixel="214" value="4"/>
+   <mux_decoder  tile="14" pixel="215" value="4"/>
+   <mux_decoder  tile="14" pixel="228" value="4"/>
+   <mux_decoder  tile="14" pixel="229" value="4"/>
+   <mux_decoder  tile="14" pixel="230" value="4"/>
+   <mux_decoder  tile="14" pixel="231" value="4"/>
+   <mux_decoder  tile="14" pixel="245" value="4"/>
+   <mux_decoder  tile="14" pixel="246" value="4"/>
+   <mux_decoder  tile="14" pixel="247" value="4"/>
+
+
+
+   <!--
+   		LABEL THE TILE 15 ACROSS ITS ASICs 
+   
+   -->
+   <!-- COMMENT: TILE 15, Labelled Numeral 15 -->
+   <!-- Draw vertical line between pixels  33 and 241 in tile: 15 asic: None -->
+   <mux_decoder tile="15" pixel="33" value="4"/>
+   <mux_decoder tile="15" pixel="49" value="4"/>
+   <mux_decoder tile="15" pixel="65" value="4"/>
+   <mux_decoder tile="15" pixel="81" value="4"/>
+   <mux_decoder tile="15" pixel="97" value="4"/>
+   <mux_decoder tile="15" pixel="113" value="4"/>
+   <mux_decoder tile="15" pixel="129" value="4"/>
+   <mux_decoder tile="15" pixel="145" value="4"/>
+   <mux_decoder tile="15" pixel="161" value="4"/>
+   <mux_decoder tile="15" pixel="177" value="4"/>
+   <mux_decoder tile="15" pixel="193" value="4"/>
+   <mux_decoder tile="15" pixel="209" value="4"/>
+   <mux_decoder tile="15" pixel="225" value="4"/>
+   <mux_decoder tile="15" pixel="241" value="4"/>
+   <!-- Draw horizontal line between pixels  34 and  36 in tile: 15 asic: None -->
+   <mux_decoder tile="15" pixel="34" value="4"/>
+   <mux_decoder tile="15" pixel="35" value="4"/>
+   <mux_decoder tile="15" pixel="36" value="4"/>
+   <!-- Draw horizontal line between pixels  50 and  52 in tile: 15 asic: None -->
+   <mux_decoder tile="15" pixel="50" value="4"/>
+   <mux_decoder tile="15" pixel="51" value="4"/>
+   <mux_decoder tile="15" pixel="52" value="4"/>
+
+
+   <mux_decoder  tile="15" pixel="99" value="4"/>
+   <mux_decoder  tile="15" pixel="100" value="4"/>
+   <mux_decoder  tile="15" pixel="101" value="4"/>
+   <mux_decoder  tile="15" pixel="102" value="4"/>
+   <mux_decoder  tile="15" pixel="114" value="4"/>
+   <mux_decoder  tile="15" pixel="115" value="4"/>
+   <mux_decoder  tile="15" pixel="116" value="4"/>
+   <mux_decoder  tile="15" pixel="117" value="4"/>
+   <mux_decoder  tile="15" pixel="118" value="4"/>
+   <mux_decoder  tile="15" pixel="119" value="4"/>
+   <mux_decoder  tile="15" pixel="130" value="4"/>
+   <mux_decoder  tile="15" pixel="131" value="4"/>
+   <mux_decoder  tile="15" pixel="134" value="4"/>
+   <mux_decoder  tile="15" pixel="135" value="4"/>
+   <mux_decoder  tile="15" pixel="150" value="4"/>
+   <mux_decoder  tile="15" pixel="151" value="4"/>
+   <mux_decoder  tile="15" pixel="163" value="4"/>
+   <mux_decoder  tile="15" pixel="164" value="4"/>
+   <mux_decoder  tile="15" pixel="165" value="4"/>
+   <mux_decoder  tile="15" pixel="166" value="4"/>
+   <mux_decoder  tile="15" pixel="167" value="4"/>
+   <mux_decoder  tile="15" pixel="178" value="4"/>
+   <mux_decoder  tile="15" pixel="179" value="4"/>
+   <mux_decoder  tile="15" pixel="180" value="4"/>
+   <mux_decoder  tile="15" pixel="181" value="4"/>
+   <mux_decoder  tile="15" pixel="182" value="4"/>
+   <mux_decoder  tile="15" pixel="194" value="4"/>
+   <mux_decoder  tile="15" pixel="195" value="4"/>
+   <mux_decoder  tile="15" pixel="210" value="4"/>
+   <mux_decoder  tile="15" pixel="211" value="4"/>
+   <mux_decoder  tile="15" pixel="226" value="4"/>
+   <mux_decoder  tile="15" pixel="227" value="4"/>
+   <mux_decoder  tile="15" pixel="228" value="4"/>
+   <mux_decoder  tile="15" pixel="229" value="4"/>
+   <mux_decoder  tile="15" pixel="230" value="4"/>
+   <mux_decoder  tile="15" pixel="231" value="4"/>
+   <mux_decoder  tile="15" pixel="243" value="4"/>
+   <mux_decoder  tile="15" pixel="244" value="4"/>
+   <mux_decoder  tile="15" pixel="245" value="4"/>
+   <mux_decoder  tile="15" pixel="246" value="4"/>
+
 
 
 
