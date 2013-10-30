@@ -9,7 +9,7 @@
 
 from LpdFemClient.LpdFemClient import LpdFemClient
 
-import sys, time, datetime, argparse, socket
+import sys, time, datetime, argparse, socket, os
 from datetime import datetime
 
 import numpy as np
@@ -204,7 +204,7 @@ class ImageDisplay(FigureCanvas):
         
         # Create hdf file - if HDF5 Library present
         if bHDF5:
-            dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            dateString = datetime.now().strftime("%Y%m%d-%H%M%S")
             fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[self.asicModuleType], dateString)
 
             self.hdfFile = h5py.File(fileName, 'w')
@@ -337,9 +337,6 @@ class ImageDisplay(FigureCanvas):
         # Define variables that increase with each loop iteration
         currentPlot = 0
         bNextImageAvailable = True
-
-        # Count number of loops with respect to trains per hdf5 file if selected
-        loopCounter = 0
         
         # Loop over the specified number of plots
         while bNextImageAvailable and currentPlot < plotMaxPlots:
@@ -378,36 +375,27 @@ class ImageDisplay(FigureCanvas):
             self.ax[currentPlot].draw_artist(self.img[currentPlot])
             self.blit(self.ax[currentPlot].bbox)
 
+            # index within the opened file
+            fileIndex = self.imageCounter % numberPlotsPerFile
+
             # Write image to file - if HDF5 Library present
             if bHDF5:
-                self.imageDs.resize((loopCounter+1, self.nrows, self.ncols))
-                self.imageDs[loopCounter,...] = self.data
-                
-                self.timeStampDs.resize((loopCounter+1, ))
-                self.timeStampDs[loopCounter] = lpdFrame.timeStampSof
-                
-                self.trainNumberDs.resize((loopCounter+1, ))
-                self.trainNumberDs[loopCounter] = self.trainNumber
-                
-                self.imageNumberDs.resize((loopCounter+1, ))
-                self.imageNumberDs[loopCounter] = self.imageCounter
 
-                # Check whether specified number of images written to file
-                if (self.imageCounter % (numberPlotsPerFile+1)) == numberPlotsPerFile:
-                    # Reset loop counter, determine new file name
-                    loopCounter = 0
-                    dateString = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                # Check if file opened
+                try:
+                    self.hdfFile.filename
+                except ValueError:
+                    # Create new file
+                    dateString = datetime.now().strftime("%Y%m%d-%H%M%S")
                     fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[self.asicModuleType], dateString)
                     
-                    if self.hdfFile.filename == fileName:
-                        # Modify new name to avoid overwritten old..
+                    # Check if file already exists
+                    if not os.path.isfile(fileName):
+                        # Don't overwrite existing file
                         fileName = fileName[:-5] + '_' + str(self.imageCounter) + fileName[-5:]
                         if debugLevel > 0:
-                            print "\nPrevious filename: '" + self.hdfFile.filename + "'"
-                            print "New use filename:  '" + fileName + "'"
-                    
-                    # Close old file
-                    self.hdfFile.close()
+                            print "\nNew use filename:  '" + fileName + "'"
+
                     self.hdfFile = h5py.File(fileName, 'w')
                     # Recreate datasets
                     self.imageDs = self.hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols),
@@ -415,8 +403,25 @@ class ImageDisplay(FigureCanvas):
                     self.timeStampDs   = self.hdfFile.create_dataset('timeStamp',   (1,), 'f',      maxshape=(None,))
                     self.trainNumberDs = self.hdfFile.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
                     self.imageNumberDs = self.hdfFile.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
-                else:
-                    loopCounter += 1
+
+                # Write data and info to file                    
+                self.imageDs.resize((fileIndex+1, self.nrows, self.ncols))
+                self.imageDs[fileIndex,...] = self.data
+                
+                self.timeStampDs.resize((fileIndex+1, ))
+                self.timeStampDs[fileIndex] = lpdFrame.timeStampSof
+                
+                self.trainNumberDs.resize((fileIndex+1, ))
+                self.trainNumberDs[fileIndex] = self.trainNumber
+                
+                self.imageNumberDs.resize((fileIndex+1, ))
+                self.imageNumberDs[fileIndex] = currentPlot
+
+                # Close file if specified number of images written
+                if fileIndex == (numberPlotsPerFile-1):
+                    # Close old file
+                    self.hdfFile.flush()
+                    self.hdfFile.close()
                     
                 # Increment image number counter
                 self.imageCounter += 1
