@@ -223,15 +223,6 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
-        
-#    rc = theDevice.paramSet('femAsicEnableMask', [0x00FF0000, 0x00000000, 0x00000000, 0x000000FF])    # Enable 2 Tile System's ASICs
-#    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF])    # Enable everything
-#    rc = theDevice.paramSet('femAsicEnableMask', [0xFFFF0000, 0x00000000, 0x0000FF00, 0x00000000])    # Supermodule with three tiles
-#    param = 'femAsicEnableMask'
-#    rc = theDevice.paramSet(param, 9999)
-#    if rc != LpdDevice.ERROR_OK:
-#        print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-#        errorCount += 1
     
 
     #########################################################

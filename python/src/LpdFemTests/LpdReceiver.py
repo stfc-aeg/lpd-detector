@@ -375,11 +375,11 @@ class ImageDisplay(FigureCanvas):
             self.ax[currentPlot].draw_artist(self.img[currentPlot])
             self.blit(self.ax[currentPlot].bbox)
 
-            # index within the opened file
-            fileIndex = self.imageCounter % numberPlotsPerFile
-
             # Write image to file - if HDF5 Library present
             if bHDF5:
+
+                # index within the opened file
+                fileIndex = self.imageCounter % numberPlotsPerFile
 
                 # Check if file opened
                 try:
@@ -390,7 +390,7 @@ class ImageDisplay(FigureCanvas):
                     fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[self.asicModuleType], dateString)
                     
                     # Check if file already exists
-                    if not os.path.isfile(fileName):
+                    if os.path.isfile(fileName):
                         # Don't overwrite existing file
                         fileName = fileName[:-5] + '_' + str(self.imageCounter) + fileName[-5:]
                         if debugLevel > 0:
@@ -587,9 +587,10 @@ if __name__ == "__main__":
     debugLevel       = 0
     plotRows         = 2
     plotCols         = 2
+    numberPlotsPerFile = 1
 
     # Create parser object and arguments
-    parser = argparse.ArgumentParser(description="superModuleReceiveTest.py - Receive data from a Super Module. ",
+    parser = argparse.ArgumentParser(description="LpdReceiver.py - Receive data from an LPD detector. ",
                                      epilog="Default: femhost=10.0.0.1, femport=61649 and asicModule=0, all other flags' default values denoted by 'D: x'.")
 
     parser.add_argument("--asicmodule",     help="Set ASIC Module (0=Supermodule, 2=2-Tile, 4=Raw data; D: 0)",         type=int, choices=[0, 2, 4], default=asicModule)
