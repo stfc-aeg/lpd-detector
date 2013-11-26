@@ -168,21 +168,6 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
 
     ###################################################################
 
-# The second of the two command sequence configurations provided by Matt:
-#        asicCmdSequence = 'Config/CmdSequence/AutoResets_ShortExposures_AsicControl.xml'
-
-    #TODO: Temporary hack, pass filename instead of XML string
-    # Read Slow Control (LpdAsicControl) XML file into a string
-#    ff = open('Config/preambleDelaySlowControl.xml', 'r')
-#    asicSetupParams = ff.read(-1)
-#    ff.close ()
-    
-    #TODO: Temporary hack, pass filename instead of XML string
-    # Read Asic Command Sequence (LpdAsicCommandSequence) XML file into a string
-#    ff = open('Config/playingWivLasers_jacv3.xml', 'r')
-#    asicCmdSequence = ff.read(-1)
-#    ff.close ()
-
     rc = theDevice.paramSet('femAsicSetupParams', asicSetupParams)
     if rc != LpdDevice.ERROR_OK:
         print "femAsicSetupParams set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -275,14 +260,12 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             else:
                 print "{0:<32} = {1:<10}".format(param, value.__repr__())
 
-        
-        #TODO: Uncomment/restore relevant LpdFemClient code when Karabo fixes array bug
-#        param = 'femAsicEnableMask'
-#        (rc, value) = theDevice.paramGet(param)
-#        if rc != LpdDevice.ERROR_OK:
-#            print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
-#        else:
-#            print "{0:<32} = [{1:<8}, {1:<8}, {1:<8}, {1:<8}]".format(param,value[0], value[1], value[2], value[3])
+        param = 'femAsicEnableMask'
+        (rc, value) = theDevice.paramGet(param)
+        if rc != LpdDevice.ERROR_OK:
+            print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+        else:
+            print "{0:<32} = [{1:<8X}, {1:<8X}, {1:<8X}, {1:<8X}]".format(param,value[0], value[1], value[2], value[3])
     
         # Check XML string variables read back, but don't display their [long-winded] XML strings
         paramUserExtraVariables = ['femAsicCmdSequence',  'femAsicSetupParams'] 
@@ -333,7 +316,7 @@ if __name__ == '__main__':
     
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="LpdReadoutTest.py - configure and readout an LPD detector. ",
-                                     epilog="Defaults: tenGig=(eth)2, destip=10.0.0.2, femhost=192.168.2.2, femport=6969")
+                                     epilog="Defaults: tengig=(eth)2, destip=10.0.0.2, femhost=192.168.2.2, femport=6969")
 
     parser.add_argument("--tengig",     help="Set tenGig ethernet card (e.g. 2 for eth2)",  type=int, default=tenGig)
     parser.add_argument("--destip",     help="Set destination IP (eg 10.0.0.2)",            type=str, default=destIp)

@@ -88,9 +88,6 @@ class LpdAsicCommandSequence():
         FEM BRAM structure, which is returned as a list of integers. 
         '''
         
-        # Intialise tree depth (used for debugging only)    #TODO: Redundant?
-        self.depth = 0
-        
         # Parse the tree, starting at the root element, obtaining the packed
         # binary command sequence as a list
         self.total_number_nops, sequence  = self.parseElement(self.root)
@@ -113,9 +110,6 @@ class LpdAsicCommandSequence():
         
         # Track number of nops counted locally
         localNopsSum = 0
-        
-        # Increment tree depth counter
-        self.depth = self.depth + 1
         
         # Loop over child nodes of the current element
         for child in theElement:
@@ -186,9 +180,6 @@ class LpdAsicCommandSequence():
                 else:
                     if self.strict:
                         raise LpdAsicCommandSequenceError('Illegal command %s specified' % (child.tag))
-      
-        # Back up one level in the tree              
-        self.depth = self.depth - 1
         
         # Return the encoded sequence for this (partial) tree
         return localNopsSum, encodedSequence
