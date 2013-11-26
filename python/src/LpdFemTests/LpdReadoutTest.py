@@ -97,8 +97,10 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         
     rc = theDevice.open(femHost, femPort)
     if rc != LpdDevice.ERROR_OK:
-        print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
+        print "Failed to open FEM device [%s:%s]: %s" % (femHost, femPort, theDevice.errorStringGet())
         return
+    else:
+        print "\nConnected to FEM device %s:%s" % (femHost, femPort)
 
     # Display "expert" variables?
     bDebug = True
@@ -109,7 +111,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
     ###################################################################
     
     AsicVersion = 2    # 1 or 2
-    xmlConfig   = 2   # 0=test, 1=short exposure, 2=long exposure, 3=pseudorandom, 4=all 3 gain readout with short exposure, 5=all 3 gain readout with long exposure
+    xmlConfig   = 1   # 0=test, 1=short exposure, 2=long exposure, 3=pseudorandom, 4=all 3 gain readout with short exposure, 5=all 3 gain readout with long exposure
 	# (also for pseudo random  select that in asic data type and disable fast strobe for asicrx start)
 
     if AsicVersion == 1:
@@ -133,8 +135,8 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'
 #            asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2_multipleImages.xml'
         elif xmlConfig == 2:
-#            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
-            asicSetupParams = 'Config/SetupParams/Setup_LowPower_128Asics.xml'
+            asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'
+#            asicSetupParams = 'Config/SetupParams/Setup_LowPower_128Asics.xml'
             asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml'
 #            asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_MultipleImages_512.xml'
         elif xmlConfig == 3:
@@ -352,6 +354,4 @@ if __name__ == '__main__':
     if args.destip:
         destIp = args.destip
 
-#    while 1:
-#        LpdReadoutTest(tenGig, femHost, femPort, destIp)
     LpdReadoutTest(tenGig, femHost, femPort, destIp)

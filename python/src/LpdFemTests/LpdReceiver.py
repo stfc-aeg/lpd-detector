@@ -644,6 +644,7 @@ if __name__ == "__main__":
     
     app = QtGui.QApplication(sys.argv)
     widget = ImageDisplay(femHost, femPort, asicModule)
+    widget.setWindowTitle('LpdReceiver - %s:%s' % (femHost, femPort) )
     widget.show()
     
     sys.exit(app.exec_())

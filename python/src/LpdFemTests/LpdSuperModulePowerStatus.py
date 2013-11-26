@@ -4,19 +4,20 @@
     Author: ckd27546
 """
 
-
 from LpdDevice.LpdDevice import LpdDevice
-import sys
+import sys, argparse
 
-def powerCardTest():
+def powerCardTest(femHost, femPort):
     
     theDevice = LpdDevice()
     
-    rc = theDevice.open('192.168.2.2', 6969, asicModuleType=0)
+    rc = theDevice.open(femHost, femPort, asicModuleType=0)
 
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device: %s" % (theDevice.errorStringGet())
         return
+    else:
+        print "====================== %s:%s ======================" % (femHost, femPort)
     
     numSensors = 16
     numPowerCards = 2
@@ -148,6 +149,21 @@ def powerCardTest():
     theDevice.close()
 
 if __name__ == '__main__':
-        
-    powerCardTest()
+    
+    # Define default values
+    femHost = '192.168.2.2'
+    femPort = 6969
+    
+    # Create parser object and arguments
+    parser = argparse.ArgumentParser(description="LpdSuperModulePowerStatus.py - Readout power card data from a FEM. ",
+                                     epilog="Default: femhost=192.168.2.2, femport=6969")
+
+    parser.add_argument("--femhost",        help="Set fem host IP (e.g 192.168.2.2)",   type=str, default=femHost)
+    parser.add_argument("--femport",        help="Set fem port (eg 6969)",              type=int, default=femPort)
+    args = parser.parse_args()
+
+    host     = args.femhost
+    port     = args.femport
+
+    powerCardTest(host, port)
     

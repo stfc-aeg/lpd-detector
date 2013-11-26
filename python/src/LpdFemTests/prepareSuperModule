@@ -1,17 +1,8 @@
 #!/bin/bash
 
-#      RHS Power Card
-
-python LpdPowerControl.py --asicmodule 0 --hvbias 50
-python LpdPowerControl.py --asicmodule 0 --lv 1 --hv 1
-
-echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-
-#      LHS Power Card
-
-python LpdPowerControl.py --asicmodule 0 --hvbias 50
-python LpdPowerControl.py --asicmodule 0 --lv 1 --hv 1
+python LpdPowerControl.py --femhost 192.168.2.2 --femport 6969 --asicmodule 0 --hvbias 50
+python LpdPowerControl.py --femhost 192.168.2.2 --femport 6969 --asicmodule 0 --lv 1 --hv 1
 
 echo "-=-=-=-=-=-=-=-=-=- SUPERMODULE: POWER CARDS' INFO: -=-=-=-=-=-=-=-=-=-"
 
-python LpdSuperModulePowerStatus.py
+python LpdSuperModulePowerStatus.py --femhost 192.168.2.2 --femport 6969

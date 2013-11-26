@@ -64,15 +64,16 @@ if __name__ == "__main__":
                                      epilog="Note: If the script is executed without any given flag,  the corresponding supply will be switched OFF. Sadly, this is a limitation inherit to Python's parse module.")
 
     parser.add_argument("--asicmodule", help="Set ASIC Module (0=supermodule, 1=fem, 2=2-tile system)", type=int, choices=[0, 1, 2], default=0)
-    parser.add_argument("--lv", help="switch LV on (1) or off (0)", type=int, choices=[0, 1], default=0)
-    parser.add_argument("--hv", help="switch HV on (1) or off (0)", type=int, choices=[0, 1], default=0)
-    parser.add_argument("--hvbias", help="set HV bias level (in volts) - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int, default=-1)
+    parser.add_argument("--femhost",    help="Set fem host IP (e.g.  192.168.2.2)",         type=str, default='192.168.2.2')
+    parser.add_argument("--femport",    help="Set fem port (eg 61649)",                     type=int, default=6969)
+    parser.add_argument("--lv",         help="switch LV on (1) or off (0)", type=int, choices=[0, 1], default=0)
+    parser.add_argument("--hv",         help="switch HV on (1) or off (0)", type=int, choices=[0, 1], default=0)
+    parser.add_argument("--hvbias",     help="set HV bias level (in volts) - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int, default=-1)
     args = parser.parse_args()
     
-    # Define FEM IP address and port
-    host = '192.168.2.2'
-    port = 6969
-
+    # Define FEM IP address, port etc
+    host        = args.femhost
+    port        = args.femport
     asicModule  = args.asicmodule
     lv          = args.lv
     hv          = args.hv

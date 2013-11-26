@@ -595,12 +595,12 @@ class LpdDeviceParameters(object):
                                                                           0, 3, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femStartTrainDelay']           = AttributeContainer(uint32, 'FemStartTrainDelay', 'Delay between trigger arrival and start of train (in ASIC clock periods)',
-                                                                          0, 65536, 100,
+        self.expectedParameters['femStartTrainDelay']           = AttributeContainer(uint32, 'FemStartTrainDelay', 'Delay between trigger arrival and start of train (in FEM clock cycles)',
+                                                                          0, 4294967295, 100,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femStartTrainInhibit']         = AttributeContainer(uint32, 'FemStartTrainInhibit', 'Inhibit period after each trigger (in ASIC clock cycles) which holds off further triggers to allow data to be readout',
-                                                                          0, 65536, 0,
+        self.expectedParameters['femStartTrainInhibit']         = AttributeContainer(uint32, 'FemStartTrainInhibit', 'Inhibit period after each trigger (in FEM clock cycles) which holds off further triggers to allow data to be readout',
+                                                                          0, 4294967295, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femAsicGainOverride']          = AttributeContainer(bool, 'FemAsicGainOverride', 'Enable Fem gain selection override False=Gain set by femAsicGain, True=Gain set by Asic Command Sequence XML tag(s)',
