@@ -545,7 +545,8 @@ class ImageDisplay(FigureCanvas):
             if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
                 
                 # Super Module - Image now upside down, reverse the order
-                self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
+#                self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
+                self.imageLpdFullArray[:,:] = self.imageLpdFullArray[:,::-1]
                 self.imageArray = self.imageLpdFullArray.copy()
                 
             elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:

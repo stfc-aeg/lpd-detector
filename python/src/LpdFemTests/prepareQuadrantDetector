@@ -12,7 +12,24 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 python LpdPowerControl.py --femhost 192.168.2.3 --femport 6969 --asicmodule 0 --hvbias 50
 python LpdPowerControl.py --femhost 192.168.2.3 --femport 6969 --asicmodule 0 --lv 1 --hv 1
 
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+
+#      FEM1 - 192.168.2.4
+
+python LpdPowerControl.py --femhost 192.168.2.4 --femport 6969 --asicmodule 0 --hvbias 50
+python LpdPowerControl.py --femhost 192.168.2.4 --femport 6969 --asicmodule 0 --lv 1 --hv 1
+
+#echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#
+##      FEM1 - 192.168.2.5
+#
+#python LpdPowerControl.py --femhost 192.168.2.5 --femport 6969 --asicmodule 0 --hvbias 50
+#python LpdPowerControl.py --femhost 192.168.2.5 --femport 6969 --asicmodule 0 --lv 1 --hv 1
+#
+
 echo "-=-=-=-=-=-=-=-=-=- SUPERMODULE: POWER CARDS' INFO: -=-=-=-=-=-=-=-=-=-"
 
 python LpdSuperModulePowerStatus.py --femhost 192.168.2.2 --femport 6969
 python LpdSuperModulePowerStatus.py --femhost 192.168.2.3 --femport 6969
+python LpdSuperModulePowerStatus.py --femhost 192.168.2.4 --femport 6969
+#python LpdSuperModulePowerStatus.py --femhost 192.168.2.5 --femport 6969
