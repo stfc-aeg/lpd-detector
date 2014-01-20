@@ -1,0 +1,5 @@
+xpt_input_short_range = 0x00 
+xpt_input_long_range = 0xed 
+xpt_output_short_range = 0xb0
+xpt_output_long_range = 0xc6 
+
