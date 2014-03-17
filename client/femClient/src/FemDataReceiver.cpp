@@ -14,9 +14,12 @@ void* lScratchBuffer = 0;
 #endif
 
 FemDataReceiver::FemDataReceiver(unsigned int aRecvPort)
-	: mRecvSocket(mIoService, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), aRecvPort)),
+	: mRecvPort(aRecvPort),
+	  mRecvSocket(mIoService, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), aRecvPort)),
 	  mWatchdogTimer(mIoService),
 	  mAcquiring(false),
+	  mStopped(false),
+	  mReceiverTerminated(false),
 	  mRemainingFrames(0),
 	  mNumFrames(0),
 	  mFrameLength(0),
@@ -42,7 +45,7 @@ FemDataReceiver::~FemDataReceiver()
 {
 
 	// Make sure the IO service is stopped and the receiver thread terminated before destroying this object
-	this->stopAcquisition();
+	//this->stopAcquisition(0);
 
 }
 
@@ -61,11 +64,20 @@ void FemDataReceiver::startAcquisition(void)
 
 		std::cout << "Starting acquisition loop for " << mNumFrames <<  " frames" << std::endl;
 
+		// Clear stopped flag
+		mStopped = false;
+		mReceiverTerminated = false;
+
 		// Set acquisition flag
 		mAcquiring = true;
 
 		// Initialise current frame counter to number of frames to be acquired
 		mRemainingFrames = mNumFrames;
+
+		// Zero complete-after flag - a non-zero value inserted here by an asynchronous stop
+		// command will allow clean termination of the receiver after the specified number
+		// of frames
+		mCompleteAfterNumFrames = 0;
 
 		// Initialise counters for next frame acquisition sequence
 		mFramePayloadBytesReceived = 0;
@@ -102,6 +114,20 @@ void FemDataReceiver::startAcquisition(void)
 				// TODO handle error here
 			}
 
+			if (!mRecvSocket.is_open()) {
+				std::cout << "Reopening UDP receive socket on port " << mRecvPort << std::endl;
+				mRecvSocket.open(boost::asio::ip::udp::v4());
+				mRecvSocket.bind(boost::asio::ip::udp::endpoint(
+					      boost::asio::ip::udp::v4(), mRecvPort));
+				if (mRecvSocket.is_open())
+				{
+					std::cout << "UDP receive socket is now reopened OK" << std::endl;
+				} else {
+					std::cout << "UDP receive socket failed to reopen" << std::endl;
+				}
+
+
+			}
 #ifdef SIMULATED_RECEIVER
 
 			// Launch a simulated receive handler using a deadline actor, set to run on the
@@ -146,8 +172,8 @@ void FemDataReceiver::startAcquisition(void)
 
 			// Setup watchdog handler deadline actor to handle receive timeouts
 			mRecvWatchdogCounter = 0;
-			mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(kWatchdogHandlerIntervalMs));
-			watchdogHandler();
+//			mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(kWatchdogHandlerIntervalMs));
+//			watchdogHandler();
 #endif
 
 
@@ -161,20 +187,79 @@ void FemDataReceiver::startAcquisition(void)
 		{
 			std::cout << "Callbacks not initialised, cannot start receiver" << std::endl;
 		}
+	} else {
+		std::cout << "ERROR: acquiring flag set on start acquisition" << std::endl;
 	}
 
 }
 
-void FemDataReceiver::stopAcquisition(void)
+void FemDataReceiver::stopAcquisition(unsigned int aNumFrames)
 {
 
-	// Set acq flag to false
+	int numCompleteLoops = 0;
+	const int maxCompleteLoops = 5000;
+
+	// Set the complete-after flag to number of frames specified. This allows
+	// an asynchronous stop even if there are still frames remaining to receive
+	mCompleteAfterNumFrames = aNumFrames;
+
+	if (mCompleteAfterNumFrames) {
+
+		std::cout << "Waiting for data receiver thread to complete after "
+				  << mCompleteAfterNumFrames << " frames. Current number of frames received: "
+				  << mFramesReceived << std::endl;
+
+		// Wait for receiver to complete otherwise timeout
+		while ((mFramesReceived < mCompleteAfterNumFrames) && (numCompleteLoops < maxCompleteLoops))
+		{
+			usleep(1000);
+			numCompleteLoops++;
+		}
+		if (mFramesReceived < mCompleteAfterNumFrames)
+		{
+			std::cout << "ERROR: timeout during asynchronous completion of acquisition receiver" << std::endl;
+		} else {
+			std::cout << "Acquisition completed" << std::endl;
+		}
+	}
+
 	mAcquiring = false;
+	mStopped = true;
+//	mWatchdogTimer.cancel();
+	mRecvSocket.close();
+
+	numCompleteLoops = 0;
+	while ((mReceiverTerminated != true) && (numCompleteLoops < maxCompleteLoops))
+	{
+		usleep(1000);
+		numCompleteLoops++;
+	}
+	if (!mReceiverTerminated)
+	{
+		std::cout << "ERROR: timeout during receive handler termination" << std::endl;
+	}
+	else
+	{
+		std::cout << "Receive handler terminated correctly" << std::endl;
+	}
 
 	// Stop the IO service to allow the receive thread to terminate gracefully
 	if (!mIoService.stopped())
 	{
 		mIoService.stop();
+		std::cout << "Stopping asynchronous IO service" << std::endl;
+	} else {
+		std::cout << "Asynchronous IO service already stopped" << std::endl;
+	}
+
+	if (mRecvSocket.is_open()) {
+		std::cout << "Receive socket is still open" << std::endl;
+	} else {
+		std::cout << "Receive socket is now closed" << std::endl;
+	}
+
+	if (mCompleteAfterNumFrames) {
+		mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
 	}
 
 #ifdef SCRATCH_BUFFER
@@ -241,6 +326,11 @@ void FemDataReceiver::registerCallbacks(CallbackBundle* aBundle)
 
 void FemDataReceiver::watchdogHandler(void)
 {
+	if (mStopped)
+	{
+		std::cout << "watchdogHandler stopping with flag" << std::endl;
+		return;
+	}
 	if (mWatchdogTimer.expires_at() <= boost::asio::deadline_timer::traits_type::now())
 	{
 
@@ -250,14 +340,35 @@ void FemDataReceiver::watchdogHandler(void)
 		// receive handler every time a receive occurs
 		mRecvWatchdogCounter++;
 
+		// If an asynchronous stop has been been signalled, stop when the correct number of frames is reached
+		// The watchdog handler must deal with this condition since the receiver spends more time blocked
+		// waiting for packet reception
+		if (mCompleteAfterNumFrames)
+		{
+			unsigned int numFramesReceived = mNumFrames - mRemainingFrames;
+
+			if (numFramesReceived >= mCompleteAfterNumFrames)
+			{
+				std::cout << "Receiver asynchronous stop: received " << numFramesReceived << " frames, stopping" << std::endl;
+//				mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
+
+				mAcquiring = false;
+
+			}
+		}
+
 		// Reset deadline timer
 		mWatchdogTimer.expires_from_now(boost::posix_time::milliseconds(kWatchdogHandlerIntervalMs));
 
 	}
 
+	// If acquisition is still running, restart watchdog to call this handler
 	if (mAcquiring)
 	{
 		mWatchdogTimer.async_wait(boost::bind(&FemDataReceiver::watchdogHandler, this));
+	}
+	else {
+//		std::cout << "Watchdog timer is terminating" << std::endl;
 	}
 
 }
@@ -279,8 +390,8 @@ void FemDataReceiver::simulateReceive(BufferInfo aBuffer)
 		if (mRemainingFrames == 1)
 		{
 			// On last frame, stop acq loop and signal completion
-			mAcquiring = false;
 			mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
+			mAcquiring = false;
 		}
 		else if (mRemainingFrames == 0)
 		{
@@ -319,6 +430,13 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 	time_t recvTime;
 	FemDataReceiverSignal::FemDataReceiverSignals errorSignal = FemDataReceiverSignal::femAcquisitionNullSignal;
 
+	if (mStopped)
+	{
+		std::cout << "Receive handler terminating on stopped flag" << std::endl;
+		mReceiverTerminated = true;
+		return;
+	}
+
 	if (!errorCode && bytesReceived > 0)
 	{
 
@@ -348,7 +466,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 		{
 			if (!(mPacketHeader.packetNumberFlags & kStartOfFrameMarker))
 			{
-				std::cout << "Missing SOF marker" << std::endl;
+				std::cout << "Missing SOF marker on packet. Header info: frame: " << mPacketHeader.frameNumber
+						  << " packet number/flags: " << mPacketHeader.packetNumberFlags << std::endl;
 				errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 			}
 			else
@@ -373,6 +492,9 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 			if (mPacketHeader.packetNumberFlags & kEndOfFrameMarker)
 			{
 
+//				std::cout << "EOF CUR: " << mCurrentFrameNumber << " LAT: " << mLatchedFrameNumber << " SUB: "
+//						  <<mSubFramesReceived << " FRA: " << mFramesReceived << " REM: " << mRemainingFrames << std::endl;
+
 				// Timestamp reception of last packet of frame
 				time(&recvTime);
 
@@ -382,15 +504,17 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 				if (mSubFramesReceived == 0)
 				{
 					if (mEnableFrameCounterCheck) {
+
 						if (mCurrentFrameNumber != (mLatchedFrameNumber+1))
 						{
 							std::cout << "Incorrect frame counter on first subframe, got: " << mCurrentFrameNumber
-									  << " expected: " << mLatchedFrameNumber+1 << std::endl;
+									  << " expected: " << mLatchedFrameNumber+1
+									  << " frames recieved: " << mFramesReceived << std::endl;
 							errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 
 						}
 					} else {
-						mCurrentFrameNumber = mLatchedFrameNumber+1;
+						mCurrentFrameNumber = mLatchedFrameNumber + 1;
 					}
 					mLatchedFrameNumber = mCurrentFrameNumber;
 				}
@@ -451,7 +575,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 		}
 
 		// Signal current buffer as received if completed, and request a new one unless
-		// we are on the last frame, in which case signal acquisition complete
+		// we are on the last frame, in which case signal acquisition complete. Also
+		// detect if an asynchronous abort has been flagged
 		if (mFramePayloadBytesReceived >= mFrameLength)
 		{
 			if (mCallbacks.receive)
@@ -459,10 +584,20 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 				mCallbacks.receive(mCurrentFrameNumber, recvTime);
 			}
 
+			if (mCompleteAfterNumFrames != 0)
+			{
+				std::cout << "Async stop after " << mCompleteAfterNumFrames << " requested, frames received: "
+						<< mFramesReceived << std::endl;
+
+				mAcquiring = false;
+				mReceiverTerminated = true;
+				mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
+			}
 			if (mRemainingFrames == 1)
 			{
 				// On last frame, stop acquisition loop and signal completion
 				mAcquiring = false;
+				mReceiverTerminated = true;
 				mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
 			}
 			else if (mRemainingFrames == 0)
@@ -494,8 +629,14 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 	}
 	else
 	{
-		std::cout << "Got error during receive: " << errorCode.value() << " : " << errorCode.message() << " recvd=" << bytesReceived << std::endl;
-		errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+		if (errorCode.value() == boost::asio::error::operation_aborted) {
+			std::cout << "Receive operation aborted due to cancel, terminating readout" << std::endl;
+			mAcquiring = false;
+			mReceiverTerminated = true;
+		} else {
+			std::cout << "Got error during receive: " << errorCode.value() << " : " << errorCode.message() << " recvd=" << bytesReceived << std::endl;
+			errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
+		}
 	}
 
 	// If an error condition has been set during packet decoding, signal it through the callback only if the
@@ -543,6 +684,10 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode, 
 						    boost::asio::placeholders::bytes_transferred
 						    )
 		);
+	}
+	else {
+		std::cout << "Receiver handler terminating at end of final frame" << std::endl;
+		mReceiverTerminated = true;
 	}
 
 	// Reset receive watchdog counter

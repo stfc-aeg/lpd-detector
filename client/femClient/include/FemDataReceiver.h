@@ -74,7 +74,7 @@ public:
 	virtual ~FemDataReceiver();
 
 	void startAcquisition(void);
-	void stopAcquisition(void);
+	void stopAcquisition(unsigned int framesRead);
 
 	void registerCallbacks(CallbackBundle* aBundle);
 
@@ -92,6 +92,8 @@ public:
 
 private:
 
+	unsigned int                      mRecvPort;
+
 	boost::asio::io_service   	      mIoService;
 	boost::asio::ip::udp::endpoint	  mRemoteEndpoint;
 	boost::asio::ip::udp::socket      mRecvSocket;
@@ -103,7 +105,10 @@ private:
 	CallbackBundle     				  mCallbacks;
 
 	bool							  mAcquiring;
+	bool					          mStopped;
+	bool                              mReceiverTerminated;
 	unsigned int                      mRemainingFrames;
+	unsigned int				      mCompleteAfterNumFrames;
 
 	unsigned int                      mNumFrames;
 	unsigned int                      mFrameLength;

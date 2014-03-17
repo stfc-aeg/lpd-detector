@@ -179,7 +179,8 @@ typedef union
 typedef enum
 {
 	mpx3Counter0 = 0,
-	mpx3Counter1 = 1
+	mpx3Counter1 = 1,
+	mpx3Counter10 = 2,
 
 } mpx3CounterSelect;
 

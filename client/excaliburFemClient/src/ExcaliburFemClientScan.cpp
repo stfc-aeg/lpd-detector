@@ -88,6 +88,11 @@ void ExcaliburFemClient::dacScanExecute(void)
 		executeCmd = asicRunSequentialC1;
 		break;
 
+	case mpx3Counter10: // Ignore C1C0 mode (24 bit) for DAC scans
+		omrMode    = readPixelMatrixC1;
+		executeCmd = asicRunSequentialC1;
+		break;
+
 	default:
 		{
 			std::ostringstream msg;

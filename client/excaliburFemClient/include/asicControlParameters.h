@@ -40,6 +40,7 @@ const u32 kExcaliburAsicShutterResolution = kExcaliburAsicControlAddr + 10;
 const u32 kExcaliburAsicReadoutLength     = kExcaliburAsicControlAddr + 11;
 const u32 kExcaliburAsicTestPulseCount    = kExcaliburAsicControlAddr + 12;
 const u32 kExcaliburAsicCtrlState1        = kExcaliburAsicControlAddr + 17;
+const u32 kExcaliburAsicCtrlFrameCount    = kExcaliburAsicControlAddr + 20;
 
 #ifdef LEGACY_RDMA_ADDRESS_SCHEME
 const u32 kExcaliburAsicDpmRdmaAddress    = 0x50000000;
@@ -61,6 +62,9 @@ typedef enum
 	asicPixelConfigLoad   = 0x2b,
 	asicRunSequentialC0   = 0xa41,
 	asicRunSequentialC1   = 0x1241,
+	asicRunSequentialC1C0 = 0x1a41,
+	asicReadPixelMatrixC0 = 0x2841,
+	asicReadPixelMatrixC1 = 0x3041,
 	asicTestPulseEnable   = 0x4000,
 	asicExternalTrigger   = 0x20000000,
 	asicStopAcquisition   = 0x80000000

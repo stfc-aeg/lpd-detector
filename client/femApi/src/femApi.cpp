@@ -33,6 +33,7 @@ void* femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlCon
 	catch (FemClientException& e)
 	{
 		std::cerr << "Exception caught trying to initialise FEM connection: " << e.what() << std::endl;
+		theFem = NULL;
 	}
 
 	// Store the control API handle and callback structures
@@ -830,6 +831,10 @@ int femCmd(void* femHandle, int chipId, int id)
 			theFem->freeAllFrames();
 			break;
 
+		case FEM_OP_REBOOT:
+			theFem->command(0);
+			break;
+
 		case 10:
 		{
 			FemAcquireStatus acqStatus = theFem->acquireStatus();
@@ -853,6 +858,9 @@ int femCmd(void* femHandle, int chipId, int id)
 		case 11:
 			theFem->acquireConfig(1, 0x1000, 2, 0x30000000, 1);
 			break;
+
+		case 12:
+			theFem->dacScanExecute();
 
 		break;
 

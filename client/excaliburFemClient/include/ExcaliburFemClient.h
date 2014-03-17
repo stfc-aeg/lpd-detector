@@ -262,6 +262,7 @@ private:
 	double                mBurstModeSubmitPeriod;
 
 	bool				  mEnableDeferredBufferRelease;
+	bool				  mEnableCommandOnReceiveCallback;
 
 	unsigned int		  mDacScanDac;
 	unsigned int		  mDacScanStart;

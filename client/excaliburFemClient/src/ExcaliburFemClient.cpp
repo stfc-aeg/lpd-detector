@@ -30,6 +30,7 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 	mNumSubFrames(2),
 	mBurstModeSubmitPeriod(0),
 	mEnableDeferredBufferRelease(false),
+	mEnableCommandOnReceiveCallback(false),
 	mDacScanDac(0),
 	mDacScanStart(0),
 	mDacScanStop(0),
@@ -192,6 +193,15 @@ void ExcaliburFemClient::receiveCallback(int aFrameCounter, time_t aRecvTime)
 	// Fill fields into frame metadata
 	frame->frameCounter = aFrameCounter;
 	frame->timeStamp    = aRecvTime;
+
+	// If a command should be executed on this callback, do so
+	if (mEnableCommandOnReceiveCallback)
+	{
+//		u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
+		std::cout << "In receive callback, command enabled, frame counter = " << aFrameCounter << std::endl;
+//		std::cout << "ctrlState: 0x" << std::hex << ctrlState << std::dec << std::endl;
+	}
+
 
 	// If deferred buffer release is enabled, queue the completed
 	// frame on the release queue, otherwise call the receive callback
@@ -367,6 +377,23 @@ void ExcaliburFemClient::startAcquisition(void)
 	bool enableFrameCounterCheck = true;
 	ExcaliburScanFunc theScanFunc = NULL;
 
+	unsigned int storedNumFrames = mNumFrames;
+	mpx3CounterSelect storedCounterSelect = mMpx3CounterSelect;
+
+	mEnableCommandOnReceiveCallback = false;
+
+	// Create a data receiver object
+//	try
+//	{
+//		mFemDataReceiver = new FemDataReceiver(mFemDataHostPort);
+//	}
+//	catch (boost::system::system_error &e)
+//	{
+//		std::ostringstream msg;
+//		msg << "Failed to create FEM data receiver: " << e.what();
+//		throw FemClientException((FemClientErrorCode)excaliburFemClientDataReceviverSetupFailed, msg.str());
+//	}
+
 	// Select various parameters based on operation mode
 	switch (mOperationMode)
 	{
@@ -376,6 +403,25 @@ void ExcaliburFemClient::startAcquisition(void)
 		numAcq = 0; // Let the acquire config command configure all buffers in this mode
 		bdCoalesce = 1;
 		mEnableDeferredBufferRelease = false;
+
+		// If 24-bit mode is selected, ensure that parameters are as needed, i.e. only a single frame will
+		// be taken with both counters being read out
+		if (mMpx3OmrParams[0].counterDepth == counterDepth24)
+		{
+			if (mNumFrames != 1)
+			{
+				std::cout << "WARNING: Readout of > 1 frames not supported in 24-bit mode, resetting to 1 frame" << std::endl;
+				mNumFrames = 1;
+			}
+//			if (mMpx3CounterSelect != mpx3Counter10)
+//			{
+//				std::cout << "WARNING: Readout in 24-bit requires counter select on both counters, setting appropriately" << std::endl;
+//				mMpx3CounterSelect = mpx3Counter10;
+//			}
+//			numRxFrames = 2;
+//			bdCoalesce = 2;
+			mEnableCommandOnReceiveCallback = true;
+		}
 		break;
 
 	case excaliburOperationModeBurst:
@@ -456,7 +502,7 @@ void ExcaliburFemClient::startAcquisition(void)
 	{
 
 		// Set up the number of frames to be acquired in the ASIC control block
-		this->asicControlNumFramesSet(numRxFrames);
+		this->asicControlNumFramesSet(mNumFrames);
 
 		// Set up the acquisition period in the ASIC control block
 		// TODO not yet implemented in firmware
@@ -516,6 +562,11 @@ void ExcaliburFemClient::startAcquisition(void)
 			executeCmd = asicRunSequentialC1;
 			break;
 
+		case mpx3Counter10:
+			omrMode    = readPixelMatrixC1;
+			executeCmd = asicRunSequentialC1C0;
+			break;
+
 		default:
 			{
 				std::ostringstream msg;
@@ -567,6 +618,10 @@ void ExcaliburFemClient::startAcquisition(void)
 
 	}
 
+	// Restore state of number of frames and counter select
+	mNumFrames = storedNumFrames;
+	mMpx3CounterSelect = storedCounterSelect;;
+
 	clock_gettime(CLOCK_REALTIME, &endTime);
 
 	double startSecs = startTime.tv_sec  + ((double)startTime.tv_nsec / 1.0E9);
@@ -576,42 +631,162 @@ void ExcaliburFemClient::startAcquisition(void)
 	std::cout << "startAcquisition call took " << elapsedSecs << " secs" << std::endl;
 }
 
+//void ExcaliburFemClient::stopAcquisition(void)
+//{
+//
+//	// Check if acquisition is active in data receiver. If so
+//	// send stop command to ASIC control block to terminate after
+//	// current ASIC transfer
+//	if (mFemDataReceiver != 0)
+//	{
+//		if (mFemDataReceiver->acqusitionActive())
+//		{
+//			std::cout << "ACQ active, sending stop" << std::endl;
+//			this->asicControlCommandExecute(asicStopAcquisition);
+//
+//			usleep(10000);
+//			u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
+//			std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
+//
+//		}
+//	}
+//	// Send ACQUIRE stop command to the FEM
+//	// TODO check if stopped already?
+//	this->acquireStop();
+//
+//	if (mFemDataReceiver != 0)
+//	{
+//		// Ensure that the data receiver has stopped cleanly
+//		mFemDataReceiver->stopAcquisition();
+//
+//		// Delete the data receiver
+//		//delete(mFemDataReceiver);
+//		//mFemDataReceiver = 0;
+//	}
+//
+//	// Reset ASIC control firmware block
+//	// TODO is this necessary - was put in to reset frame counter
+//	this->asicControlReset();
+//
+//}
+
 void ExcaliburFemClient::stopAcquisition(void)
 {
 
-	// Check if acquisition is active in data receiver. If so
-	// send stop command to ASIC control block to terminate after
-	// current ASIC transfer
+	u32 framesRead = 0;
+	bool doFullAcqStop = true;
+
+	std::cout << "Entering stopAcquisition()" << std::endl;
+
+	// Check if acquisition is active in data receiver. If so, perform the steps necessary to bring the
+	// system to a graceful halt. This is dependent on the operation mode currently in force.
 	if (mFemDataReceiver != 0)
 	{
 		if (mFemDataReceiver->acqusitionActive())
 		{
-			std::cout << "ACQ active, sending stop" << std::endl;
-			this->asicControlCommandExecute(asicStopAcquisition);
+			switch (mOperationMode)
+			{
+			case excaliburOperationModeNormal:
+				{
+					std::cout << "Normal mode acquisition is still active, sending stop to FEM ASIC control" << std::endl;
+					this->asicControlCommandExecute(asicStopAcquisition);
 
-			usleep(10000);
-			u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
-			std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
+					// Wait at least the acquisition time (shutter time) plus 500us readout time before
+					// checking the state to allow last frame to be read out
+					usleep((mAcquisitionTimeMs * 1000) + 500);
+
+					// Read control state register for diagnostics
+					u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
+					framesRead = this->rdmaRead(kExcaliburAsicCtrlFrameCount);
+					std::cout << "FEM ASIC control has completed " << framesRead
+							  << " frames, control state register1: 0x" << std::hex << ctrlState << std::dec << std::endl;
+
+				}
+				break;
+			case excaliburOperationModeBurst:      // Deliberate fall-thru for these modes where async stop not supported
+			case excaliburOperationModeHistogram:
+				std::cout << "Cannot complete asynchronous stop in this operation mode, ignoring stop command while running" << std::endl;
+				doFullAcqStop = false;
+				break;
+
+			case excaliburOperationModeDacScan:
+				{
+	#ifndef MPX3_RX
+					std::cout << "Current FEM firmware does not support asynchronous stop of DAC scan" << std::endl;
+					doFullAcqStop = false;
+	#else
+					std::cout << "Performing asynchronous stop of DAC scan" << std::endl;
+					framesRead = this->dacScanAbort();
+
+	#endif
+				}
+				break;
+
+			default:
+			{
+				std::ostringstream msg;
+				msg << "Cannot stop acquisition, illegal operation mode specified: " << mOperationMode;
+				throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalOperationMode, msg.str());
+			}
+				break;
+
+			} // End of switch
+
+			// Wait until DMA engine has transferred out the number of frames read out by the
+			// ASIC control block. This loop will repeat until ten times the frame acquisition
+			// length, after which it will assume that the completion has timed out
+			bool acqCompletePending = true;
+			int numAcqCompleteLoops = 0;
+			int maxAcqCompleteLoops = 10;
+
+
+			while (acqCompletePending && (numAcqCompleteLoops < maxAcqCompleteLoops))
+			{
+				FemAcquireStatus acqState = this->acquireStatus();
+				std::cout << "Asynchronous stop of DMA acquisition loop: " << numAcqCompleteLoops << " attempts, ACQ state: " << acqState.state
+						  << " sent BDs: " << acqState.totalSent << std::endl;
+
+				if (acqState.totalSent >= framesRead*2)
+				{
+					std::cout << "DMA controller has transmitted " << framesRead << " frames OK" << std::endl;
+					acqCompletePending = false;
+				}
+				else
+				{
+					numAcqCompleteLoops++;
+					usleep(mAcquisitionTimeMs * 1000);
+				}
+			}
+			if (acqCompletePending)
+			{
+				std::cout << "ERROR: DMA transfer of " << framesRead << " failed to complete in expected time during async stop" << std::endl;
+			}
+
 
 		}
 	}
-	// Send ACQUIRE stop command to the FEM
-	// TODO check if stopped already?
-	this->acquireStop();
 
-	if (mFemDataReceiver != 0)
-	{
-		// Ensure that the data receiver has stopped cleanly
-		mFemDataReceiver->stopAcquisition();
+	if (doFullAcqStop) {
 
-		// Delete the data receiver
-		//delete(mFemDataReceiver);
-		//mFemDataReceiver = 0;
+		// Send ACQUIRE stop command to the FEM
+		this->acquireStop();
+
+		if (mFemDataReceiver != 0)
+		{
+			// Ensure that the data receiver has stopped cleanly
+			mFemDataReceiver->stopAcquisition(framesRead);
+
+			// Delete the data receiver
+//			delete(mFemDataReceiver);
+//			mFemDataReceiver = 0;
+		}
+
+		// Reset ASIC control firmware block
+		// TODO is this necessary - was put in to reset frame counter
+		this->asicControlReset();
+
 	}
-
-	// Reset ASIC control firmware block
-	// TODO is this necessary - was put in to reset frame counter
-	this->asicControlReset();
+	std::cout << "Exiting stopAcquisition()" << std::endl;
 
 }
 

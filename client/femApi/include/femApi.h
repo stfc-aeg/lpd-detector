@@ -137,6 +137,8 @@ void femClose(void* femHandle);
 #define FEM_OP_FREEALLFRAMES 4
 #define FEM_OP_LOADDACCONFIG 5
 #define FEM_OP_FEINIT 6
+#define FEM_OP_REBOOT 7
+
 /* Medipix III global registers */
 #define FEM_OP_MPXIII_COLOURMODE 1000
 #define FEM_OP_MPXIII_COUNTERDEPTH 1001
