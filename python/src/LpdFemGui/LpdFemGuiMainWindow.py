@@ -5,6 +5,7 @@ from LpdFemGuiMainDaqTab import *
 from LpdFemGuiMainPowerTab import *
 from LpdFemGuiMainConfigTab import *
 from LpdFemGuiMainEvrTab import *
+from LpdFemGuiMainTestTab import *
 from utilities import *
 import time
 import sys
@@ -35,6 +36,9 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.pwrTab = LpdFemGuiMainPowerTab(appMain, self)
         self.configTab = LpdFemGuiMainConfigTab(appMain, self)
         self.evrTab = LpdFemGuiMainEvrTab(appMain, self)
+        self.testTab = LpdFemGuiMainTestTab(appMain, self)
+        self.ui.operatorEdit.text()
+
 
         # Initialise default fields based on appMain object
         self.ui.connectAddr.setText(self.appMain.getCachedParam('femAddr'))

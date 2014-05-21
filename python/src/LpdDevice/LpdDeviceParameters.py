@@ -576,7 +576,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['numberTrains']                 = AttributeContainer(uint32, 'NumberTrains', 'Number of trains [if LL Data Generator or PPC Data Direct selected]',
-                                                                          0, 1024, 1,
+                                                                          0, 10024, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['tenGigFarmMode']               = AttributeContainer(uint32, 'TenGigFarmMode', '10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists',
