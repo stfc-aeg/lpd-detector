@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Tue May 20 14:33:57 2014
+# Created: Wed May 21 09:58:54 2014
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -1876,12 +1876,16 @@ class Ui_MainWindow(object):
         self.moduleLhsSel = QtGui.QRadioButton(self.testTab)
         self.moduleLhsSel.setGeometry(QtCore.QRect(567, 43, 55, 21))
         self.moduleLhsSel.setObjectName(_fromUtf8("moduleLhsSel"))
+        self.moduleTypeButtonGroup = QtGui.QButtonGroup(MainWindow)
+        self.moduleTypeButtonGroup.setObjectName(_fromUtf8("moduleTypeButtonGroup"))
+        self.moduleTypeButtonGroup.addButton(self.moduleLhsSel)
         self.moduleTypeLabel = QtGui.QLabel(self.testTab)
         self.moduleTypeLabel.setGeometry(QtCore.QRect(472, 40, 91, 27))
         self.moduleTypeLabel.setObjectName(_fromUtf8("moduleTypeLabel"))
         self.moduleRhsSel = QtGui.QRadioButton(self.testTab)
         self.moduleRhsSel.setGeometry(QtCore.QRect(626, 43, 61, 21))
         self.moduleRhsSel.setObjectName(_fromUtf8("moduleRhsSel"))
+        self.moduleTypeButtonGroup.addButton(self.moduleRhsSel)
         self.verticalTabWidget.addTab(self.testTab, _fromUtf8(""))
         self.horizontalLayoutWidget_2 = QtGui.QWidget(self.centralwidget)
         self.horizontalLayoutWidget_2.setGeometry(QtCore.QRect(10, 0, 781, 52))

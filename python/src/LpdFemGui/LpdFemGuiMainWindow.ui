@@ -4567,6 +4567,9 @@
       <property name="text">
        <string>LHS</string>
       </property>
+      <attribute name="buttonGroup">
+       <string>moduleTypeButtonGroup</string>
+      </attribute>
      </widget>
      <widget class="QLabel" name="moduleTypeLabel">
       <property name="geometry">
@@ -4593,6 +4596,9 @@
       <property name="text">
        <string>RHS</string>
       </property>
+      <attribute name="buttonGroup">
+       <string>moduleTypeButtonGroup</string>
+      </attribute>
      </widget>
     </widget>
    </widget>
@@ -4904,5 +4910,6 @@
  <buttongroups>
   <buttongroup name="pixelFbkButtonGroup"/>
   <buttongroup name="gainOverrideButtonGroup"/>
+  <buttongroup name="moduleTypeButtonGroup"/>
  </buttongroups>
 </ui>

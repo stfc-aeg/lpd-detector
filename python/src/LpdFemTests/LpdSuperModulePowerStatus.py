@@ -1,5 +1,5 @@
 """
-    LpdSuperModulePowerCardTest - Readout both power cards from a supermodule system
+    LpdSuperModulePowerStatus - Readout both power cards from a supermodule system
 
     Author: ckd27546
 """

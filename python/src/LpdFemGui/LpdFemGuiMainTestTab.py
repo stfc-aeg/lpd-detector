@@ -25,14 +25,14 @@ class LpdFemGuiMainTestTab(object):
         self.appMain = appMain
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
-        self.msgPrint = self.mainWindow.msgPrint
+        self.msgPrint = self.testMsgPrint   # Use GUI element within this tab
         
         # Initialise default fields based on appMain object cached parameters
         # ...
         
         
-        QtCore.qDebug("LpdFemGuiMainTestTab, __init__()")
-        self.testMsgPrint("testing")
+#        QtCore.qDebug("LpdFemGuiMainTestTab, __init__()")
+        self.msgPrint("te!sting")
 
 #        if self.appMain.getCachedParam('externalTrigger') == True:
 #            self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Checked)
@@ -40,29 +40,17 @@ class LpdFemGuiMainTestTab(object):
 #            self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Unchecked)
 #        self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))        
         
-        # Example code to be modified:
-#        fbkOverride = self.appMain.getCachedParam('femAsicPixelFeedbackOverride')
-#        if fbkOverride == 1:
-#            self.ui.pixelFbk5Sel.setChecked(True)
-#        elif fbkOverride == 0:
-#            self.ui.pixelFbk50Sel.setChecked(True)
-#        else:
-#            pass
-
         # Connect signals and slots
         QtCore.QObject.connect(self.ui.testBtn, QtCore.SIGNAL("clicked()"), self.executeTest)
         QtCore.QObject.connect(self.ui.operatorEdit,   QtCore.SIGNAL("editingFinished()"), self.operatorUpdate)
         QtCore.QObject.connect(self.ui.moduleNumberEdit,   QtCore.SIGNAL("editingFinished()"), self.moduleNumberUpdate)
 #        QtCore.QObject.connect(self.ui.externalTriggerSel, QtCore.SIGNAL("toggled(bool)"), self.externalTriggerSelect)
-#        QtCore.QObject.connect(self.ui.gainOverrideButtonGroup, QtCore.SIGNAL("buttonClicked(int)"), self.gainOverrideUpdate)
-                
+        QtCore.QObject.connect(self.ui.moduleTypeButtonGroup, QtCore.SIGNAL("buttonClicked(int)"), self.moduleTypeUpdate)
+
     def executeTest(self):
 
 #        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select readout parameter file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
-        QtCore.qDebug("LpdFemGuiMainTestTab, You pressed the Test button! ")
-        #TODO: Write a message to testMessageBox
-        self.testMsgPrint("testing")
-        QtCore.qDebug("LpdFemGuiMainTestTab, You pressed the Test button! ")
+        self.msgPrint("LpdFemGuiMainTestTab, You pressed the Test button! ")
 
     def operatorUpdate(self):
 
@@ -77,16 +65,24 @@ class LpdFemGuiMainTestTab(object):
 #        self.appMain.setCachedParam('externalTrigger', state)
 #        self.mainWindow.updateEnabledWidgets()
 
-#    def gainOverrideUpdate(self):
-#
-#        gainOverride = -1
-#        if self.ui.gainModeAutoSel.isChecked():
-#            gainOverride = 0
-#        elif self.ui.gainModex100Sel.isChecked():
-#            gainOverride = 3
-#        else:
-#            self.msgPrint("Illegal gain override selection - should not happen")
-#            return
+    def moduleTypeUpdate(self):
+
+        moduleType = -1 
+        if self.ui.moduleLhsSel.isChecked():
+            moduleType = 0
+        elif self.ui.moduleRhsSel.isChecked():
+            moduleType = 1
+        else:
+            self.msgPrint("Illegal Module Type selection - should not happen")
+            return
+        # Debug info:
+        if moduleType == 0:
+            self.msgPrint("LHS module selected")
+            QtCore.qDebug("LHS module selected")
+        else:
+            self.msgPrint("RHS module selected")
+            QtCore.qDebug("RHS module selected")
+
 
     def testMsgPrint(self, msg):
         
