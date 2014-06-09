@@ -92,10 +92,15 @@ def powerCardTest(femHost, femPort):
     print "HV on.."
     thisFem.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.ON)
 
-    print "Done! (Waiting for voltages to stabilise..)\n"
+    timeDelay = 3
+    print "Done! (Waiting " + str(timeDelay) + " seconds for voltages to stabilise..)\n"
 
     # Wait couple of seconds for voltages to stabilise
-    time.sleep(3)
+    for loop in range(timeDelay):
+        print ".",
+        sys.stdout.flush()
+        time.sleep(1)
+    print ""
 
     
     for sensor in range(numSensors):
@@ -130,6 +135,10 @@ def powerCardTest(femHost, femPort):
                     theDevice.close()
                     sys.exit()
 
+    # Define thresholds
+    thresholdSensorTemperature = 49.9
+    thresholdSensorCurrent = 1.67
+
     # Analyse the results:
     (issuesRHS, issuesLHS) = (0, 0)
     print "RHS Module Test Results: \n------------------"
@@ -154,64 +163,64 @@ def powerCardTest(femHost, femPort):
     if initResults['powerCardTemp1'] > 50.0: # RHS
         print "RHS     PSU Card Temp   = ", initResults['powerCardTemp1'], '  C'
         issuesRHS += 1
-    if initResults['sensor8Temp'] > 49.9:
+    if initResults['sensor8Temp'] > thresholdSensorTemperature:
         print '   Sensor  8 Temp: %5.2f' %  initResults['sensor8Temp'], '  C'
         issuesRHS += 1
-    if initResults['sensor9Temp'] > 49.9: 
+    if initResults['sensor9Temp'] > thresholdSensorTemperature: 
         print '   Sensor  9 Temp: %5.2f' %  initResults['sensor9Temp'], '  C'
         issuesRHS += 1
-    if initResults['sensor10Temp'] > 49.9: 
+    if initResults['sensor10Temp'] > thresholdSensorTemperature: 
         print '   Sensor 10 Temp: %5.2f' % initResults['sensor10Temp'], '  C'
         issuesRHS += 1
-    if initResults['sensor11Temp'] > 49.9: 
+    if initResults['sensor11Temp'] > thresholdSensorTemperature: 
         print '   Sensor 11 Temp: %5.2f' % initResults['sensor11Temp'], '  C'
         issuesRHS += 1
-    if initResults['sensor12Temp'] > 49.9: 
+    if initResults['sensor12Temp'] > thresholdSensorTemperature: 
         print '   Sensor 12 Temp: %5.2f' % initResults['sensor12Temp'], '  C'
         issuesRHS += 1
-    if initResults['sensor13Temp'] > 49.9: 
+    if initResults['sensor13Temp'] > thresholdSensorTemperature: 
         print '   Sensor 13 Temp: %5.2f' % initResults['sensor13Temp'], '  C'
         issuesRHS += 1
-    if initResults['sensor14Temp'] > 49.9: 
+    if initResults['sensor14Temp'] > thresholdSensorTemperature: 
         print '   Sensor 14 Temp: %5.2f' % initResults['sensor14Temp'], '  C' 
         issuesRHS += 1
-    if initResults['sensor15Temp'] > 49.9:
+    if initResults['sensor15Temp'] > thresholdSensorTemperature:
         print '   Sensor 15 Temp: %5.2f' % initResults['sensor15Temp'], '  C' 
         issuesRHS += 1
     
     # Notify user if no issues encountered
     if issuesRHS == 0:
         print "(No issues in RHS)"
-    
-    if postResults['sensor8Current'] > 1.5:
+
+    if postResults['sensor8Current'] > thresholdSensorCurrent:
         print "   V Sensor 8 : Connected" #%.2f" % postResults['sensor8Current'], " A"
     else:
         print "   V Sensor 8 : Not Connected"
-    if postResults['sensor9Current'] > 1.5:
+    if postResults['sensor9Current'] > thresholdSensorCurrent:
         print "   V Sensor 9 : Connected" #%.2f" % postResults['sensor9Current'], " A"
     else:
         print "   V Sensor 9 : Not Connected"
-    if postResults['sensor10Current'] > 1.5:
+    if postResults['sensor10Current'] > thresholdSensorCurrent:
         print "   V Sensor 10 : Connected" #%.2f" % postResults['sensor10Current'], " A"
     else:
         print "   V Sensor 10 : Not Connected"
-    if postResults['sensor11Current'] > 1.5:
+    if postResults['sensor11Current'] > thresholdSensorCurrent:
         print "   V Sensor 11 : Connected" #%.2f" % postResults['sensor11Current'], " A"
     else:
         print "   V Sensor 11 : Not Connected"
-    if postResults['sensor12Current'] > 1.5:
+    if postResults['sensor12Current'] > thresholdSensorCurrent:
         print "   V Sensor 12 : Connected" #%.2f" % postResults['sensor12Current'], " A"
     else:
         print "   V Sensor 12 : Not Connected"
-    if postResults['sensor13Current'] > 1.5:
+    if postResults['sensor13Current'] > thresholdSensorCurrent:
         print "   V Sensor 13 : Connected" #%.2f" % postResults['sensor13Current'], " A"
     else:
         print "   V Sensor 13 : Not Connected"
-    if postResults['sensor14Current'] > 1.5:
+    if postResults['sensor14Current'] > thresholdSensorCurrent:
         print "   V Sensor 14 : Connected" #%.2f" % postResults['sensor14Current'], " A"
     else:
         print "   V Sensor 14 : Not Connected"
-    if postResults['sensor15Current'] > 1.5:
+    if postResults['sensor15Current'] > thresholdSensorCurrent:
         print "   V Sensor 15 : Connected" #%.2f" % postResults['sensor15Current'], " A"
     else:
         print "   V Sensor 15 : Not Connected"
@@ -249,28 +258,28 @@ def powerCardTest(femHost, femPort):
         print "LHS     PSU Card Temp   = ", initResults['powerCardTemp0'], '  C'
         issuesLHS += 1
             
-    if initResults['sensor0Temp'] > 49.9:
+    if initResults['sensor0Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 0 Temp: %5.2f' % initResults['sensor0Temp'], '  C'
         issuesLHS += 1
-    if initResults['sensor1Temp'] > 49.9:
+    if initResults['sensor1Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 1 Temp: %5.2f' % initResults['sensor1Temp'], '  C'
         issuesLHS += 1
-    if initResults['sensor2Temp'] > 49.9:
+    if initResults['sensor2Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 2 Temp: %5.2f' % initResults['sensor2Temp'], '  C'
         issuesLHS += 1
-    if initResults['sensor3Temp'] > 49.9:
+    if initResults['sensor3Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 3 Temp: %5.2f' % initResults['sensor3Temp'], '  C'
         issuesLHS += 1
-    if initResults['sensor4Temp'] > 49.9:
+    if initResults['sensor4Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 4 Temp: %5.2f' % initResults['sensor4Temp'], '  C'
         issuesLHS += 1
-    if initResults['sensor5Temp'] > 49.9:
+    if initResults['sensor5Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 5 Temp: %5.2f' % initResults['sensor5Temp'], '  C'
         issuesLHS += 1
-    if initResults['sensor6Temp'] > 49.9:
+    if initResults['sensor6Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 6 Temp: %5.2f' % initResults['sensor6Temp'], '  C'
         issuesLHS += 1
-    if initResults['sensor7Temp'] > 49.9:
+    if initResults['sensor7Temp'] > thresholdSensorTemperature:
         print 'LHS\t\t   Sensor 7 Temp: %5.2f' % initResults['sensor7Temp'], '  C'
         issuesLHS += 1
 
@@ -278,36 +287,35 @@ def powerCardTest(femHost, femPort):
     if issuesLHS == 0:
         print "(No issues in LHS)"
 
-
-    if postResults['sensor0Current'] > 1.5:
+    if postResults['sensor0Current'] > thresholdSensorCurrent:
         print "   V Sensor 0 : Connected" #%.2f" % postResults['sensor0Current'], " A"
     else:
         print "   V Sensor 0 : Not Connected"
-    if postResults['sensor1Current'] > 1.5:
+    if postResults['sensor1Current'] > thresholdSensorCurrent:
         print "   V Sensor 1 : Connected" #%.2f" % postResults['sensor1Current'], " A"
     else:
         print "   V Sensor 1 : Not Connected"
-    if postResults['sensor2Current'] > 1.5:
+    if postResults['sensor2Current'] > thresholdSensorCurrent:
         print "   V Sensor 2 : Connected" #%.2f" % postResults['sensor2Current'], " A"
     else:
         print "   V Sensor 2 : Not Connected"
-    if postResults['sensor3Current'] > 1.5:
+    if postResults['sensor3Current'] > thresholdSensorCurrent:
         print "   V Sensor 3 : Connected" #%.2f" % postResults['sensor3Current'], " A"
     else:
         print "   V Sensor 3 : Not Connected"
-    if postResults['sensor4Current'] > 1.5:
+    if postResults['sensor4Current'] > thresholdSensorCurrent:
         print "   V Sensor 4 : Connected" #%.2f" % postResults['sensor4Current'], " A"
     else:
         print "   V Sensor 4 : Not Connected"
-    if postResults['sensor5Current'] > 1.5:
+    if postResults['sensor5Current'] > thresholdSensorCurrent:
         print "   V Sensor 5 : Connected" #%.2f" % postResults['sensor5Current'], " A"
     else:
         print "   V Sensor 5 : Not Connected"
-    if postResults['sensor6Current'] > 1.5:
+    if postResults['sensor6Current'] > thresholdSensorCurrent:
         print "   V Sensor 6 : Connected" #%.2f" % postResults['sensor6Current'], " A"
     else:
         print "   V Sensor 6 : Not Connected"
-    if postResults['sensor7Current'] > 1.5:
+    if postResults['sensor7Current'] > thresholdSensorCurrent:
         print "   V Sensor 7 : Connected" #%.2f" % postResults['sensor7Current'], " A"
     else:
         print "   V Sensor 7 : Not Connected"
