@@ -203,7 +203,8 @@ class LpdPowerCard(object):
         
             Returns True if OFF; False if ON
         '''
-        return self.pcf7485ReadOneBit(LpdPowerCard.HV_CTRL_BIT)
+        value = 1 - self.pcf7485ReadOneBit(LpdPowerCard.HV_CTRL_BIT) 
+        return value
     
     def sensorBiasEnableSet(self, aEnable):
         '''
@@ -218,7 +219,8 @@ class LpdPowerCard(object):
         
             Returns True if OFF; False if ON
         '''
-        return self.pcf7485ReadOneBit(LpdPowerCard.LV_CTRL_BIT)
+        value = 1 - self.pcf7485ReadOneBit(LpdPowerCard.LV_CTRL_BIT)
+        return value
     
     def asicPowerEnableSet(self, aEnable):
         '''

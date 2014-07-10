@@ -63,31 +63,14 @@ def powerCardTest(femHost, femPort):
                     print "Found three errors, aborting.."
                     theDevice.close()
                     sys.exit()
-             
+     
     print "    ~+~+~+~+~+~+~ RHS ~+~+~+~+~+~+~+~+~ LHS ~+~+~+~+~+~+~"
     
     print "Status:"
-    print "    Low voltage  = ",
-    if results['asicPowerEnable1']:
-        print "off.",
-    else:
-        print "on.",
-    print "\t\t    Low voltage  = ",
-    if results['asicPowerEnable0']:
-        print "off."
-    else:
-        print "on."
-        
-    print "    High voltage = ",
-    if results['sensorBiasEnable1']:
-        print "off.",
-    else:
-        print "on.",
-    print "\t\t    High voltage = ",
-    if results['sensorBiasEnable0']:
-        print "off."
-    else:
-        print "on."
+    print "    Low voltage  = ", "on." if results['asicPowerEnable1'] else 'off.', '\t\t',
+    print "    Low voltage  = ", "on." if results['asicPowerEnable0'] else 'off.'
+    print "    High voltage = ", "on." if results['sensorBiasEnable1'] else 'off.', '\t\t',
+    print "    High voltage = ", "on." if results['sensorBiasEnable0'] else 'off.'
         
     print "    HV setting: %5.2f" % results['sensorBias1'] , "V", "\t\t    HV setting: %5.2f" % results['sensorBias0'], "V"
 
