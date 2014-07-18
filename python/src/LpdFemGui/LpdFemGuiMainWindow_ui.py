@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Wed May 21 09:58:54 2014
+# Created: Mon Jul 14 13:53:12 2014
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -1886,6 +1886,24 @@ class Ui_MainWindow(object):
         self.moduleRhsSel.setGeometry(QtCore.QRect(626, 43, 61, 21))
         self.moduleRhsSel.setObjectName(_fromUtf8("moduleRhsSel"))
         self.moduleTypeButtonGroup.addButton(self.moduleRhsSel)
+        self.testRunBtn = QtGui.QPushButton(self.testTab)
+        self.testRunBtn.setGeometry(QtCore.QRect(650, 190, 91, 26))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.testRunBtn.sizePolicy().hasHeightForWidth())
+        self.testRunBtn.setSizePolicy(sizePolicy)
+        self.testRunBtn.setMinimumSize(QtCore.QSize(40, 0))
+        self.testRunBtn.setObjectName(_fromUtf8("testRunBtn"))
+        self.testConfigBtn = QtGui.QPushButton(self.testTab)
+        self.testConfigBtn.setGeometry(QtCore.QRect(650, 150, 91, 26))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.testConfigBtn.sizePolicy().hasHeightForWidth())
+        self.testConfigBtn.setSizePolicy(sizePolicy)
+        self.testConfigBtn.setMinimumSize(QtCore.QSize(40, 0))
+        self.testConfigBtn.setObjectName(_fromUtf8("testConfigBtn"))
         self.verticalTabWidget.addTab(self.testTab, _fromUtf8(""))
         self.horizontalLayoutWidget_2 = QtGui.QWidget(self.centralwidget)
         self.horizontalLayoutWidget_2.setGeometry(QtCore.QRect(10, 0, 781, 52))
@@ -2238,6 +2256,8 @@ class Ui_MainWindow(object):
         self.moduleLhsSel.setText(QtGui.QApplication.translate("MainWindow", "LHS", None, QtGui.QApplication.UnicodeUTF8))
         self.moduleTypeLabel.setText(QtGui.QApplication.translate("MainWindow", "Module Type:", None, QtGui.QApplication.UnicodeUTF8))
         self.moduleRhsSel.setText(QtGui.QApplication.translate("MainWindow", "RHS", None, QtGui.QApplication.UnicodeUTF8))
+        self.testRunBtn.setText(QtGui.QApplication.translate("MainWindow", "TestRun", None, QtGui.QApplication.UnicodeUTF8))
+        self.testConfigBtn.setText(QtGui.QApplication.translate("MainWindow", "TestConfig", None, QtGui.QApplication.UnicodeUTF8))
         self.verticalTabWidget.setTabText(self.verticalTabWidget.indexOf(self.testTab), QtGui.QApplication.translate("MainWindow", "Page", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox.setTitle(QtGui.QApplication.translate("MainWindow", "Connection", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Address:", None, QtGui.QApplication.UnicodeUTF8))

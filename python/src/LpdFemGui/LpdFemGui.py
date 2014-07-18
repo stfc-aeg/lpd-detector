@@ -295,9 +295,10 @@ class LpdFemGui:
                 self.deviceState = LpdFemGui.DevicdeIdle
                 return
         
-        # Create and LpdFemDataReceiver instance to launch readout threads
+        # Create an LpdFemDataReceiver instance to launch readout threads
         try:
-            dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal, 
+            dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal, self.mainWindow.testTab.fileNameSignal,
+                                              self.mainWindow.testTab.fileReadySignal, 
                                               self.dataListenAddr, self.dataListenPort, self.numFrames, self.cachedParams, self)
         except Exception as e:
             self.msgPrint("ERROR: failed to create data receiver: %s" % e)

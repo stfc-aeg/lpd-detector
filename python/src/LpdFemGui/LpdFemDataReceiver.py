@@ -18,7 +18,7 @@ bDisplayPlotData = True
   
 class LpdFemDataReceiver():
     
-    def __init__(self, liveViewSignal, runStatusSignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
+    def __init__(self, liveViewSignal, runStatusSignal, fileNameSignal, fileReadySignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
         
         try:
                 
@@ -27,7 +27,7 @@ class LpdFemDataReceiver():
 
             # Create UDP recevier, frame processor and data monitor objects
             self.udpReceiver = UdpReceiver(listenAddr, listenPort, numFrames)
-            self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal)
+            self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal, fileNameSignal, fileReadySignal)
             self.dataMonitor = DataMonitor(self.udpReceiver, self.frameProcessor, runStatusSignal, numFrames)
             
             # Create threads to run them in
@@ -45,7 +45,7 @@ class LpdFemDataReceiver():
             
             # Connect data RX signal from UDP receiver to handleDataRx slot in frame processor
             self.udpReceiver.connect(self.udpReceiver, QtCore.SIGNAL("dataRxSignal"), self.frameProcessor.processFrame)
-            
+                        
             # Connect monitor loop start singal to monitor loop function
             self.dataMonitorThread.started.connect(self.dataMonitor.monitorLoop)
             
@@ -212,8 +212,8 @@ class UdpReceiver(QtCore.QObject):
         
 
 class FrameProcessor(QtCore.QObject):
-    
-    def __init__(self, numFrames, cachedParams, liveViewSignal):
+
+    def __init__(self, numFrames, cachedParams, liveViewSignal, fileNameSignal, fileReadySignal):
 
         QtCore.QObject.__init__(self)
         
@@ -228,6 +228,8 @@ class FrameProcessor(QtCore.QObject):
         self.liveViewOffset  = cachedParams['liveViewOffset']
         self.asicModuleType  = cachedParams['asicModuleType']
         self.liveViewSignal  = liveViewSignal
+        self.fileNameSignal  = fileNameSignal
+        self.fileReadySignal = fileReadySignal
 
         # Run start time
         self.tstart = time.time()
@@ -271,6 +273,9 @@ class FrameProcessor(QtCore.QObject):
         '''
 
         fileName = "{:s}/lpdData-{:05d}.hdf5".format(self.dataFilePath, self.runNumber)
+        
+        # Transmit filename to LpdFemGuiMainTestTab instance
+        self.fileNameSignal.emit(fileName)
 
         print "Creating HDF5 data file %s" % fileName
         try:
@@ -396,7 +401,10 @@ class FrameProcessor(QtCore.QObject):
 
         # Close file if enabled
         if self.fileWriteEnable:
+            print "***LpdFemDataReceiver closing file.."
             self.hdfFile.close()
+            # Transmit file ready to LpdFemGuiMainTestTab instance
+            self.fileReadySignal.emit()
         
     
     def unpackImage(self, imageOffset):

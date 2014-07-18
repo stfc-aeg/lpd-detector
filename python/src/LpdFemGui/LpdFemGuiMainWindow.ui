@@ -4600,6 +4600,56 @@
        <string>moduleTypeButtonGroup</string>
       </attribute>
      </widget>
+     <widget class="QPushButton" name="testRunBtn">
+      <property name="geometry">
+       <rect>
+        <x>650</x>
+        <y>190</y>
+        <width>91</width>
+        <height>26</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>40</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>TestRun</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="testConfigBtn">
+      <property name="geometry">
+       <rect>
+        <x>650</x>
+        <y>150</y>
+        <width>91</width>
+        <height>26</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>40</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>TestConfig</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QWidget" name="horizontalLayoutWidget_2">
@@ -4909,7 +4959,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="pixelFbkButtonGroup"/>
-  <buttongroup name="gainOverrideButtonGroup"/>
   <buttongroup name="moduleTypeButtonGroup"/>
+  <buttongroup name="gainOverrideButtonGroup"/>
  </buttongroups>
 </ui>
