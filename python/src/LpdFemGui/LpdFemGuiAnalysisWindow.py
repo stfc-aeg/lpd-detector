@@ -114,7 +114,7 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         
     def moduleUpdate(self, module):
         self.module = module
-#        print >> sys.stderr, "moduleUpdate received: %s" % module
+        print >> sys.stderr, "moduleUpdate received: %s" % module
         
     def timeStampUpdate(self, timeStamp):
         self.timeStamp = timeStamp

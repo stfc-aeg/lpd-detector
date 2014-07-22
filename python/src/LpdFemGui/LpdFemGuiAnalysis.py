@@ -2,6 +2,7 @@
 from LpdReadoutConfig import *
 from LpdDataContainers import *
 from LpdFemGuiAnalysisWindow import *
+from LpdFemGuiPowerTesting import *
 
 import numpy as np
 import h5py, time, sys
@@ -22,25 +23,25 @@ def timingMethodDecorator(methodToDecorate):
         return returnValues
     return wrapper
 
-class LpdFemGuiAnalysis():
+class LpdFemGuiAnalysis(QtGui.QMainWindow):
     ''' Perform ASIC modules analysis, creating/display in results analysis window '''
 
-    def __init__(self):
+    femDeviceParamsSignal = QtCore.pyqtSignal(str, int)
+    
+    def __init__(self, messageSignal):
         
+        super(LpdFemGuiAnalysis, self).__init__()    # Required for pyqtSignal
+        
+        self.messageSignal = messageSignal
         try:
-            self.module   = 15
-            self.fileName = "/u/ckd27546/workspace/tinkering/lpdData-03154.hdf5"
+            self.module   = 0
+            self.fileName = "" #"/u/ckd27546/workspace/tinkering/lpdData-03154.hdf5"
             self.image    = 0
             self.train    = 0
-    
+
             self.analysisWindow = LpdFemGuiAnalysisWindow()
-            self.analysisWindow.show()
-#            self.analysisWindowThread = QtCore.QThread()
-#            self.analysisWindow.moveToThread(self.analysisWindowThread)
-        
-#            self.analysisWindowThread.start()
-            
-            # A crude way of communicating..
+#            self.analysisWindow.show()    # Hide window for now while testing
+
             
         except Exception as e:
             print "LpdFemGuiAnalysis initialisation exception: %s" % e
@@ -50,31 +51,38 @@ class LpdFemGuiAnalysis():
         self.moduleStd = -1.0
         self.moduleAverage = -1.0
 
+        self.femDeviceParamsSignal.connect(self.setFemDeviceParams)
 
-        ''' Need to communicate timestamp,runnumber, trainnumber, imagenumber to LpdFemGuiAnalysisWindow ! '''
-#        self.img = self.ax.imshow(self.moduleData, interpolation='nearest', vmin='0', vmax='4095')
-#        dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(timeStamp))
-#        self.titleText = 'Run %d Train %d Image %d%sModule %d: %s' % (runNumber, trainNumber, imageNumber, "\n", self.module, dateStr)
-#        self.mainTitle = plt.title(self.titleText)
-
-    def performAnalysis(self, fileName):
+    def setFemDeviceParams(self, femHost, femPort):
         
+        self.femHost = femHost
+        self.femPort = femPort
+        print >> sys.stderr, "received: ", femHost, femPort
+
+    def performAnalysis(self, train, image, module, fileName):
+        
+        self.train    = train
+        self.image    = image
+        self.module   = module
         self.fileName = fileName
         
-        # Check filename exist before opening it
+        # Check hdf5 filename exist before opening it
         if os.path.isfile(self.fileName):
-            (imgOffset, timeStamp, runNumber, trainNumber, imageNumber) = self.obtainAsic()
-            self.analysisWindow.timeStampSignal.emit(timeStamp)
-            self.analysisWindow.runNumberSignal.emit(runNumber)
-            self.analysisWindow.trainSignal.emit(trainNumber)
-            self.analysisWindow.imageSignal.emit(imageNumber)
-            self.analysisWindow.moduleSignal.emit(self.module)
-            self.analysisWindow.dataSignal.emit(self.moduleData)
+            if self.analyseFile():
+                self.analysisWindow.moduleSignal.emit(self.module)
+                self.analysisWindow.dataSignal.emit(self.moduleData)
+            else:
+                # Error already printed during function call, return silently here
+                return
         else:
-            print >> sys.stderr, "The file: %s does not exist" % self.fileName
-            
+            self.messageSignal.emit("Analysis Error: File (%s) doesn't exist" % self.fileName)
+            return
 
-    def obtainAsic(self):
+        # Conduct power card tests
+        self.powerTesting = LpdFemGuiPowerTesting(self.femHost, self.femPort, self.messageSignal)
+        self.powerTesting.testPowerCards()
+
+    def analyseFile(self):
 
         with h5py.File(self.fileName, 'r') as hdfFile:
 
@@ -98,9 +106,9 @@ class LpdFemGuiAnalysis():
                 # Calculate image offset into array and range check (should be OK)
                 imgOffset = (self.train * (self_maxImageNumber + 1)) + self.image
                 if imgOffset > imageNumber.size:
-                    print "ERROR: calculated image offset (%d) is larger than images stored in data (%d), quitting" \
-                    % (imgOffset, imageNumber.size)
-                    return
+                    self.messageSignal.emit("Analysis Error: Requested image (%d) exceeds number of images available (%d)" \
+                    % (imgOffset, imageNumber.size))
+                    return False
                 # Read in the image array
                 image = hdfFile['/lpd/data/image']
                 imageData = image[imgOffset,:,:]    # Only read in the specified image
@@ -112,10 +120,14 @@ class LpdFemGuiAnalysis():
                 self.moduleStd = np.std(self.moduleData)
                 self.moduleAverage = np.mean(self.moduleData)
             except Exception as e:
-                print "obtainAsic() Exception:", e
-                time.sleep(3)
-                
-            return (imgOffset, timeStamp[imgOffset], meta.attrs['runNumber'], trainNumber[imgOffset], imageNumber[imgOffset]) 
+                self.messageSignal.emit("Analysis Error while processing file: %s" % e)
+                return False
+            self.analysisWindow.timeStampSignal.emit(timeStamp[imgOffset])
+            self.analysisWindow.runNumberSignal.emit(meta.attrs['runNumber'])
+            self.analysisWindow.trainSignal.emit(trainNumber[imgOffset])
+            self.analysisWindow.imageSignal.emit(imageNumber[imgOffset])
+#            (imgOffset, timeStamp[imgOffset], meta.attrs['runNumber'], trainNumber[imgOffset], imageNumber[imgOffset])
+            return True 
     
     def detectDeadColumns(self, threshold, bLowThreshold):
         ''' Check moduleData (32 x 128 ASIC) whether any dead column(s),

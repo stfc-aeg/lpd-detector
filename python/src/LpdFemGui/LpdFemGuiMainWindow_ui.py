@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Mon Jul 14 13:53:12 2014
+# Created: Mon Jul 21 10:14:09 2014
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -1875,6 +1875,7 @@ class Ui_MainWindow(object):
         self.testBtn.setObjectName(_fromUtf8("testBtn"))
         self.moduleLhsSel = QtGui.QRadioButton(self.testTab)
         self.moduleLhsSel.setGeometry(QtCore.QRect(567, 43, 55, 21))
+        self.moduleLhsSel.setChecked(True)
         self.moduleLhsSel.setObjectName(_fromUtf8("moduleLhsSel"))
         self.moduleTypeButtonGroup = QtGui.QButtonGroup(MainWindow)
         self.moduleTypeButtonGroup.setObjectName(_fromUtf8("moduleTypeButtonGroup"))
