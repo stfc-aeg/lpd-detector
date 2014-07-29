@@ -8,7 +8,7 @@ import numpy as np
 import h5py
 import matplotlib
 import sys, time
-from LpdReadoutConfig import *
+from LpdFemGui.LpdReadoutConfig import *
 
 class imagePlot():
     
@@ -23,7 +23,24 @@ class imagePlot():
         self.fig = plt.figure(1)
         self.ax = self.fig.add_subplot(111)
         self.mainTitle = plt.title("")
+
+        # Set X and Y ticks to match data size
+        (xStart, xStop, xStep)  = (16, 256, 16)
+        (yStart, yStop, yStep)  = (32, 256, 32)
+        (xlist, ylist) = ([], [])
+        # Generate list of xticks to label the x axis
+        for i in range(xStart, xStop, xStep):
+            xlist.append(i)
         
+        # Generate yticks for the y-axis
+        for i in range(yStart, yStop, yStep):
+            ylist.append(i)
+        
+        self.ax.set_xticks(xlist)
+        self.ax.set_yticks(ylist)
+        # Tilt X axis ticks (improve readability)
+        plt.setp(plt.gca().get_xticklabels(), rotation = 45)
+ 
         # Previous, next buttons inspired by example: matplotlib.org/1.3.1/examples/widgets/buttons.html
 
         # Previous, Next image buttons..

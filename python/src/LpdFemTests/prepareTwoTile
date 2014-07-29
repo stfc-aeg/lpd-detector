@@ -2,9 +2,11 @@
 
 #      RHS Power Card (Two Tile System)
 
+echo "~+~+~ Connecting to host: 192.168.2.2, port: 6969, asicmodule:  2-tile  ~+~+~"
 python LpdPowerControl.py --femhost 192.168.2.2 --femport 6969 --asicmodule 2 --hvbias 50
+
+echo "~+~+~ Connecting to host: 192.168.2.2, port: 6969, asicmodule:  2-tile  ~+~+~"
 python LpdPowerControl.py --femhost 192.168.2.2 --femport 6969 --asicmodule 2 --lv 1 --hv 1
 
 echo "-=-=-=-=-=-=-=-=-=- 2-TILE SYSTEM: POWER CARDS' INFO: -=-=-=-=-=-=-=-=-=-"
-
 python LpdPowerStatus.py

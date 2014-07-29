@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Mon Jul 21 10:14:09 2014
+# Created: Mon Jul 28 15:20:41 2014
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -1865,7 +1865,7 @@ class Ui_MainWindow(object):
         self.commentEdit.setProperty("placeholderText", _fromUtf8(""))
         self.commentEdit.setObjectName(_fromUtf8("commentEdit"))
         self.testBtn = QtGui.QPushButton(self.testTab)
-        self.testBtn.setGeometry(QtCore.QRect(650, 230, 75, 26))
+        self.testBtn.setGeometry(QtCore.QRect(650, 240, 75, 26))
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -1888,7 +1888,7 @@ class Ui_MainWindow(object):
         self.moduleRhsSel.setObjectName(_fromUtf8("moduleRhsSel"))
         self.moduleTypeButtonGroup.addButton(self.moduleRhsSel)
         self.testRunBtn = QtGui.QPushButton(self.testTab)
-        self.testRunBtn.setGeometry(QtCore.QRect(650, 190, 91, 26))
+        self.testRunBtn.setGeometry(QtCore.QRect(650, 180, 91, 26))
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -1905,6 +1905,15 @@ class Ui_MainWindow(object):
         self.testConfigBtn.setSizePolicy(sizePolicy)
         self.testConfigBtn.setMinimumSize(QtCore.QSize(40, 0))
         self.testConfigBtn.setObjectName(_fromUtf8("testConfigBtn"))
+        self.readCurrentBtn = QtGui.QPushButton(self.testTab)
+        self.readCurrentBtn.setGeometry(QtCore.QRect(650, 210, 91, 26))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.readCurrentBtn.sizePolicy().hasHeightForWidth())
+        self.readCurrentBtn.setSizePolicy(sizePolicy)
+        self.readCurrentBtn.setMinimumSize(QtCore.QSize(40, 0))
+        self.readCurrentBtn.setObjectName(_fromUtf8("readCurrentBtn"))
         self.verticalTabWidget.addTab(self.testTab, _fromUtf8(""))
         self.horizontalLayoutWidget_2 = QtGui.QWidget(self.centralwidget)
         self.horizontalLayoutWidget_2.setGeometry(QtCore.QRect(10, 0, 781, 52))
@@ -2259,7 +2268,8 @@ class Ui_MainWindow(object):
         self.moduleRhsSel.setText(QtGui.QApplication.translate("MainWindow", "RHS", None, QtGui.QApplication.UnicodeUTF8))
         self.testRunBtn.setText(QtGui.QApplication.translate("MainWindow", "TestRun", None, QtGui.QApplication.UnicodeUTF8))
         self.testConfigBtn.setText(QtGui.QApplication.translate("MainWindow", "TestConfig", None, QtGui.QApplication.UnicodeUTF8))
-        self.verticalTabWidget.setTabText(self.verticalTabWidget.indexOf(self.testTab), QtGui.QApplication.translate("MainWindow", "Page", None, QtGui.QApplication.UnicodeUTF8))
+        self.readCurrentBtn.setText(QtGui.QApplication.translate("MainWindow", "ReadCurrent", None, QtGui.QApplication.UnicodeUTF8))
+        self.verticalTabWidget.setTabText(self.verticalTabWidget.indexOf(self.testTab), QtGui.QApplication.translate("MainWindow", "TEST", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox.setTitle(QtGui.QApplication.translate("MainWindow", "Connection", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Address:", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Port:", None, QtGui.QApplication.UnicodeUTF8))

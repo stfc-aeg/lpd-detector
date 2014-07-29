@@ -14,6 +14,9 @@ class LpdFemGuiPowerTesting:
         
         self.femHost = femHost
         self.femPort = femPort
+
+        self.moduleString = "-1"
+
         #  Communicate test results to LpdFemGuiMainTestTab
         self.messageSignal = messageSignal
 
@@ -22,197 +25,80 @@ class LpdFemGuiPowerTesting:
         rc = self.theDevice.open(self.femHost, self.femPort, asicModuleType=0)
     
         if rc != LpdDevice.ERROR_OK:
-            self.messageSignal.emit("Power Analysis Error: Failed to open FEM device: %s" % (self.theDevice.errorStringGet()))
+            self.msgPrint("Power Analysis Error: Failed to open FEM device: %s" % (self.theDevice.errorStringGet()), bError=True)
         else:
             #Debugging info really:
             print >> sys.stderr, "====================== %s:%s ======================" % (self.femHost, self.femPort)
-        
-    def testPowerCards(self):
-        
-        numSensors = 16
-        numPowerCards = 2
-        TVCparamsTypes = ['Temp', 'Voltage', 'Current'] # Redundant line?
-    
-        # Count how many error encountered
-        errorCount = 0
-
-        initResults = {}    # Store results captured initially
-        postResults = {}    # Store results captured after voltages switched on and allowed to stabilise
-        TVCparamsTypes = ['Temp', 'Voltage', 'Current']
-        
-        for sensor in range(numSensors):
             
-            for paramType in TVCparamsTypes:
-                paramName = 'sensor' + str(sensor) + paramType
-                
-                (rc, val) = self.theDevice.paramGet(paramName)
-    
-                initResults[paramName] = val
-                if rc != LpdDevice.ERROR_OK:    
-                    self.messageSignal.emit("Power Analysis Error 1: %s rc=%d: %s" % (paramName, rc, self.theDevice.errorStringGet()))
-                    errorCount += 1
-                    if errorCount > 2:
-                        self.messageSignal.emit("Power Analysis Error: Detected three errors, aborting..")
-                        self.theDevice.close()
-                        return
-        
-        miscParamTypes = ['powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent', 
-                      'sensorBias', 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 
-                      'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp']
-        
-        for powerCard in range(numPowerCards):
-            
-            for paramType in miscParamTypes:
-                paramName = paramType + str(powerCard)
-                
-                (rc, val) = self.theDevice.paramGet(paramName)
-    
-                initResults[paramName] = val
-                if rc != LpdDevice.ERROR_OK:    
-                    self.messageSignal.emit("Power Analysis Error 2: %s rc=%d: %s" % (paramName, rc, self.theDevice.errorStringGet()))
-                    errorCount += 1
-                    if errorCount > 2:
-                        self.messageSignal.emit("Power Analysis Error: Found three errors, aborting..")
-                        self.theDevice.close()
-                        return
 
+    def setModuleType(self, moduleNumber):
+        ''' Helper function '''
+
+        self.moduleNumber = moduleNumber
+        if moduleNumber == 0:
+            self.moduleString = "LHS"
+        else: #if moduleNumber == 15:
+            self.moduleString = "RHS"
+
+    def testPowerCards(self, moduleNumber):
+        ''' Comment to be added here '''
+        
+        # Set moduleNumber and moduleString (e.g. 0/LHS)
+        self.setModuleType(moduleNumber)
+
+        self.msgPrint("Module %s: Testing power card in progress ..." % self.moduleString)
+
+        # Read sensors on both power cards
+        try:
+            initResults = self.readPowerCards()
+        except Exception:
+            self.msgPrint("Power Analysis Error: (1) Couldn't read power card parameter(s)")
+            self.theDevice.close()
+            return
+        
         asicmodule = 0
         hvbias = 50
-        thisFem = LpdPowerControl(self.femHost, self.femPort, asicmodule)
+        powerControl = LpdPowerControl(self.femHost, self.femPort, asicmodule)
 
         print >> sys.stderr, "Executing first LpdPowerControl script.. (Setting high-voltage)"
     
         print >> sys.stderr, "Switching: HV off, ",    # Possibly redundant?
-        thisFem.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.OFF)
+        powerControl.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.OFF)
 
         print >> sys.stderr, "LV off.. ",          # Possibly redundant?
-        thisFem.updateQuantity(quantity='asicPowerEnable', newValue=LpdPowerControl.OFF)
+        powerControl.updateQuantity(quantity='asicPowerEnable', newValue=LpdPowerControl.OFF)
         
         print >> sys.stderr, "Setting HV bias to ", hvbias, " V.."
-        thisFem.updateQuantity(quantity='sensorBias', newValue=hvbias)
+        powerControl.updateQuantity(quantity='sensorBias', newValue=hvbias)
     
         print >> sys.stderr, "Executing second LpdPowerControl script.. (Enabling high and low voltages)"
         
         print >> sys.stderr, "Switching: LV on, ",
-        thisFem.updateQuantity(quantity='asicPowerEnable', newValue=LpdPowerControl.ON)
+        powerControl.updateQuantity(quantity='asicPowerEnable', newValue=LpdPowerControl.ON)
         
         print >> sys.stderr, "HV on.."
-        thisFem.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.ON)
+        powerControl.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.ON)
 
         timeDelay = 3
         print >> sys.stderr, "Done! (Waiting " + str(timeDelay) + " seconds for voltages to stabilise..)\n"
 
         # Wait couple of seconds for voltages to stabilise
         time.sleep(timeDelay)
-    
         
-        for sensor in range(numSensors):
-            
-            for paramType in TVCparamsTypes:
-                paramName = 'sensor' + str(sensor) + paramType
-                
-                (rc, val) = self.theDevice.paramGet(paramName)
-    
-                postResults[paramName] = val
-                if rc != LpdDevice.ERROR_OK:    
-                    self.messageSignal.emit("Power Analysis Error 3: %s rc=%d: %s" % (paramName, rc, self.theDevice.errorStringGet()))
-                    errorCount += 1
-                    if errorCount > 2:
-                        self.messageSignal.emit("Power Analysis Error: Detected three errors, aborting..")
-                        self.theDevice.close()
-                        return
-        
-        for powerCard in range(numPowerCards):
-            
-            for paramType in miscParamTypes:
-                paramName = paramType + str(powerCard)
-                
-                (rc, val) = self.theDevice.paramGet(paramName)
-    
-                postResults[paramName] = val
-                if rc != LpdDevice.ERROR_OK:    
-                    self.messageSignal.emit("Power Analysis Error 4: %s rc=%d: %s" % (paramName, rc, self.theDevice.errorStringGet()))
-                    errorCount += 1
-                    if errorCount > 2:
-                        self.messageSignal.emit("Power Analysis Error: Found three errors, aborting..")
-                        self.theDevice.close()
-                        return
-    
+        # Read sensors on both power cards (Now that voltages have been enabled)
+        try:
+            postResults = self.readPowerCards()
+        except Exception:
+            self.msgPrint("Power Analysis Error: (2) Couldn't read power card parameter(s)")
+            self.theDevice.close()
+            return
+
         # Define thresholds
         thresholdSensorTemperature = 49.9
         thresholdSensorCurrent = 1.67
-    
-        self.messageSignal.emit("    Fault Flag        = %s" % initResults['powerCardFault1'])
-        
+
         # Analyse the results:
-        (issuesRHS, issuesLHS) = (0, 0)
-        self.messageSignal.emit("RHS Module Test Results:") # \n------------------")
-        if initResults['powerCardFault1'] == 'Yes':
-            self.messageSignal.emit("    Fault Flag        = %s" % initResults['powerCardFault1'])
-            issuesRHS += 1
-        if initResults['powerCardFemStatus1'] == 'Yes':
-            self.messageSignal.emit("    Fem Status   Trip = %s" % initResults['powerCardFemStatus1'])
-            issuesRHS += 1
-        if initResults['powerCardExtStatus1'] == 'Yes':
-            self.messageSignal.emit("    External     Trip = %s" % initResults['powerCardExtStatus1'])
-            issuesRHS += 1
-        if initResults['powerCardOverCurrent1'] == 'Yes':
-            self.messageSignal.emit("    Over current Trip = %s" % initResults['powerCardOverCurrent1'])
-            issuesRHS += 1
-        if initResults['powerCardOverTemp1'] == 'Yes':
-            self.messageSignal.emit("    Over temp    Trip = %s" % initResults['powerCardOverTemp1'])
-            issuesRHS += 1
-
-        if initResults['powerCardTemp1'] > 50.0: # RHS
-            self.messageSignal.emit("RHS     PSU Card Temp   = %s   C" % initResults['powerCardTemp1'])
-            issuesRHS += 1
-        if initResults['sensor15Temp'] > thresholdSensorTemperature:
-            self.messageSignal.emit('   Sensor 15 Temp: %5.2f  C' % initResults['sensor15Temp']) 
-            issuesRHS += 1
-        
-        # Notify user if no issues encountered
-        if issuesRHS == 0:
-            self.messageSignal.emit("(No issues in RHS)")
-
-        if postResults['sensor15Current'] > thresholdSensorCurrent:
-            self.messageSignal.emit("   V Sensor 15 : Connected") #%.2f" % postResults['sensor15Current'], " A"
-        else:
-            self.messageSignal.emit("   V Sensor 15 : Not Connected")
-
-        '''    -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-    '''
-            
-        self.messageSignal.emit("LHS Module Test Results:")
-        if initResults['powerCardFault0'] == 'Yes': 
-            self.messageSignal.emit("    Fault Flag        = %s" % initResults['powerCardFault0'])
-            issuesLHS += 1
-        if initResults['powerCardFemStatus0'] == 'Yes':
-            self.messageSignal.emit("    Fem Status   Trip = %s" % initResults['powerCardFemStatus0'])
-            issuesLHS += 1
-        if initResults['powerCardExtStatus0'] == 'Yes':
-            self.messageSignal.emit("    External     Trip = %s" % initResults['powerCardExtStatus0'])
-            issuesLHS += 1
-        if initResults['powerCardOverCurrent0'] == 'Yes':
-            self.messageSignal.emit("    Over current Trip = %s" % initResults['powerCardOverCurrent0'])
-            issuesLHS += 1
-        if initResults['powerCardOverTemp0'] == 'Yes':
-            self.messageSignal.emit("    Over temp    Trip = %s" % initResults['powerCardOverTemp0'])
-            issuesLHS += 1
-        if initResults['powerCardTemp0'] > 50.0:     # LHS
-            self.messageSignal.emit("LHS     PSU Card Temp   = %s   C" % initResults['powerCardTemp0'])
-            issuesLHS += 1
-
-        if initResults['sensor0Temp'] > thresholdSensorTemperature:
-            self.messageSignal.emit('LHS\t\t   Sensor 0 Temp: %5.2f  C' % initResults['sensor0Temp'])
-            issuesLHS += 1
-    
-        # Notify user if no issues encountered
-        if issuesLHS == 0:
-            self.messageSignal.emit("(No issues in LHS)")
-    
-        if postResults['sensor0Current'] > thresholdSensorCurrent:
-            self.messageSignal.emit("   V Sensor 0 : Connected") #%.2f" % postResults['sensor0Current'], " A"
-        else:
-            self.messageSignal.emit("   V Sensor 0 : Not Connected")
+        issues = self.retrieveTestResults(initResults, postResults, thresholdSensorTemperature, thresholdSensorCurrent)
 
         bDebug = False
         if bDebug:
@@ -220,10 +106,134 @@ class LpdFemGuiPowerTesting:
             self.displayResult(initResults)
             print >> sys.stderr, "------------------------ Post Results: ------------------------"
             self.displayResult(postResults)
-    
-        print >> sys.stderr, "Closing Fem connection.. "        
+
+        self.msgPrint("Power card testing completed - Reported %d issues" % issues)
+        print >> sys.stderr, "Closing Fem connection.. " 
         self.theDevice.close()
+
+    def readPowerCards(self):
+        ''' Read all sensors on both power card '''
+
+        numSensors = 16
+        numPowerCards = 2
+
+        # Count how many error encountered
+        errorCount = 0
+        results = {}
+        TVCparamsTypes = ['Temp', 'Voltage', 'Current']
+        
+        miscParamTypes = ['powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent', 
+                      'sensorBias', 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 
+                      'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp']
+        
+        for sensor in range(numSensors):
+            
+            for paramType in TVCparamsTypes:
+                paramName = 'sensor' + str(sensor) + paramType
+                
+                (rc, val) = self.theDevice.paramGet(paramName)
     
+                results[paramName] = val
+                if rc != LpdDevice.ERROR_OK:    
+                    self.msgPrint("Power Analysis Error: %s rc=%d: %s" % (paramName, rc, self.theDevice.errorStringGet()), bError=True)
+                    errorCount += 1
+                    if errorCount > 2:
+                        self.msgPrint("Power Analysis Error: Detected three errors, aborting..", bError=True)
+                        self.theDevice.close()
+                        raise Exception
+        
+        for powerCard in range(numPowerCards):
+            
+            for paramType in miscParamTypes:
+                paramName = paramType + str(powerCard)
+                
+                (rc, val) = self.theDevice.paramGet(paramName)
+    
+                results[paramName] = val
+                if rc != LpdDevice.ERROR_OK:    
+                    self.msgPrint("Power Analysis Error: %s rc=%d: %s" % (paramName, rc, self.theDevice.errorStringGet()), bError=True)
+                    errorCount += 1
+                    if errorCount > 2:
+                        self.msgPrint("Power Analysis Error: Found three errors, aborting..", bError=True)
+                        self.theDevice.close()
+                        raise Exception
+        return results
+    
+    def retrieveTestResults(self, initResults, postResults, thresholdSensorTemperature, thresholdSensorCurrent):
+        ''' Retrieve test results and comparing against thresholds and report any breach(es) '''
+        
+        if self.moduleNumber == 15:
+            powerCardNumber = str(1)
+        elif self.moduleNumber == 0:   
+            powerCardNumber = str(0)
+        else:
+            self.msgPrint("Power Card Analysis Error: Unknown module (neither RHS nor LHS) specified!", bError=True)
+            return -1
+        issues = 0
+        
+        self.msgPrint("%s Module Test Results:" % self.moduleString)
+        if initResults['powerCardFault'+powerCardNumber] == 'Yes':
+            self.msgPrint("    Fault Flag        = %s" % initResults['powerCardFault'+powerCardNumber])
+            issues += 1
+        if initResults['powerCardFemStatus'+powerCardNumber] == 'Yes':
+            self.msgPrint("    Fem Status   Trip = %s" % initResults['powerCardFemStatus'+powerCardNumber])
+            issues += 1
+        if initResults['powerCardExtStatus'+powerCardNumber] == 'Yes':
+            self.msgPrint("    External     Trip = %s" % initResults['powerCardExtStatus'+powerCardNumber])
+            issues += 1
+        if initResults['powerCardOverCurrent'+powerCardNumber] == 'Yes':
+            self.msgPrint("    Over current Trip = %s" % initResults['powerCardOverCurrent'+powerCardNumber])
+            issues += 1
+        if initResults['powerCardOverTemp'+powerCardNumber] == 'Yes':
+            self.msgPrint("    Over temp    Trip = %s" % initResults['powerCardOverTemp'+powerCardNumber])
+            issues += 1
+
+        if initResults['powerCardTemp'+powerCardNumber] > 50.0:
+            self.msgPrint("        PSU Card Temp   = %s   C" % initResults['powerCardTemp'+powerCardNumber])
+            issues += 1
+        if initResults['sensor15Temp'] > thresholdSensorTemperature:
+            self.msgPrint('       Sensor Temp: %5.2f  C' % initResults['sensor%sTemp' % self.moduleNumber])
+            issues += 1
+
+        # Debugging info:
+        self.msgPrint("        PSU Card Temp   = %s   C" % initResults['powerCardTemp'+powerCardNumber])
+
+        # Notify user if no issues encountered
+        if issues == 0:
+            self.msgPrint("(No issues in %s module)" % self.moduleString)
+
+        if postResults['sensor%sCurrent' % self.moduleNumber] > thresholdSensorCurrent:
+            self.msgPrint("       %s Module : Connected" % self.moduleString)
+        else:
+            self.msgPrint("       %s Module : Not Connected" % self.moduleString)
+        return issues
+
+    def readCurrent(self, moduleNumber):
+        ''' Read moduleNumber's current (as required by Wafer Probing and ASIC Bonding Test Routines)
+            moduleNumber mandatory as function called directly from LpdFemGuiMainTestTab '''
+
+        # Set moduleNumber and moduleString
+        self.setModuleInfo(moduleNumber)
+
+        self.msgPrint("Testing power card: %s" % self.moduleString)
+
+        try:
+            results = self.readPowerCards()
+        except Exception:
+            self.msgPrint("Power Analysis Error: (2) Couldn't read power card parameter(s)")
+            self.theDevice.close()
+            return
+
+        self.msgPrint("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' % self.moduleNumber]))
+
+#        print >> sys.stderr, "\t   V Sensor %s : %.2f" % (self.moduleString, results['sensor%sVoltage' % self.moduleNumber]), " V ", "%.2f" % results['sensor%sCurrent' % self.moduleNumber], " A"
+#        print >> sys.stderr, "\t   V Sensor 0 : %.2f" % results['sensor0Voltage'], " V ", "%.2f" % results['sensor0Current'], " A"
+#        print >> sys.stderr, "   V Sensor 15 : %.2f"  % results['sensor15Voltage']," V ", "%.2f" % results['sensor15Current']," A"
+    
+    def msgPrint(self, message, bError=False):
+        ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
+        self.messageSignal.emit(message, bError)
+
     def displayResult(self, results):
         ''' Debug function to display contents of results dictionary '''
     

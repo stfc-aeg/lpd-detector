@@ -34,7 +34,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         
         self.messageSignal = messageSignal
         try:
-            self.module   = 0
+            self.moduleNumber   = 0
             self.fileName = "" #"/u/ckd27546/workspace/tinkering/lpdData-03154.hdf5"
             self.image    = 0
             self.train    = 0
@@ -42,9 +42,8 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
             self.analysisWindow = LpdFemGuiAnalysisWindow()
 #            self.analysisWindow.show()    # Hide window for now while testing
 
-            
         except Exception as e:
-            print "LpdFemGuiAnalysis initialisation exception: %s" % e
+            self.msgPrint("LpdFemGuiAnalysis initialisation exception: %s" % e, bError=True)
             
         (self.numRows, self.numCols) = (32, 128)
         
@@ -57,30 +56,31 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         
         self.femHost = femHost
         self.femPort = femPort
-        print >> sys.stderr, "received: ", femHost, femPort
+        # Create LpdFemGuiPowerTesting object the soon as target known
+        self.powerTesting = LpdFemGuiPowerTesting(self.femHost, self.femPort, self.messageSignal)
+#        print >> sys.stderr, "received: ", femHost, femPort
 
-    def performAnalysis(self, train, image, module, fileName):
+    def performAnalysis(self, train, image, moduleNumber, fileName):
         
-        self.train    = train
-        self.image    = image
-        self.module   = module
-        self.fileName = fileName
+        self.train          = train
+        self.image          = image
+        self.moduleNumber   = moduleNumber
+        self.fileName       = fileName
         
         # Check hdf5 filename exist before opening it
         if os.path.isfile(self.fileName):
             if self.analyseFile():
-                self.analysisWindow.moduleSignal.emit(self.module)
+                self.analysisWindow.moduleSignal.emit(self.moduleNumber)
                 self.analysisWindow.dataSignal.emit(self.moduleData)
             else:
-                # Error already printed during function call, return silently here
+                self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
                 return
         else:
-            self.messageSignal.emit("Analysis Error: File (%s) doesn't exist" % self.fileName)
+            self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
             return
 
         # Conduct power card tests
-        self.powerTesting = LpdFemGuiPowerTesting(self.femHost, self.femPort, self.messageSignal)
-        self.powerTesting.testPowerCards()
+        self.powerTesting.testPowerCards(self.moduleNumber)
 
     def analyseFile(self):
 
@@ -106,27 +106,26 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
                 # Calculate image offset into array and range check (should be OK)
                 imgOffset = (self.train * (self_maxImageNumber + 1)) + self.image
                 if imgOffset > imageNumber.size:
-                    self.messageSignal.emit("Analysis Error: Requested image (%d) exceeds number of images available (%d)" \
-                    % (imgOffset, imageNumber.size))
+                    self.msgPrint("Analysis Error: Requested image (%d) exceeds number of images available (%d)" \
+                    % (imgOffset, imageNumber.size), bError=True)
                     return False
                 # Read in the image array
                 image = hdfFile['/lpd/data/image']
                 imageData = image[imgOffset,:,:]    # Only read in the specified image
     
                 # Determine row/col coordinates according to selected ASIC module
-                (rowStart, colStart) = self.asicStartingRowColumn(self.module)
+                (rowStart, colStart) = self.asicStartingRowColumn(self.moduleNumber)
                 self.moduleData  = imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols]
     
                 self.moduleStd = np.std(self.moduleData)
                 self.moduleAverage = np.mean(self.moduleData)
             except Exception as e:
-                self.messageSignal.emit("Analysis Error while processing file: %s" % e)
+                self.msgPrint("Analysis Error while processing file: %s" % e, bError=True)
                 return False
             self.analysisWindow.timeStampSignal.emit(timeStamp[imgOffset])
             self.analysisWindow.runNumberSignal.emit(meta.attrs['runNumber'])
             self.analysisWindow.trainSignal.emit(trainNumber[imgOffset])
             self.analysisWindow.imageSignal.emit(imageNumber[imgOffset])
-#            (imgOffset, timeStamp[imgOffset], meta.attrs['runNumber'], trainNumber[imgOffset], imageNumber[imgOffset])
             return True 
     
     def detectDeadColumns(self, threshold, bLowThreshold):
@@ -177,7 +176,6 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         elif (111 < column < 128):
             asicNum = 7
         adcNum = column % 16
-#        print  "identifyAdcLocations, received column:", column, " producing asicNum:", asicNum, "adcNum:", adcNum
         return (asicNum, adcNum)
         
     def neighbours(self, data, row, col):
@@ -282,3 +280,9 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
                 if bDiffers:
                     deviatedPixels.append((row, col))
         return deviatedPixels
+
+    def msgPrint(self, message, bError=False):
+        ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
+        self.messageSignal.emit(message, bError)
+        
+        

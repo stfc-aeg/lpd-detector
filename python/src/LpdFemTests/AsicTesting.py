@@ -2,8 +2,11 @@
 ''' If not executed directly, assume it's being called from ../LpdFemGui/LpdFemGuiMainTestTab.py '''
 
 if __name__ != "__main__":
+    # Called from LpdFemGui code base
     from LpdReadoutConfig import *
+    from LpdFemGui.LpdDataContainers import *#LpdFrameContainers
 else:
+    # Executed directly, e.g. "python AsicTesting.py file.hdf5 -t 1 -i 4 -m 15"
     from LpdFemGui.LpdReadoutConfig import *
 
 import numpy as np
@@ -304,12 +307,12 @@ class AsicTesting():
         dodgyPixels = []        
         for row in range(self.moduleData.shape[0]):
             for col in range(self.moduleData.shape[1]):
-                for neighbour in asicTesting.neighbours(self.moduleData, row, col):
+                for neighbour in self.neighbours(self.moduleData, row, col):
     
-                    bDiffers = asicTesting.checkPixelsDifferent(row, col, neighbour, 400)
+                    bDiffers = self.checkPixelsDifferent(row, col, neighbour, 400)
                     if bDiffers:
                         #print " original pixel[" + str(row) + "][" + str(col) + "]=" + str(self.moduleData[row][col]) + " "
-                        if asicTesting.addUniquePixel(dodgyPixels, row, col):
+                        if self.addUniquePixel(dodgyPixels, row, col):
                             dodgyPixels.append((row, col))
         return dodgyPixels
     
@@ -319,7 +322,7 @@ class AsicTesting():
         for row in range(self.moduleData.shape[0]):
             for col in range(self.moduleData.shape[1]):
     
-                bDiffers = asicTesting.checkPixelAgainstStd(row, col)
+                bDiffers = self.checkPixelAgainstStd(row, col)
                 if bDiffers:
                     deviatedPixels.append((row, col))
         return deviatedPixels
@@ -374,5 +377,5 @@ if __name__ == "__main__":
         import pdb; pdb.set_trace()
     
     plt.show()
-#    asicTesting.fig.canvas.draw()
+#    self.fig.canvas.draw()
 #    asicTesting.show()

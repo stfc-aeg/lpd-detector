@@ -8,7 +8,7 @@ import numpy as np
 import h5py
 import matplotlib
 import sys, time
-from LpdReadoutConfig import *
+from LpdFemGui.LpdReadoutConfig import *
 
 class imagePlot():
     
@@ -18,7 +18,19 @@ class imagePlot():
         self.args = parseArgs()
 
         (self.numRows, self.numCols) = (32, 128)
-            
+        
+        # Set X and Y ticks to match data size
+        (xStart, xStop, xStep)  = (16, 128, 16)
+        (yStart, yStop, yStep)  = (8, 32, 8)
+        (self.xlist, self.ylist) = ([], [])
+        # Generate list of xticks to label the x axis
+        for i in range(xStart, xStop, xStep):
+            self.xlist.append(i)
+        
+        # Generate yticks for the y-axis
+        for i in range(yStart, yStop, yStep):
+            self.ylist.append(i)
+
         (imgOffset, timeStamp, runNumber, trainNumber, imageNumber, imageData) = self.obtainImageWithInfo()
 
         # Create the figure and title
@@ -55,6 +67,8 @@ class imagePlot():
         # Determine row/col coordinates according to selected ASIC module
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
         self.img = self.ax.imshow(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols], interpolation='nearest', vmin='0', vmax='4095')
+        self.ax.set_xticks(self.xlist)
+        self.ax.set_yticks(self.ylist)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(timeStamp))
         titleText = 'Run %d Train %d Image %d Module %d : %s' % (runNumber, trainNumber, imageNumber, self.args.module, dateStr)
@@ -67,15 +81,13 @@ class imagePlot():
 
         self.artist = self.fig.get_children()
         
-        DataCursor(self.artist[1], imageData)
+        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
 
         plt.show()    
     
     def asicStartingRowColumn(self, module):
-        ''' Determing upper left corner's row/col coordinates according to selected ASIC module '''
-        
-#        print "asicStart.. rx: ", module
-        
+        ''' Determining upper left corner's row/col coordinates according to selected ASIC module '''
+
         (row, column) = (-1, -1)
         if module == 0:   (row, column) = (0, 128)    # ASIC module #1
         elif module == 1: (row, column) = (32, 128)   # ASIC module #2
@@ -128,7 +140,7 @@ class imagePlot():
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
         self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
 
-        DataCursor(self.artist[1], imageData)
+        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
         plt.draw()
 
     def prevModule(self, event):
@@ -161,7 +173,7 @@ class imagePlot():
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
         self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
 
-        DataCursor(self.artist[1], imageData)
+        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
         plt.draw()
 
 
@@ -191,7 +203,7 @@ class imagePlot():
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
         self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
 
-        DataCursor(self.artist[1], imageData)
+        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
         plt.draw()
     
     def prevImage(self, event):
@@ -219,7 +231,7 @@ class imagePlot():
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
         self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
 
-        DataCursor(self.artist[1], imageData)
+        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
         plt.draw()
 
 
@@ -241,7 +253,7 @@ class imagePlot():
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
         self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
 
-        DataCursor(self.artist[1], imageData)
+        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
         plt.draw()
     
     def prevTrain(self, event):
@@ -262,11 +274,11 @@ class imagePlot():
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
         self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
 
-        DataCursor(self.artist[1], imageData)
+        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
         plt.draw()
 
     def obtainImageWithInfo(self):
-
+        ''' Open file specified by parser reading specified image'''
         with h5py.File(self.args.fileName, 'r') as hdfFile:
     
             # Read in the train, image counter and timestamp arrays
@@ -313,20 +325,17 @@ class imagePlot():
                 sys.exit(1)
     
             # Read in the image array
-            t1 = time.time()
             image = hdfFile['/lpd/data/image']
-            t2 = time.time()
-            imageData = image[imgOffset,:,:]    # Only read in the specified image  
-            t3 = time.time()
-    
+            imageData = image[imgOffset,:,:]    # Only read in the specified image
+
             # Mask off or select gain range from image data
             if self.args.gain == 0:
                 imageData[:] = imageData[:] & 0xFFF
-    
+
             # Invert image if specified
             if self.args.invert != None:
                 imageData[:] = 4095 - imageData[:]
-    
+
             return (imgOffset, timeStamp[imgOffset], meta.attrs['runNumber'], trainNumber[imgOffset], imageNumber[imgOffset], imageData) 
 
 def parseArgs():

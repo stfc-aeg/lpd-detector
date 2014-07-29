@@ -214,8 +214,10 @@ class LpdFemGuiMainDaqTab(object):
 
         if self.appMain.deviceState == LpdFemGui.DeviceReady:
             self.msgPrint("Device configured OK")
+            self.appMain.mainWindow.testTab.configDeviceSignal.emit("Device configured OK")
         else:
             self.msgPrint("Failed to configure device")
+            self.appMain.mainWindow.testTab.configDeviceSignal.emit("Failed to configure device")
             
         self.mainWindow.updateEnabledWidgets()
         

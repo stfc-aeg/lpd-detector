@@ -401,7 +401,6 @@ class FrameProcessor(QtCore.QObject):
 
         # Close file if enabled
         if self.fileWriteEnable:
-            print "***LpdFemDataReceiver closing file.."
             self.hdfFile.close()
             # Transmit file ready to LpdFemGuiMainTestTab instance
             self.fileReadySignal.emit()
