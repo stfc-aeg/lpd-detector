@@ -367,10 +367,27 @@ if __name__ == "__main__":
         print "There are no dead columns"
 
     dodgyPixels = asicTesting.testNeighboursForDodgyPixels()
-    print "unique number of pixels:\n", dodgyPixels, "\nThat's about", (dodgyPixels.__len__()/4.0), "dodgy pixels."
+    print "unique number of pixels:"
+    lastRow = 0
+    for pair in dodgyPixels:
+        if lastRow != pair[0]:
+                print ""
+                lastRow = pair[0]
+        print pair,
+    print "\nThat's about", (dodgyPixels.__len__()/4.0), "dodgy pixels."
 
     deviatedPixels = asicTesting.testPixelsStandardDeviation()
-    print "Deviated pixels:\n", deviatedPixels, "\nThat's", deviatedPixels.__len__(), "pixels."
+    print "Deviated pixels: "
+    lastRow = 0
+    badPixelsString = ""
+    for pair in deviatedPixels:
+        if lastRow != pair[0]:
+            print "row %d  detected pixel(s): %s" % (lastRow, badPixelsString)
+            lastRow = pair[0]
+            badPixelsString = ""
+        badPixelsString += str(pair)
+    print "row %d  detected pixel(s): %s" % (lastRow, badPixelsString)
+    print "\nThat's", deviatedPixels.__len__(), "pixels."
 
     if asicTesting.bDebug:
         print "Debugging.."

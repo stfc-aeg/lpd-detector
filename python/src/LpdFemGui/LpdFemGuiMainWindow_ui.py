@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Mon Jul 28 15:20:41 2014
+# Created: Wed Jul 30 09:12:52 2014
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -1864,15 +1864,15 @@ class Ui_MainWindow(object):
         self.commentEdit.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
         self.commentEdit.setProperty("placeholderText", _fromUtf8(""))
         self.commentEdit.setObjectName(_fromUtf8("commentEdit"))
-        self.testBtn = QtGui.QPushButton(self.testTab)
-        self.testBtn.setGeometry(QtCore.QRect(650, 240, 75, 26))
+        self.pixelCheckBtn = QtGui.QPushButton(self.testTab)
+        self.pixelCheckBtn.setGeometry(QtCore.QRect(650, 240, 91, 26))
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.testBtn.sizePolicy().hasHeightForWidth())
-        self.testBtn.setSizePolicy(sizePolicy)
-        self.testBtn.setMinimumSize(QtCore.QSize(40, 0))
-        self.testBtn.setObjectName(_fromUtf8("testBtn"))
+        sizePolicy.setHeightForWidth(self.pixelCheckBtn.sizePolicy().hasHeightForWidth())
+        self.pixelCheckBtn.setSizePolicy(sizePolicy)
+        self.pixelCheckBtn.setMinimumSize(QtCore.QSize(40, 0))
+        self.pixelCheckBtn.setObjectName(_fromUtf8("pixelCheckBtn"))
         self.moduleLhsSel = QtGui.QRadioButton(self.testTab)
         self.moduleLhsSel.setGeometry(QtCore.QRect(567, 43, 55, 21))
         self.moduleLhsSel.setChecked(True)
@@ -2262,7 +2262,7 @@ class Ui_MainWindow(object):
         self.moduleNumberLabel.setText(QtGui.QApplication.translate("MainWindow", "Module Number:", None, QtGui.QApplication.UnicodeUTF8))
         self.commentLabel.setText(QtGui.QApplication.translate("MainWindow", "Comment:", None, QtGui.QApplication.UnicodeUTF8))
         self.commentEdit.setText(QtGui.QApplication.translate("MainWindow", "Hi", None, QtGui.QApplication.UnicodeUTF8))
-        self.testBtn.setText(QtGui.QApplication.translate("MainWindow", "Test", None, QtGui.QApplication.UnicodeUTF8))
+        self.pixelCheckBtn.setText(QtGui.QApplication.translate("MainWindow", "Pixel Check", None, QtGui.QApplication.UnicodeUTF8))
         self.moduleLhsSel.setText(QtGui.QApplication.translate("MainWindow", "LHS", None, QtGui.QApplication.UnicodeUTF8))
         self.moduleTypeLabel.setText(QtGui.QApplication.translate("MainWindow", "Module Type:", None, QtGui.QApplication.UnicodeUTF8))
         self.moduleRhsSel.setText(QtGui.QApplication.translate("MainWindow", "RHS", None, QtGui.QApplication.UnicodeUTF8))

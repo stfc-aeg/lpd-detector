@@ -9,11 +9,13 @@ from LpdFemClient.LpdFemClient import LpdFemClient
 
 from PyQt4 import QtCore, QtGui
 from utilities import *
-import sys, time
+import sys, os, time, datetime
 
 import numpy as np
+import h5py
 
 import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 from matplotlib.figure import Figure
@@ -130,13 +132,87 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
 
 #        # Mask off gain bits
 #        lpdImage.imageArray = lpdImage.imageArray & 0xfff
-#        self.imgObject.set_data(lpdImage.imageArray)
-#        self.axes.draw_artist(self.imgObject)
-#        self.axes.set_title("Run %d Train %d Image %d" % (lpdImage.runNumber, lpdImage.frameNumber, lpdImage.imageNumber))
+
         self.imgObject.set_data(lpdImage)
 #        self.axes.draw_artist(self.imgObject)
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
-        self.titleText = 'Run %d Train %d Image %d%sModule %d: %s' % (self.runNumber, self.train, self.image, "\n", self.module, dateStr)
+        self.titleText = 'Train %d Image %d %sModule %d: %s' % (self.train, self.image, "\n", self.module, dateStr)
         self.axes.set_title(self.titleText)
         self.canvas.draw()
+
+        # Create new folder
+        self.prepareFilePath()
+        # Save image to hdf5 file
+        self.savePlot(lpdImage)
+
+        # Testing saving figured file..
+        timestamp = time.time()
+        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S_%f')
+        fname = self.filePath + "savedFigure_%s" % st
+        self.fig.savefig(fname)
+
+    def prepareFilePath(self):
+
+        timestamp = time.time()
+        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+        self.filePath = "/u/ckd27546/workspace/tinkering/savedData_%s/" % st
+        
+        # Create directory if it doesn't exist
+        self.ensure_dir(self.filePath)
+
+    def ensure_dir(self, f):
+        ''' Create the argument as a directory unless it already exists '''
+        d = os.path.dirname(f)
+        if not os.path.exists(d):
+            os.makedirs(d)
+        else:
+            print >> sys.stderr, "WARNING: the folder '%s' already exists" % f
+
+    def savePlot(self, lpdImage):
+
+        fileName = self.filePath + "lpdData.hdf5"
+        print >> sys.stderr, "Creating HDF5 data file %s" % fileName
+
+        print "Creating HDF5 data file %s" % fileName
+        try:
+            self.hdfFile = h5py.File(fileName, 'w')
+        except IOError as e:
+            print "Failed to open HDF file with error: %s" % e
+            raise(e)
+
+        self.nrows = 32
+        self.ncols = 128
+
+        self.imagesWritten = 0
+        currentImage = 0
+        
+        # Create group structure
+        self.lpdGroup = self.hdfFile.create_group('lpd')
+        self.metaGroup = self.lpdGroup.create_group('metadata')
+        self.dataGroup = self.lpdGroup.create_group('data')
+        
+        # Create data group entries    
+        self.imageDs = self.dataGroup.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+                                        maxshape=(None,self.nrows, self.ncols))
+        self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
+        self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+        self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+
+        # Write data and info to file
+        self.imageDs.resize((self.imagesWritten+1, self.nrows, self.ncols))
+        self.imageDs[self.imagesWritten,...] = lpdImage # self.imageArray
+        
+#        self.timeStampDs.resize((self.imagesWritten+1, ))
+#        self.timeStampDs[self.imagesWritten] = lpdFrame.timeStampSof
+
+#        print "arguments: ", type(args), dir(args)
+        
+        self.trainNumberDs.resize((self.imagesWritten+1, ))
+        self.trainNumberDs[self.imagesWritten] = 0  # self.args.train
+        
+        self.imageNumberDs.resize((self.imagesWritten+1, ))
+        self.imageNumberDs[self.imagesWritten] = currentImage
+
+        # Close the file
+        self.hdfFile.close()
 

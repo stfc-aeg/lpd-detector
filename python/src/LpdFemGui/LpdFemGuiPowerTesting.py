@@ -9,7 +9,10 @@ from LpdFemTests.LpdPowerControl import LpdPowerControl
 import sys, time
 
 class LpdFemGuiPowerTesting:
-    
+
+    RHS_MODULE = 15
+    LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
+
     def __init__(self, femHost, femPort, messageSignal):
         
         self.femHost = femHost
@@ -35,13 +38,15 @@ class LpdFemGuiPowerTesting:
         ''' Helper function '''
 
         self.moduleNumber = moduleNumber
-        if moduleNumber == 0:
-            self.moduleString = "LHS"
-        else: #if moduleNumber == 15:
-            self.moduleString = "RHS"
+        if moduleNumber == LpdFemGuiPowerTesting.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == LpdFemGuiPowerTesting.RHS_MODULE:  self.moduleString = "RHS"
+        else:
+            self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 
     def testPowerCards(self, moduleNumber):
-        ''' Comment to be added here '''
+        ''' ORPHANED! Comment to be added here '''
+        
+        #TODO: No longer called from LpdFemGuiAnalysis.performAnalysis !
         
         # Set moduleNumber and moduleString (e.g. 0/LHS)
         self.setModuleType(moduleNumber)
@@ -60,7 +65,7 @@ class LpdFemGuiPowerTesting:
         hvbias = 50
         powerControl = LpdPowerControl(self.femHost, self.femPort, asicmodule)
 
-        print >> sys.stderr, "Executing first LpdPowerControl script.. (Setting high-voltage)"
+        print >> sys.stderr, "Setting high-voltage"
     
         print >> sys.stderr, "Switching: HV off, ",    # Possibly redundant?
         powerControl.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.OFF)
@@ -71,7 +76,7 @@ class LpdFemGuiPowerTesting:
         print >> sys.stderr, "Setting HV bias to ", hvbias, " V.."
         powerControl.updateQuantity(quantity='sensorBias', newValue=hvbias)
     
-        print >> sys.stderr, "Executing second LpdPowerControl script.. (Enabling high and low voltages)"
+        print >> sys.stderr, "Enabling high and low voltages"
         
         print >> sys.stderr, "Switching: LV on, ",
         powerControl.updateQuantity(quantity='asicPowerEnable', newValue=LpdPowerControl.ON)
@@ -98,7 +103,7 @@ class LpdFemGuiPowerTesting:
         thresholdSensorCurrent = 1.67
 
         # Analyse the results:
-        issues = self.retrieveTestResults(initResults, postResults, thresholdSensorTemperature, thresholdSensorCurrent)
+        issues = self.retrieveFaultFlags(initResults, postResults, thresholdSensorTemperature, thresholdSensorCurrent)
 
         bDebug = False
         if bDebug:
@@ -159,8 +164,8 @@ class LpdFemGuiPowerTesting:
                         raise Exception
         return results
     
-    def retrieveTestResults(self, initResults, postResults, thresholdSensorTemperature, thresholdSensorCurrent):
-        ''' Retrieve test results and comparing against thresholds and report any breach(es) '''
+    def retrieveFaultFlags(self, initResults, postResults, thresholdSensorTemperature, thresholdSensorCurrent):
+        ''' ORPHANED! Retrieve test results and comparing against thresholds and report any breach(es) '''
         
         if self.moduleNumber == 15:
             powerCardNumber = str(1)
@@ -213,10 +218,17 @@ class LpdFemGuiPowerTesting:
             moduleNumber mandatory as function called directly from LpdFemGuiMainTestTab '''
 
         # Set moduleNumber and moduleString
-        self.setModuleInfo(moduleNumber)
+        self.setModuleType(moduleNumber)
 
         self.msgPrint("Testing power card: %s" % self.moduleString)
 
+        #TODO: Sort out this dirty hack:
+        sensorIdx = -1
+        if self.moduleNumber == LpdFemGuiPowerTesting.LHS_MODULE:
+            sensorIdx = 9
+        if self.moduleNumber == LpdFemGuiPowerTesting.RHS_MODULE:
+            sensorIdx = 8
+        
         try:
             results = self.readPowerCards()
         except Exception:
@@ -224,7 +236,7 @@ class LpdFemGuiPowerTesting:
             self.theDevice.close()
             return
 
-        self.msgPrint("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' % self.moduleNumber]))
+        self.msgPrint("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
 
 #        print >> sys.stderr, "\t   V Sensor %s : %.2f" % (self.moduleString, results['sensor%sVoltage' % self.moduleNumber]), " V ", "%.2f" % results['sensor%sCurrent' % self.moduleNumber], " A"
 #        print >> sys.stderr, "\t   V Sensor 0 : %.2f" % results['sensor0Voltage'], " V ", "%.2f" % results['sensor0Current'], " A"

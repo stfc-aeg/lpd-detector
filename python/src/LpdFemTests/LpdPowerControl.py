@@ -128,8 +128,4 @@ if __name__ == "__main__":
             powerControl.updateQuantity(quantity='sensorBias', newValue=hvbias)
         else:
             print ""
-            
-    # Close fem connection
-    powerControl.close()
-    
-    
+

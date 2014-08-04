@@ -60,7 +60,7 @@ class LpdFemGuiMainPowerTab(object):
 
         stateNow = self.appMain.pwrCard.lvEnableGet()
         if requestedState != None and stateNow != requestedState:
-            self.msgPrint("ERROR: failed to switch LV enable to %d", requestedState)
+            self.msgPrint("ERROR: failed to switch LV enable to %d" % requestedState)
         else:
             self.powerBtnStateUpdate('lv', stateNow)
         self.powerStatusUpdateDone()
@@ -77,7 +77,7 @@ class LpdFemGuiMainPowerTab(object):
     
         stateNow = self.appMain.pwrCard.hvEnableGet()
         if requestedState != None and  stateNow != requestedState:
-            self.msgPrint("ERROR: failed to switch HV enable to %d", requestedState)
+            self.msgPrint("ERROR: failed to switch HV enable to %d" % requestedState)
         else:
             self.powerBtnStateUpdate('hv', stateNow)
         self.powerStatusUpdateDone()
@@ -157,7 +157,11 @@ class LpdFemGuiMainPowerTab(object):
                 
                 try:
                     uiObj = getattr(self.ui, uiObjName)
-                    self.updateFlag(uiObj, powerState[paramName])
+                    if paramStem == 'asicPowerEnable' or paramStem == 'sensorBiasEnable':
+                        powerStateVal = 'Yes' if powerState[paramName] == 0 else 'No'
+                    else:
+                        powerStateVal = powerState[paramName]                        
+                    self.updateFlag(uiObj, powerStateVal)
                 except Exception as e:
                     print >> sys.stderr, "Exception during UI object mapping:", e
                     

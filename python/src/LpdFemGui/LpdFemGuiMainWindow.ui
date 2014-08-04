@@ -4530,12 +4530,12 @@
        <string/>
       </property>
      </widget>
-     <widget class="QPushButton" name="testBtn">
+     <widget class="QPushButton" name="pixelCheckBtn">
       <property name="geometry">
        <rect>
         <x>650</x>
         <y>240</y>
-        <width>75</width>
+        <width>91</width>
         <height>26</height>
        </rect>
       </property>
@@ -4552,7 +4552,7 @@
        </size>
       </property>
       <property name="text">
-       <string>Test</string>
+       <string>Pixel Check</string>
       </property>
      </widget>
      <widget class="QRadioButton" name="moduleLhsSel">

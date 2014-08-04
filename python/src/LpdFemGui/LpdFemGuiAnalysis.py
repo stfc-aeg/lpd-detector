@@ -40,7 +40,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
             self.train    = 0
 
             self.analysisWindow = LpdFemGuiAnalysisWindow()
-#            self.analysisWindow.show()    # Hide window for now while testing
+            self.analysisWindow.show()    # Hide window for now while testing
 
         except Exception as e:
             self.msgPrint("LpdFemGuiAnalysis initialisation exception: %s" % e, bError=True)
@@ -61,7 +61,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
 #        print >> sys.stderr, "received: ", femHost, femPort
 
     def performAnalysis(self, train, image, moduleNumber, fileName):
-        
+        ''' Analyse fileName using train, image, moduleNumber info and check health of pixels '''
         self.train          = train
         self.image          = image
         self.moduleNumber   = moduleNumber
@@ -70,7 +70,9 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         # Check hdf5 filename exist before opening it
         if os.path.isfile(self.fileName):
             if self.analyseFile():
+                # Signal whether RHS/LHS module selected
                 self.analysisWindow.moduleSignal.emit(self.moduleNumber)
+                # Signal hdf5 image (data)
                 self.analysisWindow.dataSignal.emit(self.moduleData)
             else:
                 self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
@@ -79,8 +81,50 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
             self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
             return
 
-        # Conduct power card tests
-        self.powerTesting.testPowerCards(self.moduleNumber)
+        # Conduct power card tests - Replace with pixel health test !
+#        self.powerTesting.testPowerCards(self.moduleNumber)
+
+        # Check for bad pixel(s)
+        deviatedPixels = self.testPixelsStandardDeviation()
+
+        lastRow = 0
+        badPixelsString = ""
+        for pair in deviatedPixels:
+            if lastRow != pair[0]:
+                self.msgPrint("Row %d  detected pixel(s): %s" % (lastRow, badPixelsString))
+                lastRow = pair[0]
+                badPixelsString = ""
+            badPixelsString += str(pair)
+        self.msgPrint("Row %d detected pixel(s): %s" % (lastRow, badPixelsString))
+        if deviatedPixels.__len__() > 0:
+            self.msgPrint("Detected %d bad pixel(s)." % (deviatedPixels.__len__()))
+        else:
+            self.msgPrint("No bad pixels detected.")
+
+        print >> sys.stderr, "Here begins the testing..!"
+        self.displayFaultyPixels(deviatedPixels)
+        
+        
+    def displayFaultyPixels(self, deviatedPixels):
+        ''' Display plot of black/white (well, blue/red) image indicating faulty pixel(s) '''
+        self.faultyPixelsWindow = LpdFemGuiAnalysisWindow()
+        self.faultyPixelsWindow.show()
+
+        self.faultyPixelsWindow.timeStampSignal.emit(0)
+        self.faultyPixelsWindow.runNumberSignal.emit(101)
+        self.faultyPixelsWindow.trainSignal.emit(1)
+        self.faultyPixelsWindow.imageSignal.emit(2)
+        
+        # Create empty array 
+        self.faultyPixelsArray = np.zeros(32*128, dtype=np.uint16)
+        self.faultyPixelsArray = np.reshape(self.faultyPixelsArray, (32, 128))
+
+        for row, column in deviatedPixels:
+            self.faultyPixelsArray[row][column] = 4096
+            
+        self.faultyPixelsWindow.moduleSignal.emit(self.moduleNumber)
+        self.faultyPixelsWindow.dataSignal.emit(self.faultyPixelsArray)
+
 
     def analyseFile(self):
 

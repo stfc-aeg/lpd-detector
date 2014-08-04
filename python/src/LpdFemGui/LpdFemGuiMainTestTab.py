@@ -22,6 +22,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     Helper class to manager TEST tab in main window
     '''
 
+    RHS_MODULE = 15
+    LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
+
     fileNameSignal = QtCore.pyqtSignal(str)
     fileReadySignal = QtCore.pyqtSignal()
     messageSignal = QtCore.pyqtSignal(object, bool)
@@ -37,12 +40,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
         # Disable test button from start
-        self.ui.testBtn.setEnabled(False)
+        self.ui.pixelCheckBtn.setEnabled(False)
         self.msgPrint = self.testMsgPrint   # Use MessageBox element within this tab
         
         self.ui.moduleLhsSel.setChecked(True)
                 
-        self.moduleNumber   = 0   # LHS = 0, RHS = 15
+        self.moduleNumber   = LpdFemGuiMainTestTab.LHS_MODULE   # LHS = 0, RHS = 15
         self.fileName       = ""
         self.image          = 0
         self.train          = 0
@@ -53,7 +56,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         print >> sys.stderr, "self.logFileName: ", self.logFileName
 
         # Connect signals and slots
-        QtCore.QObject.connect(self.ui.testBtn,               QtCore.SIGNAL("clicked()"),           self.executeTest)   # "Test"
+        QtCore.QObject.connect(self.ui.pixelCheckBtn,         QtCore.SIGNAL("clicked()"),           self.pixelCheckTest)   # "Pixel Check"
         QtCore.QObject.connect(self.ui.testConfigBtn,         QtCore.SIGNAL("clicked()"),           self.testConfigure) # "TestConfig"
         QtCore.QObject.connect(self.ui.testRunBtn,            QtCore.SIGNAL("clicked()"),           self.testRun)       # "TestRun"
         QtCore.QObject.connect(self.ui.operatorEdit,          QtCore.SIGNAL("editingFinished()"),   self.operatorUpdate)
@@ -75,24 +78,24 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
     def __del__(self):
         
-        # Close the log file? (Redundant?)
+        # Close the log file upon program exit? (Redundant?)
         pass
     
     def testReadCurrent(self):
         
         self.analysis.powerTesting.readCurrent(self.moduleNumber)
         
-    def executeTest(self):
-        ''' Perform analysis '''
+    def pixelCheckTest(self):
+        ''' Perform analysis of data file, then check pixel health '''
         self.analysis.performAnalysis(self.train, self.image, self.moduleNumber, self.fileName)
         # Disable test button until next filename available
-        self.ui.testBtn.setEnabled(False)
+        self.ui.pixelCheckBtn.setEnabled(False)
 
     def fileReadyToBeProcessed(self):
         ''' When fileReadySignal received, enable test button '''
         self.testMsgPrint("File %s ready to be processed" % self.fileName)
         self.testMsgPrint("Acquisition completed")
-        self.ui.testBtn.setEnabled(True)
+        self.ui.pixelCheckBtn.setEnabled(True)
         
     def configDeviceMessage(self, message):
 
@@ -127,10 +130,11 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         
         if self.ui.moduleLhsSel.isChecked():
             self.msgPrint("LHS module selected")
-            self.moduleNumber = 0
+            self.moduleNumber = LpdFemGuiMainTestTab.LHS_MODULE
+
         elif self.ui.moduleRhsSel.isChecked():
             self.msgPrint("RHS module selected")
-            self.moduleNumber = 15
+            self.moduleNumber = LpdFemGuiMainTestTab.RHS_MODULE
 
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''

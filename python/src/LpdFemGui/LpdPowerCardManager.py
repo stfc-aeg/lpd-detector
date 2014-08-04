@@ -68,11 +68,10 @@ class LpdPowerCardManager(object):
                 self.appMain.msgPrint("Unable to retrieve power card %d LV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
             lvEnables.append(enableVal)
         
-        self.lvEnabled = True
+        self.lvEnabled = False #True
         for enable in lvEnables:
             if enable == True:
-                self.lvEnabled = False
-                         
+                self.lvEnabled = True #False
         return self.lvEnabled
     
     def hvEnableSet(self, state):
@@ -97,10 +96,10 @@ class LpdPowerCardManager(object):
                 self.appMain.msgPrint("Unable to retrieve power card %d HV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
             hvEnables.append(enableVal)
         
-        self.hvEnabled = True
+        self.hvEnabled = False #True
         for enable in hvEnables:
             if enable == True:
-                self.hvEnabled = False
+                self.hvEnabled = True #False
                          
         return self.hvEnabled
     
