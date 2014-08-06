@@ -6,10 +6,12 @@ Created on Apr 19, 2013
 '''
 
 from PyQt4 import QtCore, QtGui
+from PyQt4.QtGui import *
+
 from LpdFemGuiMainWindow_ui import Ui_MainWindow
 from LpdFemGui import *
 from LpdFemGuiAnalysis import *
-import logging
+import logging, logging.handlers
 
 from utilities import *
 import time
@@ -28,6 +30,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     fileNameSignal = QtCore.pyqtSignal(str)
     fileReadySignal = QtCore.pyqtSignal()
     messageSignal = QtCore.pyqtSignal(object, bool)
+    loggingSignal = QtCore.pyqtSignal(str)
     configDeviceSignal = QtCore.pyqtSignal(str)
     
     def __init__(self, appMain, mainWindow):
@@ -56,25 +59,27 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         print >> sys.stderr, "self.logFileName: ", self.logFileName
 
         # Connect signals and slots
-        QtCore.QObject.connect(self.ui.pixelCheckBtn,         QtCore.SIGNAL("clicked()"),           self.pixelCheckTest)   # "Pixel Check"
-        QtCore.QObject.connect(self.ui.testConfigBtn,         QtCore.SIGNAL("clicked()"),           self.testConfigure) # "TestConfig"
-        QtCore.QObject.connect(self.ui.testRunBtn,            QtCore.SIGNAL("clicked()"),           self.testRun)       # "TestRun"
+        QtCore.QObject.connect(self.ui.testConfigBtn,         QtCore.SIGNAL("clicked()"),           self.testConfigure) # "TestConfig" - DAQ tab replica
+        QtCore.QObject.connect(self.ui.testRunBtn,            QtCore.SIGNAL("clicked()"),           self.testRun)       # "TestRun"    - DAQ tab replica
         QtCore.QObject.connect(self.ui.operatorEdit,          QtCore.SIGNAL("editingFinished()"),   self.operatorUpdate)
         QtCore.QObject.connect(self.ui.moduleNumberEdit,      QtCore.SIGNAL("editingFinished()"),   self.moduleNumberUpdate)
         QtCore.QObject.connect(self.ui.moduleTypeButtonGroup, QtCore.SIGNAL("buttonClicked(int)"),  self.moduleTypeUpdate)
-        QtCore.QObject.connect(self.ui.readCurrentBtn,        QtCore.SIGNAL("clicked()"),           self.testReadCurrent)
-        
+        QtCore.QObject.connect(self.ui.readCurrentBtn,        QtCore.SIGNAL("clicked()"),           self.testReadCurrent)   # 
+        QtCore.QObject.connect(self.ui.pixelCheckBtn,         QtCore.SIGNAL("clicked()"),           self.pixelCheckTest)    # "Pixel Check"
+
         # Allow LpdFemDataReceiver to communicate new filename (via LpdFemGui, LpdFemGuiMainWindow)
         self.fileNameSignal.connect(self.updateFileName)
         self.fileReadySignal.connect(self.fileReadyToBeProcessed)
         self.fileName = ""
         self.configDeviceSignal.connect(self.configDeviceMessage)
-        # Let LpdFemGuiPowerTesting communicate results:
+        # Let LpdFemGuiPowerTesting (and others) communicate results:
         self.messageSignal.connect(self.testMsgPrint)
+        # Let LpdFemGuiAnalysis (and others?) communicate loggable results
+        self.loggingSignal.connect(self.logMsg)
+        (self.logger, self.hdl) = (None, None)
 
-        
         # Create the analysis window but don't show it initially
-        self.analysis = LpdFemGuiAnalysis(self.messageSignal)
+        self.analysis = LpdFemGuiAnalysis(self.messageSignal, self.loggingSignal)
 
     def __del__(self):
         
@@ -102,15 +107,64 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.testMsgPrint(message)
         
     def testConfigure(self):
-        
+
         self.testMsgPrint("Configuring device ...")
         self.mainWindow.daqTab.deviceConfigure()
-#        self.testMsgPrint("Device configured OK")
 
+    def warning(self):
+        ''' Testing using QMessageBox '''
+        ret = QMessageBox.warning(self, "Power Cycle",
+                '''Ensure power switched on before  clicking ok or click cancel.''',
+                QMessageBox.Ok, QMessageBox.Cancel);
+        if ret == QMessageBox.Ok:
+            print >> sys.stderr, "Answer was Ok"
+        elif ret == QMessageBox.Cancel:
+            print >> sys.stderr, "Answer was Cancel"
+        else:
+            print >> sys.stderr, "Error: Unknown answer"
+ 
     def testRun(self):
         
         self.testMsgPrint("Running Acquisition ...")
         self.mainWindow.daqTab.deviceRun()
+        
+        #TODO: Assuming logging begins here.. ?
+        # Create file path - Move this? Although beware createLogger()'s dependency..
+        timestamp = time.time()
+        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+        loggerPath = "/u/ckd27546/workspace/tinkering/savedData_%s/testLogging.txt" % st
+        
+        # Set up logger
+        (self.logPath) = self.createLogger(loggerPath)
+
+        # Signal new file path
+        self.analysis.analysisWindow.logPathSignal.emit(self.logPath)
+
+
+    def createLogger(self, fileName):
+        ''' Create logger (and its' folder if it does not exist), return logger and its' path
+            Adjusted from example: 
+            http://rlabs.wordpress.com/2009/04/09/python-closing-logging-file-getlogger/ '''
+        # Check whether logger already set up
+        if self.logger is not None:
+            # Logger already exists, remove it
+            self.logger.removeHandler(self.hdl)
+            self.hdl.close()
+        # Setup logger
+        self.logger = logging.getLogger('testLogger')
+        # Strip filename from fileName
+        filePathTuple = os.path.split(fileName)
+        filePath = filePathTuple[0] + '/'
+        # Create directory if it doesn't exist
+        if not os.path.exists(filePath):
+            os.makedirs( filePath )
+        # Create and set handler, formatter
+        self.hdl = logging.handlers.RotatingFileHandler(fileName, maxBytes=2097152, backupCount=5)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        self.hdl.setFormatter(formatter)
+        self.logger.addHandler(self.hdl)
+        self.logger.setLevel(logging.DEBUG)
+        return filePath
 
     def updateFileName(self, filename):
 
@@ -139,9 +193,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''
         
-#        # Debugging info:
-#        print >> sys.stderr, "LpdFemGuiMainTestTab testMsgPrint function called"
-        
         constructedMessage = "%s %s" % (time.strftime("%H:%M:%S"), str(msg))
         self.ui.testMessageBox.appendPlainText(constructedMessage)
         self.ui.testMessageBox.verticalScrollBar().setValue(self.ui.testMessageBox.verticalScrollBar().maximum())
@@ -153,3 +204,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         else:
             logging.info(constructedMessage)
         
+
+    def logMsg(self, string):
+        ''' Log string to file (self.logger) '''
+        
+        print >> sys.stderr, "logMsg rx'd: %s.."% string[0:24]
+        if self.logger is not None:
+            self.logger.info(string)
+        else:
+            print >> sys.stderr, "ERROR: self.logger not set up!"

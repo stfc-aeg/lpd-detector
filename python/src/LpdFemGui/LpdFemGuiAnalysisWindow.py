@@ -21,13 +21,16 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as Naviga
 from matplotlib.figure import Figure
 
 class LpdFemGuiAnalysisWindow(QtGui.QDialog):
-    
+
+    REALIMAGE   = 0
+    FAULTYIMAGE = 1
+
     trainSignal  = QtCore.pyqtSignal(object)
     imageSignal  = QtCore.pyqtSignal(object)
     moduleSignal = QtCore.pyqtSignal(object)
     timeStampSignal = QtCore.pyqtSignal(object)
-    runNumberSignal = QtCore.pyqtSignal(object)
-    dataSignal   = QtCore.pyqtSignal(object)
+    logPathSignal = QtCore.pyqtSignal(str)
+    dataSignal   = QtCore.pyqtSignal(object, object)
     
     matplotlib.rcParams.update({'font.size': 8})
     
@@ -50,33 +53,41 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         self.fig = Figure((8.0, 6.0), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.plotFrame)
-        
-        self.axes = self.fig.add_subplot(111)
- 
-        # Disable up the X and Y ticks
-        self.axes.set_xticks([])
-        self.axes.set_yticks([])
-       
+
         self.imageSize = self.nrows * self.ncols
-
-        # Create an empty plot
-        self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)                   
-        self.imgObject = self.axes.imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
-
-        cBarPosn = 'horizontal'
-        # Place plot closer to center of figure
-        self.axes.set_position([0.125, 0.4, 0.8, 0.5])
-
-        # Create nd show a colourbar
-        axc, kw = matplotlib.colorbar.make_axes(self.axes, orientation=cBarPosn)
-        cb = matplotlib.colorbar.Colorbar(axc, self.imgObject, orientation=cBarPosn)
-        self.imgObject.colorbar = cb
-
-        # Add vertical lines to differentiate between the ASICs
-        for i in range(16, self.ncols, 16):
-            self.axes.vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
         
-        self.canvas.draw()
+        #self.axes = self.fig.add_subplot(111)
+        self.axes = []
+        self.img  = []
+
+        for idx in range(2):
+            
+            axesObject = self.fig.add_subplot(2, 1, idx+1)
+            self.axes.extend([axesObject])
+
+            # Disable up the X and Y ticks
+            self.axes[idx].set_xticks([])
+            self.axes[idx].set_yticks([])
+    
+            # Create an empty plot
+            self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)                   
+            imgObject = self.axes[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
+            self.img.extend([imgObject])
+
+            cBarPosn = 'horizontal'
+            # Place plot closer to center of figure
+#            self.axes[idx].set_position([0.125, 0.4, 0.8, 0.5])
+    
+            # Create nd show a colourbar
+            axc, kw = matplotlib.colorbar.make_axes(self.axes[idx], orientation=cBarPosn)
+            cb = matplotlib.colorbar.Colorbar(axc, self.img[idx], orientation=cBarPosn)
+            self.img[idx].colorbar = cb
+    
+            # Add vertical lines to differentiate between the ASICs
+            for i in range(16, self.ncols, 16):
+                self.axes[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
+            
+            self.canvas.draw()
 
         # Bind the 'pick' event for clicking on one of the bars
         #
@@ -100,7 +111,7 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         self.imageSignal.connect(self.imageUpdate)
         self.moduleSignal.connect(self.moduleUpdate)
         self.timeStampSignal.connect(self.timeStampUpdate)
-        self.runNumberSignal.connect(self.runNumberUpdate)
+        self.logPathSignal.connect(self.logPathUpdate)
         self.dataSignal.connect(self.windowUpdate)
         
     def closeEvent(self, event):
@@ -116,64 +127,68 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         
     def moduleUpdate(self, module):
         self.module = module
-        print >> sys.stderr, "moduleUpdate received: %s" % module
+#        print >> sys.stderr, "moduleUpdate received: %s" % module
         
     def timeStampUpdate(self, timeStamp):
         self.timeStamp = timeStamp
 #        print >> sys.stderr, "timeStampUpdate received: %s" % timeStamp
 
-    def runNumberUpdate(self, runNumber):
-        self.runNumber = runNumber
-#        print >> sys.stderr, "runNumberUpdate received: %s" % runNumber
+    def logPathUpdate(self, logPath):
+        self.logPath = str(logPath)
+#        print >> sys.stderr, "logPathUpdate received    : %s, %s" % (logPath, type(logPath))
+#        print >> sys.stderr, "logPathUpdate self.logPath: %s, %s" % (self.logPath, type(self.logPath))
 
-    def windowUpdate(self, lpdImage):
+    def windowUpdate(self, lpdActualImage, lpdFaultyImage):
         
-#        print >> sys.stderr, "windowUpdate successfully called !"
+        # Plot the captured image
+        self.img[LpdFemGuiAnalysisWindow.REALIMAGE].set_data(lpdActualImage)
 
-#        # Mask off gain bits
-#        lpdImage.imageArray = lpdImage.imageArray & 0xfff
-
-        self.imgObject.set_data(lpdImage)
-#        self.axes.draw_artist(self.imgObject)
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
         self.titleText = 'Train %d Image %d %sModule %d: %s' % (self.train, self.image, "\n", self.module, dateStr)
-        self.axes.set_title(self.titleText)
+        self.axes[LpdFemGuiAnalysisWindow.REALIMAGE].set_title(self.titleText)
+
+        # Plot the black/white image (which shows which pixel(s) are dead)
+        self.img[LpdFemGuiAnalysisWindow.FAULTYIMAGE].set_data(lpdFaultyImage)
+
+        dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
+        self.titleText = 'Module %d: Map of faulty pixel(s)' % self.module
+        self.axes[LpdFemGuiAnalysisWindow.FAULTYIMAGE].set_title(self.titleText)
         self.canvas.draw()
 
-        # Create new folder
-        self.prepareFilePath()
-        # Save image to hdf5 file
-        self.savePlot(lpdImage)
+#        # Create new folder
+#        self.prepareFilePath()
+        # Save image to hdf5 file (but not the black/white image)
+        self.savePlot(lpdActualImage)
 
-        # Testing saving figured file..
-        timestamp = time.time()
-        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S_%f')
-        fname = self.filePath + "savedFigure_%s" % st
+        # Testing saving figure to file.. (which contains both images)
+#        timestamp = time.time()
+#        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+        fname = self.logPath + "savedFigure" #_%s" % st
         self.fig.savefig(fname)
 
-    def prepareFilePath(self):
-
-        timestamp = time.time()
-        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-        self.filePath = "/u/ckd27546/workspace/tinkering/savedData_%s/" % st
-        
-        # Create directory if it doesn't exist
-        self.ensure_dir(self.filePath)
-
-    def ensure_dir(self, f):
-        ''' Create the argument as a directory unless it already exists '''
-        d = os.path.dirname(f)
-        if not os.path.exists(d):
-            os.makedirs(d)
-        else:
-            print >> sys.stderr, "WARNING: the folder '%s' already exists" % f
+#    def prepareFilePath(self):
+#
+#        timestamp = time.time()
+#        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+#        self.filePath = "/u/ckd27546/workspace/tinkering/savedData_%s/" % st
+#
+        # Create directory if it doesn't exist - NOT required, sorted by LpdFemGuiMainTestTab instance
+#        self.ensure_dir(self.filePath)
+#
+#    def ensure_dir(self, f):
+#        ''' Create the argument as a directory unless it already exists '''
+#        d = os.path.dirname(f)
+#        if not os.path.exists(d):
+#            os.makedirs(d)
+#        else:
+#            print >> sys.stderr, "WARNING: the folder '%s' already exists" % f
 
     def savePlot(self, lpdImage):
 
-        fileName = self.filePath + "lpdData.hdf5"
-        print >> sys.stderr, "Creating HDF5 data file %s" % fileName
+        fileName = self.logPath + "lpdData.hdf5"
+#        print >> sys.stderr, "Creating HDF5 data file %s" % fileName
 
-        print "Creating HDF5 data file %s" % fileName
+        print "Creating HDF5 data file %s, of type: %s" % (fileName, type(fileName))
         try:
             self.hdfFile = h5py.File(fileName, 'w')
         except IOError as e:

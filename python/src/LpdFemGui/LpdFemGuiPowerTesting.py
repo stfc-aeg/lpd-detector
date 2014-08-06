@@ -13,7 +13,7 @@ class LpdFemGuiPowerTesting:
     RHS_MODULE = 15
     LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
 
-    def __init__(self, femHost, femPort, messageSignal):
+    def __init__(self, femHost, femPort, messageSignal, loggingSignal):
         
         self.femHost = femHost
         self.femPort = femPort
@@ -22,6 +22,7 @@ class LpdFemGuiPowerTesting:
 
         #  Communicate test results to LpdFemGuiMainTestTab
         self.messageSignal = messageSignal
+        self.loggingSignal = loggingSignal
 
         self.theDevice = LpdDevice()
         
@@ -237,11 +238,9 @@ class LpdFemGuiPowerTesting:
             return
 
         self.msgPrint("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
+        # Log same results:
+        self.loggingSignal.emit("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
 
-#        print >> sys.stderr, "\t   V Sensor %s : %.2f" % (self.moduleString, results['sensor%sVoltage' % self.moduleNumber]), " V ", "%.2f" % results['sensor%sCurrent' % self.moduleNumber], " A"
-#        print >> sys.stderr, "\t   V Sensor 0 : %.2f" % results['sensor0Voltage'], " V ", "%.2f" % results['sensor0Current'], " A"
-#        print >> sys.stderr, "   V Sensor 15 : %.2f"  % results['sensor15Voltage']," V ", "%.2f" % results['sensor15Current']," A"
-    
     def msgPrint(self, message, bError=False):
         ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
         self.messageSignal.emit(message, bError)

@@ -28,11 +28,12 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
 
     femDeviceParamsSignal = QtCore.pyqtSignal(str, int)
     
-    def __init__(self, messageSignal):
+    def __init__(self, messageSignal, loggingSignal):
         
         super(LpdFemGuiAnalysis, self).__init__()    # Required for pyqtSignal
         
         self.messageSignal = messageSignal
+        self.loggingSignal = loggingSignal
         try:
             self.moduleNumber   = 0
             self.fileName = "" #"/u/ckd27546/workspace/tinkering/lpdData-03154.hdf5"
@@ -57,7 +58,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         self.femHost = femHost
         self.femPort = femPort
         # Create LpdFemGuiPowerTesting object the soon as target known
-        self.powerTesting = LpdFemGuiPowerTesting(self.femHost, self.femPort, self.messageSignal)
+        self.powerTesting = LpdFemGuiPowerTesting(self.femHost, self.femPort, self.messageSignal, self.loggingSignal)
 #        print >> sys.stderr, "received: ", femHost, femPort
 
     def performAnalysis(self, train, image, moduleNumber, fileName):
@@ -70,10 +71,8 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         # Check hdf5 filename exist before opening it
         if os.path.isfile(self.fileName):
             if self.analyseFile():
-                # Signal whether RHS/LHS module selected
+                # Signal whether RHS/LHS module selected - This can be moved somewhere else, can't it?
                 self.analysisWindow.moduleSignal.emit(self.moduleNumber)
-                # Signal hdf5 image (data)
-                self.analysisWindow.dataSignal.emit(self.moduleData)
             else:
                 self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
                 return
@@ -101,29 +100,23 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         else:
             self.msgPrint("No bad pixels detected.")
 
+
         print >> sys.stderr, "Here begins the testing..!"
         self.displayFaultyPixels(deviatedPixels)
         
         
     def displayFaultyPixels(self, deviatedPixels):
         ''' Display plot of black/white (well, blue/red) image indicating faulty pixel(s) '''
-        self.faultyPixelsWindow = LpdFemGuiAnalysisWindow()
-        self.faultyPixelsWindow.show()
 
-        self.faultyPixelsWindow.timeStampSignal.emit(0)
-        self.faultyPixelsWindow.runNumberSignal.emit(101)
-        self.faultyPixelsWindow.trainSignal.emit(1)
-        self.faultyPixelsWindow.imageSignal.emit(2)
-        
         # Create empty array 
         self.faultyPixelsArray = np.zeros(32*128, dtype=np.uint16)
         self.faultyPixelsArray = np.reshape(self.faultyPixelsArray, (32, 128))
 
         for row, column in deviatedPixels:
             self.faultyPixelsArray[row][column] = 4096
-            
-        self.faultyPixelsWindow.moduleSignal.emit(self.moduleNumber)
-        self.faultyPixelsWindow.dataSignal.emit(self.faultyPixelsArray)
+
+        # Signal hdf5 image (data)
+        self.analysisWindow.dataSignal.emit(self.moduleData, self.faultyPixelsArray)
 
 
     def analyseFile(self):
@@ -167,7 +160,6 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
                 self.msgPrint("Analysis Error while processing file: %s" % e, bError=True)
                 return False
             self.analysisWindow.timeStampSignal.emit(timeStamp[imgOffset])
-            self.analysisWindow.runNumberSignal.emit(meta.attrs['runNumber'])
             self.analysisWindow.trainSignal.emit(trainNumber[imgOffset])
             self.analysisWindow.imageSignal.emit(imageNumber[imgOffset])
             return True 
@@ -328,5 +320,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
     def msgPrint(self, message, bError=False):
         ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
         self.messageSignal.emit(message, bError)
-        
+        # Transmit same message to logging as well - risk of crashing?
+        self.loggingSignal.emit(message)
+
         
