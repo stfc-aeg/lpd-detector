@@ -49,12 +49,14 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.ui.moduleLhsSel.setChecked(True)
                 
         self.moduleNumber   = LpdFemGuiMainTestTab.LHS_MODULE   # LHS = 0, RHS = 15
+        self.moduleString   = ""
+        self.setModuleType(self.moduleNumber)
         self.fileName       = ""
         self.image          = 0
         self.train          = 0
  
         # Debugging purposes, have a think about when/how naming the log file..
-        self.logFileName = "/u/ckd27546/workspace/lpdSoftware/log_file_%s.log" % time.strftime("%Y%m%d_%H%M%S")
+        self.logFileName = "/data/lpd/test/testGui/logGui_%s.log" % time.strftime("%Y%m%d_%H%M%S")
         logging.basicConfig(filename=self.logFileName, level=logging.INFO)
         print >> sys.stderr, "self.logFileName: ", self.logFileName
 
@@ -89,7 +91,16 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def testReadCurrent(self):
         
         self.analysis.powerTesting.readCurrent(self.moduleNumber)
-        
+
+    def setModuleType(self, moduleNumber):
+        ''' Helper function '''
+
+        self.moduleNumber = moduleNumber
+        if moduleNumber == LpdFemGuiMainTestTab.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == LpdFemGuiMainTestTab.RHS_MODULE:  self.moduleString = "RHS"
+        else:
+            self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
+
     def pixelCheckTest(self):
         ''' Perform analysis of data file, then check pixel health '''
         self.analysis.performAnalysis(self.train, self.image, self.moduleNumber, self.fileName)
@@ -132,7 +143,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Create file path - Move this? Although beware createLogger()'s dependency..
         timestamp = time.time()
         st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-        loggerPath = "/u/ckd27546/workspace/tinkering/savedData_%s/testLogging.txt" % st
+        loggerPath = "/data/lpd/test/testGui/test_%s_%s/testResults.log" % (st, self.moduleString)
         
         # Set up logger
         (self.logPath) = self.createLogger(loggerPath)
@@ -185,11 +196,13 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         if self.ui.moduleLhsSel.isChecked():
             self.msgPrint("LHS module selected")
             self.moduleNumber = LpdFemGuiMainTestTab.LHS_MODULE
+            self.setModuleType(self.moduleNumber)
 
         elif self.ui.moduleRhsSel.isChecked():
             self.msgPrint("RHS module selected")
             self.moduleNumber = LpdFemGuiMainTestTab.RHS_MODULE
-
+            self.setModuleType(self.moduleNumber)
+            
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''
         

@@ -36,7 +36,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         self.loggingSignal = loggingSignal
         try:
             self.moduleNumber   = 0
-            self.fileName = "" #"/u/ckd27546/workspace/tinkering/lpdData-03154.hdf5"
+            self.fileName = ""
             self.image    = 0
             self.train    = 0
 
@@ -59,7 +59,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         self.femPort = femPort
         # Create LpdFemGuiPowerTesting object the soon as target known
         self.powerTesting = LpdFemGuiPowerTesting(self.femHost, self.femPort, self.messageSignal, self.loggingSignal)
-#        print >> sys.stderr, "received: ", femHost, femPort
+        #print >> sys.stderr, "received: ", femHost, femPort
 
     def performAnalysis(self, train, image, moduleNumber, fileName):
         ''' Analyse fileName using train, image, moduleNumber info and check health of pixels '''
@@ -79,9 +79,6 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         else:
             self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
             return
-
-        # Conduct power card tests - Replace with pixel health test !
-#        self.powerTesting.testPowerCards(self.moduleNumber)
 
         # Check for bad pixel(s)
         deviatedPixels = self.testPixelsStandardDeviation()
@@ -113,10 +110,10 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         self.faultyPixelsArray = np.reshape(self.faultyPixelsArray, (32, 128))
 
         for row, column in deviatedPixels:
-            self.faultyPixelsArray[row][column] = 4096
+            self.faultyPixelsArray[row][column] = 1
 
         # Signal hdf5 image (data)
-        self.analysisWindow.dataSignal.emit(self.moduleData, self.faultyPixelsArray)
+        self.analysisWindow.dataSignal.emit(self.moduleData, self.faultyPixelsArray, self.moduleNumber)
 
 
     def analyseFile(self):
@@ -239,7 +236,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
             difference *= -1
             
         if difference > threshold:
-#            print "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
+            #print "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
             bPixelDifferent = True
         return bPixelDifferent
     
@@ -254,8 +251,8 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
 
         # Does difference exceed 2 standard deviations?            
         if difference > (2*self.moduleStd):
-#            print "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
-#            print "pixel:", pixel, "mean: ", self.moduleAverage, "std:", self.moduleStd, "LOGIC:", difference > (2*self.moduleStd)
+            #print "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
+            #print "pixel:", pixel, "mean: ", self.moduleAverage, "std:", self.moduleStd, "LOGIC:", difference > (2*self.moduleStd)
             bPixelDifferent = True
         return bPixelDifferent
             

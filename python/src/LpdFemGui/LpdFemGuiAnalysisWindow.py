@@ -16,6 +16,7 @@ import h5py
 
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 from matplotlib.figure import Figure
@@ -25,12 +26,15 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
     REALIMAGE   = 0
     FAULTYIMAGE = 1
 
+    RHS_MODULE = 15
+    LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
+
     trainSignal  = QtCore.pyqtSignal(object)
     imageSignal  = QtCore.pyqtSignal(object)
     moduleSignal = QtCore.pyqtSignal(object)
     timeStampSignal = QtCore.pyqtSignal(object)
     logPathSignal = QtCore.pyqtSignal(str)
-    dataSignal   = QtCore.pyqtSignal(object, object)
+    dataSignal   = QtCore.pyqtSignal(object, object, int)
     
     matplotlib.rcParams.update({'font.size': 8})
     
@@ -60,6 +64,8 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         self.axes = []
         self.img  = []
 
+        # Obtain default colour map before creating plots
+        defaultColourMap = cm.get_cmap()
         for idx in range(2):
             
             axesObject = self.fig.add_subplot(2, 1, idx+1)
@@ -70,19 +76,27 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
             self.axes[idx].set_yticks([])
     
             # Create an empty plot
-            self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)                   
-            imgObject = self.axes[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
+            self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
+
+            # Define colour range, colourmap according to plot number
+            if idx == 0:
+                vMax = '4095'
+                cMap = defaultColourMap
+            else:
+                vMax = '1'
+                cMap = 'binary'
+
+            imgObject = self.axes[idx].imshow(self.data, cmap=cMap, interpolation='nearest', vmin='0', vmax=vMax)
             self.img.extend([imgObject])
 
-            cBarPosn = 'horizontal'
             # Place plot closer to center of figure
 #            self.axes[idx].set_position([0.125, 0.4, 0.8, 0.5])
     
             # Create nd show a colourbar
-            axc, kw = matplotlib.colorbar.make_axes(self.axes[idx], orientation=cBarPosn)
-            cb = matplotlib.colorbar.Colorbar(axc, self.img[idx], orientation=cBarPosn)
+            axc, kw = matplotlib.colorbar.make_axes(self.axes[idx], orientation='horizontal')
+            cb = matplotlib.colorbar.Colorbar(axc, self.img[idx], orientation='horizontal')
             self.img[idx].colorbar = cb
-    
+
             # Add vertical lines to differentiate between the ASICs
             for i in range(16, self.ncols, 16):
                 self.axes[idx].vlines(i-0.5, 0, self.nrows-1, color='b', linestyles='solid')
@@ -138,20 +152,32 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
 #        print >> sys.stderr, "logPathUpdate received    : %s, %s" % (logPath, type(logPath))
 #        print >> sys.stderr, "logPathUpdate self.logPath: %s, %s" % (self.logPath, type(self.logPath))
 
-    def windowUpdate(self, lpdActualImage, lpdFaultyImage):
+    def setModuleType(self, moduleNumber):
+        ''' Helper function '''
+
+        self.moduleNumber = moduleNumber
+        if moduleNumber == LpdFemGuiAnalysisWindow.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == LpdFemGuiAnalysisWindow.RHS_MODULE:  self.moduleString = "RHS"
+        else:
+            self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
+
+    def windowUpdate(self, lpdActualImage, lpdFaultyImage, moduleNumber):
+        
+        # Convert module number into the string
+        self.setModuleType(moduleNumber)
         
         # Plot the captured image
         self.img[LpdFemGuiAnalysisWindow.REALIMAGE].set_data(lpdActualImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
-        self.titleText = 'Train %d Image %d %sModule %d: %s' % (self.train, self.image, "\n", self.module, dateStr)
+        self.titleText = 'Train %d Image %d %sModule %s: %s' % (self.train, self.image, "\n", self.moduleString, dateStr)
         self.axes[LpdFemGuiAnalysisWindow.REALIMAGE].set_title(self.titleText)
 
         # Plot the black/white image (which shows which pixel(s) are dead)
         self.img[LpdFemGuiAnalysisWindow.FAULTYIMAGE].set_data(lpdFaultyImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
-        self.titleText = 'Module %d: Map of faulty pixel(s)' % self.module
+        self.titleText = 'Module %s: Map of faulty pixel(s)' % self.moduleString
         self.axes[LpdFemGuiAnalysisWindow.FAULTYIMAGE].set_title(self.titleText)
         self.canvas.draw()
 
