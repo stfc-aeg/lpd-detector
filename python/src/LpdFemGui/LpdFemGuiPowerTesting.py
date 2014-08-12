@@ -8,7 +8,7 @@ from LpdDevice.LpdDevice import LpdDevice
 from LpdFemTests.LpdPowerControl import LpdPowerControl
 import sys, time
 
-class LpdFemGuiPowerTesting:
+class LpdFemGuiPowerTesting(object):
 
     RHS_MODULE = 15
     LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
@@ -217,30 +217,31 @@ class LpdFemGuiPowerTesting:
     def readCurrent(self, moduleNumber):
         ''' Read moduleNumber's current (as required by Wafer Probing and ASIC Bonding Test Routines)
             moduleNumber mandatory as function called directly from LpdFemGuiMainTestTab '''
-
-        # Set moduleNumber and moduleString
-        self.setModuleType(moduleNumber)
-
-        self.msgPrint("Testing power card: %s" % self.moduleString)
-
-        #TODO: Sort out this dirty hack:
-        sensorIdx = -1
-        if self.moduleNumber == LpdFemGuiPowerTesting.LHS_MODULE:
-            sensorIdx = 9
-        if self.moduleNumber == LpdFemGuiPowerTesting.RHS_MODULE:
-            sensorIdx = 8
+#        print >> sys.stderr, "* readCurrent() beginning.."
+#        # Set moduleNumber and moduleString
+#        self.setModuleType(moduleNumber)
+#
+#        self.msgPrint("Testing power card: %s" % self.moduleString)
+#
+#        #TODO: Sort out this dirty hack:
+#        sensorIdx = -1
+#        if self.moduleNumber == LpdFemGuiPowerTesting.LHS_MODULE:
+#            sensorIdx = 9
+#        if self.moduleNumber == LpdFemGuiPowerTesting.RHS_MODULE:
+#            sensorIdx = 8
+#        
+#        try:
+#            results = self.readPowerCards()
+#        except Exception:
+#            self.msgPrint("Power Analysis Error: (2) Couldn't read power card parameter(s)")
+#            self.theDevice.close()
+#            return
+#
+#        self.msgPrint("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
+#        # Log same results:
+#        self.loggingSignal.emit("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
+        print >> sys.stderr, "* readCurrent() finished"
         
-        try:
-            results = self.readPowerCards()
-        except Exception:
-            self.msgPrint("Power Analysis Error: (2) Couldn't read power card parameter(s)")
-            self.theDevice.close()
-            return
-
-        self.msgPrint("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
-        # Log same results:
-        self.loggingSignal.emit("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
-
     def msgPrint(self, message, bError=False):
         ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
         self.messageSignal.emit(message, bError)

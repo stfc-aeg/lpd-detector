@@ -23,10 +23,10 @@ def timingMethodDecorator(methodToDecorate):
         return returnValues
     return wrapper
 
-class LpdFemGuiAnalysis(QtGui.QMainWindow):
+class LpdFemGuiAnalysis(object): #QtGui.QMainWindow):
     ''' Perform ASIC modules analysis, creating/display in results analysis window '''
 
-    femDeviceParamsSignal = QtCore.pyqtSignal(str, int)
+#    femDeviceParamsSignal = QtCore.pyqtSignal(str, int)
     
     def __init__(self, messageSignal, loggingSignal):
         
@@ -51,7 +51,7 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         self.moduleStd = -1.0
         self.moduleAverage = -1.0
 
-        self.femDeviceParamsSignal.connect(self.setFemDeviceParams)
+#        self.femDeviceParamsSignal.connect(self.setFemDeviceParams)
 
     def setFemDeviceParams(self, femHost, femPort):
         
@@ -61,6 +61,10 @@ class LpdFemGuiAnalysis(QtGui.QMainWindow):
         self.powerTesting = LpdFemGuiPowerTesting(self.femHost, self.femPort, self.messageSignal, self.loggingSignal)
         #print >> sys.stderr, "received: ", femHost, femPort
 
+    def test(self):
+        
+        print >> sys.stderr,  "LpdFemGuiAnalysis.test() executed"
+        
     def performAnalysis(self, train, image, moduleNumber, fileName):
         ''' Analyse fileName using train, image, moduleNumber info and check health of pixels '''
         self.train          = train

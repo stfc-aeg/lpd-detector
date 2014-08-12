@@ -55,6 +55,11 @@ class LpdFemGui:
 
         # Create the main window GUI and show it
         self.mainWindow= LpdFemGuiMainWindow(self)
+        
+        # Create a .. instance
+        self.analysis = LpdFemGuiAnalysis(self.mainWindow.testTab.messageSignal, self.mainWindow.testTab.loggingSignal)
+        
+        # Show main window GUI
         self.mainWindow.show()
 
         # Create the live view window but don't show it

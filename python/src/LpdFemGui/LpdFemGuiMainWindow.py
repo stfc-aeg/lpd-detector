@@ -158,7 +158,8 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
                 return
             
             # Signal connected host, port to LpdFemGuiAnalysis
-            self.testTab.analysis.femDeviceParamsSignal.emit(deviceAddress, int(devicePort))
+            #self.testTab.analysis.femDeviceParamsSignal.emit(deviceAddress, int(devicePort))
+            self.appMain.analysis.setFemDeviceParams(deviceAddress, int(devicePort))
             
             self.appMain.setCachedParam('femAddress', deviceAddress)
             self.appMain.setCachedParam('femPort', devicePort)

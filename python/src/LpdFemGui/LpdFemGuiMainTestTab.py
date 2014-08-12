@@ -27,12 +27,14 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     RHS_MODULE = 15
     LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
 
-    fileNameSignal = QtCore.pyqtSignal(str)
-    fileReadySignal = QtCore.pyqtSignal()
-    messageSignal = QtCore.pyqtSignal(object, bool)
-    loggingSignal = QtCore.pyqtSignal(str)
-    configDeviceSignal = QtCore.pyqtSignal(str)
-    
+    fileNameSignal       = QtCore.pyqtSignal(str)
+    fileReadySignal      = QtCore.pyqtSignal()
+    messageSignal        = QtCore.pyqtSignal(object, bool)
+    loggingSignal        = QtCore.pyqtSignal(str)
+    configDeviceSignal   = QtCore.pyqtSignal(str)
+    powerStatusSignal    = QtCore.pyqtSignal(object)
+    hardwareStatusSignal = QtCore.pyqtSignal(bool)
+            
     def __init__(self, appMain, mainWindow):
 
         super(LpdFemGuiMainTestTab, self).__init__()    # Required for pyqtSignal
@@ -54,9 +56,14 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.fileName       = ""
         self.image          = 0
         self.train          = 0
- 
+
+        self.lvState        = -1
+        self.hardwareChanged = False
+        
+        self.pathStem = "/u/ckd27546/workspace/tinkering/" #"/data/lpd/test/testGui/"
+        self.Logger = None
         # Debugging purposes, have a think about when/how naming the log file..
-        self.logFileName = "/data/lpd/test/testGui/logGui_%s.log" % time.strftime("%Y%m%d_%H%M%S")
+        self.logFileName = self.pathStem + "logGui_%s.log" % time.strftime("%Y%m%d_%H%M%S")
         logging.basicConfig(filename=self.logFileName, level=logging.INFO)
         print >> sys.stderr, "self.logFileName: ", self.logFileName
 
@@ -69,6 +76,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.readCurrentBtn,        QtCore.SIGNAL("clicked()"),           self.testReadCurrent)   # 
         QtCore.QObject.connect(self.ui.pixelCheckBtn,         QtCore.SIGNAL("clicked()"),           self.pixelCheckTest)    # "Pixel Check"
 
+#        QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)    # "ASIC Bonding"
+        QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingAlternativeTest)
+        
+        # Copied from LpdFemGuiMainPowerTab (to obtain low voltage, high-voltage status flags)
+        self.powerStatusSignal.connect(self.obtainLvState)
+
         # Allow LpdFemDataReceiver to communicate new filename (via LpdFemGui, LpdFemGuiMainWindow)
         self.fileNameSignal.connect(self.updateFileName)
         self.fileReadySignal.connect(self.fileReadyToBeProcessed)
@@ -79,18 +92,186 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Let LpdFemGuiAnalysis (and others?) communicate loggable results
         self.loggingSignal.connect(self.logMsg)
         (self.logger, self.hdl) = (None, None)
+        # Called when hardwareStatusSignal emitted
+        self.hardwareStatusSignal.connect(self.handleHardwareChanged)
 
         # Create the analysis window but don't show it initially
-        self.analysis = LpdFemGuiAnalysis(self.messageSignal, self.loggingSignal)
+        self.appMain.analysis = LpdFemGuiAnalysis(self.messageSignal, self.loggingSignal)
 
     def __del__(self):
         
         # Close the log file upon program exit? (Redundant?)
         pass
     
+    def handleHardwareChanged(self, bHardwareChanged):
+        
+        self.hardwareChanged = bHardwareChanged
+        print >> sys.stderr, "handleHardwareChanged received: ", bHardwareChanged, "self.hardwareChanged is now: ", self.hardwareChanged
+        
+    def togglePowerSupplies(self):
+
+        theWait = 3
+        self.testMsgPrint("Enable low voltage, then wait %d seconds" % theWait)
+        self.mainWindow.pwrTab.lvEnableToggle()
+        time.sleep(theWait)
+        self.testMsgPrint("Enable high voltage, then wait %d seconds" % theWait)
+        self.mainWindow.pwrTab.hvEnableToggle()
+        time.sleep(theWait)
+        self.testMsgPrint("All done executing togglePowerSupplies()")
+
+    def asicBondingAlternativeTest(self):
+        
+        # Set up logger unless already set up
+        if self.Logger is None:
+            print >> sys.stderr, "testRun() Logger not set up, setting it up now"
+            # Create file path - Move this? Although beware createLogger()'s dependency..
+            timestamp = time.time()
+            st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+            loggerPath = self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
+            (self.logPath) = self.createLogger(loggerPath)
+            # Signal new file path
+            self.appMain.analysis.analysisWindow.logPathSignal.emit(self.logPath)
+        else:
+            print >> sys.stderr, "testRun() Logger already set up"
+        
+        self.testMsgPrint("ALTERNATIVE: Beginning ASIC Bonding Testing of module %s.." % self.moduleString)
+#        self.logMsg("ALTERNATIVE: Beginning ASIC Bonding..")
+
+#        print >> sys.stderr, "asic 1"
+        #self.mainWindow.executeAsyncCmd('* 2. Check and record current', self.appMain.analysis.powerTesting.readCurrent(self.moduleNumber), self.asicCurrentReadDone)
+        self.mainWindow.executeAsyncCmd('A simple test..', self.appMain.analysis.test, self.asicCurrentReadDone)
+        #self.mainWindow.executeAsyncCmd('Updating power status...', self.appMain.pwrCard.statusUpdate, self.powerStatusUpdateDone)
+        #TODO: Pass info back to this class?
+        print >> sys.stderr, "ASIC 1.5"
+    
+    def asicCurrentReadDone(self):
+        print >> sys.stderr, "asicCurrentReadDone -  If you see this, everything is kosher"
+#        self. #Mimic this:    ??
+        #         self.mainWindow.powerStatusSignal.emit(self.appMain.pwrCard.powerStateGet())
+        #        e.g. LpdFemGuiMainPowerTab: 125
+        
+    def asicSerialLoad(self):
+        print >> sys.stderr, "asic 2"
+
+    def asicBondingTest(self):
+
+        # Set up logger unless already set up
+        if self.Logger is None:
+            print >> sys.stderr, "testRun() Logger not set up, setting it up now"
+            # Create file path - Move this? Although beware createLogger()'s dependency..
+            timestamp = time.time()
+            st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+            loggerPath = self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
+            (self.logPath) = self.createLogger(loggerPath)
+            # Signal new file path
+            self.appMain.analysis.analysisWindow.logPathSignal.emit(self.logPath)
+        else:
+            print >> sys.stderr, "testRun() Logger already set up"
+        
+        self.testMsgPrint("Beginning ASIC Bonding Testing of module %s.." % self.moduleString)
+        self.logMsg("Beginning ASIC Bonding..")
+
+        # Checking current LV status
+        self.checkLvStatus()    # Read current status (of power cards)    -    Must consider Threading model?!
+        
+        # Wait for hardware to report LV status
+        while self.hardwareChanged == False:
+            self.testMsgPrint("Waiting.. Self.hardwareChanged: %s" % self.hardwareChanged) # Required or loop becomes permanent..!
+            time.sleep(1)
+        # Reset hardware status
+        self.hardwareChanged = False
+        
+        # ASIC Bonding procedure:
+        # 1.Power on
+        
+        if self.lvState == 0:
+            self.testMsgPrint("Low voltage is off, switching it on..")
+            self.togglePowerSupplies()
+        else:
+            self.testMsgPrint("Low voltage already on")
+
+        # 2. Check and record current (1A < I < 4A)
+        self.testMsgPrint("2. Check and record current (1A < I < 4A)")
+        self.appMain.analysis.powerTesting.readCurrent(self.moduleNumber)
+
+        # 3. Serial Load (complex)
+        self.testMsgPrint("3. Serial Load (skipping - blindly doing a Configure")
+        self.testConfigure()
+        #     Ensure serial load XML file selected, then execute Configure..
+        
+        time.sleep(2)
+
+        # 4. Check and record current (8A < I => 10A)
+        self.testMsgPrint("4. Check and record current (8A < I => 10A)")
+        self.appMain.analysis.powerTesting.readCurrent(self.moduleNumber)
+        #TODO: Pass info back to this class?
+        time.sleep(3)
+        print >> sys.stderr, "Finished!"
+        return
+        # 5. Readout Data
+        self.testMsgPrint("5. Readout Data")
+        self.testRun()
+        
+        # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
+        self.testMsgPrint("6. Check for out of range pixels")
+        self.pixelCheckTest()
+        
+        # 7. Power off
+        self.testMsgPrint("7. Power Off")
+        self.mainWindow.pwrTab.lvEnableToggle()
+        
+        # 8. Power on
+        self.testMsgPrint("8. Power On")
+        self.mainWindow.pwrTab.lvEnableToggle()
+        
+        # 9. Check and record current (1A < I < 4A)
+        self.testMsgPrint("9. Check and record current (1A < I < 4A)")
+        self.appMain.analysis.powerTesting.readCurrent(self.moduleNumber)
+        
+        # 10. Parallel load
+        self.testMsgPrint("10. Parallel Load (skipping - blindly doing a Configure")
+        self.testConfigure()
+        #     Ensure Parallel load XML file selected, then execute Configure..
+        
+        # 11. Check and record current (8A <I =< 10A)
+        self.testMsgPrint("11. Check and record current (8A <I =< 10A)")
+        self.appMain.analysis.powerTesting.readCurrent(self.moduleNumber)
+        
+        # 12.Readout data
+        self.testMsgPrint("12. Readout Data")
+        self.testRun()
+        
+        # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
+        self.testMsgPrint("13. Check for out of range pixels")
+        self.pixelCheckTest()
+    
+    def checkLvStatus(self):
+        ''' It's not really changing the status tho.. '''
+        self.mainWindow.executeAsyncCmd('* Checking out the power status...', self.appMain.pwrCard.statusUpdate, self.checkLvStatusDone)
+        
+    def checkLvStatusDone(self):
+        ''' Ask LpdPowerCardManager (pwrCard) for power statuses, pass these on to obtainLvState (via powerStatusSignal) '''
+        self.powerStatusSignal.emit(self.appMain.pwrCard.powerStateGet())
+
+    def obtainLvState(self, powerState):
+        
+        powerCardFlags = { 'asicPowerEnable'      : 'LvStatus'}
+        
+        # Loop over LHS and RHS power cards and update display
+        for powerCard in range(self.appMain.pwrCard.numPowerCards):
+            
+            # Check asicPowerEnable value
+            for paramStem, uiObjStem in powerCardFlags.iteritems():
+                
+                paramName = paramStem + str(powerCard)
+                self.lvState = powerState[paramName]    # 0 = Off, 1 = On
+#                status = False if self.lvState == 0 else True
+#                print >> sys.stderr, "Obtained LV state: ", self.lvState#, " status: ", status
+                self.hardwareStatusSignal.emit(True)
+
     def testReadCurrent(self):
         
-        self.analysis.powerTesting.readCurrent(self.moduleNumber)
+        self.appMain.analysis.powerTesting.readCurrent(self.moduleNumber)
 
     def setModuleType(self, moduleNumber):
         ''' Helper function '''
@@ -103,7 +284,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
     def pixelCheckTest(self):
         ''' Perform analysis of data file, then check pixel health '''
-        self.analysis.performAnalysis(self.train, self.image, self.moduleNumber, self.fileName)
+        self.appMain.analysis.performAnalysis(self.train, self.image, self.moduleNumber, self.fileName)
         # Disable test button until next filename available
         self.ui.pixelCheckBtn.setEnabled(False)
 
@@ -140,16 +321,19 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.mainWindow.daqTab.deviceRun()
         
         #TODO: Assuming logging begins here.. ?
-        # Create file path - Move this? Although beware createLogger()'s dependency..
-        timestamp = time.time()
-        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-        loggerPath = "/data/lpd/test/testGui/test_%s_%s/testResults.log" % (st, self.moduleString)
-        
-        # Set up logger
-        (self.logPath) = self.createLogger(loggerPath)
 
-        # Signal new file path
-        self.analysis.analysisWindow.logPathSignal.emit(self.logPath)
+        # Set up logger unless already set up
+        if self.Logger is None:
+            print >> sys.stderr, "testRun() Logger not set up, setting it up now"
+            # Create file path - Move this? Although beware createLogger()'s dependency..
+            timestamp = time.time()
+            st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+            loggerPath = self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
+            (self.logPath) = self.createLogger(loggerPath)
+            # Signal new file path
+            self.appMain.analysis.analysisWindow.logPathSignal.emit(self.logPath)
+        else:
+            print >> sys.stderr, "testRun() Logger already set up"
 
 
     def createLogger(self, fileName):
