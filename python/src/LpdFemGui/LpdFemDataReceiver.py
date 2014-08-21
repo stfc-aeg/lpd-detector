@@ -18,7 +18,7 @@ bDisplayPlotData = True
   
 class LpdFemDataReceiver():
     
-    def __init__(self, liveViewSignal, runStatusSignal, fileNameSignal, fileReadySignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
+    def __init__(self, liveViewSignal, runStatusSignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
         
         try:
                 
@@ -27,7 +27,7 @@ class LpdFemDataReceiver():
 
             # Create UDP recevier, frame processor and data monitor objects
             self.udpReceiver = UdpReceiver(listenAddr, listenPort, numFrames)
-            self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal, fileNameSignal, fileReadySignal)
+            self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal)
             self.dataMonitor = DataMonitor(self.udpReceiver, self.frameProcessor, runStatusSignal, numFrames)
             
             # Create threads to run them in
@@ -95,7 +95,11 @@ class LpdFemDataReceiver():
                 print >> sys.stderr, "Got exception", e
                 
             self.frameProcessor.cleanUp()
+
+    def lastDataFile(self):
         
+        return self.frameProcessor.fileName
+    
 #    def abortReceived(self):
 #        
 #        self.abortRunFlag = True
@@ -213,7 +217,7 @@ class UdpReceiver(QtCore.QObject):
 
 class FrameProcessor(QtCore.QObject):
 
-    def __init__(self, numFrames, cachedParams, liveViewSignal, fileNameSignal, fileReadySignal):
+    def __init__(self, numFrames, cachedParams, liveViewSignal):
 
         QtCore.QObject.__init__(self)
         
@@ -228,9 +232,9 @@ class FrameProcessor(QtCore.QObject):
         self.liveViewOffset  = cachedParams['liveViewOffset']
         self.asicModuleType  = cachedParams['asicModuleType']
         self.liveViewSignal  = liveViewSignal
-        self.fileNameSignal  = fileNameSignal
-        self.fileReadySignal = fileReadySignal
 
+        self.fileName = None
+        
         # Run start time
         self.tstart = time.time()
 
@@ -272,14 +276,11 @@ class FrameProcessor(QtCore.QObject):
         Creates and HDF5 data file and internal structure, sets up metadata in file
         '''
 
-        fileName = "{:s}/lpdData-{:05d}.hdf5".format(self.dataFilePath, self.runNumber)
+        self.fileName = "{:s}/lpdData-{:05d}.hdf5".format(self.dataFilePath, self.runNumber)
         
-        # Transmit filename to LpdFemGuiMainTestTab instance
-        self.fileNameSignal.emit(fileName)
-
-        print "Creating HDF5 data file %s" % fileName
+        print "Creating HDF5 data file %s" % self.fileName
         try:
-            self.hdfFile = h5py.File(fileName, 'w')
+            self.hdfFile = h5py.File(self.fileName, 'w')
         except IOError as e:
             print "Failed to open HDF file with error: %s" % e
             raise(e)
@@ -402,9 +403,7 @@ class FrameProcessor(QtCore.QObject):
         # Close file if enabled
         if self.fileWriteEnable:
             self.hdfFile.close()
-            # Transmit file ready to LpdFemGuiMainTestTab instance
-            self.fileReadySignal.emit()
-        
+
     
     def unpackImage(self, imageOffset):
         """ Extracts one image beginning at argument imageOffset in the member array 

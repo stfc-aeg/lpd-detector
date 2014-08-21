@@ -10,39 +10,9 @@ import sys, time
 
 class LpdFemGuiPowerTesting(object):
 
-    RHS_MODULE = 15
-    LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
+    def __init__(self, femHost, femPort, messageSignal):
+        pass
 
-    def __init__(self, femHost, femPort, messageSignal, loggingSignal):
-        
-        self.femHost = femHost
-        self.femPort = femPort
-
-        self.moduleString = "-1"
-
-        #  Communicate test results to LpdFemGuiMainTestTab
-        self.messageSignal = messageSignal
-        self.loggingSignal = loggingSignal
-
-        self.theDevice = LpdDevice()
-        
-        rc = self.theDevice.open(self.femHost, self.femPort, asicModuleType=0)
-    
-        if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Power Analysis Error: Failed to open FEM device: %s" % (self.theDevice.errorStringGet()), bError=True)
-        else:
-            #Debugging info really:
-            print >> sys.stderr, "====================== %s:%s ======================" % (self.femHost, self.femPort)
-            
-
-    def setModuleType(self, moduleNumber):
-        ''' Helper function '''
-
-        self.moduleNumber = moduleNumber
-        if moduleNumber == LpdFemGuiPowerTesting.LHS_MODULE:    self.moduleString = "LHS"
-        elif moduleNumber == LpdFemGuiPowerTesting.RHS_MODULE:  self.moduleString = "RHS"
-        else:
-            self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 
     def testPowerCards(self, moduleNumber):
         ''' ORPHANED! Comment to be added here '''
@@ -214,33 +184,6 @@ class LpdFemGuiPowerTesting(object):
             self.msgPrint("       %s Module : Not Connected" % self.moduleString)
         return issues
 
-    def readCurrent(self, moduleNumber):
-        ''' Read moduleNumber's current (as required by Wafer Probing and ASIC Bonding Test Routines)
-            moduleNumber mandatory as function called directly from LpdFemGuiMainTestTab '''
-#        print >> sys.stderr, "* readCurrent() beginning.."
-#        # Set moduleNumber and moduleString
-#        self.setModuleType(moduleNumber)
-#
-#        self.msgPrint("Testing power card: %s" % self.moduleString)
-#
-#        #TODO: Sort out this dirty hack:
-#        sensorIdx = -1
-#        if self.moduleNumber == LpdFemGuiPowerTesting.LHS_MODULE:
-#            sensorIdx = 9
-#        if self.moduleNumber == LpdFemGuiPowerTesting.RHS_MODULE:
-#            sensorIdx = 8
-#        
-#        try:
-#            results = self.readPowerCards()
-#        except Exception:
-#            self.msgPrint("Power Analysis Error: (2) Couldn't read power card parameter(s)")
-#            self.theDevice.close()
-#            return
-#
-#        self.msgPrint("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
-#        # Log same results:
-#        self.loggingSignal.emit("Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx]))
-        print >> sys.stderr, "* readCurrent() finished"
         
     def msgPrint(self, message, bError=False):
         ''' Send message to LpdFemGuiMainTestTab to be displayed there '''

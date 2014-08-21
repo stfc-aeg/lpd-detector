@@ -48,6 +48,8 @@ class LpdFemGui:
         self.dataListenPort = 0
         self.numFrames      = 0
         
+        self.lastDataFile = None
+        
         self.loadedConfig   = {}
         
         # Create a power card manager instance
@@ -55,15 +57,20 @@ class LpdFemGui:
 
         # Create the main window GUI and show it
         self.mainWindow= LpdFemGuiMainWindow(self)
-        
-        # Create a .. instance
-        self.analysis = LpdFemGuiAnalysis(self.mainWindow.testTab.messageSignal, self.mainWindow.testTab.loggingSignal)
-        
-        # Show main window GUI
         self.mainWindow.show()
+
+        # Create an LPD ASIC tester instance
+        self.asicTester = LpdAsicTester(self, self.device)
 
         # Create the live view window but don't show it
         self.liveViewWindow = LpdFemGuiLiveViewWindow(asicModuleType=self.cachedParams['asicModuleType'])
+
+        try:
+            self.asicWindow = LpdFemGuiAsicWindow()
+            self.asicWindow.show()    # Hide window for now while testing
+
+        except Exception as e:
+            print >> sys.stderr, "LpdAsicTester initialisation exception: %s" % e
             
         # Redirect stdout to PrintRedirector
         sys.stdout = PrintRedirector(self.msgPrint)
@@ -302,8 +309,7 @@ class LpdFemGui:
         
         # Create an LpdFemDataReceiver instance to launch readout threads
         try:
-            dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal, self.mainWindow.testTab.fileNameSignal,
-                                              self.mainWindow.testTab.fileReadySignal, 
+            dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
                                               self.dataListenAddr, self.dataListenPort, self.numFrames, self.cachedParams, self)
         except Exception as e:
             self.msgPrint("ERROR: failed to create data receiver: %s" % e)
@@ -332,6 +338,7 @@ class LpdFemGui:
         # Wait for the data receiver threads to complete
         try:
             dataReceiver.awaitCompletion()
+            self.lastDataFile = dataReceiver.lastDataFile()
         except Exception as e:
             self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
             

@@ -21,7 +21,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 from matplotlib.figure import Figure
 
-class LpdFemGuiAnalysisWindow(QtGui.QDialog):
+class LpdFemGuiAsicWindow(QtGui.QDialog):
 
     REALIMAGE   = 0
     FAULTYIMAGE = 1
@@ -156,8 +156,8 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         ''' Helper function '''
 
         self.moduleNumber = moduleNumber
-        if moduleNumber == LpdFemGuiAnalysisWindow.LHS_MODULE:    self.moduleString = "LHS"
-        elif moduleNumber == LpdFemGuiAnalysisWindow.RHS_MODULE:  self.moduleString = "RHS"
+        if moduleNumber == LpdFemGuiAsicWindow.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == LpdFemGuiAsicWindow.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 
@@ -167,18 +167,18 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         self.setModuleType(moduleNumber)
         
         # Plot the captured image
-        self.img[LpdFemGuiAnalysisWindow.REALIMAGE].set_data(lpdActualImage)
+        self.img[LpdFemGuiAsicWindow.REALIMAGE].set_data(lpdActualImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
         self.titleText = 'Train %d Image %d %sModule %s: %s' % (self.train, self.image, "\n", self.moduleString, dateStr)
-        self.axes[LpdFemGuiAnalysisWindow.REALIMAGE].set_title(self.titleText)
+        self.axes[LpdFemGuiAsicWindow.REALIMAGE].set_title(self.titleText)
 
         # Plot the black/white image (which shows which pixel(s) are dead)
-        self.img[LpdFemGuiAnalysisWindow.FAULTYIMAGE].set_data(lpdFaultyImage)
+        self.img[LpdFemGuiAsicWindow.FAULTYIMAGE].set_data(lpdFaultyImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
         self.titleText = 'Module %s: Map of faulty pixel(s)' % self.moduleString
-        self.axes[LpdFemGuiAnalysisWindow.FAULTYIMAGE].set_title(self.titleText)
+        self.axes[LpdFemGuiAsicWindow.FAULTYIMAGE].set_title(self.titleText)
         self.canvas.draw()
 
 #        # Create new folder
@@ -189,32 +189,21 @@ class LpdFemGuiAnalysisWindow(QtGui.QDialog):
         # Testing saving figure to file.. (which contains both images)
 #        timestamp = time.time()
 #        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-        fname = self.logPath + "savedFigure" #_%s" % st
+        try:
+            fname = self.logPath + "savedFigure_%s" % time.strftime("%Y%m%d_%H%M%S")
+            print >> sys.stderr, ".windowUpdate() Saving fig:\n%s" % (fname + ".png")
+        except Exception as e:
+            print >> sys.stderr, "savePlot Exception: %s" % e
+
         self.fig.savefig(fname)
 
-#    def prepareFilePath(self):
-#
-#        timestamp = time.time()
-#        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-#        self.filePath = "/u/ckd27546/workspace/tinkering/savedData_%s/" % st
-#
-        # Create directory if it doesn't exist - NOT required, sorted by LpdFemGuiMainTestTab instance
-#        self.ensure_dir(self.filePath)
-#
-#    def ensure_dir(self, f):
-#        ''' Create the argument as a directory unless it already exists '''
-#        d = os.path.dirname(f)
-#        if not os.path.exists(d):
-#            os.makedirs(d)
-#        else:
-#            print >> sys.stderr, "WARNING: the folder '%s' already exists" % f
-
     def savePlot(self, lpdImage):
-
-        fileName = self.logPath + "lpdData.hdf5"
-#        print >> sys.stderr, "Creating HDF5 data file %s" % fileName
-
-        print "Creating HDF5 data file %s, of type: %s" % (fileName, type(fileName))
+        try:
+            fileName = self.logPath + "lpdData_%s.hdf5" % time.strftime("%Y%m%d_%H%M%S")
+            print >> sys.stderr, ".savePlot() HDF5 data file:\n%s" % (fileName)
+        except Exception as e:
+            print >> sys.stderr, "savePlot Exception: %s" % e
+        #print "Creating HDF5 data file %s, of type: %s" % (fileName, type(fileName))
         try:
             self.hdfFile = h5py.File(fileName, 'w')
         except IOError as e:
