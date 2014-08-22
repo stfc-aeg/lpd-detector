@@ -38,13 +38,19 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     
     matplotlib.rcParams.update({'font.size': 8})
     
-    def __init__(self, parent=None):
+    def __init__(self, appMain, parent=None):
  
         QtGui.QDialog.__init__(self, parent)
-
+        
+        self.appMain = appMain
+        self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
+        
         moduleType = "Asic Module"
         self.nrows = 32
         self.ncols = 128
+        
+        self.moduleString = "LHS"
+        self.moduleNumber = LpdFemGuiAsicWindow.LHS_MODULE
         
         self.setWindowTitle('Plotting data from %s' % moduleType)
 
@@ -186,28 +192,26 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         # Save image to hdf5 file (but not the black/white image)
         self.savePlot(lpdActualImage)
 
-        # Testing saving figure to file.. (which contains both images)
-#        timestamp = time.time()
-#        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+        # Save plotted figure to file
         try:
-            fname = self.logPath + "savedFigure_%s" % time.strftime("%Y%m%d_%H%M%S")
-            print >> sys.stderr, ".windowUpdate() Saving fig:\n%s" % (fname + ".png")
+            fname = self.logPath + "savedFigure_%s" % time.strftime("%H%M%S")
+            print >> sys.stderr, "Fig:  %s" % (fname + ".png")
         except Exception as e:
-            print >> sys.stderr, "savePlot Exception: %s" % e
+            self.msgPrint("windowUpdate() Exception: %s" % e, bError=True)
 
         self.fig.savefig(fname)
 
     def savePlot(self, lpdImage):
         try:
-            fileName = self.logPath + "lpdData_%s.hdf5" % time.strftime("%Y%m%d_%H%M%S")
-            print >> sys.stderr, ".savePlot() HDF5 data file:\n%s" % (fileName)
+            fileName = self.logPath + "lpdData_%s.hdf5" % time.strftime("%H%M%S")
+            print >> sys.stderr, "HDF5: %s" % (fileName)
         except Exception as e:
-            print >> sys.stderr, "savePlot Exception: %s" % e
-        #print "Creating HDF5 data file %s, of type: %s" % (fileName, type(fileName))
+            self.msgPrint("savePlot() Exception: %s" % e, bError=True)
+
         try:
             self.hdfFile = h5py.File(fileName, 'w')
         except IOError as e:
-            print "Failed to open HDF file with error: %s" % e
+            self.msgPrint("Failed to open HDF file with error: %s" % e, bError=True)
             raise(e)
 
         self.nrows = 32
@@ -246,3 +250,6 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         # Close the file
         self.hdfFile.close()
 
+    def msgPrint(self, message, bError=False):
+        ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
+        self.messageSignal.emit(message, bError)

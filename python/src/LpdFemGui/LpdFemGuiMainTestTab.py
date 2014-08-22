@@ -30,6 +30,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     messageSignal        = QtCore.pyqtSignal(object, bool)
     loggingSignal        = QtCore.pyqtSignal(str, bool)
     configDeviceSignal   = QtCore.pyqtSignal(str)
+    femConnectionSignal  = QtCore.pyqtSignal(bool)
 
     def __init__(self, appMain, mainWindow):
 
@@ -41,14 +42,16 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
         # Disable test button from start
-        self.ui.pixelCheckBtn.setEnabled(False)
+        self.ui.pixelCheckBtn.setEnabled(False)     #TODO: Become redundant, removed soon?
+        self.ui.asicBondingBtn.setEnabled(False)
+        
         self.msgPrint = self.testMsgPrint   # Use MessageBox element within this tab
         
         self.ui.moduleLhsSel.setChecked(True)
-                
         self.moduleNumber   = LpdFemGuiMainTestTab.LHS_MODULE   # LHS = 0, RHS = 15
         self.moduleString   = ""
         self.setModuleType(self.moduleNumber)
+
         self.image          = 0
         self.train          = 0
 
@@ -70,8 +73,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Copied from LpdFemGuiMainPowerTab (to obtain low voltage, high-voltage status flags)
 #        self.powerStatusSignal.connect(self.obtainLvState)
 
-        # Allow LpdFemGuiMainDaqTab signal Device configuration ok/fail
+        # Allow LpdFemGuiMainDaqTab to signal Device configuration ok/fail
         self.configDeviceSignal.connect(self.configDeviceMessage)
+        # Allow LpdFemGuiMainDaqTab to signal whether fem [dis]connect
+        self.femConnectionSignal.connect(self.femConnectionStatus)
         
         # Let LpdFemGuiPowerTesting (and others) communicate results:
         self.messageSignal.connect(self.testMsgPrint)
@@ -107,10 +112,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.mainWindow.executeAsyncCmd('A simple test..', self.appMain.asicTester.test, self.asicCurrentReadDone)
     
     def asicCurrentReadDone(self):
-        print >> sys.stderr, "asicCurrentReadDone -  If you see this, everything is Awesome"
-#        self. #Mimic this:    ??
-        #         self.mainWindow.powerStatusSignal.emit(self.appMain.pwrCard.powerStateGet())
-        #        e.g. LpdFemGuiMainPowerTab: 125
+
+        self.msgPrint("ASIC Bonding Tests Concluded")
 
     def asicBondingTest(self):
 
@@ -125,9 +128,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         else:
             print >> sys.stderr, "asicBondingTest() Logger already set up"
 
-        #self.testMsgPrint(".testMsgPrint() called within: asicBondingTest() [Testing of module %s]" % self.moduleString)
-        #self.logMsg(".logMsg() called within: asicBondingTest()")
-
         self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
                                         partial(self.appMain.asicTester.executeAsicBondingTest, self.moduleNumber),
                                         self.asicCurrentReadDone)
@@ -139,7 +139,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def testReadCurrent(self):
         
         print >> sys.stderr, "*** testReadCurrent() doesn't do anything any more"
-        #self.appMain.asicTester.readCurrent(self.moduleNumber)
 
     def setModuleType(self, moduleNumber):
         ''' Helper function '''
@@ -160,6 +159,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         ''' Receives configuration ok/fail message '''
         self.testMsgPrint(message)
         
+    def femConnectionStatus(self, bConnected):
+        ''' Enables/Disable testTab's components according to bConnected '''
+        self.ui.asicBondingBtn.setEnabled(bConnected)
+
     def testConfigure(self):
 
         self.testMsgPrint("Configuring device ...")

@@ -66,7 +66,7 @@ class LpdFemGui:
         self.liveViewWindow = LpdFemGuiLiveViewWindow(asicModuleType=self.cachedParams['asicModuleType'])
 
         try:
-            self.asicWindow = LpdFemGuiAsicWindow()
+            self.asicWindow = LpdFemGuiAsicWindow(appMain=self)
             self.asicWindow.show()    # Hide window for now while testing
 
         except Exception as e:
@@ -155,11 +155,13 @@ class LpdFemGui:
         else:
             self.deviceState = LpdFemGui.DeviceIdle
             self.deviceErrString = ""
+            self.mainWindow.testTab.femConnectionSignal.emit(True)
         
     def deviceDisconnect(self):
         
         self.device.close()
         self.deviceState = LpdFemGui.DeviceDisconnected
+        self.mainWindow.testTab.femConnectionSignal.emit(False)
 
     def cleanup(self):
         
