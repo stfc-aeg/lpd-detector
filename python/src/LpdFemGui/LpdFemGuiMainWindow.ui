@@ -4365,9 +4365,9 @@
      <widget class="QLabel" name="operatorLabel">
       <property name="geometry">
        <rect>
-        <x>70</x>
+        <x>10</x>
         <y>24</y>
-        <width>56</width>
+        <width>121</width>
         <height>39</height>
        </rect>
       </property>
@@ -4380,12 +4380,12 @@
        <rect>
         <x>130</x>
         <y>30</y>
-        <width>106</width>
+        <width>500</width>
         <height>27</height>
        </rect>
       </property>
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <sizepolicy hsizetype="Ignored" vsizetype="Minimum">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -4398,12 +4398,12 @@
       </property>
       <property name="maximumSize">
        <size>
-        <width>140</width>
+        <width>600</width>
         <height>16777215</height>
        </size>
       </property>
       <property name="text">
-       <string/>
+       <string>John Doe</string>
       </property>
       <property name="maxLength">
        <number>200</number>
@@ -4422,8 +4422,8 @@
       <property name="geometry">
        <rect>
         <x>130</x>
-        <y>80</y>
-        <width>106</width>
+        <y>60</y>
+        <width>500</width>
         <height>27</height>
        </rect>
       </property>
@@ -4441,12 +4441,12 @@
       </property>
       <property name="maximumSize">
        <size>
-        <width>140</width>
+        <width>600</width>
         <height>16777215</height>
        </size>
       </property>
       <property name="text">
-       <string/>
+       <string>00135</string>
       </property>
       <property name="maxLength">
        <number>200</number>
@@ -4464,8 +4464,8 @@
      <widget class="QLabel" name="moduleNumberLabel">
       <property name="geometry">
        <rect>
-        <x>5</x>
-        <y>74</y>
+        <x>10</x>
+        <y>54</y>
         <width>121</width>
         <height>39</height>
        </rect>
@@ -4478,7 +4478,7 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>120</y>
+        <y>90</y>
         <width>121</width>
         <height>39</height>
        </rect>
@@ -4490,9 +4490,9 @@
      <widget class="QLineEdit" name="commentEdit">
       <property name="geometry">
        <rect>
-        <x>135</x>
-        <y>126</y>
-        <width>106</width>
+        <x>130</x>
+        <y>96</y>
+        <width>500</width>
         <height>27</height>
        </rect>
       </property>
@@ -4510,12 +4510,12 @@
       </property>
       <property name="maximumSize">
        <size>
-        <width>140</width>
+        <width>600</width>
         <height>16777215</height>
        </size>
       </property>
       <property name="text">
-       <string>Hi</string>
+       <string>My Comment</string>
       </property>
       <property name="maxLength">
        <number>200</number>
@@ -4558,8 +4558,8 @@
      <widget class="QRadioButton" name="moduleLhsSel">
       <property name="geometry">
        <rect>
-        <x>567</x>
-        <y>43</y>
+        <x>121</x>
+        <y>160</y>
         <width>55</width>
         <height>21</height>
        </rect>
@@ -4577,8 +4577,8 @@
      <widget class="QLabel" name="moduleTypeLabel">
       <property name="geometry">
        <rect>
-        <x>472</x>
-        <y>40</y>
+        <x>26</x>
+        <y>157</y>
         <width>91</width>
         <height>27</height>
        </rect>
@@ -4590,8 +4590,8 @@
      <widget class="QRadioButton" name="moduleRhsSel">
       <property name="geometry">
        <rect>
-        <x>626</x>
-        <y>43</y>
+        <x>180</x>
+        <y>160</y>
         <width>61</width>
         <height>21</height>
        </rect>

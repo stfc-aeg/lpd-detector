@@ -241,6 +241,9 @@ class ImageDisplay(FigureCanvas):
             self.ax[idx].set_xticks(xlist)
             self.ax[idx].set_yticks(ylist)
             
+            # Rotate X axis text by 45
+            self.ax[idx].set_xticklabels(xlist, rotation=45)
+            
             # Set the title of each plot temporarily
             self.ax[idx].set_title("Image %i" % idx)
                             
@@ -254,7 +257,10 @@ class ImageDisplay(FigureCanvas):
                 # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
                 axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
                 cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
-    
+                # Modify the ticks on colour bar
+                cTicks = [0, 511, 1023, 1535, 2047, 2559, 3071, 3583, 4095]
+                cb.set_ticks(ticks=cTicks, update_ticks=True)
+
                 # Set the colour bar
                 self.img[idx].colorbar = cb
 

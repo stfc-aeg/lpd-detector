@@ -41,10 +41,15 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.appMain = appMain
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
-        # Disable test button from start
+        # Disable GUI components from start
         self.ui.pixelCheckBtn.setEnabled(False)     #TODO: Become redundant, removed soon?
         self.ui.asicBondingBtn.setEnabled(False)
-        
+        self.ui.operatorEdit.setEnabled(False)
+        self.ui.moduleNumberEdit.setEnabled(False)
+        self.ui.commentEdit.setEnabled(False)
+        self.ui.moduleLhsSel.setEnabled(False)
+        self.ui.moduleRhsSel.setEnabled(False)
+
         self.msgPrint = self.testMsgPrint   # Use MessageBox element within this tab
         
         self.ui.moduleLhsSel.setChecked(True)
@@ -56,7 +61,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.train          = 0
 
         self.pathStem = "/u/ckd27546/workspace/tinkering/" #"/data/lpd/test/testGui/"
-        self.Logger = None
+        (self.logger, self.hdl) = (None, None)
 
         # Connect signals and slots
         QtCore.QObject.connect(self.ui.testConfigBtn,         QtCore.SIGNAL("clicked()"),           self.testConfigure) # "TestConfig" - DAQ tab replica
@@ -70,9 +75,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)    # "ASIC Bonding"
         #QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingAlternativeTest)
         
-        # Copied from LpdFemGuiMainPowerTab (to obtain low voltage, high-voltage status flags)
-#        self.powerStatusSignal.connect(self.obtainLvState)
-
         # Allow LpdFemGuiMainDaqTab to signal Device configuration ok/fail
         self.configDeviceSignal.connect(self.configDeviceMessage)
         # Allow LpdFemGuiMainDaqTab to signal whether fem [dis]connect
@@ -81,60 +83,63 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Let LpdFemGuiPowerTesting (and others) communicate results:
         self.messageSignal.connect(self.testMsgPrint)
 
-        (self.logger, self.hdl) = (None, None)
-
     def __del__(self):
         
         # Close the log file upon program exit? (Redundant?)
         pass
     
-    def createLoggerPath(self):
-        timestamp = time.time()
-        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-        return self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
-        
     def asicBondingAlternativeTest(self):
-        
+
+        # Lock tab's GUI components during test execution
+        self.femConnectionStatus(False)
+
         # Set up logger unless already set up
-        if self.Logger is None:
-            print >> sys.stderr, "asicBondingAlternativeTest() Logger not set up, setting it up now"
-            # Create file path - Move this? Although beware createLogger()'s dependency..
-            loggerPath = self.createLoggerPath() #self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
-            (self.logPath) = self.createLogger(loggerPath)
-            # Signal new file path
-            self.appMain.asicWindow.logPathSignal.emit(self.logPath)
-        else:
-            print >> sys.stderr, "asicBondingAlternativeTest() Logger already set up"
+        if self.logger is None:
+            self.createLogger()
         
         self.testMsgPrint("ALTERNATIVE: .testMsgPrint() Module %s.." % self.moduleString)
-        #self.logMsg("ALTERNATIVE: .logMsg..")
 
-        self.mainWindow.executeAsyncCmd('A simple test..', self.appMain.asicTester.test, self.asicCurrentReadDone)
-    
-    def asicCurrentReadDone(self):
+        self.mainWindow.executeAsyncCmd('A simple test..', self.appMain.asicTester.test, self.asicAlternativeTestDone)
 
-        self.msgPrint("ASIC Bonding Tests Concluded")
+    def asicAlternativeTestDone(self):
+        
+        self.testMsg("Finished testing ASIC Bonding (is this function are strictly necessary?)")
+        # Unlock tab's GUI components after test completed
+        self.femConnectionStatus(True)
 
     def asicBondingTest(self):
 
-        # Set up logger unless already set up
-        if self.Logger is None:
-            print >> sys.stderr, "asicBondingTest() Logger not set up, setting it up now"
-            # Create file path - Move this? Although beware createLogger()'s dependency..
-            loggerPath = self.createLoggerPath() #self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
-            (self.logPath) = self.createLogger(loggerPath)
-            # Signal new file path
-            self.appMain.asicWindow.logPathSignal.emit(self.logPath)
-        else:
-            print >> sys.stderr, "asicBondingTest() Logger already set up"
+        # Lock tab's GUI components during test execution
+        self.femConnectionStatus(False)
+#        try:
+#            print >> sys.stderr, "Locking DAQ tab.."
+#            # Also lock DAQ tab during text execution..
+#            self.appMain.mainWindow.ui.runGroupBox.setEnabled(False)
+#        except Exception as e:
+#            print >> sys.stderr, "Exception trying to lock DAQ tab: ", e
+#            return
 
+        # Set up logger unless already set up
+        if self.logger is None:
+            self.createLogger()
+
+        self.dumpGuiFieldsToLog()
         self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
                                         partial(self.appMain.asicTester.executeAsicBondingTest, self.moduleNumber),
-                                        self.asicCurrentReadDone)
-
+                                        self.asicBondingTestDone)
+    
     def asicBondingTestDone(self):
-        
-        self.testMsg("Finished testing ASIC Bonding (is this function are strictly necessary?)")
+
+        self.msgPrint("ASIC Bonding Tests Concluded")
+        # Unlock tab's GUI components after test completed
+        self.femConnectionStatus(True)
+#        try:
+#            print >> sys.stderr, "Unlocking DAQ tab.."
+#            # Also lock DAQ tab during text execution..
+#            self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
+#        except Exception as e:
+#            print >> sys.stderr, "Exception trying to unlock DAQ tab: ", e
+#            return
 
     def testReadCurrent(self):
         
@@ -162,6 +167,11 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def femConnectionStatus(self, bConnected):
         ''' Enables/Disable testTab's components according to bConnected '''
         self.ui.asicBondingBtn.setEnabled(bConnected)
+        self.ui.operatorEdit.setEnabled(bConnected)
+        self.ui.moduleNumberEdit.setEnabled(bConnected)
+        self.ui.commentEdit.setEnabled(bConnected)
+        self.ui.moduleLhsSel.setEnabled(bConnected)
+        self.ui.moduleRhsSel.setEnabled(bConnected)
 
     def testConfigure(self):
 
@@ -184,25 +194,20 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         
         self.testMsgPrint("Running Acquisition ...")
         self.mainWindow.daqTab.deviceRun()
-        
-        #TODO: Assuming logging begins here.. ?
 
         # Set up logger unless already set up
-        if self.Logger is None:
-            print >> sys.stderr, "testRun() Logger not set up, setting it up now"
-            # Create file path - Move this? Although beware createLogger()'s dependency..
-            loggerPath = self.createLoggerPath() #self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
-            (self.logPath) = self.createLogger(loggerPath)
-            # Signal new file path
-            self.appMain.asicWindow.logPathSignal.emit(self.logPath)
-        else:
-            print >> sys.stderr, "testRun() Logger already set up"
+        if self.logger is None:
+            self.createLogger()
 
-
-    def createLogger(self, fileName):
+    def createLogger(self):
         ''' Create logger (and its' folder if it does not exist), return logger and its' path
             Adjusted from example: 
             http://rlabs.wordpress.com/2009/04/09/python-closing-logging-file-getlogger/ '''
+
+        timestamp = time.time()
+        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+        fileName = self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
+
         # Check whether logger already set up
         if self.logger is not None:
             # Logger already exists, remove it
@@ -223,7 +228,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.hdl.setFormatter(formatter)
         self.logger.addHandler(self.hdl)
         self.logger.setLevel(logging.DEBUG)
-        return filePath
+        # Signal new file path
+        self.appMain.asicWindow.logPathSignal.emit(filePath)
 
     def operatorUpdate(self):
 
@@ -249,27 +255,24 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''
         
+        # Setup logger unless already set up
+        if self.logger is None:
+            self.createLogger()
+
         constructedMessage = "%s %s" % (time.strftime("%H:%M:%S"), str(msg))
+        # Log message as error if flagged as such
+        if bError:
+            self.logger.error(constructedMessage)
+        else:
+            self.logger.info(constructedMessage)
+
         self.ui.testMessageBox.appendPlainText(constructedMessage)
         self.ui.testMessageBox.verticalScrollBar().setValue(self.ui.testMessageBox.verticalScrollBar().maximum())
         self.ui.testMessageBox.repaint()
         self.appMain.app.processEvents()
-        if self.logger is not None:
-            # Log message as error if flagged as such
-            if bError:
-                #logging.error(constructedMessage)
-                self.logger.error(constructedMessage)
-            else:
-                #logging.info(constructedMessage)
-                self.logger.info(constructedMessage)
-        else:
-            print >> sys.stderr, " *** ERROR: self.logger not set up! ***"
 
-    def logMsg(self, string):
-        ''' Log string to file (self.logger) '''
+    def dumpGuiFieldsToLog(self):
         
-        print >> sys.stderr, "logMsg rx'd: %s.."% string[0:24]
-        if self.logger is not None:
-            self.logger.info(string)
-        else:
-            print >> sys.stderr, "ERROR: self.logger not set up!"
+        self.testMsgPrint("Logging Operator: '%s'" % str(self.ui.operatorEdit.text()))
+        self.testMsgPrint("Logging Module Number: '%s'" % str(self.ui.moduleNumberEdit.text()))
+        self.testMsgPrint("Logging Comment: '%s'" % str(self.ui.commentEdit.text()))

@@ -88,9 +88,11 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
             if idx == 0:
                 vMax = '4095'
                 cMap = defaultColourMap
+                cTicks = [0, 511, 1023, 1535, 2047, 2559, 3071, 3583, 4095]
             else:
                 vMax = '1'
                 cMap = 'binary'
+                cTicks = [0, 1]
 
             imgObject = self.axes[idx].imshow(self.data, cmap=cMap, interpolation='nearest', vmin='0', vmax=vMax)
             self.img.extend([imgObject])
@@ -101,6 +103,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
             # Create nd show a colourbar
             axc, kw = matplotlib.colorbar.make_axes(self.axes[idx], orientation='horizontal')
             cb = matplotlib.colorbar.Colorbar(axc, self.img[idx], orientation='horizontal')
+            cb.set_ticks(ticks=cTicks, update_ticks=True)
             self.img[idx].colorbar = cb
 
             # Add vertical lines to differentiate between the ASICs

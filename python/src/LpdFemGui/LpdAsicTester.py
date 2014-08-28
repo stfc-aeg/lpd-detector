@@ -97,7 +97,11 @@ class LpdAsicTester(object):
             # Assume both supplies switched off initially
             (bSwitchLvOn, bSwitchHvOn) = (True, True)
             
+            numFailedSections = 0
+            
             # ASIC Bonding procedure:
+
+            self.msgPrint("1. Power on")
 
             # Switch off supply/supplies if already on; 0=off, 1=on
             if self.lvState[0] == 1:
@@ -133,9 +137,10 @@ class LpdAsicTester(object):
             # 2. Check and record current (1A < I < 4A)
             self.msgPrint("2. Check and record current (1A < I < 4A)")
             sensorCurrent = self.readCurrent()
-            passFailString = "FAIL"
-            if (1 < sensorCurrent < 4): 
-                passFailString = "PASS"
+            passFailString = "PASS"
+            if not (1 < sensorCurrent < 4):
+                passFailString = "FAIL"
+                numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
             time.sleep(1)
             
@@ -149,9 +154,10 @@ class LpdAsicTester(object):
             # 4. Check and record current (8A < I <= 10A)
             self.msgPrint("4. Check and record current (8A < I <= 10A)")
             sensorCurrent = self.readCurrent()
-            passFailString = "FAIL"
-            if (8 < sensorCurrent < 10):
-                passFailString = "PASS"
+            passFailString = "PASS"
+            if not (8 < sensorCurrent < 10):
+                passFailString = "FAIL"
+                numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
             time.sleep(1)
             
@@ -163,7 +169,12 @@ class LpdAsicTester(object):
             
             # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
             self.msgPrint("6. Check for out of range pixels")
-            self.performAnalysis(train=0, image=0)
+            numBadPixels = self.performAnalysis(train=0, image=0)
+            if numBadPixels == 0:
+                self.msgPrint("Module %s has no bad pixels, that's a %s" % (self.moduleString, "PASS"))
+            else:
+                self.msgPrint("Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
+                numFailedSections += 1
             
             # 7. Power off
             self.msgPrint("7. Power Off")
@@ -184,9 +195,10 @@ class LpdAsicTester(object):
             # 9. Check and record current (1A < I < 4A)
             self.msgPrint("9. Check and record current (1A < I < 4A)")
             sensorCurrent = self.readCurrent()
-            passFailString = "FAIL"
-            if (1 < sensorCurrent < 4): 
-                passFailString = "PASS"
+            passFailString = "PASS"
+            if not (1 < sensorCurrent < 4):
+                passFailString = "FAIL"
+                numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
             time.sleep(1)
             
@@ -200,9 +212,10 @@ class LpdAsicTester(object):
             # 11. Check and record current (8A <I =< 10A)
             self.msgPrint("11. Check and record current (8A < I <= 10A)")
             sensorCurrent = self.readCurrent()
-            passFailString = "FAIL"
-            if (8 < sensorCurrent < 10):
-                passFailString = "PASS"
+            passFailString = "PASS"
+            if not (8 < sensorCurrent < 10):
+                passFailString = "FAIL"
+                numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
             time.sleep(1)
 
@@ -215,7 +228,18 @@ class LpdAsicTester(object):
             
             # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
             self.msgPrint("13. Check for out of range pixels")
-            self.performAnalysis(train=0, image=0) #, moduleNumber, fileName)
+            numBadPixels = self.performAnalysis(train=0, image=0) #, moduleNumber, fileName)
+            if numBadPixels == 0:
+                self.msgPrint("Module %s has no bad pixels, that's a %s" % (self.moduleString, "PASS"))
+            else:
+                self.msgPrint("Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
+                numFailedSections += 1
+            
+            # Summarise; Report how many failures (if any)
+            if numFailedSections == 0:
+                self.msgPrint("Module %s is fine, failing none of the tests." % self.moduleString)
+            else:
+                self.msgPrint("Module %s is problematic, it failed %d test(s)." % (self.moduleString, numFailedSections))
 
             # Restore parameter value(s) changed by this function
             for paramName in originalParamValues.keys():
@@ -330,8 +354,8 @@ class LpdAsicTester(object):
         if self.hvState[0] != self.hvState[1]:
             self.msgPrint("LpdAsicTester Error: HV status mismatch between power card", bError=True)
 
-    def performAnalysis(self, train, image): #, moduleNumber, fileName):
-        ''' Analyse fileName using train, image, moduleNumber info and check health of pixels '''
+    def performAnalysis(self, train, image):
+        ''' Analyse fileName using train, image '''
         self.train          = train
         self.image          = image
         
@@ -342,10 +366,10 @@ class LpdAsicTester(object):
                 self.appMain.asicWindow.moduleSignal.emit(self.moduleNumber)
             else:
                 self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
-                return
+                return -1
         else:
             self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
-            return
+            return -1
 
         # Check for bad pixel(s)
         deviatedPixels = self.testPixelsStandardDeviation()
@@ -362,17 +386,15 @@ class LpdAsicTester(object):
                 badPixelsString = ""
             badPixelsString += str(pair)
         
+        numBadPixels = deviatedPixels.__len__()
         # If bad pixel(s) detected, display last row and number of bad pixels:
-        if deviatedPixels.__len__() > 0:
+        if numBadPixels > 0:
             self.msgPrint("Row %d detected pixel(s): %s" % (lastRow, badPixelsString))
-            self.msgPrint("Detected %d bad pixel(s)." % (deviatedPixels.__len__()))
-        else:
-            self.msgPrint("No bad pixels detected.")
 
-        self.displayFaultyPixels(deviatedPixels)
+        self.plotFaultyPixels(deviatedPixels)
+        return numBadPixels
         
-        
-    def displayFaultyPixels(self, deviatedPixels):
+    def plotFaultyPixels(self, deviatedPixels):
         ''' Display plot of black/white (well, blue/red) image indicating faulty pixel(s) '''
 
         # Create empty array 
@@ -484,34 +506,34 @@ class LpdAsicTester(object):
         adcNum = column % 16
         return (asicNum, adcNum)
         
-    def neighbours(self, data, row, col):
-        ''' Obtain neighbours within array, omitting diagonal ones '''
-        for i in row-1, row, row+1:
-            if i < 0 or i == len(data): continue    # Outside data's row
-            for j in col-1, col, col+1:
-                if j < 0 or j == len(data[i]): continue # Outside data's column
-                if i == row and j == col: continue      # diagonal neighbour
-                if i == row-1 and j== col-1: continue   # diagonal
-                if i == row-1 and j== col+1: continue   # diagonal
-                if i == row+1 and j== col-1: continue   # diagonal
-                if i == row+1 and j== col+1: continue   # diagonal
-                yield data[i][j]
+#    def neighbours(self, data, row, col):
+#        ''' Obtain neighbours within array, omitting diagonal ones '''
+#        for i in row-1, row, row+1:
+#            if i < 0 or i == len(data): continue    # Outside data's row
+#            for j in col-1, col, col+1:
+#                if j < 0 or j == len(data[i]): continue # Outside data's column
+#                if i == row and j == col: continue      # diagonal neighbour
+#                if i == row-1 and j== col-1: continue   # diagonal
+#                if i == row-1 and j== col+1: continue   # diagonal
+#                if i == row+1 and j== col-1: continue   # diagonal
+#                if i == row+1 and j== col+1: continue   # diagonal
+#                yield data[i][j]
     
-    def checkPixelsDifferent(self, row, col, adjacent, threshold):
-        ''' Is the difference between pixel (at row/col coordinate) and it's 'adjacent' neighbour greater than threshold? '''
-        bPixelDifferent = False
-        difference = 0
-        pixel = self.moduleData[row][col]
-        if pixel > adjacent:    difference = pixel - adjacent
-        else:                   difference = adjacent - pixel
-        
-        if difference < 0:
-            difference *= -1
-            
-        if difference > threshold:
-            #print "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
-            bPixelDifferent = True
-        return bPixelDifferent
+#    def checkPixelsDifferent(self, row, col, adjacent, threshold):
+#        ''' Is the difference between pixel (at row/col coordinate) and it's 'adjacent' neighbour greater than threshold? '''
+#        bPixelDifferent = False
+#        difference = 0
+#        pixel = self.moduleData[row][col]
+#        if pixel > adjacent:    difference = pixel - adjacent
+#        else:                   difference = adjacent - pixel
+#        
+#        if difference < 0:
+#            difference *= -1
+#            
+#        if difference > threshold:
+#            #print "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
+#            bPixelDifferent = True
+#        return bPixelDifferent
     
     def checkPixelAgainstStd(self, row, col):
         ''' Is 'pixel' outside +/- 2 standard deviations? '''
@@ -529,13 +551,13 @@ class LpdAsicTester(object):
             bPixelDifferent = True
         return bPixelDifferent
             
-    def addUniquePixel(self, pixelList, row, col):
-        ''' Signal whether (row, col) tuple already in pixelList '''
-        bTuple = True
-        for (i, j) in pixelList:
-            if row == i and col == j:
-                bTuple = False
-        return bTuple
+#    def addUniquePixel(self, pixelList, row, col):
+#        ''' Signal whether (row, col) tuple already in pixelList '''
+#        bTuple = True
+#        for (i, j) in pixelList:
+#            if row == i and col == j:
+#                bTuple = False
+#        return bTuple
 
     def asicStartingRowColumn(self, module):
         ''' Determining upper left corner's row/col coordinates according to selected ASIC module '''
@@ -562,19 +584,19 @@ class LpdAsicTester(object):
         return (row, column)
 
 #    @timingMethodDecorator
-    def testNeighboursForDodgyPixels(self):
-
-        dodgyPixels = []        
-        for row in range(self.moduleData.shape[0]):
-            for col in range(self.moduleData.shape[1]):
-                for neighbour in self.neighbours(self.moduleData, row, col):
-    
-                    bDiffers = self.checkPixelsDifferent(row, col, neighbour, 400)
-                    if bDiffers:
-                        #print " original pixel[" + str(row) + "][" + str(col) + "]=" + str(self.moduleData[row][col]) + " "
-                        if self.addUniquePixel(dodgyPixels, row, col):
-                            dodgyPixels.append((row, col))
-        return dodgyPixels
+#    def testNeighboursForDodgyPixels(self):
+#
+#        dodgyPixels = []        
+#        for row in range(self.moduleData.shape[0]):
+#            for col in range(self.moduleData.shape[1]):
+#                for neighbour in self.neighbours(self.moduleData, row, col):
+#    
+#                    bDiffers = self.checkPixelsDifferent(row, col, neighbour, 400)
+#                    if bDiffers:
+#                        #print " original pixel[" + str(row) + "][" + str(col) + "]=" + str(self.moduleData[row][col]) + " "
+#                        if self.addUniquePixel(dodgyPixels, row, col):
+#                            dodgyPixels.append((row, col))
+#        return dodgyPixels
     
 #    @timingMethodDecorator
     def testPixelsStandardDeviation(self):
@@ -622,11 +644,11 @@ class LpdAsicTester(object):
     
                 results[paramName] = val
                 if rc != LpdDevice.ERROR_OK:    
-                    self.msgPrint("readPowerCards Exception: %s rc=%d: %s" % (paramName, rc, self.device.errorStringGet()), bError=True)
+                    self.msgPrint("readPowerCards Exception: Reading %s returned: %d: %s" % (paramName, rc, self.device.errorStringGet()), bError=True)
                     errorCount += 1
                     if errorCount > 2:
                         self.msgPrint("readPowerCards Exception: Detected three errors, aborting..", bError=True)
-                        raise Exception
+                        return []
         
         for powerCard in range(numPowerCards):
             
@@ -634,21 +656,18 @@ class LpdAsicTester(object):
                 paramName = paramType + str(powerCard)
                 
                 (rc, val) = self.device.paramGet(paramName)
-    
+
                 results[paramName] = val
                 if rc != LpdDevice.ERROR_OK:    
-                    self.msgPrint("readPowerCards Exception: %s rc=%d: %s" % (paramName, rc, self.device.errorStringGet()), bError=True)
+                    self.msgPrint("readPowerCards Exception: Reading %s returned: %d: %s" % (paramName, rc, self.device.errorStringGet()), bError=True)
                     errorCount += 1
                     if errorCount > 2:
                         self.msgPrint("readPowerCards Exception: Found three errors, aborting..", bError=True)
-                        raise Exception
+                        return []
         return results
 
     def readCurrent(self):
         ''' Read moduleNumber's current (as required by Wafer Probing and ASIC Bonding Test Routines) '''
-
-        #self.msgPrint("Testing power card: %s" % self.moduleString)
-        #print >> sys.stderr, "Testing power card: %s" % self.moduleString
 
         #TODO: Sort out this dirty hack:
         sensorIdx = -1
@@ -659,12 +678,11 @@ class LpdAsicTester(object):
         
         try:
             results = self.readPowerCards()
+            sensorCurrent = results['sensor%sCurrent' %  sensorIdx]
         except Exception as e:
             self.msgPrint("Error: Couldn't read module's current: %s" % e, bError=True)
-            return
+            return -1
         
-        sensorCurrent = results['sensor%sCurrent' %  sensorIdx]
-#        self.msgPrint("Module %s current: %.2f A" % (self.moduleString, sensorCurrent))
         # Wait one second otherwise logging performed out of sequence
         time.sleep(1)
         #print >> sys.stderr, "Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx])
