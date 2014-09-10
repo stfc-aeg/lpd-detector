@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Thu Aug 28 09:29:06 2014
+# Created: Fri Aug 29 08:27:16 2014
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -1921,6 +1921,15 @@ class Ui_MainWindow(object):
         self.asicBondingBtn.setSizePolicy(sizePolicy)
         self.asicBondingBtn.setMinimumSize(QtCore.QSize(40, 0))
         self.asicBondingBtn.setObjectName(_fromUtf8("asicBondingBtn"))
+        self.sensorBondingBtn = QtGui.QPushButton(self.testTab)
+        self.sensorBondingBtn.setGeometry(QtCore.QRect(280, 155, 121, 71))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.sensorBondingBtn.sizePolicy().hasHeightForWidth())
+        self.sensorBondingBtn.setSizePolicy(sizePolicy)
+        self.sensorBondingBtn.setMinimumSize(QtCore.QSize(40, 0))
+        self.sensorBondingBtn.setObjectName(_fromUtf8("sensorBondingBtn"))
         self.verticalTabWidget.addTab(self.testTab, _fromUtf8(""))
         self.horizontalLayoutWidget_2 = QtGui.QWidget(self.centralwidget)
         self.horizontalLayoutWidget_2.setGeometry(QtCore.QRect(10, 0, 781, 52))
@@ -2279,6 +2288,7 @@ class Ui_MainWindow(object):
         self.testConfigBtn.setText(QtGui.QApplication.translate("MainWindow", "TestConfig", None, QtGui.QApplication.UnicodeUTF8))
         self.readCurrentBtn.setText(QtGui.QApplication.translate("MainWindow", "ReadCurrent", None, QtGui.QApplication.UnicodeUTF8))
         self.asicBondingBtn.setText(QtGui.QApplication.translate("MainWindow", "ASIC Bonding", None, QtGui.QApplication.UnicodeUTF8))
+        self.sensorBondingBtn.setText(QtGui.QApplication.translate("MainWindow", "Sensor Bonding", None, QtGui.QApplication.UnicodeUTF8))
         self.verticalTabWidget.setTabText(self.verticalTabWidget.indexOf(self.testTab), QtGui.QApplication.translate("MainWindow", "TEST", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox.setTitle(QtGui.QApplication.translate("MainWindow", "Connection", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Address:", None, QtGui.QApplication.UnicodeUTF8))

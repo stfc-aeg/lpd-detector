@@ -44,6 +44,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Disable GUI components from start
         self.ui.pixelCheckBtn.setEnabled(False)     #TODO: Become redundant, removed soon?
         self.ui.asicBondingBtn.setEnabled(False)
+        self.ui.sensorBondingBtn.setEnabled(False)
         self.ui.operatorEdit.setEnabled(False)
         self.ui.moduleNumberEdit.setEnabled(False)
         self.ui.commentEdit.setEnabled(False)
@@ -73,7 +74,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.pixelCheckBtn,         QtCore.SIGNAL("clicked()"),           self.pixelCheckTest)    # "Pixel Check"
 
         QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)    # "ASIC Bonding"
-        #QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingAlternativeTest)
+        QtCore.QObject.connect(self.ui.sensorBondingBtn,      QtCore.SIGNAL("clicked()"),           self.sensorBondingTest)
         
         # Allow LpdFemGuiMainDaqTab to signal Device configuration ok/fail
         self.configDeviceSignal.connect(self.configDeviceMessage)
@@ -85,39 +86,59 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
     def __del__(self):
         
-        # Close the log file upon program exit? (Redundant?)
         pass
-    
-    def asicBondingAlternativeTest(self):
+        # Attempting to restore DAQ changes if GUI prematurely exited - But this Exception
+        #     occurring elsewhere in the code probably prevents this from working:
+        # Exception during UI object mapping: 'digitalCurrent0', Exception during ..
+#        print >> sys.stderr, "Restoring DAQ settings.."
+#        self.appMain.asicTester.restoreDaqSettings()
+#        print >> sys.stderr, "Restoring DAQ settings.. Finished!"
+
+    def sensorBondingTest(self):
 
         # Lock tab's GUI components during test execution
         self.femConnectionStatus(False)
+        try:
+            # Also lock DAQ tab during text execution..
+            self.appMain.mainWindow.ui.runGroupBox.setEnabled(False)
+            self.appMain.mainWindow.ui.daqTab.setEnabled(False)
+        except Exception as e:
+            print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
+            return
 
         # Set up logger unless already set up
         if self.logger is None:
             self.createLogger()
-        
-        self.testMsgPrint("ALTERNATIVE: .testMsgPrint() Module %s.." % self.moduleString)
 
-        self.mainWindow.executeAsyncCmd('A simple test..', self.appMain.asicTester.test, self.asicAlternativeTestDone)
+        self.dumpGuiFieldsToLog()
+        self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
+                                        partial(self.appMain.asicTester.executeSensorBondingTest, self.moduleNumber),
+                                        self.sensorBondingTestDone)
 
-    def asicAlternativeTestDone(self):
+    def sensorBondingTestDone(self):
         
-        self.testMsg("Finished testing ASIC Bonding (is this function are strictly necessary?)")
+        self.msgPrint("Finished testing ASIC Sensor Bonding")
+        
         # Unlock tab's GUI components after test completed
         self.femConnectionStatus(True)
+        try:
+            # Also lock DAQ tab during text execution..
+            self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
+            self.appMain.mainWindow.ui.daqTab.setEnabled(True)
+        except Exception as e:
+            print >> sys.stderr, "sensorBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
     def asicBondingTest(self):
 
         # Lock tab's GUI components during test execution
         self.femConnectionStatus(False)
-#        try:
-#            print >> sys.stderr, "Locking DAQ tab.."
-#            # Also lock DAQ tab during text execution..
-#            self.appMain.mainWindow.ui.runGroupBox.setEnabled(False)
-#        except Exception as e:
-#            print >> sys.stderr, "Exception trying to lock DAQ tab: ", e
-#            return
+        try:
+            # Also lock DAQ tab during text execution..
+            self.appMain.mainWindow.ui.runGroupBox.setEnabled(False)
+            self.appMain.mainWindow.ui.daqTab.setEnabled(False)
+        except Exception as e:
+            print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
+            return
 
         # Set up logger unless already set up
         if self.logger is None:
@@ -133,13 +154,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.msgPrint("ASIC Bonding Tests Concluded")
         # Unlock tab's GUI components after test completed
         self.femConnectionStatus(True)
-#        try:
-#            print >> sys.stderr, "Unlocking DAQ tab.."
-#            # Also lock DAQ tab during text execution..
-#            self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
-#        except Exception as e:
-#            print >> sys.stderr, "Exception trying to unlock DAQ tab: ", e
-#            return
+        try:
+            # Also lock DAQ tab during text execution..
+            self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
+            self.appMain.mainWindow.ui.daqTab.setEnabled(True)
+        except Exception as e:
+            print >> sys.stderr, "asicBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
     def testReadCurrent(self):
         
@@ -167,6 +187,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def femConnectionStatus(self, bConnected):
         ''' Enables/Disable testTab's components according to bConnected '''
         self.ui.asicBondingBtn.setEnabled(bConnected)
+        self.ui.sensorBondingBtn.setEnabled(bConnected)
         self.ui.operatorEdit.setEnabled(bConnected)
         self.ui.moduleNumberEdit.setEnabled(bConnected)
         self.ui.commentEdit.setEnabled(bConnected)
@@ -245,12 +266,14 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         if self.ui.moduleLhsSel.isChecked():
             self.msgPrint("LHS module selected")
             self.moduleNumber = LpdFemGuiMainTestTab.LHS_MODULE
-            self.setModuleType(self.moduleNumber)
+            #self.setModuleType(self.moduleNumber)
 
         elif self.ui.moduleRhsSel.isChecked():
             self.msgPrint("RHS module selected")
             self.moduleNumber = LpdFemGuiMainTestTab.RHS_MODULE
-            self.setModuleType(self.moduleNumber)
+            
+        self.setModuleType(self.moduleNumber)
+        self.appMain.asicWindow.moduleSignal.emit(self.moduleNumber)
             
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''

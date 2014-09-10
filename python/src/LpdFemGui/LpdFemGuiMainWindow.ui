@@ -4703,6 +4703,31 @@
        <string>ASIC Bonding</string>
       </property>
      </widget>
+     <widget class="QPushButton" name="sensorBondingBtn">
+      <property name="geometry">
+       <rect>
+        <x>280</x>
+        <y>155</y>
+        <width>121</width>
+        <height>71</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>40</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Sensor Bonding</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QWidget" name="horizontalLayoutWidget_2">

@@ -34,7 +34,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     moduleSignal = QtCore.pyqtSignal(object)
     timeStampSignal = QtCore.pyqtSignal(object)
     logPathSignal = QtCore.pyqtSignal(str)
-    dataSignal   = QtCore.pyqtSignal(object, object, int)
+    dataSignal   = QtCore.pyqtSignal(object, object, int, str)
     
     matplotlib.rcParams.update({'font.size': 8})
     
@@ -170,8 +170,9 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 
-    def windowUpdate(self, lpdActualImage, lpdFaultyImage, moduleNumber):
-        
+    def windowUpdate(self, lpdActualImage, lpdFaultyImage, moduleNumber, miscDescription):
+
+        #print >> sys.stderr, "moduleNumber", moduleNumber, "\nmiscDescription", miscDescription
         # Convert module number into the string
         self.setModuleType(moduleNumber)
         
@@ -179,7 +180,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         self.img[LpdFemGuiAsicWindow.REALIMAGE].set_data(lpdActualImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
-        self.titleText = 'Train %d Image %d %sModule %s: %s' % (self.train, self.image, "\n", self.moduleString, dateStr)
+        self.titleText = 'Train %d Image %d %sModule %s: %s' % (self.train, self.image, miscDescription+"\n", self.moduleString, dateStr)
         self.axes[LpdFemGuiAsicWindow.REALIMAGE].set_title(self.titleText)
 
         # Plot the black/white image (which shows which pixel(s) are dead)
