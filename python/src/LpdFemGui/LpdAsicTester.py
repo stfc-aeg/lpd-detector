@@ -39,14 +39,30 @@ class LpdAsicTester(object):
         
         self.appMain = appMain
         self.device = device
+        # Test session parameters
+        self.currentParams = {}
 
+        # Copy defaults from file (via LpdFemGui class)
+        self.currentParams = self.appMain.cachedParams.copy()
+        # Ensure a set of known defaults (common to all tests)
+        self.currentParams['liveViewEnable'] = False
+        self.currentParams['femAsicGainOverride'] = 3
+        self.currentParams['femAsicPixelFeedbackOverride'] = 1
+        self.currentParams['fileWriteEnable'] = True
+        
+        #print >> sys.stderr, "LpdAsicTester, LiveViewEnable: %s femASICGainOverride: %d femASICPixelFeedbackOverride: %d fileWriteEnable: %s" % (self.currentParams['liveViewEnable'], self.currentParams['femAsicGainOverride'], self.currentParams['femAsicPixelFeedbackOverride'], self.currentParams['fileWriteEnable'])
+
+
+        
         # Established signals (and slots)
         self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
 
         self.moduleString = "-1"
-
-        self.lvState = [0, 0]
-        self.hvState = [0, 0]        
+        self.moduleDescription = ""
+        
+        self.lvState   = [0, 0]
+        self.hvState   = [0, 0]
+        self.biasState = [0, 0]        
 
         self.hardwareDelay = 3
         self.moduleNumber   = 0
@@ -63,13 +79,18 @@ class LpdAsicTester(object):
         ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
         self.messageSignal.emit(message, bError)
 
+    def setModuleDescription(self, moduleDescription):
+        ''' Enable LpdFemGuiMainTestTab to communicate module description, i.e. "00135"
+            Note that RHS/LHS determined by moduleLhsSel/moduleRhsSel in the GUI '''
+        self.moduleDescription = moduleDescription
+
     def executeSensorBondingTest(self, moduleNumber):
         ''' Execute the sequence of tests defined by Sensor Bonding specifications '''
 
         try:
             self.msgPrint("Called executeSensorBondingTest()")
             # Save/modify DAQ settings that interfere with this test sequence
-            self.saveDaqSettings()
+#            self.saveDaqSettings()
 
             # Set moduleNumber and moduleString
             self.moduleNumber = moduleNumber
@@ -79,17 +100,17 @@ class LpdAsicTester(object):
 #            #print >> sys.stderr, "powerCardResult: ", powerCardResults
 #            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
 
-            # Define ASIC command sequence files
-            longExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml"
-            shortExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml"
-
+#            # Define ASIC command sequence files
+#            longExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml"
+#            shortExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml"
 
 #            # Debugging: Using a short exposure, look at data
-#            self.setCachedValue('cmdSequenceFile', shortExposure)
-#            self.appMain.deviceConfigure()
+#            self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']  # "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml",
+##            self.currentParams['cmdSequenceFile'] = shortExposure
+#            self.appMain.deviceConfigure(self.currentParams)
 #            # . Readout Data
 #            self.msgPrint(". Readout Data - SHORT exposure time")
-#            self.appMain.deviceRun()
+#            self.appMain.deviceRun(self.currentParams)
 #            self.fileName = self.appMain.lastDataFile
 #            self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)            
 #            # .Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
@@ -100,9 +121,6 @@ class LpdAsicTester(object):
 
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
             self.obtainPowerSuppliesState(self.appMain.pwrCard.powerStateGet())
-            
-            # Assume both supplies switched off initially
-            (bSwitchLvOn, bSwitchHvOn) = (True, True)
 
             numFailedSections = 0
             
@@ -114,16 +132,10 @@ class LpdAsicTester(object):
             if self.lvState[0] == 0:
                 self.msgPrint("Low voltage is off, switching it on..")
                 self.toggleLvSupplies()
-            else:
-                print >> sys.stderr, "low voltage already on"
             
             if self.hvState[0] == 0:
                 self.msgPrint("High voltage is off, switching it on..")
                 self.toggleHvSupplies()
-#                # Set bias to 0
-#                self.hvSetBias(0.0)
-            else:
-                print >> sys.stderr, "high-voltage already on"
             
             self.msgPrint("2. Check as in ASIC bonding - [Skipping for now]")
             
@@ -151,11 +163,12 @@ class LpdAsicTester(object):
 
             self.msgPrint("4. Take data with long exposure command sequence")
             # Set long exposure XML file, configure device
-            self.setCachedValue('cmdSequenceFile', longExposure)
-            self.appMain.deviceConfigure()
+            self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']   # "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml",
+            #self.currentParams['cmdSequenceFile'] = longExposure
+            self.appMain.deviceConfigure(self.currentParams)
             # . Readout Data
             #self.msgPrint(". Readout Data - LONG exposure time")
-            self.appMain.deviceRun()
+            self.appMain.deviceRun(self.currentParams)
             self.fileName = self.appMain.lastDataFile
             self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)            
 
@@ -194,102 +207,25 @@ class LpdAsicTester(object):
     
                     # Summarise which test(s) failed
                     if numUnconnectedPixels > 0:
-                        self.msgPrint("There are %d unconnected pixel(s)." % numUnconnectedPixels)
+                        self.msgPrint("* Failed test 5. There are %d unconnected pixel(s)." % numUnconnectedPixels)
                     if (numShortedPixelsMin+numShortedPixelsMax) > 0:
-                        self.msgPrint("There are %d and %d shorted pixel(s)." % (numShortedPixelsMin, numShortedPixelsMax))
+                        self.msgPrint("* Failed test 6. There are %d and %d shorted pixel(s)." % (numShortedPixelsMin, numShortedPixelsMax))
                         # Any minimum adjacent to a maximum?
                         if neighbourStr.__len__() > 0:
-                            self.msgPrint("Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
+                            self.msgPrint("     Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
 
-            # Restore DAQ settings modified by this function
-            self.restoreDaqSettings()
-            
+            # Hack DAQ tab to restore it to ready state
+            self.appMain.deviceState = LpdFemGui.DeviceReady
+            self.appMain.runStateUpdate()
+
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
             self.msgPrint("Exception during Sensor Bonding testing: %s" % e, bError=True)
 
-    def saveDaqSettings(self):
-        ''' Utilised together with restoreDaqSettings by test functions
-            so they can operate without upsetting the DAQ settings '''
-        self.originalCachedParams = {}
-        guiParam = 'liveViewEnable'
-        # Switch off live view flag - if set
-        state = self.getCachedValue(guiParam)
-        if state != None:
-            if state == True:
-                self.appMain.mainWindow.daqTab.liveViewSelect(False)
-                # Only save original setting if enabled
-                self.originalCachedParams[guiParam] = state
-        
-        # Switch on file write flag - if off
-        guiParam = 'fileWriteEnable'
-        state = self.getCachedValue(guiParam)
-        print >> sys.stderr, "fileWriteEnable: ", state
-        if state != None:
-            print >> sys.stderr, "state wasn't None"
-            if state == False:
-                print >> sys.stderr, "state was false"
-                self.appMain.mainWindow.daqTab.fileWriteSelect(False)
-                time.sleep(3)
-                stateNew = self.getCachedValue(guiParam)
-                print >> sys.stderr, "statesYou = ", stateNew
-                # Only save original setting if enabled
-                self.originalCachedParams[guiParam] = state
-        
-#        print >> sys.stderr, "fastParamEdit: ", self.appMain.mainWindow.daqTab.ui.fastParamEdit.text()
-        
-        guiParam = 'cmdSequenceFile'
-        # Save name of ASIC command XML file
-        asicCmdFile = self.getCachedValue(guiParam)
-        #print >> sys.stderr, "asicCmdFile: ", asicCmdFile, "guiParam: ", guiParam
-        self.originalCachedParams[guiParam] = asicCmdFile
-        # Save number of trains
-        guiParam = 'numTrains'
-        numberTrains = self.getCachedValue(guiParam)
-        self.originalCachedParams[guiParam] = numberTrains
-        
-        # Change number of trains to 1
-        self.setCachedValue(guiParam, 1)
-
-#        print >> sys.stderr, "originalCachedParams:\n", self.originalCachedParams
-
-        # Obtain original parameter value(s) (before changing them..)
-        self.originalParamValues = {}
-        
-        paramName = 'femAsicSetupLoadMode'
-        value = self.getApiValue(paramName)
-        self.originalParamValues[paramName] = value
-            
-    def restoreDaqSettings(self):
-        ''' Utilised together with saveDaqSettings by test functions
-            so they can operate without upsetting the DAQ settings '''
-
-        #print >> sys.stderr, "Resetting paramName, value:"
-        # Restore parameter value(s) changed by this function
-        for paramName in self.originalParamValues.keys():
-            self.setApiValue(paramName, self.originalParamValues[paramName])
-            #print >> sys.stderr, paramName, self.originalParamValues[paramName]
-
-        # Restore cached parameter(s) change by this function
-        #print >> sys.stderr, "Resetting guiParam, value:"
-        for guiParam in self.originalCachedParams:
-            #print >> sys.stderr, guiParam, self.originalCachedParams[guiParam]
-            self.setCachedValue(guiParam, self.originalCachedParams[guiParam])
-        # Explicitly set ASIC command sequence's GUI component:
-        fileName = self.originalCachedParams['cmdSequenceFile']     # REDUNDANT?
-        self.appMain.mainWindow.daqTab.ui.fastParamEdit.setText(fileName)
-
-        # Hack DAQ tab to restore it to ready state
-        self.appMain.deviceState = LpdFemGui.DeviceReady
-        self.appMain.runStateUpdate()
-    
     def executeAsicBondingTest(self, moduleNumber):
         ''' Execute the sequence of tests defined by ASIC bond specifications '''
         
         try:
-            # Save/modify DAQ settings that interfere with this test sequence
-            self.saveDaqSettings()
-            
             # Set moduleNumber and moduleString
             self.moduleNumber = moduleNumber
             self.setModuleType(moduleNumber)
@@ -310,32 +246,28 @@ class LpdAsicTester(object):
             if self.lvState[0] == 1:
                 self.msgPrint("Low voltage is on, switching it off..")
                 self.toggleLvSupplies()
-            else:
-                print >> sys.stderr, "low voltage already off"
             
             if self.hvState[0] == 1:
                 self.msgPrint("High voltage is on, switching it off..")
                 self.toggleHvSupplies()
                 # Set bias to 0
                 self.hvSetBias(0.0)
-            else:
-                print >> sys.stderr, "high-voltage already off"
+                # If bias was 200 V, need a longer delay here to allow the voltage drop
+                if self.biasState[0] > 199.0:
+                    self.msgPrint("HV bias was 200 V, Waiting 8 additional seconds..")
+                    time.sleep(8)
 
             # 1.Power on
 
             if bSwitchLvOn:
                 self.msgPrint("Low voltage is off, switching it on..")
                 self.toggleLvSupplies()
-            else:
-                print >> sys.stderr, "Boolean says do not touch low voltage"
             
             if bSwitchHvOn:
                 # Set bias to 50
                 self.hvSetBias(50.0)
                 self.msgPrint("High voltage is off, switching it on..")
                 self.toggleHvSupplies()
-            else:
-                print >> sys.stderr, "Boolean says do not touch high-voltage"
             
             # Record failed test message(s)
             errorMessages = []
@@ -352,16 +284,17 @@ class LpdAsicTester(object):
             time.sleep(1)
 
             # Ensure short exposure XML file used
-            shortExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml"
-            self.setCachedValue('cmdSequenceFile', shortExposure)
-            
+#            shortExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml"
+            self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']  # "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml",
+            #self.currentParams['cmdSequenceFile'] = shortExposure
+
             # 3. Serial Load
             self.msgPrint("3. Serial Load")
-            self.appMain.deviceConfigure()
+            self.appMain.deviceConfigure(self.currentParams)
             #     Ensure serial load XML file selected (executing Configure proven redundant?)
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
             self.setApiValue(paramName, 1)
-    
+
             # 4. Check and record current (8A < I <= 10A)
             self.msgPrint("4. Check and record current (8A < I <= 10A)")
             sensorCurrent = self.readCurrent()
@@ -373,10 +306,10 @@ class LpdAsicTester(object):
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
             time.sleep(1)
             
-            self.appMain.deviceConfigure()
+            self.appMain.deviceConfigure(self.currentParams)
             # 5. Readout Data
             self.msgPrint("5. Readout Data")
-            self.appMain.deviceRun()
+            self.appMain.deviceRun(self.currentParams)
             self.fileName = self.appMain.lastDataFile
             self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
             
@@ -422,7 +355,7 @@ class LpdAsicTester(object):
             
             # 10. Parallel load
             self.msgPrint("10. Parallel Load")
-            self.appMain.deviceConfigure()
+            self.appMain.deviceConfigure(self.currentParams)
             # Ensure parallel XML file loading:
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
             self.setApiValue(paramName, 0)
@@ -440,7 +373,7 @@ class LpdAsicTester(object):
 
             # 12.Readout data
             self.msgPrint("12. Readout Data")
-            self.appMain.deviceRun()
+            self.appMain.deviceRun(self.currentParams)
 
             self.fileName = self.appMain.lastDataFile
             self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
@@ -466,8 +399,9 @@ class LpdAsicTester(object):
                 for errorLine in errorMessages:
                     self.msgPrint("* %s." % errorLine)
 
-            # Restore DAQ settings modified at start of this function
-            self.restoreDaqSettings()
+            # Hack DAQ tab to restore it to ready state
+            self.appMain.deviceState = LpdFemGui.DeviceReady
+            self.appMain.runStateUpdate()
 
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
@@ -491,8 +425,8 @@ class LpdAsicTester(object):
         minCount = minimumValues.__len__()
         maxCount = maximumValues.__len__()
 
-        print >> sys.stderr, "minimum values: ", minimumValues, " that's %d pixel(s) stuck 0." %  minCount
-        print >> sys.stderr, "maximum values: ", maximumValues, " that's %d pixel(s) stuck 4095." %  maxCount
+#        print >> sys.stderr, "minimum values: ", minimumValues, " that's %d pixel(s) stuck 0." %  minCount
+#        print >> sys.stderr, "maximum values: ", maximumValues, " that's %d pixel(s) stuck 4095." %  maxCount
 
         # Assuming that there are at least one of each, look for neighbouring pair(s)
         neighbourStr = ""
@@ -655,6 +589,17 @@ class LpdAsicTester(object):
             paramName = 'sensorBiasEnable' + str(powerCard)
             self.hvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
 
+            paramName = 'sensorBias' + str(powerCard)
+            self.biasState[powerCard] = powerState[paramName]
+        
+        print >> sys.stderr, "LpdAsicTester.obtainPowerSuppliesState()"
+        print >> sys.stderr, "sensorBias0: ", powerState['sensorBias0']
+        print >> sys.stderr, "sensorBias1: ", powerState['sensorBias1']
+            
+#            powerCardResults = self.readPowerCards()
+#            print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
+#            measuredBiasLevel = powerCardResults['sensorBias0']
+
         if self.lvState[0] != self.lvState[1]:
             self.msgPrint("LpdAsicTester Error: LV status mismatch between power card", bError=True)
 
@@ -724,7 +669,7 @@ class LpdAsicTester(object):
 
         # Let's try plotting this in the existing ASIC window..
         # Signal hdf5 image (data)
-        self.appMain.asicWindow.dataSignal.emit(self.moduleData, unconnectedPixelsArray, self.moduleNumber, "Leakage Current")
+        self.appMain.asicWindow.dataSignal.emit(self.moduleData, unconnectedPixelsArray, self.moduleDescription, self.moduleNumber, "Leakage Current")
         return numUnconnectedPixels
         
     def checkOutOfRangePixels(self, train, image, miscDescription="", bSuppressPixelInfo=False):
@@ -776,7 +721,7 @@ class LpdAsicTester(object):
             faultyPixelsArray[row][column] = 1
 
         # Signal hdf5 image (data)
-        self.appMain.asicWindow.dataSignal.emit(self.moduleData, faultyPixelsArray, self.moduleNumber, miscDescription)
+        self.appMain.asicWindow.dataSignal.emit(self.moduleData, faultyPixelsArray, self.moduleDescription, self.moduleNumber, miscDescription)
 
     def analyseFile(self):
 

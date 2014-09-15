@@ -34,7 +34,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     moduleSignal = QtCore.pyqtSignal(object)
     timeStampSignal = QtCore.pyqtSignal(object)
     logPathSignal = QtCore.pyqtSignal(str)
-    dataSignal   = QtCore.pyqtSignal(object, object, int, str)
+    dataSignal   = QtCore.pyqtSignal(object, object, str, int, str)
     
     matplotlib.rcParams.update({'font.size': 8})
     
@@ -170,44 +170,46 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 
-    def windowUpdate(self, lpdActualImage, lpdFaultyImage, moduleNumber, miscDescription):
+    def windowUpdate(self, lpdActualImage, lpdFaultyImage, moduleDescription, moduleNumber, miscDescription):
 
-        #print >> sys.stderr, "moduleNumber", moduleNumber, "\nmiscDescription", miscDescription
-        # Convert module number into the string
+        print >> sys.stderr, "moduleDescription ", moduleDescription, " \nmoduleNumber", moduleNumber, "\nmiscDescription", miscDescription
+        # Convert module number into the string e.g. "RHS"
         self.setModuleType(moduleNumber)
+        # Save module description, e.g. "00135"
+        self.moduleDescription = moduleDescription
         
         # Plot the captured image
         self.img[LpdFemGuiAsicWindow.REALIMAGE].set_data(lpdActualImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
-        self.titleText = 'Train %d Image %d %sModule %s: %s' % (self.train, self.image, miscDescription+"\n", self.moduleString, dateStr)
+        self.titleText = 'Train %d Image %d %sModule %s: %s' % (self.train, self.image, miscDescription+"\n", self.moduleDescription+self.moduleString, dateStr)
         self.axes[LpdFemGuiAsicWindow.REALIMAGE].set_title(self.titleText)
 
         # Plot the black/white image (which shows which pixel(s) are dead)
         self.img[LpdFemGuiAsicWindow.FAULTYIMAGE].set_data(lpdFaultyImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
-        self.titleText = 'Module %s: Map of faulty pixel(s)' % self.moduleString
+        self.titleText = 'Module %s: Map of faulty pixel(s)' % (self.moduleDescription+self.moduleString)
         self.axes[LpdFemGuiAsicWindow.FAULTYIMAGE].set_title(self.titleText)
         self.canvas.draw()
 
 #        # Create new folder
 #        self.prepareFilePath()
         # Save image to hdf5 file (but not the black/white image)
-        self.savePlot(lpdActualImage)
+        self.savePlot(lpdActualImage, moduleDescription+self.moduleString)
 
         # Save plotted figure to file
         try:
-            fname = self.logPath + "savedFigure_%s" % time.strftime("%H%M%S")
+            fname = self.logPath + "savedFig_%s_%s" % (moduleDescription+self.moduleString, time.strftime("%H%M%S"))
             print >> sys.stderr, "Fig:  %s" % (fname + ".png")
         except Exception as e:
             self.msgPrint("windowUpdate() Exception: %s" % e, bError=True)
 
         self.fig.savefig(fname)
 
-    def savePlot(self, lpdImage):
+    def savePlot(self, lpdImage, fullModuleName):
         try:
-            fileName = self.logPath + "lpdData_%s.hdf5" % time.strftime("%H%M%S")
+            fileName = self.logPath + "lpdData_%s_%s.hdf5" % (fullModuleName, time.strftime("%H%M%S"))
             print >> sys.stderr, "HDF5: %s" % (fileName)
         except Exception as e:
             self.msgPrint("savePlot() Exception: %s" % e, bError=True)

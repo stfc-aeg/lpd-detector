@@ -185,18 +185,27 @@ class LpdFemGui:
         if self.deviceState != LpdFemGui.DeviceDisconnected:        
             self.device.femClient.configWrite(theConfig)
         
-    def deviceConfigure(self):
+    def deviceConfigure(self, currentParams=None):
 
+#        print >> sys.stderr, "LpdFemGui.deviceConfigure() 1?"
+        
         self.deviceState = LpdFemGui.DeviceConfiguring
         self.runStateUpdate()
-                
+        
+        # if currentParams not supplied, use self.cachedParams
+        if not currentParams:
+            currentParams  = self.cachedParams.copy()
+            print >> sys.stderr, "LpdFemGui.deviceConfig() currentParams empty, using self.cachedParams\n* LiveView: %s AsicGain: %d PixelFeedback: %d fileWrite: %s cmdSeqFile: %s" % (currentParams['liveViewEnable'], currentParams['femAsicGainOverride'], currentParams['femAsicPixelFeedbackOverride'], currentParams['fileWriteEnable'], currentParams['cmdSequenceFile'])
+        else:
+            print >> sys.stderr, "LpdFemGui.deviceConfig() Using currentParams, which contains:\n* LiveView: %s AsicGain: %d PixelFeedback: %d fileWrite: %s cmdSeqFile: %s" % (currentParams['liveViewEnable'], currentParams['femAsicGainOverride'], currentParams['femAsicPixelFeedbackOverride'], currentParams['fileWriteEnable'], currentParams['cmdSequenceFile'])
+        
         # Clear current loaded configuration 
         self.loadedConfig= {} 
         
         # Load readout parameters from file       
-        self.msgPrint("Loading Readout Params from file %s" % self.cachedParams['readoutParamFile'])
+        self.msgPrint("Loading Readout Params from file %s" % currentParams['readoutParamFile'])
         try:
-            readoutConfig = LpdReadoutConfig(self.cachedParams['readoutParamFile'], fromFile=True)
+            readoutConfig = LpdReadoutConfig(currentParams['readoutParamFile'], fromFile=True)
         except LpdReadoutConfigError as e:
             self.msgPrint("Error loading readout parameters: %s" % e)
             self.deviceState = LpdFemGui.DeviceIdle
@@ -215,7 +224,7 @@ class LpdFemGui:
                 print >> sys.stderr, "%s" % e
 
         # Set up number of frames based on cached parameter value of number of trains
-        self.numFrames = self.cachedParams['numTrains']
+        self.numFrames = currentParams['numTrains']
         self.loadedConfig['numTrains'] = self.numFrames
         rc = self.device.paramSet('numberTrains', self.numFrames)
         if rc != LpdDevice.ERROR_OK:
@@ -224,7 +233,7 @@ class LpdFemGui:
             return
         
         # Set up trigger source (internal vs external)
-        externalTrigger = self.cachedParams['externalTrigger']
+        externalTrigger = currentParams['externalTrigger']
         beamTriggerSource = 1 if externalTrigger == False else 0
         rc = self.device.paramSet('femStartTrainSource', beamTriggerSource)
         if rc != LpdDevice.ERROR_OK:
@@ -233,7 +242,7 @@ class LpdFemGui:
             return
         
         # Set up external trigger delay
-        triggerDelay = self.cachedParams['triggerDelay']
+        triggerDelay = currentParams['triggerDelay']
         rc = self.device.paramSet('femStartTrainDelay', triggerDelay)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femExternalTriggerStrobeDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
@@ -241,7 +250,7 @@ class LpdFemGui:
             return
 
         # Set up pixel feedback override
-        pixelFeedbackOverride = self.cachedParams['femAsicPixelFeedbackOverride']
+        pixelFeedbackOverride = currentParams['femAsicPixelFeedbackOverride']
         rc = self.device.paramSet('femAsicPixelFeedbackOverride', pixelFeedbackOverride)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femAsicPixelFeedbackOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
@@ -249,7 +258,7 @@ class LpdFemGui:
             return
 
         # Set up ASIC gain mode override
-        gainOverride = self.cachedParams['femAsicGainOverride']
+        gainOverride = currentParams['femAsicGainOverride']
         rc = self.device.paramSet('femAsicGain', gainOverride)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femAsicGainOverride faied (rc=%d) %s" % (rc, self.device.errorStringGet()))
@@ -264,20 +273,20 @@ class LpdFemGui:
             print >> sys.stderr, "Got exception storing reaodut config variables", e 
         
         # Set ASIC setup parameters file
-        self.msgPrint("Loading Setup Params from file %s" % self.cachedParams['setupParamFile'])
-        rc = self.device.paramSet('femAsicSetupParams', self.cachedParams['setupParamFile'])
+        self.msgPrint("Loading Setup Params from file %s" % currentParams['setupParamFile'])
+        rc = self.device.paramSet('femAsicSetupParams', currentParams['setupParamFile'])
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting ASIC setup parameter file to %s failed (rc=%d) : %s" % 
-                          (self.cachedParams['setupParamFile'], rc, self.device.errorStringGet()))
+                          (currentParams['setupParamFile'], rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
             
         # Set ASIC command word sequence file
-        self.msgPrint("Loading Command Seq from file %s" % self.cachedParams['cmdSequenceFile'])
-        rc = self.device.paramSet('femAsicCmdSequence', self.cachedParams['cmdSequenceFile'])
+        self.msgPrint("Loading Command Seq from file %s" % currentParams['cmdSequenceFile'])
+        rc = self.device.paramSet('femAsicCmdSequence', currentParams['cmdSequenceFile'])
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting ASIC command word sequence file to %s failed (rc=%d) : %s" % 
-                          (self.cachedParams['cmdSequenceFile'], rc, self.device.errorStringGet()))
+                          (currentParams['cmdSequenceFile'], rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
         
@@ -292,18 +301,25 @@ class LpdFemGui:
         # Set device state as ready for acquisition        
         self.deviceState = LpdFemGui.DeviceReady
     
-    def deviceRun(self):
-            
+    def deviceRun(self, currentParams=None):
+        
+        # if currentParams not supplied, use self.cachedParams
+        if not currentParams:
+            currentParams  = self.cachedParams.copy()
+#            print >> sys.stderr, "LpdFemGui.deviceRun() currentParams empty, using self.cachedParams"
+#        else:
+#            print >> sys.stderr, "LpdFemGui.deviceRun() Using currentParams, which contains:\nLiveViewEnable: %s femASICGainOverride: %d femASICPixelFeedbackOverride: %d fileWriteEnable: %s" % (currentParams['liveViewEnable'], currentParams['femAsicGainOverride'], currentParams['femAsicPixelFeedbackOverride'], currentParams['fileWriteEnable'])
+        
         # Increment the run number
-        self.cachedParams['runNumber'] = self.cachedParams['runNumber'] + 1
+        currentParams['runNumber'] = currentParams['runNumber'] + 1
         
         # Clear abort run flag
         self.abortRun = False
 
         # Launch LCLS EVR timestamp recorder thread if selected
-        if self.cachedParams['evrRecordEnable'] == True:
+        if currentParams['evrRecordEnable'] == True:
             try:
-                timestampRecorder = LpdEvrTimestampRecorder(self.cachedParams, self)
+                timestampRecorder = LpdEvrTimestampRecorder(currentParams, self)
             except Exception as e:
                 self.msgPrint("ERROR: failed to create timestamp recorder: %s" % e)
                 self.deviceState = LpdFemGui.DevicdeIdle
@@ -312,7 +328,7 @@ class LpdFemGui:
         # Create an LpdFemDataReceiver instance to launch readout threads
         try:
             dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
-                                              self.dataListenAddr, self.dataListenPort, self.numFrames, self.cachedParams, self)
+                                              self.dataListenAddr, self.dataListenPort, self.numFrames, currentParams, self)
         except Exception as e:
             self.msgPrint("ERROR: failed to create data receiver: %s" % e)
             self.deviceState = LpdFemGui.DeviceIdle
@@ -329,7 +345,7 @@ class LpdFemGui:
             self.deviceState = LpdFemGui.DeviceIdle
 
         # Wait for timestamp recorder thread to complete
-        if self.cachedParams['evrRecordEnable'] == True:
+        if currentParams['evrRecordEnable'] == True:
             try:
                 timestampRecorder.awaitCompletion()
                 dataReceiver.injectTimestampData(timestampRecorder.evrData)

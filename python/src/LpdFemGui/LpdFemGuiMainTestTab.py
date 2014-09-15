@@ -42,7 +42,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
         # Disable GUI components from start
-        self.ui.pixelCheckBtn.setEnabled(False)     #TODO: Become redundant, removed soon?
         self.ui.asicBondingBtn.setEnabled(False)
         self.ui.sensorBondingBtn.setEnabled(False)
         self.ui.operatorEdit.setEnabled(False)
@@ -65,16 +64,11 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         (self.logger, self.hdl) = (None, None)
 
         # Connect signals and slots
-        QtCore.QObject.connect(self.ui.testConfigBtn,         QtCore.SIGNAL("clicked()"),           self.testConfigure) # "TestConfig" - DAQ tab replica
-        QtCore.QObject.connect(self.ui.testRunBtn,            QtCore.SIGNAL("clicked()"),           self.testRun)       # "TestRun"    - DAQ tab replica
         QtCore.QObject.connect(self.ui.operatorEdit,          QtCore.SIGNAL("editingFinished()"),   self.operatorUpdate)
         QtCore.QObject.connect(self.ui.moduleNumberEdit,      QtCore.SIGNAL("editingFinished()"),   self.moduleNumberUpdate)
         QtCore.QObject.connect(self.ui.moduleTypeButtonGroup, QtCore.SIGNAL("buttonClicked(int)"),  self.moduleTypeUpdate)
-        QtCore.QObject.connect(self.ui.readCurrentBtn,        QtCore.SIGNAL("clicked()"),           self.testReadCurrent)   # 
-        QtCore.QObject.connect(self.ui.pixelCheckBtn,         QtCore.SIGNAL("clicked()"),           self.pixelCheckTest)    # "Pixel Check"
-
-        QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)    # "ASIC Bonding"
-        QtCore.QObject.connect(self.ui.sensorBondingBtn,      QtCore.SIGNAL("clicked()"),           self.sensorBondingTest)
+        QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)   # "ASIC Bonding"
+        QtCore.QObject.connect(self.ui.sensorBondingBtn,      QtCore.SIGNAL("clicked()"),           self.sensorBondingTest) # "Sensor Bonding"
         
         # Allow LpdFemGuiMainDaqTab to signal Device configuration ok/fail
         self.configDeviceSignal.connect(self.configDeviceMessage)
@@ -90,9 +84,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Attempting to restore DAQ changes if GUI prematurely exited - But this Exception
         #     occurring elsewhere in the code probably prevents this from working:
         # Exception during UI object mapping: 'digitalCurrent0', Exception during ..
-#        print >> sys.stderr, "Restoring DAQ settings.."
-#        self.appMain.asicTester.restoreDaqSettings()
-#        print >> sys.stderr, "Restoring DAQ settings.. Finished!"
 
     def sensorBondingTest(self):
 
@@ -111,6 +102,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             self.createLogger()
 
         self.dumpGuiFieldsToLog()
+        moduleDescription = str(self.ui.moduleNumberEdit.text())
+        self.appMain.asicTester.setModuleDescription(moduleDescription)
         self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
                                         partial(self.appMain.asicTester.executeSensorBondingTest, self.moduleNumber),
                                         self.sensorBondingTestDone)
@@ -145,6 +138,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             self.createLogger()
 
         self.dumpGuiFieldsToLog()
+        moduleDescription = str(self.ui.moduleNumberEdit.text())
+        self.appMain.asicTester.setModuleDescription(moduleDescription)
         self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
                                         partial(self.appMain.asicTester.executeAsicBondingTest, self.moduleNumber),
                                         self.asicBondingTestDone)
@@ -161,10 +156,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         except Exception as e:
             print >> sys.stderr, "asicBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
-    def testReadCurrent(self):
-        
-        print >> sys.stderr, "*** testReadCurrent() doesn't do anything any more"
-
     def setModuleType(self, moduleNumber):
         ''' Helper function '''
 
@@ -173,12 +164,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         elif moduleNumber == LpdFemGuiMainTestTab.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
-
-    def pixelCheckTest(self):
-        ''' Perform analysis of data file, then check pixel health '''
-        self.testMsgPrint("Pressing that button does nothing")
-        # Disable test button until next filename available
-        self.ui.pixelCheckBtn.setEnabled(False)
         
     def configDeviceMessage(self, message):
         ''' Receives configuration ok/fail message '''
@@ -194,11 +179,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.ui.moduleLhsSel.setEnabled(bConnected)
         self.ui.moduleRhsSel.setEnabled(bConnected)
 
-    def testConfigure(self):
-
-        self.testMsgPrint("Configuring device ...")
-        self.mainWindow.daqTab.deviceConfigure()
-
     def warning(self):
         ''' Testing using QMessageBox '''
         ret = QMessageBox.warning(self, "Power Cycle",
@@ -211,15 +191,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         else:
             print >> sys.stderr, "Error: Unknown answer"
  
-    def testRun(self):
-        
-        self.testMsgPrint("Running Acquisition ...")
-        self.mainWindow.daqTab.deviceRun()
-
-        # Set up logger unless already set up
-        if self.logger is None:
-            self.createLogger()
-
     def createLogger(self):
         ''' Create logger (and its' folder if it does not exist), return logger and its' path
             Adjusted from example: 
