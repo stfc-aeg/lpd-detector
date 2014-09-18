@@ -889,10 +889,33 @@ class LpdFemClient(FemClient):
             self.asicrx_invert_data_disable()
 
         # Compensate for Double Data Rate timing shifts with slowed asic readout 
-        if self.femAsicSlowedClock:
-            self.rdmaWrite(self.fem_ctrl_0+8, 2)    # Swap DDR pair of asicrx  
-        else:
-            self.rdmaWrite(self.fem_ctrl_0+8, 1)    # Shift timing of odd asic rx chans
+        # and optional DCM in SP3IO
+        
+        if (self.rdmaRead(self.bot_sp3_ctrl+18, 1)[0] & 0x00000001) == 0:    # assumes f/w is same in top sp3    
+        
+          if self.femAsicSlowedClock:
+              self.rdmaWrite(self.fem_ctrl_0+8, 2)    # Swap DDR pair of asicrx  
+              #self.setbit(self.fem_ctrl_0+8, 1)    # enable Swap DDR pair of asicrx  
+              #self.clrbit(self.fem_ctrl_0+8, 0)    # disable timing shift of odd asic rx
+          else:
+              self.rdmaWrite(self.fem_ctrl_0+8, 1)    # Shift timing of odd asic rx chans
+              #self.setbit(self.fem_ctrl_0+8, 0)    # disable Swap DDR pair of asicrx  
+              #self.clrbit(self.fem_ctrl_0+8, 1)    # enable timing shift of odd asic rx
+              
+        else: # with DCM in SP3 IO
+
+          print "Using DCM in SP3 IO"
+        
+          if self.femAsicSlowedClock:
+              self.rdmaWrite(self.fem_ctrl_0+8, 2)    # Swap DDR pair of asicrx  
+              #self.setbit(self.fem_ctrl_0+8, 1)    # enable Swap DDR pair of asicrx  
+              #self.clrbit(self.fem_ctrl_0+8, 0)    # disable timing shift of odd asic rx
+          else:
+              self.rdmaWrite(self.fem_ctrl_0+8, 2)    # Swap DDR pair of asicrx  
+              #self.setbit(self.fem_ctrl_0+8, 1)    # enable Swap DDR pair of asicrx  
+              #self.clrbit(self.fem_ctrl_0+8, 0)    # disable timing shift of odd asic rx
+              
+          self.asicRx2tileStart = self.asicRx2tileStart - 1   # adjustment for SP3 IO DCM
 
         # Delay individual sensors
         self.set_delay_sensors(self.femDelaySensors)     
