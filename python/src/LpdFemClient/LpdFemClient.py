@@ -630,6 +630,7 @@ class LpdFemClient(FemClient):
         # Resets to hold dcm in reset while clock is switched
         self.register_set_bit(self.fem_ctrl_0+11, 16)  # Asic clock dcm
         self.register_set_bit(self.fem_ctrl_0+11, 17)  # Petra clock dcm 
+        self.register_set_bit(self.fem_ctrl_0+11, 15)  # Diamond clock dcm 
 
         self.register_set_bit(self.fem_ctrl_0+11, 18)  # BOT SP3 IO DCM
         self.register_set_bit(self.fem_ctrl_0+11, 19)  # TOP SP3 IO DCM
@@ -643,11 +644,17 @@ class LpdFemClient(FemClient):
         elif self.femAsicClockSource == 2:
             self.register_clear_bit(self.fem_ctrl_0+11, 2)  # petra clock   
             self.register_set_bit(self.fem_ctrl_0+11, 1)  
+            self.register_clear_bit(self.fem_ctrl_0+11, 3)  # extra select between petra and diamond
+        elif self.femAsicClockSource == 3:
+            self.register_clear_bit(self.fem_ctrl_0+11, 2)  # diamond clock   
+            self.register_set_bit(self.fem_ctrl_0+11, 1)   
+            self.register_set_bit(self.fem_ctrl_0+11, 3)  # extra select between petra and diamond
         else:
             raise FemClientError("WARNING Illegal Asic Clock Source selected. Defaulting to FEM Osc")
             self.register_clear_bit(self.fem_ctrl_0+11, 1)
  
-        # MUST release petra DCM BEFORE releasing asic DCM!
+        # MUST release petra and diamond DCMs BEFORE releasing asic DCM!
+        self.register_clear_bit(self.fem_ctrl_0+11, 15)  # Releases reset on Diamond dcm
         self.register_clear_bit(self.fem_ctrl_0+11, 17)  # Releases reset on petra dcm
         self.register_clear_bit(self.fem_ctrl_0+11, 16)  # Releases reset on asic dcm
 
@@ -666,11 +673,13 @@ class LpdFemClient(FemClient):
         # Trigger strobe for Petra test is derived from petra clock
         if self.femStartTrainSource == 3:
             self.enable_petra_trig_strobe()  
-        else:
+        else: # using C&C RJ45 input for Xfel , LCLS or Diamond
             self.disable_petra_trig_strobe()  
 
-        # Petra shutter
-        self.set_petra_shutter_polarity(self.petra_shutter_polarity) 
+        if self.femStartTrainSource == 3:
+            # Petra shutter
+            self.set_petra_shutter_polarity(self.petra_shutter_polarity) 
+            self.use_petra_shutter(self.femIgnorePetraShutter) 
       
     def config_10g_link(self):
         ''' Configure 10 Gig Link '''
