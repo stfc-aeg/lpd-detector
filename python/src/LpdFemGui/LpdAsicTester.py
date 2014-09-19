@@ -164,12 +164,12 @@ class LpdAsicTester(object):
                 self.msgPrint("High voltage is off, switching it on..")
                 self.toggleHvSupplies()
             
-            self.msgPrint("2. Check as in ASIC bonding - [Skipping for now]")
+#            self.msgPrint("2. Check as in ASIC bonding - [Skipping for now]")
             
 #            powerCardResults = self.readPowerCards()
 #            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
             
-            self.msgPrint("3. Power on sensor bias (HV) - 200V")
+            self.msgPrint("2. Power on sensor bias (HV) - 200V")
             # Check HV bias level:
             powerCardResults = self.readPowerCards()
             #print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
@@ -188,7 +188,7 @@ class LpdAsicTester(object):
             #powerCardResults = self.readPowerCards()
             #print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
 
-            self.msgPrint("4. Take data with long exposure command sequence")
+            self.msgPrint("3. Take data with long exposure command sequence")
             # Set long exposure XML file, configure device
             self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']
             self.appMain.deviceConfigure(self.currentParams)
@@ -201,7 +201,7 @@ class LpdAsicTester(object):
             if self.fileName == None:
                 self.msgPrint("Error: No file received")
             else:
-                self.msgPrint("5. Check/record unconnected pixels - Using leakage current check.")
+                self.msgPrint("4. Check/record unconnected pixels - Using leakage current check.")
                 numUnconnectedPixels = self.checkLeakageCurrent()
                 if numUnconnectedPixels != 0:
                     self.msgPrint("There are %d unconnected pixel(s), that's a FAIL" % numUnconnectedPixels)
@@ -209,7 +209,7 @@ class LpdAsicTester(object):
                 else:
                     self.msgPrint("There are no unconnected pixels, that's a PASS")
     
-                self.msgPrint("6. Check/record shorted pixels")
+                self.msgPrint("5. Check/record shorted pixels")
                 (numShortedPixelsMin, numShortedPixelsMax, adjacentPixelPairs, neighbourStr) = self.locateShortedPixels()
                 # Does total number of shorted pixels exceed 0?
                 # Min = pixel stuck at value 0, Max = pixel stuck at value 4095

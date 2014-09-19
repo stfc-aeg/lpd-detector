@@ -60,7 +60,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.image          = 0
         self.train          = 0
 
-        self.pathStem = "/u/ckd27546/workspace/tinkering/" #"/data/lpd/test/testGui/"
+        self.pathStem = "/data/lpd/testGui/"   #"/u/ckd27546/workspace/tinkering/"
         (self.logger, self.hdl) = (None, None)
 
         # Connect signals and slots
@@ -200,7 +200,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         timestamp = time.time()
         st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-        fileName = self.pathStem + "test_%s_%s/testResults.log" % (st, self.moduleString)
+        #fileName = self.pathStem + "%s_%s/testResults.log" % (st, self.moduleString)
+        fileName = self.pathStem + "%s/testResults.log" % st
 
         # Check whether logger already set up
         if self.logger is not None:
