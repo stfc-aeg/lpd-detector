@@ -72,21 +72,17 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         
         # Allow LpdFemGuiMainDaqTab to signal Device configuration ok/fail
         self.configDeviceSignal.connect(self.configDeviceMessage)
-        # Allow LpdFemGuiMainDaqTab to signal whether fem [dis]connect
+        # Allow LpdFemGuiMainDaqTab to signal whether fem [dis]connected
         self.femConnectionSignal.connect(self.femConnectionStatus)
-        
         # Let LpdFemGuiPowerTesting (and others) communicate results:
         self.messageSignal.connect(self.testMsgPrint)
 
     def __del__(self):
         
         pass
-        # Attempting to restore DAQ changes if GUI prematurely exited - But this Exception
-        #     occurring elsewhere in the code probably prevents this from working:
-        # Exception during UI object mapping: 'digitalCurrent0', Exception during ..
 
     def sensorBondingTest(self):
-
+        ''' Execute Sensor Bonding Tests - specified on page 4 of the documentation '''
         # Lock tab's GUI components during test execution
         self.femConnectionStatus(False)
         try:
@@ -100,7 +96,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Set up logger unless already set up
         if self.logger is None:
             self.createLogger()
-
+        
+        self.msgPrint("Executing Sensor Bonding Tests..")
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
         self.appMain.asicTester.setModuleDescription(moduleDescription)
@@ -111,18 +108,19 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def sensorBondingTestDone(self):
         
         self.msgPrint("Finished testing ASIC Sensor Bonding")
-        
+        # Lock run button to prevent DAQ tab running with (contaminated) settings
+        self.ui.runBtn.setEnabled(False)
         # Unlock tab's GUI components after test completed
         self.femConnectionStatus(True)
         try:
-            # Also lock DAQ tab during text execution..
+            # Also unlock DAQ tab during text execution..
             self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
             self.appMain.mainWindow.ui.daqTab.setEnabled(True)
         except Exception as e:
             print >> sys.stderr, "sensorBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
     def asicBondingTest(self):
-
+        ''' Execute ASIC Bonding Tests - specified on page 3 of the documentation '''
         # Lock tab's GUI components during test execution
         self.femConnectionStatus(False)
         try:
@@ -136,6 +134,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Set up logger unless already set up
         if self.logger is None:
             self.createLogger()
+            
+        self.msgPrint("Executing ASIC Bond tests..")
 
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
@@ -147,10 +147,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def asicBondingTestDone(self):
 
         self.msgPrint("ASIC Bonding Tests Concluded")
+        # Lock run button to prevent DAQ tab running with (contaminated) settings
+        self.ui.runBtn.setEnabled(False)
         # Unlock tab's GUI components after test completed
         self.femConnectionStatus(True)
         try:
-            # Also lock DAQ tab during text execution..
+            # Also unlock DAQ tab during text execution..
             self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
             self.appMain.mainWindow.ui.daqTab.setEnabled(True)
         except Exception as e:
@@ -170,7 +172,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.testMsgPrint(message)
         
     def femConnectionStatus(self, bConnected):
-        ''' Enables/Disable testTab's components according to bConnected '''
+        ''' Enables/Disable testTab's components according to bConnected argument '''
         self.ui.asicBondingBtn.setEnabled(bConnected)
         self.ui.sensorBondingBtn.setEnabled(bConnected)
         self.ui.operatorEdit.setEnabled(bConnected)
@@ -180,7 +182,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.ui.moduleRhsSel.setEnabled(bConnected)
 
     def warning(self):
-        ''' Testing using QMessageBox '''
+        ''' Testing using QMessageBox '''   # Not currently used
         ret = QMessageBox.warning(self, "Power Cycle",
                 '''Ensure power switched on before  clicking ok or click cancel.''',
                 QMessageBox.Ok, QMessageBox.Cancel);
@@ -192,8 +194,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             print >> sys.stderr, "Error: Unknown answer"
  
     def createLogger(self):
-        ''' Create logger (and its' folder if it does not exist), return logger and its' path
-            Adjusted from example: 
+        ''' Create logger (and its' folder, if it does not exist), return logger and its' path
+            Adjusted from example:
             http://rlabs.wordpress.com/2009/04/09/python-closing-logging-file-getlogger/ '''
 
         timestamp = time.time()
@@ -225,11 +227,13 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
     def operatorUpdate(self):
 
-        QtCore.qDebug("LpdFemGuiMainTestTab, You changed operatorEdit (to be: " + self.ui.operatorEdit.text() + ")")
+        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed operatorEdit (to be: " + self.ui.operatorEdit.text() + ")")
+        pass
     
     def moduleNumberUpdate(self):
 
-        QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: " + self.ui.moduleNumberEdit.text() + ")")
+        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: " + self.ui.moduleNumberEdit.text() + ")")
+        pass
 
     def moduleTypeUpdate(self):
         ''' Update module selection (right side versus left side) according to GUI choice made '''
@@ -268,5 +272,5 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def dumpGuiFieldsToLog(self):
         
         self.testMsgPrint("Logging Operator: '%s'" % str(self.ui.operatorEdit.text()))
-        self.testMsgPrint("Logging Module Number: '%s'" % str(self.ui.moduleNumberEdit.text()))
+        self.testMsgPrint("Logging Module: '%s'" % str((self.ui.moduleNumberEdit.text()) + self.moduleString))
         self.testMsgPrint("Logging Comment: '%s'" % str(self.ui.commentEdit.text()))

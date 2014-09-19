@@ -16,7 +16,7 @@
    <self_test_decoder pixel="0" value="3"/>
    <feedback_select pixel="0" value="1"/-->
 
-   <!-- letter L in lower right side on supermodule /-->
+   <!-- letter L in lower right side on supermodule
    <mux_decoder pixel="136" value="4"/>
    <mux_decoder pixel="137" value="4"/>
    <mux_decoder pixel="138" value="4"/>
@@ -32,10 +32,10 @@
    <mux_decoder pixel="200" value="4"/>
    <mux_decoder pixel="201" value="4"/>
    <mux_decoder pixel="216" value="4"/>
-   <mux_decoder pixel="217" value="4"/>
+   <mux_decoder pixel="217" value="4"/> /-->
 
    <!-- force 1st pixel to output all '1's to verify timing of 1st data bit in serial data streams /-->
-   <mux_decoder pixel="0" value="4"/>
+   <!--1 <mux_decoder pixel="0" value="4"/> -->
 
    <daq_bias index="0" value="8"/>  <!-- lower power -->
    <daq_bias index="1" value="13"/> <!-- lower power -->
@@ -58,7 +58,7 @@
    <daq_bias index="18" value="16"/>
    <daq_bias index="19" value="22"/>
    <daq_bias index="20" value="23"/>
-   <daq_bias index="21" value="15"/> <!-- matt changed for x100 baseline -->
+   <daq_bias index="21" value="20"/> <!-- matt changed for x100 baseline was 15 -->
    <daq_bias index="22" value="22"/>
    <daq_bias index="23" value="24"/>
    <daq_bias index="24" value="23"/>

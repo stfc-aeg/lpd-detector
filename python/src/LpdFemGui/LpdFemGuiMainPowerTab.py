@@ -159,7 +159,6 @@ class LpdFemGuiMainPowerTab(object):
                     uiObj = getattr(self.ui, uiObjName)
                     if paramStem == 'asicPowerEnable' or paramStem == 'sensorBiasEnable':
                         powerStateVal = 'Yes' if powerState[paramName] == 0 else 'No'
-                        #print >> sys.stderr, "POWR: Stem, type", paramStem, type(paramStem), "powerState[paramName], type: ", powerState[paramName], type(powerState[paramName]), "powerStateVal = ", powerStateVal
                     else:
                         powerStateVal = powerState[paramName]                        
                     self.updateFlag(uiObj, powerStateVal)

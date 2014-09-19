@@ -187,20 +187,27 @@ class LpdFemGui:
         
     def deviceConfigure(self, currentParams=None):
 
-#        print >> sys.stderr, "LpdFemGui.deviceConfigure() 1?"
-        
         self.deviceState = LpdFemGui.DeviceConfiguring
         self.runStateUpdate()
+
+        try:        
+            # if currentParams not supplied, use self.cachedParams
+            if not currentParams:
+                currentParams  = self.cachedParams
+
+        except Exception as e:
+            print >> sys.stderr, "\ndeviceConfigure Exception: %s doesn't exist?" % e
         
-        # if currentParams not supplied, use self.cachedParams
-        if not currentParams:
-            currentParams  = self.cachedParams.copy()
-            print >> sys.stderr, "LpdFemGui.deviceConfig() currentParams empty, using self.cachedParams\n* LiveView: %s AsicGain: %d PixelFeedback: %d fileWrite: %s cmdSeqFile: %s" % (currentParams['liveViewEnable'], currentParams['femAsicGainOverride'], currentParams['femAsicPixelFeedbackOverride'], currentParams['fileWriteEnable'], currentParams['cmdSequenceFile'])
-        else:
-            print >> sys.stderr, "LpdFemGui.deviceConfig() Using currentParams, which contains:\n* LiveView: %s AsicGain: %d PixelFeedback: %d fileWrite: %s cmdSeqFile: %s" % (currentParams['liveViewEnable'], currentParams['femAsicGainOverride'], currentParams['femAsicPixelFeedbackOverride'], currentParams['fileWriteEnable'], currentParams['cmdSequenceFile'])
-        
+        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 'cmdSequenceFile'
+                      'pixelGain', 'femAsicPixelFeedbackOverride', 'testingShortExposureFile', 'fileWriteEnable', 'liveViewEnable']
+        print >> sys.stderr, "--------------------\nLpdFemGui settings:"
+        for key in currentParams.keys():
+            if key in parameters:
+                print >> sys.stderr, "  ", key, ":", currentParams[key]
+
+
         # Clear current loaded configuration 
-        self.loadedConfig= {} 
+        self.loadedConfig= {}
         
         # Load readout parameters from file       
         self.msgPrint("Loading Readout Params from file %s" % currentParams['readoutParamFile'])
@@ -261,7 +268,7 @@ class LpdFemGui:
         gainOverride = currentParams['femAsicGainOverride']
         rc = self.device.paramSet('femAsicGain', gainOverride)
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femAsicGainOverride faied (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.msgPrint("Setting parameter femAsicGainOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
 
@@ -305,11 +312,8 @@ class LpdFemGui:
         
         # if currentParams not supplied, use self.cachedParams
         if not currentParams:
-            currentParams  = self.cachedParams.copy()
-#            print >> sys.stderr, "LpdFemGui.deviceRun() currentParams empty, using self.cachedParams"
-#        else:
-#            print >> sys.stderr, "LpdFemGui.deviceRun() Using currentParams, which contains:\nLiveViewEnable: %s femASICGainOverride: %d femASICPixelFeedbackOverride: %d fileWriteEnable: %s" % (currentParams['liveViewEnable'], currentParams['femAsicGainOverride'], currentParams['femAsicPixelFeedbackOverride'], currentParams['fileWriteEnable'])
-        
+            currentParams  = self.cachedParams
+
         # Increment the run number
         currentParams['runNumber'] = currentParams['runNumber'] + 1
         

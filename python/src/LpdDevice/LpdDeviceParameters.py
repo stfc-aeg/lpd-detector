@@ -587,11 +587,11 @@ class LpdDeviceParameters(object):
                                                                           1, 2, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-        self.expectedParameters['femAsicClockSource']           = AttributeContainer(int, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz), 3 = Diamond',
+        self.expectedParameters['femAsicClockSource']           = AttributeContainer(uint32, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz), 3 = Diamond',
                                                                           0, 3, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femStartTrainSource']          = AttributeContainer(int, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra (derived from PETRAIII clock), 4=Diamond',
+        self.expectedParameters['femStartTrainSource']          = AttributeContainer(uint32, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra (derived from PETRAIII clock), 4=Diamond',
                                                                           0, 4, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
                                                                           

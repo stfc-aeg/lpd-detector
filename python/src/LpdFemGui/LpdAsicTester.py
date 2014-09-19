@@ -39,23 +39,33 @@ class LpdAsicTester(object):
         
         self.appMain = appMain
         self.device = device
+        
+        # Established signals (and slots)
+        self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
+
         # Test session parameters
         self.currentParams = {}
 
         # Copy defaults from file (via LpdFemGui class)
         self.currentParams = self.appMain.cachedParams.copy()
         # Ensure a set of known defaults (common to all tests)
-        self.currentParams['liveViewEnable'] = False
-        self.currentParams['femAsicGainOverride'] = 3
-        self.currentParams['femAsicPixelFeedbackOverride'] = 1
-        self.currentParams['fileWriteEnable'] = True
-        
-        #print >> sys.stderr, "LpdAsicTester, LiveViewEnable: %s femASICGainOverride: %d femASICPixelFeedbackOverride: %d fileWriteEnable: %s" % (self.currentParams['liveViewEnable'], self.currentParams['femAsicGainOverride'], self.currentParams['femAsicPixelFeedbackOverride'], self.currentParams['fileWriteEnable'])
+        self.currentParams['liveViewEnable']                = False
+        self.currentParams['femAsicGainOverride']           = 3     # Copied into femAsicGain by LpdFemGui (!)
+#        self.currentParams['femAsicGain']                   = 3    # Not used by LpdFemGui
+        self.currentParams['femAsicPixelFeedbackOverride']  = 0     # 0=50pF, 1=5pF
+        self.currentParams['fileWriteEnable']               = True
 
+        self.currentParams['readoutParamFile']  = self.currentParams['testingReadoutParamFile']
+        self.currentParams['setupParamFile']    = self.currentParams['testingSetupParamFile']
 
-        
-        # Established signals (and slots)
-        self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
+#        # Debug: Display default settings
+#        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 
+#                      'cmdSequenceFile', 'pixelGain', 'femAsicPixelFeedbackOverride', 'testingShortExposureFile', 'fileWriteEnable', 
+#                      'liveViewEnable', 'testingSetupParamFile', 'testingReadoutParamFile']
+#        print >> sys.stderr, "--------------------\nLpdAsicTester settings:"
+#        for key in self.currentParams.keys():
+#            if key in parameters:
+#                print >> sys.stderr, "  ", key, ":", self.currentParams[key]
 
         self.moduleString = "-1"
         self.moduleDescription = ""
@@ -64,16 +74,17 @@ class LpdAsicTester(object):
         self.hvState   = [0, 0]
         self.biasState = [0, 0]        
 
-        self.hardwareDelay = 3
+        self.hardwareDelay  = 3
         self.moduleNumber   = 0
-        self.fileName = ""
-        self.image    = 0
-        self.train    = 0
+        self.fileName       = ""
+        self.image          = 0
+        self.train          = 0
 
         (self.numRows, self.numCols) = (32, 128)
         
-        self.moduleStd = -1.0
-        self.moduleAverage = -1.0
+        self.moduleStd      = -1.0
+        self.moduleAverage  = -1.0
+        
 
     def msgPrint(self, message, bError=False):
         ''' Send message to LpdFemGuiMainTestTab to be displayed there '''
@@ -83,14 +94,31 @@ class LpdAsicTester(object):
         ''' Enable LpdFemGuiMainTestTab to communicate module description, i.e. "00135"
             Note that RHS/LHS determined by moduleLhsSel/moduleRhsSel in the GUI '''
         self.moduleDescription = moduleDescription
+    
+    def verifyJsonFileNames(self):
+        ''' Check that the user-specified filenames in the .json file are valid '''
+        xmlFileNames = [self.currentParams['testingSetupParamFile'], self.currentParams['testingReadoutParamFile'],
+                        self.currentParams['testingLongExposureFile'], self.currentParams['testingShortExposureFile'] ]
+        bErrorOk = True
+        for fileName in xmlFileNames:
+            #print >> sys.stderr, "verifyJsonFileNames() checking filename: %s" % fileName
+            if not os.path.isfile(fileName):
+                self.msgPrint("Error inside .json File: Cannot find '%s'" % fileName, bError=True)
+                bErrorOk = False
+        return bErrorOk
 
     def executeSensorBondingTest(self, moduleNumber):
         ''' Execute the sequence of tests defined by Sensor Bonding specifications '''
 
         try:
-            self.msgPrint("Called executeSensorBondingTest()")
-            # Save/modify DAQ settings that interfere with this test sequence
-#            self.saveDaqSettings()
+            # Verify XML files specified in json file exist
+            if not self.verifyJsonFileNames():
+                self.msgPrint("File missing, exiting test prematurely", bError=True)
+                return
+            
+            self.msgPrint("Using cmdSequenceFile:  %s" % self.currentParams['testingLongExposureFile'])
+            self.msgPrint("Using readoutParamFile: %s" % self.currentParams['testingReadoutParamFile'])
+            self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
 
             # Set moduleNumber and moduleString
             self.moduleNumber = moduleNumber
@@ -118,7 +146,6 @@ class LpdAsicTester(object):
 #            self.msgPrint("Pausing for five seconds..")
 #            time.sleep(3)
 
-
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
             self.obtainPowerSuppliesState(self.appMain.pwrCard.powerStateGet())
 
@@ -139,13 +166,13 @@ class LpdAsicTester(object):
             
             self.msgPrint("2. Check as in ASIC bonding - [Skipping for now]")
             
-            powerCardResults = self.readPowerCards()
-            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
+#            powerCardResults = self.readPowerCards()
+#            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
             
             self.msgPrint("3. Power on sensor bias (HV) - 200V")
             # Check HV bias level:
             powerCardResults = self.readPowerCards()
-            print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
+            #print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
             measuredBiasLevel = powerCardResults['sensorBias0']
             if not (199.0 < measuredBiasLevel  < 201.0):
                 self.msgPrint("Bias level is %f V, changing it to be 200 V" % measuredBiasLevel)
@@ -158,16 +185,15 @@ class LpdAsicTester(object):
             else:
                 self.msgPrint("Bias already 200 V")
 
-            powerCardResults = self.readPowerCards()
-            print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
+            #powerCardResults = self.readPowerCards()
+            #print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
 
             self.msgPrint("4. Take data with long exposure command sequence")
             # Set long exposure XML file, configure device
-            self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']   # "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml",
-            #self.currentParams['cmdSequenceFile'] = longExposure
+            self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']
             self.appMain.deviceConfigure(self.currentParams)
-            # . Readout Data
-            #self.msgPrint(". Readout Data - LONG exposure time")
+            
+            # Readout Data
             self.appMain.deviceRun(self.currentParams)
             self.fileName = self.appMain.lastDataFile
             self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)            
@@ -175,8 +201,7 @@ class LpdAsicTester(object):
             if self.fileName == None:
                 self.msgPrint("Error: No file received")
             else:
-    
-                self.msgPrint("5. Check/record unconnected pixels - Using leakage current check.") # Illumination is not uniform, but unconnected pixels do stand out compared to the mean value of the row or region")
+                self.msgPrint("5. Check/record unconnected pixels - Using leakage current check.")
                 numUnconnectedPixels = self.checkLeakageCurrent()
                 if numUnconnectedPixels != 0:
                     self.msgPrint("There are %d unconnected pixel(s), that's a FAIL" % numUnconnectedPixels)
@@ -194,7 +219,7 @@ class LpdAsicTester(object):
                         self.msgPrint("Adjacent shorted pixels detected:%s" % neighbourStr)
                         self.msgPrint("That's a total of %d adjacent pair(s)." % adjacentPixelPairs)
                     
-                    self.msgPrint("There are %d and %d shorted pixel(s), that's a FAIL" % (numShortedPixelsMin, numShortedPixelsMax))
+                    self.msgPrint("There are %d (value=0) and %d (value=4095) shorted pixel(s), that's a FAIL" % (numShortedPixelsMin, numShortedPixelsMax))
                     numFailedSections += 1
                 else:
                     self.msgPrint("There are no shorted pixels, that's a PASS")
@@ -226,6 +251,15 @@ class LpdAsicTester(object):
         ''' Execute the sequence of tests defined by ASIC bond specifications '''
         
         try:
+            # Verify XML files specified in json file exist
+            if not self.verifyJsonFileNames():
+                self.msgPrint("File missing, exiting test prematurely", bError=True)
+                return
+
+            self.msgPrint("Using cmdSequenceFile:  %s" % self.currentParams['testingShortExposureFile'])
+            self.msgPrint("Using readoutParamFile: %s" % self.currentParams['testingReadoutParamFile'])
+            self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
+
             # Set moduleNumber and moduleString
             self.moduleNumber = moduleNumber
             self.setModuleType(moduleNumber)
@@ -273,6 +307,7 @@ class LpdAsicTester(object):
             errorMessages = []
             
             # 2. Check and record current (1A < I < 4A)
+
             self.msgPrint("2. Check and record current (1A < I < 4A)")
             sensorCurrent = self.readCurrent()
             passFailString = "PASS"
@@ -284,9 +319,7 @@ class LpdAsicTester(object):
             time.sleep(1)
 
             # Ensure short exposure XML file used
-#            shortExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml"
-            self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']  # "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml",
-            #self.currentParams['cmdSequenceFile'] = shortExposure
+            self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
 
             # 3. Serial Load
             self.msgPrint("3. Serial Load")
@@ -307,6 +340,7 @@ class LpdAsicTester(object):
             time.sleep(1)
             
             self.appMain.deviceConfigure(self.currentParams)
+
             # 5. Readout Data
             self.msgPrint("5. Readout Data")
             self.appMain.deviceRun(self.currentParams)
@@ -383,7 +417,7 @@ class LpdAsicTester(object):
             else:
                 # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
                 self.msgPrint("13. Check for out of range pixels")
-                numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[13. Pixels out arrange]') #, moduleNumber, fileName)
+                numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[13. Pixels out arrange]')
                 if numBadPixels == 0:
                     self.msgPrint("13. Module %s has no bad pixels, that's a %s" % (self.moduleString, "PASS"))
                 else:
@@ -425,9 +459,6 @@ class LpdAsicTester(object):
         minCount = minimumValues.__len__()
         maxCount = maximumValues.__len__()
 
-#        print >> sys.stderr, "minimum values: ", minimumValues, " that's %d pixel(s) stuck 0." %  minCount
-#        print >> sys.stderr, "maximum values: ", maximumValues, " that's %d pixel(s) stuck 4095." %  maxCount
-
         # Assuming that there are at least one of each, look for neighbouring pair(s)
         neighbourStr = ""
         adjacentPixelPairs = 0
@@ -436,17 +467,17 @@ class LpdAsicTester(object):
             # Check all pixel pairs containing a zero, to see if they are adjacent to any pixel pair containing a maximum
             for (minRow, minColumn) in minimumValues:
                 for (adjacentRow, adjacentColumn) in self.neighbours(minimumValues, minRow, minColumn):
-#                    print >> sys.stderr, "Minimum: [{0:>2}][{1:>3}] Maximum: [{2:>2}][{3:>3}]".format(minRow, minColumn, adjacentRow, adjacentColumn)
+
                     if (adjacentRow, adjacentColumn) in maximumValues:
                         # Limit page width if more than three pairs detected
-                        if (adjacentPixelPairs % 3 == 0): # and (adjacentPixelPairs != 0):
+                        if (adjacentPixelPairs % 3 == 0):
                             maybeNewLine = "\n"
                         else:
                             maybeNewLine = ""
 
                         neighbourStr += "{0}Min: [{1:>2}][{2:>3}] & Max: [{3:>2}][{4:>3}].    ".format(maybeNewLine, minRow, minColumn, adjacentRow, adjacentColumn)
                         adjacentPixelPairs += 1
-                        #print >> sys.stderr, "Match! minimum: [{0:>2}][{1:>3}] next to maximum: [{2:>2}][{3:>3}]".format(minRow, minColumn, adjacentRow, adjacentColumn)
+
         return (minCount, maxCount, adjacentPixelPairs, neighbourStr)
 
     def neighbours(self, data, row, col):
@@ -463,44 +494,13 @@ class LpdAsicTester(object):
                 #yield data[i][j]
                 yield (i, j)
 
-#    @timingMethodDecorator
-    def testNeighboursForDodgyPixels(self):
-
-        dodgyPixels = []        
-        for row in range(self.moduleData.shape[0]):
-            for col in range(self.moduleData.shape[1]):
-                for neighbour in self.neighbours(self.moduleData, row, col):
-    
-                    bDiffers = self.checkPixelsDifferent(row, col, neighbour, 400)
-                    if bDiffers:
-                        #print >> sys.stderr, " original pixel[" + str(row) + "][" + str(col) + "]=" + str(self.moduleData[row][col]) + " "
-                        if self.addUniquePixel(dodgyPixels, row, col):
-                            dodgyPixels.append((row, col))
-        return dodgyPixels
-
-    def checkPixelsDifferent(self, row, col, adjacent, threshold):
-        ''' Is the difference between pixel (at row/col coordinate) and it's 'adjacent' neighbour greater than threshold? '''
-        bPixelDifferent = False
-        difference = 0
-        pixel = self.moduleData[row][col]
-        if pixel > adjacent:    difference = pixel - adjacent
-        else:                   difference = adjacent - pixel
-        
-        if difference < 0:
-            difference *= -1
-            
-        if difference > threshold:
-            #print >> sys.stderr, "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
-            bPixelDifferent = True
-        return bPixelDifferent
-            
-    def setCachedValue(self, variable, value):
-        ''' Change cached value of the GUI variable (Do not confuse with setApiValue) '''
-        self.appMain.setCachedParam(variable, value)
-        
-    def getCachedValue(self, variable):
-        ''' Get cached value of the GUI variable (Do not confuse with getApiValue) '''
-        return self.appMain.getCachedParam(variable)
+#    def setCachedValue(self, variable, value):
+#        ''' Change cached value of the GUI variable (Do not confuse with setApiValue) '''
+#        self.appMain.setCachedParam(variable, value)
+#        
+#    def getCachedValue(self, variable):
+#        ''' Get cached value of the GUI variable (Do not confuse with getApiValue) '''
+#        return self.appMain.getCachedParam(variable)
     
     def getApiValue(self, paramName):
         
@@ -515,69 +515,47 @@ class LpdAsicTester(object):
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Error changing %s to %s, rc: %s" % (paramName, str(newValue), rc), bError=True)
 
-    def hvSetBias(self, newBias):
-        
-        self.hvBiasSetUpdate_(newBias)
-        self.msgPrint("Waiting %d seconds for new bias to settle.." % (self.hardwareDelay+3))
-        time.sleep(self.hardwareDelay+3)
-        
-    def hvBiasSetUpdate_(self, biasStr):
-        
+    def hvSetBias(self, biasStr):
+        ''' Change HV bias '''        
         try:
             hvBias = float(biasStr)
             self.appMain.pwrCard.hvBiasSet(hvBias)
-            self.hvBiasSetDone_()
+            self.appMain.mainWindow.pwrTab.powerStatusUpdateDone()
             
         except ValueError:
             self.msgPrint("Exception setting HV bias: %s" % biasStr, bError=True)
             
-    def hvBiasSetDone_(self):
-
-        self.appMain.mainWindow.pwrTab.powerStatusUpdateDone()        
+        self.msgPrint("Waiting %d seconds for new bias to settle.." % (self.hardwareDelay+3))
+        time.sleep(self.hardwareDelay+3)
     
     def toggleLvSupplies(self):
 
-        #self.msgPrint("Enable low voltage, then wait %d seconds" % str(self.hardwareDelay))
-        self.lvEnableToggle_()
-        time.sleep(self.hardwareDelay)
-
-    def lvEnableToggle_(self):
-        ''' Modified from LpdFemGuiMainPowerTab's '''
         currentState = self.appMain.pwrCard.lvEnableGet()        
         nextState = not currentState
         self.appMain.pwrCard.lvEnableSet(nextState)
-        self.lvEnableToggleDone_(nextState)
 
-    def lvEnableToggleDone_(self, requestedState=None):
-        ''' Modified from LpdFemGuiMainPowerTab's '''
         stateNow = self.appMain.pwrCard.lvEnableGet()
-        if requestedState != None and stateNow != requestedState:
-            self.msgPrint("ERROR: failed to switch LV enable to %d" % requestedState, bError=True)
+        if nextState != None and stateNow != nextState:
+            self.msgPrint("ERROR: failed to switch LV enable to %d" % nextState, bError=True)
         else:
             self.appMain.mainWindow.pwrTab.powerBtnStateUpdate('lv', stateNow)
         self.appMain.mainWindow.pwrTab.powerStatusUpdateDone()
+        time.sleep(self.hardwareDelay)
         
     def toggleHvSupplies(self):
         
-        self.hvEnableToggle_()
-        time.sleep(self.hardwareDelay)
-
-    def hvEnableToggle_(self):
-        ''' Modified from LpdFemGuiMainPowerTab's '''
         currentState = self.appMain.pwrCard.hvEnableGet()        
         nextState = not currentState
         self.appMain.pwrCard.hvEnableSet(nextState)
-        self.hvEnableToggleDone_(nextState)
-        
-    def hvEnableToggleDone_(self, requestedState = None):
-        ''' Modified from LpdFemGuiMainPowerTab's '''
+
         stateNow = self.appMain.pwrCard.hvEnableGet()
-        if requestedState != None and  stateNow != requestedState:
-            self.msgPrint("ERROR: failed to switch HV enable to %d" % requestedState, bError=True)
+        if nextState != None and  stateNow != nextState:
+            self.msgPrint("ERROR: failed to switch HV enable to %d" % nextState, bError=True)
         else:
             self.appMain.mainWindow.pwrTab.powerBtnStateUpdate('hv', stateNow)
         self.appMain.mainWindow.pwrTab.powerStatusUpdateDone()
-
+        time.sleep(self.hardwareDelay)
+        
     def obtainPowerSuppliesState(self, powerState):
 
         # Loop over LHS and RHS power cards and update display
@@ -592,13 +570,9 @@ class LpdAsicTester(object):
             paramName = 'sensorBias' + str(powerCard)
             self.biasState[powerCard] = powerState[paramName]
         
-        print >> sys.stderr, "LpdAsicTester.obtainPowerSuppliesState()"
-        print >> sys.stderr, "sensorBias0: ", powerState['sensorBias0']
-        print >> sys.stderr, "sensorBias1: ", powerState['sensorBias1']
-            
-#            powerCardResults = self.readPowerCards()
-#            print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-#            measuredBiasLevel = powerCardResults['sensorBias0']
+#        print >> sys.stderr, "LpdAsicTester.obtainPowerSuppliesState()"
+#        print >> sys.stderr, "sensorBias0: ", powerState['sensorBias0']
+#        print >> sys.stderr, "sensorBias1: ", powerState['sensorBias1']
 
         if self.lvState[0] != self.lvState[1]:
             self.msgPrint("LpdAsicTester Error: LV status mismatch between power card", bError=True)
@@ -607,7 +581,7 @@ class LpdAsicTester(object):
             self.msgPrint("LpdAsicTester Error: HV status mismatch between power card", bError=True)
 
     def checkLeakageCurrent(self):
-        ''' DEBUG: Look at image 0, image 3 comparing differences '''
+        ''' Check leakage current by looking at image 0 and image 3, comparing differences pixel by pixel '''
         
         self.train = 0
         self.image = 0
@@ -645,6 +619,8 @@ class LpdAsicTester(object):
 
         # Assuming image 3 contain higher values that image 0; Are there any negative values?
         negativeValues = {}
+        difference = 0
+        threshold = 20
         # Simultaneously look for unconnected pixels
         numUnconnectedPixels = 0
         for row in range(self.numRows):
@@ -653,8 +629,11 @@ class LpdAsicTester(object):
                     difference = self.image0Data[row][column] - self.image3Data[row][column]
                     negativeValues[(row, column)] = abs(difference)
                     #print >> sys.stderr, "DIFF @ [{0:>2}][{1:>2}] = {2:>4}, self.image3Data: {3:>4}, self.image0Data, {4:>4}".format(row, column, difference, self.image3Data[row][column], self.image0Data[row][column])
-                # Pixels with unchanged values are unconnected
-                if self.image3Data[row][column] == self.image0Data[row][column]:
+                else:
+                    difference = self.image3Data[row][column] - self.image0Data[row][column]
+                
+                # If pixels differ by less than threshold, they are unconnected
+                if difference < threshold:
                     unconnectedPixelsArray[row][column] = 1
                     numUnconnectedPixels += 1
 
@@ -673,9 +652,10 @@ class LpdAsicTester(object):
         return numUnconnectedPixels
         
     def checkOutOfRangePixels(self, train, image, miscDescription="", bSuppressPixelInfo=False):
-        ''' Check self.fileName range pixels in, image for out of range pixels '''
-        self.train          = train
-        self.image          = image
+        ''' Check self.fileName's pixels, image 0 for out of range pixels 
+            out of range being described as greater than 2 standard deviations '''
+        self.train  = train
+        self.image  = image
 
         # Check hdf5 filename exist before opening it
         if os.path.isfile(self.fileName):
@@ -711,7 +691,7 @@ class LpdAsicTester(object):
         return numBadPixels
 
     def plotFaultyPixels(self, deviatedPixels, miscDescription):
-        ''' Display plot of black/white (well, blue/red) image indicating faulty pixel(s) '''
+        ''' Display plot of black/white image indicating faulty pixel(s) '''
 
         # Create empty array 
         faultyPixelsArray = np.zeros(32*128, dtype=np.uint16)
@@ -724,6 +704,7 @@ class LpdAsicTester(object):
         self.appMain.asicWindow.dataSignal.emit(self.moduleData, faultyPixelsArray, self.moduleDescription, self.moduleNumber, miscDescription)
 
     def analyseFile(self):
+        ''' Open file, extracting one image along with meta data and calculate standard deviation and average '''
 
         with h5py.File(self.fileName, 'r') as hdfFile:
 
@@ -749,8 +730,6 @@ class LpdAsicTester(object):
                 if imgOffset > imageNumber.size:
                     self.msgPrint("Analysis Error: Requested image (%d) exceeds number of images available (%d)" \
                     % (imgOffset, imageNumber.size), bError=True)
-                    #print >> sys.stderr, "Analysis Error: Requested image (%d) exceeds number of images available (%d)" \
-                    #% (imgOffset, imageNumber.size)
                     return False
                 # Read in the image array
                 image = hdfFile['/lpd/data/image']
@@ -764,7 +743,6 @@ class LpdAsicTester(object):
                 self.moduleAverage = np.mean(self.moduleData)
             except Exception as e:
                 self.msgPrint("Analysis Error while processing file: %s" % e, bError=True)
-                #print >> sys.stderr, "Analysis Error while processing file: %s" % e
                 return False
             self.appMain.asicWindow.timeStampSignal.emit(timeStamp[imgOffset])
             self.appMain.asicWindow.trainSignal.emit(trainNumber[imgOffset])
@@ -772,20 +750,17 @@ class LpdAsicTester(object):
             return True 
 
     def checkTheColumns(self):
-            
+        ''' Print whether data contains dead column(s) or nonesafer '''
         # Look for dead column(s)
         deadColumns = self.detectDeadColumns()
         numDeadColumns = deadColumns.__len__()
         if numDeadColumns > 0:
-            #print >> sys.stderr, "There are %d dead column(s)" % (numDeadColumns)
             self.msgPrint("There are %d dead column(s)" % numDeadColumns)
             # Which ASIC and ADC numbers to they correspond to?
             for column in deadColumns:
                 (ASIC, ADC) = self.identifyAdcLocations(column)
                 self.msgPrint("Dead column detected in ASIC: %1d ADC: %2d" % (ASIC, ADC))
-                #print >> sys.stderr, "Column: {0:>3} corresponds to ASIC: {1:>3} ADC {2:>2}".format(column, ASIC, ADC)
         else:
-            #print >> sys.stderr,  "There are no dead columns"
             self.msgPrint("There are no dead columns")
     
 
@@ -810,7 +785,6 @@ class LpdAsicTester(object):
             # Does different exceeded 2 standard deviations?
             if difference > (2*self.moduleStd):
                 deadColumns.append(column)
-                #print >> sys.stderr, "Column: {0:>3} colAve: {1:<5.1f} diff: {2:<6.2f} 2*STDev: {3:<6.2f} ".format(column, columnAverage, difference, 2*self.moduleStd)
         return deadColumns
     
     def identifyAdcLocations(self, column):
@@ -842,20 +816,6 @@ class LpdAsicTester(object):
         adcNum = column % 16
         return (asicNum, adcNum)
 
-#    def neighbours(self, data, row, col):
-#        ''' Obtain neighbours within array, omitting diagonal ones '''
-#        for i in row-1, row, row+1:
-#            if i < 0 or i == len(data): continue    # Outside data's row
-#            for j in col-1, col, col+1:
-#                if j < 0 or j == len(data[i]): continue # Outside data's column
-#                if i == row and j == col: continue      # diagonal neighbour
-#                if i == row-1 and j== col-1: continue   # diagonal
-#                if i == row-1 and j== col+1: continue   # diagonal
-#                if i == row+1 and j== col-1: continue   # diagonal
-#                if i == row+1 and j== col+1: continue   # diagonal
-#                yield data[i][j]
-
-    
     def checkPixelAgainstStd(self, row, col):
         ''' Is 'pixel' outside +/- 2 standard deviations? '''
         bPixelDifferent = False
@@ -867,18 +827,8 @@ class LpdAsicTester(object):
 
         # Does difference exceed 2 standard deviations?            
         if difference > (2*self.moduleStd):
-            #print >> sys.stderr, "pixel: ", pixel, " adjacent: ", adjacent, " different by: ", difference,
-            #print >> sys.stderr, "pixel:", pixel, "mean: ", self.moduleAverage, "std:", self.moduleStd, "LOGIC:", difference > (2*self.moduleStd)
             bPixelDifferent = True
         return bPixelDifferent
-            
-#    def addUniquePixel(self, pixelList, row, col):
-#        ''' Signal whether (row, col) tuple already in pixelList '''
-#        bTuple = True
-#        for (i, j) in pixelList:
-#            if row == i and col == j:
-#                bTuple = False
-#        return bTuple
 
     def asicStartingRowColumn(self, module):
         ''' Determining upper left corner's row/col coordinates according to selected ASIC module '''
@@ -904,7 +854,6 @@ class LpdAsicTester(object):
 
         return (row, column)
 
-    
 #    @timingMethodDecorator
     def testPixelsStandardDeviation(self):
         deviatedPixels = []
@@ -936,11 +885,13 @@ class LpdAsicTester(object):
         # Count how many error encountered
         errorCount = 0
         results = {}
-        TVCparamsTypes = ['Temp', 'Voltage', 'Current']
+        TVCparamsTypes = [#'Temp', 'Voltage', 
+                          'Current']
         
-        miscParamTypes = ['powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent', 
-                      'sensorBias', 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 
-                      'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp']
+        miscParamTypes = ['sensorBias'#, 'powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent', 
+                      #, 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 
+                      #'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp'
+                      ]
         
         for sensor in range(numSensors):
             

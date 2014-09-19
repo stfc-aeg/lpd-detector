@@ -29,12 +29,12 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     RHS_MODULE = 15
     LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
 
-    trainSignal  = QtCore.pyqtSignal(object)
-    imageSignal  = QtCore.pyqtSignal(object)
-    moduleSignal = QtCore.pyqtSignal(object)
+    trainSignal     = QtCore.pyqtSignal(object)
+    imageSignal     = QtCore.pyqtSignal(object)
+    moduleSignal    = QtCore.pyqtSignal(object)
     timeStampSignal = QtCore.pyqtSignal(object)
-    logPathSignal = QtCore.pyqtSignal(str)
-    dataSignal   = QtCore.pyqtSignal(object, object, str, int, str)
+    logPathSignal   = QtCore.pyqtSignal(str)
+    dataSignal      = QtCore.pyqtSignal(object, object, str, int, str)
     
     matplotlib.rcParams.update({'font.size': 8})
     
@@ -45,14 +45,13 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         self.appMain = appMain
         self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
         
-        moduleType = "Asic Module"
         self.nrows = 32
         self.ncols = 128
         
         self.moduleString = "LHS"
         self.moduleNumber = LpdFemGuiAsicWindow.LHS_MODULE
         
-        self.setWindowTitle('Plotting data from %s' % moduleType)
+        self.setWindowTitle('Plotting data from Asic Module')
 
         self.plotFrame =QtGui.QWidget()
         
@@ -97,9 +96,6 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
             imgObject = self.axes[idx].imshow(self.data, cmap=cMap, interpolation='nearest', vmin='0', vmax=vMax)
             self.img.extend([imgObject])
 
-            # Place plot closer to center of figure
-#            self.axes[idx].set_position([0.125, 0.4, 0.8, 0.5])
-    
             # Create nd show a colourbar
             axc, kw = matplotlib.colorbar.make_axes(self.axes[idx], orientation='horizontal')
             cb = matplotlib.colorbar.Colorbar(axc, self.img[idx], orientation='horizontal')
@@ -112,10 +108,6 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
             
             self.canvas.draw()
 
-        # Bind the 'pick' event for clicking on one of the bars
-        #
-        #self.canvas.mpl_connect('pick_event', self.on_pick)
-        
         # Create the navigation toolbar, tied to the canvas
         #
         self.mplToolbar = NavigationToolbar(self.canvas, self.plotFrame)
@@ -142,24 +134,18 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         
     def trainUpdate(self, train):
         self.train = train
-#        print >> sys.stderr, "trainUpdate received:  %s" % train
         
     def imageUpdate(self, image):
         self.image = image
-#        print >> sys.stderr, "imageUpdate received: %s" % image
         
     def moduleUpdate(self, module):
         self.module = module
-#        print >> sys.stderr, "moduleUpdate received: %s" % module
         
     def timeStampUpdate(self, timeStamp):
         self.timeStamp = timeStamp
-#        print >> sys.stderr, "timeStampUpdate received: %s" % timeStamp
 
     def logPathUpdate(self, logPath):
         self.logPath = str(logPath)
-#        print >> sys.stderr, "logPathUpdate received    : %s, %s" % (logPath, type(logPath))
-#        print >> sys.stderr, "logPathUpdate self.logPath: %s, %s" % (self.logPath, type(self.logPath))
 
     def setModuleType(self, moduleNumber):
         ''' Helper function '''
@@ -193,8 +179,6 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         self.axes[LpdFemGuiAsicWindow.FAULTYIMAGE].set_title(self.titleText)
         self.canvas.draw()
 
-#        # Create new folder
-#        self.prepareFilePath()
         # Save image to hdf5 file (but not the black/white image)
         self.savePlot(lpdActualImage, moduleDescription+self.moduleString)
 
@@ -240,15 +224,10 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
 
         # Write data and info to file
         self.imageDs.resize((self.imagesWritten+1, self.nrows, self.ncols))
-        self.imageDs[self.imagesWritten,...] = lpdImage # self.imageArray
-        
-#        self.timeStampDs.resize((self.imagesWritten+1, ))
-#        self.timeStampDs[self.imagesWritten] = lpdFrame.timeStampSof
-
-#        print "arguments: ", type(args), dir(args)
+        self.imageDs[self.imagesWritten,...] = lpdImage
         
         self.trainNumberDs.resize((self.imagesWritten+1, ))
-        self.trainNumberDs[self.imagesWritten] = 0  # self.args.train
+        self.trainNumberDs[self.imagesWritten] = 0
         
         self.imageNumberDs.resize((self.imagesWritten+1, ))
         self.imageNumberDs[self.imagesWritten] = currentImage
