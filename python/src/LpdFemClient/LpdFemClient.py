@@ -901,6 +901,9 @@ class LpdFemClient(FemClient):
               self.rdmaWrite(self.fem_ctrl_0+8, 1)    # Shift timing of odd asic rx chans
               #self.setbit(self.fem_ctrl_0+8, 0)    # disable Swap DDR pair of asicrx  
               #self.clrbit(self.fem_ctrl_0+8, 1)    # enable timing shift of odd asic rx
+
+  # assign local variable here rather than using self.asicRx2tileStart as latter's state is kept between Gui configures
+          asicRx2tileStart_i =  self.asicRx2tileStart;  # adjustment for SP3 IO DCM
               
         else: # with DCM in SP3 IO
 
@@ -914,8 +917,10 @@ class LpdFemClient(FemClient):
               self.rdmaWrite(self.fem_ctrl_0+8, 2)    # Swap DDR pair of asicrx  
               #self.setbit(self.fem_ctrl_0+8, 1)    # enable Swap DDR pair of asicrx  
               #self.clrbit(self.fem_ctrl_0+8, 0)    # disable timing shift of odd asic rx
-              
-          self.asicRx2tileStart = self.asicRx2tileStart - 1   # adjustment for SP3 IO DCM
+
+  # assign local variable here rather than using self.asicRx2tileStart as latter's state is kept between Gui configures
+          asicRx2tileStart_i =  self.asicRx2tileStart - 1;  # adjustment for SP3 IO DCM
+        
 
         # Delay individual sensors
         self.set_delay_sensors(self.femDelaySensors)     
@@ -929,9 +934,9 @@ class LpdFemClient(FemClient):
                 if self.femAsicSlowedClock:
                     #TODO: Still testing?
                     # Testing timing difference with slowed down readout
-                    asic_rx_start_delay = self.asicRx2tileStart - 2
+                    asic_rx_start_delay = asicRx2tileStart_i - 2
                 else:
-                    asic_rx_start_delay = self.asicRx2tileStart
+                    asic_rx_start_delay = asicRx2tileStart_i
 
             if self.femAsicVersion == 2:        # Enable this for asic v2 timing (v2 has no header)
                 asic_rx_start_delay = asic_rx_start_delay - self.asicRxHeaderBits
