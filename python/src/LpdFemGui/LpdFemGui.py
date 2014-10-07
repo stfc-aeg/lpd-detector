@@ -353,10 +353,13 @@ class LpdFemGui:
             if self.shutter != 0:
                 try:
                     self.shutter.move(1)
+                    self.msgPrint("Wait a second for shutter to open..")
+                    time.sleep(1)
                 except Exception as e:
                     self.msgPrint(e)
             else:
                 self.msgPrint("Error: Shutter undefined, check configurations file?")
+
 
         # if currentParams not supplied, use self.cachedParams
         if not currentParams:
