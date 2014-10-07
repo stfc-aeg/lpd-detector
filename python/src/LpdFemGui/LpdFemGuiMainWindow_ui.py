@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Mon Sep 15 10:52:21 2014
+# Created: Mon Oct  6 14:59:57 2014
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -288,6 +288,13 @@ class Ui_MainWindow(object):
         spacerItem7 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_13.addItem(spacerItem7)
         self.verticalLayout_2.addLayout(self.horizontalLayout_13)
+        self.shutterSel = QtGui.QCheckBox(self.operateGroupBox)
+        self.shutterSel.setGeometry(QtCore.QRect(350, 0, 28, 23))
+        self.shutterSel.setObjectName(_fromUtf8("shutterSel"))
+        self.shutterLabel = QtGui.QLabel(self.operateGroupBox)
+        self.shutterLabel.setGeometry(QtCore.QRect(275, -4, 71, 31))
+        self.shutterLabel.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.shutterLabel.setObjectName(_fromUtf8("shutterLabel"))
         self.messageGroupBox = QtGui.QGroupBox(self.daqTab)
         self.messageGroupBox.setGeometry(QtCore.QRect(10, 290, 761, 361))
         self.messageGroupBox.setObjectName(_fromUtf8("messageGroupBox"))
@@ -2025,7 +2032,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuFile.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.verticalTabWidget.setCurrentIndex(4)
+        self.verticalTabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         MainWindow.setTabOrder(self.macAddress, self.hwVersionMajor)
         MainWindow.setTabOrder(self.hwVersionMajor, self.hwVersionMinor)
@@ -2065,6 +2072,8 @@ class Ui_MainWindow(object):
         self.label_70.setText(QtGui.QApplication.translate("MainWindow", "Live view:", None, QtGui.QApplication.UnicodeUTF8))
         self.label_71.setText(QtGui.QApplication.translate("MainWindow", "Divisor:", None, QtGui.QApplication.UnicodeUTF8))
         self.label_74.setText(QtGui.QApplication.translate("MainWindow", "Offset:", None, QtGui.QApplication.UnicodeUTF8))
+        self.shutterSel.setText(QtGui.QApplication.translate("MainWindow", "Shutter Enable:", None, QtGui.QApplication.UnicodeUTF8))
+        self.shutterLabel.setText(QtGui.QApplication.translate("MainWindow", "Shutter:", None, QtGui.QApplication.UnicodeUTF8))
         self.messageGroupBox.setTitle(QtGui.QApplication.translate("MainWindow", "Messages", None, QtGui.QApplication.UnicodeUTF8))
         self.runGroupBox.setTitle(QtGui.QApplication.translate("MainWindow", "Run Status", None, QtGui.QApplication.UnicodeUTF8))
         self.label_28.setText(QtGui.QApplication.translate("MainWindow", "Run Number:", None, QtGui.QApplication.UnicodeUTF8))

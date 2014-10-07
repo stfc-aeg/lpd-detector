@@ -8,6 +8,7 @@ from FemClient.FemClient import *
 from FemApi.FemConfig import *
 from LpdReadoutConfig import *
 from persistentDict import *
+from utilities import servoShutter
 import os
 
 class PrintRedirector():
@@ -74,7 +75,21 @@ class LpdFemGui:
             
         # Redirect stdout to PrintRedirector
         sys.stdout = PrintRedirector(self.msgPrint)
-        
+
+        self.shutter = 0
+        self.shutterEnabled = self.getCachedParam('arduinoShutterEnable')
+        print >> sys.stderr, "initialisation, shutterEnable: ", self.shutterEnabled
+        # Connect to shutter if arduinoShutterEnable set in .json file
+        if self.shutterEnabled:        
+
+            usbport = self.getCachedParam('arduinoShutterPort')
+            try:
+                self.shutter = servoShutter(usbport)
+                # Ensure shutter shut when GUI starts
+                self.shutter.move(0)
+            except Exception as e:
+                self.msgPrint("Shutter %s" % e)
+
         # Abort run flag used to signal to data receiver
         self.abortRun = False
             
@@ -198,15 +213,37 @@ class LpdFemGui:
         except Exception as e:
             print >> sys.stderr, "\ndeviceConfigure Exception: %s doesn't exist?" % e
         
-        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 'cmdSequenceFile'
-                      'pixelGain', 'femAsicPixelFeedbackOverride', 'testingShortExposureFile', 'fileWriteEnable', 'liveViewEnable']
-        print >> sys.stderr, "--------------------\nLpdFemGui settings:"
-        for key in currentParams.keys():
-            if key in parameters:
-                print >> sys.stderr, "  ", key, ":", currentParams[key]
+#        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 'cmdSequenceFile'
+#                      'pixelGain', 'femAsicPixelFeedbackOverride', 'testingShortExposureFile', 'fileWriteEnable', 'liveViewEnable', 'arduinoShutterEnable']
+#        print >> sys.stderr, "--------------------\nLpdFemGui settings:"
+#        for key in currentParams.keys():
+#            if key in parameters:
+#                print >> sys.stderr, "  ", key, ":", currentParams[key]
 
+        try:
+            self.shutterEnabled = currentParams['arduinoShutterEnable']
+            # Connect to shutter if shutter selected in GUI but not yet set up
+            if self.shutterEnabled:       
+    
+                # Setup shutter unless already initialised?
+                if self.shutter == 0:
+    
+                    usbport = self.getCachedParam('arduinoShutterPort')
+                    try:
+                        self.shutter = servoShutter(usbport)
+                        # Ensure shutter shut when GUI starts
+                        self.shutter.move(0)
+                    except Exception as e:
+                        self.msgPrint("Shutter %s" % e)
+            else:
+                if self.shutter != 0:
+                    # Close serial connection
+                    self.shutter.__del__()
+                    self.shutter = 0
+        except Exception as e:
+            print >> sys.stderr, "configurable issues: ", e
 
-        # Clear current loaded configuration 
+        # Clear current loaded configuration
         self.loadedConfig= {}
         
         # Load readout parameters from file       
@@ -310,6 +347,17 @@ class LpdFemGui:
     
     def deviceRun(self, currentParams=None):
         
+        # Open shutter - if selected
+        if self.shutterEnabled:
+            # Check shutter defined
+            if self.shutter != 0:
+                try:
+                    self.shutter.move(1)
+                except Exception as e:
+                    self.msgPrint(e)
+            else:
+                self.msgPrint("Error: Shutter undefined, check configurations file?")
+
         # if currentParams not supplied, use self.cachedParams
         if not currentParams:
             currentParams  = self.cachedParams
@@ -363,7 +411,18 @@ class LpdFemGui:
             self.lastDataFile = dataReceiver.lastDataFile()
         except Exception as e:
             self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
-            
+        
+        # Close the shutter - if selected
+        if self.shutterEnabled:
+            # Check shutter defined
+            if self.shutter != 0:
+                try:
+                    self.shutter.move(0)
+                except Exception as e:
+                    self.msgPrint(e)
+            else:
+                self.msgPrint("Error: Shutter undefined, check configurations file?")
+
         # Signal device state as ready
         self.deviceState = LpdFemGui.DeviceReady
         

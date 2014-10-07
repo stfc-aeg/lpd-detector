@@ -38,10 +38,12 @@ class LpdFemGuiMainDaqTab(object):
             self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Unchecked)
         self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
         
-        self.ui.fileWriteSel.setCheckState(checkButtonState(self.appMain.getCachedParam('fileWriteEnable')))            
+        self.ui.fileWriteSel.setCheckState(checkButtonState(self.appMain.getCachedParam('fileWriteEnable')))         
         self.ui.liveViewSel.setCheckState(checkButtonState(self.appMain.getCachedParam('liveViewEnable')))
         self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
         self.ui.liveViewOffsetEdit.setText(str(self.appMain.getCachedParam('liveViewOffset')))
+        self.ui.shutterSel.setCheckState(checkButtonState(self.appMain.getCachedParam('arduinoShutterEnable')))
+        serialPort = self.appMain.getCachedParam('arduinoShutterPort')
 
         fbkOverride = self.appMain.getCachedParam('femAsicPixelFeedbackOverride')
         if fbkOverride == 1:
@@ -82,6 +84,8 @@ class LpdFemGuiMainDaqTab(object):
         QtCore.QObject.connect(self.ui.liveViewOffsetEdit, QtCore.SIGNAL("editingFinished()"), self.liveViewOffsetUpdate)
         QtCore.QObject.connect(self.ui.pixelFbkButtonGroup, QtCore.SIGNAL("buttonClicked(int)"), self.pixelFbkOverrideUpdate)
         QtCore.QObject.connect(self.ui.gainOverrideButtonGroup, QtCore.SIGNAL("buttonClicked(int)"), self.gainOverrideUpdate)
+        # Arduino Shutter
+        QtCore.QObject.connect(self.ui.shutterSel,    QtCore.SIGNAL("toggled(bool)"), self.shutterSelect)
         
     def updateEnabledWidgets(self):
         
@@ -180,6 +184,13 @@ class LpdFemGuiMainDaqTab(object):
         self.appMain.setCachedParam('liveViewEnable', state)
         self.mainWindow.updateEnabledWidgets()
         
+    def shutterSelect(self, state):
+        
+        self.appMain.setCachedParam('arduinoShutterEnable', state)
+        # Hack, force user to hit configure before next run:
+        self.appMain.deviceState = LpdFemGui.DeviceIdle
+        self.mainWindow.updateEnabledWidgets()
+
     def liveViewDivisorUpdate(self):
         liveViewDivisor = self.ui.liveViewDivisorEdit.text()
         try:

@@ -158,7 +158,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
 
     def windowUpdate(self, lpdActualImage, lpdFaultyImage, moduleDescription, moduleNumber, miscDescription):
 
-        print >> sys.stderr, "moduleDescription ", moduleDescription, " \nmoduleNumber", moduleNumber, "\nmiscDescription", miscDescription
+        #print >> sys.stderr, "moduleDescription ", moduleDescription, " \nmoduleNumber", moduleNumber, "\nmiscDescription", miscDescription
         # Convert module number into the string e.g. "RHS"
         self.setModuleType(moduleNumber)
         # Save module description, e.g. "00135"
@@ -185,7 +185,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         # Save plotted figure to file
         try:
             fname = self.logPath + "savedFig_%s_%s" % (moduleDescription+self.moduleString, time.strftime("%H%M%S"))
-            print >> sys.stderr, "Fig:  %s" % (fname + ".png")
+            #print >> sys.stderr, "Fig:  %s" % (fname + ".png")
         except Exception as e:
             self.msgPrint("windowUpdate() Exception: %s" % e, bError=True)
 
@@ -194,7 +194,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     def savePlot(self, lpdImage, fullModuleName):
         try:
             fileName = self.logPath + "lpdData_%s_%s.hdf5" % (fullModuleName, time.strftime("%H%M%S"))
-            print >> sys.stderr, "HDF5: %s" % (fileName)
+            #print >> sys.stderr, "HDF5: %s" % (fileName)
         except Exception as e:
             self.msgPrint("savePlot() Exception: %s" % e, bError=True)
 

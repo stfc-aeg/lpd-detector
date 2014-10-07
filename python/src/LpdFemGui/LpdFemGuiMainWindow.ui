@@ -27,7 +27,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>4</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="daqTab">
      <attribute name="title">
@@ -458,6 +458,9 @@
         </item>
        </layout>
       </widget>
+      <zorder>verticalLayoutWidget_2</zorder>
+      <zorder>shutterSel</zorder>
+      <zorder>shutterLabel</zorder>
      </widget>
      <widget class="QGroupBox" name="operateGroupBox">
       <property name="enabled">
@@ -664,6 +667,35 @@
          </layout>
         </item>
        </layout>
+      </widget>
+      <widget class="QCheckBox" name="shutterSel">
+       <property name="geometry">
+        <rect>
+         <x>350</x>
+         <y>0</y>
+         <width>28</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Shutter Enable:</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="shutterLabel">
+       <property name="geometry">
+        <rect>
+         <x>275</x>
+         <y>-4</y>
+         <width>71</width>
+         <height>31</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Shutter:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
       </widget>
      </widget>
      <widget class="QGroupBox" name="messageGroupBox">

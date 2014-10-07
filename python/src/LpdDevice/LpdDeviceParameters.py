@@ -201,7 +201,7 @@ class LpdDeviceParameters(object):
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None, "poll")
         
-        self.expectedParameters['powerCardOverTemp1']    = AttributeContainer(bool, 'PowerCardOverTemp0', 'Power Card Over 1 Temperature Flag',
+        self.expectedParameters['powerCardOverTemp1']    = AttributeContainer(bool, 'PowerCardOverTemp1', 'Power Card Over 1 Temperature Flag',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None, "poll")
         
@@ -217,7 +217,7 @@ class LpdDeviceParameters(object):
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Celsius', 'C')
         
-        self.expectedParameters['powerCardTemp1']        = AttributeContainer(float, 'PowerCardTemp', 'Power Card 1 Temperature [C]',
+        self.expectedParameters['powerCardTemp1']        = AttributeContainer(float, 'PowerCardTemp1', 'Power Card 1 Temperature [C]',
                                                                         0, 100,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Celsius', 'C')
         
@@ -446,18 +446,18 @@ class LpdDeviceParameters(object):
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
         self.expectedParameters['sensorBiasVoltage0']    = AttributeContainer(float, 'SensorBiasVoltage0', 'Sensor bias 0 voltage readback [V]',
-                                                                        0, 600, None,
+                                                                        0, 300, None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
         self.expectedParameters['sensorBiasVoltage1']    = AttributeContainer(float, 'SensorBiasVoltage1', 'Sensor bias 1 voltage readback [V]',
-                                                                        0, 600, None,
+                                                                        0, 300, None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensorBiasCurrent0']    = AttributeContainer(float, 'SensorBiasVoltage0', 'Sensor bias 0 current readback [uA]',
+        self.expectedParameters['sensorBiasCurrent0']    = AttributeContainer(float, 'SensorBiasCurrent0', 'Sensor bias 0 current readback [uA]',
                                                                         0, 600, None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Microamp', 'uA')
 
-        self.expectedParameters['sensorBiasCurrent1']    = AttributeContainer(float, 'SensorBiasVoltage1', 'Sensor bias 1 current readback [uA]',
+        self.expectedParameters['sensorBiasCurrent1']    = AttributeContainer(float, 'SensorBiasCurrent1', 'Sensor bias 1 current readback [uA]',
                                                                         0, 600, None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Microamp', 'uA')
 
@@ -587,7 +587,7 @@ class LpdDeviceParameters(object):
                                                                           1, 2, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-        self.expectedParameters['femAsicClockSource']           = AttributeContainer(uint32, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz), 3 = Diamond',
+        self.expectedParameters['femAsicClockSource']           = AttributeContainer(uint32, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz), 3=Diamond',
                                                                           0, 3, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 

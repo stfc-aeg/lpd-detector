@@ -54,7 +54,7 @@ class LpdAsicTester(object):
 #        self.currentParams['femAsicGain']                   = 3    # Not used by LpdFemGui
         self.currentParams['femAsicPixelFeedbackOverride']  = 0     # 0=50pF, 1=5pF
         self.currentParams['fileWriteEnable']               = True
-
+        self.currentParams['arduinoShutterEnable']          = False
         self.currentParams['readoutParamFile']  = self.currentParams['testingReadoutParamFile']
         self.currentParams['setupParamFile']    = self.currentParams['testingSetupParamFile']
 

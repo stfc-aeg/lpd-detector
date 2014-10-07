@@ -94,7 +94,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.asyncCmdRunning = False
         
     def updateEnabledWidgets(self):
-        
+
         if self.appMain.deviceState == LpdFemGui.DeviceDisconnected:
 
             self.ui.configGroupBox.setEnabled(False)

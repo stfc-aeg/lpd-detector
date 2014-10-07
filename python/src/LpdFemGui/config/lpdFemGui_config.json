@@ -1,4 +1,6 @@
 {
+    "arduinoShutterEnable":true,
+    "arduinoShutterPort":"/dev/ttyUSB1",
     "asicModuleType":0,
     "cmdSequenceFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml",
     "connectionTimeout":5.0,
@@ -23,7 +25,7 @@
     "pwrAutoUpdate":false,
     "pwrUpdateInterval":2,
     "readoutParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml",
-    "runNumber":1099,
+    "runNumber":1175,
     "setupParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Setup_LowPower.xml",
     "testingLongExposureFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml",
     "testingReadoutParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml",
