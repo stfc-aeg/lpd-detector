@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>799</width>
+    <width>795</width>
     <height>792</height>
    </rect>
   </property>
@@ -37,7 +37,7 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>100</y>
+        <y>130</y>
         <width>761</width>
         <height>191</height>
        </rect>
@@ -50,7 +50,7 @@
         <rect>
          <x>0</x>
          <y>10</y>
-         <width>783</width>
+         <width>763</width>
          <height>171</height>
         </rect>
        </property>
@@ -225,7 +225,7 @@
           <item row="1" column="11">
            <widget class="QLabel" name="label_82">
             <property name="text">
-             <string>Gain Mode:</string>
+             <string>Gain</string>
             </property>
            </widget>
           </item>
@@ -330,7 +330,7 @@
              </size>
             </property>
             <property name="text">
-             <string>Num Trains:</string>
+             <string>NumTrains:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -458,9 +458,6 @@
         </item>
        </layout>
       </widget>
-      <zorder>verticalLayoutWidget_2</zorder>
-      <zorder>shutterSel</zorder>
-      <zorder>shutterLabel</zorder>
      </widget>
      <widget class="QGroupBox" name="operateGroupBox">
       <property name="enabled">
@@ -471,7 +468,7 @@
         <x>10</x>
         <y>10</y>
         <width>371</width>
-        <height>91</height>
+        <height>131</height>
        </rect>
       </property>
       <property name="title">
@@ -482,7 +479,7 @@
         <rect>
          <x>0</x>
          <y>20</y>
-         <width>413</width>
+         <width>371</width>
          <height>71</height>
         </rect>
        </property>
@@ -697,14 +694,95 @@
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
+      <widget class="QWidget" name="layoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>90</y>
+         <width>371</width>
+         <height>27</height>
+        </rect>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_14">
+        <item>
+         <spacer name="horizontalSpacer_24">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_83">
+          <property name="text">
+           <string>Multiple Runs:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="multiRunSel">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_85">
+          <property name="text">
+           <string>Number of runs:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="mulitRunEdit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>40</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_27">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
      </widget>
      <widget class="QGroupBox" name="messageGroupBox">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>290</y>
+        <y>320</y>
         <width>761</width>
-        <height>361</height>
+        <height>331</height>
        </rect>
       </property>
       <property name="title">
@@ -4930,7 +5008,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>799</width>
+     <width>795</width>
      <height>23</height>
     </rect>
    </property>
