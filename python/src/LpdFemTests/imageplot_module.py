@@ -201,11 +201,14 @@ class imagePlot():
 
         # Determine row/col coordinates according to selected ASIC module
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
-        self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
+        thisImage = imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols]
+        self.img.set_data(thisImage)
 
-        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
+        DataCursor(self.artist[1], thisImage)
         plt.draw()
-    
+        # Calculate image average value
+        print >> sys.stderr, "Train: %d Image: %d. image average: %f" % (trainNumber, imageNumber, np.average(thisImage))
+
     def prevImage(self, event):
 
         self.args.image -= 1
@@ -229,11 +232,13 @@ class imagePlot():
 
         # Determine row/col coordinates according to selected ASIC module
         (rowStart, colStart) = self.asicStartingRowColumn(self.args.module)
-        self.img.set_data(imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
+        thisImage = imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols]
+        self.img.set_data(thisImage)
 
-        DataCursor(self.artist[1], imageData[rowStart:rowStart+self.numRows, colStart:colStart+self.numCols])
+        DataCursor(self.artist[1], thisImage)
         plt.draw()
-
+        # Calculate image average
+        print >> sys.stderr, "Train: %d Image: %d. image average: %f" % (trainNumber, imageNumber, np.average(thisImage))
 
     def nextTrain(self, event):
 
