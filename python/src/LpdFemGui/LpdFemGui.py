@@ -8,7 +8,7 @@ from FemClient.FemClient import *
 from FemApi.FemConfig import *
 from LpdReadoutConfig import *
 from persistentDict import *
-from utilities import servoShutter
+from ServoShutter import *
 import os
 
 class PrintRedirector():
@@ -84,7 +84,7 @@ class LpdFemGui:
 
             usbport = self.getCachedParam('arduinoShutterPort')
             try:
-                self.shutter = servoShutter(usbport)
+                self.shutter = ServoShutter(usbport)
                 # Ensure shutter shut when GUI starts
                 self.shutter.move(0)
             except Exception as e:
@@ -230,7 +230,7 @@ class LpdFemGui:
     
                     usbport = self.getCachedParam('arduinoShutterPort')
                     try:
-                        self.shutter = servoShutter(usbport)
+                        self.shutter = ServoShutter(usbport)
                         # Ensure shutter shut when GUI starts
                         self.shutter.move(0)
                     except Exception as e:

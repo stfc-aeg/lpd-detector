@@ -25,7 +25,7 @@
     "pwrAutoUpdate":false,
     "pwrUpdateInterval":2,
     "readoutParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml",
-    "runNumber":1175,
+    "runNumber":1193,
     "setupParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Setup_LowPower.xml",
     "testingLongExposureFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml",
     "testingReadoutParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml",
