@@ -3,7 +3,7 @@ LpdFemClient - XFEL LPD class sitting between the API and the FemClient
          
 Created 16 October 2012
 
-@Author: ckd
+@Author: ckd    -    TRUNK VERSION
 
 '''
 
@@ -104,9 +104,6 @@ class LpdFemClient(FemClient):
         ######## API variables extracted from jac's functions ########
         self.femAsicEnableMask              = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
 
-        # Temp hack to decouple ASIC mask vector from API
-        self.femAsicEnabledMaskDummy        = 0
-        
         self.femAsicSetupParams             = ""
         self.femAsicCmdSequence             = ""
 
@@ -158,9 +155,9 @@ class LpdFemClient(FemClient):
                                                                 # True  = asic readout phase uses slowed down clock (must use fast cmd file with slow clock command)
         #TODO:  FOR FUTURE USE
         self.femAsicVersion                         = 2         # 1 = version 1, 2 = version 2
-        self.femAsicClockSource                     = 0         # 0 = Fem local oscillator, 1 = xfel, 2 = petra
+        self.femAsicClockSource                     = 0         # 0 = Fem local oscillator, 1 = xfel, 2 = petra, 3 = Diamond
 
-        self.femStartTrainSource                    = 1         # 0 = XFEL clock and controls system, 1 = Software, 2 = LCLS, 3 = PETRAIII
+        self.femStartTrainSource                    = 1         # 0 = XFEL clock and controls system, 1 = Software, 2 = LCLS, 3 = PETRAIII, 4 = Diamond
 
         self.ext_trig_strobe_delay                  = (2+88)    # Delay of ext trigger strobe (in asic clock periods)
         self.ext_trig_strobe_polarity               = 0         # 1 = use inverted signal 
@@ -662,7 +659,7 @@ class LpdFemClient(FemClient):
         self.register_clear_bit(self.fem_ctrl_0+11, 18)  # BOT SP3 IO DCM    
         self.register_clear_bit(self.fem_ctrl_0+11, 19)  # TOP SP3 IO DCM
 
-    def config_trig_strobe(self):   
+    def config_trig_strobe(self):
         ''' Configure external trigger strobes '''
 
         self.set_ext_trig_strobe_delay(self.ext_trig_strobe_delay)    
