@@ -350,7 +350,30 @@ class ImageDisplay(FigureCanvas):
             if bTimeStamp:
                 timeD1 = time.time()
             
-            dataBeginning = self.superModuleImageSize*currentPlot
+#################################################################
+  # For readout with LPD Data Formatting ; 
+  # lpd headers and trailers in the data payload
+  # lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
+            # following sizes in BYTES
+            LPD_HEADER_SIZE = 32; # includes train id
+            # Image Descriptors are fixed with 512 entries each of 4 blocks of descriptors:
+            # 1) storageCellNumber (2 bytes)
+            # 2) bunchNumber (8 bytes)
+            # 3) status (2 bytes)
+            # 4) length (4 bytes)
+            LPD_IMAGE_DESCRIPTOR_SIZE = 0;  # 8192
+            LPD_DETECTOR_DEPENDENT_SIZE = (13*32); # fixed with trigger information from C&C module
+            LPD_TRAILER_SIZE = 32; # includes crc
+
+            LPD_FORMATTING_SIZE = LPD_HEADER_SIZE + LPD_IMAGE_DESCRIPTOR_SIZE + LPD_DETECTOR_DEPENDENT_SIZE + LPD_TRAILER_SIZE
+             
+            if lpdheadertrailer == 0:           
+              dataBeginning = self.superModuleImageSize*currentPlot
+            else:
+              dataBeginning = (self.superModuleImageSize)*currentPlot + LPD_HEADER_SIZE/2
+
+            print "currentPlot %d dataBeginning %d" % (currentPlot, dataBeginning)            
+#################################################################
 
             # Get the first image of the train
             bNextImageAvailable = self.retrieveImage(dataBeginning)
@@ -595,6 +618,7 @@ if __name__ == "__main__":
     plotRows         = 2
     plotCols         = 2
     numberPlotsPerFile = 1
+    lpdheadertrailer         = 0
 
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="LpdReceiver.py - Receive data from an LPD detector. ",
@@ -609,6 +633,7 @@ if __name__ == "__main__":
     parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                             type=int, default=femPort)
     parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
     parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
+    parser.add_argument("--lpdheadertrailer",      help="Process LPD Data with headers and trailers (0=Disable, 1=Enable; D: 0)",  type=int, default=0)    
     args = parser.parse_args()
 
     asicModule  = args.asicmodule
@@ -634,6 +659,9 @@ if __name__ == "__main__":
         
     if args.colorbar == 0:
         bColorbarVisible = False
+
+    if args.lpdheadertrailer == 1:
+        lpdheadertrailer = True
 
     # Calculate number of plots to draw
     plotMaxPlots = plotRows * plotCols
