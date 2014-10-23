@@ -64,7 +64,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         (self.logger, self.hdl) = (None, None)
 
         # Connect signals and slots
-        QtCore.QObject.connect(self.ui.operatorEdit,          QtCore.SIGNAL("editingFinished()"),   self.operatorUpdate)
+#        QtCore.QObject.connect(self.ui.operatorEdit,          QtCore.SIGNAL("editingFinished()"),   self.operatorUpdate)
         QtCore.QObject.connect(self.ui.moduleNumberEdit,      QtCore.SIGNAL("editingFinished()"),   self.moduleNumberUpdate)
         QtCore.QObject.connect(self.ui.moduleTypeButtonGroup, QtCore.SIGNAL("buttonClicked(int)"),  self.moduleTypeUpdate)
         QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)   # "ASIC Bonding"
@@ -93,9 +93,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
 
-        # Set up logger unless already set up
-        if self.logger is None:
-            self.createLogger()
+#        # Set up logger unless already set up
+#        if self.logger is None:
+#            self.createLogger()
         
         self.msgPrint("Executing Sensor Bonding Tests..")
         self.dumpGuiFieldsToLog()
@@ -131,9 +131,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
 
-        # Set up logger unless already set up
-        if self.logger is None:
-            self.createLogger()
+#        # Set up logger unless already set up
+#        if self.logger is None:
+#            self.createLogger()
             
         self.msgPrint("Executing ASIC Bond tests..")
 
@@ -173,25 +173,15 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         
     def femConnectionStatus(self, bConnected):
         ''' Enables/Disable testTab's components according to bConnected argument '''
-        self.ui.asicBondingBtn.setEnabled(bConnected)
-        self.ui.sensorBondingBtn.setEnabled(bConnected)
+        # Buttons remained locked until moduleNumber entered
+        if self.ui.moduleNumberEdit.text().count() != 0:
+            self.ui.asicBondingBtn.setEnabled(bConnected)
+            self.ui.sensorBondingBtn.setEnabled(bConnected)
         self.ui.operatorEdit.setEnabled(bConnected)
         self.ui.moduleNumberEdit.setEnabled(bConnected)
         self.ui.commentEdit.setEnabled(bConnected)
         self.ui.moduleLhsSel.setEnabled(bConnected)
         self.ui.moduleRhsSel.setEnabled(bConnected)
-
-    def warning(self):
-        ''' Testing using QMessageBox '''   # Not currently used
-        ret = QMessageBox.warning(self, "Power Cycle",
-                '''Ensure power switched on before  clicking ok or click cancel.''',
-                QMessageBox.Ok, QMessageBox.Cancel);
-        if ret == QMessageBox.Ok:
-            print >> sys.stderr, "Answer was Ok"
-        elif ret == QMessageBox.Cancel:
-            print >> sys.stderr, "Answer was Cancel"
-        else:
-            print >> sys.stderr, "Error: Unknown answer"
  
     def createLogger(self):
         ''' Create logger (and its' folder, if it does not exist), return logger and its' path
@@ -199,9 +189,11 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             http://rlabs.wordpress.com/2009/04/09/python-closing-logging-file-getlogger/ '''
 
         timestamp = time.time()
-        st = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+        time_stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%H%M%S')
+        date_stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d')
+        moduleNumber = str(self.ui.moduleNumberEdit.text())
         #fileName = self.pathStem + "%s_%s/testResults.log" % (st, self.moduleString)
-        fileName = self.pathStem + "%s/testResults.log" % st
+        fileName = self.pathStem + "%s/%s/testResults_%s.log" % (moduleNumber, date_stamp, time_stamp)
 
         # Check whether logger already set up
         if self.logger is not None:
@@ -233,8 +225,21 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     
     def moduleNumberUpdate(self):
 
-        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: " + self.ui.moduleNumberEdit.text() + ")")
-        pass
+        moduleNumber = self.ui.moduleNumberEdit.text()
+        if moduleNumber.count() == 0:
+            self.testMsgPrint("The entered moduleNumber is blank, buttons remains locked..")
+            self.ui.asicBondingBtn.setEnabled(False)
+            self.ui.sensorBondingBtn.setEnabled(False)
+        else:
+            self.ui.asicBondingBtn.setEnabled(True)
+            self.ui.sensorBondingBtn.setEnabled(True)
+
+            # Setup logger at this point, regardless
+#            if self.logger is None:
+            self.createLogger()
+
+        QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: '" + moduleNumber + "')")
+
 
     def moduleTypeUpdate(self):
         ''' Update module selection (right side versus left side) according to GUI choice made '''
@@ -254,16 +259,15 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''
         
-        # Setup logger unless already set up
-        if self.logger is None:
-            self.createLogger()
-
         constructedMessage = "%s %s" % (time.strftime("%H:%M:%S"), str(msg))
-        # Log message as error if flagged as such
-        if bError:
-            self.logger.error(constructedMessage)
-        else:
-            self.logger.info(constructedMessage)
+
+        # Log message if logger already set up
+        if self.logger:
+            # Log message as error if flagged as such
+            if bError:
+                self.logger.error(constructedMessage)
+            else:
+                self.logger.info(constructedMessage)
 
         self.ui.testMessageBox.appendPlainText(constructedMessage)
         self.ui.testMessageBox.verticalScrollBar().setValue(self.ui.testMessageBox.verticalScrollBar().maximum())
@@ -271,6 +275,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.appMain.app.processEvents()
 
     def dumpGuiFieldsToLog(self):
+        ''' Using testMsgPrint() also logs the message to file '''
         
         self.testMsgPrint("Logging Operator: '%s'" % str(self.ui.operatorEdit.text()))
         self.testMsgPrint("Logging Module: '%s'" % str((self.ui.moduleNumberEdit.text()) + self.moduleString))

@@ -36,16 +36,18 @@
 	<remove_reset_pre_amp/>
 	<remove_reset_gain_stage1/>
 	<remove_reset_gain_stage2/>
-	<start_trigger_pointer/> 
-	<nop count="2"/>
-	<trigger_flag_set/>
-	<nop count="5"/>
-	<trigger_flag_set/>
-	<nop count="5"/>
-	<trigger_flag_set/>
-	<nop count="5"/>
-	<trigger_flag_set/>
-	<nop count="2"/>
+	<start_trigger_pointer/>
+	<trigger_section>
+		<nop count="2"/>
+		<trigger_flag_set/>
+		<nop count="5"/>
+		<trigger_flag_set/>
+		<nop count="5"/>
+		<trigger_flag_set/>
+		<nop count="5"/>
+		<trigger_flag_set/>
+		<nop count="2"/>
+	</trigger_section>
 	<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>

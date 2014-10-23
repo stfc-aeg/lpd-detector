@@ -51,12 +51,11 @@ class LpdAsicTester(object):
         # Ensure a set of known defaults (common to all tests)
         self.currentParams['liveViewEnable']                = False
         self.currentParams['femAsicGainOverride']           = 3     # Copied into femAsicGain by LpdFemGui (!)
-#        self.currentParams['femAsicGain']                   = 3    # Not used by LpdFemGui
         self.currentParams['femAsicPixelFeedbackOverride']  = 0     # 0=50pF, 1=5pF
         self.currentParams['fileWriteEnable']               = True
         self.currentParams['arduinoShutterEnable']          = False
-        self.currentParams['readoutParamFile']  = self.currentParams['testingReadoutParamFile']
-        self.currentParams['setupParamFile']    = self.currentParams['testingSetupParamFile']
+        self.currentParams['readoutParamFile']              = self.currentParams['testingReadoutParamFile']
+        self.currentParams['setupParamFile']                = self.currentParams['testingSetupParamFile']
 
 #        # Debug: Display default settings
 #        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 
@@ -101,7 +100,6 @@ class LpdAsicTester(object):
                         self.currentParams['testingLongExposureFile'], self.currentParams['testingShortExposureFile'] ]
         bErrorOk = True
         for fileName in xmlFileNames:
-            #print >> sys.stderr, "verifyJsonFileNames() checking filename: %s" % fileName
             if not os.path.isfile(fileName):
                 self.msgPrint("Error inside .json File: Cannot find '%s'" % fileName, bError=True)
                 bErrorOk = False
@@ -115,7 +113,7 @@ class LpdAsicTester(object):
             if not self.verifyJsonFileNames():
                 self.msgPrint("File missing, exiting test prematurely", bError=True)
                 return
-            
+
             self.msgPrint("Using cmdSequenceFile:  %s" % self.currentParams['testingLongExposureFile'])
             self.msgPrint("Using readoutParamFile: %s" % self.currentParams['testingReadoutParamFile'])
             self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
@@ -127,24 +125,6 @@ class LpdAsicTester(object):
 #            powerCardResults = self.readPowerCards()
 #            #print >> sys.stderr, "powerCardResult: ", powerCardResults
 #            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-
-#            # Define ASIC command sequence files
-#            longExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml"
-#            shortExposure = "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml"
-
-#            # Debugging: Using a short exposure, look at data
-#            self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']  # "/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_ShortExposure_V2.xml",
-##            self.currentParams['cmdSequenceFile'] = shortExposure
-#            self.appMain.deviceConfigure(self.currentParams)
-#            # . Readout Data
-#            self.msgPrint(". Readout Data - SHORT exposure time")
-#            self.appMain.deviceRun(self.currentParams)
-#            self.fileName = self.appMain.lastDataFile
-#            self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)            
-#            # .Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
-#            numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription="SHORT", bSuppressPixelInfo=True)
-#            self.msgPrint("Pausing for five seconds..")
-#            time.sleep(3)
 
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
             self.obtainPowerSuppliesState(self.appMain.pwrCard.powerStateGet())
@@ -211,6 +191,7 @@ class LpdAsicTester(object):
     
                 self.msgPrint("5. Check/record shorted pixels")
                 (numShortedPixelsMin, numShortedPixelsMax, adjacentPixelPairs, neighbourStr) = self.locateShortedPixels()
+
                 # Does total number of shorted pixels exceed 0?
                 # Min = pixel stuck at value 0, Max = pixel stuck at value 4095
                 if (numShortedPixelsMin+numShortedPixelsMax) > 0:
@@ -307,7 +288,6 @@ class LpdAsicTester(object):
             errorMessages = []
             
             # 2. Check and record current (1A < I < 4A)
-
             self.msgPrint("2. Check and record current (1A < I < 4A)")
             sensorCurrent = self.readCurrent()
             passFailString = "PASS"
@@ -324,7 +304,8 @@ class LpdAsicTester(object):
             # 3. Serial Load
             self.msgPrint("3. Serial Load")
             self.appMain.deviceConfigure(self.currentParams)
-            #     Ensure serial load XML file selected (executing Configure proven redundant?)
+            
+            # Ensure XML file loaded in serial
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
             self.setApiValue(paramName, 1)
 
@@ -347,10 +328,10 @@ class LpdAsicTester(object):
             self.fileName = self.appMain.lastDataFile
             self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
             
+            # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
             if self.fileName == None:
                 self.msgPrint("Error: No file received")
             else:
-                # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
                 self.msgPrint("6. Check for out of range pixels")
                 numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[6. Pixels out of range]')
                 if numBadPixels == 0:
@@ -390,10 +371,10 @@ class LpdAsicTester(object):
             # 10. Parallel load
             self.msgPrint("10. Parallel Load")
             self.appMain.deviceConfigure(self.currentParams)
-            # Ensure parallel XML file loading:
+            # Ensure XML file load in parallel:
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
             self.setApiValue(paramName, 0)
-            
+
             # 11. Check and record current (8A <I =< 10A)
             self.msgPrint("11. Check and record current (8A < I <= 10A)")
             sensorCurrent = self.readCurrent()
@@ -412,10 +393,10 @@ class LpdAsicTester(object):
             self.fileName = self.appMain.lastDataFile
             self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
             
+            # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
             if self.fileName == None:
                 self.msgPrint("Error: No file received")
             else:
-                # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
                 self.msgPrint("13. Check for out of range pixels")
                 numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[13. Pixels out arrange]')
                 if numBadPixels == 0:
@@ -493,14 +474,6 @@ class LpdAsicTester(object):
                 if i == row+1 and j== col+1: continue   # diagonal
                 #yield data[i][j]
                 yield (i, j)
-
-#    def setCachedValue(self, variable, value):
-#        ''' Change cached value of the GUI variable (Do not confuse with setApiValue) '''
-#        self.appMain.setCachedParam(variable, value)
-#        
-#    def getCachedValue(self, variable):
-#        ''' Get cached value of the GUI variable (Do not confuse with getApiValue) '''
-#        return self.appMain.getCachedParam(variable)
     
     def getApiValue(self, paramName):
         
@@ -569,10 +542,6 @@ class LpdAsicTester(object):
 
             paramName = 'sensorBias' + str(powerCard)
             self.biasState[powerCard] = powerState[paramName]
-        
-#        print >> sys.stderr, "LpdAsicTester.obtainPowerSuppliesState()"
-#        print >> sys.stderr, "sensorBias0: ", powerState['sensorBias0']
-#        print >> sys.stderr, "sensorBias1: ", powerState['sensorBias1']
 
         if self.lvState[0] != self.lvState[1]:
             self.msgPrint("LpdAsicTester Error: LV status mismatch between power card", bError=True)
@@ -646,7 +615,6 @@ class LpdAsicTester(object):
                     continue
                 leakageCurrentArray[row][column] = self.image3Data[row][column] - self.image0Data[row][column]
 
-        # Let's try plotting this in the existing ASIC window..
         # Signal hdf5 image (data)
         self.appMain.asicWindow.dataSignal.emit(self.moduleData, unconnectedPixelsArray, self.moduleDescription, self.moduleNumber, "Leakage Current")
         return numUnconnectedPixels
@@ -796,7 +764,6 @@ class LpdAsicTester(object):
             etc
         '''
         asicNum = -1
-        adcNum = -1
         if (-1 < column < 16):
             asicNum = 0
         elif (15 < column < 32):
@@ -888,11 +855,11 @@ class LpdAsicTester(object):
         TVCparamsTypes = [#'Temp', 'Voltage', 
                           'Current']
         
-        miscParamTypes = ['sensorBias'#, 'powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent', 'sensorBiasVoltage', 'sensorBiasCurrent', 
-                      #, 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 'powerCardFemStatus', 'powerCardExtStatus', 
-                      #'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp'
-                      ]
-        
+        miscParamTypes = ['sensorBias'#, 'powerCardTemp', 'femVoltage',  'femCurrent', 'digitalVoltage', 'digitalCurrent',
+                          #'sensorBiasVoltage', 'sensorBiasCurrent', 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 
+                          #'powerCardFemStatus', 'powerCardExtStatus', 'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp'
+                          ]
+
         for sensor in range(numSensors):
             
             for paramType in TVCparamsTypes:

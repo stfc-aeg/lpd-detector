@@ -13,6 +13,8 @@ from math import log#, ceil
 import pprint, time, sys, os
 from functools import partial
 
+from datetime import datetime
+
 from FemClient.FemClient import *
 from FemApi.FemTransaction import FemTransaction
 from LpdPowerCard import *
@@ -29,44 +31,44 @@ class LpdFemClient(FemClient):
 
     # with new addressing using top 4 bits for fpga selection
     #        32 way splitter
-    udp_10g_0       = 0x00000000    #  0
-    udp_10g_1       = 0x00800000    #  1
-    data_gen_0      = 0x01000000    #  2
-    data_chk_0      = 0x01800000    #  3
-    data_gen_1      = 0x02000000    #  4
-    data_chk_1      = 0x02800000    #  5
-    fem_ctrl_0      = 0x03000000    #  6
-    llink_mon_0     = 0x03800000    #  7
-    data_mon_1      = 0x04000000    #  8
-    slow_ctr_2      = 0x04800000    #  9
-    fast_cmd_0      = 0x05000000    # 10
-    fast_cmd_1      = 0x05800000    # 11
-    asic_srx_0      = 0x06000000    # 12
-    llink_mon_asicrx= 0x06800000    # 13
-    slow_ctr_0      = 0x07000000    # 14
-    slow_ctr_1      = 0x07800000    # 15
-    dma_gen_0       = 0x08000000    # 16
-    dma_chk_0       = 0x08800000    # 17
-    dma_gen_1       = 0x09000000    # 18
-    dma_chk_1       = 0x09800000    # 19
-    dma_gen_2       = 0x0a000000    # 20
-    dma_chk_2       = 0x0a800000    # 21
-    dma_gen_3       = 0x0b000000    # 22
-    dma_chk_3       = 0x0b800000    # 23
-    bram_ppc1       = 0x0c000000    # 24
-    trig_strobe     = 0x0c800000    # 25
-    rsvd_26         = 0x0d000000    # 26
-    rsvd_27         = 0x0d800000    # 27
-    rsvd_28         = 0x0e000000    # 28
-    rsvd_29         = 0x0e800000    # 29
-    rsvd_30         = 0x0f000000    # 30
-    rsvd_31         = 0x0f800000    # 31
+    udp_10g_0           = 0x00000000    #  0
+    udp_10g_1           = 0x00800000    #  1
+    data_gen_0          = 0x01000000    #  2
+    data_chk_0          = 0x01800000    #  3
+    data_gen_1          = 0x02000000    #  4
+    data_chk_1          = 0x02800000    #  5
+    fem_ctrl_0          = 0x03000000    #  6
+    llink_mon_0         = 0x03800000    #  7
+    data_mon_1          = 0x04000000    #  8
+    slow_ctr_2          = 0x04800000    #  9
+    fast_cmd_0          = 0x05000000    # 10
+    fast_cmd_1          = 0x05800000    # 11    Tx bram
+    asic_srx_0          = 0x06000000    # 12
+    llink_mon_asicrx    = 0x06800000    # 13
+    slow_ctr_0          = 0x07000000    # 14
+    slow_ctr_1          = 0x07800000    # 15
+    dma_gen_0           = 0x08000000    # 16
+    dma_chk_0           = 0x08800000    # 17
+    dma_gen_1           = 0x09000000    # 18
+    dma_chk_1           = 0x09800000    # 19
+    dma_gen_2           = 0x0a000000    # 20
+    dma_chk_2           = 0x0a800000    # 21
+    dma_gen_3           = 0x0b000000    # 22
+    dma_chk_3           = 0x0b800000    # 23
+    bram_ppc1           = 0x0c000000    # 24
+    trig_strobe         = 0x0c800000    # 25
+    ccc_delay_reg       = 0x0d000000    # 26
+    ccc_pattern_bram    = 0x0d800000    # 27 - which bunch(s) to read
+    ccc_pattern_id      = 0x0e000000    # 28 
+    ccc_cmd_gen_bram    = 0x0e800000    # 29 - sim of C&C system (testing, generate cc cmds, vetos, etc)
+    ccc_cmd_gen_reg     = 0x0f000000    # 30
+    rsvd_31             = 0x0f800000    # 31
  
 # Spartan 3 devices 
 # needs new gbe embedded software with rs232 mux control
-    bot_sp3_ctrl    = 0x10000000    #  0
-    top_sp3_ctrl    = 0x20000000    #  0
-    cfg_sp3_ctrl    = 0x30000000    #  0
+    bot_sp3_ctrl        = 0x10000000    #  0
+    top_sp3_ctrl        = 0x20000000    #  0
+    cfg_sp3_ctrl        = 0x30000000    #  0
 
    
     ########## Enumerated values for API variables ##########
@@ -159,7 +161,7 @@ class LpdFemClient(FemClient):
 
         self.femStartTrainSource                    = 1         # 0 = XFEL clock and controls system, 1 = Software, 2 = LCLS, 3 = PETRAIII, 4 = Diamond
 
-        self.ext_trig_strobe_delay                  = (2+88)    # Delay of ext trigger strobe (in asic clock periods)
+        self.ext_trig_strobe_delay                  = 10 # test  #   512 #  (2+88)    # Delay of ext trigger strobe (in asic clock periods)
         self.ext_trig_strobe_polarity               = 0         # 1 = use inverted signal 
         self.petra_shutter_polarity                 = 0         # 1 = use inverted signal
 
@@ -2265,3 +2267,91 @@ class LpdFemClient(FemClient):
         '''
         self.petra_shutter_polarity = aValue
 
+    def femModuleIdGet(self):
+        '''
+            Get the fem module ID
+        '''
+        #TODO: Review if ID should be list of 16 entries (for megapixel detector)
+        #TODO: Create this variable
+        return self.fem_module_id
+
+    def femModuleIdSet(self, aValue):
+        '''
+            Set the fem module ID
+        '''
+        #TODO: Review if ID should be list of 16 entries (for megapixel detector)
+        self.fem_module_id = aValue
+
+    def cccSystemModeGet(self):
+        ''' 
+            Get the C&C System Mode
+        '''
+        #TODO: Create this variable
+        return self.ccc_system_mode
+
+    def cccSystemModeSet(self, aValue):
+        ''' 
+            Set the C&C System Mode
+        '''
+        self.ccc_system_mode = aValue
+    
+    def cccCommandGenerateGet(self):
+        ''' 
+            Get the C&C Command Generate Status
+        '''
+        return self.use_ccc_cmd_gen
+    
+    def cccCommandGenerateSet(self, aValue):
+        ''' 
+            Set the C&C Command Generate Status
+        '''
+        self.use_ccc_cmd_gen = aValue
+    
+    def cccOverrideNumberImagesGet(self):
+        ''' 
+            Get the C&C Override Number of Images Status
+        '''
+        return self.override_asicrx_ncols
+    
+    def cccOverrideNumberImagesSet(self, aValue):
+        ''' 
+            Set the C&C Override Number of Images Status
+        '''
+        self.override_asicrx_ncols = aValue
+        
+    def cccVetoStartDelayGet(self):
+        ''' 
+            Get the C&C Veto Start Delay
+        '''
+        return self.ccc_veto_start_delay
+    
+    def cccVetoStartDelaySet(self, aValue):
+        ''' 
+            Set the C&C Veto Start Delay
+        '''
+        self.ccc_veto_start_delay = aValue
+        
+    def cccStopDelayGet(self):
+        ''' 
+            Get the C&C Stop Delay
+        '''
+        return self.ccc_stop_delay
+    
+    def cccStopDelaySet(self, aValue):
+        ''' 
+            Set the C&C Stop Delay
+        '''
+        self.ccc_stop_delay = aValue
+        
+    def cccResetDelayGet(self):
+        ''' 
+            Get the C&C Reset Delay
+        '''
+        #TODO: Create this variable
+        return self.ccc_reset_delay
+    
+    def cccResetDelaySet(self, aValue):
+        ''' 
+            Set the C&C Reset Delay 
+        '''
+        self.ccc_reset_delay = aValue

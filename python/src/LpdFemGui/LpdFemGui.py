@@ -78,7 +78,7 @@ class LpdFemGui:
 
         self.shutter = 0
         self.shutterEnabled = self.getCachedParam('arduinoShutterEnable')
-        print >> sys.stderr, "initialisation, shutterEnable: ", self.shutterEnabled
+
         # Connect to shutter if arduinoShutterEnable set in .json file
         if self.shutterEnabled:        
 

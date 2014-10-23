@@ -635,6 +635,40 @@ class LpdDeviceParameters(object):
                                                                           (0, 1), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
+        self.expectedParameters['femModuleId']                  = AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
+                                                                #= AttributeContainer([uint32]*16, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
+                                                                          0, 4294967295,  None,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        # 
+        # Clock & Control Card Variables - To Assist Integration of C&C into FEM
+        #
+
+        self.expectedParameters['cccSystemMode']                  = AttributeContainer(uint32, 'cccSystemMode', 'Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes',
+                                                                          0, 4294967295,  None,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['cccCommandGenerate']             = AttributeContainer(bool, 'cccCommandGenerate', 'Enable to emulate Clock & Control commands (for testing in absence of C&C)',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['cccOverrideNumberImages']        = AttributeContainer(uint32, 'cccOverrideNumberImages', 'ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=Use numberImages, False=C&C decides',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['cccVetoStartDelay']              = AttributeContainer(uint32, 'cccVetoStartDelay', 'Adjust timing of veto arrival (in steps of clock cycles)',
+                                                                          0, 4294967295,  None,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['cccStopDelay']                   = AttributeContainer(uint32, 'cccStopDelay', 'Adjust timing of the stop (in steps of clock cycles)',
+                                                                          0, 4294967295,  None,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['cccResetDelay']                  = AttributeContainer(uint32, 'cccResetDelay', 'Adjust timing of reset (in steps of clock cycles)',
+                                                                          0, 4294967295,  None,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+
         # 
         # Firmware version variables - used to obtain read only, firmware version numbers
         #

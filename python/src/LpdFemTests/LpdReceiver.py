@@ -351,9 +351,9 @@ class ImageDisplay(FigureCanvas):
                 timeD1 = time.time()
             
 #################################################################
-  # For readout with LPD Data Formatting ; 
-  # lpd headers and trailers in the data payload
-  # lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
+# For readout with LPD Data Formatting ; 
+# lpd headers and trailers in the data payload
+# lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
             # following sizes in BYTES
             LPD_HEADER_SIZE = 32; # includes train id
             # Image Descriptors are fixed with 512 entries each of 4 blocks of descriptors:
@@ -366,11 +366,11 @@ class ImageDisplay(FigureCanvas):
             LPD_TRAILER_SIZE = 32; # includes crc
 
             LPD_FORMATTING_SIZE = LPD_HEADER_SIZE + LPD_IMAGE_DESCRIPTOR_SIZE + LPD_DETECTOR_DEPENDENT_SIZE + LPD_TRAILER_SIZE
-             
-            if lpdheadertrailer == 0:           
-              dataBeginning = self.superModuleImageSize*currentPlot
+
+            if lpdheadertrailer == False:           
+                dataBeginning = self.superModuleImageSize*currentPlot
             else:
-              dataBeginning = (self.superModuleImageSize)*currentPlot + LPD_HEADER_SIZE/2
+                dataBeginning = (self.superModuleImageSize)*currentPlot + LPD_HEADER_SIZE/2
 
             print "currentPlot %d dataBeginning %d" % (currentPlot, dataBeginning)            
 #################################################################
@@ -390,8 +390,6 @@ class ImageDisplay(FigureCanvas):
             # Mask out gain bits from data
             self.data = self.data & 0xfff
             
-#            # Set title as train number, current image number
-#            self.ax[currentPlot].set_title("Train %i Image %i" % (frameNumber, currentPlot))
             print "Train %2i Image %3i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ), "%20s" % str( datetime.now())[11:-4],
             if bTimeStamp is False:
                 print ""
@@ -608,17 +606,17 @@ class ImageDisplay(FigureCanvas):
 if __name__ == "__main__":
 
     # Define default values
-    asicModule       = 0
-    femHost          = '10.0.0.1'
-    femPort          = 61649
-    bTimeStamp       = False
-    bColorbarVisible = True
-    bHDF5            = False
-    debugLevel       = 0
-    plotRows         = 2
-    plotCols         = 2
-    numberPlotsPerFile = 1
-    lpdheadertrailer         = 0
+    asicModule          = 0
+    femHost             = '10.0.0.1'
+    femPort             = 61649
+    bTimeStamp          = False
+    bColorbarVisible    = True
+    bHDF5               = False
+    debugLevel          = 0
+    plotRows            = 2
+    plotCols            = 2
+    numberPlotsPerFile  = 1
+    lpdheadertrailer    = False
 
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="LpdReceiver.py - Receive data from an LPD detector. ",
@@ -633,7 +631,7 @@ if __name__ == "__main__":
     parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                             type=int, default=femPort)
     parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
     parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
-    parser.add_argument("--lpdheadertrailer",      help="Process LPD Data with headers and trailers (0=Disable, 1=Enable; D: 0)",  type=int, default=0)    
+    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=Disable, 1=Enable; D: 0)",type=int, default=0)    
     args = parser.parse_args()
 
     asicModule  = args.asicmodule

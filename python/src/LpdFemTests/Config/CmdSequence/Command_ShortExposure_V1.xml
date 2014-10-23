@@ -33,10 +33,12 @@
 	<nop/>
 	<start_trigger_pointer/> 
 	<nop/>
-	<trigger_flag_set/>
-	<trigger_flag_set/>
-	<trigger_flag_set/>
-	<trigger_flag_set/>
+	<trigger_section>
+		<trigger_flag_set/>
+		<trigger_flag_set/>
+		<trigger_flag_set/>
+		<trigger_flag_set/>
+	</trigger_section>
 	<nop/>
 	<nop/>
 	<on_chip_reset_disable/>

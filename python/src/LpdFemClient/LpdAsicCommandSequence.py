@@ -17,7 +17,7 @@ class LpdAsicCommandSequenceError(Exception):
     
 class LpdAsicCommandSequence():
    
-    def __init__(self, xmlObject, fromFile=False, strict=True):
+    def __init__(self, xmlObject, fromFile=False, strict=True, cccEnabled=False):
 
         # Set the strict syntax flag to specified value (defaults to true)
         self.strict = strict
@@ -56,6 +56,9 @@ class LpdAsicCommandSequence():
                          'sync_reset'               : 0x5a5a5
                       }
         
+        # Use old-style external triggers by default (False)
+        self.cccEnabled = cccEnabled
+        
         # Definition of position of fast command fields in BRAM words
         self.sync = 1
         self.sync_pos = 21
@@ -77,6 +80,10 @@ class LpdAsicCommandSequence():
         else:
             self.tree = None 
             self.root = ElementTree.fromstring(xmlObject)
+
+        # Track nops and words before trigger section (used by CCC)
+        self.initial_number_nops   = -1
+        self.initial_number_words  = -1
         
         # Get the root of the tree and verify it is an lpd_command_sequence
         if self.root.tag != 'lpd_command_sequence':
@@ -131,7 +138,20 @@ class LpdAsicCommandSequence():
                     encodedSequence.extend(childSequence * numLoops)
                 else:
                     raise LpdAsicCommandSequenceError('Loop specified with no children')
-                
+            
+            elif cmd == 'trigger_section':
+
+                if self.cccEnabled:
+                    # Note number of nops and number of words, before skipping trigger section
+                    (self.initial_number_nops, self.initial_number_words) = (localNopsSum, len(encodedSequence))
+                else:
+                    # CCC disabled, process trigger section
+                    if len(child):
+                        nopsSum, childSequence = self.parseElement(child) 
+                        localNopsSum += nopsSum
+                        encodedSequence.extend(childSequence)
+                    else:
+                        raise LpdAsicCommandSequenceError("trigger_section specified without children")
             else:
                 
                 # Otherwise, check this command is in the syntax dictionary and process
@@ -149,8 +169,8 @@ class LpdAsicCommandSequence():
                         cmdWord = (self.cmdDict[cmd] << self.sync_reset_pos)
                     else:
                         cmdWord = (self.sync << self.sync_pos) | (self.cmdDict[cmd] << self.cmd_pos)
-   
-                        
+                    
+
                     # Add in the NOPs to the command word. If the command itself is a NOP, use
                     # the count attribute to specify how many NOPs to add. Also reset count to
                     # 1 to avoid injecting repeated individual NOPs into the encoded sequence
@@ -184,6 +204,12 @@ class LpdAsicCommandSequence():
         # Return the encoded sequence for this (partial) tree
         return localNopsSum, encodedSequence
     
+    def getTriggerLocation(self):
+        '''
+        Returns the number of nops, number of words before first trigger tag in xml
+        '''
+        return (self.initial_number_nops, self.initial_number_words)
+
     def getTotalNumberNops(self):
         '''
         Returns the total number of nops read
@@ -305,7 +331,7 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
 
         self.assertEqual(len(fileEncodedSeq), expectedLenEncoded, 
                          'Mismatch in encoded length: got %d expected %d' % (len(fileEncodedSeq), expectedLenEncoded))
-        
+
     def testLoopException(self):
 
         stringCmdXml = '''<?xml version="1.0"?>
@@ -392,6 +418,48 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
         expectedSeq = [0x221000,  0x222000,  0x223000,  0x224000,  0x225000,  0x200000]
 
         self.assertEqual( stringEncodedSeq, expectedSeq, 'Unexpected encoder results for testForceGainNewCommands()')
+
+
+    def testCCC_Complete(self):
+        '''
+            Sanity check..
+        '''
+        femAsicCmdSequenceComplete = "tests/Command_Complete.xml"
+
+        # Read entire XML file, with clock and control disabled
+        cccEna=False
+        print "---------------------\nClock and control is set to be ", cccEna, "\n---------------------"
+        fileCmdSeqComplete = LpdAsicCommandSequence(femAsicCmdSequenceComplete, fromFile=True, cccEnabled=cccEna)
+        encodedSequenceComplete  = fileCmdSeqComplete.encode()
+        nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
+        nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
+        print "Complete          fast cmds file =%s: " %(femAsicCmdSequenceComplete)
+        print "Complete          fast cmds nr_words = %d, nr_nops =%d: " % (nr_wordsComplete, nr_nopsComplete)
+        print "encodedSequenceComplete:\n\n", encodedSequenceComplete
+
+        # Read XML file but would clock and control enabled, trigger section will be omitted
+        cccEna=True
+        print "---------------------\nClock and control is set to be ", cccEna, "\n---------------------"
+        fileCmdSeqComplete = LpdAsicCommandSequence(femAsicCmdSequenceComplete, fromFile=True, cccEnabled=cccEna)
+        encodedSequenceComplete  = fileCmdSeqComplete.encode()
+        nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
+        nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
+        print "Without triggers, fast cmds file =%s: " %(femAsicCmdSequenceComplete)
+        print "Without triggers, fast cmds nr_words = %d, nr_nops =%d: " % (nr_wordsComplete, nr_nopsComplete)
+        print "encodedSequenceComplete:\n\n", encodedSequenceComplete
+        
+        # Ask where trigger section begins ( .getTriggerLocation() will return (-1, -1) if clock and control disabled)
+        (initial_nops, initial_words) = (fileCmdSeqComplete.getTriggerLocation())
+        print "Initial fast cmds nr_words = %d, nr_nops =%d: " % (initial_words, initial_nops)
+        
+#        (remainder_nops, remainder_words) = (nr_nopsComplete - initial_nops, nr_wordsComplete - initial_words)
+#        print "Remainder fast cmds nr_words = %d, nr_nops =%d: " % (remainder_words, remainder_nops)
+
+        setupSection = encodedSequenceComplete[:initial_words]
+        readoutSection = encodedSequenceComplete[initial_words:]
+        
+        print "--------------------\nsetupSection:   \n", setupSection
+        print "--------------------\nreadoutSection: \n", readoutSection
 
 if __name__ == '__main__':
          
