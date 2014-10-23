@@ -444,16 +444,13 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
         encodedSequenceComplete  = fileCmdSeqComplete.encode()
         nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
         nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
-        print "Without triggers, fast cmds file =%s: " %(femAsicCmdSequenceComplete)
+
         print "Without triggers, fast cmds nr_words = %d, nr_nops =%d: " % (nr_wordsComplete, nr_nopsComplete)
         print "encodedSequenceComplete:\n\n", encodedSequenceComplete
         
         # Ask where trigger section begins ( .getTriggerLocation() will return (-1, -1) if clock and control disabled)
         (initial_nops, initial_words) = (fileCmdSeqComplete.getTriggerLocation())
         print "Initial fast cmds nr_words = %d, nr_nops =%d: " % (initial_words, initial_nops)
-        
-#        (remainder_nops, remainder_words) = (nr_nopsComplete - initial_nops, nr_wordsComplete - initial_words)
-#        print "Remainder fast cmds nr_words = %d, nr_nops =%d: " % (remainder_words, remainder_nops)
 
         setupSection = encodedSequenceComplete[:initial_words]
         readoutSection = encodedSequenceComplete[initial_words:]
