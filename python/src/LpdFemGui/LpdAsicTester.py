@@ -31,7 +31,7 @@ class LpdAsicTester(object):
     ''' Perform ASIC modules analysis, creating/display in results analysis window '''
 
     RHS_MODULE = 15
-    LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
+    LHS_MODULE = 12 #0 # 0 is the REAL LHS module !
     
     def __init__(self, appMain, device):
         
@@ -51,11 +51,13 @@ class LpdAsicTester(object):
         # Ensure a set of known defaults (common to all tests)
         self.currentParams['liveViewEnable']                = False
         self.currentParams['femAsicGainOverride']           = 3     # Copied into femAsicGain by LpdFemGui (!)
-        self.currentParams['femAsicPixelFeedbackOverride']  = 0     # 0=50pF, 1=5pF
+        self.currentParams['femAsicPixelFeedbackOverride']  = 1     # 0=50pF, 1=5pF
+        self.currentParams['numTrain']                      = 10
         self.currentParams['fileWriteEnable']               = True
         self.currentParams['arduinoShutterEnable']          = False
         self.currentParams['readoutParamFile']              = self.currentParams['testingReadoutParamFile']
         self.currentParams['setupParamFile']                = self.currentParams['testingSetupParamFile']
+        self.currentParams['runNumber']                     = 9000
 
 #        # Debug: Display default settings
 #        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 
@@ -78,7 +80,8 @@ class LpdAsicTester(object):
         self.fileName       = ""
         self.image          = 0
         self.train          = 0
-
+        self.maxImageNumber = 0
+        self.maxTrainNumber = 0
         (self.numRows, self.numCols) = (32, 128)
         
         self.moduleStd      = -1.0
@@ -125,7 +128,7 @@ class LpdAsicTester(object):
 #            powerCardResults = self.readPowerCards()
 #            #print >> sys.stderr, "powerCardResult: ", powerCardResults
 #            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-
+            
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
             self.obtainPowerSuppliesState(self.appMain.pwrCard.powerStateGet())
 
@@ -152,19 +155,22 @@ class LpdAsicTester(object):
             self.msgPrint("2. Power on sensor bias (HV) - 200V")
             # Check HV bias level:
             powerCardResults = self.readPowerCards()
+            #print >> sys.stderr, "powerCardResults: ", powerCardResults
             #print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-            measuredBiasLevel = powerCardResults['sensorBias0']
-            if not (199.0 < measuredBiasLevel  < 201.0):
-                self.msgPrint("Bias level is %f V, changing it to be 200 V" % measuredBiasLevel)
-                # Change the HV bias
-                self.hvSetBias(200.0)
-
-                self.msgPrint("Waiting 5 seconds for bias to reached 200V..")
-                time.sleep(5)
-                self.msgPrint("Bias now set to 200 V")
-            else:
-                self.msgPrint("Bias already 200 V")
-
+            measuredBiasLevel = powerCardResults['sensorBias0']+201.0
+            try:
+                if not (199.0 < measuredBiasLevel  < 201.0):
+                    self.msgPrint("Bias level is %f V, changing it to be 200 V" % measuredBiasLevel)
+                    # Change the HV bias
+                    self.hvSetBias(200.0)
+    
+                    self.msgPrint("Waiting 5 seconds for bias to reached 200V..")
+                    time.sleep(5)
+                    self.msgPrint("Bias now set to 200 V")
+                else:
+                    self.msgPrint("Bias already 200 V")
+            except Exception as e:
+                self.msgPrint(" Exception: %s" % e)
             #powerCardResults = self.readPowerCards()
             #print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
 
@@ -176,7 +182,7 @@ class LpdAsicTester(object):
             # Readout Data
             self.appMain.deviceRun(self.currentParams)
             self.fileName = self.appMain.lastDataFile
-            self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)            
+            self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
 
             if self.fileName == None:
                 self.msgPrint("Error: No file received")
@@ -273,9 +279,9 @@ class LpdAsicTester(object):
                     time.sleep(8)
 
             # 1.Power on
-
+            
             if bSwitchLvOn:
-                self.msgPrint("Low voltage is off, switching it on..")
+                self.msgPrint(" ! Low voltage is off, switching it on..")
                 self.toggleLvSupplies()
             
             if bSwitchHvOn:
@@ -327,7 +333,7 @@ class LpdAsicTester(object):
             self.appMain.deviceRun(self.currentParams)
             self.fileName = self.appMain.lastDataFile
             self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
-            
+
             # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
             if self.fileName == None:
                 self.msgPrint("Error: No file received")
@@ -505,6 +511,7 @@ class LpdAsicTester(object):
 
         currentState = self.appMain.pwrCard.lvEnableGet()        
         nextState = not currentState
+        print >> sys.stderr, "nextState, currentState: "
         self.appMain.pwrCard.lvEnableSet(nextState)
 
         stateNow = self.appMain.pwrCard.lvEnableGet()
@@ -534,14 +541,17 @@ class LpdAsicTester(object):
         # Loop over LHS and RHS power cards and update display
         for powerCard in range(self.appMain.pwrCard.numPowerCards):
 
-            paramName = 'asicPowerEnable' + str(powerCard)
-            self.lvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
+            #paramName = 'asicPowerEnable' + str(powerCard)
+            #self.lvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
+            self.lvState[powerCard] = 1
 
-            paramName = 'sensorBiasEnable' + str(powerCard)
-            self.hvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
-
-            paramName = 'sensorBias' + str(powerCard)
-            self.biasState[powerCard] = powerState[paramName]
+            #paramName = 'sensorBiasEnable' + str(powerCard)
+            #self.hvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
+            self.hvState[powerCard] = 1
+            
+            #paramName = 'sensorBias' + str(powerCard)
+            #self.biasState[powerCard] = powerState[paramName]
+            self.biasState[powerCard] = 1
 
         if self.lvState[0] != self.lvState[1]:
             self.msgPrint("LpdAsicTester Error: LV status mismatch between power card", bError=True)
@@ -550,8 +560,8 @@ class LpdAsicTester(object):
             self.msgPrint("LpdAsicTester Error: HV status mismatch between power card", bError=True)
 
     def checkLeakageCurrent(self):
-        ''' Check leakage current by looking at image 0 and image 3, comparing differences pixel by pixel '''
-        
+        ''' Check leakage current by looking at the first and the last image, comparing differences pixel by pixel '''
+        # Open datafile to find maximum train and image number
         self.train = 0
         self.image = 0
         # Check hdf5 filename exist before opening it
@@ -559,64 +569,62 @@ class LpdAsicTester(object):
             if not self.analyseFile():
                 self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
                 return -1
+
+            # Open again looking for the very last image (of the last train)
+            self.train = self.maxTrainNumber
+            self.image = self.maxImageNumber
+            self.analyseFile()
         else:
             self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
             return -1
-        # Save module data, then repeat for image 3
-        self.image0Data = self.moduleData
-        
-        # Repeat for image 3
-        self.image = 3
-        # Check hdf5 filename exist before opening it
-        if os.path.isfile(self.fileName):
-            if not self.analyseFile():
-                self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
-                return -1
-        else:
-            self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
-            return -1
-        # Save module data
-        self.image3Data = self.moduleData
 
-        # Create empty array 
-        leakageCurrentArray = np.zeros(32*128, dtype=np.uint16)
-        leakageCurrentArray = np.reshape(leakageCurrentArray, (32, 128))
-
-        # Note unconnected in an array (to fill the second plot: )
+        # Note unconnected in an array (to fill the second plot)
         unconnectedPixelsArray = np.zeros(32*128, dtype=np.uint16)
         unconnectedPixelsArray = np.reshape(unconnectedPixelsArray,(32, 128))
 
-        # Assuming image 3 contain higher values that image 0; Are there any negative values?
-        negativeValues = {}
+        # Note threshold in an array (to fill the third plot)
+        thresholdPixelsArray = np.zeros(32*128, dtype=np.uint16)
+        thresholdPixelsArray = np.reshape(thresholdPixelsArray,(32, 128))
+
+        numImagesPerTrain = self.maxImageNumber+1   # Numbering begins from  0..
+        
+        (rowStart, colStart) = self.asicStartingRowColumn(self.moduleNumber)
+        
+        # Open the current data file, reading in the data but skipping the first train
+        leakageFile = h5py.File(self.fileName, 'r')
+        leakageData = (leakageFile['/lpd/data/image'][numImagesPerTrain:,rowStart:rowStart+self.numRows, colStart:colStart+self.numCols] & 0xFFF)
+        resultArray = np.zeros((numImagesPerTrain, self.numRows, self.numCols))
+
+        # Work out the average of each image across the trains
+        for trig in range(numImagesPerTrain):
+            resultArray[trig,::] = np.mean(leakageData[trig::numImagesPerTrain,::],0)
+
+        self.firstImageAveraged = resultArray[0,:,:]    
+        self.lastImageAveraged = resultArray[numImagesPerTrain-1,:,:]
+
+#        (posCount, negCount) = (0, 0)
+        # The first image generally contains higher values than the last
         difference = 0
-        threshold = 20
-        # Simultaneously look for unconnected pixels
+        threshold = 300
         numUnconnectedPixels = 0
+
         for row in range(self.numRows):
             for column in range(self.numCols):
-                if self.image3Data[row][column] < self.image0Data[row][column]:
-                    difference = self.image0Data[row][column] - self.image3Data[row][column]
-                    negativeValues[(row, column)] = abs(difference)
-                    #print >> sys.stderr, "DIFF @ [{0:>2}][{1:>2}] = {2:>4}, self.image3Data: {3:>4}, self.image0Data, {4:>4}".format(row, column, difference, self.image3Data[row][column], self.image0Data[row][column])
-                else:
-                    difference = self.image3Data[row][column] - self.image0Data[row][column]
-                
+                difference = self.firstImageAveraged[row][column] - self.lastImageAveraged[row][column]
+                unconnectedPixelsArray[row][column] = abs(difference)
                 # If pixels differ by less than threshold, they are unconnected
                 if difference < threshold:
-                    unconnectedPixelsArray[row][column] = 1
+                    thresholdPixelsArray[row][column] = 1
                     numUnconnectedPixels += 1
-
-        # Go through each pixel and subject image 0's value from image 3's value
-        for row in range(self.numRows):
-            for column in range(self.numCols):
-                # Invert negative value(s) if present
-                if (row, column) in negativeValues:
-                    leakageCurrentArray[row][column] = negativeValues[(row, column)]
-                    continue
-                leakageCurrentArray[row][column] = self.image3Data[row][column] - self.image0Data[row][column]
+                
+#                if difference > 0:
+#                    posCount += 1
+#                else:
+#                    negCount += 1
+#        print >> sys.stderr, "positive versus negative: %d versus %d" % (posCount, negCount)
 
         # Signal hdf5 image (data)
-        self.appMain.asicWindow.dataSignal.emit(self.moduleData, unconnectedPixelsArray, self.moduleDescription, self.moduleNumber, "Leakage Current")
+        self.appMain.asicWindow.dataSignal.emit(self.moduleData, unconnectedPixelsArray, thresholdPixelsArray, self.moduleDescription, self.moduleNumber, threshold, "Leakage Current")
         return numUnconnectedPixels
         
     def checkOutOfRangePixels(self, train, image, miscDescription="", bSuppressPixelInfo=False):
@@ -669,7 +677,7 @@ class LpdAsicTester(object):
             faultyPixelsArray[row][column] = 1
 
         # Signal hdf5 image (data)
-        self.appMain.asicWindow.dataSignal.emit(self.moduleData, faultyPixelsArray, self.moduleDescription, self.moduleNumber, miscDescription)
+        self.appMain.asicWindow.dataSignal.emit(self.moduleData, faultyPixelsArray, faultyPixelsArray, self.moduleDescription, self.moduleNumber, -1, miscDescription)
 
     def analyseFile(self):
         ''' Open file, extracting one image along with meta data and calculate standard deviation and average '''
@@ -682,8 +690,10 @@ class LpdAsicTester(object):
                 imageNumber = hdfFile['/lpd/data/imageNumber'][...]
                 timeStamp   = hdfFile['/lpd/data/timeStamp'][...]
                 # Get max train and image number form arrays
-                self_maxTrainNumber = np.amax(trainNumber)
-                self_maxImageNumber = np.amax(imageNumber)
+                self.maxImageNumber = np.amax(imageNumber)
+                self.maxTrainNumber = np.amax(trainNumber)
+#                print >> sys.stderr, "self_MaxImageNumber: ", self.maxImageNumber
+#                print >> sys.stderr, "self_MaxTrainNumber: ", self.maxTrainNumber
                 # Read in the metadata
                 meta = hdfFile['/lpd/metadata']
                 # Parse the readout configuration XML blob
@@ -694,7 +704,7 @@ class LpdAsicTester(object):
                 # Get number of trains from metadata and check array against argument
                 numTrains = meta.attrs['numTrains']
                 # Calculate image offset into array and range check (should be OK)
-                imgOffset = (self.train * (self_maxImageNumber + 1)) + self.image
+                imgOffset = (self.train * (self.maxImageNumber + 1)) + self.image
                 if imgOffset > imageNumber.size:
                     self.msgPrint("Analysis Error: Requested image (%d) exceeds number of images available (%d)" \
                     % (imgOffset, imageNumber.size), bError=True)
@@ -859,7 +869,9 @@ class LpdAsicTester(object):
                           #'sensorBiasVoltage', 'sensorBiasCurrent', 'sensorBiasEnable', 'asicPowerEnable', 'powerCardFault', 
                           #'powerCardFemStatus', 'powerCardExtStatus', 'powerCardOverCurrent', 'powerCardOverTemp', 'powerCardUnderTemp'
                           ]
-
+        
+        # Fix while PowerCard is absent:
+        (results['sensorBias0'], results['sensorBias1']) = (-1, -1)
         for sensor in range(numSensors):
             
             for paramType in TVCparamsTypes:
@@ -873,7 +885,7 @@ class LpdAsicTester(object):
                     errorCount += 1
                     if errorCount > 2:
                         self.msgPrint("readPowerCards Exception: Detected three errors, aborting..", bError=True)
-                        return []
+                        return results #[]
         
         for powerCard in range(numPowerCards):
             
@@ -888,7 +900,7 @@ class LpdAsicTester(object):
                     errorCount += 1
                     if errorCount > 2:
                         self.msgPrint("readPowerCards Exception: Found three errors, aborting..", bError=True)
-                        return []
+                        return results #[]
         return results
 
     def readCurrent(self):

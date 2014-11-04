@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="Command_LongExposure_V2.xml"
+<lpd_command_sequence name="Command_Testing_ShortExposure_V2.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 
@@ -25,31 +25,25 @@
 	<nop/>
 	<sync_reset/>
 	<nop/>
-	<on_chip_reset_disable/>
+	<on_chip_reset_enable/>
 	<nop/>
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>
 	<clear_skip_register/>
-	<nop/>
-	<reset_pre_amp/>
-	<reset_gain_front/>
-	<reset_gain_back/>
 	<start_write_pointer/>
-	<remove_reset_pre_amp/>
-	<remove_reset_gain_stage1/>
-	<remove_reset_gain_stage2/>
+	<nop/>
+	<nop/>
 	<start_trigger_pointer/> 
+	<nop/>
 	<trigger_section>
-	  <nop count="2"/> <!-- was 30 -->
 	  <trigger_flag_set/>
-	  <nop count="100"/>
 	  <trigger_flag_set/>
-	  <nop count="100"/>
 	  <trigger_flag_set/>
-	  <nop count="100"/> <!-- was 10 -->
 	  <trigger_flag_set/>
-	  <nop count="2"/>
 	</trigger_section>
+	<nop/>
+	<nop/>
+	<on_chip_reset_disable/>
 	<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>
@@ -58,6 +52,7 @@
 	<nop/>
 	<nop/>
 	<nop/>
+	<!--nop/-->
 	<sync_reset/>
 	<nop/>
 	<read_out_data/>
@@ -67,8 +62,50 @@
 		<nop/>
 		<nop count="838"/>
 	</loop>
-    <nop count="30"/>   # one extra row
+    <nop count="31"/>   # one extra row
 	<stop_read_out/>
 	<nop count="33"/>
+
+	<!-- Matt's configuration:	
+	Auto Resets – Short Exposures
+	Part 1 (100MHz)
+	Sync Reset
+	NOP
+	Reset SM
+	Sync Reset
+	NOP
+	On chip rst en
+	NOP
+	Rst write ptr
+	Rst trig ptr
+	Clr skip reg
+	Start wrt ptr
+	NOP
+	NOP
+	Start trig ptr
+	NOP
+	Trig flag set
+	Trig flag set
+	Trig flag set
+	Trig flag set
+	NOP
+	NOP
+	On chip rst dis
+	Rst preamp
+	Rst gain front
+	Rst gain back
+	Rst write ptr
+	Rst trig ptr
+	NOP
+	Asic slow readout
+	Part 2 (6MHz)
+	NOP
+	Sync reset
+	NOP
+	Read out data
+	NOP x 3500
+	Stop read out
+	NOP x 33
+	-->
 </lpd_command_sequence>
 	

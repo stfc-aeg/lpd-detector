@@ -517,7 +517,7 @@ class LpdAsicSetupParams(object):
                                                 
                 if self.bDebug and (key in self.debugKeys): print "Compare: '%s' value:\n" % sectionKey, sectionKeyValue[LpdAsicSetupParams.VALUES][0][0], "\n"
                     
-        # Check keys that doesn't end in _default and set any the remaining -1 value(s) to 0
+        # Check keys that doesn't end in _default and set any remaining -1 value(s) to 0
         for key in self.paramsDict:
 
             if key.endswith("_default") is False:

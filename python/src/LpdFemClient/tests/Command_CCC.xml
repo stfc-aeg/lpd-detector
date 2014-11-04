@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="Command_LongExposure_V2.xml"
+<lpd_command_sequence name="Command_CCC.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 
@@ -21,36 +21,30 @@
 	<nop/>
 	<sync_reset/>
 	<nop/>
-	<reset_state_machine/>
+	<!--<reset_state_machine/>
 	<nop/>
 	<sync_reset/>
 	<nop/>
-	<on_chip_reset_disable/>
+	<on_chip_reset_enable/>
 	<nop/>
 	<reset_write_pointer/>
 	<reset_trigger_pointer/>
 	<clear_skip_register/>
-	<nop/>
-	<reset_pre_amp/>
-	<reset_gain_front/>
-	<reset_gain_back/>
 	<start_write_pointer/>
-	<remove_reset_pre_amp/>
-	<remove_reset_gain_stage1/>
-	<remove_reset_gain_stage2/>
+	<nop/>-->
+	<nop/>
 	<start_trigger_pointer/> 
-	<trigger_section>
-	  <nop count="2"/> <!-- was 30 -->
-	  <trigger_flag_set/>
-	  <nop count="100"/>
-	  <trigger_flag_set/>
-	  <nop count="100"/>
-	  <trigger_flag_set/>
-	  <nop count="100"/> <!-- was 10 -->
-	  <trigger_flag_set/>
-	  <nop count="2"/>
-	</trigger_section>
-	<reset_pre_amp/>
+	<nop/>
+	<start_ccc_insertion/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<stop_ccc_insertion/>
+	<nop/>
+	<nop/>
+	<on_chip_reset_disable/>
+	<!--<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>
 	<reset_write_pointer/>
@@ -59,7 +53,7 @@
 	<nop/>
 	<nop/>
 	<sync_reset/>
-	<nop/>
+	<nop/>-->
 	<read_out_data/>
 	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
         840 NOPs per image (512 pixels x 3 x 12 bits) -->
@@ -67,7 +61,7 @@
 		<nop/>
 		<nop count="838"/>
 	</loop>
-    <nop count="30"/>   # one extra row
+    <nop count="31"/>   # one extra row
 	<stop_read_out/>
 	<nop count="33"/>
 </lpd_command_sequence>

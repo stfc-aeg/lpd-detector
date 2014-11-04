@@ -235,10 +235,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             self.ui.sensorBondingBtn.setEnabled(True)
 
             # Setup logger at this point, regardless
-#            if self.logger is None:
             self.createLogger()
 
-        QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: '" + moduleNumber + "')")
+        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: '" + moduleNumber + "')")
 
 
     def moduleTypeUpdate(self):

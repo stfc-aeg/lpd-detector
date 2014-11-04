@@ -25,6 +25,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
 
     REALIMAGE   = 0
     FAULTYIMAGE = 1
+    THRESHIMAGE = 2
 
     RHS_MODULE = 15
     LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
@@ -34,7 +35,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     moduleSignal    = QtCore.pyqtSignal(object)
     timeStampSignal = QtCore.pyqtSignal(object)
     logPathSignal   = QtCore.pyqtSignal(str)
-    dataSignal      = QtCore.pyqtSignal(object, object, str, int, str)
+    dataSignal      = QtCore.pyqtSignal(object, object, object, str, int, int, str)
     
     matplotlib.rcParams.update({'font.size': 8})
     
@@ -71,9 +72,10 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
 
         # Obtain default colour map before creating plots
         defaultColourMap = cm.get_cmap()
-        for idx in range(2):
+        numberPlots = 3
+        for idx in range(numberPlots):
             
-            axesObject = self.fig.add_subplot(2, 1, idx+1)
+            axesObject = self.fig.add_subplot(numberPlots, 1, idx+1)
             self.axes.extend([axesObject])
 
             # Disable up the X and Y ticks
@@ -88,17 +90,23 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
                 vMax = '4095'
                 cMap = defaultColourMap
                 cTicks = [0, 511, 1023, 1535, 2047, 2559, 3071, 3583, 4095]
-            else:
-                vMax = '1'
+            elif idx == 1:
+                maximum = 2000
+                vMax = str(maximum)
                 cMap = 'binary'
-                cTicks = [0, 1]
+                cTicks = [0, int(maximum/4), int(maximum/2), int(3*maximum/4), maximum]
+            else:
+                maximum = 1
+                vMax = str(maximum)
+                cMap = 'binary'
+                cTicks = [0, maximum]
 
             imgObject = self.axes[idx].imshow(self.data, cmap=cMap, interpolation='nearest', vmin='0', vmax=vMax)
             self.img.extend([imgObject])
 
-            # Create nd show a colourbar
-            axc, kw = matplotlib.colorbar.make_axes(self.axes[idx], orientation='horizontal')
-            cb = matplotlib.colorbar.Colorbar(axc, self.img[idx], orientation='horizontal')
+            # Create and show a colourbar
+            axc, kw = matplotlib.colorbar.make_axes(self.axes[idx], orientation='vertical')
+            cb = matplotlib.colorbar.Colorbar(axc, self.img[idx], orientation='vertical')
             cb.set_ticks(ticks=cTicks, update_ticks=True)
             self.img[idx].colorbar = cb
 
@@ -156,7 +164,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 
-    def windowUpdate(self, lpdActualImage, lpdFaultyImage, moduleDescription, moduleNumber, miscDescription):
+    def windowUpdate(self, lpdActualImage, lpdFaultyImage, lpdThresholdImage, moduleDescription, moduleNumber, thresholdLevel, miscDescription):
 
         #print >> sys.stderr, "moduleDescription ", moduleDescription, " \nmoduleNumber", moduleNumber, "\nmiscDescription", miscDescription
         # Convert module number into the string e.g. "RHS"
@@ -175,8 +183,17 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         self.img[LpdFemGuiAsicWindow.FAULTYIMAGE].set_data(lpdFaultyImage)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
-        self.titleText = 'Module %s: Map of faulty pixel(s)' % (self.moduleDescription+self.moduleString)
+        self.titleText = 'Module %s: Faulty pixel(s)' % (self.moduleDescription+self.moduleString)
         self.axes[LpdFemGuiAsicWindow.FAULTYIMAGE].set_title(self.titleText)
+
+        # Plot the black/white image of dead pixels AFTER THRESHOLD APPLIED
+
+        self.img[LpdFemGuiAsicWindow.THRESHIMAGE].set_data(lpdThresholdImage)
+
+        dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(self.timeStamp))
+        self.titleText = 'Faulty pixel(s) above threshold: %s' % (thresholdLevel)
+        self.axes[LpdFemGuiAsicWindow.THRESHIMAGE].set_title(self.titleText)
+
         self.canvas.draw()
 
         # Save image to hdf5 file (but not the black/white image)
