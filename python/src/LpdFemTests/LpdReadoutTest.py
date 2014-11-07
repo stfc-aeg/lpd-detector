@@ -232,7 +232,9 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             paramExpertVariables = ['tenGig0SourceMac', 'tenGig0SourceIp', 'tenGig0SourcePort', 'tenGig0DestMac', 'tenGig0DestIp', 'tenGig0DestPort', 'tenGig0DataFormat',
                                     'tenGig0DataGenerator', 'tenGig0FrameLength', 'tenGig0NumberOfFrames', 'tenGigFarmMode', 'tenGigInterframeGap', 'tenGigUdpPacketLen', 
                                     'femAsicSetupClockPhase', 'femAsicVersion', 'femDebugLevel', 'femEnableTenGig',
-                                    'femStartTrainPolarity', 'femVetoPolarity']
+                                    'femStartTrainPolarity', 'femVetoPolarity',
+                                    'cccSystemMode', 'cccCommandGenerate', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay']
+
 
         for param in paramExpertVariables:
             (rc, value) = theDevice.paramGet(param)

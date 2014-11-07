@@ -23,10 +23,8 @@ class LpdAsicBunchPattern():
         self.strict = strict
         
         # Dictionary of fast commands and their associated values
-        self.cmdDict = { 'veto'                      : 0x00#, 
-                         #'stand_by'                 : 0x01, 
-                      }
-                
+        self.cmdDict = { 'veto'                      : 0x00}
+
         # Parse the XML specified, either from a file if the fromFile flag
         # was set or from the string passed
         if fromFile == True:
@@ -58,7 +56,7 @@ class LpdAsicBunchPattern():
     def parseElement(self, theElement):
         '''
         Parses an element (partial tree) of the XML values
-        into the appropriate pattern(s)' word(s) and returning them.
+        into the appropriate pattern(s)' word(s) and returns them.
         '''
 
         # Initialise empty list to contain 96 (32-bit) words * 10 patterns
@@ -70,12 +68,13 @@ class LpdAsicBunchPattern():
             # Get the command name (tag) for the current element
             cmd = child.tag
             
-            # Put value into pattern/word as specified. Note that a specific value
-            # (pattern and word specified) takes precedence over blanket settings
-            # (i.e. either/both pattern, word omitted).
-            # Raise an exception if command isn't recognised and strict syntax enabled
+            # Put value into pattern/word as specified. Omitting word will fill all words
+            # within same pattern, omitting pattern will fill specified word across all 
+            # patterns. Omitting both pattern and word will set all words in all patterns.
+            # 
+            # Note that the XML is passed in the order of the file, so the convention is to
+            # set values across multiple patterns/words, and then set specific words
             
-            #TODO: The above Note is easier said then done though isn't it?
             if cmd in self.cmdDict:
             
                 # Get count and NOP attributes    
@@ -85,9 +84,8 @@ class LpdAsicBunchPattern():
                 
                 if value == -1:
                     raise LpdAsicBunchPatternError('Error XML tag %s missing value attribute' % cmd)
-                else:
-                    print "%s, pattern = %d, word = %d, value = %d" % (cmd, pattern, word, value)
-                
+#                else:
+#                    print "%s, pattern = %d, word = %d, value = %d" % (cmd, pattern, word, value)
                 
                 if pattern != -1:
                     # pattern specified
@@ -102,7 +100,6 @@ class LpdAsicBunchPattern():
                             encodedSequence[index] = value                            
                 else:
                     # pattern not specified 
-                
                     if word != -1:
                         # Not pattern, but word specified
                         for pattern in range(10):
@@ -114,7 +111,6 @@ class LpdAsicBunchPattern():
                             for word in range(96):
                                 index = (pattern * 96) + (word)
                                 encodedSequence[index] = value                            
-
             else:
                 if self.strict:
                     raise LpdAsicBunchPatternError('Illegal command %s specified' % (child.tag))
@@ -170,65 +166,53 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
         with self.assertRaises(LpdAsicBunchPatternError):
             stringCmdSeq.encode()
 
-#    def testsDevelopment(self):
-#        '''
-#        Test whether the latest commands will work
-#        '''
-#        
-#        # Command sequence definition to encode
-#        stringCmdXml = '''<?xml version="1.0"?>
-#                            <lpd_bunch_pattern name="testsDevelopment">
-#                                <veto pattern="0" word="0" value="0x10"/>
-#                                <veto pattern="0" word="1" value="0x20"/>
-#                                <veto pattern="0" word="2" value="0x30"/>
-#                                <veto pattern="0" word="95" value="0x40"/>
-#                                
-#                                <veto pattern="1" word="1" value="0x11"/>
-#                                <veto pattern="1" word="0" value="0x21"/>
-#                                <veto pattern="1" word="1" value="0x31"/>
-#                                <veto pattern="2" word="0" value="0x12"/>
-#                                <veto pattern="2" word="1" value="0x22"/>
-#                            </lpd_bunch_pattern>
-#        '''
-#        # Parse XML and encode
-#        stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
-#        stringEncodedSeq = stringCmdSeq.encode()
-#        
-#        expectedSeq = [0x221000,  0x222000,  0x223000,  0x224000,  0x225000,  0x200000]
-#
-#        print "testsDevelopment: \n ", stringEncodedSeq[:96], "\n ", stringEncodedSeq[96:192]
-
-    def testCCC_Complete(self):
+    def testCCC_xml(self):
         '''
             Sanity check..
         '''
 
         # Command sequence definition to encode
         stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_bunch_pattern name="testsDevelopment">
+                            <lpd_bunch_pattern name="testCCC_xml">
+                                <veto pattern="3"          value="0x30"/>
+                                <veto             word="1" value="0x20"/>
                                 <veto pattern="0" word="0" value="0x10"/>
                             </lpd_bunch_pattern>
         '''
-#                                <veto pattern="0" word="1" value="0x20"/>
-#                                <veto pattern="0" word="2" value="0x30"/>
-#                                <veto pattern="0" word="95" value="0x40"/>
-#                                
-#                                <veto pattern="1" word="1" value="0x11"/>
-#                                <veto pattern="1" word="0" value="0x21"/>
-#                                <veto pattern="1" word="1" value="0x31"/>
-#                                <veto pattern="2" word="0" value="0x12"/>
-#                                <veto pattern="2" word="1" value="0x22"/>
 
         # Parse XML and encode
         stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
         stringEncodedSeq = stringCmdSeq.encode()
         
-        expectedSeq = [0x221000,  0x222000,  0x223000,  0x224000,  0x225000,  0x200000]
+        expectedSeq = [0] * 960
+        expectedSeq[0] = 16
+        for index in range(96*3, 96*4, 1):
+            expectedSeq[index] = 48
+        for index in range(1, 960, 96):
+            expectedSeq[index] = 32
 
-        print "\nPattern 0: ", stringEncodedSeq[:96]
-        print "Pattern 1: ", stringEncodedSeq[96:192]
-        print "Pattern 2: ", stringEncodedSeq[192:288]
+        self.assertEqual(stringEncodedSeq, expectedSeq, "Mismatch between encoded and expected strings")
 
+
+    def test_FillingAllWords(self):
+        '''
+            Sanity check..
+        '''
+
+        # Command sequence definition to encode
+        stringCmdXml = '''<?xml version="1.0"?>
+                            <lpd_bunch_pattern name="test_FillingAllWords">
+                                <veto   value="0xF0F0F0F0"/>
+                            </lpd_bunch_pattern>
+        '''
+
+        # Parse XML and encode
+        stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
+        stringEncodedSeq = stringCmdSeq.encode()
+        
+        expectedSeq = [0xF0F0F0F0] * 960
+
+        self.assertEqual(stringEncodedSeq, expectedSeq, "Mismatch between encoded and expected strings")
 
 
 if __name__ == '__main__':

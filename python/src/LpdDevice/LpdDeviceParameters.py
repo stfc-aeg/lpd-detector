@@ -635,8 +635,8 @@ class LpdDeviceParameters(object):
                                                                           (0, 1), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femModuleId']                  = AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
-                                                                #= AttributeContainer([uint32]*16, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
+        self.expectedParameters['femModuleId']                  = AttributeContainer([uint32]*16, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
+                                                                #= AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
                                                                           0, 4294967295,  None,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
@@ -652,7 +652,7 @@ class LpdDeviceParameters(object):
                                                                           (True, False), None, False,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['cccOverrideNumberImages']        = AttributeContainer(uint32, 'cccOverrideNumberImages', 'ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=Use numberImages, False=C&C decides',
+        self.expectedParameters['cccProvideNumberImages']         = AttributeContainer(bool, 'cccProvideNumberImages', 'ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages',
                                                                           (True, False), None, False,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 

@@ -279,3 +279,4 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.testMsgPrint("Logging Operator: '%s'" % str(self.ui.operatorEdit.text()))
         self.testMsgPrint("Logging Module: '%s'" % str((self.ui.moduleNumberEdit.text()) + self.moduleString))
         self.testMsgPrint("Logging Comment: '%s'" % str(self.ui.commentEdit.text()))
+

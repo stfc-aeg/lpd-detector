@@ -181,6 +181,18 @@ class LpdFemClient(FemClient):
         self.femDebugLevel              = 0     # higher values more print out
         #TODO: To be implemented: ??
         self.femPpcMode                 = 0     # 0 = Single Train Shot with PPC reset, 1 = Continuous readout (not working yet)
+
+#========================================= Waiting John's CCC software implementation =========================================# 
+        
+        self.femModuleId            = [0] * 16
+        self.cccSystemMode          = 1
+        self.cccCommandGenerate     = True
+        self.cccProvideNumberImages = True
+        self.cccVetoStartDelay      = 0
+        self.cccStopDelay           = 0
+        self.cccResetDelay          = 0
+
+#========================================= Waiting John's CCC software implementation =========================================# 
         
 #======== params for 10G data links
         self.tenGigFarmMode             = 1     # 1 = non farm mode (1 ip host/port per link), 2 = farm mode (fixed ip host/multiple ports), 3 = farm mode with nic lists
@@ -2271,87 +2283,82 @@ class LpdFemClient(FemClient):
         '''
             Get the fem module ID
         '''
-        #TODO: Review if ID should be list of 16 entries (for megapixel detector)
-        #TODO: Create this variable
-        return self.fem_module_id
+        return self.femModuleId
 
     def femModuleIdSet(self, aValue):
         '''
             Set the fem module ID
         '''
-        #TODO: Review if ID should be list of 16 entries (for megapixel detector)
-        self.fem_module_id = aValue
+        self.femModuleId = aValue
 
     def cccSystemModeGet(self):
         ''' 
             Get the C&C System Mode
         '''
-        #TODO: Create this variable
-        return self.ccc_system_mode
+        return self.cccSystemMode
 
     def cccSystemModeSet(self, aValue):
         ''' 
             Set the C&C System Mode
         '''
-        self.ccc_system_mode = aValue
+        self.cccSystemMode = aValue
     
     def cccCommandGenerateGet(self):
-        ''' 
+        '''
             Get the C&C Command Generate Status
         '''
-        return self.use_ccc_cmd_gen
+        return self.cccCommandGenerate
     
     def cccCommandGenerateSet(self, aValue):
-        ''' 
+        '''
             Set the C&C Command Generate Status
         '''
-        self.use_ccc_cmd_gen = aValue
+        self.cccCommandGenerate = aValue
     
-    def cccOverrideNumberImagesGet(self):
-        ''' 
+    def cccProvideNumberImagesGet(self):
+        '''
             Get the C&C Override Number of Images Status
         '''
-        return self.override_asicrx_ncols
+        return self.cccProvideNumberImages
     
-    def cccOverrideNumberImagesSet(self, aValue):
-        ''' 
+    def cccProvideNumberImagesSet(self, aValue):
+        '''
             Set the C&C Override Number of Images Status
         '''
-        self.override_asicrx_ncols = aValue
+        self.cccProvideNumberImages = aValue
         
     def cccVetoStartDelayGet(self):
         ''' 
             Get the C&C Veto Start Delay
         '''
-        return self.ccc_veto_start_delay
+        return self.cccVetoStartDelay
     
     def cccVetoStartDelaySet(self, aValue):
         ''' 
             Set the C&C Veto Start Delay
         '''
-        self.ccc_veto_start_delay = aValue
+        self.cccVetoStartDelay = aValue
         
     def cccStopDelayGet(self):
         ''' 
             Get the C&C Stop Delay
         '''
-        return self.ccc_stop_delay
+        return self.cccStopDelay
     
     def cccStopDelaySet(self, aValue):
         ''' 
             Set the C&C Stop Delay
         '''
-        self.ccc_stop_delay = aValue
+        self.cccStopDelay = aValue
         
     def cccResetDelayGet(self):
         ''' 
             Get the C&C Reset Delay
         '''
-        #TODO: Create this variable
-        return self.ccc_reset_delay
+        return self.cccResetDelay
     
     def cccResetDelaySet(self, aValue):
         ''' 
             Set the C&C Reset Delay 
         '''
-        self.ccc_reset_delay = aValue
+        self.cccResetDelay = aValue
