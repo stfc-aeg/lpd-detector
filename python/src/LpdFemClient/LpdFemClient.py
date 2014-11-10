@@ -191,7 +191,8 @@ class LpdFemClient(FemClient):
         self.cccVetoStartDelay      = 0
         self.cccStopDelay           = 0
         self.cccResetDelay          = 0
-
+        self.cccVetoPatternFile     = "UNDEFINED.xml"
+        
 #========================================= Waiting John's CCC software implementation =========================================# 
         
 #======== params for 10G data links
@@ -2362,3 +2363,15 @@ class LpdFemClient(FemClient):
             Set the C&C Reset Delay 
         '''
         self.cccResetDelay = aValue
+        
+    def cccVetoPatternFileGet(self):
+        ''' 
+            Get the C&C veto pattern xml file
+        '''
+        return self.cccVetoPatternFile
+    
+    def cccVetoPatternFileSet(self, aValue):
+        ''' 
+            Set the C&C veto pattern xml file 
+        '''
+        self.cccVetoPatternFile = aValue

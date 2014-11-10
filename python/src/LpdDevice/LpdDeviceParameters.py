@@ -668,6 +668,9 @@ class LpdDeviceParameters(object):
                                                                           0, 4294967295,  None,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
+        self.expectedParameters['cccVetoPatternFile']             = AttributeContainer(uint32, 'cccVetoPatternFile', 'Filename containing the veto bunch pattern (10 patterns, 3072 bits each)',
+                                                                          None, None, 'vetoBunchPattern.xml',
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         # 
         # Firmware version variables - used to obtain read only, firmware version numbers
