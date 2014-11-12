@@ -214,6 +214,12 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
 
         self.assertEqual(stringEncodedSeq, expectedSeq, "Mismatch between encoded and expected strings")
 
+    def test_file(self):
+        '''
+            Test parsing XML file
+        '''
+        fileCmdSeq = LpdAsicBunchPattern("/u/ckd27546/workspace/lpdSoftware/LpdFemClient/tests/veto_file_test.xml", fromFile=True)
+        fileEncodedSeq = fileCmdSeq.encode()
 
 if __name__ == '__main__':
          
