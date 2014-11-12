@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+    <xs:element name="lpd_bunch_pattern">
+        <xs:complexType>
+            <xs:choice maxOccurs="unbounded">
+                <xs:element ref="veto"/>
+            </xs:choice>
+            <xs:attribute name="name" use="required"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="clear_skip_register">
+        <xs:complexType/>
+    </xs:element>
+	<!-- Probably redundant: ?	
+    <xs:element name="nop">
+        <xs:complexType>
+                <xs:choice maxOccurs="unbounded">
+                <xs:element ref="clear_skip_register"/>
+                <xs:element ref="nop"/>
+                <xs:element ref="on_chip_reset_disable"/>
+                <xs:element ref="read_out_data"/>
+                <xs:element ref="reset_gain_back"/>
+                <xs:element ref="reset_gain_front"/>
+                <xs:element ref="reset_pre_amp"/>
+                <xs:element ref="reset_state_machine"/>
+                <xs:element ref="reset_trigger_pointer"/>
+                <xs:element ref="reset_write_pointer"/>
+                <xs:element ref="stand_by"/>
+                <xs:element ref="start_trigger_pointer"/>
+                <xs:element ref="start_write_pointer"/>
+                <xs:element ref="stop_read_out"/>
+                <xs:element ref="stop_readout"/>
+                <xs:element ref="sync_reset"/>
+                <xs:element ref="trigger_flag_set"/>
+                <xs:element ref="loop"/>
+            </xs:choice>
+            <xs:attribute name="count" type="xs:integer"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="loop">
+    	<xs:complexType/>
+    </xs:element>
+    -->
+</xs:schema>
