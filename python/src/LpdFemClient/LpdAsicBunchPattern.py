@@ -221,6 +221,17 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
         fileCmdSeq = LpdAsicBunchPattern("/u/ckd27546/workspace/lpdSoftware/LpdFemClient/tests/veto_file_test.xml", fromFile=True)
         fileEncodedSeq = fileCmdSeq.encode()
 
+        expectedSeq = [0xFFFFFFFF]  * 960
+        expectedSeq[0] = 0x0
+        expectedSeq[2] = 0x0
+        for index in range(96*1, 96*2, 1):
+            expectedSeq[index] = 0xAAAAAAAA
+        for index in range(96*2, 96*3, 1):
+            expectedSeq[index] = 0x55555555
+        
+        self.assertEqual(fileEncodedSeq, expectedSeq, "Error parsing file; mismatch between encoded and expected strings")
+
+
 if __name__ == '__main__':
          
     unittest.main()
