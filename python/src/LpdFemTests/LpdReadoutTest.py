@@ -94,7 +94,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         tenGigSourceIp = destIp
     else:
         tenGigSourceIp = tenGigConfig.obtainDestIpAddress(tenGigDestIp)
-        
+
     rc = theDevice.open(femHost, femPort)
     if rc != LpdDevice.ERROR_OK:
         print "Failed to open FEM device [%s:%s]: %s" % (femHost, femPort, theDevice.errorStringGet())

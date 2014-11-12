@@ -3,6 +3,7 @@
 <lpd_readout_config name="readoutConfiguration.xml">
 
     <!-- 'Expert' Variables: -->
+    <cccVetoPatternFile type="str" val="Config/VetoPatterns/veto_file_test.xml"/>
     <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
     <!--<tenGig0SourceIp type="str" val="10.0.0.2"/> -->          <!-- Machine specific, set by LpdReadoutTest -->
     <tenGig0SourcePort type="int" val="0"/>
