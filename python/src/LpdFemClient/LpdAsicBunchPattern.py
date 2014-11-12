@@ -6,6 +6,7 @@ Created on 20 Apr 2012
 
 from xml.etree.ElementInclude import ElementTree
 from xml.etree.ElementTree import ParseError
+import os # os.getcwd()
 
 class LpdAsicBunchPatternError(Exception):
     
@@ -218,7 +219,8 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
         '''
             Test parsing XML file
         '''
-        fileCmdSeq = LpdAsicBunchPattern("/u/ckd27546/workspace/lpdSoftware/LpdFemClient/tests/veto_file_test.xml", fromFile=True)
+        currentDir = os.getcwd()
+        fileCmdSeq = LpdAsicBunchPattern(currentDir + "/tests/veto_file_test.xml", fromFile=True)
         fileEncodedSeq = fileCmdSeq.encode()
 
         expectedSeq = [0xFFFFFFFF]  * 960
