@@ -267,7 +267,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         if rc != LpdDevice.ERROR_OK:
             print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         else:
-            print "{0:<32} = [{1:<8X}, {1:<8X}, {1:<8X}, {1:<8X}]".format(param,value[0], value[1], value[2], value[3])
+            print "{0:<32} = [{1:<8X}, {2:<8X}, {3:<8X}, {4:<8X}]".format(param, value[0], value[1], value[2], value[3])
     
         # Check XML string variables read back, but don't display their [long-winded] XML strings
         paramUserExtraVariables = ['femAsicCmdSequence',  'femAsicSetupParams'] 
