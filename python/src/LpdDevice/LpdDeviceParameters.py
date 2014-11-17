@@ -648,7 +648,7 @@ class LpdDeviceParameters(object):
                                                                           0, 4294967295,  None,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['cccCommandGenerate']             = AttributeContainer(bool, 'cccCommandGenerate', 'Enable to emulate Clock & Control commands (for testing in absence of C&C)',
+        self.expectedParameters['cccEmulationMode']               = AttributeContainer(bool, 'cccEmulationMode', 'Enable to emulate Clock & Control commands (for testing in absence of C&C)',
                                                                           (True, False), None, False,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 

@@ -186,7 +186,7 @@ class LpdFemClient(FemClient):
         
         self.femModuleId            = [0] * 16
         self.cccSystemMode          = 1
-        self.cccCommandGenerate     = True
+        self.cccEmulationMode     = True
         self.cccProvideNumberImages = True
         self.cccVetoStartDelay      = 0
         self.cccStopDelay           = 0
@@ -2304,17 +2304,17 @@ class LpdFemClient(FemClient):
         '''
         self.cccSystemMode = aValue
     
-    def cccCommandGenerateGet(self):
+    def cccEmulationModeGet(self):
         '''
-            Get the C&C Command Generate Status
+            Get the C&C Emulation Mode Status
         '''
-        return self.cccCommandGenerate
+        return self.cccEmulationMode
     
-    def cccCommandGenerateSet(self, aValue):
+    def cccEmulationModeSet(self, aValue):
         '''
-            Set the C&C Command Generate Status
+            Set the C&C Emulation Mode Status
         '''
-        self.cccCommandGenerate = aValue
+        self.cccEmulationMode = aValue
     
     def cccProvideNumberImagesGet(self):
         '''
