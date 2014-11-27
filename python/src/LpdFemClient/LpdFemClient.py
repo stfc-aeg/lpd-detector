@@ -253,9 +253,14 @@ class LpdFemClient(FemClient):
         
         self.CCC_PATTERN_VETO_BRAM_SIZE_BYTES = 1024
 
+        self.NR_CCC_VETO_PATTERNS = 10
+        self.NR_WORDS_PER_CCC_VETO_PATTERN = 96  # size of pattern in bram words
+
 
 #----       
         self.sp3_io_bot_firmware_modules = 0
+        
+        self.STOP_RUN_ON_ESC_KEY = False    # Set False if running with Gui ; True
 
 #=========================================================================================================              
        
@@ -853,7 +858,7 @@ class LpdFemClient(FemClient):
             print "Resetting PPC Nr %d.." %ppc_nr
         else:
             print "WARNING No PPC Reset . Unrecognised PPC Nr  %d.." %ppc_nr
-            return 1
+            return
         
         theDelay = self.femPpcResetDelay
 
@@ -875,10 +880,10 @@ class LpdFemClient(FemClient):
         ''' Configure asic modules '''
 
 #########################################################        
-## SLOW Control Setup
+## ASIC Parameters Setup
 #########################################################        
 
-        print "ASIC Parameters Setup"
+        print "Prepare and Load ASIC Parameters"
         
         # Phase delay of sync of slow clock wrt asic reset
         self.rdmaWrite(self.fem_ctrl_0+13, self.femAsicSetupClockPhase)
@@ -997,10 +1002,10 @@ class LpdFemClient(FemClient):
  
 
 #########################################################        
-## FAST Command Setup
+## Asic Command Sequence Setup
 #########################################################        
 
-        print "ASIC Fast Command Setup "
+        print "Prepare ASIC Command Sequence"
 
         self.toggle_bits(self.fem_ctrl_0+11, 23)    # main reset ccc 
 
@@ -1148,7 +1153,7 @@ class LpdFemClient(FemClient):
 
         cccEna = True 
         if self.femDebugLevel > 1:
-            print "---------------------\nClock and control is set to be ", cccEna, "\n---------------------"
+            print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
         fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
         encodedSequenceComplete  = fileCmdSeqComplete.encode()
         nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
@@ -1170,7 +1175,7 @@ class LpdFemClient(FemClient):
 
             cccEna = False          
             if self.femDebugLevel > 1:
-                print "---------------------\nClock and control is set to be ", cccEna, "\n---------------------"
+                print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
             fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
             encodedSequenceComplete  = fileCmdSeqComplete.encode()
             nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
@@ -1236,12 +1241,13 @@ class LpdFemClient(FemClient):
             print "ccc_start_delay =%d  [$%08x]: " % (ccc_start_delay, ccc_start_delay)
 
 # TESTING veto logic
-  # ccc stop is now derived from same source as start ; add a fixed delay to force a stop after some specificed nr of trigger/vetos
-        nr_bunch_cmds_before_stop = self.NR_BUNCHES_IN_TRAIN 
-        ccc_stop_delay = self.cccVetoStartDelay + self.NR_CLOCKS_PER_FAST_CMD * nr_bunch_cmds_before_stop 
+  # add a fixed delay to force a stop after some specificed nr of trigger/vetos
+        #nr_bunch_cmds_before_stop = self.NR_BUNCHES_IN_TRAIN 
+        #self.cccStopDelay = self.cccVetoStartDelay + self.NR_CLOCKS_PER_FAST_CMD * nr_bunch_cmds_before_stop 
           
-        #self.rdmaWrite(self.ccc_delay_reg + 2, ccc_stop_delay)   # stop delay                  
-        #print "ccc_stop_delay =%d: " %(ccc_stop_delay)
+        self.rdmaWrite(self.ccc_delay_reg + 2, self.cccStopDelay)   # stop delay now from api                
+        if self.femDebugLevel >= 3:
+            print "ccc_stop_delay =%d: " %(self.cccStopDelay)
        
      
         # clear the bram to ensure no leftover commands from earlier runs  
@@ -1356,15 +1362,9 @@ class LpdFemClient(FemClient):
 
         if self.femDebugLevel >= 0:
             print "Set up NEW CCC Veto pattern bram config"
-        # 10 possible patterns can be stored in the BRAM
+        # Up to 10 possible patterns can be stored in the BRAM
         # using default offsets set by f/w
-        
-        pattern_length = self.NR_BUNCHES_IN_TRAIN
-        #nr_words = pattern_length/32
-        
-        nr_words_in_pattern = 0x60  # size of pattern in bram words
-        nr_patterns = 10
-
+                
         # Load the Veto Pattern BRAM with sequences
         # Just pattern id = 1 to start with
         pattern_offset = 0
@@ -1373,14 +1373,22 @@ class LpdFemClient(FemClient):
         # zero the bram so default is to allow all C&C triggers
         self.zero_regs(start_addr, self.CCC_PATTERN_VETO_BRAM_SIZE_BYTES)  
 
-        if 1:
+# leave the following test options in for now
 
-            if 1:
+        cccVetoPatternSource = "fromFile"   # "fromString" 
+        
+        if cccVetoPatternSource == "fromFile" or cccVetoPatternSource == "fromString":
+
+            if cccVetoPatternSource == "fromFile":
+                if self.femDebugLevel >= 2:
+                    print "cccVetoPatternSource is from File: "
                 # from file
                 #self.cccVetoPatternFile = "Config/VetoPatterns/veto_pattern_test1.xml"
                 stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
             
             else:          
+                if self.femDebugLevel >= 2:
+                    print "cccVetoPatternSource is from TEST String: "
                 # from test string
                 # Command sequence definition to encode
                 stringCmdXml = '''<?xml version="1.0"?>
@@ -1396,10 +1404,12 @@ class LpdFemClient(FemClient):
             
             vetoPatterns = stringCmdSeq.encode()
             
-            for i in range (0,nr_words_in_pattern*nr_patterns): 
+            for i in range (0,self.NR_WORDS_PER_CCC_VETO_PATTERN * self.NR_CCC_VETO_PATTERNS): 
                 self.rdmaWrite(start_addr+i, vetoPatterns[i])   
 
-        else: # test with hardwired patterns 
+        else: # test with hardcoded patterns 
+            if self.femDebugLevel >= 2:
+                print "cccVetoPatternSource is from TEST hard coded: "
                 
             # pattern 0 : all NoVeto (trigger every bunch)
             # pattern 1 : all Veto  (no triggers in train)
@@ -1412,7 +1422,7 @@ class LpdFemClient(FemClient):
             self.rdmaWrite(start_addr+1, 0xffffffff)   # 
             self.rdmaWrite(start_addr+2, 0xffffffff)   # 
             self.rdmaWrite(start_addr+3, 0xffffffff)   # 
-            for i in range (4,nr_words_in_pattern):         
+            for i in range (4,self.NR_WORDS_PER_CCC_VETO_PATTERN):         
                 self.rdmaWrite(start_addr+i, 0xffffffff)   # subsequent words are all vetos
  
         
@@ -1635,7 +1645,8 @@ class LpdFemClient(FemClient):
             bitMask = bitMask << 4
 
         if self.femDebugLevel > 2:
-            print "userMask => femMask\n==================="
+            print "userMask => femMask"
+            print "==================="
             for idx in range(4):
                 print  "%8X    %8X" % (userMask[idx], femMask[idx])
         return femMask
@@ -1889,10 +1900,6 @@ class LpdFemClient(FemClient):
             extra_cmd = (0x00000000,) 
             dataTuple = dataTuple + extra_cmd
             
-        data_len  = len(dataTuple)
-
-        #print "data_len = %d ", data_len
-
         # Load command sequence pattern memory
         self.rdmaWrite(base_addr_1, dataTuple)    # Assumes using later PPC GbE server code which can handle large dataTuples
 
@@ -2338,42 +2345,40 @@ class LpdFemClient(FemClient):
         if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
             print "*** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different" 
 
-        if 1:
+        femAsicClockSourceNames = { 0 : "On board 100MHz Osc",
+                                    1 : "XFEL C&C",
+                                    2 : "Petra-III",
+                                    3 : "Diamond B16"
+                                    }
         
-            femAsicClockSourceNames = { 0 : "On board 100MHz Osc",
-                                        1 : "XFEL C&C",
-                                        2 : "Petra-III",
-                                        3 : "Diamond B16"
-                                        }
-            
-            femStartTrainSourceNames = { 0 : "XFEL C&C",
-                                        1 : "Software",
-                                        2 : "LCLS",
-                                        3 : "Petra-III",
-                                        4 : "Diamond B16"
-                                        }
-            
-            femAsicDataTypeNames = { 0 : "Asic Data",
-                                     1 : "Counting Data",
-                                     2 : "PseudoRandom Asic Data"
-                                      }
-                                      
-            femAsicModuleTypeNames = { 0 : "Supermodule",
-                                       1 : "Single ASIC",
-                                       2 : "2-Tile System",
-                                       3 : "stand-alone"
-                                      }
-                                      
-            cccSystemModeNames = { 0 : "Not using XFEL C&C system",
-                                  1 : "XFEL C&C for Start command but not using veto system",
-                                  2 : "Full XFEL C&C with veto system"
-                                      }
-            
-            print "femAsicClockSource  = %s" % femAsicClockSourceNames[self. femAsicClockSource]
-            print "femStartTrainSource = %s" % femStartTrainSourceNames[self.femStartTrainSource]
-            print "femAsicModuleType   = %s" % femAsicModuleTypeNames[self.femAsicModuleType]
-            print "femAsicDataType     = %s" % femAsicDataTypeNames[self.femAsicDataType]
-            print "cccSystemMode       = %s" % cccSystemModeNames[self.cccSystemMode]
+        femStartTrainSourceNames = { 0 : "XFEL C&C",
+                                    1 : "Software",
+                                    2 : "LCLS",
+                                    3 : "Petra-III",
+                                    4 : "Diamond B16"
+                                    }
+        
+        femAsicDataTypeNames = { 0 : "Asic Data",
+                                 1 : "Counting Data",
+                                 2 : "PseudoRandom Asic Data"
+                                  }
+                                  
+        femAsicModuleTypeNames = { 0 : "Supermodule",
+                                   1 : "Single ASIC",
+                                   2 : "2-Tile System",
+                                   3 : "stand-alone"
+                                  }
+                                  
+        cccSystemModeNames = { 0 : "Not using XFEL C&C system",
+                              1 : "XFEL C&C for Start command but not using veto system",
+                              2 : "Full XFEL C&C with veto system"
+                                  }
+        
+        print "femAsicClockSource  = %s" % femAsicClockSourceNames[self. femAsicClockSource]
+        print "femStartTrainSource = %s" % femStartTrainSourceNames[self.femStartTrainSource]
+        print "femAsicModuleType   = %s" % femAsicModuleTypeNames[self.femAsicModuleType]
+        print "femAsicDataType     = %s" % femAsicDataTypeNames[self.femAsicDataType]
+        print "cccSystemMode       = %s" % cccSystemModeNames[self.cccSystemMode]
 
  
         self.zero_regs(self.bram_ppc1, 20)  # Clear ppc ready
@@ -2442,8 +2447,9 @@ class LpdFemClient(FemClient):
         # Setup data gen - not necessary for actual data but leave alone, "just in case"
         self.config_data_gen()
 
-        if self.femDebugLevel >= 0:
-            print "\nConfiguring ASICs..."
+        if self.femDebugLevel >= 0:        
+            print ""           
+            print "Configuring ASICs..."
 
         if self.femDebugLevel > 1:
             print "INFO start config_trig_strobe  "
@@ -2483,7 +2489,9 @@ class LpdFemClient(FemClient):
           
             #return 1       # TEST 
 
-            print "\nStarting Run ..."
+
+            print ""           
+            print "Starting Run ..."
 
             # check that a valid clock is being sent to the ASICs
             valid_clock = self.get_asic_clock_status()
@@ -2516,7 +2524,10 @@ class LpdFemClient(FemClient):
             #print "Dump of FEM Registers : TOP LEVEL CTRL"
             #self.dump_regs_hex(self.fem_ctrl_0, 18)
 
-            print "\nHit the ESC KEY to Stop Run...\n" 
+            if self.STOP_RUN_ON_ESC_KEY == True:
+                print ""           
+                print "Hit the ESC KEY to Stop Run..." 
+                print ""           
     
             if self.femStartTrainSource == 1:  # If S/W send triggers manually         
                 self.enable_ext_trig_strobe()   # Enable and disable to reset trigger strobe counters!
@@ -2524,73 +2535,83 @@ class LpdFemClient(FemClient):
                 
                 for i in range (1, self.numberTrains+1):
 
-                    try:
-                        tty.setcbreak(sys.stdin.fileno())
-    
-                        #print('Train Nr') % i, 
-                        #sys.stdout.write('.') # need to hit key in terminal to flush output
-                        #sys.stdout.flush() # not compatible with Tee() to results file
-    
+                    if self.STOP_RUN_ON_ESC_KEY == True:           
+
+                        try:
+                            tty.setcbreak(sys.stdin.fileno())    
+
+                            print "Train nr %d" % i
+                            self.send_trigger() 
+                            time.sleep(0.5)             # Need to check if images are all readout before sending next train
+                          
+                            if isData():
+                                c = sys.stdin.read(1)
+                                if c == '\x1b':         # x1b is the ESC KEY
+                                    print 'Pressed the ESC key ' 
+                                    break
+
+                        finally:
+                            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+
+                    else:
+                        
                         print "Train nr %d" % i
                         self.send_trigger() 
                         time.sleep(0.5)             # Need to check if images are all readout before sending next train
-                        #print "Train nr %4d" % i,
-                        #sys.stdout.flush()  
-    
-                        if isData():
-                            c = sys.stdin.read(1)
-                            if c == '\x1b':         # x1b is the ESC KEY
-                                print 'Pressed the ESC key ' 
-                                break
-                        
-                    finally:
-                        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+                       
     
             else:   # Else start run and use external c&c strobes
 
-                try:
-                    tty.setcbreak(sys.stdin.fileno())
-                    
-                    print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
-                    
-                    if self.femStartTrainSource == 3:
-                        print "Running in PETRA mode."
-                        if self.is_petra_shutter_ignored() == 1:
-                            print "INFO: Petra Shutter status will be Ignored"
-                        else:
-                            petra_shutter_open = self.get_petra_shutter_status()
-                            if petra_shutter_open == 0:
-                                print "*** WARNING: Petra Shutter is Closed; Status = %d" %petra_shutter_open
-                                print "*** Triggers will not be accepted whilst Shutter is Closed."
-                                print "*** Please either open shutter..."
-                                print "*** ... or abort this run and invert shutter polarity or ignore shutter"
-                    
-                    self.enable_ext_trig_strobe()
-                    nr_ext_trig_strobes = 0
-                    nr_ext_trig_strobes_accepted = 0
-                    
-                    #print "Dump of Ext Trigger Strobe Registers : TRIG STROBE"
-                    #self.dump_regs_hex(self.trig_strobe, 20)
+                print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
+
+                if self.femStartTrainSource == 3:
+                    print "Running in PETRA mode."
+                    if self.is_petra_shutter_ignored() == 1:
+                        print "INFO: Petra Shutter status will be Ignored"
+                    else:
+                        petra_shutter_open = self.get_petra_shutter_status()
+                        if petra_shutter_open == 0:
+                            print "*** WARNING: Petra Shutter is Closed; Status = %d" %petra_shutter_open
+                            print "*** Triggers will not be accepted whilst Shutter is Closed."
+                            print "*** Please either open shutter..."
+                            print "*** ... or abort this run and invert shutter polarity or ignore shutter"
+                       
+                nr_ext_trig_strobes = 0
+                nr_ext_trig_strobes_accepted = 0
+
+                self.enable_ext_trig_strobe()
+
+                if self.STOP_RUN_ON_ESC_KEY == True:           
+
+                    try:
+                        tty.setcbreak(sys.stdin.fileno())
+                                                
+                        while nr_ext_trig_strobes_accepted < self.numberTrains:
+                        
+                            if isData():
+                                c = sys.stdin.read(1)
+                                if c == '\x1b':         # x1b is the ESC KEY
+                                    print 'Pressed the ESC key ' 
+                                    break
+                        
+                            nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
+                        
+                    finally:
+                        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+
+                else:
                     
                     while nr_ext_trig_strobes_accepted < self.numberTrains:
                     
-                        if isData():
-                            c = sys.stdin.read(1)
-                            if c == '\x1b':         # x1b is the ESC KEY
-                                print 'Pressed the ESC key ' 
-                                break
-                    
                         nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
                     
-                finally:
-                    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-
                 self.disable_ext_trig_strobe()
                 print "Run is STOPPED" 
                 #print "nr_ext_trig_strobes_accepted = %d" % nr_ext_trig_strobes_accepted 
                     
     
-            print "======== Train Cycle Completed ===========\n" 
+            print "======== Train Cycle Completed ===========" 
+            print ""           
             #time.sleep(2)   # just to see output before dumping registers
 
             # Switch back to FEM Osc clock as Asic clock source for run end       
@@ -2607,7 +2628,8 @@ class LpdFemClient(FemClient):
             
             
             if self.femDebugLevel >= 0:
-                print "\nDump of FEM Registers : TOP LEVEL CTRL"
+                print ""
+                print "Dump of FEM Registers : TOP LEVEL CTRL"
                 self.dump_regs_hex(self.fem_ctrl_0, 30)
 
             if self.femDebugLevel > 0:
@@ -2676,16 +2698,21 @@ class LpdFemClient(FemClient):
                     print "Stopping PPC1 Readout CMD_ACQ_STOP. "
                     self.acquireSend(FemTransaction.CMD_ACQ_STOP)
     
-            print "\nSummary of Data Readout..."
+
+            print ""
+            print "Summary of Data Readout..."
     
             # 10g ll monitor
-            print "\n10G LLink Monitor: 64b "
+            print ""
+            print "10G LLink Monitor: 64b "
             self.read_ll_monitor(self.llink_mon_0, 156.25e6)
-    
-            print "\nAsic Rx LLink Monitor: 32b "
+
+            print ""    
+            print "Asic Rx LLink Monitor: 32b "
             self.read_ll_monitor(self.llink_mon_asicrx, 220.0e6)    # 220.0e6 
     
-            print "======== Run Completed ===========\n"
+            print "======== Run Completed ==========="
+            print ""           
         
         except FemClientError as e:
             raise e
