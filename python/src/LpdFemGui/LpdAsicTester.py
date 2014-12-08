@@ -221,7 +221,7 @@ class LpdAsicTester(object):
                     if numUnconnectedPixels > 0:
                         self.msgPrint("* Failed test 5. There are %d unconnected pixel(s)." % numUnconnectedPixels)
                     if (numShortedPixelsMin+numShortedPixelsMax) > 0:
-                        self.msgPrint("* Failed test 6. There are %d and %d shorted pixel(s)." % (numShortedPixelsMin, numShortedPixelsMax))
+                        self.msgPrint("* Failed test 6. There are %d and %d min and max pixel(s)." % (numShortedPixelsMin, numShortedPixelsMax))
                         # Any minimum adjacent to a maximum?
                         if neighbourStr.__len__() > 0:
                             self.msgPrint("     Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
