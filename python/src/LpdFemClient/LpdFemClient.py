@@ -804,7 +804,7 @@ class LpdFemClient(FemClient):
       
     def config_10g_link(self):
         ''' Configure 10 Gig Link '''
-        print "It will freeze after here?"
+
         if self.tenGig0['femEnable']:
             if self.femDebugLevel > 0:
                 self.pp.pprint(self.tenGig0)
@@ -1266,7 +1266,7 @@ class LpdFemClient(FemClient):
             print "ccc_start_delay =%d  [$%08x]: " % (ccc_start_delay, ccc_start_delay)
 
 # TESTING veto logic
-  # add a fixed delay to force a stop after some specificed nr of trigger/vetos
+# add a fixed delay to force a stop after some specificed nr of trigger/vetos
         #nr_bunch_cmds_before_stop = self.NR_BUNCHES_IN_TRAIN 
         #self.cccStopDelay = self.cccVetoStartDelay + self.NR_CLOCKS_PER_FAST_CMD * nr_bunch_cmds_before_stop 
           
@@ -2499,7 +2499,7 @@ class LpdFemClient(FemClient):
         self.config_data_gen()
 
         if self.femDebugLevel >= 0:        
-            print ""
+            print "."
             print "Configuring ASICs..."
 
         if self.femDebugLevel > 1:
@@ -2541,7 +2541,7 @@ class LpdFemClient(FemClient):
             #return 1       # TEST 
 
 
-            print ""           
+            print "."           
             print "Starting Run ..."
 
             # check that a valid clock is being sent to the ASICs
@@ -2576,9 +2576,9 @@ class LpdFemClient(FemClient):
             #self.dump_regs_hex(self.fem_ctrl_0, 18)
 
             if self.STOP_RUN_ON_ESC_KEY == True:
-                print ""           
+                print "."           
                 print "Hit the ESC KEY to Stop Run..." 
-                print ""           
+                print "."           
     
             if self.femStartTrainSource == 1:  # If S/W send triggers manually         
                 self.enable_ext_trig_strobe()   # # causes toggle on reset to trigger strobe module
@@ -2689,11 +2689,11 @@ class LpdFemClient(FemClient):
                     
     
             print "======== Train Cycle Completed ===========" 
-            print ""           
+            print "."           
             #time.sleep(2)   # just to see output before dumping registers
 
             if self.femDebugLevel >= 1:
-                print ""
+                print "."
                 print "=======================================================================" 
         
                 self.pp = pprint.PrettyPrinter(indent=4)
@@ -2709,7 +2709,7 @@ class LpdFemClient(FemClient):
             
             
             if self.femDebugLevel >= 0:
-                print ""
+                print "."
                 print "Dump of FEM Registers : TOP LEVEL CTRL"
                 self.dump_regs_hex(self.fem_ctrl_0, 30)
 
@@ -2780,14 +2780,14 @@ class LpdFemClient(FemClient):
                     self.acquireSend(FemTransaction.CMD_ACQ_STOP)
     
 
-            print ""
+            print "."
             print "Summary of Data Readout..."
     
-            print ""    
+            print "."    
             print "Asic Rx LLink Monitor: 32b "
             self.read_ll_monitor(self.llink_mon_asicrx, 220.0e6)    # 220.0e6 
             
-            print ""
+            print "."
             print "10G LLink Monitor: 64b "
             self.read_ll_monitor(self.llink_mon_0, 156.25e6)
     
@@ -2795,7 +2795,7 @@ class LpdFemClient(FemClient):
             self.config_asic_clock_source_from_osc()
     
             print "======== Run Completed ==========="
-            print ""           
+            print "."           
         
         except FemClientError as e:
             raise e

@@ -233,7 +233,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
                                     'tenGig0DataGenerator', 'tenGig0FrameLength', 'tenGig0NumberOfFrames', 'tenGigFarmMode', 'tenGigInterframeGap', 'tenGigUdpPacketLen', 
                                     'femAsicSetupClockPhase', 'femAsicVersion', 'femDebugLevel', 'femEnableTenGig',
                                     'femStartTrainPolarity', 'femVetoPolarity',
-                                    'cccSystemMode', 'cccCommandGenerate', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay']
+                                    'cccSystemMode', 'cccEmulationMode', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay']
 
 
         for param in paramExpertVariables:

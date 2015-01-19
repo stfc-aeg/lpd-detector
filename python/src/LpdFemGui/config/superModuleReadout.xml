@@ -17,6 +17,7 @@
     <tenGigInterframeGap type="int" val="0"/>
     <tenGigUdpPacketLen type="int" val="8000"/>
 
+	<cccSystemMode type="int" val="0"/>					 <!-- Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
     <femAsicSetupClockPhase type="int" val="0"/>         <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
     <femAsicVersion type="int" val="2"/>
     <femDebugLevel type="int" val="0"/>
