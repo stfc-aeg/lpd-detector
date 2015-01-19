@@ -5,7 +5,11 @@ Created 16 October 2012
 
 @Author: ckd    -    TRUNK VERSION
 
+LINUX
 '''
+
+# to get OS info
+import platform
 
 # Import Python standard modules
 # log required when calculating temperature
@@ -243,7 +247,7 @@ class LpdFemClient(FemClient):
         
         self.NR_BUNCHES_IN_TRAIN = 3072   # as expected by CCC veto logic
         
-        self.CCC_CMD_GEN_XRAY_DELAY = 1024  # nr of clocks between emulated xfel c&c start and arrival of xrays
+        self.CCC_CMD_GEN_XRAY_DELAY = 700   # 1024  # nr of clocks between emulated xfel c&c start and arrival of xrays
 
         self.TRAIN_ID_LENGTH = 64   # nr bits
 
@@ -260,8 +264,12 @@ class LpdFemClient(FemClient):
 #----       
         self.sp3_io_bot_firmware_modules = 0
         
-        self.STOP_RUN_ON_ESC_KEY = False    # Set False if running with Gui ; True
-
+        if os.name == 'nt':
+            self.STOP_RUN_ON_ESC_KEY = False    # not supported by windows
+        else:
+            self.STOP_RUN_ON_ESC_KEY = False    # Set False if running with Gui ; 
+            
+          
 #=========================================================================================================              
        
 #======== params for 10G data links
@@ -444,12 +452,13 @@ class LpdFemClient(FemClient):
         print "frm_last_length (bytes):      %s" % hex( self.rdmaRead(mon_addr+0, 1)[0])
         print "frm_max_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+1, 1)[0])
         print "frm_min_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+2, 1)[0])
-        print "frm_number:                   %s" % hex( self.rdmaRead(mon_addr+3, 1)[0])
+        total_frames = self.rdmaRead(mon_addr+3, 1)[0]
+        print "frm_count:                    %d [%s]" % (total_frames, hex(total_frames))
         print "frm_last_cycles:              %s" % hex( self.rdmaRead(mon_addr+4, 1)[0])
         print "frm_max_cycles:               %s" % hex( self.rdmaRead(mon_addr+5, 1)[0])
         print "frm_min_cycles:               %s" % hex( self.rdmaRead(mon_addr+6, 1)[0]) 
         total_data = self.rdmaRead(mon_addr+7, 1)[0]
-        print "frm_data_total (bytes):       %d %s" % (total_data, hex(total_data))         
+        print "frm_data_total (bytes):       %d [%s]" % (total_data, hex(total_data))         
         total_cycles = self.rdmaRead(mon_addr+8, 1)[0]
         print "frm_cycle_total:              %d" % total_cycles
         print "frm_trig_count:               %s" % hex( self.rdmaRead(mon_addr+9, 1)[0])
@@ -760,7 +769,7 @@ class LpdFemClient(FemClient):
         ''' Configure Asic clock source from FEM Osc clock'''
 
         if self.femDebugLevel >= 1:
-            print "Forcing ASIC clock source from FEM Osc" 
+            print "Switching ASIC clock source to FEM Osc" 
 
         # Resets to hold dcm in reset while clock is switched
         self.register_set_bit(self.fem_ctrl_0+11, 16)  # Asic clock dcm
@@ -784,17 +793,18 @@ class LpdFemClient(FemClient):
         # Trigger strobe for Petra test is derived from petra clock
         if self.femStartTrainSource == 3:
             self.enable_petra_trig_strobe()  
-        else: # using C&C RJ45 input for Xfel , LCLS or Diamond
-            self.disable_petra_trig_strobe()  
-
-        if self.femStartTrainSource == 3:
             # Petra shutter
             self.set_petra_shutter_polarity(self.petra_shutter_polarity) 
             self.use_petra_shutter(self.femIgnorePetraShutter) 
+        else: # using C&C RJ45 input for Xfel , LCLS or Diamond  ;    shutter signal becomes vetos
+            self.disable_petra_trig_strobe()  
+            # Petra shutter = c&c veto input
+            self.set_petra_shutter_polarity(self.petra_shutter_polarity) # want to use polarity for vetos
+            self.use_petra_shutter(0)     # force to use vetos
       
     def config_10g_link(self):
         ''' Configure 10 Gig Link '''
-               
+        print "It will freeze after here?"
         if self.tenGig0['femEnable']:
             if self.femDebugLevel > 0:
                 self.pp.pprint(self.tenGig0)
@@ -1014,6 +1024,8 @@ class LpdFemClient(FemClient):
             if self.cccEmulationMode == True:
 
                 self.register_set_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from generator
+
+                self.register_clear_bit(self.fem_ctrl_0+10, 17)  # reenable trigger strobes if NOT using real ccc commands
                 
                 self.toggle_bits(self.fem_ctrl_0+11, 24)    # local reset asic_ccc_cmd_gen
                 
@@ -1024,8 +1036,17 @@ class LpdFemClient(FemClient):
             else:
                 
                 self.register_clear_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from C&C system 
+
+                self.register_set_bit(self.fem_ctrl_0+10, 17)  # inhibit trigger strobes if using real ccc commands
                 
-                self.register_clear_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '1' to use enabled pattern bram bits for triggers
+                if self.cccSystemMode == 1: # no vetos from c&c
+                
+                    #self.register_clear_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '1' to use enabled pattern bram bits for triggers
+                    self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' 
+                else:   # with vetos from c&c
+                
+                    self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' to ccc nvetos for triggers
+                    
 
                     
             self.toggle_bits(self.fem_ctrl_0+11, 22)    # local reset ccc local link
@@ -1038,9 +1059,12 @@ class LpdFemClient(FemClient):
                 print "Start OLD Fast Wrapper config_asic_fast_xml "
             self.config_asic_fast_xml() # Loads fem fast bram from xml file
             
+            self.register_clear_bit(self.fem_ctrl_0+10, 17)  # reenable trigger strobes if NOT using real ccc commands
+
+            
         t4 = datetime.now()
 
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 0:
             print "Start config_asic_datarx "
         self.config_asic_datarx()   # Set up fem to receive asic data
         t5 = datetime.now()
@@ -1230,7 +1254,8 @@ class LpdFemClient(FemClient):
 
 # start delay to send fast cmds is then obtained from measured start veto and known nr of fast setup asic xml cmds
 # extra fixed term for internal logic delays
-        ccc_start_delay = self.cccVetoStartDelay - (ccc_start_nwords * self.NR_CLOCKS_PER_FAST_CMD) + 1
+# changed to (ccc_start_nwords-1) so that 1st trigger flag set goes out in xray pulse immediately after trigger pointer start
+        ccc_start_delay = self.cccVetoStartDelay - ((ccc_start_nwords-1) * self.NR_CLOCKS_PER_FAST_CMD) + 1
         if ccc_start_delay < 0 :
             print "*** ERROR: ILLEGAL C&C Start Delay  ccc_start_delay =%d: " %(ccc_start_delay)
             print "Setting  ccc_start_delay to  0 " 
@@ -1256,7 +1281,7 @@ class LpdFemClient(FemClient):
 
         # Load the command BRAM with Start and Stop sequences
         
-        # Nb when not using ccc vetos the start section is loaded with complete command file
+        # Nb If NOT using ccc vetos the start section is loaded with COMPLETE command file  <== ***
         start_addr = self.fast_cmd_1 + start_offset
         self.fem_fast_bram_setup(start_addr, encodedSequenceStart, nr_wordsStart)
 
@@ -1304,7 +1329,7 @@ class LpdFemClient(FemClient):
             self.rdmaWrite(self.ccc_cmd_gen_bram+0, 0x003048d1)   
             self.rdmaWrite(self.ccc_cmd_gen_bram+1, 0x00167800)   
             self.rdmaWrite(self.ccc_cmd_gen_bram+2, 0x00000003)   
-            self.rdmaWrite(self.ccc_cmd_gen_bram+3, 0x00301030) 
+            self.rdmaWrite(self.ccc_cmd_gen_bram+3, 0x00301030)     # 0x00301030 => bunch pattern index = 01
         else:
             self.rdmaWrite(self.ccc_cmd_gen_bram+0, 0x00300000)   
             self.rdmaWrite(self.ccc_cmd_gen_bram+1, 0x00000701)   
@@ -1333,9 +1358,9 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(self.ccc_cmd_gen_bram+8, 0x00300180) # -- veto  bx 3 
         self.rdmaWrite(self.ccc_cmd_gen_bram+9, 0x00280200) # -- no veto  bx 4  
         self.rdmaWrite(self.ccc_cmd_gen_bram+10, 0x00380280) # -- golden  bx 5   ;  total of 4 triggers  
-#        self.rdmaWrite(self.ccc_cmd_gen_bram+11, 0x00380300) #  -- golden  bx 6  
-#        self.rdmaWrite(self.ccc_cmd_gen_bram+12, 0x00300380) # -- veto  bx 7  
-#        self.rdmaWrite(self.ccc_cmd_gen_bram+13, 0x00280400) #  -- no veto  bx 8
+        self.rdmaWrite(self.ccc_cmd_gen_bram+11, 0x00380300) #  -- golden  bx 6  
+        self.rdmaWrite(self.ccc_cmd_gen_bram+12, 0x00300380) # -- veto  bx 7  
+        self.rdmaWrite(self.ccc_cmd_gen_bram+13, 0x00280400) #  -- no veto  bx 8    ; total 6 triggers
 #        self.rdmaWrite(self.ccc_cmd_gen_bram+14, 0x00280480) #  -- no veto  bx 9 
 #        self.rdmaWrite(self.ccc_cmd_gen_bram+15, 0x00280500) #  -- no veto  bx 10     ;  total of 8 triggers  
 
@@ -1346,7 +1371,7 @@ class LpdFemClient(FemClient):
 # veto command locations are set by registers for RESET start and offset
 
         self.rdmaWrite(self.ccc_cmd_gen_reg + 6, 6) # start corresponding to bram filling above            
-        self.rdmaWrite(self.ccc_cmd_gen_reg + 7, 10)  # nr of veto/nveto cmds above            
+        self.rdmaWrite(self.ccc_cmd_gen_reg + 7, 10)  # nr of veto/nveto cmds above    ;  increase to read more veto command words           
 
 # 2. TIMING
        
@@ -1424,11 +1449,11 @@ class LpdFemClient(FemClient):
             self.rdmaWrite(start_addr+3, 0xffffffff)   # 
             for i in range (4,self.NR_WORDS_PER_CCC_VETO_PATTERN):         
                 self.rdmaWrite(start_addr+i, 0xffffffff)   # subsequent words are all vetos
- 
-        
 
     def config_asic_datarx(self):
         ''' Configure Asic data rx module '''
+        if os.name == 'nt':
+            self.femAsicEnableMask = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff]
         
         # Convert femAsicEnableMask from user format into fem's format
         self.femAsicEnableMaskRemap = self.femAsicEnableCalculate(self.femAsicEnableMask)
@@ -1439,6 +1464,12 @@ class LpdFemClient(FemClient):
         no_asic_cols = self.numberImages - 1
         no_asic_cols_per_frm = self.numberImages - 1  # all images will be in one LL frame
              
+        if no_asic_cols < 0:
+            no_asic_cols = 0
+
+        if no_asic_cols_per_frm < 0:
+            no_asic_cols_per_frm = 0
+
         # Setup the ASIC RX IP block
         self.fem_asic_rx_setup(self.asic_srx_0, self.femAsicEnableMaskRemap, no_asic_cols, no_asic_cols_per_frm)
 
@@ -1448,16 +1479,16 @@ class LpdFemClient(FemClient):
             if self.cccSystemMode == 2:
                 self.register_set_bit(self.asic_srx_0+0, 12)
             else:
-                print "WARNING: Not using CCC Vetos, so will readout Nr of Images set in config file"
+                print "INFO: Not using CCC Vetos, so will readout number of Images specified in config xml file"
                 self.register_clear_bit(self.asic_srx_0+0, 12)
             
 
         # NEW ; if NOT using CCC to provide TrainID for header then insert dummy incrementing TrainID  
-        if self.cccSystemMode != 2: #  if self.use_ccc_vetos == 0:
+        if self.cccSystemMode == 1 or self.cccSystemMode == 2:
+            self.register_clear_bit(self.asic_srx_0+0, 16)  # disable dummy train id 
+        else:
             self.toggle_bits(self.asic_srx_0+0, 17)  # reset dummy train id
             self.register_set_bit(self.asic_srx_0+0, 16)  # enable dummy train id 
-        else:
-            self.register_clear_bit(self.asic_srx_0+0, 16)  # disable dummy train id 
 
         # NEW ; insert FEM module ID into header         
         moduleId = self.femModuleId[9-1]     
@@ -1646,9 +1677,10 @@ class LpdFemClient(FemClient):
 
         if self.femDebugLevel > 2:
             print "userMask => femMask"
-            print "==================="
+            #print "==================="
             for idx in range(4):
                 print  "%8X    %8X" % (userMask[idx], femMask[idx])
+
         return femMask
 
     def send_trigger(self):
@@ -1672,8 +1704,12 @@ class LpdFemClient(FemClient):
                     if self.cccEmulationMode == True:
                         if self.femDebugLevel > 2:
                             print "Sending CCC Start and Vetos using C&C System EMULATION  CCC Cmd Gen"
-                        self.toggle_bits(self.fem_ctrl_0+10, 10)  # ccc start bypass  , vetos follow after programmed delay
-                        #self.toggle_bits(self.fem_ctrl_0+10, 11)  # ccc stop bypass
+
+                        self.register_set_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from generator
+
+                        self.toggle_bits(self.fem_ctrl_0+10, 10)  # ccc start   , vetos follow after programmed delay
+                        #self.toggle_bits(self.fem_ctrl_0+10, 11)  # ccc stop ; just for test as not actually used to start readout
+                        #self.toggle_bits(self.fem_ctrl_0+10, 12)  # ccc reset ; just for test as not actually used to reset
                     else:
                         if self.femDebugLevel > 2:
                             print "Sending CCC Start and Stop in RX BYPASS"
@@ -1713,7 +1749,7 @@ class LpdFemClient(FemClient):
         self.dump_regs_hex(self.slow_ctr_0, 18)
 
         print "Dump of FEM Registers : ASIC SLOW BRAM"
-        self.dump_regs_hex(self.slow_ctr_1, 1024)   # 1024
+        self.dump_regs_hex(self.slow_ctr_1, 32)   # 1024
 
         print "Dump of Ext Trigger Strobe Registers : TRIG STROBE"
         self.dump_regs_hex(self.trig_strobe, 20)
@@ -1933,7 +1969,9 @@ class LpdFemClient(FemClient):
         no_cols_frm_shft      = (no_cols_frm << 16)
         no_asic_cols_cols_frm = (no_cols_frm_shft | no_asic_cols)
 
-        if self.numberImages == 1:  # FIX for special case if only capturing ONE image
+        if self.numberImages == 0:  # FIX for special case if only capturing NO images
+            no_asic_cols_cols_frm = 0x00000000
+        if self.numberImages == 1:  # FIX for special case if only capturing just ONE image
             no_asic_cols_cols_frm = 0x00010000
 
         #TODO: Comment still relevant?         
@@ -1949,6 +1987,7 @@ class LpdFemClient(FemClient):
          
         # also fixed bug as above was using bit shifted value of no_cols_frm
         no_clk_cyc_dly = (512 * 36 * (no_cols_frm + 1)) - 36       # as no_cols starts from '0'
+
                   
         # Setup Asic rx clk cycle delay
         self.rdmaWrite(no_clk_cyc_dly_reg, no_clk_cyc_dly)
@@ -2374,13 +2413,20 @@ class LpdFemClient(FemClient):
                               2 : "Full XFEL C&C with veto system"
                                   }
         
-        print "femAsicClockSource  = %s" % femAsicClockSourceNames[self. femAsicClockSource]
+        print "femAsicClockSource  = %s" % femAsicClockSourceNames[self.femAsicClockSource]
         print "femStartTrainSource = %s" % femStartTrainSourceNames[self.femStartTrainSource]
         print "femAsicModuleType   = %s" % femAsicModuleTypeNames[self.femAsicModuleType]
         print "femAsicDataType     = %s" % femAsicDataTypeNames[self.femAsicDataType]
         print "cccSystemMode       = %s" % cccSystemModeNames[self.cccSystemMode]
 
- 
+        if self.cccSystemMode != 0:
+            if self.cccEmulationMode == True:
+                print "***WARNING: C&C signals are being EMULATED inside the FEM. Set param 'cccEmulationMode'=False to run with a REAL C&C System."
+            
+        print "================"
+        print "OS name is %s" %(os.name)
+        print "================"
+
         self.zero_regs(self.bram_ppc1, 20)  # Clear ppc ready
   
         self.init_ppc_bram(self.bram_ppc1, 0xBEEFFACE)
@@ -2393,6 +2439,11 @@ class LpdFemClient(FemClient):
         # Don't change to selected asic clock until the Fast Asic Command words are sent and readout starts       
         self.config_asic_clock_source_from_osc()
 
+        # NEW reset to CCC IDELAY logic
+        if self.femDebugLevel >= 0:        
+            print "Sending Reset to CCC IDELAY logic"         
+        self.toggle_bits(self.fem_ctrl_0+11, 25)                
+        
         #TODO: Is Comment Still Relevant?
         # send Reset to ASIC pin . Shouldn't be necessary? as short reset pulse is sent before trigger sequence.
         self.send_long_asic_reset()
@@ -2448,7 +2499,7 @@ class LpdFemClient(FemClient):
         self.config_data_gen()
 
         if self.femDebugLevel >= 0:        
-            print ""           
+            print ""
             print "Configuring ASICs..."
 
         if self.femDebugLevel > 1:
@@ -2486,7 +2537,7 @@ class LpdFemClient(FemClient):
             Execute run
         '''
         try:
-          
+
             #return 1       # TEST 
 
 
@@ -2513,11 +2564,11 @@ class LpdFemClient(FemClient):
                     print "Running with PPC1 Readout CMD_ACQ_START. MULTIPLE TRAIN mode ......"
                     self.acquireSend(FemTransaction.CMD_ACQ_START)
                     #return 1   # TEST   
-  
+
             else:
                 if self.femDebugLevel > 1:
                     print "Running in PPC1 BYPASS mode..."
-    
+
             print "=========================================================" 
             print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
 
@@ -2530,8 +2581,8 @@ class LpdFemClient(FemClient):
                 print ""           
     
             if self.femStartTrainSource == 1:  # If S/W send triggers manually         
-                self.enable_ext_trig_strobe()   # Enable and disable to reset trigger strobe counters!
-                self.disable_ext_trig_strobe()
+                self.enable_ext_trig_strobe()   # # causes toggle on reset to trigger strobe module
+                self.disable_ext_trig_strobe()  # this deasserts reset (not disable) ;  it is NEEDED .
                 
                 for i in range (1, self.numberTrains+1):
 
@@ -2562,8 +2613,11 @@ class LpdFemClient(FemClient):
     
             else:   # Else start run and use external c&c strobes
 
-                print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
-
+                if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
+                    print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
+                else:
+                    print "Run is STARTED. Waiting for %d CCC Start Command Sequences" % self.numberTrains 
+                    
                 if self.femStartTrainSource == 3:
                     print "Running in PETRA mode."
                     if self.is_petra_shutter_ignored() == 1:
@@ -2576,55 +2630,82 @@ class LpdFemClient(FemClient):
                             print "*** Please either open shutter..."
                             print "*** ... or abort this run and invert shutter polarity or ignore shutter"
                        
-                nr_ext_trig_strobes = 0
-                nr_ext_trig_strobes_accepted = 0
+                nr_trains = 0
 
-                self.enable_ext_trig_strobe()
+                self.enable_ext_trig_strobe()   # causes toggle on reset to trigger strobe module
 
                 if self.STOP_RUN_ON_ESC_KEY == True:           
 
                     try:
                         tty.setcbreak(sys.stdin.fileno())
+                        
+                        if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
                                                 
-                        while nr_ext_trig_strobes_accepted < self.numberTrains:
-                        
-                            if isData():
-                                c = sys.stdin.read(1)
-                                if c == '\x1b':         # x1b is the ESC KEY
-                                    print 'Pressed the ESC key ' 
-                                    break
-                        
-                            nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
+                            while nr_trains < self.numberTrains:
+                            
+                                if isData():
+                                    c = sys.stdin.read(1)
+                                    if c == '\x1b':         # x1b is the ESC KEY
+                                        print 'Pressed the ESC key ' 
+                                        break
+                            
+                                nr_trains = self.get_ext_trig_strobe_accepted_count()
+                                
+                        else:   # with real ccc command input uses new counter detecting nr of start commands decoded
+                          
+                            while nr_trains < self.numberTrains:
+                            
+                                if isData():
+                                    c = sys.stdin.read(1)
+                                    if c == '\x1b':         # x1b is the ESC KEY
+                                        print 'Pressed the ESC key ' 
+                                        break
+                            
+                                nr_trains = self.rdmaRead(self.fem_ctrl_0+26, 1)[0]
+
                         
                     finally:
                         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
 
                 else:
                     
-                    while nr_ext_trig_strobes_accepted < self.numberTrains:
-                    
-                        nr_ext_trig_strobes_accepted = self.get_ext_trig_strobe_accepted_count()
-                    
+                    if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
+                                            
+                        while nr_trains < self.numberTrains:
+
+                            nr_trains = self.get_ext_trig_strobe_accepted_count()
+                            
+                    else:   # with real ccc command input uses new counter detecting nr of start commands decoded
+
+                        while nr_trains < self.numberTrains:
+
+                            nr_trains = self.rdmaRead(self.fem_ctrl_0+26, 1)[0]
+                        
+                
                 self.disable_ext_trig_strobe()
+                
                 print "Run is STOPPED" 
-                #print "nr_ext_trig_strobes_accepted = %d" % nr_ext_trig_strobes_accepted 
+                print "nr_trains processed = %d" % nr_trains 
                     
     
             print "======== Train Cycle Completed ===========" 
             print ""           
             #time.sleep(2)   # just to see output before dumping registers
 
-            # Switch back to FEM Osc clock as Asic clock source for run end       
-            self.config_asic_clock_source_from_osc()
-    
-            if self.femDebugLevel > 1:
+            if self.femDebugLevel >= 1:
+                print ""
+                print "=======================================================================" 
+        
+                self.pp = pprint.PrettyPrinter(indent=4)
+        
                 print "     V5 FPGA Firmware vers = %08x" % self.get_v5_firmware_vers()
                 print "BOT SP3 FPGA Firmware vers = %08x" % self.get_bot_sp3_firmware_vers()
                 print "TOP SP3 FPGA Firmware vers = %08x" % self.get_top_sp3_firmware_vers()
                 print "CFG SP3 FPGA Firmware vers = %08x" % self.get_cfg_sp3_firmware_vers()
+                print "=======================================================================" 
 
-            if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
-                print "*** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different" 
+                if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
+                    print "*** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different" 
             
             
             if self.femDebugLevel >= 0:
@@ -2663,7 +2744,7 @@ class LpdFemClient(FemClient):
                 self.dump_regs_hex(self.fast_cmd_0, 16)
                 
                 print "Dump of FEM Registers : ASIC FAST BRAM"
-                self.dump_regs_hex(self.fast_cmd_1, 128)          
+                self.dump_regs_hex(self.fast_cmd_1, 32)          
                 
                 #print "Dump of FEM Registers : ASIC FAST BRAM COE"
                 #self.dump_regs_hex_coe(self.fast_cmd_1, 1024)
@@ -2674,7 +2755,7 @@ class LpdFemClient(FemClient):
                     print "Dump of FEM Registers : CCC PATTERN ID REG"
                     self.dump_regs_hex(self.ccc_pattern_id, 16)                  
                     print "Dump of FEM Registers : CCC PATTERN BRAM"
-                    self.dump_regs_hex(self.ccc_pattern_bram, 0x80)
+                    self.dump_regs_hex(self.ccc_pattern_bram, 32)
                 
                 if ((self.get_v5_firmware_vers()&0xffff) >= 0x022d):
                     print "Dump of FEM Registers : CCC CMD GEN REG"
@@ -2702,14 +2783,16 @@ class LpdFemClient(FemClient):
             print ""
             print "Summary of Data Readout..."
     
-            # 10g ll monitor
-            print ""
-            print "10G LLink Monitor: 64b "
-            self.read_ll_monitor(self.llink_mon_0, 156.25e6)
-
             print ""    
             print "Asic Rx LLink Monitor: 32b "
             self.read_ll_monitor(self.llink_mon_asicrx, 220.0e6)    # 220.0e6 
+            
+            print ""
+            print "10G LLink Monitor: 64b "
+            self.read_ll_monitor(self.llink_mon_0, 156.25e6)
+    
+                # Switch back to FEM Osc clock as Asic clock source for run end       
+            self.config_asic_clock_source_from_osc()
     
             print "======== Run Completed ==========="
             print ""           
