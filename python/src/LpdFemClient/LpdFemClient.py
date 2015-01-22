@@ -1409,7 +1409,13 @@ class LpdFemClient(FemClient):
                     print "cccVetoPatternSource is from File: "
                 # from file
                 #self.cccVetoPatternFile = "Config/VetoPatterns/veto_pattern_test1.xml"
-                stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
+                # Set absolute path to follow:
+                currentWorkingDir = os.getcwd()
+                self.cccVetoPatternFile = currentWorkingDir + '/' + self.cccVetoPatternFile
+                try:
+                    stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
+                except Exception as e:
+                    raise FemClientError(str(e))
             
             else:          
                 if self.femDebugLevel >= 2:
@@ -1424,8 +1430,10 @@ class LpdFemClient(FemClient):
                                     <veto pattern="1"  value="0xAAAAAAAA"/>
                                 </lpd_bunch_pattern>
                 '''
-                stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
-
+                try:
+                    stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
+                except Exception as e:
+                    raise FemClientError(str(e))
             
             vetoPatterns = stringCmdSeq.encode()
             

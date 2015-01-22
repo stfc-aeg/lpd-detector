@@ -231,8 +231,9 @@ class FrameProcessor(QtCore.QObject):
         self.liveViewDivisor = cachedParams['liveViewDivisor']
         self.liveViewOffset  = cachedParams['liveViewOffset']
         self.asicModuleType  = cachedParams['asicModuleType']
+        self.headersVersion  = cachedParams['headersVersion']
         self.liveViewSignal  = liveViewSignal
-
+        
         self.fileName = None
         
         # Run start time
@@ -339,6 +340,31 @@ class FrameProcessor(QtCore.QObject):
         while bNextImageAvailable:
 
             imageOffset = self.imageFullLpdSize * currentImage
+#################################################################
+# For readout with LPD Data Formatting ; 
+# lpd headers and trailers in the data payload
+# lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
+            # following sizes in BYTES
+            LPD_HEADER_SIZE = 32; # includes train id
+            # Image Descriptors are fixed with 512 entries each of 4 blocks of descriptors:
+            # 1) storageCellNumber (2 bytes)
+            # 2) bunchNumber (8 bytes)
+            # 3) status (2 bytes)
+            # 4) length (4 bytes)
+            LPD_IMAGE_DESCRIPTOR_SIZE = 0;  # 8192
+            LPD_DETECTOR_DEPENDENT_SIZE = (13*32); # fixed with trigger information from C&C module
+            LPD_TRAILER_SIZE = 32; # includes crc
+
+            LPD_FORMATTING_SIZE = LPD_HEADER_SIZE + LPD_IMAGE_DESCRIPTOR_SIZE + LPD_DETECTOR_DEPENDENT_SIZE + LPD_TRAILER_SIZE
+#            lpdheadertrailer = True
+            if self.headersVersion == 0:           
+                imageOffset = self.imageFullLpdSize*currentImage
+            elif self.headersVersion == 1:
+                imageOffset = (self.imageFullLpdSize)*currentImage + LPD_HEADER_SIZE/2
+            else:
+                print "ERROR: Unsupported headersVersion in Json file"
+                return
+#################################################################
 
             # Get the first image of the image
             bNextImageAvailable = self.unpackImage(imageOffset)
