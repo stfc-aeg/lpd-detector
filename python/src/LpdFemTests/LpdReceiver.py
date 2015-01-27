@@ -125,6 +125,7 @@ class ReceiveThread(QtCore.QThread):
                     
                     # this packet lost between this packet and the last packet received
                     print "Warning: Previous packet number: %3i while current packet number: %3i" % (self.packetNumber, packetNumber)
+                    #raise Exception
 
             # Update current packet number
             self.packetNumber = packetNumber
@@ -154,22 +155,34 @@ class ImageDisplay(FigureCanvas):
     
     dataRxSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, femHost, femPort, asicModuleType):
+    #def __init__(self, femHost, femPort, asicModuleType):
+    def __init__(self, femhost, femport, asicmodule, canvasrows, canvascols, colorbar, debuglevel, timeinfo, writedata, lpdheadertrailer):
         
-        self.asicModuleType = asicModuleType
-        
+        self.host           = femhost
+        self.port           = femport
+        self.asicModuleType = asicmodule
+        self.plotRows       = canvasrows
+        self.plotCols       = canvascols
+        self.bColorbarVisible = False if colorbar == 0 else True
+        self.debugLevel     = debuglevel
+        self.bTimeStamp     = False if timeinfo == 0 else True
+        self.bHDF5          = False if writedata == 0 else True
+        self.lpdheadertrailer = lpdheadertrailer
+        # Remember number of plots in figure in case future train contain too many images
+        self.plotsInFigure = canvasrows * canvascols
+
         self.moduleString = {0 : "SuperModule", 1 : "Asic", 2 : "TwoTile", 3 : "Fem", 4 : "RawData"}
         
         if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
             asicTilesPerColumn = 8
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (32, 256, 32)
-                        
+
         elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
             asicTilesPerColumn = 1
             (xStart, xStop, xStep)  = (16, 256, 16)
             (yStart, yStop, yStep)  = (8, 32, 8)
-            
+
         elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             asicTilesPerColumn = 8
             (xStart, xStop, xStep)  = (16, 256, 16)
@@ -196,28 +209,34 @@ class ImageDisplay(FigureCanvas):
         
         # superModuleImageSize [65536] used by all module types
         self.superModuleImageSize = 256*256
-        # moduleImageSize differs according to asicModuleType
+        # moduleImageSize differs according to self.asicModuleType
         self.moduleImageSize = self.nrows * self.ncols
 
         # Create an array to contain module's elements
         self.imageArray = np.zeros(self.moduleImageSize, dtype=np.uint16)
         
         # Create hdf file - if HDF5 Library present
-        if bHDF5:
+        if self.bHDF5:
             dateString = datetime.now().strftime("%Y%m%d-%H%M%S")
             fileName = "/tmp/lpd%s-%s.hdf5" % ( self.moduleString[self.asicModuleType], dateString)
 
             self.hdfFile = h5py.File(fileName, 'w')
-            self.imageDs = self.hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+            # Create group structure
+            self.lpdGroup = self.hdfFile.create_group('lpd')
+            self.metaGroup = self.lpdGroup.create_group('metadata')
+            self.dataGroup = self.lpdGroup.create_group('data')
+            
+            # Create data group entries    
+            self.imageDs = self.dataGroup.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
                                             maxshape=(None,self.nrows, self.ncols))
-            self.timeStampDs   = self.hdfFile.create_dataset('timeStamp',   (1,), 'f',      maxshape=(None,))
-            self.trainNumberDs = self.hdfFile.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
-            self.imageNumberDs = self.hdfFile.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+            self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
+            self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+            self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         FigureCanvas.__init__(self, Figure())
     
         (xlist, ylist) = ([], [])
-        if bColorbarVisible:
+        if self.bColorbarVisible:
             # Generate list of xticks to label the x axis
             for i in range(xStart, xStop, xStep):
                 xlist.append(i)
@@ -232,10 +251,11 @@ class ImageDisplay(FigureCanvas):
         self.ax = []
         self.img = []
         
+        
         # Because subplotting has been selected, need a list of axes to cover multiple subplots
-        for idx in range(plotMaxPlots):
+        for idx in range(self.plotsInFigure):
 
-            axesObject =  self.figure.add_subplot(plotRows, plotCols, idx+1)
+            axesObject =  self.figure.add_subplot(self.plotRows, self.plotCols, idx+1)
             self.ax.extend([axesObject])
             
             self.ax[idx].set_xticks(xlist)
@@ -253,7 +273,7 @@ class ImageDisplay(FigureCanvas):
             imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
             self.img.extend([imgObject])
 
-            if bColorbarVisible:
+            if self.bColorbarVisible:
                 # http://stackoverflow.com/questions/2539331/how-do-i-set-a-matplotlib-colorbar-extents
                 axc, kw = matplotlib.colorbar.make_axes(self.ax[idx])
                 cb = matplotlib.colorbar.Colorbar(axc, self.img[idx])
@@ -272,7 +292,7 @@ class ImageDisplay(FigureCanvas):
                 self.ax[idx].vlines(128-0.5, 0, self.nrows-1, color='y', linestyle='solid')
                 
                 # Add horizontal lines only if super module or raw data selected
-                if (asicModuleType == 0) or (asicModuleType == 4):
+                if (self.asicModuleType == 0) or (self.asicModuleType == 4):
                     for i in range(32, self.nrows, 32):
                         self.ax[idx].hlines(i-0.5, 0, self.nrows-1, color='y', linestyles='solid')
             
@@ -289,7 +309,7 @@ class ImageDisplay(FigureCanvas):
     def handleFrame(self, lpdFrame):
 
         # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
-        if bTimeStamp:
+        if self.bTimeStamp:
             timeX1 = time.time()
         
         print "Raw Image Data Received: %16i" % len(lpdFrame.rawImageData), "(bytes, @%s)" % str( datetime.now())[11:-4]
@@ -302,13 +322,13 @@ class ImageDisplay(FigureCanvas):
         #     eg: ABCD => DCBA
         self.pixelDataArray = np.fromstring(lpdFrame.rawImageData, dtype=pixelDataType)
     
-        if (debugLevel > 2) and (debugLevel < 8):
+        if (self.debugLevel > 2) and (self.debugLevel < 8):
             print "Extracted 16 bit words: ", len(self.pixelDataArray), ". Array contents:"
             self.display16BitArrayInHex()
             print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-        if debugLevel > 7:
-            if bTimeStamp:
+        if self.debugLevel > 7:
+            if self.bTimeStamp:
                 time2 = time.time()
             # Check the Gain bits (Bits 12-13);
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
@@ -333,7 +353,7 @@ class ImageDisplay(FigureCanvas):
                 else:
                     # Gain is x100
                     gainCounter[0] += 1
-            if bTimeStamp:
+            if self.bTimeStamp:
                 time1 = time.time()
                 self.timeStampGainCounter = time1 - time2
 
@@ -344,10 +364,13 @@ class ImageDisplay(FigureCanvas):
         currentPlot = 0
         bNextImageAvailable = True
         
+        # Track how many plots in figure, as subsequent trains may contain more/less images
+        plotMaxPlots = self.plotsInFigure
+        
         # Loop over the specified number of plots
         while bNextImageAvailable and currentPlot < plotMaxPlots:
 
-            if bTimeStamp:
+            if self.bTimeStamp:
                 timeD1 = time.time()
             
 #################################################################
@@ -367,12 +390,35 @@ class ImageDisplay(FigureCanvas):
 
             LPD_FORMATTING_SIZE = LPD_HEADER_SIZE + LPD_IMAGE_DESCRIPTOR_SIZE + LPD_DETECTOR_DEPENDENT_SIZE + LPD_TRAILER_SIZE
 
-            if lpdheadertrailer == False:           
+            if self.lpdheadertrailer == 0:           
                 dataBeginning = self.superModuleImageSize*currentPlot
+                # Change maximum plots to be 512 (effectively size of incoming image data) for old header format
+                #plotMaxPlots = 511  # (0-511 = 512 plots)
             else:
                 dataBeginning = (self.superModuleImageSize)*currentPlot + LPD_HEADER_SIZE/2
+                
+                # Print XFEL header information
+                if currentPlot == 0:
 
-            print "currentPlot %d dataBeginning %d" % (currentPlot, dataBeginning)            
+                    trainLsb = self.pixelDataArray[2] + (self.pixelDataArray[3] << 8)
+                    trainMsb = self.pixelDataArray[0] + (self.pixelDataArray[1] << 8)
+                    trainId  = (trainMsb << 16) + trainLsb
+
+                    dataLsb = self.pixelDataArray[2+4] + (self.pixelDataArray[3+4] << 8)
+                    dataMsb = self.pixelDataArray[0+4] + (self.pixelDataArray[1+4] << 8)
+                    dataId  = (dataMsb << 16) + dataLsb
+
+                    linkLsb = self.pixelDataArray[2+8] + (self.pixelDataArray[3+8] << 8)
+                    linkMsb = self.pixelDataArray[0+8] + (self.pixelDataArray[1+8] << 8)
+                    linkId  = (linkMsb << 16) + linkLsb
+
+                    imgCountId  = self.pixelDataArray[13]
+                    # Overwrite maximum plots with image number extracted from XFEL header
+                    plotMaxPlots = imgCountId
+
+                    print "trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X}".format(trainId, dataId, linkId, imgCountId)
+
+#            print "currentPlot %d dataBeginning %d" % (currentPlot, dataBeginning)            
 #################################################################
 
             # Get the first image of the train
@@ -390,20 +436,16 @@ class ImageDisplay(FigureCanvas):
             # Mask out gain bits from data
             self.data = self.data & 0xfff
             
-            print "Train %2i Image %3i" % (self.trainNumber, currentPlot), " data left: %10i" % len( self.pixelDataArray[dataBeginning:] ), "%20s" % str( datetime.now())[11:-4],
-            if bTimeStamp is False:
-                print ""
-
-            self.ax[currentPlot].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
+            self.ax[currentPlot % self.plotsInFigure].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
             
             # Load image into figure
-            self.img[currentPlot].set_data(self.data)
+            self.img[currentPlot % self.plotsInFigure].set_data(self.data)
 
-            self.ax[currentPlot].draw_artist(self.img[currentPlot])
-            self.blit(self.ax[currentPlot].bbox)
+            self.ax[currentPlot % self.plotsInFigure].draw_artist(self.img[currentPlot % self.plotsInFigure])
+            self.blit(self.ax[currentPlot % self.plotsInFigure].bbox)
 
             # Write image to file - if HDF5 Library present
-            if bHDF5:
+            if self.bHDF5:
 
                 # index within the opened file
                 fileIndex = self.imageCounter % numberPlotsPerFile
@@ -420,16 +462,22 @@ class ImageDisplay(FigureCanvas):
                     if os.path.isfile(fileName):
                         # Don't overwrite existing file
                         fileName = fileName[:-5] + '_' + str(self.imageCounter) + fileName[-5:]
-                        if debugLevel > 0:
+                        if self.debugLevel > 0:
                             print "\nNew use filename:  '" + fileName + "'"
 
                     self.hdfFile = h5py.File(fileName, 'w')
                     # Recreate datasets
-                    self.imageDs = self.hdfFile.create_dataset('ds', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols),
-                                                               maxshape=(None,self.nrows, self.ncols))
-                    self.timeStampDs   = self.hdfFile.create_dataset('timeStamp',   (1,), 'f',      maxshape=(None,))
-                    self.trainNumberDs = self.hdfFile.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
-                    self.imageNumberDs = self.hdfFile.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+                    self.lpdGroup = self.hdfFile.create_group('lpd')
+                    self.metaGroup = self.lpdGroup.create_group('metadata')
+                    self.dataGroup = self.lpdGroup.create_group('data')
+                    
+                    # Create data group entries    
+                    self.imageDs = self.dataGroup.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+                                                    maxshape=(None,self.nrows, self.ncols))
+                    self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
+                    self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+                    self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+
 
                 # Write data and info to file                    
                 self.imageDs.resize((fileIndex+1, self.nrows, self.ncols))
@@ -446,6 +494,8 @@ class ImageDisplay(FigureCanvas):
 
                 # Close file if specified number of images written
                 if fileIndex == (numberPlotsPerFile-1):
+                    # Add numTrains to file before closing
+                    self.metaGroup.attrs['numTrains'] = numberPlotsPerFile
                     # Close old file
                     self.hdfFile.flush()
                     self.hdfFile.close()
@@ -456,11 +506,12 @@ class ImageDisplay(FigureCanvas):
             # Clear data before next iteration (but after data written to file)
             self.data.fill(0)
 
+            if self.bTimeStamp:
+                timeD2 = time.time()
+                print "plot %i took   %.9f seconds to process." % (currentPlot, timeD2 - timeD1)
+            
             # Increment currentPlot
             currentPlot += 1
-            if bTimeStamp:
-                timeD2 = time.time()
-                print "%.9f" %(timeD2 - timeD1)
         else:
             # Finished drawing subplots
 
@@ -469,7 +520,7 @@ class ImageDisplay(FigureCanvas):
 
         # 'Reset' rawImageData variable
         lpdFrame.rawImageData = lpdFrame.rawImageData[0:0]
-        if bTimeStamp:
+        if self.bTimeStamp:
             timeX2 = time.time()
             print "Total time = ",(timeX2 - timeX1)
 
@@ -482,7 +533,7 @@ class ImageDisplay(FigureCanvas):
 
     def __del__(self):
         # Close file if HDF5 Library present
-        if bHDF5:
+        if self.bHDF5:
             self.hdfFile.close()
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -495,15 +546,15 @@ class ImageDisplay(FigureCanvas):
         """ display16BitArrayInHex displays each 16 bit ADC value (each index/byte)
             .. Unless data_len hardcoded to 160..
         """
-        if debugLevel > 6:
+        if self.debugLevel > 6:
             data_len = len(self.pixelDataArray)
-        elif debugLevel > 5:
+        elif self.debugLevel > 5:
             data_len = len(self.pixelDataArray) / 2
-        elif debugLevel > 4:
+        elif self.debugLevel > 4:
             data_len = len(self.pixelDataArray) / 4
-        elif debugLevel > 3:
+        elif self.debugLevel > 3:
             data_len = len(self.pixelDataArray) / 8
-        elif debugLevel > 2:
+        elif self.debugLevel > 2:
             data_len = 160
         
         currentArrayElement = ""
@@ -535,6 +586,8 @@ class ImageDisplay(FigureCanvas):
         # Boolean variable to track whether there is a image after this one in the data
         bNextImageAvailable = False
         
+        #DEBUG
+#        f = open("LpdReceiver_debugged_%s.txt" % str(dataBeginning), 'w')
         # Check Asic Module type to determine how to process data
         if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             # Raw data - no not re-order
@@ -560,13 +613,19 @@ class ImageDisplay(FigureCanvas):
                 for asicRow in xrange(numRowsPerAsic):
                     for asicCol in xrange(numColsPerAsic):
                         
+                        #DEBUGGING
+#                        print >> sys.stderr, "{0:>9} [{1:>2}::{2:>2}, {3:>2}::{4:>2}] = {5:>9} [{6:>7}:({7:>7})]".format( self.imageLpdFullArray.shape, asicRow, numRowsPerAsic, asicCol, numColsPerAsic, 
+#                                                              self.pixelDataArray.shape, rawOffset, (rawOffset + numAsics) )
+#                        f.write( "{0:>9} [{1:>2}::{2:>2}, {3:>2}::{4:>2}] = {5:>9} [{6:>7}:({7:>7})]".format( self.imageLpdFullArray.shape, asicRow, numRowsPerAsic, asicCol, numColsPerAsic, 
+#                                                              self.pixelDataArray.shape, rawOffset, (rawOffset + numAsics) )  + '\n')
                         self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelDataArray[rawOffset:(rawOffset + numAsics)].reshape(8,16)
                         rawOffset += numAsics
             
             except IndexError:
                 print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
             except Exception as e:
-                print "Error while extracting image: ", e, " -> imgOffset: ", dataBeginning
+                print "Error extracting image at %i Bytes, need %i but only %i Bytes available" % (dataBeginning, self.superModuleImageSize, self.pixelDataArray.shape[0] - dataBeginning)
+                print "(Error: %s)" % e
     
             # Module specific data processing
             if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
@@ -596,6 +655,10 @@ class ImageDisplay(FigureCanvas):
 
         # Last image in the data?
         try:
+#            print >> sys.stderr, "pixelDataArray: {0:>9} dataBeginning: {1:>9}  imageSize: {2:>9} data+image: {3:>9}".format(self.pixelDataArray.shape, dataBeginning, 
+#                                                                                                                             self.superModuleImageSize, dataBeginning + self.superModuleImageSize)
+            # Increment dataBeginning to start of next image
+            dataBeginning += self.superModuleImageSize
             self.pixelDataArray[dataBeginning + self.superModuleImageSize]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
@@ -616,19 +679,19 @@ if __name__ == "__main__":
     plotRows            = 2
     plotCols            = 2
     numberPlotsPerFile  = 1
-    lpdheadertrailer    = False
+    lpdheadertrailer    = 0
 
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="LpdReceiver.py - Receive data from an LPD detector. ",
                                      epilog="Default: femhost=10.0.0.1, femport=61649 and asicModule=0, all other flags' default values denoted by 'D: x'.")
 
+    parser.add_argument("--femhost",        help="Set fem host IP (e.g 10.0.0.1)",                                      type=str, default=femHost)
+    parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                             type=int, default=femPort)
     parser.add_argument("--asicmodule",     help="Set ASIC Module (0=Supermodule, 2=2-Tile, 4=Raw data; D: 0)",         type=int, choices=[0, 2, 4], default=asicModule)
     parser.add_argument("--canvasrows",     help="Set rows of plots (D: 2)",                                            type=int, default=plotRows)
     parser.add_argument("--canvascols",     help="Set columns of plots (D: 2)",                                         type=int, default=plotCols)
     parser.add_argument("--colorbar",       help="Enable colorbar (0=Disable, 1=Enable; D: 1)",                         type=int, default=1)
     parser.add_argument("--debuglevel",     help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=range(9), default=0)
-    parser.add_argument("--femhost",        help="Set fem host IP (e.g 10.0.0.1)",                                      type=str, default=femHost)
-    parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                             type=int, default=femPort)
     parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
     parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
     parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=Disable, 1=Enable; D: 0)",type=int, default=0)    
@@ -658,11 +721,11 @@ if __name__ == "__main__":
     if args.colorbar == 0:
         bColorbarVisible = False
 
-    if args.lpdheadertrailer == 1:
-        lpdheadertrailer = True
+#    if args.lpdheadertrailer == 1:
+#        lpdheadertrailer = True
 
-    # Calculate number of plots to draw
-    plotMaxPlots = plotRows * plotCols
+#    # Calculate number of plots to draw
+#    plotMaxPlots = plotRows * plotCols
 
     if debugLevel > 0:
         print "module: ", asicModule
@@ -674,9 +737,9 @@ if __name__ == "__main__":
         print "debugLevel(%i)" % debugLevel
         print "plotCols(%i)" % args.canvascols
         print "plotRows(%i)" % args.canvasrows
-    
+    #print vars(args), "\n\n"
     app = QtGui.QApplication(sys.argv)
-    widget = ImageDisplay(femHost, femPort, asicModule)
+    widget = ImageDisplay(**vars(args)) #femHost, femPort, asicModule)
     widget.setWindowTitle('LpdReceiver - %s:%s' % (femHost, femPort) )
     widget.show()
     

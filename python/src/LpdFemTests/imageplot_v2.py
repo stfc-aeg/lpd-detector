@@ -224,11 +224,15 @@ class imagePlot():
             meta = hdfFile['/lpd/metadata']
     
             # Parse the readout configuration XML blob
-            readoutConfig = LpdReadoutConfig(meta['readoutParamFile'][0])
-            readoutParams = {}
-            for (param, val) in readoutConfig.parameters():
-                readoutParams[param] = val
-    
+            try:
+                readoutConfig = LpdReadoutConfig(meta['readoutParamFile'][0])
+                readoutParams = {}
+                for (param, val) in readoutConfig.parameters():
+                    readoutParams[param] = val
+            except KeyError:
+                print "Error: Missing Meta data from HDF5 file."
+                sys.exit(1)
+                
             # print readoutParams
     
             # Get number of trains from metadata and check array against argument

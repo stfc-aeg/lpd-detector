@@ -2,64 +2,64 @@
 
 <lpd_readout_config name="readoutConfiguration.xml">
 
-    <!-- 'Expert' Variables: -->
-    <cccVetoPatternFile type="str" val="Config/VetoPatterns/veto_file_test.xml"/>
-    <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
-    <!--<tenGig0SourceIp type="str" val="10.0.0.2"/> -->          <!-- Machine specific, set by LpdReadoutTest -->
-    <tenGig0SourcePort type="int" val="0"/>
-    <!-- <tenGig0DestMac type="str" val="00-07-43-10-65-A0"/> --> <!-- Machine specific, set by LpdReadoutTest -->
-    <!-- <tenGig0DestIp type="str" val="10.0.0.1"/> -->           <!-- Machine specific, set by LpdReadoutTest -->
-    <tenGig0DestPort 	 type="int" val="61649"/>
-    <tenGigInterframeGap type="int" val="0"/>
-    <tenGigUdpPacketLen  type="int" val="8000"/>
-
-    <femAsicModuleType 		type="int" val="0"/>            <!-- 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone' -->
-
-    <femEnableTenGig 		type="bool" val="True"/>        <!-- Enables transmission of image data via 10GigE UDP interface -->
-    <femDataSource 			type="int"  val="1"/>           <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
-
-    <femAsicEnableMask 		type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>            <!-- .. -->
-
-	<!-- CCC Configuration commands -->
-	<cccSystemMode 			   type="int" val="0"/>			  	<!-- Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
-    <cccEmulationMode          type="bool" val="False"/>        <!--  Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
-    <cccProvideNumberImages    type="bool" val="True"/>         <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages -->
-    <cccVetoStartDelay         type="int" val="0"/>             <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
-    <cccStopDelay              type="int" val="0"/>             <!-- Adjust timing of the stop (in steps of clock cycles) -->
-    <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
-    <!-- <cccVetoPatternFile   type="str" val="vetos.xml"/>-->     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
-	
-    <femAsicPixelFeedbackOverride type="int" val="1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
-    <femAsicPixelSelfTestOverride type="int" val="-1"/>   	<!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
-    <femAsicDataType 		type="int"  val="0"/>           <!-- 0=Sensor Data, 1=Fem Internal counting, 2=ASIC Pseudo random -->
-    <femAsicLocalClock 		type="int"  val="0"/>           <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
-    <femAsicSetupLoadMode 	type="int"  val="0"/>           <!-- ASIC control load mode 0=parallel, 1=serial -->
-    <femInvertAdcData		type="bool" val="False"/>       <!-- Enable invert ADC ASIC data True=Inverted data -->
-    <femAsicRxCmdWordStart	type="bool" val="True"/>       	<!-- Enable ASIC readout started by ASIC Command Word <read_out_data/> -->
-    <femAsicSetupClockPhase type="int"  val="0"/>          	<!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
-    <!-- <femPpcMode type="int" val="0"/> To be Implemented-->
-    <tenGigFarmMode 		type="int"  val="1"/>           <!-- 10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists-->
-    <femAsicGainOverride 	type="bool" val="False"/>       <!-- FEM Gain Selection Mode; False=Gain set by femAsicGain, True=Asic Command Word decides -->
-    <femDebugLevel	 		type="int"  val="0"/>
-    <tenGig0DataFormat 		type="int"  val="0"/>           <!-- Data format type, 0=counting data - doesn't affect sensor data -->
-    <tenGig0DataGenerator 	type="int"  val="1"/>           <!-- Data generator 1=DataGen 2=PPC DDR2 -->
-    <tenGig0FrameLength 	type="int"  val="0x10000"/>     <!-- 10GigE 0 Frame length in bytes -->
-    <tenGig0NumberOfFrames 	type="int"  val="1"/>           <!-- Number of frames to send in each cycle -->
-
     <!-- User Variables, 'Will Want to Change': -->
     <numberImages			type="int"  val="4"/>           <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
-    <numberTrains			type="int"  val="5"/>           <!-- Set number of trains [if LL Data Generator / PPC Data Direct selected] -->
+    <numberTrains			type="int"  val="3"/>           <!-- Set number of trains [if LL Data Generator / PPC Data Direct selected] -->
 
-    <!-- User Variables, 'May Want to Change': -->
+	<!-- 'User may need to change' Variables: --> 
     <femAsicGain 			type="int" val="2"/>            <!-- 0=normal, 3=100x, 2=10x, 1=1x -->
     <femAsicVersion			type="int" val="2"/>
-
     <femAsicClockSource 	type="int" val="0"/>            <!-- 0=FEM local oscillator (100 MHz) 1=Sync with Xray (99 MHz) 2=Petra clock sync (~114 MHz)-->
     <femStartTrainSource 	type="int" val="1"/>            <!-- Train start signal source 0=XFEL Clock & Ctrl system, 1=Software, 2=LCLS, 3=Petra III -->
     <femStartTrainDelay 	type="int" val="90"/>			<!-- Delay between trigger arrival and start of train [in units of 10 ns] -->
     <femStartTrainInhibit 	type="int" val="10168"/>        <!-- Inhibit period after each trigger [in ASIC clock cycles] MINIMUM: Duration of Cmd Seq XML file (!) -->
     <femStartTrainPolarity 	type="int" val="0"/>            <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
     <femVetoPolarity 		type="int" val="1"/>            <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
+
+	<!-- CCC Configuration commands -->
+	<cccSystemMode 			   type="int" val="1"/>			  	<!-- Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
+    <cccEmulationMode          type="bool" val="True"/>        	<!--  Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
+    <cccProvideNumberImages    type="bool" val="True"/>         <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages -->
+    <cccVetoStartDelay         type="int" val="0"/>             <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+    <cccStopDelay              type="int" val="0"/>             <!-- Adjust timing of the stop (in steps of clock cycles) -->
+    <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
+    <cccVetoPatternFile		   type="str" val="Config/V_etoPatterns/veto_file_test.xml"/>     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
+
+    <!-- 'Expert' Variables: -->
+    <tenGig0SourceMac 		type="str" val="62-00-00-00-00-01"/>
+    <!--<tenGig0SourceIp 	type="str" val="10.0.0.2"/> -->          <!-- Machine specific, set by LpdReadoutTest -->
+    <tenGig0SourcePort 		type="int" val="0"/>
+    <!-- <tenGig0DestMac 	type="str" val="00-07-43-10-65-A0"/> --> <!-- Machine specific, set by LpdReadoutTest -->
+    <!-- <tenGig0DestIp 	type="str" val="10.0.0.1"/> -->          <!-- Machine specific, set by LpdReadoutTest -->
+    <tenGig0DestPort 	 	type="int" val="61649"/>
+    <tenGig0DataFormat 		type="int" val="0"/>              	<!-- Data format type, 0=counting data - doesn't affect sensor data -->
+    <tenGig0DataGenerator 	type="int" val="1"/>           		<!-- Data generator 1=DataGen 2=PPC DDR2 -->
+    <tenGig0FrameLength 	type="int" val="0x10000"/>			<!-- 10GigE 0 Frame length in bytes -->
+    <tenGig0NumberOfFrames 	type="int" val="1"/>          		<!-- Number of frames to send in each cycle -->
+    <tenGigFarmMode 		type="int" val="1"/>                <!-- 10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists-->
+    <tenGigInterframeGap 	type="int" val="0"/>
+    <tenGigUdpPacketLen 	type="int" val="8000"/>
+
+    <femEnableTenGig 				type="bool" val="True"/>    <!-- Enables transmission of image data via 10GigE UDP interface -->
+    <femDataSource 					type="int" val="1"/>        <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
+
+    <femAsicPixelFeedbackOverride	type="int" val="1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
+    <femAsicPixelSelfTestOverride	type="int" val="-1"/>   	<!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
+
+    <femAsicDataType 				type="int" val="0"/>        <!-- 0=Sensor Data, 1=Fem Internal counting, 2=ASIC Pseudo random -->
+    <femAsicLocalClock 				type="int" val="0"/>        <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
+    <femAsicSetupLoadMode 			type="int" val="0"/>        <!-- ASIC control load mode 0=parallel, 1=serial -->
+    <femInvertAdcData 				type="bool" val="False"/>   <!-- Enable invert ADC ASIC data True=Inverted data -->
+    <femAsicRxCmdWordStart 			type="bool" val="True"/>    <!-- Enable ASIC readout started by ASIC Command Word <read_out_data/> -->
+    <femAsicSetupClockPhase 		type="int" val="0"/>        <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
+    <!-- <femPpcMode 				type="int" val="0"/> 		To be Implemented-->
+
+    <femAsicGainOverride			type="bool" val="False"/>	<!-- FEM Gain Selection Mode; False=Gain set by femAsicGain, True=Asic Command Word decides -->
+    <femDebugLevel 					type="int" val="0"/>
+
+    <femAsicEnableMask 				type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>            <!-- .. -->
+
+    <femAsicModuleType 				type="int" val="0"/>            <!-- 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone' -->
 
 </lpd_readout_config>
 

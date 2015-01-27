@@ -160,6 +160,9 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
 #            asicSetupParams = "Config/SetupParams/Setup_Serial_KLASSE.xml"
 
     configFilename = 'Config/readoutConfiguration.xml'
+#    asicSetupParams = "/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/SetupParams/Setup_Matt.xml"    # Left to right: ascending order
+#    asicCmdSequence = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml'
+#    configFilename = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml'
 
     print "================    XML Filenames   ================"
     print asicSetupParams

@@ -335,9 +335,11 @@ class FrameProcessor(QtCore.QObject):
         # Define variables that increase with each loop iteration
         currentImage = 0
         bNextImageAvailable = True
+        # Assume at least one image in train to begin with
+        plotMaxPlots = 1
 
         # Loop over the specified number of plots
-        while bNextImageAvailable:
+        while bNextImageAvailable and currentImage < plotMaxPlots:
 
             imageOffset = self.imageFullLpdSize * currentImage
 #################################################################
@@ -360,7 +362,30 @@ class FrameProcessor(QtCore.QObject):
             if self.headersVersion == 0:           
                 imageOffset = self.imageFullLpdSize*currentImage
             elif self.headersVersion == 1:
+                
                 imageOffset = (self.imageFullLpdSize)*currentImage + LPD_HEADER_SIZE/2
+                
+                # Print XFEL header information
+                if currentImage == 0:
+
+                    trainLsb = self.pixelData[2] + (self.pixelData[3] << 8)
+                    trainMsb = self.pixelData[0] + (self.pixelData[1] << 8)
+                    trainId  = (trainMsb << 16) + trainLsb
+
+                    dataLsb = self.pixelData[2+4] + (self.pixelData[3+4] << 8)
+                    dataMsb = self.pixelData[0+4] + (self.pixelData[1+4] << 8)
+                    dataId  = (dataMsb << 16) + dataLsb
+
+                    linkLsb = self.pixelData[2+8] + (self.pixelData[3+8] << 8)
+                    linkMsb = self.pixelData[0+8] + (self.pixelData[1+8] << 8)
+                    linkId  = (linkMsb << 16) + linkLsb
+
+                    imgCountId  = self.pixelData[13]
+                    # Overwrite maximum plots with image number extracted from XFEL header
+                    plotMaxPlots = imgCountId
+
+                    #print "trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X}".format(trainId, dataId, linkId, imgCountId)
+
             else:
                 print "ERROR: Unsupported headersVersion in Json file"
                 return
@@ -470,8 +495,9 @@ class FrameProcessor(QtCore.QObject):
             except IndexError:
                 print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
             except Exception as e:
-                print "Error while extracting image: ", e, " -> imgOffset: ", imageOffset
-    
+                print "Error extracting image at %i Bytes, need %i but only %i Bytes available" % (imageOffset, self.imageFullLpdSize, self.pixelData.shape[0] - imageOffset)
+                print "(Error: %s)" % e
+
             # Module specific data processing
             if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
                 
@@ -498,6 +524,8 @@ class FrameProcessor(QtCore.QObject):
 
         # Last image in the data?
         try:
+            # Increment imageOffset to start of next image
+            imageOffset += self.imageFullLpdSize
             self.pixelData[imageOffset + self.imageFullLpdSize]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
