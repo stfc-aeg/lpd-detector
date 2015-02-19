@@ -17,7 +17,9 @@
 	<nop/>
 	<nop/>
 	<self_test_en/>
-	<trigger_flag_set count="4"/><!-- 4 images saved from ASICs -->
+	<trigger_section>
+		<trigger_flag_set count="4"/><!-- 4 images saved from ASICs -->
+	</trigger_section>
 	<nop/>
 	<on_chip_reset_disable/>
 	<reset_pre_amp/>

@@ -33,13 +33,15 @@
 	<remove_reset_gain_stage1/>
 	<remove_reset_gain_stage2/>
 	<nop count="10"/>
-	<trigger_flag_set/>
-	<nop count="10"/>
-	<trigger_flag_set/>
-	<nop count="10"/>
-	<trigger_flag_set/>
-	<nop count="10"/>
-	<trigger_flag_set/>
+	<trigger_section>
+		<trigger_flag_set/>
+		<nop count="10"/>
+		<trigger_flag_set/>
+		<nop count="10"/>
+		<trigger_flag_set/>
+		<nop count="10"/>
+		<trigger_flag_set/>
+	</trigger_section>
 	<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>

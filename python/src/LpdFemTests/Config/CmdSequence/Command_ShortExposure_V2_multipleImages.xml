@@ -35,10 +35,11 @@
 	<nop/>
 	<start_trigger_pointer/> 
 	<nop/>
-	<loop count="155">
-	    <trigger_flag_set/>
-	</loop>
-
+	<trigger_section>
+		<loop count="155">
+	    	<trigger_flag_set/>
+		</loop>
+	</trigger_section>
 	<nop/>
 	<nop/>
 	<on_chip_reset_disable/>

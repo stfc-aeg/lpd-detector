@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="Command_LongExposure_MultipleImages.xml"
+<lpd_command_sequence name="Command_LongExposure_MultipleImages_512.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 
@@ -39,12 +39,12 @@
 	<remove_reset_gain_stage1/>
 	<remove_reset_gain_stage2/>
 	<start_trigger_pointer/> 
-	<nop count="30"/>
-
-	<loop count="512">
-    	<trigger_flag_set/>
-   	</loop>
-	
+	<trigger_section>
+	    <nop count="30"/>
+	    <loop count="512">
+    	    <trigger_flag_set/>
+   	    </loop>
+	</trigger_section>
 	<nop count="2"/>
 	<reset_pre_amp/>
 	<reset_gain_front/>
