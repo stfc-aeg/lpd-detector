@@ -260,6 +260,8 @@ class LpdFemClient(FemClient):
         self.NR_CCC_VETO_PATTERNS = 10
         self.NR_WORDS_PER_CCC_VETO_PATTERN = 96  # size of pattern in bram words
 
+        self.CCC_EMULATOR_BRAM_SIZE_BYTES = 1024
+
 
 #----       
         self.sp3_io_bot_firmware_modules = 0
@@ -806,7 +808,7 @@ class LpdFemClient(FemClient):
         ''' Configure 10 Gig Link '''
 
         if self.tenGig0['femEnable']:
-            if self.femDebugLevel > 0:
+            if self.femDebugLevel >= 5:
                 self.pp.pprint(self.tenGig0)
 
             x10g_base = self.udp_10g_0
@@ -829,7 +831,7 @@ class LpdFemClient(FemClient):
                                  
             self.x10g_set_farm_mode(x10g_base, 0)
 
-            if self.femDebugLevel > 3:                
+            if self.femDebugLevel >= 5:
                 print "Dump of Farm Mode LUT for xaui for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(x10g_base+0x10000, 16) 
                 self.dump_regs_hex(x10g_base+0x100f0, 16)                               
@@ -838,7 +840,7 @@ class LpdFemClient(FemClient):
                 self.dump_regs_hex(x10g_base+0x10200, 16)
                 self.dump_regs_hex(x10g_base+0x103f0, 16)
                     
-            if self.femDebugLevel > 1:
+            if self.femDebugLevel >= 5:
                 print "Dump of regs for xaui for Link %d" % self.tenGig0['link_nr']
                 self.dump_regs_hex(x10g_base, 16)
                 print "Dump of regs for Data Gen for Link %d" % self.tenGig0['link_nr']
@@ -958,7 +960,7 @@ class LpdFemClient(FemClient):
             if self.femAsicEnableMask[3] & 0xff000000 != 0:
                 module_mask[9-1] = 1
 
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 2:
             print "Loading Asic Setup Params in Modules : [%s] ..." %', '.join(map(str, module_mask)) 
 
 #        # extract the asic params from slow xml file (once only)
@@ -1055,7 +1057,7 @@ class LpdFemClient(FemClient):
         
             self.config_asic_ccc_fast_xml() # Loads CCC fem fast bram from xml file
         else:
-            if self.femDebugLevel > 1:
+            if self.femDebugLevel >= 2:
                 print "Start OLD Fast Wrapper config_asic_fast_xml "
             self.config_asic_fast_xml() # Loads fem fast bram from xml file
             
@@ -1142,7 +1144,7 @@ class LpdFemClient(FemClient):
         nr_words = fileCmdSeq.getTotalNumberWords()
         nr_nops  = fileCmdSeq.getTotalNumberNops()
                         
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 2:
             print "fast cmds nr_words = %d, nr_nops =%d: " %(nr_words, nr_nops)
 
         # Setup the fast command block
@@ -1176,18 +1178,18 @@ class LpdFemClient(FemClient):
 # as still need to find out where trigger sequence starts even if not using vetos so that start delay can be set
 
         cccEna = True 
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 2:
             print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
         fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
         encodedSequenceComplete  = fileCmdSeqComplete.encode()
         nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
         nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
-        if self.femDebugLevel > 2:
+        if self.femDebugLevel >= 3:
             print "nr_wordsComplete = %d, nr_nopsComplete =%d: " % (nr_wordsComplete, nr_nopsComplete)
         
         # Ask where trigger section begins 
         (initial_nops, initial_words) = (fileCmdSeqComplete.getTriggerLocation())
-        if self.femDebugLevel > 2:
+        if self.femDebugLevel >= 3:
             print "initial_words = %d,initial_words =%d: " % (initial_words, initial_nops)
                   
         encodedSequenceStart = encodedSequenceComplete[:initial_words]
@@ -1198,13 +1200,13 @@ class LpdFemClient(FemClient):
         if self.cccSystemMode != 2: 
 
             cccEna = False          
-            if self.femDebugLevel > 1:
+            if self.femDebugLevel >= 2:
                 print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
             fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
             encodedSequenceComplete  = fileCmdSeqComplete.encode()
             nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
             nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
-            if self.femDebugLevel > 2:
+            if self.femDebugLevel >= 3:
                 print "nr_wordsComplete = %d, nr_nopsComplete =%d: " % (nr_wordsComplete, nr_nopsComplete)
                       
             encodedSequenceStart = encodedSequenceComplete
@@ -1266,7 +1268,7 @@ class LpdFemClient(FemClient):
             print "ccc_start_delay =%d  [$%08x]: " % (ccc_start_delay, ccc_start_delay)
 
 # TESTING veto logic
-# add a fixed delay to force a stop after some specificed nr of trigger/vetos
+  # add a fixed delay to force a stop after some specificed nr of trigger/vetos
         #nr_bunch_cmds_before_stop = self.NR_BUNCHES_IN_TRAIN 
         #self.cccStopDelay = self.cccVetoStartDelay + self.NR_CLOCKS_PER_FAST_CMD * nr_bunch_cmds_before_stop 
           
@@ -1310,6 +1312,10 @@ class LpdFemClient(FemClient):
         if self.femDebugLevel >= 0:
             print "Set up NEW CCC XFEL Command Generator"
 
+        # clear previous values
+        
+        self.zero_regs(self.ccc_cmd_gen_bram+0, self.CCC_EMULATOR_BRAM_SIZE_BYTES) 
+        
 # 1. COMMANDS
 
 # set up bram with XFEL C&C command words
@@ -1354,15 +1360,20 @@ class LpdFemClient(FemClient):
 # Example sequence  NVeto, NVeto, Veto, NVeto, Golden
 
         self.rdmaWrite(self.ccc_cmd_gen_bram+6, 0x00280080) # -- no veto  bx 1  
-        self.rdmaWrite(self.ccc_cmd_gen_bram+7, 0x00280100) # -- no veto  bx 2
-        self.rdmaWrite(self.ccc_cmd_gen_bram+8, 0x00300180) # -- veto  bx 3 
+        self.rdmaWrite(self.ccc_cmd_gen_bram+7, 0x00280100) # -- no veto  bx 2 
+        self.rdmaWrite(self.ccc_cmd_gen_bram+8, 0x00280100) # -- no veto  bx 2
+#        self.rdmaWrite(self.ccc_cmd_gen_bram+8, 0x00300180) # -- veto  bx 3 
         self.rdmaWrite(self.ccc_cmd_gen_bram+9, 0x00280200) # -- no veto  bx 4  
-        self.rdmaWrite(self.ccc_cmd_gen_bram+10, 0x00380280) # -- golden  bx 5   ;  total of 4 triggers  
-        self.rdmaWrite(self.ccc_cmd_gen_bram+11, 0x00380300) #  -- golden  bx 6  
-        self.rdmaWrite(self.ccc_cmd_gen_bram+12, 0x00300380) # -- veto  bx 7  
-        self.rdmaWrite(self.ccc_cmd_gen_bram+13, 0x00280400) #  -- no veto  bx 8    ; total 6 triggers
-#        self.rdmaWrite(self.ccc_cmd_gen_bram+14, 0x00280480) #  -- no veto  bx 9 
+#        self.rdmaWrite(self.ccc_cmd_gen_bram+10, 0x00380280) # -- golden  bx 5   ;  total of 4 triggers  
+#        self.rdmaWrite(self.ccc_cmd_gen_bram+11, 0x00380300) #  -- golden  bx 6  
+##        self.rdmaWrite(self.ccc_cmd_gen_bram+12, 0x00380300) #  -- golden  bx 6  
+#        self.rdmaWrite(self.ccc_cmd_gen_bram+12, 0x00300380) # -- veto  bx 7  
+#        self.rdmaWrite(self.ccc_cmd_gen_bram+13, 0x00280400) #  -- no veto  bx 8    ; total 6 triggers
+#        self.rdmaWrite(self.ccc_cmd_gen_bram+14, 0x002DDD80) #  -- no veto  bx ID = $BBB  for cable test 
 #        self.rdmaWrite(self.ccc_cmd_gen_bram+15, 0x00280500) #  -- no veto  bx 10     ;  total of 8 triggers  
+        
+#        for i in range (16, 400):  # with increased size bram 
+#          self.rdmaWrite(self.ccc_cmd_gen_bram+i, 0x00280080) # -- no veto  bx 1  
 
 
 ##### Must also MAKE sure the Pattern BRAM contents in config_asic_ccc_veto() enable these triggers   ############
@@ -1371,7 +1382,7 @@ class LpdFemClient(FemClient):
 # veto command locations are set by registers for RESET start and offset
 
         self.rdmaWrite(self.ccc_cmd_gen_reg + 6, 6) # start corresponding to bram filling above            
-        self.rdmaWrite(self.ccc_cmd_gen_reg + 7, 10)  # nr of veto/nveto cmds above    ;  increase to read more veto command words           
+        self.rdmaWrite(self.ccc_cmd_gen_reg + 7, 400)  # nr of veto/nveto cmds above    ;  increase to read more veto command words           
 
 # 2. TIMING
        
@@ -1409,13 +1420,7 @@ class LpdFemClient(FemClient):
                     print "cccVetoPatternSource is from File: "
                 # from file
                 #self.cccVetoPatternFile = "Config/VetoPatterns/veto_pattern_test1.xml"
-                # Set absolute path to follow:
-                currentWorkingDir = os.getcwd()
-                self.cccVetoPatternFile = currentWorkingDir + '/' + self.cccVetoPatternFile
-                try:
-                    stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
-                except Exception as e:
-                    raise FemClientError(str(e))
+                stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
             
             else:          
                 if self.femDebugLevel >= 2:
@@ -1430,10 +1435,8 @@ class LpdFemClient(FemClient):
                                     <veto pattern="1"  value="0xAAAAAAAA"/>
                                 </lpd_bunch_pattern>
                 '''
-                try:
-                    stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
-                except Exception as e:
-                    raise FemClientError(str(e))
+                stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
+
             
             vetoPatterns = stringCmdSeq.encode()
             
@@ -1482,17 +1485,21 @@ class LpdFemClient(FemClient):
         self.fem_asic_rx_setup(self.asic_srx_0, self.femAsicEnableMaskRemap, no_asic_cols, no_asic_cols_per_frm)
 
         # NEW ; use info on nr triggers coming with readout strobe from CCC to determine how many images to process
-        # this overrides asicrx register settings for ncols  etc
-        if self.cccProvideNumberImages == True:
-            if self.cccSystemMode == 2:
-                self.register_set_bit(self.asic_srx_0+0, 12)
-            else:
-                print "INFO: Not using CCC Vetos, so will readout number of Images specified in config xml file"
+        # this overrides asicrx register settings for ncols  etc          
+        if self.cccSystemMode != 2:  
+            print "INFO: Number of Images to readout from value in config xml file"
+            self.register_clear_bit(self.asic_srx_0+0, 12)
+        else:
+            if self.cccProvideNumberImages == False:
+                print "**WARNING: In CC Mode with Vetos ; OVERRIDING number of Images to readout from value in config xml file"
                 self.register_clear_bit(self.asic_srx_0+0, 12)
-            
+            else:              
+                print "INFO: In CC Mode with Vetos ; Num Images readout according to CCC Veto input"
+                self.register_set_bit(self.asic_srx_0+0, 12)
+
 
         # NEW ; if NOT using CCC to provide TrainID for header then insert dummy incrementing TrainID  
-        if self.cccSystemMode == 1 or self.cccSystemMode == 2:
+        if self.cccSystemMode == 1 or self.cccSystemMode == 2: 
             self.register_clear_bit(self.asic_srx_0+0, 16)  # disable dummy train id 
         else:
             self.toggle_bits(self.asic_srx_0+0, 17)  # reset dummy train id
@@ -1583,7 +1590,7 @@ class LpdFemClient(FemClient):
         # adjust capture point start to Nth image
         #asic_rx_start_delay = asic_rx_start_delay + 0 * self.nr_clocks_to_readout_image
 
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 2:
             print "asic_rx_start_delay = %s " % asic_rx_start_delay
         
         if self.femAsicRxCmdWordStart:
@@ -1683,7 +1690,7 @@ class LpdFemClient(FemClient):
                 maskIndex += 1
             bitMask = bitMask << 4
 
-        if self.femDebugLevel > 2:
+        if self.femDebugLevel >= 3:
             print "userMask => femMask"
             #print "==================="
             for idx in range(4):
@@ -1710,7 +1717,7 @@ class LpdFemClient(FemClient):
                 if self.cccSystemMode != 0:  
 
                     if self.cccEmulationMode == True:
-                        if self.femDebugLevel > 2:
+                        if self.femDebugLevel >= 3:
                             print "Sending CCC Start and Vetos using C&C System EMULATION  CCC Cmd Gen"
 
                         self.register_set_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from generator
@@ -1719,7 +1726,7 @@ class LpdFemClient(FemClient):
                         #self.toggle_bits(self.fem_ctrl_0+10, 11)  # ccc stop ; just for test as not actually used to start readout
                         #self.toggle_bits(self.fem_ctrl_0+10, 12)  # ccc reset ; just for test as not actually used to reset
                     else:
-                        if self.femDebugLevel > 2:
+                        if self.femDebugLevel >= 3:
                             print "Sending CCC Start and Stop in RX BYPASS"
                         self.toggle_bits(self.fem_ctrl_0+10, 8)  # ccc start Rx bypass
                         self.toggle_bits(self.fem_ctrl_0+10, 9)  # ccc stop Rx bypass
@@ -1731,33 +1738,33 @@ class LpdFemClient(FemClient):
     def dump_registers(self):
         ''' Dump registers '''
         
-        print "Dump of FEM Registers : TOP LEVEL CTRL"
-        self.dump_regs_hex(self.fem_ctrl_0, 18)
+        #print "Dump of FEM Registers : TOP LEVEL CTRL"
+        #self.dump_regs_hex(self.fem_ctrl_0, 18)
 
-        print "Dump of FEM Registers : PPC1 BRAM"
-        self.dump_regs_hex(self.bram_ppc1, 20)
+        #print "Dump of FEM Registers : PPC1 BRAM"
+        #self.dump_regs_hex(self.bram_ppc1, 20)
         
         print "Dump of FEM Registers : XAUI link 1"
         self.dump_regs_hex(self.udp_10g_0, 16)
 
         print "Dump of FEM Registers : DATA GEN on link 1"
-        self.dump_regs_hex(self.data_gen_0, 16)
+        self.dump_regs_hex(self.data_gen_0, 8)
 
-        print "Dump of FEM Registers : ASIC RX"
-        self.dump_regs_hex(self.asic_srx_0, 16)
+        #print "Dump of FEM Registers : ASIC RX"
+        #self.dump_regs_hex(self.asic_srx_0, 16)
 
         print "Dump of FEM Registers : ASIC FAST CTRL"
-        self.dump_regs_hex(self.fast_cmd_0, 16)
+        self.dump_regs_hex(self.fast_cmd_0, 12)
 
         print "Dump of FEM Registers : ASIC FAST BRAM"
-        self.dump_regs_hex(self.fast_cmd_1, 32)
+        self.dump_regs_hex(self.fast_cmd_1, 20)
         #self.dump_regs_hex(self.fast_cmd_1+(self.FAST_BRAM_SIZE_BYTES*4)-16, 30) # deliberately looking beyond end of physical BRAM
 
         print "Dump of FEM Registers : ASIC SLOW CTRL"
-        self.dump_regs_hex(self.slow_ctr_0, 18)
+        self.dump_regs_hex(self.slow_ctr_0, 12)
 
         print "Dump of FEM Registers : ASIC SLOW BRAM"
-        self.dump_regs_hex(self.slow_ctr_1, 32)   # 1024
+        self.dump_regs_hex(self.slow_ctr_1+16, 16)   # 1024
 
         print "Dump of Ext Trigger Strobe Registers : TRIG STROBE"
         self.dump_regs_hex(self.trig_strobe, 20)
@@ -1776,7 +1783,7 @@ class LpdFemClient(FemClient):
 
         print "Dump of FEM Registers : CFG SP3 CTRL"
         try:
-            self.dump_regs_hex(self.cfg_sp3_ctrl, 18)
+            self.dump_regs_hex(self.cfg_sp3_ctrl, 20)
         except FemClientError:
             print "WARNING: CFG SP3 dump_regs_hex failed"
 
@@ -1953,7 +1960,7 @@ class LpdFemClient(FemClient):
         # load control registers
         # reset mode  for old behaviour outputting bram , without vetos
 
-        if self.femDebugLevel > 2:
+        if self.femDebugLevel >= 3:
             print "fem_fast_cmd_setup_new : section_addr = $%08x , offset = %d, nr_words =%d: " % (section_addr, offset, nr_words)
     
         self.rdmaWrite(section_addr,   offset)      # offset
@@ -2062,7 +2069,7 @@ class LpdFemClient(FemClient):
     def start_10g_link(self):
         ''' Start a 10g link '''
 
-        if self.femDebugLevel > 5:
+        if self.femDebugLevel >= 5:
             print "Start 10G link nr", self.tenGig0['link_nr']
 
         data_gen_base = self.data_gen_0
@@ -2366,6 +2373,128 @@ class LpdFemClient(FemClient):
         # Re-enable v5 tristate i/o to asic 
         self.rdmaWrite(self.fem_ctrl_0+5, 0x0)  
 
+
+    def checkEventLength(self, numImages, numTrains, llmonEventLength, llmonTotalData, dataFormat):
+        ''' 
+            Calculate the expected event length in bytes
+        '''
+        # For readout with LPD Data Formatting ; 
+        # lpd headers and trailers in the data payload
+        # lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
+        # all sizes in BYTES
+        
+        # All LPD blocks are padded to align on 32 byte boundaries
+        # consequence of FIFO input width (256 bits) in Asicrx firmware module
+        
+        LL_HEADER_SIZE = 32
+        LL_TRAILER_SIZE = 32
+
+        MIN_LPD_BLOCK_SIZE = 32
+        
+        LPD_TRAILER_SIZE = (1*32); # includes crc
+        LPD_HEADER_SIZE = (1*32); # includes train id
+        
+        # Number of Image Descriptors are now Variable :
+        # aligned on 32 byte boundaries
+        # 1) storageCellNumber (2 bytes)
+        # 2) bunchNumber (8 bytes)
+        # 3) status (2 bytes)
+        # 4) length (4 bytes)
+        
+        LPD_IMAGE_DESCRIPTOR_SIZE_STORAGE_CELL = 2; 
+        LPD_IMAGE_DESCRIPTOR_SIZE_BUNCH_NUMBER = 8; 
+        LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_STATUS = 2; 
+        LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_LENGTH = 4; 
+        
+        LPD_DETECTOR_SPECIFIC_SIZE = (13*32); # fixed with trigger information from C&C module
+
+        LPD_IMAGE_DESCRIPTOR_SIZE = 8192;  # 0 # 8192
+
+        LPD_IMAGE_SIZE = 0x20000;  # is aligned on 32 bytes
+        
+        llHeaderLength =  LL_HEADER_SIZE      # local link header is stripped off by 10g block (but counted by ll monitor)
+        llTrailerLength = LL_TRAILER_SIZE     # local link trailer is stripped off by 10g block (but counted by ll monitor)
+        
+        lpdHeaderLength = LPD_HEADER_SIZE
+        lpdTrailerLength = LPD_TRAILER_SIZE
+        
+        lpdImageDataLength = numImages * LPD_IMAGE_SIZE
+        
+        # blocks are padded to 32 byte alignment
+        
+        numDescriptorsPerBlockStorageCell = MIN_LPD_BLOCK_SIZE / LPD_IMAGE_DESCRIPTOR_SIZE_STORAGE_CELL
+        numDescriptorsPerBlockBunchNumber = MIN_LPD_BLOCK_SIZE / LPD_IMAGE_DESCRIPTOR_SIZE_BUNCH_NUMBER
+        numDescriptorsPerBlockImageStatus = MIN_LPD_BLOCK_SIZE / LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_STATUS
+        numDescriptorsPerBlockImageLength = MIN_LPD_BLOCK_SIZE / LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_LENGTH
+        
+        if dataFormat == 1:      # fixed 512 image descriptors      
+            lenDescriptorsStorageCell = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_STORAGE_CELL
+            lenDescriptorsBunchNumber = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_BUNCH_NUMBER
+            lenDescriptorsImageStatus = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_STATUS
+            lenDescriptorsImageLength = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_LENGTH
+        else:                   # variable nr image descriptors
+            if numImages == 0:          
+                lenDescriptorsStorageCell = 0
+                lenDescriptorsBunchNumber = 0
+                lenDescriptorsImageStatus = 0
+                lenDescriptorsImageLength = 0
+            else:            
+                lenDescriptorsStorageCell = ((numImages-1) / numDescriptorsPerBlockStorageCell + 1) * MIN_LPD_BLOCK_SIZE
+                lenDescriptorsBunchNumber = ((numImages-1) / numDescriptorsPerBlockBunchNumber + 1) * MIN_LPD_BLOCK_SIZE
+                lenDescriptorsImageStatus = ((numImages-1) / numDescriptorsPerBlockImageStatus + 1) * MIN_LPD_BLOCK_SIZE
+                lenDescriptorsImageLength = ((numImages-1) / numDescriptorsPerBlockImageLength + 1) * MIN_LPD_BLOCK_SIZE
+         
+        
+        lenDescriptorsTotal = lenDescriptorsStorageCell + lenDescriptorsBunchNumber + lenDescriptorsImageStatus + lenDescriptorsImageLength
+        
+        lpdDectectorSpecificLength = LPD_DETECTOR_SPECIFIC_SIZE
+        
+        lpdEventLength = lpdHeaderLength + lpdImageDataLength + lenDescriptorsTotal + lpdDectectorSpecificLength + lpdTrailerLength 
+        
+        eventLength = llHeaderLength + lpdEventLength + llTrailerLength
+        
+        totalExpectedData = eventLength * numTrains
+
+        print "  ------------------------------------------------------------------------" 
+        if self.femDebugLevel >= 1:
+            print "Expected Event Data Length in Bytes for Num Trains = %d and Num Images = %d :" %(numTrains, numImages)
+            if dataFormat == 1:      # fixed 512 image descriptors      
+                print "Event Format with Fixed 512 Image Descriptors"
+            else:               
+                print "Event Format with Variable number of Image Descriptors"
+            print "              Local Link Header = %d \t ($%08x)" %(llHeaderLength, llHeaderLength)
+            print "             Local Link Trailer = %d \t ($%08x)" %(llTrailerLength, llTrailerLength)
+            print "                     LPD Header = %d \t ($%08x)" %(lpdHeaderLength, lpdHeaderLength)
+            print "                     LPD Images = %d \t ($%08x)" %(lpdImageDataLength, lpdImageDataLength)
+            print " LPD Descriptors [Storage Cell] = %d \t ($%08x)" %(lenDescriptorsStorageCell, lenDescriptorsStorageCell)
+            print " LPD Descriptors [Bunch Number] = %d \t ($%08x)" %(lenDescriptorsBunchNumber, lenDescriptorsBunchNumber)
+            print " LPD Descriptors [Image Status] = %d \t ($%08x)" %(lenDescriptorsImageStatus, lenDescriptorsImageStatus)
+            print " LPD Descriptors [Image Length] = %d \t ($%08x)" %(lenDescriptorsImageLength, lenDescriptorsImageLength)
+            print "          LPD Descriptors Total = %d \t ($%08x)" %(lenDescriptorsTotal, lenDescriptorsTotal)
+            print "          LPD Detector Specific = %d \t ($%08x)" %(lpdDectectorSpecificLength, lpdDectectorSpecificLength)
+            print "                    LPD Trailer = %d \t ($%08x)" %(lpdTrailerLength, lpdTrailerLength)
+            print "  ------------------------------------------------------------------------" 
+            print "               LPD Event Length = %d \t ($%08x)" %(lpdEventLength, lpdEventLength)
+            print "      Event Length (incl LLink) = %d \t ($%08x)" %(eventLength, eventLength)
+            print "  ------------------------------------------------------------------------"         
+            print "        Total Data (incl LLink) = %d \t ($%08x)" %(totalExpectedData, totalExpectedData)
+            print "  ------------------------------------------------------------------------" 
+        
+        if eventLength != llmonEventLength:
+            print "***ERROR   LPD Last Event Length Expected = %d ($%08x) but Received %d ($%08x)" %(eventLength, eventLength, llmonEventLength, llmonEventLength)
+        else:
+            print " OK        LPD Last Event Length Expected = %d ($%08x) and Received %d ($%08x)" %(eventLength, eventLength, llmonEventLength, llmonEventLength)
+        
+        if totalExpectedData != llmonTotalData:
+            print "***ERROR          LPD Total Data Expected = %d ($%08x) but Received %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData)
+        else:
+            print " OK               LPD Total Data Expected = %d ($%08x) and Received %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData)
+        print "  ------------------------------------------------------------------------" 
+  
+          
+        
+        return eventLength
+
     '''
         --------------------------------------------------------
         --------------------------------------------------------
@@ -2427,7 +2556,7 @@ class LpdFemClient(FemClient):
         print "femAsicDataType     = %s" % femAsicDataTypeNames[self.femAsicDataType]
         print "cccSystemMode       = %s" % cccSystemModeNames[self.cccSystemMode]
 
-        if self.cccSystemMode != 0:
+        if self.cccSystemMode != 0 :
             if self.cccEmulationMode == True:
                 print "***WARNING: C&C signals are being EMULATED inside the FEM. Set param 'cccEmulationMode'=False to run with a REAL C&C System."
             
@@ -2449,7 +2578,7 @@ class LpdFemClient(FemClient):
 
         # NEW reset to CCC IDELAY logic
         if self.femDebugLevel >= 0:        
-            print "Sending Reset to CCC IDELAY logic"         
+            print "Sending Reset to CCC IDELAY logic"
         self.toggle_bits(self.fem_ctrl_0+11, 25)                
         
         #TODO: Is Comment Still Relevant?
@@ -2507,21 +2636,21 @@ class LpdFemClient(FemClient):
         self.config_data_gen()
 
         if self.femDebugLevel >= 0:        
-            print "."
+            print "--"
             print "Configuring ASICs..."
 
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 2:
             print "INFO start config_trig_strobe  "
         self.config_trig_strobe()   # External trigger strobes
 
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 2:
             print "INFO start config_sp3io_top  "
         try:
             self.config_sp3io_top()   
         except FemClientError:
             print "WARNING: config_sp3io_top failed"
         
-        if self.femDebugLevel > 1:
+        if self.femDebugLevel >= 2:
             print "INFO start config_sp3io_bot  "
         try:
             self.config_sp3io_bot()   
@@ -2536,7 +2665,7 @@ class LpdFemClient(FemClient):
 
         # Setup asic blocks
         if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_ASIC_DATA_DIRECT):  # data from asic
-            if self.femDebugLevel > 1:
+            if self.femDebugLevel >= 2:
                 print "INFO config_asic_modules  "
             self.config_asic_modules()
 
@@ -2549,7 +2678,7 @@ class LpdFemClient(FemClient):
             #return 1       # TEST 
 
 
-            print "."           
+            print "--"           
             print "Starting Run ..."
 
             # check that a valid clock is being sent to the ASICs
@@ -2559,6 +2688,10 @@ class LpdFemClient(FemClient):
                 #print "*** RUN was ABORTED."
                 #print "*** Please verify the ASIC clock source." 
                 #return 99
+
+            # Clear the monitors at run start is needed for running with the LpdFemGui
+            self.clear_ll_monitor(self.llink_mon_asicrx)
+            self.clear_ll_monitor(self.llink_mon_0)
 
             if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
                 if self.femPpcMode == 0:  # single shot readout mode, test only
@@ -2574,19 +2707,25 @@ class LpdFemClient(FemClient):
                     #return 1   # TEST   
 
             else:
-                if self.femDebugLevel > 1:
+                if self.femDebugLevel >= 2:
                     print "Running in PPC1 BYPASS mode..."
 
             print "=========================================================" 
-            print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
+            if self.cccSystemMode != 2:  
+                print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
+            else:
+                if self.cccProvideNumberImages == True:
+                    print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
+                else:              
+                    print "Starting Sequence of %d Trains , with each Train reading varying Number of images according to CCC Veto input" % (self.numberTrains)  
 
             #print "Dump of FEM Registers : TOP LEVEL CTRL"
             #self.dump_regs_hex(self.fem_ctrl_0, 18)
 
             if self.STOP_RUN_ON_ESC_KEY == True:
-                print "."           
+                print "--"           
                 print "Hit the ESC KEY to Stop Run..." 
-                print "."           
+                print "--"           
     
             if self.femStartTrainSource == 1:  # If S/W send triggers manually         
                 self.enable_ext_trig_strobe()   # # causes toggle on reset to trigger strobe module
@@ -2697,11 +2836,11 @@ class LpdFemClient(FemClient):
                     
     
             print "======== Train Cycle Completed ===========" 
-            print "."           
+            print "--"           
             #time.sleep(2)   # just to see output before dumping registers
 
             if self.femDebugLevel >= 1:
-                print "."
+                print "--"           
                 print "=======================================================================" 
         
                 self.pp = pprint.PrettyPrinter(indent=4)
@@ -2717,30 +2856,38 @@ class LpdFemClient(FemClient):
             
             
             if self.femDebugLevel >= 0:
-                print "."
+                print "--"
                 print "Dump of FEM Registers : TOP LEVEL CTRL"
                 self.dump_regs_hex(self.fem_ctrl_0, 30)
 
-            if self.femDebugLevel > 0:
+            if self.femDebugLevel >= 1:
+                print "Dump of FEM Registers : ASIC DATA RX"
+                self.dump_regs_hex(self.asic_srx_0, 32)
+                
+            if self.femDebugLevel >= 3:
+                print "Dump of FEM Registers : XAUI link 1"
+                self.dump_regs_hex(self.udp_10g_0, 16)
+
+            if self.femDebugLevel >= 3:
                 print "Dump of FEM Registers : BOT SP3 CTRL"
                 try:
-                    self.dump_regs_hex(self.bot_sp3_ctrl, 20)
+                    self.dump_regs_hex(self.bot_sp3_ctrl+16, 4)
                 except FemClientError:
                     print "WARNING: BOT SP3 dump_regs_hex failed"
 
                 print "Dump of FEM Registers : TOP SP3 CTRL"
                 try:
-                    self.dump_regs_hex(self.top_sp3_ctrl, 20)
+                    self.dump_regs_hex(self.top_sp3_ctrl+16, 4)
                 except FemClientError:
                     print "WARNING: TOP SP3 dump_regs_hex failed"
 
-            if self.femDebugLevel >= 1:
+                print "Dump of FEM Registers : CFG SP3 CTRL"
+                try:
+                    self.dump_regs_hex(self.cfg_sp3_ctrl+16, 4)
+                except FemClientError:
+                    print "WARNING: CFG SP3 dump_regs_hex failed"
 
-                print "Dump of FEM Registers : TRIGGER STROBE"
-                self.dump_regs_hex(self.trig_strobe, 20)
-                
-                print "Dump of FEM Registers : ASIC DATA RX"
-                self.dump_regs_hex(self.asic_srx_0, 16)
+            if self.femDebugLevel >= 2:
 
 #              print "Dump of FEM Registers : ASIC SLOW CTRL"
 #              self.dump_regs_hex(self.slow_ctr_0, 18)
@@ -2749,11 +2896,17 @@ class LpdFemClient(FemClient):
 #              self.dump_regs_hex(self.slow_ctr_1, 1024)   # 1024
 
                 print "Dump of FEM Registers : ASIC FAST CTRL"
-                self.dump_regs_hex(self.fast_cmd_0, 16)
+                self.dump_regs_hex(self.fast_cmd_0, 12)
                 
                 print "Dump of FEM Registers : ASIC FAST BRAM"
-                self.dump_regs_hex(self.fast_cmd_1, 32)          
+                self.dump_regs_hex(self.fast_cmd_1, 20)          
                 
+                print "Dump of FEM Registers : ASIC SLOW CTRL"
+                self.dump_regs_hex(self.slow_ctr_0, 12)
+        
+                print "Dump of FEM Registers : ASIC SLOW BRAM"
+                self.dump_regs_hex(self.slow_ctr_1+16, 16)   # 1024
+
                 #print "Dump of FEM Registers : ASIC FAST BRAM COE"
                 #self.dump_regs_hex_coe(self.fast_cmd_1, 1024)
                 
@@ -2761,17 +2914,21 @@ class LpdFemClient(FemClient):
                     print "Dump of FEM Registers : CCC DELAY REG"
                     self.dump_regs_hex(self.ccc_delay_reg, 6) 
                     print "Dump of FEM Registers : CCC PATTERN ID REG"
-                    self.dump_regs_hex(self.ccc_pattern_id, 16)                  
+                    self.dump_regs_hex(self.ccc_pattern_id, 12)                  
                     print "Dump of FEM Registers : CCC PATTERN BRAM"
-                    self.dump_regs_hex(self.ccc_pattern_bram, 32)
+                    self.dump_regs_hex(self.ccc_pattern_bram, 8)
                 
                 if ((self.get_v5_firmware_vers()&0xffff) >= 0x022d):
                     print "Dump of FEM Registers : CCC CMD GEN REG"
-                    self.dump_regs_hex(self.ccc_cmd_gen_reg, 16) 
+                    self.dump_regs_hex(self.ccc_cmd_gen_reg, 12) 
                     print "Dump of FEM Registers : CCC CMD GEN BRAM"
-                    self.dump_regs_hex(self.ccc_cmd_gen_bram, 24) 
+                    self.dump_regs_hex(self.ccc_cmd_gen_bram, 12) 
     
-            if self.femDebugLevel > 0:
+                print "Dump of FEM Registers : TRIGGER STROBE"
+                self.dump_regs_hex(self.trig_strobe, 20)
+                
+
+            if self.femDebugLevel >= 5:
                 print "Register Settings"
                 self.dump_registers()
             else:
@@ -2788,22 +2945,69 @@ class LpdFemClient(FemClient):
                     self.acquireSend(FemTransaction.CMD_ACQ_STOP)
     
 
-            print "."
+            print "--"
             print "Summary of Data Readout..."
     
-            print "."    
+            print "--"    
             print "Asic Rx LLink Monitor: 32b "
             self.read_ll_monitor(self.llink_mon_asicrx, 220.0e6)    # 220.0e6 
             
-            print "."
+            print "--"
             print "10G LLink Monitor: 64b "
             self.read_ll_monitor(self.llink_mon_0, 156.25e6)
+            
+            # get info from first word from veto filter
+            if ((self.get_v5_firmware_vers()&0xffff) >= 0x026a):  # 1 = fixed 512 descriptors, 2 = variable nr descriptors
+                cccTrainId = 0L
+                cccTrainIdUpper = self.rdmaRead(self.asic_srx_0+16+0, 1)[0]
+                cccTrainIdLower = self.rdmaRead(self.asic_srx_0+16+1, 1)[0]
+                cccTrainId = (cccTrainIdUpper << 32) + cccTrainIdLower
+                cccBunchPatternId = (0xff000000 & self.rdmaRead(self.asic_srx_0+16+2, 1)[0]) >> 24
+                cccNumTriggers = (0x001ff000 & self.rdmaRead(self.asic_srx_0+16+2, 1)[0]) >> 12
+            
+            if self.cccSystemMode != 0:  
+                print "  ------------------------------------------------------------------------" 
+                print "Info from CCC Veto System for last Train in Run:"
+                #print " cccTrainIdUpper = $%08x" %(cccTrainIdUpper)
+                #print " cccTrainIdLower = $%08x" %(cccTrainIdLower)
+                print " Train ID = $%x" %(cccTrainId)
+                print " Bunch Pattern ID = %d" %(cccBunchPatternId)
+                if self.cccSystemMode == 2:  
+                    print " Number Triggers sent to Asic = %d" %(cccNumTriggers)
+                    if self.cccProvideNumberImages == False: 
+                        print "*** WARNING: Overiding Number of Images to readout = %d" %(self.numberImages)
+
+            else:
+                cccTrainId = 0L
+                cccTrainIdUpper = 0
+                cccTrainIdLower = 0
+                cccTrainId = (cccTrainIdUpper << 32) + cccTrainIdLower
+                cccBunchPatternId = 0
+                cccNumTriggers = self.numberImages
+
+            
+            llmonEventLength = self.rdmaRead(self.llink_mon_asicrx+16+0, 1)[0]
+            llmonTotalData = self.rdmaRead(self.llink_mon_asicrx+16+7, 1)[0]
+            if ((self.get_v5_firmware_vers()&0xffff) >= 0x0269):  # 1 = fixed 512 descriptors, 2 = variable nr descriptors
+                dataFormat = 2  
+            else:
+                dataFormat = 1
+              
+            if self.cccSystemMode != 2:  
+                numImages = self.numberImages
+            else:
+                if self.cccProvideNumberImages == True:
+                    numImages = self.numberImages
+                else:              
+                    numImages = cccNumTriggers
+              
+            self.checkEventLength(numImages, self.numberTrains, llmonEventLength, llmonTotalData, dataFormat)
     
                 # Switch back to FEM Osc clock as Asic clock source for run end       
             self.config_asic_clock_source_from_osc()
     
             print "======== Run Completed ==========="
-            print "."           
+            print "--"           
         
         except FemClientError as e:
             raise e
