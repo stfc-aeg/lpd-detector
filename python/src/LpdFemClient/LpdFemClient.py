@@ -1493,7 +1493,7 @@ class LpdFemClient(FemClient):
             if self.cccProvideNumberImages == False:
                 print "**WARNING: In CC Mode with Vetos ; OVERRIDING number of Images to readout from value in config xml file"
                 self.register_clear_bit(self.asic_srx_0+0, 12)
-            else:              
+            else:
                 print "INFO: In CC Mode with Vetos ; Num Images readout according to CCC Veto input"
                 self.register_set_bit(self.asic_srx_0+0, 12)
 
@@ -2433,12 +2433,12 @@ class LpdFemClient(FemClient):
             lenDescriptorsImageStatus = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_STATUS
             lenDescriptorsImageLength = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_LENGTH
         else:                   # variable nr image descriptors
-            if numImages == 0:          
+            if numImages == 0:
                 lenDescriptorsStorageCell = 0
                 lenDescriptorsBunchNumber = 0
                 lenDescriptorsImageStatus = 0
                 lenDescriptorsImageLength = 0
-            else:            
+            else:
                 lenDescriptorsStorageCell = ((numImages-1) / numDescriptorsPerBlockStorageCell + 1) * MIN_LPD_BLOCK_SIZE
                 lenDescriptorsBunchNumber = ((numImages-1) / numDescriptorsPerBlockBunchNumber + 1) * MIN_LPD_BLOCK_SIZE
                 lenDescriptorsImageStatus = ((numImages-1) / numDescriptorsPerBlockImageStatus + 1) * MIN_LPD_BLOCK_SIZE
@@ -2458,9 +2458,9 @@ class LpdFemClient(FemClient):
         print "  ------------------------------------------------------------------------" 
         if self.femDebugLevel >= 1:
             print "Expected Event Data Length in Bytes for Num Trains = %d and Num Images = %d :" %(numTrains, numImages)
-            if dataFormat == 1:      # fixed 512 image descriptors      
+            if dataFormat == 1:      # fixed 512 image descriptors 
                 print "Event Format with Fixed 512 Image Descriptors"
-            else:               
+            else:
                 print "Event Format with Variable number of Image Descriptors"
             print "              Local Link Header = %d \t ($%08x)" %(llHeaderLength, llHeaderLength)
             print "             Local Link Trailer = %d \t ($%08x)" %(llTrailerLength, llTrailerLength)
@@ -2473,12 +2473,12 @@ class LpdFemClient(FemClient):
             print "          LPD Descriptors Total = %d \t ($%08x)" %(lenDescriptorsTotal, lenDescriptorsTotal)
             print "          LPD Detector Specific = %d \t ($%08x)" %(lpdDectectorSpecificLength, lpdDectectorSpecificLength)
             print "                    LPD Trailer = %d \t ($%08x)" %(lpdTrailerLength, lpdTrailerLength)
-            print "  ------------------------------------------------------------------------" 
+            print "  ------------------------------------------------------------------------"
             print "               LPD Event Length = %d \t ($%08x)" %(lpdEventLength, lpdEventLength)
             print "      Event Length (incl LLink) = %d \t ($%08x)" %(eventLength, eventLength)
             print "  ------------------------------------------------------------------------"         
             print "        Total Data (incl LLink) = %d \t ($%08x)" %(totalExpectedData, totalExpectedData)
-            print "  ------------------------------------------------------------------------" 
+            print "  ------------------------------------------------------------------------"
         
         if eventLength != llmonEventLength:
             print "***ERROR   LPD Last Event Length Expected = %d ($%08x) but Received %d ($%08x)" %(eventLength, eventLength, llmonEventLength, llmonEventLength)
@@ -2710,14 +2710,14 @@ class LpdFemClient(FemClient):
                 if self.femDebugLevel >= 2:
                     print "Running in PPC1 BYPASS mode..."
 
-            print "=========================================================" 
+            print "========================================================="
             if self.cccSystemMode != 2:  
                 print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
             else:
                 if self.cccProvideNumberImages == True:
-                    print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
-                else:              
                     print "Starting Sequence of %d Trains , with each Train reading varying Number of images according to CCC Veto input" % (self.numberTrains)  
+                else:              
+                    print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
 
             #print "Dump of FEM Registers : TOP LEVEL CTRL"
             #self.dump_regs_hex(self.fem_ctrl_0, 18)
@@ -2998,7 +2998,7 @@ class LpdFemClient(FemClient):
             else:
                 if self.cccProvideNumberImages == True:
                     numImages = self.numberImages
-                else:              
+                else:
                     numImages = cccNumTriggers
               
             self.checkEventLength(numImages, self.numberTrains, llmonEventLength, llmonTotalData, dataFormat)
