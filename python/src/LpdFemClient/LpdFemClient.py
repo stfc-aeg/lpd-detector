@@ -24,6 +24,10 @@ import select
 import tty
 import termios
 
+# python debugger test
+#import pdb
+
+
 from FemClient.FemClient import *
 from FemApi.FemTransaction import FemTransaction
 from LpdPowerCard import *
@@ -2385,8 +2389,12 @@ class LpdFemClient(FemClient):
         
         # All LPD blocks are padded to align on 32 byte boundaries
         # consequence of FIFO input width (256 bits) in Asicrx firmware module
-        
-        LL_HEADER_SIZE = 32
+
+        if ((self.get_v5_firmware_vers()&0xffff) >= 0x026e):        
+            LL_HEADER_SIZE = 64 # xfel format may 2015 
+        else:       
+            LL_HEADER_SIZE = 32 # xfel format feb 2015
+          
         LL_TRAILER_SIZE = 32
 
         MIN_LPD_BLOCK_SIZE = 32

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<lpd_readout_config name="readoutConfiguration.xml">
+<lpd_readout_config name="readoutConfiguration.xml">		<!-- LpdReadoutTest's configuration file -->
 
     <!-- User Variables, 'Will Want to Change': -->
     <numberImages			type="int"  val="4"/>           <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
@@ -17,13 +17,13 @@
     <femVetoPolarity 		type="int" val="1"/>            <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
 
 	<!-- CCC Configuration commands -->
-	<cccSystemMode 			   type="int" val="1"/>			  	<!-- Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
+	<cccSystemMode 			   type="int" val="0"/>			  	<!-- Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes [<--CRASHES!], 2=With C&C and vetoes -->
     <cccEmulationMode          type="bool" val="True"/>        	<!--  Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
     <cccProvideNumberImages    type="bool" val="True"/>         <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages -->
     <cccVetoStartDelay         type="int" val="0"/>             <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccStopDelay              type="int" val="0"/>             <!-- Adjust timing of the stop (in steps of clock cycles) -->
     <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
-    <cccVetoPatternFile		   type="str" val="Config/V_etoPatterns/veto_file_test.xml"/>     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
+    <cccVetoPatternFile		   type="str" val="Config/VetoPatterns/veto_file_test.xml"/>     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
 
     <!-- 'Expert' Variables: -->
     <tenGig0SourceMac 		type="str" val="62-00-00-00-00-01"/>
