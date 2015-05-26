@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
 #
-# Created: Wed Oct 22 14:41:38 2014
+# Created: Tue May 26 10:53:18 2015
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -2064,7 +2064,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuFile.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.verticalTabWidget.setCurrentIndex(4)
+        self.verticalTabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         MainWindow.setTabOrder(self.macAddress, self.hwVersionMajor)
         MainWindow.setTabOrder(self.hwVersionMajor, self.hwVersionMinor)

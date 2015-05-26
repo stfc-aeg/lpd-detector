@@ -41,7 +41,7 @@ class LpdFrameObject(object):
         self.frameNumber = frameNumber
         self.timeStampSof = 0.0
         self.timeStampEof = 0.0
-
+        self.processingTime = 0.0
 
 class ReceiveThread(QtCore.QThread):
     
@@ -86,8 +86,11 @@ class ReceiveThread(QtCore.QThread):
         Processes received data packets, decoding the Train Transfer Protocol information
         to construct completed frames (trains) 
         """
-
+        
         try:
+            # Time processing
+            processingStart = time.time()
+            
             # Extract Trailer information
             trailerInfo = np.zeros(2, dtype=np.uint32)
             trailerInfo = np.fromstring(data[-8:], dtype=np.uint32)
@@ -101,10 +104,25 @@ class ReceiveThread(QtCore.QThread):
             sof = (trailerInfo[1] >> (31)) & 0x1
             eof = (trailerInfo[1] >> (30)) & 0x1
 
+            # Debug - Display XFEL Header (64 bytes)
+            if debugLevel  > 1:
+                if sof == 1:
+                    print "processData() XFEL Header:"
+                    initialData = np.zeros(64, dtype=np.uint32)
+                    initialData = np.fromstring(data[:64], dtype=np.uint32)
+                    for index in range(len(initialData)):
+                        if (index!= 0) and (index % 16 == 0):
+                            print ""
+                        print "%X "  % initialData[index],
+                    print ""
+                    
             if debugLevel > 1:
                 if sof == 1:
                     print "-=-=-=-=- FrameNumber PacketNumber"
-                print "trailerInfo: %8X %8X " % (trailerInfo[0], trailerInfo[1])
+                if (trailerInfo[1] < 3) or (eof == 1):
+                    print "trailerInfo: %8X %8X sof: %d eof: %d" % (trailerInfo[0], trailerInfo[1], sof, eof)
+                if (trailerInfo[1] == 7):
+                    print "[...]"
                 if eof == 1:
                     print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-" 
             
@@ -143,6 +161,7 @@ class ReceiveThread(QtCore.QThread):
             # Append current packet data onto raw image omitting trailer info
             lpdFrame.rawImageData += data[0:-8]
             
+            lpdFrame.processingTime += time.time() - processingStart
             return eof
         except Exception as e:
             print "processData() error: ", e
@@ -312,7 +331,11 @@ class ImageDisplay(FigureCanvas):
         if self.bTimeStamp:
             timeX1 = time.time()
         
-        print "Raw Image Data Received: %16i" % len(lpdFrame.rawImageData), "(bytes, @%s)" % str( datetime.now())[11:-4]
+        print "Raw Image Data Received: %16i" % len(lpdFrame.rawImageData), "(bytes, @%s)" % str( datetime.now())[11:-4],
+        if self.bTimeStamp:
+            print "Rx time: ", lpdFrame.processingTime
+        else:
+            print ""
 
         ''' More information on numpy & Big/Little-endian:    http://docs.scipy.org/doc/numpy/user/basics.byteswapping.html '''
         # Create 16 bit, Little-Endian, integer type using numpy
@@ -395,6 +418,10 @@ class ImageDisplay(FigureCanvas):
                 # Change maximum plots to be 512 (effectively size of incoming image data) for old header format
                 #plotMaxPlots = 511  # (0-511 = 512 plots)
             else:
+                # Differentiate between XFEL format revisions
+                if self.lpdheadertrailer == 2:
+                    LPD_HEADER_SIZE = 64
+
                 dataBeginning = (self.superModuleImageSize)*currentPlot + LPD_HEADER_SIZE/2
                 
                 # Print XFEL header information
@@ -412,13 +439,23 @@ class ImageDisplay(FigureCanvas):
                     linkMsb = self.pixelDataArray[0+8] + (self.pixelDataArray[1+8] << 8)
                     linkId  = (linkMsb << 16) + linkLsb
 
-                    imgCountId  = self.pixelDataArray[13]
+                    imgCountId  = self.pixelDataArray[22] #[13] # Previous XFEL header version or older??
+
                     # Overwrite maximum plots with image number extracted from XFEL header
                     plotMaxPlots = imgCountId
 
-                    print "trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X}".format(trainId, dataId, linkId, imgCountId)
+                    print "trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X} ({4:})".format(trainId, dataId, linkId, imgCountId, imgCountId)
 
-#            print "currentPlot %d dataBeginning %d" % (currentPlot, dataBeginning)            
+                    if self.debugLevel > 1:
+                        print "_______________________________________________________________________________________________"
+                        print " * plot: %d dataBegin: %7d (0x%X) of %d S-ModSize: %d (0x%X) LPD hdr offset = %d." % \
+                        (currentPlot, dataBeginning, dataBeginning, len(self.pixelDataArray), self.superModuleImageSize, self.superModuleImageSize, (LPD_HEADER_SIZE/2))
+                        for index in range(32):
+                            if (index!= 0) and (index % 16 == 0):
+                                print ""
+                            print "%4X " % self.pixelDataArray[index],
+                        print ""
+
 #################################################################
 
             # Get the first image of the train
@@ -522,7 +559,7 @@ class ImageDisplay(FigureCanvas):
         lpdFrame.rawImageData = lpdFrame.rawImageData[0:0]
         if self.bTimeStamp:
             timeX2 = time.time()
-            print "Total time = ",(timeX2 - timeX1)
+            print "Data ordering & displaying time = ",(timeX2 - timeX1)
 
         print " -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
         
@@ -655,8 +692,8 @@ class ImageDisplay(FigureCanvas):
 
         # Last image in the data?
         try:
-#            print >> sys.stderr, "pixelDataArray: {0:>9} dataBeginning: {1:>9}  imageSize: {2:>9} data+image: {3:>9}".format(self.pixelDataArray.shape, dataBeginning, 
-#                                                                                                                             self.superModuleImageSize, dataBeginning + self.superModuleImageSize)
+#             print >> sys.stderr, "pixelDataArray: {0:>9} dataBeginning: {1:>9}  imageSize: {2:>9} data+image: {3:>9}".format( \
+#                                                 self.pixelDataArray.shape, dataBeginning, self.superModuleImageSize, dataBeginning + self.superModuleImageSize)
             # Increment dataBeginning to start of next image
             dataBeginning += self.superModuleImageSize
             self.pixelDataArray[dataBeginning + self.superModuleImageSize]
