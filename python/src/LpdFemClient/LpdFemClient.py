@@ -212,7 +212,7 @@ class LpdFemClient(FemClient):
         self.numberTrains               = 1     # Number of trains to be readout
         self.femDebugLevel              = 0     # higher values more print out
         #TODO: To be implemented: ??
-        self.femPpcMode                 = 1     # 0 = Single Train Shot with PPC reset, 1 = Continuous readout (not working yet)
+        self.femPpcMode                 = 1     # 0 = Single Train Shot with PPC reset, 1 = Continuous readout (It is working)
 
 #=========================================================================================================              
 #  john c

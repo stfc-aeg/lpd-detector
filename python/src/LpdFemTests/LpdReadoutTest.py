@@ -286,6 +286,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         # Configure the FEM
         #########################################################
 
+        print "- - - - - - - - - - - - - - - - - - - - - - - -  Configure - - - - - - - - - - - - - - - - - - - - - - - - "
         rc = theDevice.configure()
         if rc != LpdDevice.ERROR_OK:
             print "configure() failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -293,6 +294,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             sys.exit()
 
         # Acquire image data
+        print "- - - - - - - - - - - - - - - - - - - - - - - -  Start     - - - - - - - - - - - - - - - - - - - - - - - - "
         rc = theDevice.start()
         if rc != LpdDevice.ERROR_OK:
             print "run() failed rc=%d : %s" % (rc, theDevice.errorStringGet())
@@ -300,6 +302,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
             sys.exit()
     
         # Stop transaction
+        print "- - - - - - - - - - - - - - - - - - - - - - - -  Stop      - - - - - - - - - - - - - - - - - - - - - - - - "
         rc = theDevice.stop()
         if rc != LpdDevice.ERROR_OK:
             print "stop() failed rc=%d : %s" % (rc, theDevice.errorStringGet())

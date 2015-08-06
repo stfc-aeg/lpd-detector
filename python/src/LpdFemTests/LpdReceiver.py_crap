@@ -731,7 +731,7 @@ if __name__ == "__main__":
     parser.add_argument("--debuglevel",     help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=range(9), default=0)
     parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
     parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
-    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=None, 1=32 byte header, 2=64 byte hdr; D: 0)",type=int, default=0)    
+    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=Disable, 1=Enable; D: 0)",type=int, default=0)    
     args = parser.parse_args()
 
     asicModule  = args.asicmodule

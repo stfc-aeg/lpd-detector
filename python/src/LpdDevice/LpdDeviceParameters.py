@@ -110,7 +110,7 @@ class LpdDeviceParameters(object):
         # Internal parameters used in the LpdDevice class but not passed down into the underlying client object
         
         self.expectedParameters['femHost']           = AttributeContainer(str, 'FEM Host', 'FEM hostname or IP address',
-                                                                    None, None, '127.0.0.1',
+                                                                    None, None, '127.1.1.10', #'127.0.0.1',
                                                                     AccessWrite, AssignmentOptional, InternalParam, 
                                                                     'AllOk.Disconnected')
         self.expectedParameters['femPort']           = AttributeContainer(uint32, 'FEM Port', 'FEM port number',
@@ -478,7 +478,7 @@ class LpdDeviceParameters(object):
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['tenGig0DestMac']       = AttributeContainer(str, 'TenGigE0DestMAC', '10GigE 0 UDP Destination MAC Address',
-                                                                      None, None, '00-07-43-10-61-88',
+                                                                      None, None, '00-07-43-10-65-A0',
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['tenGig0DestIp']        = AttributeContainer(str, 'TenGigE0DestIp', '10GigE 0 UDP Destination IP Address',
@@ -570,9 +570,8 @@ class LpdDeviceParameters(object):
                                                                           0, 65535, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        #TODO: Not yet implemented
         self.expectedParameters['femPpcMode']                   = AttributeContainer(uint32, 'FemPpcMode', 'Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout',
-                                                                          0, 1, 0,
+                                                                          0, 1, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['numberTrains']                 = AttributeContainer(uint32, 'NumberTrains', 'Number of trains [if LL Data Generator or PPC Data Direct selected]',
@@ -636,8 +635,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femModuleId']                  = AttributeContainer([uint32]*16, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
-                                                                #= AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
-                                                                          0, 4294967295,  None,
+                                                                          0, 4294967295, [0]*16,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         # 
@@ -645,7 +643,7 @@ class LpdDeviceParameters(object):
         #
 
         self.expectedParameters['cccSystemMode']                  = AttributeContainer(uint32, 'cccSystemMode', 'Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes',
-                                                                          0, 4294967295,  None,
+                                                                          0, 2,  0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['cccEmulationMode']               = AttributeContainer(bool, 'cccEmulationMode', 'Enable to emulate Clock & Control commands (for testing in absence of C&C)',
@@ -657,15 +655,15 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['cccVetoStartDelay']              = AttributeContainer(uint32, 'cccVetoStartDelay', 'Adjust timing of veto arrival (in steps of clock cycles)',
-                                                                          0, 4294967295,  None,
+                                                                          0, 4294967295,  0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['cccStopDelay']                   = AttributeContainer(uint32, 'cccStopDelay', 'Adjust timing of the stop (in steps of clock cycles)',
-                                                                          0, 4294967295,  None,
+                                                                          0, 4294967295,  0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['cccResetDelay']                  = AttributeContainer(uint32, 'cccResetDelay', 'Adjust timing of reset (in steps of clock cycles)',
-                                                                          0, 4294967295,  None,
+                                                                          0, 4294967295,  0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['cccVetoPatternFile']             = AttributeContainer(str, 'cccVetoPatternFile', 'Filename containing the veto bunch pattern (10 patterns, 3072 bits each)',
