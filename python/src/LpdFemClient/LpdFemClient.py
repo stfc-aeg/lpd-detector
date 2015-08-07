@@ -163,6 +163,7 @@ class LpdFemClient(FemClient):
         self.femAsicLocalClock                      = 0         # 0 = no scaling (100 MHz), 1 = scaled down clock  [10 MHz (set by dcm params)]
         self.femAsicSetupLoadMode                   = 0         # 0 = parallel load, 1 = daisy chain
         self.numberImages                           = 4         # Number of images to capture per train
+        self.integrationCycles                      = 1         # Number of integration cycles per image
         self.femAsicGain                            = 8         # Gain    algorithm selection     F/W value, API correspodning value 
         #                                                       #   0000  normal gain selection     0,        0
         #                                                       #   1000  force select x100         8,        3
@@ -3177,6 +3178,18 @@ class LpdFemClient(FemClient):
             Set the number of images per train
         '''
         self.numberImages = aValue
+
+    def integrationCyclesGet(self):
+        '''
+            Get the number of integration cycles per image
+        '''
+        return self.integrationCycles
+
+    def integrationCyclesSet(self, aValue):
+        '''
+            Set the number of integration cycles per image
+        '''
+        self.integrationCycles = aValue
 
     def femAsicGainGet(self):
         '''
