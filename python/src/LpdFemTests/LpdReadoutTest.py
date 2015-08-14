@@ -82,18 +82,22 @@ class LpdReadoutConfig():
    
 ####################################################
 
-def LpdReadoutTest(tenGig, femHost, femPort, destIp):
+def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
     
     theDevice = LpdDevice()
 
-    tenGigConfig   = EthernetUtility("eth%i" % tenGig)
-    tenGigDestIp   = tenGigConfig.ipAddressGet()
-    tenGigDestMac  = tenGigConfig.macAddressGet()
-    # Determine destination IP from tenGig unless supplied by parser
-    if destIp:
-        tenGigSourceIp = destIp
+    if tenGig:
+        # Define IP & Mac addresses from tenGig's PC interface
+        tenGigConfig   = EthernetUtility("eth%i" % tenGig)
+        tenGigDestIp   = tenGigConfig.ipAddressGet()
+        tenGigDestMac  = tenGigConfig.macAddressGet()
+        tenGigSourceIp = tenGigConfig.obtainDestIpAddress(tenGigDestIp) #  e.g. If PC address: 10.0.0.1 then dest address: 10.0.0.2
     else:
-        tenGigSourceIp = tenGigConfig.obtainDestIpAddress(tenGigDestIp)
+        # Define addresses from destIp, destMac, srcIp
+        tenGigDestIp   = destIp
+        tenGigDestMac  = destMac
+        tenGigSourceIp = srcIp
+     #print "tenGigDestIp: %s\n, tenGigDestMac: %s\n, tenGigSourceIp: %s\n" % (tenGigDestIp, tenGigDestMac, tenGigSourceIp)
 
     rc = theDevice.open(femHost, femPort)
     if rc != LpdDevice.ERROR_OK:
@@ -160,6 +164,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
 #            asicSetupParams = "Config/SetupParams/Setup_Serial_KLASSE.xml"
 
     configFilename = 'Config/readoutConfiguration.xml'
+    vetoFilename   = 'Config/VetoPatterns/veto_file_test.xml'
 #    asicSetupParams = "/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/SetupParams/Setup_Matt.xml"    # Left to right: ascending order
 #    asicCmdSequence = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml'
 #    configFilename = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml'
@@ -168,7 +173,8 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
     print asicSetupParams
     print asicCmdSequence
     print configFilename
-
+    print vetoFilename
+    
     ###################################################################
 
     rc = theDevice.paramSet('femAsicSetupParams', asicSetupParams)
@@ -181,6 +187,11 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         print "femAsicCmdSequence set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
         errorCount += 1
 
+    rc = theDevice.paramSet('cccVetoPatternFile', vetoFilename)
+    if rc != LpdDevice.ERROR_OK:
+        print "cccVetoPatternFile set failed rc=%d : %s" % (rc, theDevice.errorStringGet())
+        errorCount += 1
+    
     #########################################################
     # Set variables using XML configuration file
     #########################################################
@@ -213,7 +224,17 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
     if rc != LpdDevice.ERROR_OK:
         print "%s set failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         errorCount += 1
-    
+
+#     print "================  Set in Fem: Source & Destination Variables ================"
+# 
+#     paramExpertVariables = ['tenGig0SourceMac', 'tenGig0SourceIp', 'tenGig0SourcePort', 'tenGig0DestMac', 'tenGig0DestIp', 'tenGig0DestPort']
+# 
+#     for param in paramExpertVariables:
+#         (rc, value) = theDevice.paramGet(param)
+#         if rc != LpdDevice.ERROR_OK:
+#             print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+#         else:
+#             print "{0:<32} = {1:<10}".format(param, value.__repr__())
 
     #########################################################
     # Check for errors before proceeding..
@@ -228,16 +249,15 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
         #########################################################
         # Read back the "Expert" Level variables settings
         #########################################################
-    
-        if bDebug:
 
+        if bDebug:
+ 
             print "================ 'Expert' Variables ================"
             paramExpertVariables = ['tenGig0SourceMac', 'tenGig0SourceIp', 'tenGig0SourcePort', 'tenGig0DestMac', 'tenGig0DestIp', 'tenGig0DestPort', 'tenGig0DataFormat',
                                     'tenGig0DataGenerator', 'tenGig0FrameLength', 'tenGig0NumberOfFrames', 'tenGigFarmMode', 'tenGigInterframeGap', 'tenGigUdpPacketLen', 
                                     'femAsicSetupClockPhase', 'femAsicVersion', 'femDebugLevel', 'femEnableTenGig',
-                                    'femStartTrainPolarity', 'femVetoPolarity',
+                                    'femStartTrainPolarity', 'femVetoPolarity', 'femPpcMode',
                                     'cccSystemMode', 'cccEmulationMode', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay']
-
 
         for param in paramExpertVariables:
             (rc, value) = theDevice.paramGet(param)
@@ -245,35 +265,33 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp):
                 print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
             else:
                 print "{0:<32} = {1:<10}".format(param, value.__repr__())
-
+ 
         #########################################################
         # Read back all User Level variables
         #########################################################
-        
+
         paramUserVariables = ['femAsicClockSource', 'femAsicDataType', 'femAsicGain', 'femAsicGainOverride', 'femAsicLocalClock', 'femAsicModuleType', 
                               'femAsicPixelFeedbackOverride', 'femAsicPixelSelfTestOverride', 'femAsicRxCmdWordStart', 'femAsicSetupLoadMode',
                               'femStartTrainSource', 'femDataSource', 'femInvertAdcData', 'numberImages', 'numberTrains', 'femStartTrainDelay', 'femStartTrainInhibit']
-        #TODO: Add when implemented? [if implemented..]
-#        param = 'femPpcMode'
-
+ 
         print "================ 'User'   Variables ================"
-
+ 
         for param in paramUserVariables:
             (rc, value) = theDevice.paramGet(param)
             if rc != LpdDevice.ERROR_OK:
                 print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
             else:
                 print "{0:<32} = {1:<10}".format(param, value.__repr__())
-
+ 
         param = 'femAsicEnableMask'
         (rc, value) = theDevice.paramGet(param)
         if rc != LpdDevice.ERROR_OK:
             print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
         else:
             print "{0:<32} = [{1:<8X}, {2:<8X}, {3:<8X}, {4:<8X}]".format(param, value[0], value[1], value[2], value[3])
-    
+     
         # Check XML string variables read back, but don't display their [long-winded] XML strings
-        paramUserExtraVariables = ['femAsicCmdSequence',  'femAsicSetupParams'] 
+        paramUserExtraVariables = ['femAsicCmdSequence',  'femAsicSetupParams', 'cccVetoPatternFile'] 
 
         for param in paramUserExtraVariables:
             (rc, value) = theDevice.paramGet(param)
@@ -319,30 +337,46 @@ if __name__ == '__main__':
     # Default values
     femHost = '192.168.2.2'
     femPort = 6969  # oneGig port
-    tenGig  = 2     # eth2 on devgpu02
-    destIp  = None  # Default: Assume tenGig destination IP is one increment above eth2's IP
+    tenGig  = None  # If nowt specified, default: eth2    [on devgpu02: 10.0.0.1; 00-07-43-10-65-A0]
+    srcIp   = None  # FEM's IP, entered directly (thus not the address above tenGig's) 
+    #srcMac  = None # Redundant (Always 62-00-00-00-00-01 ?)
+    destIp  = None  # PC's IP, overrides tenGig's
+    destMac = None  # PC's Mac, overrides tenGig's
     
     # Create parser object and arguments
+    ex1 = "python LpdReadoutTest.py --tengig 7"
+    ex2 = "python LpdReadoutTest.py --destip 192.0.0.100 --destmac 00-07-43-10-65-A0 --srcip 192.0.0.102"
     parser = argparse.ArgumentParser(description="LpdReadoutTest.py - configure and readout an LPD detector. ",
-                                     epilog="Defaults: tengig=(eth)2, destip=10.0.0.2, femhost=192.168.2.2, femport=6969")
+                                     epilog="Defaults: tengig=(eth)2, destip=10.0.0.2, femhost=192.168.2.2, femport=6969\nExample 1: %s\nExample 2: %s\n" % (ex1, ex2)) 
 
-    parser.add_argument("--tengig",     help="Set tenGig ethernet card (e.g. 2 for eth2)",  type=int, default=tenGig)
-    parser.add_argument("--destip",     help="Set destination IP (eg 10.0.0.2)",            type=str, default=destIp)
-    parser.add_argument("--femhost",    help="Set fem host IP (e.g.  192.168.2.2)",         type=str, default=femHost)
+    parser.add_argument("--femhost",    help="Set fem host IP (e.g. 192.168.2.2)",          type=str, default=femHost)
     parser.add_argument("--femport",    help="Set fem port (eg 61649)",                     type=int, default=femPort)
+    parser.add_argument("--tengig",     help="Set tenGig ethernet card (e.g. 2 for eth2)",  type=int, default=tenGig)
+    parser.add_argument("--srcip",      help="Set source IP (eg 10.0.0.2)",                 type=str, default=srcIp)    # Source = FEM
+    #parser.add_argument("--srcmac",     help="Set source MAC (eg 52-54-00-83-96-BD)",  type=str, default=srcMac)
+    parser.add_argument("--destip",     help="Set destination IP (eg 10.0.0.1)",            type=str, default=destIp)   # Destination = PC
+    parser.add_argument("--destmac",    help="Set destination MAC (eg 00-07-43-10-65-A0)",  type=str, default=destMac)  # New, to be implemented fully
     args = parser.parse_args()
 
     # Copy value(s) for the provided arguments
-    if args.tengig != None:
-        tenGig = args.tengig
+    if args.femhost:        femHost = args.femhost
+    if args.femport:        femPort = args.femport
+    if args.tengig:         tenGig  = args.tengig
+    if args.srcip:          srcIp   = args.srcip
+    if args.destip:         destIp  = args.destip
+    if args.destmac:        destMac = args.destmac
 
-    if args.femhost:
-        femHost = args.femhost
-
-    if args.femport:
-        femPort = args.femport
-
-    if args.destip:
-        destIp = args.destip
-
-    LpdReadoutTest(tenGig, femHost, femPort, destIp)
+    print "\n\nfemHost: %s\n femPort: %s\n tenGig: %s\n srcIp: %s\n destIp: %s\n destMac: %s\n"  % (femHost, femPort, tenGig, srcIp, destIp, destMac)
+    print ""
+    # If no command line arguments (apart from femhost, femport), give tenGig default value
+    if (srcIp == None) and (destIp == None) and (destMac == None) and (tenGig == None):
+        tenGig = 2
+        
+    # Catch illegal selections
+    if ((destIp == None) and destMac) or (destIp and (destMac == None)):
+        print "\n  *** Illegal selection: Either specify both destination IP and Mac or neither address"
+    else:
+        if (destIp) and (srcIp== None):
+            print "\n  *** Illegal selection: Cannot specify destination IP & Mac without a source IP"
+        else:
+            LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp)
