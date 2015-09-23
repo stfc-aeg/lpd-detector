@@ -8,6 +8,36 @@ Created 16 October 2012
 LINUX
 '''
 
+##################################################################
+#
+# vers 0x10000003  22/09/15  John Coughlan
+#
+# Fixes to some print out statements.
+# Uses train id init values in checker.
+#
+# vers 0x10000002  21/09/15  John Coughlan
+#
+# Added Train ID init lsw and msw
+#
+# Params for Karabo release.
+#
+# vers 0x10000001  18/09/15  John Coughlan
+#
+# This version released for f/w 01000298  which implements Pipeline Emulation and requires PPC1 in Data path.
+# Only works WITH PPC1   ie  <femDataSource> = 0 ASIC [via PPC],
+#
+# Is backward compatbile with f/w 0100026f  (C&C XFEL May 2015 format but no pipeline emulation so just counters in Image Desc)
+# Only works without PPC1   ie  <femDataSource> = 1 ASIC [from Rxblock],
+#
+# Added readonly code version param  LpdClientVersion
+# 
+# Made fixes for 64b field swapping in header and trailer.
+# 
+#
+#
+##################################################################
+
+
 # to get OS info
 import platform
 
@@ -68,7 +98,7 @@ class LpdFemClient(FemClient):
     llink_mon_asicrx    = 0x06800000    # 13
     slow_ctr_0          = 0x07000000    # 14
     slow_ctr_1          = 0x07800000    # 15
-    dma_gen_0           = 0x08000000    # 16
+    lpd_checker         = 0x08000000    # 16
     dma_chk_0           = 0x08800000    # 17
     dma_gen_1           = 0x09000000    # 18
     dma_chk_1           = 0x09800000    # 19
@@ -83,7 +113,7 @@ class LpdFemClient(FemClient):
     ccc_pattern_id      = 0x0e000000    # 28 
     ccc_cmd_gen_bram    = 0x0e800000    # 29 - sim of C&C system (testing, generate cc cmds, vetos, etc)
     ccc_cmd_gen_reg     = 0x0f000000    # 30
-    rsvd_31             = 0x0f800000    # 31
+    fem_ctrl_top2       = 0x0f800000    # 31 - more top level fem ctrl
  
 # Spartan 3 devices 
 # needs new gbe embedded software with rs232 mux control
@@ -91,6 +121,11 @@ class LpdFemClient(FemClient):
     top_sp3_ctrl        = 0x20000000    #  0
     cfg_sp3_ctrl        = 0x30000000    #  0
 
+   
+    # BRAM memory shared by ppc1 and ppc2 
+    # filled by ppc1 with status information
+    # can be readout from ppc2 by python using raw memory mapped access (not rdma access)
+    ppc_shared_bram_base  = 0x8a000000
    
     ########## Enumerated values for API variables ##########
 
@@ -135,8 +170,10 @@ class LpdFemClient(FemClient):
         self.femAsicPixelSelfTestOverride   = -1                # Default -1 = "Don't Care"
         self.femReadoutOperatingMode        = 0                 #TODO: To be implemented
 
+        self.LPD_NUM_PIXELS_PER_ASIC = 512  
+
         ########### Constants ###########
-        self.nr_clocks_to_readout_image     = (512 * 3 * 12)    # * asic_clock_downscale_factor # 512 pixels with 3 gain values each. this is time for asic data streams to enter asicrx (output takes longer)
+        self.nr_clocks_to_readout_image     = (self.LPD_NUM_PIXELS_PER_ASIC * 3 * 12)    # * asic_clock_downscale_factor # 512 pixels with 3 gain values each. this is time for asic data streams to enter asicrx (output takes longer)
         self.nr_clocks_to_readout_row       = (16 * 3 * 12)     # row of image 16 pixels
 
         self.lpd_image_size                 = 0x20000           # size of buffer in ppc for partial image is 128 KB
@@ -213,7 +250,7 @@ class LpdFemClient(FemClient):
         self.numberTrains               = 1     # Number of trains to be readout
         self.femDebugLevel              = 0     # higher values more print out
         #TODO: To be implemented: ??
-        self.femPpcMode                 = 1     # 0 = Single Train Shot with PPC reset, 1 = Continuous readout (It is working)
+        self.femPpcMode                 = 1     # 0 = Single Train Shot with PPC reset (select for legacy f/w without PPC), 1 = Continuous readout (not working yet)
 
 #=========================================================================================================              
 #  john c
@@ -235,7 +272,7 @@ class LpdFemClient(FemClient):
 #           = 2  ;  with c&c system  ;  using start, stop cmds  AND  vetos   (start and stop fast cmd files)
         self.cccSystemMode = 1   
         
-        self.cccEmulationMode = True;  #  =1 to emulate c&c commands (for testing if no c&c system connected)
+        self.cccEmulationMode = True;  #  = True to emulate c&c commands (for testing if no c&c system connected)
 
 #   ccc_override_nr_images_to_readout ; 
 #   Only For ccc_system_mode = 2
@@ -267,7 +304,8 @@ class LpdFemClient(FemClient):
 
         self.CCC_EMULATOR_BRAM_SIZE_BYTES = 1024
 
-
+        self.LPD_PIPELINE_LENGTH = 512  
+       
 #----       
         self.sp3_io_bot_firmware_modules = 0
         
@@ -277,6 +315,70 @@ class LpdFemClient(FemClient):
             self.STOP_RUN_ON_ESC_KEY = False    # Set False if running with Gui ; 
             
           
+# since f/w 026f            
+               
+        self.cccSimpleEmulation = True #    =True  use simple ccc sm to generate start cmd and nveto tied '1' with pattern mask for triggers
+
+        gap_1_sec = 100000000    # asic clock periods
+        gap_1_msec = 100000    # asic clock periods
+        
+        #First Level of printout on PPC1 terminal ; Default = 1        
+        self.ppcDebugLevel = 1
+        
+        #Second Level of printout on PPC1 terminal for pipeline emulation  and reordering ; Default = 1
+        self.ppcDebugLevel2 = 1   
+
+        self.wait_for_ppc_run_stop = 0   # additional wait for debugging on ppc terminal  ; in secs
+        
+        self.asicrx_llink_clock_rate = 200.0e6  # 250.0e6  # 200.0e6
+        self.ppc_clock_period = 4 # 3.33  # 4   # processor clock period nsec
+        
+        # Special test which disables output of Readout data
+        self.ppc1_disable_tx_dma = False   # default FalseSTOP_RUN_ON_ESC_KEY
+
+        # Change defaults used by Pipeline Emulation; Default = TRUE
+        self.ppc1_override_pipeline_defaults = True 
+               
+        # Max Length of Pulse Train; Default = 3072
+        self.NR_BUNCHES_IN_TRAIN_OVERRIDE = 1536  # 36  # 1500         
+        
+        # Pipeline Length; Default = 512
+        self.LPD_PIPELINE_LENGTH_OVERRIDE = self.LPD_PIPELINE_LENGTH      # 12  # override for special tests of emulation only 
+
+        # Sets depth of DDR2 Buffer storage . Default = 10
+        self.NUM_TRAINS_TO_STORE_IN_BD_RING = 10   # PPC will assume 512 images per Train
+
+#####################################################
+# Begin New Params for Karabo API
+        
+        #1  # Only used if running with cccEmulationMode = True. Enables fixed rate Train triggers.  Default = False
+        self.fixed_rate_trains = False  
+        
+        #2  # Only used if running with cccEmulationMode = True. Interval (in 100 mhz clock periods) between fixed rate triggers.  Default = 10000000 (100 msec)
+        self.gapBetweenFixedRateTrigs = 100 * gap_1_msec  
+        
+        #3  # Only used if running with cccEmulationMode = True. Number of fixed rate triggers to send this run.  Default = 1
+        self.numFixedRateTrigs =  1   #       10 * 60 * 90 * 1    #  hz x sec x min x hour
+                                
+        #4  # Only used if femAsicDataType set to counting data from AsicRx. Default = 0
+        self.asicrx_test_data_pattern_type  = 0   # 0 = if test data counter increments every Pixel ; 1 = only increments every Image
+        
+        #5  # Emulate the LPD Asic Pipeline to compute the Pulse Nr and Cell Id for the Image Descriptors ; Default = True
+        self.ppc1_emulate_pipeline = True    # (Must be False if cccSystemMode != 2 ; as PPC will fail without valid C&C veto information) 
+
+        #6  # After Pipeline Emulation reorder Images in readout in Pulse Number order ; Default = True
+        # Re-ordering will only work if ppc1_emulate_pipeline = True
+        self.ppc1_pulse_reorder = True    
+                         
+        #7  # LpdClient Software Version  ; Read Only   Default to following value     
+        self.LpdClientVersion = 0x10000003
+
+        #8  # init value for train id (used if not running with C&C and also by Data Checker)  lower 32b value  Default = 1 
+        self.train_id_init_lsw = 1
+        #9  # init value for train id (used if not running with C&C and also by Data Checker)  upper 32b value  Default = 0  
+        self.train_id_init_msw = 0
+
+# End New Params for Karabo API
 #=========================================================================================================              
        
 #======== params for 10G data links
@@ -450,38 +552,129 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(base+1,1)
         self.rdmaWrite(base+1,0)
         
+    ## Rob Halsall 08-04-2011
+    #def read_ll_monitor(self, base, clock_freq):
+        #''' readout a local link monitor block '''
+        
+        #mon_addr = base + 16
+
+        #print "frm_last_length (bytes):      %s" % hex( self.rdmaRead(mon_addr+0, 1)[0])
+        #print "frm_max_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+1, 1)[0])
+        #print "frm_min_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+2, 1)[0])
+        #total_frames = self.rdmaRead(mon_addr+3, 1)[0]
+        #print "frm_count:                    %d [%s]" % (total_frames, hex(total_frames))
+        #print "frm_last_cycles:              %s" % hex( self.rdmaRead(mon_addr+4, 1)[0])
+        #print "frm_max_cycles:               %s" % hex( self.rdmaRead(mon_addr+5, 1)[0])
+        #print "frm_min_cycles:               %s" % hex( self.rdmaRead(mon_addr+6, 1)[0]) 
+        #total_data = self.rdmaRead(mon_addr+7, 1)[0]
+        #print "frm_data_total (bytes):       %d [%s]" % (total_data, hex(total_data))         
+        #total_cycles = self.rdmaRead(mon_addr+8, 1)[0]
+        #print "frm_cycle_total:              %d" % total_cycles
+        #print "frm_trig_count:               %s" % hex( self.rdmaRead(mon_addr+9, 1)[0])
+        #print "frm_in_progress:              %s" % hex( self.rdmaRead(mon_addr+15, 1)[0])
+        
+        ## data path = 64 bit, clock = 156.25 MHz
+        #total_time = float(total_cycles) * (1/clock_freq)
+        #if (total_time):
+            #rate = (total_data/total_time)   #  total data is in bytes already   jac
+        #else:
+            #rate = 0
+
+        #print "Clock Freq = %d Hz"               % clock_freq
+        #print "Data Total =                  %e" % total_data
+        #print "Data Time  =                  %e" % total_time
+        #print "Data Rate  =                  %e" % rate
+
     # Rob Halsall 08-04-2011
+    # John Coughlan 64b counters 2015
     def read_ll_monitor(self, base, clock_freq):
         ''' readout a local link monitor block '''
         
         mon_addr = base + 16
+        
+        number_frames = self.rdmaRead(mon_addr+3, 1)[0]
+        number_eofs = self.rdmaRead(mon_addr+15, 1)[0]       
+        frm_max_cycles = self.rdmaRead(mon_addr+5, 1)[0]
+        frm_min_cycles = self.rdmaRead(mon_addr+6, 1)[0] 
+        gap_min_cycles = self.rdmaRead(mon_addr+14, 1)[0] 
 
+        print "NEW local link monitor (64 bit counters):      "
         print "frm_last_length (bytes):      %s" % hex( self.rdmaRead(mon_addr+0, 1)[0])
         print "frm_max_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+1, 1)[0])
         print "frm_min_length (bytes):       %s" % hex( self.rdmaRead(mon_addr+2, 1)[0])
-        total_frames = self.rdmaRead(mon_addr+3, 1)[0]
-        print "frm_count:                    %d [%s]" % (total_frames, hex(total_frames))
+        print "frm_number:               %d    %s" %(number_frames, hex(number_frames))
         print "frm_last_cycles:              %s" % hex( self.rdmaRead(mon_addr+4, 1)[0])
-        print "frm_max_cycles:               %s" % hex( self.rdmaRead(mon_addr+5, 1)[0])
-        print "frm_min_cycles:               %s" % hex( self.rdmaRead(mon_addr+6, 1)[0]) 
-        total_data = self.rdmaRead(mon_addr+7, 1)[0]
-        print "frm_data_total (bytes):       %d [%s]" % (total_data, hex(total_data))         
-        total_cycles = self.rdmaRead(mon_addr+8, 1)[0]
-        print "frm_cycle_total:              %d" % total_cycles
+        print "frm_max_cycles:               %s" % hex( frm_max_cycles )
+        print "frm_min_cycles:               %s" % hex( frm_min_cycles ) 
+        total_data_lower = self.rdmaRead(mon_addr+7, 1)[0]
+        total_data_upper = self.rdmaRead(mon_addr+12, 1)[0]
+        print "frm_data_total lower (bytes):       %d %s" % (total_data_lower, hex(total_data_lower))         
+        print "frm_data_total upper (bytes):       %d %s" % (total_data_upper, hex(total_data_upper))         
+        total_cycles_lower = self.rdmaRead(mon_addr+8, 1)[0]
+        total_cycles_upper = self.rdmaRead(mon_addr+13, 1)[0]
+        print "frm_cycle_total lower:      %s" % hex( total_cycles_lower)
+        print "frm_cycle_total upper:      %s" % hex( total_cycles_upper)
         print "frm_trig_count:               %s" % hex( self.rdmaRead(mon_addr+9, 1)[0])
-        print "frm_in_progress:              %s" % hex( self.rdmaRead(mon_addr+15, 1)[0])
+        print "eof counter:              %s" % hex( self.rdmaRead(mon_addr+15, 1)[0])
+        
+        total_cycles_frm_in_progress_lower = self.rdmaRead(mon_addr+10, 1)[0]
+        total_cycles_frm_in_progress_upper = self.rdmaRead(mon_addr+11, 1)[0]
+        print "total_cycles_frm_in_progress lower:   %s" % hex(total_cycles_frm_in_progress_lower)
+        print "total_cycles_frm_in_progress upper:   %s" % hex(total_cycles_frm_in_progress_upper)
+        print "gap_min_cycles:               %s" % hex( gap_min_cycles ) 
+
+
+        frm_max_time = float(frm_max_cycles) * (1/clock_freq)
+        print "frm_max_time (sec) =                  %e" % frm_max_time
+        frm_min_time = float(frm_min_cycles) * (1/clock_freq)
+        print "frm_min_time (sec) =                  %e" % frm_min_time
+        gap_min_time = float(gap_min_cycles) * (1/clock_freq)
+        print "gap_min_time (sec) =                  %e" % gap_min_time
         
         # data path = 64 bit, clock = 156.25 MHz
-        total_time = float(total_cycles) * (1/clock_freq)
+        total_time = float(total_cycles_lower) * (1/clock_freq)
+                
         if (total_time):
-            rate = (total_data/total_time)   #  total data is in bytes already   jac
+            rate = (total_data_lower/total_time)   #  total data is in bytes already   jac
         else:
             rate = 0
 
+        frame_time = float(total_cycles_frm_in_progress_lower) * (1/clock_freq)
+        if (frame_time):
+            rate_in_frames = (total_data_lower/frame_time)   #  total data is in bytes already   jac
+        else:
+            rate_in_frames = 0
+
+# 64 bit counters
+
+        total_data_64b = total_data_upper * 0x100000000 + total_data_lower
+        #print "total_data_64b = %s "               % hex(total_data_64b)
+
+        total_cycles_64b = total_cycles_upper * 0x100000000 + total_cycles_lower
+        #print "total_cycles_64b = %s "   % hex(total_cycles_64b)
+
+        total_cycles_frm_in_progress_64b = total_cycles_frm_in_progress_upper * 0x100000000 + total_cycles_frm_in_progress_lower
+        #print "total_cycles_frm_in_progress_64b = %s "   % hex(total_cycles_frm_in_progress_64b)
+
+        total_time_64b = (float(total_cycles_upper * 0x100000000) + float(total_cycles_lower)) * (1/clock_freq)
+        if (total_time_64b):
+            rate_64b = (total_data_64b/total_time_64b)   
+        else:
+            rate_64b = 0
+
+        frame_time_64b = (float(total_cycles_frm_in_progress_upper * 0x100000000) + float(total_cycles_frm_in_progress_lower)) * (1/clock_freq)
+        if (frame_time_64b):
+            rate_in_frames_64b = (total_data_64b/frame_time_64b)   
+        else:
+            rate_in_frames_64b = 0
+
+        print "------------------"              
         print "Clock Freq = %d Hz"               % clock_freq
-        print "Data Total =                  %e" % total_data
-        print "Data Time  =                  %e" % total_time
-        print "Data Rate  =                  %e" % rate
+        print "Data Total (Bytes) =                  %e" % total_data_64b
+        print "Data Time (sec) =                  %e" % total_time_64b
+        print "Data Rate during Frames (Bytes/sec) =                  %e" %rate_in_frames_64b 
+        print "Data Rate during Run (Bytes/sec) =                  %e" %rate_64b
+
 
     def set_asic_clock_freq(self, base_address, clock_sel):
         ''' Set the asic clock frequency; 0 = 100 MHz; 1 = divided clock '''
@@ -776,6 +969,7 @@ class LpdFemClient(FemClient):
         ''' Configure Asic clock source from FEM Osc clock'''
 
         if self.femDebugLevel >= 1:
+            print "--"
             print "Switching ASIC clock source to FEM Osc" 
 
         # Resets to hold dcm in reset while clock is switched
@@ -1030,6 +1224,13 @@ class LpdFemClient(FemClient):
 
             if self.cccEmulationMode == True:
 
+                if self.cccSimpleEmulation == True: # use simple ccc sm to generate start cmd and nveto tied '1' with pattern mask for triggers
+                    self.register_set_bit(self.fem_ctrl_0+10, 18)
+                    self.register_clear_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '1' to use enabled pattern bram bits for triggers
+                else:                  
+                    self.register_clear_bit(self.fem_ctrl_0+10, 18)
+                    self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' to ccc nvetos for triggers
+
                 self.register_set_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from generator
 
                 self.register_clear_bit(self.fem_ctrl_0+10, 17)  # reenable trigger strobes if NOT using real ccc commands
@@ -1038,7 +1239,6 @@ class LpdFemClient(FemClient):
                 
                 self.config_asic_ccc_cmd_gen()  # set up self test for emulating commands and vetos coming from xfel C&C system
                 
-                self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' to ccc nvetos for triggers
 
             else:
                 
@@ -1183,7 +1383,7 @@ class LpdFemClient(FemClient):
 # as still need to find out where trigger sequence starts even if not using vetos so that start delay can be set
 
         cccEna = True 
-        if self.femDebugLevel >= 2:
+        if self.femDebugLevel >= 3:
             print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
         fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
         encodedSequenceComplete  = fileCmdSeqComplete.encode()
@@ -1205,7 +1405,7 @@ class LpdFemClient(FemClient):
         if self.cccSystemMode != 2: 
 
             cccEna = False          
-            if self.femDebugLevel >= 2:
+            if self.femDebugLevel >= 3:
                 print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
             fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
             encodedSequenceComplete  = fileCmdSeqComplete.encode()
@@ -1426,6 +1626,7 @@ class LpdFemClient(FemClient):
                 # from file
                 #self.cccVetoPatternFile = "Config/VetoPatterns/veto_pattern_test1.xml"
                 stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
+                print "Veto Mask Pattern File Nane = %s " %self.cccVetoPatternFile
             
             else:          
                 if self.femDebugLevel >= 2:
@@ -1459,7 +1660,10 @@ class LpdFemClient(FemClient):
             # pattern 9 ; Tests
             
             
-            self.rdmaWrite(start_addr+0, 0x00000000)   # 1st word has triggers ; bit 0 corresponds to 1st bunch
+            if self.cccSimpleEmulation == True:
+                self.rdmaWrite(start_addr+0, 0x0fffffff)   # any unmasked bits will give trigger
+            else:
+                self.rdmaWrite(start_addr+0, 0x00000000)   # 1st word has triggers ; bit 0 corresponds to 1st bunch
             self.rdmaWrite(start_addr+1, 0xffffffff)   # 
             self.rdmaWrite(start_addr+2, 0xffffffff)   # 
             self.rdmaWrite(start_addr+3, 0xffffffff)   # 
@@ -1507,6 +1711,8 @@ class LpdFemClient(FemClient):
         if self.cccSystemMode == 1 or self.cccSystemMode == 2: 
             self.register_clear_bit(self.asic_srx_0+0, 16)  # disable dummy train id 
         else:
+            self.rdmaWrite(self.asic_srx_0+8, self.train_id_init_lsw)   # set initial value for dummy train id lower word (minus 1)
+            self.rdmaWrite(self.asic_srx_0+10, self.train_id_init_msw)   # set initial value for dummy train id upper word 
             self.toggle_bits(self.asic_srx_0+0, 17)  # reset dummy train id
             self.register_set_bit(self.asic_srx_0+0, 16)  # enable dummy train id 
 
@@ -1518,6 +1724,10 @@ class LpdFemClient(FemClient):
         # Data source - self test
         if self.femAsicDataType == self.ASIC_DATA_TYPE_RX_COUNTING:            
             self.asicrx_self_test_counting_data_enable()
+            if self.asicrx_test_data_pattern_type:            
+                self.register_set_bit(self.asic_srx_0+1, 4)  # counting data changes every Image
+            else:            
+                self.register_clear_bit(self.asic_srx_0+1, 4)  # counting data changes every Pixel
         else:
             self.asicrx_self_test_counting_data_disable()
 
@@ -1533,6 +1743,18 @@ class LpdFemClient(FemClient):
         # Compensate for Double Data Rate timing shifts with slowed asic readout 
         # and optional DCM in SP3IO
 
+
+# assign local variable here rather than using self.asicRx2tileStart as latter's state is kept between Gui configures
+        asicRx2tileStart_i =  self.asicRx2tileStart  # adjustment for SP3 IO DCM
+          
+        # new timing needed for PPC readout with asicrx generating 2 Llink frames per Train
+        # need to bring start strobe to asicrx earlier
+        if self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC:   # asic data via ppc 
+            if (self.get_v5_firmware_vers() & 0xffff) >= 0x027e :
+                asicRx2tileStart_i -= 400;
+            else:
+                asicRx2tileStart_i =  self.asicRx2tileStart
+          
         if (self.sp3_io_bot_firmware_modules & 0x00000001) == 0:    # assumes f/w is same in top sp3    
 
             if self.femDebugLevel >= 1:
@@ -1545,9 +1767,6 @@ class LpdFemClient(FemClient):
                 self.register_set_bit(self.fem_ctrl_0+8, 0)    # disable Swap DDR pair of asicrx  
                 self.register_clear_bit(self.fem_ctrl_0+8, 1)    # enable timing shift of odd asic rx
 
-# assign local variable here rather than using self.asicRx2tileStart as latter's state is kept between Gui configures
-            asicRx2tileStart_i =  self.asicRx2tileStart;  # adjustment for SP3 IO DCM
-              
         else: # with DCM in SP3 IO
 
             if self.femDebugLevel >= 1:
@@ -1558,7 +1777,7 @@ class LpdFemClient(FemClient):
             self.register_clear_bit(self.fem_ctrl_0+8, 0)    # disable timing shift of odd asic rx
                 
 # assign local variable here rather than using self.asicRx2tileStart as latter's state is kept between Gui configures
-            asicRx2tileStart_i =  self.asicRx2tileStart - 1;  # adjustment for SP3 IO DCM
+            asicRx2tileStart_i -=  1  # adjustment for SP3 IO DCM
         
         if ( (self.rdmaRead(self.fem_ctrl_0+18, 1)[0] & 0x00000080 != 0 ) or (self.get_v5_firmware_vers()&0xffff) == 0x024c ):  # with CCC 
             asicRx2tileStart_i -= 1
@@ -1736,6 +1955,7 @@ class LpdFemClient(FemClient):
                         self.toggle_bits(self.fem_ctrl_0+10, 8)  # ccc start Rx bypass
                         self.toggle_bits(self.fem_ctrl_0+10, 9)  # ccc stop Rx bypass
                 else:
+                    print "Trigger Fast Seq"
                     self.toggle_bits(self.fem_ctrl_0+7, 1)  # Asic seq without slow or asicrx strobe (slow params are loaded once only during configutation) 
         else:
             print "Warning undefined Trigger Asic"
@@ -1762,14 +1982,14 @@ class LpdFemClient(FemClient):
         self.dump_regs_hex(self.fast_cmd_0, 12)
 
         print "Dump of FEM Registers : ASIC FAST BRAM"
-        self.dump_regs_hex(self.fast_cmd_1, 20)
+        self.dump_regs_hex(self.fast_cmd_1, 16)
         #self.dump_regs_hex(self.fast_cmd_1+(self.FAST_BRAM_SIZE_BYTES*4)-16, 30) # deliberately looking beyond end of physical BRAM
 
         print "Dump of FEM Registers : ASIC SLOW CTRL"
         self.dump_regs_hex(self.slow_ctr_0, 12)
 
         print "Dump of FEM Registers : ASIC SLOW BRAM"
-        self.dump_regs_hex(self.slow_ctr_1+16, 16)   # 1024
+        self.dump_regs_hex(self.slow_ctr_1+16, 8)   # 1024
 
         print "Dump of Ext Trigger Strobe Registers : TRIG STROBE"
         self.dump_regs_hex(self.trig_strobe, 20)
@@ -1788,7 +2008,7 @@ class LpdFemClient(FemClient):
 
         print "Dump of FEM Registers : CFG SP3 CTRL"
         try:
-            self.dump_regs_hex(self.cfg_sp3_ctrl, 20)
+            self.dump_regs_hex(self.cfg_sp3_ctrl, 8)
         except FemClientError:
             print "WARNING: CFG SP3 dump_regs_hex failed"
 
@@ -2006,7 +2226,7 @@ class LpdFemClient(FemClient):
         # assume headers and footer are not included.
          
         # also fixed bug as above was using bit shifted value of no_cols_frm
-        no_clk_cyc_dly = (512 * 36 * (no_cols_frm + 1)) - 36       # as no_cols starts from '0'
+        no_clk_cyc_dly = (self.LPD_NUM_PIXELS_PER_ASIC * 36 * (no_cols_frm + 1)) - 36       # as no_cols starts from '0'
 
                   
         # Setup Asic rx clk cycle delay
@@ -2379,10 +2599,13 @@ class LpdFemClient(FemClient):
         self.rdmaWrite(self.fem_ctrl_0+5, 0x0)  
 
 
-    def checkEventLength(self, numImages, numTrains, llmonEventLength, llmonTotalData, dataFormat):
+    def checkEventLength(self, numImages, numTrains, llmonEventLength, llmonTotalData, dataFormat, numRxFramesperTrain):
         ''' 
             Calculate the expected event length in bytes
         '''
+        # To check Llink data lengths coming from ASIC Rx (against corresponding LLMon)
+        # *** NB This function only works if numImages per Train is FIXED
+        
         # For readout with LPD Data Formatting ; 
         # lpd headers and trailers in the data payload
         # lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
@@ -2390,19 +2613,28 @@ class LpdFemClient(FemClient):
         
         # All LPD blocks are padded to align on 32 byte boundaries
         # consequence of FIFO input width (256 bits) in Asicrx firmware module
-
-        if ((self.get_v5_firmware_vers()&0xffff) >= 0x026e):        
-            LL_HEADER_SIZE = 64 # xfel format may 2015 
-        else:       
-            LL_HEADER_SIZE = 32 # xfel format feb 2015
-          
+        
+        # numRxFramesperTrain = 2 for new AsicRx module
+        # Frame 1 with XFEL Header & Det Spec
+        # Frame 2 with Dummy Short Header & Image Data & Trailer
+        # NB Image Descriptors are added by PPC
+        # Frame 2 should always be the "last" Frame 
+        
+ 
+        LL_HEADER_SIZE = 32   # Local Link          
         LL_TRAILER_SIZE = 32
 
         MIN_LPD_BLOCK_SIZE = 32
         
         LPD_TRAILER_SIZE = (1*32); # includes crc
-        LPD_HEADER_SIZE = (1*32); # includes train id
         
+        if ((self.get_v5_firmware_vers()&0xffff) >= 0x026e):        
+            LPD_HEADER_SIZE = 64 # xfel format may 2015 
+        else:       
+            LPD_HEADER_SIZE = 32 # xfel format feb 2015
+
+        FRAME2_DUMMY_TRAILER_SIZE = 32   # redundant trailer block sent with Frame 2 (fudge to ensure sop when 0 images in train)
+
         # Number of Image Descriptors are now Variable :
         # aligned on 32 byte boundaries
         # 1) storageCellNumber (2 bytes)
@@ -2437,10 +2669,10 @@ class LpdFemClient(FemClient):
         numDescriptorsPerBlockImageLength = MIN_LPD_BLOCK_SIZE / LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_LENGTH
         
         if dataFormat == 1:      # fixed 512 image descriptors      
-            lenDescriptorsStorageCell = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_STORAGE_CELL
-            lenDescriptorsBunchNumber = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_BUNCH_NUMBER
-            lenDescriptorsImageStatus = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_STATUS
-            lenDescriptorsImageLength = 512 * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_LENGTH
+            lenDescriptorsStorageCell = self.LPD_PIPELINE_LENGTH * LPD_IMAGE_DESCRIPTOR_SIZE_STORAGE_CELL
+            lenDescriptorsBunchNumber = self.LPD_PIPELINE_LENGTH * LPD_IMAGE_DESCRIPTOR_SIZE_BUNCH_NUMBER
+            lenDescriptorsImageStatus = self.LPD_PIPELINE_LENGTH * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_STATUS
+            lenDescriptorsImageLength = self.LPD_PIPELINE_LENGTH * LPD_IMAGE_DESCRIPTOR_SIZE_IMAGE_LENGTH
         else:                   # variable nr image descriptors
             if numImages == 0:
                 lenDescriptorsStorageCell = 0
@@ -2460,12 +2692,17 @@ class LpdFemClient(FemClient):
         
         lpdEventLength = lpdHeaderLength + lpdImageDataLength + lenDescriptorsTotal + lpdDectectorSpecificLength + lpdTrailerLength 
         
-        eventLength = llHeaderLength + lpdEventLength + llTrailerLength
-        
-        totalExpectedData = eventLength * numTrains
+        if numRxFramesperTrain == 2: 
+            frame1Length = lpdHeaderLength + lpdDectectorSpecificLength + llHeaderLength + llTrailerLength
+            frame2Length = FRAME2_DUMMY_TRAILER_SIZE + lpdImageDataLength + lpdTrailerLength + llHeaderLength + llTrailerLength      
+            lastFrameLength = frame2Length
+            totalExpectedData = (frame1Length + frame2Length) * numTrains
+        else:
+            lastFrameLength = llHeaderLength + lpdEventLength + llTrailerLength
+            totalExpectedData = lastFrameLength * numTrains
 
         print "  ------------------------------------------------------------------------" 
-        if self.femDebugLevel >= 1:
+        if self.femDebugLevel >= 3:
             print "Expected Event Data Length in Bytes for Num Trains = %d and Num Images = %d :" %(numTrains, numImages)
             if dataFormat == 1:      # fixed 512 image descriptors 
                 print "Event Format with Fixed 512 Image Descriptors"
@@ -2484,25 +2721,26 @@ class LpdFemClient(FemClient):
             print "                    LPD Trailer = %d \t ($%08x)" %(lpdTrailerLength, lpdTrailerLength)
             print "  ------------------------------------------------------------------------"
             print "               LPD Event Length = %d \t ($%08x)" %(lpdEventLength, lpdEventLength)
-            print "      Event Length (incl LLink) = %d \t ($%08x)" %(eventLength, eventLength)
+            print " Last Frame Length (incl LLink) = %d \t ($%08x)" %(lastFrameLength, lastFrameLength)
             print "  ------------------------------------------------------------------------"         
             print "        Total Data (incl LLink) = %d \t ($%08x)" %(totalExpectedData, totalExpectedData)
             print "  ------------------------------------------------------------------------"
         
-        if eventLength != llmonEventLength:
-            print "***ERROR   LPD Last Event Length Expected = %d ($%08x) but Received %d ($%08x)" %(eventLength, eventLength, llmonEventLength, llmonEventLength)
+        if lastFrameLength != llmonEventLength:
+            print "***ERROR   LPD Last Frame Length Expected = %d ($%08x) but Received %d ($%08x) ; Exp-Rec = %d ($%08x)" %(lastFrameLength, lastFrameLength, llmonEventLength, llmonEventLength, (lastFrameLength - llmonEventLength), (lastFrameLength - llmonEventLength))
         else:
-            print " OK        LPD Last Event Length Expected = %d ($%08x) and Received %d ($%08x)" %(eventLength, eventLength, llmonEventLength, llmonEventLength)
+            print " OK        LPD Last Frame Length Expected = %d ($%08x) and Received %d ($%08x)" %(lastFrameLength, lastFrameLength, llmonEventLength, llmonEventLength)
         
         if totalExpectedData != llmonTotalData:
-            print "***ERROR          LPD Total Data Expected = %d ($%08x) but Received %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData)
+            print "***ERROR          LPD Total Data Expected = %d ($%08x) but Received %d ($%08x) ; Exp-Rec = %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData, (totalExpectedData - llmonTotalData), (totalExpectedData - llmonTotalData))
+            print "Note that Total Data checking is not valid if there are varying number of Images per Train OR if any Trains have been inhibited"
         else:
             print " OK               LPD Total Data Expected = %d ($%08x) and Received %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData)
         print "  ------------------------------------------------------------------------" 
   
           
         
-        return eventLength
+        return totalExpectedData
 
     '''
         --------------------------------------------------------
@@ -2521,10 +2759,16 @@ class LpdFemClient(FemClient):
   
         self.pp = pprint.PrettyPrinter(indent=4)
 
+        print " Firmware:" 
         print "     V5 FPGA Firmware vers = %08x" % self.get_v5_firmware_vers()
         print "BOT SP3 FPGA Firmware vers = %08x" % self.get_bot_sp3_firmware_vers()
         print "TOP SP3 FPGA Firmware vers = %08x" % self.get_top_sp3_firmware_vers()
         print "CFG SP3 FPGA Firmware vers = %08x" % self.get_cfg_sp3_firmware_vers()
+        
+        print " Embedded PPC Software:" 
+        print "  PPC1 s/w vers = %08x" % self.ppc1_get_sw_vers() 
+        print "  PPC2 s/w vers = %08x" % self.ppc2_get_sw_vers()
+
         print "=======================================================================" 
 
         if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
@@ -2559,10 +2803,17 @@ class LpdFemClient(FemClient):
                               2 : "Full XFEL C&C with veto system"
                                   }
         
+        femDataSourceNames = { 0 : "Std ASIC [via PPC1 and DDR2 Memory]",
+                            1 : "Std ASIC [Direct from AsicRx]",
+                            2 : "Test Frame Generator",
+                            3 : "Test PPC DDR2"
+                          }
+
         print "femAsicClockSource  = %s" % femAsicClockSourceNames[self.femAsicClockSource]
         print "femStartTrainSource = %s" % femStartTrainSourceNames[self.femStartTrainSource]
         print "femAsicModuleType   = %s" % femAsicModuleTypeNames[self.femAsicModuleType]
         print "femAsicDataType     = %s" % femAsicDataTypeNames[self.femAsicDataType]
+        print "femDataSource       = %s" % femDataSourceNames[self.femDataSource]
         print "cccSystemMode       = %s" % cccSystemModeNames[self.cccSystemMode]
 
         if self.cccSystemMode != 0 :
@@ -2573,6 +2824,16 @@ class LpdFemClient(FemClient):
         print "OS name is %s" %(os.name)
         print "================"
 
+        if 0:
+            test1 = (0x45 << 32) | 0x123
+            print " test1 (64 bits) = $%x" %(test1)
+          
+            test1 = float(self.numberTrains * self.numFixedRateTrigs * self.gapBetweenFixedRateTrigs)/float(100000000)
+            print "Waiting %f secs for end of Fixed Rate Trains before Stopping PPC Readout " %(float(test1))
+            time.sleep(float(test1))
+
+            return
+            
         self.zero_regs(self.bram_ppc1, 20)  # Clear ppc ready
   
         self.init_ppc_bram(self.bram_ppc1, 0xBEEFFACE)
@@ -2613,29 +2874,93 @@ class LpdFemClient(FemClient):
             elif self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
                 print "Configure PPC1 Readout for CMD_ACQ_CONFIG."
 
-                # compute the DMA buffer sizes based on the numberImages in the Train(s)
-                # whole nr of Trains must fit in the BD ring buffers 
+                ## compute the DMA buffer sizes based on the numberImages in the Train(s)
+                ## whole nr of Trains must fit in the BD ring buffers 
         
-                maxNrImagesPerBD = 127  # limit the nr of images in a BD (physical limit is 127)
-                nrTrainsInMemory = 4   # allow for N Trains worth in BDs
+                #maxNrImagesPerBD = 127  # limit the nr of images in a BD (physical limit is 127)
+                #nrTrainsInMemory = 4   # allow for N Trains worth in BDs
 
-                nrBufsPerTrain = (self.numberImages / maxNrImagesPerBD) + 1
-                if ((self.numberImages % maxNrImagesPerBD) == 0):
-                    nrBufsPerTrain -= 1
-                BufCount = nrBufsPerTrain * nrTrainsInMemory   # ensure whole nr of Trains in BD ring
+                #nrBufsPerTrain = (self.numberImages / maxNrImagesPerBD) + 1
+                #if ((self.numberImages % maxNrImagesPerBD) == 0):
+                  #if ((self.get_v5_firmware_vers()&0xffff) >= 0x0270): # for PPC readout with new XFEL Data format May 2015  
+                    #dummy = 0  
+                    ## even if nr images fits exactly into BDs still need an extra BD to hold overspill from header and trailer
+                    ## and if not works if header and trailer size will be less than that of one image 
+                  #else:
+                    #nrBufsPerTrain -= 1
+                #BufCount = nrBufsPerTrain * nrTrainsInMemory   # ensure whole nr of Trains in BD ring
                 #BufCount = 10   
+                BufCount = self.NUM_TRAINS_TO_STORE_IN_BD_RING    # param is now used to set how many Trains to store at one time
 
-                BufSize = (maxNrImagesPerBD * self.lpd_image_size)    
-                NumAcqs = self.numberTrains * nrBufsPerTrain    # number of BDs to process
-                Coalesce = self.numberImages    # for LPD use this param instead to pass the nr of images to set up Tx descriptors
+                #set debug printout level by writing directly to the PPC shared BRAM (via PPC2 raw memory map)
+                self.ppc_set_debug_printout(self.ppcDebugLevel, self.ppcDebugLevel2)
+                
+                # enable ppc1 pipleline emulation 
+                if self.ppc1_emulate_pipeline == True:
+                    if self.cccSystemMode != 2:
+                        print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Pipeline Emulation "
+                        self.ppc_disable_pipeline_emulation()
+                    else:
+                        print "CMD_ACQ_CONFIG. Enabled PPC Pipeline Emulation "
+                        self.ppc_enable_pipeline_emulation()
+                else:                                 
+                    print "CMD_ACQ_CONFIG. Disabled PPC Pipeline Emulation "
+                    self.ppc_disable_pipeline_emulation()
+
+                # enable ppc1 reordering of Image readout by pulse nr 
+                if self.ppc1_pulse_reorder == True:              
+                    if self.cccSystemMode != 2:
+                        print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Reordering of Images "
+                        self.ppc_disable_image_reordering()
+                    else:
+                        print "CMD_ACQ_CONFIG. Enabled PPC Reordering of Images "
+                        self.ppc_enable_image_reordering()
+                else:                                 
+                    print "CMD_ACQ_CONFIG. Disabled PPC Reordering of Images "
+                    self.ppc_disable_image_reordering()
+                  
+                # enable ppc1 pipleline emulation 
+                if self.ppc1_disable_tx_dma == True:               
+                    print "CMD_ACQ_CONFIG. DISABLED TX DMA *** TEST ONLY ***"
+                    self.ppc_disable_tx_dma()
+                else:                                 
+                    print "CMD_ACQ_CONFIG. Enabled PPC Tx (& Rx) DMA "
+                    self.ppc_enable_tx_dma()
+
+                if self.ppc1_override_pipeline_defaults == True:
+                    # for tests override ppc1 defaults
+                    pNumPulsesInTrain = self.NR_BUNCHES_IN_TRAIN_OVERRIDE
+                    pPipelineLength = self.LPD_PIPELINE_LENGTH_OVERRIDE
+                else:
+                    pNumPulsesInTrain = self.NR_BUNCHES_IN_TRAIN
+                    pPipelineLength = self.LPD_PIPELINE_LENGTH
+                  
+                self.rawWrite(self.ppc_shared_bram_base + 128*4 + 8, pNumPulsesInTrain)
+                self.rawWrite(self.ppc_shared_bram_base + 128*4 + 12, pPipelineLength)
+
+                BufSize = 0    # now redundant  # (maxNrImagesPerBD * self.lpd_image_size)   
+                #NumAcqs = 0   # now redundant self.numberTrains * nrBufsPerTrain     # number of BDs to process
+                #Coalesce = self.numberImages     # now redundant  # for LPD use this param instead to pass the nr of images to set up Tx descriptors                
+                Coalesce = 16    # Pass but is ignored now     # NMax nr of images allowed per BD (up to 127)
+                # Nr Trains this run for PPC1 to process and then stop
+                if self.fixed_rate_trains == True:
+                    NumAcqs = self.numberTrains * self.numFixedRateTrigs  # fixed rate trains
+                else:
+                    NumAcqs = self.numberTrains  
+                
+                print "CMD_ACQ_CONFIG. Total Nr Trains to Store concurrently in Memory = %d  " % (BufCount)
+                #print "CMD_ACQ_CONFIG. Nr BDs to Process this Run = %d ; Length of BD = $%08x bytes" % ( NumAcqs, BufSize)
+                
                 ##AcqMode = FemTransaction.ACQ_MODE_TX_ONLY
                 AcqMode = FemTransaction.ACQ_MODE_NORMAL
                 if (AcqMode == FemTransaction.ACQ_MODE_TX_ONLY):
                     print "*** WARNING TESTING  FemTransaction.ACQ_MODE_TX_ONLY " 
                 self.acquireSend(FemTransaction.CMD_ACQ_CONFIG, AcqMode, BufSize, BufCount, NumAcqs, Coalesce)
-
-                print "CMD_ACQ_CONFIG. Total Nr BDs = %d ; Nr BD per Train = %d " % (BufCount, nrBufsPerTrain)
-                print "CMD_ACQ_CONFIG. Nr BDs to Process this Run = %d ; Length of BD = $%08x bytes" % ( NumAcqs, BufSize)
+                
+                # init buffer memory takes a while
+                buffer_wait = 1 * BufCount #  10 * BufCount
+                print "Waiting %d secs for PPC Buffers to be Initialised... " %(buffer_wait) 
+                time.sleep(buffer_wait)
 
         #print "TEST Reset of PPC2"        
         #self.reset_ppc(2) # Reset ppc nr 2  ############   TEST , careful as it kills the gbe!     
@@ -2677,6 +3002,31 @@ class LpdFemClient(FemClient):
             if self.femDebugLevel >= 2:
                 print "INFO config_asic_modules  "
             self.config_asic_modules()
+            
+        if self.fixed_rate_trains == True:
+            # set up for fixed rate strobes if using ccc cmd gen
+            # this will send a fixed nr of trains at fixed interval after if running with s/w triggers
+            # assumes param self.numberTrains = 1
+            self.rdmaWrite(self.fem_ctrl_top2+1, self.gapBetweenFixedRateTrigs)  # nb usig new top level ctrl regs
+            self.rdmaWrite(self.fem_ctrl_top2+2, self.numFixedRateTrigs)
+            self.register_set_bit(self.fem_ctrl_0+10, 20)  # enable
+            print "INFO Setting up Fixed Rate Triggers to ccc cmd start gen  "
+            print "numFixedRateTrigs = %d ; gapBetweenFixedRateTrigs = %d " %(self.numFixedRateTrigs, self.gapBetweenFixedRateTrigs)
+        else:
+            self.register_clear_bit(self.fem_ctrl_0+10, 20)  # disable
+          
+        # LPD Frame Checker setup
+        # defaults for checking magic words etc are setup in reset values of rdma regs           
+        
+        # New values after 64b field little endian correction  f/w 0297
+        self.rdmaWrite(self.lpd_checker+1, 0xBEEFFACE)  # magic header
+        self.rdmaWrite(self.lpd_checker+2, 0x58544446)
+        self.rdmaWrite(self.lpd_checker+3, self.train_id_init_lsw)  # train id lower init
+        self.rdmaWrite(self.lpd_checker+4, self.train_id_init_msw)  # train id upper init
+        self.rdmaWrite(self.lpd_checker+5, 0xDEADABCD)  # magic trailer
+        self.rdmaWrite(self.lpd_checker+6, 0x58544446)
+        
+        self.toggle_bits(self.lpd_checker+0, 0)  # reset to load these new reg values to h/w
 
     def run(self):
         '''
@@ -2749,7 +3099,7 @@ class LpdFemClient(FemClient):
 
                             print "Train nr %d" % i
                             self.send_trigger() 
-                            time.sleep(0.5)             # Need to check if images are all readout before sending next train
+                            time.sleep(3)             # Need to check if images are all readout before sending next train
                           
                             if isData():
                                 c = sys.stdin.read(1)
@@ -2764,7 +3114,7 @@ class LpdFemClient(FemClient):
                         
                         print "Train nr %d" % i
                         self.send_trigger() 
-                        time.sleep(0.5)             # Need to check if images are all readout before sending next train
+                        time.sleep(1)             # Need to check if images are all readout before sending next train
                        
     
             else:   # Else start run and use external c&c strobes
@@ -2844,6 +3194,23 @@ class LpdFemClient(FemClient):
                 print "nr_trains processed = %d" % nr_trains 
                     
     
+            if self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
+                if self.fixed_rate_trains == True:
+                    wait_fixed_rate_trains = float(self.numberTrains * self.numFixedRateTrigs * self.gapBetweenFixedRateTrigs)/float(100000000)
+                    print "Waiting %f secs for end of Fixed Rate Trains before Stopping PPC Readout " %(float(wait_fixed_rate_trains))
+                    time.sleep(float(wait_fixed_rate_trains + self.wait_for_ppc_run_stop))
+                else:
+                    print "Waiting %f secs at end before Stopping PPC Readout " %(float(self.wait_for_ppc_run_stop))
+                    time.sleep(self.wait_for_ppc_run_stop)
+                 
+            if 0:              
+                print "*** TEST NOT Stopping PPC1 Readout . "
+            else:
+                if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
+                    print "Stopping PPC1 Readout CMD_ACQ_STOP. "
+                    self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+    
+
             print "======== Train Cycle Completed ===========" 
             print "--"           
             #time.sleep(2)   # just to see output before dumping registers
@@ -2867,7 +3234,7 @@ class LpdFemClient(FemClient):
             if self.femDebugLevel >= 0:
                 print "--"
                 print "Dump of FEM Registers : TOP LEVEL CTRL"
-                self.dump_regs_hex(self.fem_ctrl_0, 30)
+                self.dump_regs_hex(self.fem_ctrl_0, 32)
 
             if self.femDebugLevel >= 1:
                 print "Dump of FEM Registers : ASIC DATA RX"
@@ -2908,13 +3275,13 @@ class LpdFemClient(FemClient):
                 self.dump_regs_hex(self.fast_cmd_0, 12)
                 
                 print "Dump of FEM Registers : ASIC FAST BRAM"
-                self.dump_regs_hex(self.fast_cmd_1, 20)          
+                self.dump_regs_hex(self.fast_cmd_1, 16)          
                 
                 print "Dump of FEM Registers : ASIC SLOW CTRL"
                 self.dump_regs_hex(self.slow_ctr_0, 12)
         
                 print "Dump of FEM Registers : ASIC SLOW BRAM"
-                self.dump_regs_hex(self.slow_ctr_1+16, 16)   # 1024
+                self.dump_regs_hex(self.slow_ctr_1+16, 8)   # 1024
 
                 #print "Dump of FEM Registers : ASIC FAST BRAM COE"
                 #self.dump_regs_hex_coe(self.fast_cmd_1, 1024)
@@ -2925,7 +3292,7 @@ class LpdFemClient(FemClient):
                     print "Dump of FEM Registers : CCC PATTERN ID REG"
                     self.dump_regs_hex(self.ccc_pattern_id, 12)                  
                     print "Dump of FEM Registers : CCC PATTERN BRAM"
-                    self.dump_regs_hex(self.ccc_pattern_bram, 8)
+                    self.dump_regs_hex(self.ccc_pattern_bram, 16)
                 
                 if ((self.get_v5_firmware_vers()&0xffff) >= 0x022d):
                     print "Dump of FEM Registers : CCC CMD GEN REG"
@@ -2933,33 +3300,34 @@ class LpdFemClient(FemClient):
                     print "Dump of FEM Registers : CCC CMD GEN BRAM"
                     self.dump_regs_hex(self.ccc_cmd_gen_bram, 12) 
     
+                print "Dump of FEM Registers : TOP LEVEL CTRL GROUP 2"
+                self.dump_regs_hex(self.fem_ctrl_top2, 24)
+
                 print "Dump of FEM Registers : TRIGGER STROBE"
                 self.dump_regs_hex(self.trig_strobe, 20)
                 
+                print "Dump of FEM Registers :LPD CHECKER"
+                self.dump_regs_hex(self.lpd_checker, 24)
+
 
             if self.femDebugLevel >= 5:
                 print "Register Settings"
                 self.dump_registers()
             else:
-                time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
+                dummy = 0
+                #time.sleep(2)   # if no dump add wait to allow 10g transfers to complete
                 #print "Dump of FEM Registers : TOP LEVEL CTRL"
                 #self.dump_regs_hex(self.fem_ctrl_0, 18)
                 #print "Dump of FEM Registers : PPC1 BRAM"
                 #self.dump_regs_hex(self.bram_ppc1, 20)
 
-            if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
-                if self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
-                    #time.sleep(3)  
-                    print "Stopping PPC1 Readout CMD_ACQ_STOP. "
-                    self.acquireSend(FemTransaction.CMD_ACQ_STOP)
-    
 
             print "--"
             print "Summary of Data Readout..."
     
             print "--"    
             print "Asic Rx LLink Monitor: 32b "
-            self.read_ll_monitor(self.llink_mon_asicrx, 220.0e6)    # 220.0e6 
+            self.read_ll_monitor(self.llink_mon_asicrx, self.asicrx_llink_clock_rate)    # 220.0e6   # 200.0e6  # 225.0e6  # 230.0e6
             
             print "--"
             print "10G LLink Monitor: 64b "
@@ -2996,7 +3364,11 @@ class LpdFemClient(FemClient):
 
             
             llmonEventLength = self.rdmaRead(self.llink_mon_asicrx+16+0, 1)[0]
-            llmonTotalData = self.rdmaRead(self.llink_mon_asicrx+16+7, 1)[0]
+
+            llmonTotalDataLsw = self.rdmaRead(self.llink_mon_asicrx+16+7, 1)[0]
+            llmonTotalDataMsw = self.rdmaRead(self.llink_mon_asicrx+16+12, 1)[0]
+            llmonTotalData = (llmonTotalDataMsw << 32) | llmonTotalDataLsw  
+                                  
             if ((self.get_v5_firmware_vers()&0xffff) >= 0x0269):  # 1 = fixed 512 descriptors, 2 = variable nr descriptors
                 dataFormat = 2  
             else:
@@ -3006,18 +3378,66 @@ class LpdFemClient(FemClient):
                 numImages = self.numberImages
             else:
                 if self.cccProvideNumberImages == True:
-                    numImages = self.numberImages
-                else:
                     numImages = cccNumTriggers
+                else:
+                    numImages = self.numberImages 
               
-            self.checkEventLength(numImages, self.numberTrains, llmonEventLength, llmonTotalData, dataFormat)
+            if self.femPpcMode == 1:
+                numRxFramesperTrain = 2
+            else:
+                numRxFramesperTrain = 1
+              
+            if self.fixed_rate_trains == True:
+                numTrainsTot = self.numberTrains * self.numFixedRateTrigs  # fixed rate trains
+            else:
+                numTrainsTot = self.numberTrains  
+            
+            self.checkEventLength(numImages, numTrainsTot, llmonEventLength, llmonTotalData, dataFormat, numRxFramesperTrain)
     
-                # Switch back to FEM Osc clock as Asic clock source for run end       
+    
+
+            if self.femPpcMode == 1:
+                # dump shared ppc bram with ppc1 counters status using raw memory mapped access from ppc2
+                print "---------------"
+                print "Dump of PPC Shared BRAM:"
+                if self.femDebugLevel >= 3:
+                    self.dump_raw_memory_hex(self.ppc_shared_bram_base, 40)
+                    self.dump_raw_memory_hex(self.ppc_shared_bram_base+128*4, 8)
+                self.ppc1_status_dump(self.ppc_shared_bram_base)
+
+            # number of triggers
+            ccc_start_count = self.rdmaRead(self.fem_ctrl_0+26, 1)[0]
+            ccc_start_accepted_count = self.rdmaRead(self.fem_ctrl_0+27, 1)[0]
+            print "---------------"
+            print "CCC Start Train Commands:"
+            print " Num CCC Starts Received = %d" %(ccc_start_count)
+            print " Num CCC Starts Accepted = %d" %(ccc_start_accepted_count)
+
+            # LPD Frame Checker results
+            # 
+            lpd_chk_nr_errors = self.rdmaRead(self.lpd_checker+16+1, 1)[0]
+            lpd_chk_nr_hdr_words = self.rdmaRead(self.lpd_checker+16+2, 1)[0]
+            lpd_chk_nr_trl_words = self.rdmaRead(self.lpd_checker+16+3, 1)[0]
+            print "---------------"
+            print "LPD Checker Results:"
+            print " Num Errors = %d" %(lpd_chk_nr_errors)
+            print " Num Header Words = %d" %(lpd_chk_nr_hdr_words)
+            print " Num Trailer Words = %d" %(lpd_chk_nr_trl_words)
+
+            
+
+            # Switch back to FEM Osc clock as Asic clock source for run end       
+            print "---------------"
             self.config_asic_clock_source_from_osc()
     
+            print "--"           
             print "======== Run Completed ==========="
             print "--"           
         
+        
+            #print "Stopping PPC1 Readout CMD_ACQ_STOP. "
+            #self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+
         except FemClientError as e:
             raise e
         except Exception as e:
@@ -3664,3 +4084,215 @@ class LpdFemClient(FemClient):
             Set the C&C veto pattern xml file 
         '''
         self.cccVetoPatternFile = aValue
+
+    def dump_raw_memory_hex(self, base_addr, nr_regs):
+        ''' Hex dump of raw memory mapped space (not rdma reg space) '''
+        
+        print "raw memory addr = $%08X" % base_addr 
+        for i in range(0, nr_regs/2):
+            print "word %2d = $%08X     %2d = $%08X"   % ((i*2),   self.rawRead(base_addr+(i*2*4), 1)[0], (i*2+1), self.rawRead(base_addr+(i*2*4+4), 1)[0])
+            
+    def ppc1_status_dump(self, base_addr):
+        ''' Formatted dump of ppc1 counters from shared memory accessed by ppc2 raw memory mapped space (not rdma reg space) '''
+        
+        numTrainsRequested = self.rawRead(base_addr+(6*4), 1)[0]
+        totalRecvBot = self.rawRead(base_addr+(9*4), 1)[0]
+        numRxFrameTot1 = self.rawRead(base_addr+(13*4), 1)[0]
+        numRxFrameTot2 = self.rawRead(base_addr+(14*4), 1)[0]
+        totalSent = self.rawRead(base_addr+(10*4), 1)[0]
+        numTxBDsExpected = self.rawRead(base_addr+(21*4), 1)[0]
+        numTrainsSent = self.rawRead(base_addr+(15*4), 1)[0]
+        numRxTrainsToSendPeak = self.rawRead(base_addr+(27*4), 1)[0]
+        numTrainsReceived = self.rawRead(base_addr+(16*4), 1)[0]
+        maxIterations = self.rawRead(base_addr+(26*4), 1)[0]
+        numBotAsicRxPeak = self.rawRead(base_addr+(17*4), 1)[0]
+        numTxBDsToSendPeak = self.rawRead(base_addr+(18*4), 1)[0]
+                
+        numImagesPeak = self.rawRead(base_addr+(19*4), 1)[0]
+        numImagesTrough = self.rawRead(base_addr+(20*4), 1)[0]
+
+        totalErrors = self.rawRead(base_addr+(24*4), 1)[0]
+        nrErrorsPipelineOverflow = self.rawRead(base_addr+(25*4), 1)[0]
+        nrErrorsValidateBufferRx = self.rawRead(base_addr+(58*4), 1)[0]
+        nrErrorsValidateBufferTx = self.rawRead(base_addr+(59*4), 1)[0]
+        nrErrorsRecycleBufferRx = self.rawRead(base_addr+(60*4), 1)[0]
+        nrErrorsRecycleBufferTx = self.rawRead(base_addr+(61*4), 1)[0]
+        nrErrorsRingToHWRx = self.rawRead(base_addr+(62*4), 1)[0]
+        nrErrorsRingToHWTx = self.rawRead(base_addr+(63*4), 1)[0]        
+        nrErrorsPipelineSkipFull = self.rawRead(base_addr+(64*4), 1)[0]
+
+        maxIterationsPipeline = self.rawRead(base_addr+(65*4), 1)[0]
+        
+        print "PPC1 Ctrl Params  --------------------------"  
+        pNumPulsesInTrain = self.rawRead(base_addr+(128*4 + 8), 1)[0]        
+        pPipelineLength = self.rawRead(base_addr+(128*4 + 12), 1)[0]
+        print "NumPulsesInTrain = %d" %(pNumPulsesInTrain)     
+        print "PipelineLength = %d" %(pPipelineLength)
+
+
+        print "PPC1 Status  --------------------------"         
+        print "PPC1 Status from Shared BRAM @ $%08x :" % base_addr         
+        print "Num Trains Requested this run = %d" %(numTrainsRequested)        
+        print "Total Nr Rx BDs = %d" %(totalRecvBot)       
+        print "Total Num Rx Frame 1 = %d" %(numRxFrameTot1)      
+        print "Total Num Rx Frame 2 = %d" %(numRxFrameTot2)       
+        print "Total Num Trains Received = %d" %(numTrainsReceived)       
+        print "Total Nr Tx BDs = %d" %(totalSent)      
+        print "Total Nr Tx BDs Expected = %d" %(numTxBDsExpected)             
+        print "Total Nr Trains Sent to 10G (may undercount) = %d" %(numTrainsSent)      
+        print "Peak Nr Trains in BD Ring = %d  (Max = %d)" %(numRxTrainsToSendPeak, self.NUM_TRAINS_TO_STORE_IN_BD_RING )              
+        print "Max Nr Pipeline Skip Iterations = %d" %(maxIterationsPipeline)              
+        print "Max Nr Pulse Number Reordering Iterations = %d" %(maxIterations)           
+        print "Peak Nr Rx BD Buffers = %d" %(numBotAsicRxPeak)       
+        print "Peak Nr Tx BD Buffers = %d" %(numTxBDsToSendPeak)       
+        print "Peak Nr Images in any Train = %d" %(numImagesPeak)       
+        print "Trough Nr Images in any Train = %d" %(numImagesTrough) 
+        
+              
+        print "PPC1 Errors  --------------------------"          
+        print "PipeLine Overflow = %d" %(nrErrorsPipelineOverflow)          
+        print "Validate Buffer Rx = %d" %(nrErrorsValidateBufferRx)          
+        print "Validate Buffer Tx = %d" %(nrErrorsValidateBufferTx)          
+        print "Recycle Buffer Rx = %d" %(nrErrorsRecycleBufferRx)          
+        print "Recycle Buffer Tx = %d" %(nrErrorsRecycleBufferTx)          
+        print "Committing BDRingToHW Rx = %d" %(nrErrorsRingToHWRx)          
+        print "Committing BDRingToHW Tx = %d" %(nrErrorsRingToHWTx)        
+        print "Pipeline Skips FULL= %d" %(nrErrorsPipelineSkipFull)
+        if totalErrors == 0:         
+          print "OK TOTAL PPC1 Errors = %d" %(totalErrors) 
+        else:                  
+          print "*** TOTAL PPC1 Errors = %d" %(totalErrors)
+        
+             
+        print "--" 
+        print "PPC1 Timers for Final Train -----------------" 
+        ppc1_timer0 = self.rawRead(base_addr+(28*4), 1)[0]
+        
+        ppc1_timer = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        
+        for i in range(0, 12):
+          ppc1_timer[i] = self.rawRead(base_addr+((28+i)*4), 1)[0] 
+          print "Timer %d - 0 = %.3g msec" %( i, float((( (ppc1_timer[i] - ppc1_timer0) * self.ppc_clock_period ) / 1000) ) / 1000 )         
+        
+        timer_postProcessRxFrame1 = ppc1_timer[2] - ppc1_timer[1]  
+        timer_lpd_emulate_asic_pipeline = ppc1_timer[5] - ppc1_timer[3]  
+        timer_order_images_by_pulse_nr = ppc1_timer[6] - ppc1_timer[5] 
+        timer_lpd_update_image_descriptors = ppc1_timer[11] - ppc1_timer[6] 
+        timer_preProcessTxBD = ppc1_timer[4] - ppc1_timer[2]
+        timer_process_frame1 = ppc1_timer[4] - ppc1_timer[0]
+        
+        print "postProcessRxFrame1 = %.3g msec" %( float((( timer_postProcessRxFrame1 * self.ppc_clock_period ) / 1000) ) / 1000 )         
+        print "emulate_asic_pipeline = %.3g msec" %( float((( timer_lpd_emulate_asic_pipeline * self.ppc_clock_period ) / 1000) ) / 1000 )         
+        print "order_images_by_pulse_nr = %.3g msec" %( float((( timer_order_images_by_pulse_nr * self.ppc_clock_period ) / 1000) ) / 1000 )         
+        print "update_image_descriptors = %.3g msec" %( float((( timer_lpd_update_image_descriptors * self.ppc_clock_period ) / 1000) ) / 1000 )         
+        print "preProcessTxBD = %.3g msec" %( float((( timer_preProcessTxBD * self.ppc_clock_period ) / 1000) ) / 1000 )         
+        print "Total Time for Processing Frame 1 = %.3g msec" %( float((( timer_process_frame1 * self.ppc_clock_period ) / 1000) ) / 1000 )         
+
+        # assumes 200 mhz ppc proc clk                        
+        #print "Timer 1 - 0 = %d micro sec" %((timer1 - timer0)/200)                          
+
+        #print "Timer 2 - 0 = %.2g msec" %( float((( (timer2 - timer0) * 5 ) / 1000) ) / 1000 )         
+        #print "Timer 3 - 0 = %.2g msec" %( float((( (timer3 - timer0) * 5 ) / 1000) ) / 1000 )         
+        #print "Timer 4 - 0 = %.2g msec" %( float((( (timer4 - timer0) * 5 ) / 1000) ) / 1000 )         
+        #print "Timer 5 - 0 = %.2g msec" %( float((( (timer5 - timer0) * 5 ) / 1000) ) / 1000 )         
+        #print "Timer 6 - 0 = %.2g msec" %( float((( (timer6 - timer0) * 5 ) / 1000) ) / 1000 )         
+        
+        #print "Timer 3 - 0 = %.2e msec" %( float((( (timer3 - timer0) * 5 ) / 1000) ) / 1000 )         
+        #print "Timer 6 - 0 = %.2e msec" %( float((( (timer6 - timer0) * 5 ) / 1000) ) / 1000 )         
+
+
+    def ppc_set_debug_printout(self, pDebug, pDebug2):
+        ''' Set debug prinout level by setting parm in shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 128*4
+        #print "pDebug mem addr = $%08X ; value = %d" %(addr, pDebug)
+        
+        self.rawWrite(addr, pDebug)
+        
+        addr = self.ppc_shared_bram_base + (128+4)*4
+        self.rawWrite(addr, pDebug2)
+
+    def ppc1_get_sw_vers(self):
+        ''' Get ppc1 code vers shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 12*4
+        return self.rawRead(addr, 1)[0]
+
+    def ppc2_get_sw_vers(self):
+        ''' Get ppc1 code vers shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 13*4
+        return self.rawRead(addr, 1)[0]
+
+    def ppc_enable_pipeline_emulation(self):
+        ''' by setting parm in shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 128*4 + 4
+        bit = 4
+        #print "pControlParams mem addr = $%08X ; ENABLE Pipeline Emulation" %(addr)
+        
+        self.setbit_raw_mem(addr, bit)
+
+    def ppc_disable_pipeline_emulation(self):
+        ''' by setting parm in shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 128*4 + 4
+        bit = 4
+        #print "pControlParams mem addr = $%08X ; DISable Pipeline Emulation" %(addr)
+        
+        self.clrbit_raw_mem(addr, bit)
+
+    def ppc_enable_image_reordering(self):
+        ''' by setting parm in shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 128*4 + 4
+        bit = 0
+        #print "pControlParams mem addr = $%08X ; ENABLE pulse reordering" %(addr)
+        
+        self.setbit_raw_mem(addr, bit)
+
+    def ppc_disable_image_reordering(self):
+        ''' by setting parm in shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 128*4 + 4
+        bit = 0
+        #print "pControlParams mem addr = $%08X ; DISable pulse reordering" %(addr)
+        
+        self.clrbit_raw_mem(addr, bit)
+
+    def ppc_disable_tx_dma(self):
+        ''' by setting parm in shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 128*4 + 4
+        bit = 16
+        #print "pControlParams mem addr = $%08X ; DISABLE TX DMA" %(addr)
+        
+        self.setbit_raw_mem(addr, bit)
+
+    def ppc_enable_tx_dma(self):
+        ''' by setting parm in shared memory directly using raw memory mapped space (not rdma reg space) '''
+        
+        addr = self.ppc_shared_bram_base + 128*4 + 4
+        bit = 16
+        #print "pControlParams mem addr = $%08X ; ENABLE TX DMA" %(addr)
+        
+        self.clrbit_raw_mem(addr, bit)
+
+    def setbit_raw_mem(self, addr, bit):
+        """ set bit in raw memory """     
+
+        reg = self.rawRead(addr, 1)[0]
+        reg |= (1 << bit)
+        self.rawWrite(addr, reg) 
+        
+        return reg   
+
+    def clrbit_raw_mem(self, addr, bit):
+        """ set bit in raw memory """     
+
+        reg = self.rawRead(addr, 1)[0]
+        reg &= ~(1 << bit)
+        self.rawWrite(addr, reg) 
+        
+        return reg   
+    
