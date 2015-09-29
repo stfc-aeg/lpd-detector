@@ -674,6 +674,42 @@ class LpdDeviceParameters(object):
                                                                           None, None, 'vetoBunchPattern.xml',
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
+        self.expectedParameters['cccEmulatorFixedRateStarts']            = AttributeContainer(bool, 'cccEmulatorFixedRateStarts', 'Enables fixed rate train triggers, only used if running with cccEmulationMode = True',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['cccEmulatorIntervalBetweenFixedRateStarts']     = AttributeContainer(uint32, 'cccEmulatorIntervalBetweenFixedRateStarts', 'Interval (in 100 mhz clock periods) between fixed rate triggers, only used if running with cccEmulationMode = True',
+                                                                          0, 4294967295, 10000000,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['cccEmulatorNumFixedRateStarts']         = AttributeContainer(uint32, 'cccEmulatorNumFixedRateStarts', 'Number of fixed rate triggers to send this run - Applicable if cccEmulationMode=True',
+                                                                          0, 4294967295,  1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+                                
+        self.expectedParameters['femAsicTestDataPatternType']            = AttributeContainer(uint32, 'FemAsicTestDataPatternType', 'Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['femPpcEmulatePipeline']                 = AttributeContainer(bool, 'femPpcEmulatePipeline', 'Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femPpcImageReordering']                 = AttributeContainer(bool, 'femPpcImageReordering', 'Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femLpdClientVersion']                   = AttributeContainer(uint32, 'FemLpdClientVersion', ' LpdFemClient Software Version - Read Only',
+                                                                          0, 4294967295, 0x10000004,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femTrainIdInitLsw']                     = AttributeContainer(uint32, 'FemTrainIdInitLsw', 'Train ID initial (lower 32-bit) value, Not applicable for C&C nor Data Checker',
+                                                                          0, 4294967295,  1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['femTrainIdInitMsw']                     = AttributeContainer(uint32, 'FemTrainIdInitMsw', 'Train ID initial (upper 32-bit) value, Not applicable for C&C nor Data Checker',
+                                                                          0, 4294967295,  0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
         # 
         # Firmware version variables - used to obtain read only, firmware version numbers
         #

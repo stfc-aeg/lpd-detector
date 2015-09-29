@@ -10,6 +10,13 @@ LINUX
 
 ##################################################################
 #
+# vers 0x10000004  25/09/15  John Coughlan
+#
+# Starting from Christian's merge of vers 0x10000003 with the trunk. Trunk rev 1550
+#
+# Renamed new Karabo params for Pipeline emulation support (to match Christian's conventions). Specfied min,max,def values.
+# Added corresponding get and set functions for device parameters.
+#
 # vers 0x10000003  22/09/15  John Coughlan
 #
 # Fixes to some print out statements.
@@ -26,7 +33,7 @@ LINUX
 # This version released for f/w 01000298  which implements Pipeline Emulation and requires PPC1 in Data path.
 # Only works WITH PPC1   ie  <femDataSource> = 0 ASIC [via PPC],
 #
-# Is backward compatbile with f/w 0100026f  (C&C XFEL May 2015 format but no pipeline emulation so just counters in Image Desc)
+# Is backward compatible with f/w 0100026f  (C&C XFEL May 2015 format but no pipeline emulation so just counters in Image Desc)
 # Only works without PPC1   ie  <femDataSource> = 1 ASIC [from Rxblock],
 #
 # Added readonly code version param  LpdClientVersion
@@ -249,7 +256,6 @@ class LpdFemClient(FemClient):
         self.femPpcResetDelay           = 5     # wait after resetting ppc 
         self.numberTrains               = 1     # Number of trains to be readout
         self.femDebugLevel              = 0     # higher values more print out
-        #TODO: To be implemented: ??
         self.femPpcMode                 = 1     # 0 = Single Train Shot with PPC reset (select for legacy f/w without PPC), 1 = Continuous readout (not working yet)
 
 #=========================================================================================================              
@@ -351,32 +357,42 @@ class LpdFemClient(FemClient):
 #####################################################
 # Begin New Params for Karabo API
         
-        #1  # Only used if running with cccEmulationMode = True. Enables fixed rate Train triggers.  Default = False
-        self.fixed_rate_trains = False  
+        #1  # Only used if running with cccEmulationMode = True. Enables fixed rate Train triggers.  
+        # Default = False
+        self.cccEmulatorFixedRateStarts = False  
         
-        #2  # Only used if running with cccEmulationMode = True. Interval (in 100 mhz clock periods) between fixed rate triggers.  Default = 10000000 (100 msec)
-        self.gapBetweenFixedRateTrigs = 100 * gap_1_msec  
+        #2  # Only used if running with cccEmulationMode = True. Interval (in 100 mhz clock periods) between fixed rate triggers. 
+        # Min = 0 ; Max = 0xffffffff ; Default = 10000000 (100 msec)
+        self.cccEmulatorIntervalBetweenFixedRateStarts = 100 * gap_1_msec  
         
-        #3  # Only used if running with cccEmulationMode = True. Number of fixed rate triggers to send this run.  Default = 1
-        self.numFixedRateTrigs =  1   #       10 * 60 * 90 * 1    #  hz x sec x min x hour
+        #3  # Only used if running with cccEmulationMode = True. Number of fixed rate triggers to send this run.  
+        # Min = 1 ; Max = 0xffffffff ; Default = 1
+        self.cccEmulatorNumFixedRateStarts =  1   #       10 * 60 * 90 * 1    #  hz x sec x min x hour
                                 
-        #4  # Only used if femAsicDataType set to counting data from AsicRx. Default = 0
-        self.asicrx_test_data_pattern_type  = 0   # 0 = if test data counter increments every Pixel ; 1 = only increments every Image
+        #4  # Only used if femAsicDataType set to counting data from AsicRx. 
+        # Min = 0 ; Max = 1 ; Default = 0
+        self.femAsicTestDataPatternType  = 0   # 0 = if test data counter increments every Pixel ; 1 = only increments every Image
         
-        #5  # Emulate the LPD Asic Pipeline to compute the Pulse Nr and Cell Id for the Image Descriptors ; Default = True
-        self.ppc1_emulate_pipeline = True    # (Must be False if cccSystemMode != 2 ; as PPC will fail without valid C&C veto information) 
+        #5  # Emulate the LPD Asic Pipeline to compute the Pulse Nr and Cell Id for the Image Descriptors ;
+        # Default = True
+        self.femPpcEmulatePipeline = True    # (Must be False if cccSystemMode != 2 ; as PPC will fail without valid C&C veto information) 
 
-        #6  # After Pipeline Emulation reorder Images in readout in Pulse Number order ; Default = True
+        #6  # After Pipeline Emulation reorder Images in readout in Pulse Number order ;
+        # Default = True
         # Re-ordering will only work if ppc1_emulate_pipeline = True
-        self.ppc1_pulse_reorder = True    
+        self.femPpcImageReordering = True    
                          
-        #7  # LpdClient Software Version  ; Read Only   Default to following value     
-        self.LpdClientVersion = 0x10000003
+        #7  # LpdClient Software Version  ; Read Only  
+        # Default to following value     
+        self.femLpdClientVersion = 0x10000004
 
-        #8  # init value for train id (used if not running with C&C and also by Data Checker)  lower 32b value  Default = 1 
-        self.train_id_init_lsw = 1
-        #9  # init value for train id (used if not running with C&C and also by Data Checker)  upper 32b value  Default = 0  
-        self.train_id_init_msw = 0
+        #8  # init value for train id (used if not running with C&C and also by Data Checker)  lower 32b value 
+        # Min = 0 ; Max = 0xffffffff ; Default = 1 
+        self.femTrainIdInitLsw = 1
+        
+        #9  # init value for train id (used if not running with C&C and also by Data Checker)  upper 32b value 
+        # Min = 0 ; Max = 0xffffffff ; Default = 0  
+        self.femTrainIdInitMsw = 0
 
 # End New Params for Karabo API
 #=========================================================================================================              
@@ -1711,8 +1727,8 @@ class LpdFemClient(FemClient):
         if self.cccSystemMode == 1 or self.cccSystemMode == 2: 
             self.register_clear_bit(self.asic_srx_0+0, 16)  # disable dummy train id 
         else:
-            self.rdmaWrite(self.asic_srx_0+8, self.train_id_init_lsw)   # set initial value for dummy train id lower word (minus 1)
-            self.rdmaWrite(self.asic_srx_0+10, self.train_id_init_msw)   # set initial value for dummy train id upper word 
+            self.rdmaWrite(self.asic_srx_0+8, self.femTrainIdInitLsw)   # set initial value for dummy train id lower word (minus 1)
+            self.rdmaWrite(self.asic_srx_0+10, self.femTrainIdInitMsw)   # set initial value for dummy train id upper word 
             self.toggle_bits(self.asic_srx_0+0, 17)  # reset dummy train id
             self.register_set_bit(self.asic_srx_0+0, 16)  # enable dummy train id 
 
@@ -1724,7 +1740,7 @@ class LpdFemClient(FemClient):
         # Data source - self test
         if self.femAsicDataType == self.ASIC_DATA_TYPE_RX_COUNTING:            
             self.asicrx_self_test_counting_data_enable()
-            if self.asicrx_test_data_pattern_type:            
+            if self.femAsicTestDataPatternType:            
                 self.register_set_bit(self.asic_srx_0+1, 4)  # counting data changes every Image
             else:            
                 self.register_clear_bit(self.asic_srx_0+1, 4)  # counting data changes every Pixel
@@ -2828,7 +2844,7 @@ class LpdFemClient(FemClient):
             test1 = (0x45 << 32) | 0x123
             print " test1 (64 bits) = $%x" %(test1)
           
-            test1 = float(self.numberTrains * self.numFixedRateTrigs * self.gapBetweenFixedRateTrigs)/float(100000000)
+            test1 = float(self.numberTrains * self.cccEmulatorNumFixedRateStarts * self.cccEmulatorIntervalBetweenFixedRateStarts)/float(100000000)
             print "Waiting %f secs for end of Fixed Rate Trains before Stopping PPC Readout " %(float(test1))
             time.sleep(float(test1))
 
@@ -2896,7 +2912,7 @@ class LpdFemClient(FemClient):
                 self.ppc_set_debug_printout(self.ppcDebugLevel, self.ppcDebugLevel2)
                 
                 # enable ppc1 pipleline emulation 
-                if self.ppc1_emulate_pipeline == True:
+                if self.femPpcEmulatePipeline == True:
                     if self.cccSystemMode != 2:
                         print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Pipeline Emulation "
                         self.ppc_disable_pipeline_emulation()
@@ -2908,7 +2924,7 @@ class LpdFemClient(FemClient):
                     self.ppc_disable_pipeline_emulation()
 
                 # enable ppc1 reordering of Image readout by pulse nr 
-                if self.ppc1_pulse_reorder == True:              
+                if self.femPpcImageReordering == True:              
                     if self.cccSystemMode != 2:
                         print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Reordering of Images "
                         self.ppc_disable_image_reordering()
@@ -2943,8 +2959,8 @@ class LpdFemClient(FemClient):
                 #Coalesce = self.numberImages     # now redundant  # for LPD use this param instead to pass the nr of images to set up Tx descriptors                
                 Coalesce = 16    # Pass but is ignored now     # NMax nr of images allowed per BD (up to 127)
                 # Nr Trains this run for PPC1 to process and then stop
-                if self.fixed_rate_trains == True:
-                    NumAcqs = self.numberTrains * self.numFixedRateTrigs  # fixed rate trains
+                if self.cccEmulatorFixedRateStarts == True:
+                    NumAcqs = self.numberTrains * self.cccEmulatorNumFixedRateStarts  # fixed rate trains
                 else:
                     NumAcqs = self.numberTrains  
                 
@@ -3003,15 +3019,15 @@ class LpdFemClient(FemClient):
                 print "INFO config_asic_modules  "
             self.config_asic_modules()
             
-        if self.fixed_rate_trains == True:
+        if self.cccEmulatorFixedRateStarts == True:
             # set up for fixed rate strobes if using ccc cmd gen
             # this will send a fixed nr of trains at fixed interval after if running with s/w triggers
             # assumes param self.numberTrains = 1
-            self.rdmaWrite(self.fem_ctrl_top2+1, self.gapBetweenFixedRateTrigs)  # nb usig new top level ctrl regs
-            self.rdmaWrite(self.fem_ctrl_top2+2, self.numFixedRateTrigs)
+            self.rdmaWrite(self.fem_ctrl_top2+1, self.cccEmulatorIntervalBetweenFixedRateStarts)  # nb usig new top level ctrl regs
+            self.rdmaWrite(self.fem_ctrl_top2+2, self.cccEmulatorNumFixedRateStarts)
             self.register_set_bit(self.fem_ctrl_0+10, 20)  # enable
             print "INFO Setting up Fixed Rate Triggers to ccc cmd start gen  "
-            print "numFixedRateTrigs = %d ; gapBetweenFixedRateTrigs = %d " %(self.numFixedRateTrigs, self.gapBetweenFixedRateTrigs)
+            print "numFixedRateTrigs = %d ; gapBetweenFixedRateTrigs = %d " %(self.cccEmulatorNumFixedRateStarts, self.cccEmulatorIntervalBetweenFixedRateStarts)
         else:
             self.register_clear_bit(self.fem_ctrl_0+10, 20)  # disable
           
@@ -3021,8 +3037,8 @@ class LpdFemClient(FemClient):
         # New values after 64b field little endian correction  f/w 0297
         self.rdmaWrite(self.lpd_checker+1, 0xBEEFFACE)  # magic header
         self.rdmaWrite(self.lpd_checker+2, 0x58544446)
-        self.rdmaWrite(self.lpd_checker+3, self.train_id_init_lsw)  # train id lower init
-        self.rdmaWrite(self.lpd_checker+4, self.train_id_init_msw)  # train id upper init
+        self.rdmaWrite(self.lpd_checker+3, self.femTrainIdInitLsw)  # train id lower init
+        self.rdmaWrite(self.lpd_checker+4, self.femTrainIdInitMsw)  # train id upper init
         self.rdmaWrite(self.lpd_checker+5, 0xDEADABCD)  # magic trailer
         self.rdmaWrite(self.lpd_checker+6, 0x58544446)
         
@@ -3195,8 +3211,8 @@ class LpdFemClient(FemClient):
                     
     
             if self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
-                if self.fixed_rate_trains == True:
-                    wait_fixed_rate_trains = float(self.numberTrains * self.numFixedRateTrigs * self.gapBetweenFixedRateTrigs)/float(100000000)
+                if self.cccEmulatorFixedRateStarts == True:
+                    wait_fixed_rate_trains = float(self.numberTrains * self.cccEmulatorNumFixedRateStarts * self.cccEmulatorIntervalBetweenFixedRateStarts)/float(100000000)
                     print "Waiting %f secs for end of Fixed Rate Trains before Stopping PPC Readout " %(float(wait_fixed_rate_trains))
                     time.sleep(float(wait_fixed_rate_trains + self.wait_for_ppc_run_stop))
                 else:
@@ -3387,8 +3403,8 @@ class LpdFemClient(FemClient):
             else:
                 numRxFramesperTrain = 1
               
-            if self.fixed_rate_trains == True:
-                numTrainsTot = self.numberTrains * self.numFixedRateTrigs  # fixed rate trains
+            if self.cccEmulatorFixedRateStarts == True:
+                numTrainsTot = self.numberTrains * self.cccEmulatorNumFixedRateStarts  # fixed rate trains
             else:
                 numTrainsTot = self.numberTrains  
             
@@ -4084,6 +4100,96 @@ class LpdFemClient(FemClient):
             Set the C&C veto pattern xml file 
         '''
         self.cccVetoPatternFile = aValue
+    
+    def cccEmulatorFixedRateStartsGet(self):
+        ''' 
+        '''
+        return self.cccEmulatorFixedRateStarts
+    
+    def cccEmulatorFixedRateStartsSet(self, aValue):
+        ''' 
+        '''
+        self.cccEmulatorFixedRateStarts = aValue
+
+    def cccEmulatorIntervalBetweenFixedRateStartsGet(self):
+        ''' 
+        '''
+        return self.cccEmulatorIntervalBetweenFixedRateStarts
+    
+    def cccEmulatorIntervalBetweenFixedRateStartsSet(self, aValue):
+        ''' 
+        '''
+        self.cccEmulatorIntervalBetweenFixedRateStarts = aValue
+
+    def cccEmulatorNumFixedRateStartsGet(self):
+        ''' 
+        '''
+        return self.cccEmulatorNumFixedRateStarts
+    
+    def cccEmulatorNumFixedRateStartsSet(self, aValue):
+        ''' 
+        '''
+        self.cccEmulatorNumFixedRateStarts = aValue
+
+    def femAsicTestDataPatternTypeGet(self):
+        ''' 
+        '''
+        return self.femAsicTestDataPatternType
+    
+    def femAsicTestDataPatternTypeSet(self, aValue):
+        ''' 
+        '''
+        self.femAsicTestDataPatternType = aValue
+
+    def femPpcEmulatePipelineGet(self):
+        ''' 
+        '''
+        return self.femPpcEmulatePipeline
+    
+    def femPpcEmulatePipelineSet(self, aValue):
+        ''' 
+        '''
+        self.femPpcEmulatePipeline = aValue
+
+    def femPpcImageReorderingGet(self):
+        ''' 
+        '''
+        return self.femPpcImageReordering
+    
+    def femPpcImageReorderingSet(self, aValue):
+        ''' 
+        '''
+        self.femPpcImageReordering = aValue
+
+    def femLpdClientVersionGet(self):
+        ''' 
+        '''
+        return self.femLpdClientVersion
+    
+    def femLpdClientVersionSet(self, aValue):
+        ''' 
+        '''
+        self.femLpdClientVersion = aValue
+
+    def femTrainIdInitLswGet(self):
+        ''' 
+        '''
+        return self.femTrainIdInitLsw
+    
+    def femTrainIdInitLswSet(self, aValue):
+        ''' 
+        '''
+        self.femTrainIdInitLsw = aValue
+
+    def femTrainIdInitMswGet(self):
+        ''' 
+        '''
+        return self.femTrainIdInitMsw
+    
+    def femTrainIdInitMswSet(self, aValue):
+        ''' 
+        '''
+        self.femTrainIdInitMsw = aValue
 
     def dump_raw_memory_hex(self, base_addr, nr_regs):
         ''' Hex dump of raw memory mapped space (not rdma reg space) '''
