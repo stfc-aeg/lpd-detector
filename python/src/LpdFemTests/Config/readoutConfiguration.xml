@@ -3,7 +3,7 @@
 <lpd_readout_config name="readoutConfiguration.xml">		<!-- LpdReadoutTest's configuration file -->
 
     <!-- User Variables, 'Will Want to Change': -->
-    <numberImages			type="int"  val="5"/>           <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
+    <numberImages			type="int"  val="4"/>           <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
     <numberTrains			type="int"  val="3"/>           <!-- Set number of trains [if LL Data Generator / PPC Data Direct selected] -->
 
 	<!-- 'User may need to change' Variables: --> 
@@ -24,6 +24,16 @@
     <cccStopDelay              type="int" val="0"/>             <!-- Adjust timing of the stop (in steps of clock cycles) -->
     <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
     <cccVetoPatternFile		   type="str" val="Config/VetoPatterns/veto_file_test.xml"/>     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
+
+	<cccEmulatorFixedRateStarts     type="bool" val="False"/>        	<!--  Enables fixed rate train triggers, only used if running with cccEmulationMode = True -->
+	<cccEmulatorIntervalBetweenFixedRateStarts  type="int" val="10000000"/>	<!-- Interval (in 100 mhz clock periods) between fixed rate triggers, only used if running with cccEmulationMode = True -->
+	<cccEmulatorNumFixedRateStarts    type="int" val="1"/>		<!-- Number of fixed rate triggers to send this run - Applicable if cccEmulationMode=True -->
+
+	<femAsicTestDataPatternType type="int" val="0"/>			<!-- Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image' -->
+	<femPpcEmulatePipeline      type="bool" val="True"/>     	<!-- Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors -->
+	<femPpcImageReordering      type="bool" val="True"/>        <!-- Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled -->
+	<femTrainIdInitLsw          type="int" val="1"/>		 	<!-- Train ID initial (lower 32-bit) value -->
+	<femTrainIdInitMsw          type="int" val="0"/>		 	<!-- Train ID initial (upper 32-bit) value -->
 
     <!-- 'Expert' Variables: -->
     <tenGig0SourceMac 		type="str" val="62-00-00-00-00-01"/>

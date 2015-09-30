@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<lpd_readout_config name="superModuleReadout.xml">
+<lpd_readout_config name="superModuleReadout.xml">				<!-- LpdFemGui configuration file -->
 
     <!-- 'User' Variables: -->
     <numberImages 			type="int" val="4"/>                <!-- Set number of images per trigger - combine with Asic Command Word(s) <trigger_flag_set/> -->
@@ -25,6 +25,16 @@
     <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
     <cccVetoPatternFile   	   type="str" val="config/veto_file_test.xml"/>-->     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
 
+	<cccEmulatorFixedRateStarts     type="bool" val="False"/>        	<!--  Enables fixed rate train triggers, only used if running with cccEmulationMode = True -->
+	<cccEmulatorIntervalBetweenFixedRateStarts  type="int" val="10000000"/>	<!-- Interval (in 100 mhz clock periods) between fixed rate triggers, only used if running with cccEmulationMode = True -->
+	<cccEmulatorNumFixedRateStarts    type="int" val="1"/>		<!-- Number of fixed rate triggers to send this run - Applicable if cccEmulationMode=True -->
+
+	<femAsicTestDataPatternType type="int" val="0"/>			<!-- Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image' -->
+	<femPpcEmulatePipeline      type="bool" val="True"/>     	<!-- Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors -->
+	<femPpcImageReordering      type="bool" val="True"/>        <!-- Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled -->
+	<femTrainIdInitLsw          type="int" val="1"/>		 	<!-- Train ID initial (lower 32-bit) value -->
+	<femTrainIdInitMsw          type="int" val="0"/>		 	<!-- Train ID initial (upper 32-bit) value -->
+
     <!-- 'Expert' Variables: -->
     <tenGig0SourceMac 		type="str" val="62-00-00-00-00-01"/>
     <tenGig0SourceIp 		type="str" val="10.0.0.2"/>
@@ -41,18 +51,18 @@
     <tenGigUdpPacketLen 	type="int" val="8000"/>
 
     <femEnableTenGig 				type="bool" val="True"/>    <!-- Enables transmission of image data via 10GigE UDP interface -->
-    <femDataSource 					type="int" val="1"/>        <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
+    <femDataSource 					type="int"  val="1"/>       <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
 
-    <femAsicPixelFeedbackOverride	type="int" val="-1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
-    <femAsicPixelSelfTestOverride	type="int" val="-1"/>   	<!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
+    <femAsicPixelFeedbackOverride	type="int"  val="1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
+    <femAsicPixelSelfTestOverride	type="int"  val="-1"/>   	<!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
 
-    <femAsicDataType 				type="int" val="0"/>        <!-- 0=Sensor Data, 1=Fem Internal counting, 2=ASIC Pseudo random -->
-    <femAsicLocalClock 				type="int" val="0"/>        <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
-    <femAsicSetupLoadMode 			type="int" val="0"/>        <!-- ASIC control load mode 0=parallel, 1=serial -->
+    <femAsicDataType 				type="int"  val="0"/>       <!-- 0=Sensor Data, 1=Fem Internal counting, 2=ASIC Pseudo random -->
+    <femAsicLocalClock 				type="int"  val="0"/>       <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
+    <femAsicSetupLoadMode 			type="int"  val="0"/>       <!-- ASIC control load mode 0=parallel, 1=serial -->
     <femInvertAdcData 				type="bool" val="False"/>   <!-- Enable invert ADC ASIC data True=Inverted data -->
     <femAsicRxCmdWordStart 			type="bool" val="True"/>    <!-- Enable ASIC readout started by ASIC Command Word <read_out_data/> -->
-    <femAsicSetupClockPhase 		type="int" val="0"/>        <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
-    <!-- <femPpcMode 				type="int" val="0"/> 		To be Implemented-->
+    <femAsicSetupClockPhase 		type="int"  val="0"/>       <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
+    <femPpcMode 					type="int"  val="1"/> 		<!-- Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout -->
 
     <femAsicGainOverride			type="bool" val="False"/>	<!-- FEM Gain Selection Mode; False=Gain set by femAsicGain, True=Asic Command Word decides -->
     <femDebugLevel 					type="int" val="0"/>

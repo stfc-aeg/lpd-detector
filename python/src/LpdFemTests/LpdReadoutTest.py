@@ -89,15 +89,24 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
     if tenGig:
         # Define IP & Mac addresses from tenGig's PC interface
         tenGigConfig   = EthernetUtility("eth%i" % tenGig)
+
         tenGigDestIp   = tenGigConfig.ipAddressGet()
+        if (tenGigDestIp is None):
+            print "Error extracting destination IP for network card eth%i" % tenGig
+            return
+
         tenGigDestMac  = tenGigConfig.macAddressGet()
         tenGigSourceIp = tenGigConfig.obtainDestIpAddress(tenGigDestIp) #  e.g. If PC address: 10.0.0.1 then dest address: 10.0.0.2
+        
+        # Check address variables
+        if (tenGigDestMac is None) or (tenGigSourceIp is None):
+            print "Error obtaining DestMac and/or SourceIp."
+            return
     else:
         # Define addresses from destIp, destMac, srcIp
         tenGigDestIp   = destIp
         tenGigDestMac  = destMac
         tenGigSourceIp = srcIp
-     #print "tenGigDestIp: %s\n, tenGigDestMac: %s\n, tenGigSourceIp: %s\n" % (tenGigDestIp, tenGigDestMac, tenGigSourceIp)
 
     rc = theDevice.open(femHost, femPort)
     if rc != LpdDevice.ERROR_OK:
@@ -257,7 +266,10 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
                                     'tenGig0DataGenerator', 'tenGig0FrameLength', 'tenGig0NumberOfFrames', 'tenGigFarmMode', 'tenGigInterframeGap', 'tenGigUdpPacketLen', 
                                     'femAsicSetupClockPhase', 'femAsicVersion', 'femDebugLevel', 'femEnableTenGig',
                                     'femStartTrainPolarity', 'femVetoPolarity', 'femPpcMode',
-                                    'cccSystemMode', 'cccEmulationMode', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay']
+                                    'cccSystemMode', 'cccEmulationMode', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay',
+                                    'cccEmulatorFixedRateStarts', 'cccEmulatorIntervalBetweenFixedRateStarts','cccEmulatorNumFixedRateStarts', 
+                                    'femAsicTestDataPatternType', 'femPpcEmulatePipeline', 'femPpcImageReordering',  
+                                    'femTrainIdInitLsw', 'femTrainIdInitMsw']
 
         for param in paramExpertVariables:
             (rc, value) = theDevice.paramGet(param)
@@ -266,6 +278,14 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
             else:
                 print "{0:<32} = {1:<10}".format(param, value.__repr__())
  
+        # Read back 'femLpdClientVersion' separately (hexadecimal display)
+        param = 'femLpdClientVersion'
+        (rc, value) = theDevice.paramGet(param)
+        if rc != LpdDevice.ERROR_OK:
+            print "%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet())
+        else:
+            print "{0:<32} = 0x{1:<8X}".format(param, value)
+     
         #########################################################
         # Read back all User Level variables
         #########################################################
@@ -310,7 +330,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
             print "configure() failed rc=%d : %s" % (rc, theDevice.errorStringGet())
             theDevice.close()
             sys.exit()
-
+ 
         # Acquire image data
         print "- - - - - - - - - - - - - - - - - - - - - - - -  Start     - - - - - - - - - - - - - - - - - - - - - - - - "
         rc = theDevice.start()
@@ -318,7 +338,7 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
             print "run() failed rc=%d : %s" % (rc, theDevice.errorStringGet())
             theDevice.close()
             sys.exit()
-    
+     
         # Stop transaction
         print "- - - - - - - - - - - - - - - - - - - - - - - -  Stop      - - - - - - - - - - - - - - - - - - - - - - - - "
         rc = theDevice.stop()
@@ -366,8 +386,8 @@ if __name__ == '__main__':
     if args.destip:         destIp  = args.destip
     if args.destmac:        destMac = args.destmac
 
-    print "\n\nfemHost: %s\n femPort: %s\n tenGig: %s\n srcIp: %s\n destIp: %s\n destMac: %s\n"  % (femHost, femPort, tenGig, srcIp, destIp, destMac)
-    print ""
+#     print "\nParser debugging..\nfemHost: %s\n femPort: %s\n tenGig: %s\n srcIp: %s\n destIp: %s\n destMac: %s\n"  % (femHost, femPort, tenGig, srcIp, destIp, destMac)
+#     print ""
     # If no command line arguments (apart from femhost, femport), give tenGig default value
     if (srcIp == None) and (destIp == None) and (destMac == None) and (tenGig == None):
         tenGig = 2
