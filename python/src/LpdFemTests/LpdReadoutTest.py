@@ -367,7 +367,7 @@ if __name__ == '__main__':
     ex1 = "python LpdReadoutTest.py --tengig 7"
     ex2 = "python LpdReadoutTest.py --destip 192.0.0.100 --destmac 00-07-43-10-65-A0 --srcip 192.0.0.102"
     parser = argparse.ArgumentParser(description="LpdReadoutTest.py - configure and readout an LPD detector. ",
-                                     epilog="Defaults: tengig=(eth)2, destip=10.0.0.2, femhost=192.168.2.2, femport=6969\nExample 1: %s\nExample 2: %s\n" % (ex1, ex2)) 
+                                     epilog="Defaults: tengig=(eth)1, destip=10.0.0.2, femhost=192.168.2.2, femport=6969\nExample 1: %s\nExample 2: %s\n" % (ex1, ex2)) 
 
     parser.add_argument("--femhost",    help="Set fem host IP (e.g. 192.168.2.2)",          type=str, default=femHost)
     parser.add_argument("--femport",    help="Set fem port (eg 61649)",                     type=int, default=femPort)
@@ -390,7 +390,7 @@ if __name__ == '__main__':
 #     print ""
     # If no command line arguments (apart from femhost, femport), give tenGig default value
     if (srcIp == None) and (destIp == None) and (destMac == None) and (tenGig == None):
-        tenGig = 2
+        tenGig = 1
         
     # Catch illegal selections
     if ((destIp == None) and destMac) or (destIp and (destMac == None)):
