@@ -68,7 +68,7 @@ class LpdFemGui:
 
         try:
             self.asicWindow = LpdFemGuiAsicWindow(appMain=self)
-            self.asicWindow.show()    # Hide window for now while testing
+            #self.asicWindow.show()    # Hide window for now while testing
 
         except Exception as e:
             print >> sys.stderr, "LpdAsicTester initialisation exception: %s" % e

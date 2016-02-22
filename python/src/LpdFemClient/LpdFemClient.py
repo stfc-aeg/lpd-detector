@@ -4265,9 +4265,9 @@ class LpdFemClient(FemClient):
         print "Committing BDRingToHW Tx = %d" %(nrErrorsRingToHWTx)        
         print "Pipeline Skips FULL= %d" %(nrErrorsPipelineSkipFull)
         if totalErrors == 0:         
-          print "OK TOTAL PPC1 Errors = %d" %(totalErrors) 
+            print "OK TOTAL PPC1 Errors = %d" %(totalErrors) 
         else:                  
-          print "*** TOTAL PPC1 Errors = %d" %(totalErrors)
+            print "*** TOTAL PPC1 Errors = %d" %(totalErrors)
         
              
         print "--" 
@@ -4277,8 +4277,8 @@ class LpdFemClient(FemClient):
         ppc1_timer = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         
         for i in range(0, 12):
-          ppc1_timer[i] = self.rawRead(base_addr+((28+i)*4), 1)[0] 
-          print "Timer %d - 0 = %.3g msec" %( i, float((( (ppc1_timer[i] - ppc1_timer0) * self.ppc_clock_period ) / 1000) ) / 1000 )         
+            ppc1_timer[i] = self.rawRead(base_addr+((28+i)*4), 1)[0] 
+            print "Timer %d - 0 = %.3g msec" %( i, float((( (ppc1_timer[i] - ppc1_timer0) * self.ppc_clock_period ) / 1000) ) / 1000 )         
         
         timer_postProcessRxFrame1 = ppc1_timer[2] - ppc1_timer[1]  
         timer_lpd_emulate_asic_pipeline = ppc1_timer[5] - ppc1_timer[3]  

@@ -172,12 +172,13 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
             asicSetupParams = "Config/SetupParams/Setup_Serial_XFEL.xml"
 #            asicSetupParams = "Config/SetupParams/Setup_Serial_KLASSE.xml"
 
-    configFilename = 'Config/readoutConfiguration.xml'
+    #configFilename = 'Config/readoutConfiguration.xml'
     vetoFilename   = 'Config/VetoPatterns/veto_file_test.xml'
 #    asicSetupParams = "/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/SetupParams/Setup_Matt.xml"    # Left to right: ascending order
 #    asicCmdSequence = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml'
-#    configFilename = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml'
-
+    configFilename = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Johns_settings.xml'
+    configFilename ='/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml'
+    
     print "================    XML Filenames   ================"
     print asicSetupParams
     print asicCmdSequence
