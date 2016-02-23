@@ -10,6 +10,86 @@ LINUX
 
 ##################################################################
 #
+# vers 0x1000000f  14/12/15  John Coughlan
+#
+# added debug printout to look into alexander's rdma block access problem 
+#
+# vers 0x1000000e  11/12/15  John Coughlan
+#
+# Added max_triggers register to limit number of triggers sent to asic by CCC
+# This provides a hardware limit to avoid pipeline overflow and data corruption
+# max_triggers = pipelineLen - pipelineLatency
+#
+# Does initial parse of asic command file before PPC is configured to get pipeline latency. (File is still parsed again later to fill Fast BRAMs)
+#
+# vers 0x1000000d  10/12/15  John Coughlan
+#
+# Added pipelineLatency param to PPC1
+#
+# vers 0x1000000c  18/11/15  John Coughlan
+#
+# Made FemModuleId simple int rather than list in device params
+#
+# vers 0x1000000b  18/11/15  John Coughlan
+#
+# Only switch to Asic clock in Configure. Don't switch to Osc at run stop.
+#
+# Put back option to override nr of images to readout. (still works and useful for asic pipeline tests)
+#
+# Put back handling for Legacy mode using trigger flags from asic command file.
+#
+# 
+# vers 0x1000000a  16/11/15  John Coughlan
+# 
+# Changed some new param names to match Christian's conventions.
+# Removed some params to Karabo
+#
+# Fixed train Run completes based on number of accepted trains
+#
+# Reset CCC logic and counters at start of each run (to handle multiple runs without reconfiguration)
+#
+# Switch back to selected Asic Clock at start of each run.
+#
+# vers 0x10000009  22/10/15  John Coughlan
+# 
+# Removed PPC1 reset.
+# Switching back to FEM Osc clock as Asic clock source at run end.
+#
+# vers 0x10000008  17/10/15  John Coughlan
+#
+# Added change of CC cmd and veto input IODELAY tap values (only active if f/w implements VARIABLE IODELAYs)
+#
+# Added PPC watchdog timer
+# Issue RESET to PPC1 before PPC Configure
+#
+# vers 0x10000007  17/10/15  John Coughlan
+#
+# Added downscale factor (applied to asic clock) for clock output on CC RJ45 used for Power Card synchronisation
+#
+# Added Run Stop function which only acts if NrTrains = 0 (this selects continuous running rather than fixed nr trains with timeout)
+# Added separate print_run_summary function
+# No longer switch to osc clock at end of run (now only switched during configure)
+#
+# New code for Set cccVetoStartDelay  for PPC readout   (keep legacy code for old f/w)
+# NumAcqs = 0 to ppc config  so that ppc runs until sent stop command
+# Use cccNumTriggers instead of numImages for PPC readout
+# remove forcenoveto api param
+#
+# vers 0x10000006  07/09/15  John Coughlan
+#
+# Added param timeoutTrain Timeout in seconds on waiting for next Train during run()
+# Exposed some more params to Karabo.
+#
+# Added handling for new f/w running with PPC readout for C&C mTCA system inputs in config() and run()
+#
+# vers 0x10000005  06/09/15  John Coughlan
+#
+# Changes made after first tests at XFEL with C&C.
+# New configure() code for train start source for new f/w running with PPC readout.
+# New run() code for new f/w running with PPC readout.
+#
+# Added cccForceNoVeto param
+#
 # vers 0x10000004  25/09/15  John Coughlan
 #
 # Starting from Christian's merge of vers 0x10000003 with the trunk. Trunk rev 1550
@@ -334,65 +414,98 @@ class LpdFemClient(FemClient):
         #Second Level of printout on PPC1 terminal for pipeline emulation  and reordering ; Default = 1
         self.ppcDebugLevel2 = 1   
 
-        self.wait_for_ppc_run_stop = 0   # additional wait for debugging on ppc terminal  ; in secs
+        self.wait_for_ppc_run_stop = 1   # additional wait for debugging on ppc terminal  ; in secs
         
         self.asicrx_llink_clock_rate = 200.0e6  # 250.0e6  # 200.0e6
         self.ppc_clock_period = 4 # 3.33  # 4   # processor clock period nsec
         
         # Special test which disables output of Readout data
         self.ppc1_disable_tx_dma = False   # default FalseSTOP_RUN_ON_ESC_KEY
-
-        # Change defaults used by Pipeline Emulation; Default = TRUE
-        self.ppc1_override_pipeline_defaults = True 
-               
-        # Max Length of Pulse Train; Default = 3072
-        self.NR_BUNCHES_IN_TRAIN_OVERRIDE = 1536  # 36  # 1500         
         
-        # Pipeline Length; Default = 512
+        # Pipeline Length; Default = 512   ;  This param should be FIXED ; however the Effective length =  LPD_PIPELINE_LENGTH - Latency
         self.LPD_PIPELINE_LENGTH_OVERRIDE = self.LPD_PIPELINE_LENGTH      # 12  # override for special tests of emulation only 
 
         # Sets depth of DDR2 Buffer storage . Default = 10
         self.NUM_TRAINS_TO_STORE_IN_BD_RING = 10   # PPC will assume 512 images per Train
 
+        # force a nveto decision in every pulse ; overrides CC veto input
+        # Used in combination with Veto Pattern Masks to send predefined Trigger sequences to Asics
+        # Default = False  
+        self.cccForceNoVeto = False
+        
+        # Only used if running with cccEmulationMode = True. Number of fixed rate triggers to send this run.  
+        # Min = 1 ; Max = 0xffffffff ; Default = 1
+        self.cccEmulatorNumFixedRateStarts =  1   #       10 * 60 * 90 * 1    #  hz x sec x min x hour
+
+        # Only used if running with cccEmulationMode = True. Enables fixed rate Train triggers.  
+        # Default = False
+        self.cccEmulatorFixedRateStarts = True  
+
+        # Number of Delay Taps for IODELAY on CC cmd and veto inputs;
+        # Min = 0 ; Max = 63 ; Default = 0 
+        self.cccIoDelayNumberTaps = 4   # 16  # 4            
+       
+        # Minimum to avoid malfunction of FEM AsicRx logic and PPC Emulation = 1
+        # Minimum to avoid Pipeline data corruption = 2
+        self.LPD_PIPELINE_LATENCY_MIN = 1
+
 #####################################################
 # Begin New Params for Karabo API
         
-        #1  # Only used if running with cccEmulationMode = True. Enables fixed rate Train triggers.  
-        # Default = False
-        self.cccEmulatorFixedRateStarts = False  
         
-        #2  # Only used if running with cccEmulationMode = True. Interval (in 100 mhz clock periods) between fixed rate triggers. 
+        # Only used if running with cccEmulationMode = True. Interval (in 100 mhz clock periods) between fixed rate triggers. 
         # Min = 0 ; Max = 0xffffffff ; Default = 10000000 (100 msec)
-        self.cccEmulatorIntervalBetweenFixedRateStarts = 100 * gap_1_msec  
+        self.trainGenInterval = 100 * gap_1_msec  
         
-        #3  # Only used if running with cccEmulationMode = True. Number of fixed rate triggers to send this run.  
-        # Min = 1 ; Max = 0xffffffff ; Default = 1
-        self.cccEmulatorNumFixedRateStarts =  1   #       10 * 60 * 90 * 1    #  hz x sec x min x hour
                                 
-        #4  # Only used if femAsicDataType set to counting data from AsicRx. 
+        # Only used if femAsicDataType set to counting data from AsicRx. 
         # Min = 0 ; Max = 1 ; Default = 0
         self.femAsicTestDataPatternType  = 0   # 0 = if test data counter increments every Pixel ; 1 = only increments every Image
         
-        #5  # Emulate the LPD Asic Pipeline to compute the Pulse Nr and Cell Id for the Image Descriptors ;
+        # Emulate the LPD Asic Pipeline to compute the Pulse Nr and Cell Id for the Image Descriptors ;
         # Default = True
         self.femPpcEmulatePipeline = True    # (Must be False if cccSystemMode != 2 ; as PPC will fail without valid C&C veto information) 
 
-        #6  # After Pipeline Emulation reorder Images in readout in Pulse Number order ;
+        # After Pipeline Emulation reorder Images in readout in Pulse Number order ;
         # Default = True
         # Re-ordering will only work if ppc1_emulate_pipeline = True
         self.femPpcImageReordering = True    
                          
-        #7  # LpdClient Software Version  ; Read Only  
+        # LpdClient Software Version  ; Read Only  
         # Default to following value     
-        self.femLpdClientVersion = 0x10000004
+        self.femLpdClientVersion = 0x1000000f
 
-        #8  # init value for train id (used if not running with C&C and also by Data Checker)  lower 32b value 
+        # init value for train id (only used if cccSystemMode = 0)  lower 32b value 
         # Min = 0 ; Max = 0xffffffff ; Default = 1 
         self.femTrainIdInitLsw = 1
         
-        #9  # init value for train id (used if not running with C&C and also by Data Checker)  upper 32b value 
+        # init value for train id (only used if cccSystemMode = 0)  upper 32b value 
         # Min = 0 ; Max = 0xffffffff ; Default = 0  
         self.femTrainIdInitMsw = 0
+        
+        # Timeout in seconds on waiting for next Train during run()
+        # Min = 0 ; Max = 0xffffffff ; Default = 10 
+        self.timeoutTrain = 60
+
+        
+        # Max Length of XRay Pulse Train;
+        # Min = 0 ; Max = 3072 ; Default = 1536 
+        self.numPulsesInTrainOverride = 1024            
+
+        
+        # downscale factor (applied to asic clock) for clock output on CC RJ45 used for Power Card synchronisation
+        # 150 khz = 99 mhz / 660        
+        # Min = 1 ; Max = 0xffffffff ; Default = 660 
+        self.cccOutputClockDownscale = 660  # 660             
+
+        # Latency is used to limit the num of triggers sent to the Asics and as parameter for the Pipeline Emulation
+        # Latency is number of pulses between pipeline write and trigger pointers ; should be set to match contents of asic command file; min = 2 pulses ?
+        self.pipelineLatency = 0    # self.LPD_PIPELINE_LATENCY_MIN                  
+
+# latency computed from asic command file
+        self.asic_command_latency = self.LPD_PIPELINE_LATENCY_MIN                  
+        self.asic_command_start_write_pointers = 0                  
+        self.asic_command_start_trigger_pointers = 0                  
 
 # End New Params for Karabo API
 #=========================================================================================================              
@@ -984,7 +1097,7 @@ class LpdFemClient(FemClient):
     def config_asic_clock_source_from_osc(self):
         ''' Configure Asic clock source from FEM Osc clock'''
 
-        if self.femDebugLevel >= 1:
+        if self.femDebugLevel >= 2:
             print "--"
             print "Switching ASIC clock source to FEM Osc" 
 
@@ -1003,8 +1116,11 @@ class LpdFemClient(FemClient):
         ''' Configure external trigger strobes '''
 
         self.set_ext_trig_strobe_delay(self.ext_trig_strobe_delay)    
-        self.set_ext_trig_strobe_inhibit(self.ext_trig_strobe_inhibit)    
-        self.set_ext_trig_strobe_max(self.numberTrains)   # max nr of strobes allowed to trigger train readout (i.e. terminal train count)
+        self.set_ext_trig_strobe_inhibit(self.ext_trig_strobe_inhibit)   
+        if self.numberTrains == 0:
+            self.set_ext_trig_strobe_max(0xffffffff)   # NB if 0 trains requested actually want to run forever so no limit to strobe number
+        else:
+            self.set_ext_trig_strobe_max(self.numberTrains)   # max nr of strobes allowed to trigger train readout (i.e. terminal train count)
         self.set_ext_trig_strobe_polarity(self.ext_trig_strobe_polarity) 
                
         # Trigger strobe for Petra test is derived from petra clock
@@ -1078,11 +1194,11 @@ class LpdFemClient(FemClient):
                 
         # Resets dma engines
         if ppc_nr == 1:
+            print "Resetting PPC Nr %d.." %ppc_nr
             self.toggle_bits(self.fem_ctrl_0+9, 0)
-            print "Resetting PPC Nr %d.." %ppc_nr
         elif ppc_nr == 2:
-            self.toggle_bits(self.fem_ctrl_0+9, 1)
             print "Resetting PPC Nr %d.." %ppc_nr
+            self.toggle_bits(self.fem_ctrl_0+9, 1)
         else:
             print "WARNING No PPC Reset . Unrecognised PPC Nr  %d.." %ppc_nr
             return
@@ -1236,55 +1352,68 @@ class LpdFemClient(FemClient):
 
         self.toggle_bits(self.fem_ctrl_0+11, 23)    # main reset ccc 
 
-        if self.cccSystemMode != 0:   # if self.use_ccc_vetos == 1:
+        if self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC: # For legacy f/w not using PPC readout path
+            
+            print "Legacy F/W not using PPC readout path"
 
-            if self.cccEmulationMode == True:
-
-                if self.cccSimpleEmulation == True: # use simple ccc sm to generate start cmd and nveto tied '1' with pattern mask for triggers
-                    self.register_set_bit(self.fem_ctrl_0+10, 18)
-                    self.register_clear_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '1' to use enabled pattern bram bits for triggers
-                else:                  
-                    self.register_clear_bit(self.fem_ctrl_0+10, 18)
-                    self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' to ccc nvetos for triggers
-
-                self.register_set_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from generator
-
-                self.register_clear_bit(self.fem_ctrl_0+10, 17)  # reenable trigger strobes if NOT using real ccc commands
-                
-                self.toggle_bits(self.fem_ctrl_0+11, 24)    # local reset asic_ccc_cmd_gen
-                
-                self.config_asic_ccc_cmd_gen()  # set up self test for emulating commands and vetos coming from xfel C&C system
-                
-
+            if self.cccSystemMode != 0:   # if self.use_ccc_vetos == 1:
+    
+                if self.cccEmulationMode == True:
+    
+                    if self.cccSimpleEmulation == True: # use simple ccc sm to generate start cmd and nveto tied '1' with pattern mask for triggers
+                        self.register_set_bit(self.fem_ctrl_0+10, 18)
+                        self.register_clear_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '1' to use enabled pattern bram bits for triggers
+                    else:                  
+                        self.register_clear_bit(self.fem_ctrl_0+10, 18)
+                        self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' to ccc nvetos for triggers
+    
+                    self.register_set_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from generator
+    
+                    self.register_clear_bit(self.fem_ctrl_0+10, 17)  # reenable trigger strobes if NOT using real ccc commands
+                    
+                    self.toggle_bits(self.fem_ctrl_0+11, 24)    # local reset asic_ccc_cmd_gen
+                    
+                    self.config_asic_ccc_cmd_gen()  # set up self test for emulating commands and vetos coming from xfel C&C system
+                    
+    
+                else:
+                    
+                    self.register_clear_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from C&C system 
+    
+                    self.register_set_bit(self.fem_ctrl_0+10, 17)  # inhibit trigger strobes if using real ccc commands
+                    
+                    if self.cccSystemMode == 1: # no vetos from c&c
+                    
+                        #self.register_clear_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '1' to use enabled pattern bram bits for triggers
+                        self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' 
+                    else:   # with vetos from c&c
+                    
+                        self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' to ccc nvetos for triggers
+                        
+                        
+                self.toggle_bits(self.fem_ctrl_0+11, 22)    # local reset ccc local link
+            
+                if self.cccSystemMode == 2:   
+                    self.config_asic_ccc_veto()
+            
+                self.config_asic_ccc_fast_xml() # Loads CCC fem fast bram from xml file
             else:
+                if self.femDebugLevel >= 2:
+                    print "Start OLD Fast Wrapper config_asic_fast_xml "
+                self.config_asic_fast_xml() # Loads fem fast bram from xml file
                 
-                self.register_clear_bit(self.fem_ctrl_0+10, 16)  # mux select inputs from C&C system 
+                self.register_clear_bit(self.fem_ctrl_0+10, 17)  # reenable trigger strobes if NOT using real ccc commands
 
-                self.register_set_bit(self.fem_ctrl_0+10, 17)  # inhibit trigger strobes if using real ccc commands
-                
-                if self.cccSystemMode == 1: # no vetos from c&c
-                
-                    #self.register_clear_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '1' to use enabled pattern bram bits for triggers
-                    self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' 
-                else:   # with vetos from c&c
-                
-                    self.register_set_bit(self.fem_ctrl_0+10, 14)  # bypass nveto = '0' to ccc nvetos for triggers
-                    
-
-                    
+        else:   # New f/w using PPC readout path (for Image reordering by pulse number)
+            
             self.toggle_bits(self.fem_ctrl_0+11, 22)    # local reset ccc local link
-        
+
             self.config_asic_ccc_veto()
-        
-            self.config_asic_ccc_fast_xml() # Loads CCC fem fast bram from xml file
-        else:
-            if self.femDebugLevel >= 2:
-                print "Start OLD Fast Wrapper config_asic_fast_xml "
-            self.config_asic_fast_xml() # Loads fem fast bram from xml file
             
-            self.register_clear_bit(self.fem_ctrl_0+10, 17)  # reenable trigger strobes if NOT using real ccc commands
+            self.config_asic_ccc_fast_xml() # Loads CCC fem fast bram from xml file
 
             
+
         t4 = datetime.now()
 
         if self.femDebugLevel >= 0:
@@ -1417,33 +1546,43 @@ class LpdFemClient(FemClient):
         encodedSequenceStop = encodedSequenceComplete[initial_words:]
 
 
-# repeat with cccEnabled=False  only if not using ccc vetos 
-        if self.cccSystemMode != 2: 
+        if (self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC): # for LEGACY F/W only
 
-            cccEna = False          
-            if self.femDebugLevel >= 3:
-                print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
-            fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
-            encodedSequenceComplete  = fileCmdSeqComplete.encode()
-            nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
-            nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
-            if self.femDebugLevel >= 3:
-                print "nr_wordsComplete = %d, nr_nopsComplete =%d: " % (nr_wordsComplete, nr_nopsComplete)
+            # repeat with cccEnabled=False  only if not using ccc vetos 
+            if self.cccSystemMode != 2: 
+    
+                cccEna = False          
+                if self.femDebugLevel >= 3:
+                    print "--------------------- Clock and control is set to be ", cccEna, "---------------------"
+                fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=cccEna)
+                encodedSequenceComplete  = fileCmdSeqComplete.encode()
+                nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
+                nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
+                if self.femDebugLevel >= 3:
+                    print "nr_wordsComplete = %d, nr_nopsComplete =%d: " % (nr_wordsComplete, nr_nopsComplete)
+                        
+                encodedSequenceStart = encodedSequenceComplete
                       
-            encodedSequenceStart = encodedSequenceComplete
-                      
+    
+            if self.cccSystemMode == 2: # Read XML file but would clock and control enabled, trigger section will be omitted
+                nr_wordsStart = initial_words
+                nr_nopsStart = initial_nops
+                nr_wordsStop = nr_wordsComplete-initial_words
+                nr_nopsStop = nr_nopsComplete-initial_nops
+            else:     # Read entire XML file, with clock and control disabled      
+                nr_wordsStart = nr_wordsComplete
+                nr_nopsStart = nr_nopsComplete
+                nr_wordsStop = 2   # if 0 fast statemachine malfunctions ; so send couple of empty commands
+                nr_nopsStop = 0   
 
-        if self.cccSystemMode == 2: # Read XML file but would clock and control enabled, trigger section will be omitted
+        else:    
+            # To support NEW F/W for PPC readout ;
+            # Read XML file but would clock and control enabled, trigger section will be omitted
             nr_wordsStart = initial_words
             nr_nopsStart = initial_nops
             nr_wordsStop = nr_wordsComplete-initial_words
             nr_nopsStop = nr_nopsComplete-initial_nops
-        else:     # Read entire XML file, with clock and control disabled      
-            nr_wordsStart = nr_wordsComplete
-            nr_nopsStart = nr_nopsComplete
-            nr_wordsStop = 2   # if 0 fast statemachine malfunctions ; so send couple of empty commands
-            nr_nopsStop = 0   
-
+            
 
         # place stop section immediately after start for most efficient use of bram
         start_offset = 0
@@ -1456,6 +1595,17 @@ class LpdFemClient(FemClient):
             print "nr_wordsStop = %d, nr_nopsStop =%d: " % (nr_wordsStop, nr_nopsStop)
             print "start_length = %d, stop_length =%d: " % (start_length, stop_length)
         
+        
+        print "Number of Asic Setup Commands = %d (Nr clocks =%d): " % (start_length, start_length*self.NR_CLOCKS_PER_FAST_CMD)
+
+        #self.asic_command_start_write_pointers  = fileCmdSeqComplete.getNumStartWritePointers()
+        #self.asic_command_start_trigger_pointers  = fileCmdSeqComplete.getNumStartTriggerPointers()
+        #if self.asic_command_start_write_pointers != 1 or self.asic_command_start_trigger_pointers != 1:
+            #print "*** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers)
+
+        #self.asic_command_latency  = fileCmdSeqComplete.getLatency() + 1
+        #if self.femDebugLevel >= 1:
+            #print ">>> Asic Command File Latency = %d pulses" %(self.asic_command_latency)
 
 # CCC delays after xml
 # needs nr cmd words from parsing xml
@@ -1468,8 +1618,15 @@ class LpdFemClient(FemClient):
 # delay from ccc cmd gen start cmd to beginning of veto pulses
 # but needs measuring in the real beam
 # extra fixed term for internal logic delays
-        if self.cccEmulationMode == True:
-            self.cccVetoStartDelay = self.CCC_CMD_GEN_XRAY_DELAY - 3
+        if (self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC): # for LEGACY F/W only
+            if self.cccEmulationMode == True:
+                self.cccVetoStartDelay = self.CCC_CMD_GEN_XRAY_DELAY - 3
+        else:
+             # if still using old ccc cmd and veto gen fix delay ; else take param from xml file
+            if (self.get_v5_firmware_vers() & 0xffff) <= 0x027a :  
+                if self.cccSystemMode != 2:
+                    self.cccVetoStartDelay = self.CCC_CMD_GEN_XRAY_DELAY - 3
+                   
         
         self.rdmaWrite(self.ccc_delay_reg + 4, self.cccVetoStartDelay)            
         if self.femDebugLevel >= 3:
@@ -1502,15 +1659,22 @@ class LpdFemClient(FemClient):
         fast_bram_size = self.FAST_BRAM_SIZE_BYTES;   # size in 32b words
         self.zero_regs(self.fast_cmd_1, fast_bram_size)  
 
+        if self.femDebugLevel >= 1:
+            print "cleared the asic command bram"
+
         # Load the command BRAM with Start and Stop sequences
         
         # Nb If NOT using ccc vetos the start section is loaded with COMPLETE command file  <== ***
         start_addr = self.fast_cmd_1 + start_offset
         self.fem_fast_bram_setup(start_addr, encodedSequenceStart, nr_wordsStart)
+        if self.femDebugLevel >= 1:
+            print "Passed fem_fast_bram_setup with start_addr"
 
         # stop section will be empty when using ccc vetos
         stop_addr = self.fast_cmd_1 + stop_offset
         self.fem_fast_bram_setup(stop_addr, encodedSequenceStop, nr_wordsStop)
+        if self.femDebugLevel >= 1:
+            print "Passed fem_fast_bram_setup with stop_addr"
 
         # for new CCC design must ensure the last word in bram is single command eg single NOP (not with nop loop)
         # in fem_fast_bram_setup() append a NOP cmd word to end in case the xml file has a nop loop as last entry
@@ -1642,7 +1806,7 @@ class LpdFemClient(FemClient):
                 # from file
                 #self.cccVetoPatternFile = "Config/VetoPatterns/veto_pattern_test1.xml"
                 stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
-                print "Veto Mask Pattern File Nane = %s " %self.cccVetoPatternFile
+                print "Veto Mask Pattern File Name = %s " %self.cccVetoPatternFile
             
             else:          
                 if self.femDebugLevel >= 2:
@@ -1709,19 +1873,31 @@ class LpdFemClient(FemClient):
         # Setup the ASIC RX IP block
         self.fem_asic_rx_setup(self.asic_srx_0, self.femAsicEnableMaskRemap, no_asic_cols, no_asic_cols_per_frm)
 
-        # NEW ; use info on nr triggers coming with readout strobe from CCC to determine how many images to process
-        # this overrides asicrx register settings for ncols  etc          
-        if self.cccSystemMode != 2:  
-            print "INFO: Number of Images to readout from value in config xml file"
-            self.register_clear_bit(self.asic_srx_0+0, 12)
-        else:
-            if self.cccProvideNumberImages == False:
-                print "**WARNING: In CC Mode with Vetos ; OVERRIDING number of Images to readout from value in config xml file"
+        if (self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC): # for LEGACY F/W only
+
+            # NEW ; use info on nr triggers coming with readout strobe from CCC to determine how many images to process
+            # this overrides asicrx register settings for ncols  etc          
+            if self.cccSystemMode != 2:  
+                print "INFO: Number of Images to readout from value in config xml file"
                 self.register_clear_bit(self.asic_srx_0+0, 12)
             else:
-                print "INFO: In CC Mode with Vetos ; Num Images readout according to CCC Veto input"
+                if self.cccProvideNumberImages == False:
+                    print "**WARNING: In CC Mode with Vetos ; OVERRIDING number of Images to readout from value in config xml file"
+                    self.register_clear_bit(self.asic_srx_0+0, 12)
+                else:
+                    print "INFO: In CC Mode with Vetos ; Num Images readout according to CCC Veto input"
+                    self.register_set_bit(self.asic_srx_0+0, 12)
+        
+        else:   # To support NEW F/W for PPC readout ;
+            
+            if self.cccProvideNumberImages == False:
+                print "**WARNING: LEGACY mode using Trigger Flags from asic command file."
+                print "**WARNING: Number of Images to readout was set from parameter in config xml file"
+                self.register_clear_bit(self.asic_srx_0+0, 12)
+            else:
+                print "INFO: Number of Images readout was according to CCC information"
                 self.register_set_bit(self.asic_srx_0+0, 12)
-
+            
 
         # NEW ; if NOT using CCC to provide TrainID for header then insert dummy incrementing TrainID  
         if self.cccSystemMode == 1 or self.cccSystemMode == 2: 
@@ -1733,7 +1909,7 @@ class LpdFemClient(FemClient):
             self.register_set_bit(self.asic_srx_0+0, 16)  # enable dummy train id 
 
         # NEW ; insert FEM module ID into header         
-        moduleId = self.femModuleId[9-1]     
+        moduleId = self.femModuleId     
         #print "FEM moduleId = %d" %moduleId
         self.rdmaWrite(self.asic_srx_0+9, moduleId)    
 
@@ -2742,16 +2918,21 @@ class LpdFemClient(FemClient):
             print "        Total Data (incl LLink) = %d \t ($%08x)" %(totalExpectedData, totalExpectedData)
             print "  ------------------------------------------------------------------------"
         
-        if lastFrameLength != llmonEventLength:
-            print "***ERROR   LPD Last Frame Length Expected = %d ($%08x) but Received %d ($%08x) ; Exp-Rec = %d ($%08x)" %(lastFrameLength, lastFrameLength, llmonEventLength, llmonEventLength, (lastFrameLength - llmonEventLength), (lastFrameLength - llmonEventLength))
+        if numRxFramesperTrain == 2: 
+            print "With PPC : There are 2 LLink Frames (Hdr and Remainder) per Train coming from ASIC RX " 
         else:
-            print " OK        LPD Last Frame Length Expected = %d ($%08x) and Received %d ($%08x)" %(lastFrameLength, lastFrameLength, llmonEventLength, llmonEventLength)
+            print "Without PPC : 1 LLink Frame per Train coming from ASIC RX " 
+            
+        if lastFrameLength != llmonEventLength:
+            print "***ERROR   LPD Last Frame Length Expected from ASIC RX = %d ($%08x) but Received %d ($%08x) ; Exp-Rec = %d ($%08x)" %(lastFrameLength, lastFrameLength, llmonEventLength, llmonEventLength, (lastFrameLength - llmonEventLength), (lastFrameLength - llmonEventLength))
+        else:
+            print " OK        LPD Last Frame Length Expected  from ASIC RX = %d ($%08x) and Received %d ($%08x)" %(lastFrameLength, lastFrameLength, llmonEventLength, llmonEventLength)
         
         if totalExpectedData != llmonTotalData:
-            print "***ERROR          LPD Total Data Expected = %d ($%08x) but Received %d ($%08x) ; Exp-Rec = %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData, (totalExpectedData - llmonTotalData), (totalExpectedData - llmonTotalData))
+            print "***ERROR          LPD Total Data Expected  from ASIC RX = %d ($%08x) but Received %d ($%08x) ; Exp-Rec = %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData, (totalExpectedData - llmonTotalData), (totalExpectedData - llmonTotalData))
             print "Note that Total Data checking is not valid if there are varying number of Images per Train OR if any Trains have been inhibited"
         else:
-            print " OK               LPD Total Data Expected = %d ($%08x) and Received %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData)
+            print " OK               LPD Total Data Expected from ASIC RX = %d ($%08x) and Received %d ($%08x)" %(totalExpectedData, totalExpectedData, llmonTotalData, llmonTotalData)
         print "  ------------------------------------------------------------------------" 
   
           
@@ -2780,15 +2961,17 @@ class LpdFemClient(FemClient):
         print "BOT SP3 FPGA Firmware vers = %08x" % self.get_bot_sp3_firmware_vers()
         print "TOP SP3 FPGA Firmware vers = %08x" % self.get_top_sp3_firmware_vers()
         print "CFG SP3 FPGA Firmware vers = %08x" % self.get_cfg_sp3_firmware_vers()
+        if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
+            print "*** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different" 
         
         print " Embedded PPC Software:" 
         print "  PPC1 s/w vers = %08x" % self.ppc1_get_sw_vers() 
         print "  PPC2 s/w vers = %08x" % self.ppc2_get_sw_vers()
 
+        print " Python LPD Client Software Vers = %08x:"  %(self.femLpdClientVersion)
+
         print "=======================================================================" 
 
-        if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
-            print "*** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different" 
 
         femAsicClockSourceNames = { 0 : "On board 100MHz Osc",
                                     1 : "XFEL C&C",
@@ -2798,7 +2981,7 @@ class LpdFemClient(FemClient):
         
         femStartTrainSourceNames = { 0 : "XFEL C&C",
                                     1 : "Software",
-                                    2 : "LCLS",
+                                    2 : "Test Beam e.g. LCLS",
                                     3 : "Petra-III",
                                     4 : "Diamond B16"
                                     }
@@ -2814,9 +2997,9 @@ class LpdFemClient(FemClient):
                                    3 : "stand-alone"
                                   }
                                   
-        cccSystemModeNames = { 0 : "Not using XFEL C&C system",
-                              1 : "XFEL C&C for Start command but not using veto system",
-                              2 : "Full XFEL C&C with veto system"
+        cccSystemModeNames = { 0 : "Not using XFEL C&C system. Pre-programmed Triggers",
+                              1 : "XFEL C&C for Start command with Pre-programmed Triggers",
+                              2 : "Full XFEL C&C with command and veto input"
                                   }
         
         femDataSourceNames = { 0 : "Std ASIC [via PPC1 and DDR2 Memory]",
@@ -2830,11 +3013,11 @@ class LpdFemClient(FemClient):
         print "femAsicModuleType   = %s" % femAsicModuleTypeNames[self.femAsicModuleType]
         print "femAsicDataType     = %s" % femAsicDataTypeNames[self.femAsicDataType]
         print "femDataSource       = %s" % femDataSourceNames[self.femDataSource]
-        print "cccSystemMode       = %s" % cccSystemModeNames[self.cccSystemMode]
+        print "cccSystemMode       = %s" % cccSystemModeNames[self.cccSystemMode] 
 
         if self.cccSystemMode != 0 :
             if self.cccEmulationMode == True:
-                print "***WARNING: C&C signals are being EMULATED inside the FEM. Set param 'cccEmulationMode'=False to run with a REAL C&C System."
+                print "***WARNING: C&C Start Cmds are being EMULATED inside the FEM. Set param 'cccEmulationMode'=False to run with a REAL C&C System."
             
         print "================"
         print "OS name is %s" %(os.name)
@@ -2844,12 +3027,17 @@ class LpdFemClient(FemClient):
             test1 = (0x45 << 32) | 0x123
             print " test1 (64 bits) = $%x" %(test1)
           
-            test1 = float(self.numberTrains * self.cccEmulatorNumFixedRateStarts * self.cccEmulatorIntervalBetweenFixedRateStarts)/float(100000000)
+            test1 = float(self.numberTrains * self.cccEmulatorNumFixedRateStarts * self.trainGenInterval)/float(100000000)
             print "Waiting %f secs for end of Fixed Rate Trains before Stopping PPC Readout " %(float(test1))
             time.sleep(float(test1))
 
             return
             
+            
+        #print "RESET PPC1..."
+        #self.reset_ppc(1)  
+
+       
         self.zero_regs(self.bram_ppc1, 20)  # Clear ppc ready
   
         self.init_ppc_bram(self.bram_ppc1, 0xBEEFFACE)
@@ -2862,10 +3050,45 @@ class LpdFemClient(FemClient):
         # Don't change to selected asic clock until the Fast Asic Command words are sent and readout starts       
         self.config_asic_clock_source_from_osc()
 
-        # NEW reset to CCC IDELAY logic
-        if self.femDebugLevel >= 0:        
-            print "Sending Reset to CCC IDELAY logic"
-        self.toggle_bits(self.fem_ctrl_0+11, 25)                
+        if 0:
+            # Set New CCC IDELAYs for CC cmd and veto 
+            
+            #self.cccIoDelayNumberTaps = 4   # each tap is 200 mhz ref clock period = 5 nsec / 64 = 78 picosec
+            self.cccIoDelayIntervalBetweenTaps = 100
+            
+            self.cccIoDelayChangeEnable = True
+            self.cccIoDelayTapDirection = 0 # 0 = increase ; 1 = decrease
+            
+            # reset to CCC IDELAY logic  sets tap back to default value
+            if self.femDebugLevel >= 0:        
+                print "Sending Tap Reset to CCC IODELAY logic"
+            self.toggle_bits(self.fem_ctrl_0+11, 25)   
+                     
+        
+            print "CCC IODELAY cccIoDelayNumberTaps = %d" %(self.cccIoDelayNumberTaps)
+            print "CCC IODELAY cccIoDelayIntervalBetweenTaps = %d" %(self.cccIoDelayIntervalBetweenTaps)
+            print "CCC IODELAY cccIoDelayTapDirection = %d" %(self.cccIoDelayTapDirection)
+            
+            self.rdmaWrite(self.fem_ctrl_top2+5, self.cccIoDelayNumberTaps)
+            
+            self.rdmaWrite(self.fem_ctrl_top2+3, self.cccIoDelayIntervalBetweenTaps)
+                    
+            if self.cccIoDelayChangeEnable == True:
+                self.register_set_bit(self.fem_ctrl_top2+4, 0)
+            else:
+                self.register_clear_bit(self.fem_ctrl_top2+4, 0)
+                
+            if self.cccIoDelayTapDirection == 0:
+                self.register_set_bit(self.fem_ctrl_top2+4, 2)
+            else:
+                self.register_clear_bit(self.fem_ctrl_top2+4, 2)
+                
+            self.toggle_bits(self.fem_ctrl_top2+4, 4)   # start tap shifts
+        
+                     
+        # downscale factor (applied to asic clock) for clock output on CC RJ45 used for Power Card synchronisation
+        self.rdmaWrite(self.fem_ctrl_top2+0, self.cccOutputClockDownscale)
+        print "Power Card synchronisation output clock downscale factor changed to %d" %(self.cccOutputClockDownscale)
         
         #TODO: Is Comment Still Relevant?
         # send Reset to ASIC pin . Shouldn't be necessary? as short reset pulse is sent before trigger sequence.
@@ -2874,11 +3097,19 @@ class LpdFemClient(FemClient):
         self.clear_ll_monitor(self.llink_mon_asicrx)
         self.clear_ll_monitor(self.llink_mon_0)
 
+        if self.cccSystemMode == 0 and self.femStartTrainSource == 1:  
+            self.cccEmulatorFixedRateStarts = True
+        else:             
+            self.cccEmulatorFixedRateStarts = False
+
         # configure data paths between top level modules
         self.config_top_level()         
         
         # Setup the 10g link params
         self.config_10g_link()         
+        print "Configured 10g link"
+
+# Configure PPC Before Asic 
 
         # Pass readout data length to ppc bram before restarting ppc
         self.setup_ppc_bram(self.bram_ppc1, self.numberImages * self.lpd_image_size) 
@@ -2888,6 +3119,10 @@ class LpdFemClient(FemClient):
                 #print "skipping ppc reset"
                 self.reset_ppc(1)  # Reset ppc nr 1                                       
             elif self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
+                
+                #print "RESET PPC1..."
+                #self.reset_ppc(1)  # Reset ppc nr 1   
+
                 print "Configure PPC1 Readout for CMD_ACQ_CONFIG."
 
                 ## compute the DMA buffer sizes based on the numberImages in the Train(s)
@@ -2911,12 +3146,13 @@ class LpdFemClient(FemClient):
                 #set debug printout level by writing directly to the PPC shared BRAM (via PPC2 raw memory map)
                 self.ppc_set_debug_printout(self.ppcDebugLevel, self.ppcDebugLevel2)
                 
+                
                 # enable ppc1 pipleline emulation 
                 if self.femPpcEmulatePipeline == True:
-                    if self.cccSystemMode != 2:
-                        print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Pipeline Emulation "
-                        self.ppc_disable_pipeline_emulation()
-                    else:
+                    #if self.cccSystemMode != 2:
+                        #print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Pipeline Emulation "
+                        #self.ppc_disable_pipeline_emulation()
+                    #else:
                         print "CMD_ACQ_CONFIG. Enabled PPC Pipeline Emulation "
                         self.ppc_enable_pipeline_emulation()
                 else:                                 
@@ -2925,10 +3161,10 @@ class LpdFemClient(FemClient):
 
                 # enable ppc1 reordering of Image readout by pulse nr 
                 if self.femPpcImageReordering == True:              
-                    if self.cccSystemMode != 2:
-                        print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Reordering of Images "
-                        self.ppc_disable_image_reordering()
-                    else:
+                    #if self.cccSystemMode != 2:
+                        #print "WARNING ** CMD_ACQ_CONFIG. self.cccSystemMode != 2 ; so Disabled PPC Reordering of Images "
+                        #self.ppc_disable_image_reordering()
+                    #else:
                         print "CMD_ACQ_CONFIG. Enabled PPC Reordering of Images "
                         self.ppc_enable_image_reordering()
                 else:                                 
@@ -2943,16 +3179,45 @@ class LpdFemClient(FemClient):
                     print "CMD_ACQ_CONFIG. Enabled PPC Tx (& Rx) DMA "
                     self.ppc_enable_tx_dma()
 
-                if self.ppc1_override_pipeline_defaults == True:
-                    # for tests override ppc1 defaults
-                    pNumPulsesInTrain = self.NR_BUNCHES_IN_TRAIN_OVERRIDE
-                    pPipelineLength = self.LPD_PIPELINE_LENGTH_OVERRIDE
+                pNumPulsesInTrain = self.numPulsesInTrainOverride
+                pPipelineLength = self.LPD_PIPELINE_LENGTH_OVERRIDE
+
+                # parse asic command file to get pipeline latency
+                fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=True)
+                encodedSequenceComplete  = fileCmdSeqComplete.encode()
+
+                self.asic_command_start_write_pointers  = fileCmdSeqComplete.getNumStartWritePointers()
+                self.asic_command_start_trigger_pointers  = fileCmdSeqComplete.getNumStartTriggerPointers()
+                if self.asic_command_start_write_pointers != 1 or self.asic_command_start_trigger_pointers != 1:
+                    print "*** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers)
+        
+                self.asic_command_latency  = fileCmdSeqComplete.getLatency() + 1
+                if self.femDebugLevel >= 1:
+                    print ">>> Asic Command File Latency = %d pulses" %(self.asic_command_latency)
+
+                if self.pipelineLatency != 0:
+                    pPipelineLatency = self.pipelineLatency    # override asic command file and use Karabo parameter
+                    print "*** WARNING: Overriding Asic PipeLine Latency using Karabo parameter = %d" %(pPipelineLatency)
                 else:
-                    pNumPulsesInTrain = self.NR_BUNCHES_IN_TRAIN
-                    pPipelineLength = self.LPD_PIPELINE_LENGTH
+                    pPipelineLatency = self.asic_command_latency    # use computed value from asic command file
+                    print "Use PipeLine Latency value computed from Asic Command File contents = %d" %(pPipelineLatency)
+                
+                if pPipelineLatency < self.LPD_PIPELINE_LATENCY_MIN:
+                    print "*** WARNING Asic PipeLine Latency was %d LESS THAN Minumum value = %d" %(pPipelineLatency, self.LPD_PIPELINE_LATENCY_MIN)
+                    print "Setting PipeLine Latency = %d" %(pPipelineLatency)
+                    pPipelineLatency = self.LPD_PIPELINE_LATENCY_MIN
+                    
+                    
                   
-                self.rawWrite(self.ppc_shared_bram_base + 128*4 + 8, pNumPulsesInTrain)
-                self.rawWrite(self.ppc_shared_bram_base + 128*4 + 12, pPipelineLength)
+                self.rawWrite(self.ppc_shared_bram_base + (128+2)*4, pNumPulsesInTrain)
+                self.rawWrite(self.ppc_shared_bram_base + (128+3)*4, pPipelineLength)
+                self.rawWrite(self.ppc_shared_bram_base + (128+5)*4, pPipelineLatency)
+                
+                maxTriggersToAsic = pPipelineLength - pPipelineLatency
+                self.rdmaWrite(self.fem_ctrl_top2+6, maxTriggersToAsic)
+
+                print "INFO: HARDWARE LIMIT Number of Triggers to Asics = %d" %(maxTriggersToAsic)
+
 
                 BufSize = 0    # now redundant  # (maxNrImagesPerBD * self.lpd_image_size)   
                 #NumAcqs = 0   # now redundant self.numberTrains * nrBufsPerTrain     # number of BDs to process
@@ -2960,11 +3225,14 @@ class LpdFemClient(FemClient):
                 Coalesce = 16    # Pass but is ignored now     # NMax nr of images allowed per BD (up to 127)
                 # Nr Trains this run for PPC1 to process and then stop
                 if self.cccEmulatorFixedRateStarts == True:
-                    NumAcqs = self.numberTrains * self.cccEmulatorNumFixedRateStarts  # fixed rate trains
+                    #NumAcqs = self.numberTrains * self.cccEmulatorNumFixedRateStarts  # fixed rate trains
+                    NumAcqs = self.numberTrains  # fixed rate trains
                 else:
-                    NumAcqs = self.numberTrains  
+                    NumAcqs = self.numberTrains
+                      
+                NumAcqs = 0     # TEST
                 
-                print "CMD_ACQ_CONFIG. Total Nr Trains to Store concurrently in Memory = %d  " % (BufCount)
+                print "CMD_ACQ_CONFIG. BD Ring Size = %d  " % (BufCount)
                 #print "CMD_ACQ_CONFIG. Nr BDs to Process this Run = %d ; Length of BD = $%08x bytes" % ( NumAcqs, BufSize)
                 
                 ##AcqMode = FemTransaction.ACQ_MODE_TX_ONLY
@@ -2974,7 +3242,7 @@ class LpdFemClient(FemClient):
                 self.acquireSend(FemTransaction.CMD_ACQ_CONFIG, AcqMode, BufSize, BufCount, NumAcqs, Coalesce)
                 
                 # init buffer memory takes a while
-                buffer_wait = 1 * BufCount #  10 * BufCount
+                buffer_wait = 0.1 * BufCount + 2 #  10 * BufCount
                 print "Waiting %d secs for PPC Buffers to be Initialised... " %(buffer_wait) 
                 time.sleep(buffer_wait)
 
@@ -3019,17 +3287,76 @@ class LpdFemClient(FemClient):
                 print "INFO config_asic_modules  "
             self.config_asic_modules()
             
-        if self.cccEmulatorFixedRateStarts == True:
-            # set up for fixed rate strobes if using ccc cmd gen
-            # this will send a fixed nr of trains at fixed interval after if running with s/w triggers
-            # assumes param self.numberTrains = 1
-            self.rdmaWrite(self.fem_ctrl_top2+1, self.cccEmulatorIntervalBetweenFixedRateStarts)  # nb usig new top level ctrl regs
-            self.rdmaWrite(self.fem_ctrl_top2+2, self.cccEmulatorNumFixedRateStarts)
-            self.register_set_bit(self.fem_ctrl_0+10, 20)  # enable
-            print "INFO Setting up Fixed Rate Triggers to ccc cmd start gen  "
-            print "numFixedRateTrigs = %d ; gapBetweenFixedRateTrigs = %d " %(self.cccEmulatorNumFixedRateStarts, self.cccEmulatorIntervalBetweenFixedRateStarts)
+        # Configure PPC AFTER asic modules as get pipeline latency from Asic Command file configuration
+        
+        
+        
+        if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC):  
+            
+            print "F/W using PPC readout path (supporting Image Reordering by pulse number)"
+                                            
+            if self.femStartTrainSource == 1:       # s/w register trigger to start ; 
+                
+                print "Mux select: Trigger Strobe Logic input from Fixed Rate Trigger Generator with start from Internal Software Reg"
+                self.register_set_bit(self.fem_ctrl_0+10, 24)
+
+                print "Mux select: CCC Start Commands from CCC Cmd Generator"
+                self.register_set_bit(self.fem_ctrl_0+10, 16)
+
+                # set up Fixed Rate Trigger module
+                self.rdmaWrite(self.fem_ctrl_top2+2, self.numberTrains)        # cccEmulatorNumFixedRateStarts = Num Trains
+                self.rdmaWrite(self.fem_ctrl_top2+1, self.trainGenInterval)  
+                self.register_set_bit(self.fem_ctrl_0+10, 20)  # enable
+                print "INFO Setting up Train Generator"
+                print "Train Gen Nr Trains = %d ; Interval between Trains = %d (clock periods)" %(self.numberTrains, self.trainGenInterval)
+
+                print "Enable CC Start Cmd Generator"
+                self.register_set_bit(self.fem_ctrl_0+10, 18)   # simulate cc start cmd
+                print "Force NoVeto every pulse (use Pattern Mask to pre-program Trigger pattern to Asic)"
+                self.register_clear_bit(self.fem_ctrl_0+10, 14)  # force nveto every pulse
+                
+            elif self.femStartTrainSource == 2:     # Ext Strobe Input to start eg Test Beam LCLS
+                
+                print "Mux select: Trigger Strobe Logic input from External Strobe (Test Beam)"
+                self.register_clear_bit(self.fem_ctrl_0+10, 24)
+
+                print "Mux select: CCC Start Commands from CCC Cmd Generator"
+                self.register_set_bit(self.fem_ctrl_0+10, 16)
+
+                print "Enable CC Start Cmd Generator"
+                self.register_set_bit(self.fem_ctrl_0+10, 18)   # simulate cc start cmd
+                print "Force NoVeto in every pulse (use Pattern Mask to pre-program Trigger pattern to Asic)"
+                self.register_clear_bit(self.fem_ctrl_0+10, 14)  # force nveto every pulse
+            
+            elif self.femStartTrainSource == 0:     # XFEL C&C system
+                
+                print "Mux select: CCC Start Commands from C&C mTCA System"
+                self.register_clear_bit(self.fem_ctrl_0+10, 16)
+                
+                if self.cccSystemMode == 2: # vetos from C&C mTCA System
+                    print "CCC Veto Input from C&C mTCA System"
+                    self.register_set_bit(self.fem_ctrl_0+10, 14)  
+                else:
+                    print "Force NoVeto every pulse (use Pattern Mask to pre-program Trigger pattern to Asic)"
+                    self.register_clear_bit(self.fem_ctrl_0+10, 14)  # force nveto every pulse ; overides C&C system input
+
+
         else:
-            self.register_clear_bit(self.fem_ctrl_0+10, 20)  # disable
+            # legacy f/w
+            
+            if self.cccEmulatorFixedRateStarts == True:
+                # set up for fixed rate strobes if using ccc cmd gen
+                # this will send a fixed nr of trains at fixed interval after if running with s/w triggers
+                # assumes param self.numberTrains = 1
+                self.rdmaWrite(self.fem_ctrl_top2+1, self.trainGenInterval)  # nb usig new top level ctrl regs
+                self.rdmaWrite(self.fem_ctrl_top2+2, self.numberTrains)        # cccEmulatorNumFixedRateStarts = Num Trains
+                self.register_set_bit(self.fem_ctrl_0+10, 20)  # enable
+                print "INFO Setting up Train Generator"
+                print "Train Gen Nr Trains = %d ; Interval between Trains = %d (clock periods)" %(self.numberTrains, self.trainGenInterval)
+            else:
+                self.register_clear_bit(self.fem_ctrl_0+10, 20)  # disable
+          
+
           
         # LPD Frame Checker setup
         # defaults for checking magic words etc are setup in reset values of rdma regs           
@@ -3037,8 +3364,8 @@ class LpdFemClient(FemClient):
         # New values after 64b field little endian correction  f/w 0297
         self.rdmaWrite(self.lpd_checker+1, 0xBEEFFACE)  # magic header
         self.rdmaWrite(self.lpd_checker+2, 0x58544446)
-        self.rdmaWrite(self.lpd_checker+3, self.femTrainIdInitLsw)  # train id lower init
-        self.rdmaWrite(self.lpd_checker+4, self.femTrainIdInitMsw)  # train id upper init
+        self.rdmaWrite(self.lpd_checker+3, self.femTrainIdInitLsw)  # train id lower init  ;  init now ignored as use 1st value read to start
+        self.rdmaWrite(self.lpd_checker+4, self.femTrainIdInitMsw)  # train id upper init  ;  ignored
         self.rdmaWrite(self.lpd_checker+5, 0xDEADABCD)  # magic trailer
         self.rdmaWrite(self.lpd_checker+6, 0x58544446)
         
@@ -3054,183 +3381,327 @@ class LpdFemClient(FemClient):
 
 
             print "--"           
-            print "Starting Run ..."
+            print "Starting DAQ Run ..."
+
+            #print "INFO: Switching to Selected Asic Clock "
+            #self.config_asic_clock_source()  # Clock sources
 
             # check that a valid clock is being sent to the ASICs
             valid_clock = self.get_asic_clock_status()
             if valid_clock == 0:
-                print "*** ERROR: There is NO VALID CLOCK to the ASIC" 
-                #print "*** RUN was ABORTED."
-                #print "*** Please verify the ASIC clock source." 
-                #return 99
+                print "*** ERROR: There is No ASIC CLOCK!" 
+                print "*** RUN was ABORTED."
+                print "*** Please verify the ASIC clock source." 
+                return 99
 
             # Clear the monitors at run start is needed for running with the LpdFemGui
             self.clear_ll_monitor(self.llink_mon_asicrx)
             self.clear_ll_monitor(self.llink_mon_0)
+             
+            self.toggle_bits(self.fem_ctrl_0+11, 24)    # reset run summary counters
 
-            if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
-                if self.femPpcMode == 0:  # single shot readout mode, test only
-                    print "Running with PPC1 Readout. SINGLE TRAIN mode ..."
-                    if (self.femPpcResetDelay == 0):
-                        while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
-                            print "Waiting for PPC readout to be ready...",
-                            sys.stdout.flush()
-                    #return 1   # TEST    
-                elif self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
-                    print "Running with PPC1 Readout CMD_ACQ_START. MULTIPLE TRAIN mode ......"
-                    self.acquireSend(FemTransaction.CMD_ACQ_START)
-                    #return 1   # TEST   
+            self.toggle_bits(self.lpd_checker+0, 0)  # reset checker
 
-            else:
-                if self.femDebugLevel >= 2:
-                    print "Running in PPC1 BYPASS mode..."
+            if (self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC): # for LEGACY F/W only
 
-            print "========================================================="
-            if self.cccSystemMode != 2:  
-                print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
-            else:
-                if self.cccProvideNumberImages == True:
-                    print "Starting Sequence of %d Trains , with each Train reading varying Number of images according to CCC Veto input" % (self.numberTrains)  
-                else:              
-                    print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
-
-            #print "Dump of FEM Registers : TOP LEVEL CTRL"
-            #self.dump_regs_hex(self.fem_ctrl_0, 18)
-
-            if self.STOP_RUN_ON_ESC_KEY == True:
-                print "--"           
-                print "Hit the ESC KEY to Stop Run..." 
-                print "--"           
+                if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource ==  self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
+                    if self.femPpcMode == 0:  # single shot readout mode, test only
+                        print "Running with PPC1 Readout. SINGLE TRAIN mode ..."
+                        if (self.femPpcResetDelay == 0):
+                            while self.ppc_readout_ready_status(self.bram_ppc1) == 0:
+                                print "Waiting for PPC readout to be ready...",
+                                sys.stdout.flush()
+                        #return 1   # TEST    
+                    elif self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
+                        print "Running with PPC1 Readout CMD_ACQ_START. MULTIPLE TRAIN mode ......"
+                        self.acquireSend(FemTransaction.CMD_ACQ_START)
+                        #return 1   # TEST   
     
-            if self.femStartTrainSource == 1:  # If S/W send triggers manually         
-                self.enable_ext_trig_strobe()   # # causes toggle on reset to trigger strobe module
-                self.disable_ext_trig_strobe()  # this deasserts reset (not disable) ;  it is NEEDED .
+                else:
+                    if self.femDebugLevel >= 2:
+                        print "Running in PPC1 BYPASS mode..."
+    
+                print "========================================================="
+                if self.cccSystemMode != 2:  
+                    print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
+                else:
+                    if self.cccProvideNumberImages == True:
+                        print "Starting Sequence of %d Trains , with each Train reading varying Number of images according to CCC Veto input" % (self.numberTrains)  
+                    else:              
+                        print "Starting Sequence of %d Trains , with each Train reading out %d images" % (self.numberTrains, self.numberImages)
+
+
+                if self.STOP_RUN_ON_ESC_KEY == True:
+                    print "--"           
+                    print "Hit the ESC KEY to Stop Run..." 
+                    print "--"           
+        
                 
-                for i in range (1, self.numberTrains+1):
-
-                    if self.STOP_RUN_ON_ESC_KEY == True:           
-
-                        try:
-                            tty.setcbreak(sys.stdin.fileno())    
-
+                if self.femStartTrainSource == 1:  # If S/W send triggers manually         
+                    self.enable_ext_trig_strobe()   # # causes toggle on reset to trigger strobe module
+                    self.disable_ext_trig_strobe()  # this deasserts reset (not disable) ;  it is NEEDED .
+                    
+                    for i in range (1, self.numberTrains+1):
+    
+                        if self.STOP_RUN_ON_ESC_KEY == True:           
+    
+                            try:
+                                tty.setcbreak(sys.stdin.fileno())    
+    
+                                print "Train nr %d" % i
+                                self.send_trigger() 
+                                time.sleep(3)             # Need to check if images are all readout before sending next train
+                            
+                                if isData():
+                                    c = sys.stdin.read(1)
+                                    if c == '\x1b':         # x1b is the ESC KEY
+                                        print 'Pressed the ESC key ' 
+                                        break
+    
+                            finally:
+                                termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+    
+                        else:
+                            
                             print "Train nr %d" % i
                             self.send_trigger() 
-                            time.sleep(3)             # Need to check if images are all readout before sending next train
-                          
-                            if isData():
-                                c = sys.stdin.read(1)
-                                if c == '\x1b':         # x1b is the ESC KEY
-                                    print 'Pressed the ESC key ' 
-                                    break
-
+                            time.sleep(1)             # Need to check if images are all readout before sending next train
+                        
+        
+                else:   # Else start run and use external c&c strobes
+    
+                    if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
+                        print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
+                    else:
+                        print "Run is STARTED. Waiting for %d CCC Start Command Sequences" % self.numberTrains 
+                        
+                    if self.femStartTrainSource == 3:
+                        print "Running in PETRA mode."
+                        if self.is_petra_shutter_ignored() == 1:
+                            print "INFO: Petra Shutter status will be Ignored"
+                        else:
+                            petra_shutter_open = self.get_petra_shutter_status()
+                            if petra_shutter_open == 0:
+                                print "*** WARNING: Petra Shutter is Closed; Status = %d" %petra_shutter_open
+                                print "*** Triggers will not be accepted whilst Shutter is Closed."
+                                print "*** Please either open shutter..."
+                                print "*** ... or abort this run and invert shutter polarity or ignore shutter"
+                        
+                    nr_trains = 0
+    
+                    self.enable_ext_trig_strobe()   # causes toggle on reset to trigger strobe module
+    
+                    if self.STOP_RUN_ON_ESC_KEY == True:           
+    
+                        try:
+                            tty.setcbreak(sys.stdin.fileno())
+                            
+                            if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
+                                                    
+                                while nr_trains < self.numberTrains:
+                                
+                                    if isData():
+                                        c = sys.stdin.read(1)
+                                        if c == '\x1b':         # x1b is the ESC KEY
+                                            print 'Pressed the ESC key ' 
+                                            break
+                                
+                                    nr_trains = self.get_ext_trig_strobe_accepted_count()
+                                    
+                            else:   # with real ccc command input uses new counter detecting nr of start commands decoded
+                            
+                                while nr_trains < self.numberTrains:
+                                
+                                    if isData():
+                                        c = sys.stdin.read(1)
+                                        if c == '\x1b':         # x1b is the ESC KEY
+                                            print 'Pressed the ESC key ' 
+                                            break
+                                
+                                    nr_trains = self.rdmaRead(self.fem_ctrl_0+27, 1)[0]     # accepted trains
+    
+                            
                         finally:
                             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-
-                    else:
-                        
-                        print "Train nr %d" % i
-                        self.send_trigger() 
-                        time.sleep(1)             # Need to check if images are all readout before sending next train
-                       
     
-            else:   # Else start run and use external c&c strobes
-
-                if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
-                    print "Run is STARTED. Waiting for %d trigger strobes" % self.numberTrains 
-                else:
-                    print "Run is STARTED. Waiting for %d CCC Start Command Sequences" % self.numberTrains 
-                    
-                if self.femStartTrainSource == 3:
-                    print "Running in PETRA mode."
-                    if self.is_petra_shutter_ignored() == 1:
-                        print "INFO: Petra Shutter status will be Ignored"
                     else:
-                        petra_shutter_open = self.get_petra_shutter_status()
-                        if petra_shutter_open == 0:
-                            print "*** WARNING: Petra Shutter is Closed; Status = %d" %petra_shutter_open
-                            print "*** Triggers will not be accepted whilst Shutter is Closed."
-                            print "*** Please either open shutter..."
-                            print "*** ... or abort this run and invert shutter polarity or ignore shutter"
-                       
-                nr_trains = 0
-
-                self.enable_ext_trig_strobe()   # causes toggle on reset to trigger strobe module
-
-                if self.STOP_RUN_ON_ESC_KEY == True:           
-
-                    try:
-                        tty.setcbreak(sys.stdin.fileno())
                         
                         if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
                                                 
                             while nr_trains < self.numberTrains:
-                            
-                                if isData():
-                                    c = sys.stdin.read(1)
-                                    if c == '\x1b':         # x1b is the ESC KEY
-                                        print 'Pressed the ESC key ' 
-                                        break
-                            
+    
                                 nr_trains = self.get_ext_trig_strobe_accepted_count()
                                 
                         else:   # with real ccc command input uses new counter detecting nr of start commands decoded
-                          
+    
                             while nr_trains < self.numberTrains:
+    
+                                nr_trains = self.rdmaRead(self.fem_ctrl_0+27, 1)[0]     # accepted trains
                             
-                                if isData():
-                                    c = sys.stdin.read(1)
-                                    if c == '\x1b':         # x1b is the ESC KEY
-                                        print 'Pressed the ESC key ' 
-                                        break
-                            
-                                nr_trains = self.rdmaRead(self.fem_ctrl_0+26, 1)[0]
-
-                        
-                    finally:
-                        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-
-                else:
                     
-                    if self.cccEmulationMode == True:   # ext trigger strobe used to start emulator
+                    self.disable_ext_trig_strobe()
+                    
+                    print "Run is STOPPED" 
+                    print "nr_trains processed = %d" % nr_trains 
+                        
+        
+                if self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
+                    if self.cccEmulatorFixedRateStarts == True:
+                        wait_fixed_rate_trains = float(self.numberTrains * self.cccEmulatorNumFixedRateStarts * self.trainGenInterval)/float(100000000)
+                        print "Waiting %f secs for end of Fixed Rate Trains before Stopping PPC Readout " %(float(wait_fixed_rate_trains))
+                        time.sleep(float(wait_fixed_rate_trains + self.wait_for_ppc_run_stop))
+                    else:
+                        print "Waiting %f secs at end before Stopping PPC Readout " %(float(self.wait_for_ppc_run_stop))
+                        time.sleep(self.wait_for_ppc_run_stop)
+                    
+                if 0:              
+                    print "*** TEST NOT Stopping PPC1 Readout . "
+                else:
+                    if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
+                        print "Stopping PPC1 Readout CMD_ACQ_STOP. "
+                        self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+        
+    
+                print "======== Train Cycle Completed ===========" 
+                print "--"           
+                #time.sleep(2)   # just to see output before dumping registers
+
+
+            else:   # To support NEW F/W for PPC readout
+                
+                nr_trains_recv = 0
+                
+                print "Sending CMD_ACQ_START to PPC"
+                self.acquireSend(FemTransaction.CMD_ACQ_START)
+                
+                print "Reset Trigger Strobe counters "                
+                self.toggle_bits(self.trig_strobe+1, 0)
+        
+                if self.femStartTrainSource == 1:       # s/w register trigger to start ;                 
+                    print "Run is ENABLED. Accepting Trains"
+                    self.register_set_bit(self.fem_ctrl_0+11, 8)  
+                    print "Write to S/W Reg to Start Generated Trains"
+                    self.toggle_bits(self.fem_ctrl_0+7, 1)  
+                #else:
+                #    print "Waiting for Trains from C&C system"
+                
+                if (self.numberTrains != 0):    # Wait until Specified Nr of Trains is Readout
+                    
+                    print "Waiting with Timeout of %d secs for each Train of %d requested before Terminating Run" % (self.timeoutTrain, self.numberTrains)
+                    print "Run is ENABLED. Accepting Trains"
+                    self.register_set_bit(self.fem_ctrl_0+11, 8)  
+                    
+                    nr_trains_prev = datetime.now()
+                    timeout_train = self.timeoutTrain
+                    while nr_trains_recv < self.numberTrains:
+                        nr_trains_recv = self.rdmaRead(self.fem_ctrl_0+27, 1)[0]    # accepted trains
+                        if (nr_trains_prev != nr_trains_recv):
+                            nr_trains_prev = nr_trains_recv
+                            t_prev = datetime.now()
+                        else:
+                            t_now = datetime.now()                        
+                            time_elapsed = t_now - t_prev
+                            if time_elapsed.seconds > timeout_train:
+                                print "Timed out waiting %d secs for next Train" %(timeout_train)
+                                break
                                             
-                        while nr_trains < self.numberTrains:
-
-                            nr_trains = self.get_ext_trig_strobe_accepted_count()
-                            
-                    else:   # with real ccc command input uses new counter detecting nr of start commands decoded
-
-                        while nr_trains < self.numberTrains:
-
-                            nr_trains = self.rdmaRead(self.fem_ctrl_0+26, 1)[0]
-                        
-                
-                self.disable_ext_trig_strobe()
-                
-                print "Run is STOPPED" 
-                print "nr_trains processed = %d" % nr_trains 
-                    
-    
-            if self.femPpcMode == 1:  # continuous Train readout mode with new PPC1 code
-                if self.cccEmulatorFixedRateStarts == True:
-                    wait_fixed_rate_trains = float(self.numberTrains * self.cccEmulatorNumFixedRateStarts * self.cccEmulatorIntervalBetweenFixedRateStarts)/float(100000000)
-                    print "Waiting %f secs for end of Fixed Rate Trains before Stopping PPC Readout " %(float(wait_fixed_rate_trains))
-                    time.sleep(float(wait_fixed_rate_trains + self.wait_for_ppc_run_stop))
-                else:
-                    print "Waiting %f secs at end before Stopping PPC Readout " %(float(self.wait_for_ppc_run_stop))
+                    self.register_clear_bit(self.fem_ctrl_0+11, 8)  # disable asap
+                    print "Run is DISABLED. NOT Accepting Trains"
+                    print "Expected %d Trains; Received %d Trains" %(self.numberTrains, nr_trains_recv)
+                                            
+                    print "Waiting extra %d secs before Sending Stop to PPC" %(self.wait_for_ppc_run_stop)
                     time.sleep(self.wait_for_ppc_run_stop)
-                 
-            if 0:              
-                print "*** TEST NOT Stopping PPC1 Readout . "
-            else:
-                if (self.femDataSource == self.RUN_TYPE_ASIC_DATA_VIA_PPC) or (self.femDataSource == self.RUN_TYPE_PPC_DATA_DIRECT):  # runs with ppc
-                    print "Stopping PPC1 Readout CMD_ACQ_STOP. "
-                    self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+                        
+                    if 0:              
+                        print "*** TEST NOT Stopping PPC1 Readout . "
+                    else:
+                        print "Sending CMD_ACQ_STOP to PPC"
+                        self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+                
+                    print "======== Train Cycle Completed ===========" 
+                    print "--" 
+                              
+                else:    # run until Stop DAQ
+                    print "Run is ENABLED. Accepting Trains"
+                    self.register_set_bit(self.fem_ctrl_0+11, 8)  
+                    print "%d Trains were Requested. So continue run until DAQ STOP command is received" %(self.numberTrains)                    
+                    return
+
+               
+            # Run Summary printout
+            self.print_run_summary()
+
+            # Switch back to FEM Osc clock as Asic clock source for run end       
+            #print "---------------"
+            #print "Switching back to FEM Osc clock as Asic clock source for run end"       
+            #self.config_asic_clock_source_from_osc()
+    
+            print "--"           
+            print "======== Run Completed ==========="
+            print "--"           
+        
+        
+            #print "Stopping PPC1 Readout CMD_ACQ_STOP. "
+            #self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+
+        except FemClientError as e:
+            raise e
+        except Exception as e:
+            raise FemClientError(str(e))
+
+
+    def stop(self):
+        '''
+            Execute stop
+        '''
+        try:
+
+            if (self.numberTrains == 0):    # Stop should not be repeated if fixed number of Trains were Requested.
+            
+                print "--"           
+                print "Stopping DAQ Run ..."
+    
+                                                                            
+                self.register_clear_bit(self.fem_ctrl_0+11, 8)  
+                print "Disable Run "
+                
+                nr_trains_recv = self.rdmaRead(self.fem_ctrl_0+27, 1)[0]    # accepted trains
+                print "Accepted %d Trains" %(nr_trains_recv)
+                                        
+    
+                print "Waiting extra %d secs before Sending Stop to PPC" %(self.wait_for_ppc_run_stop)
+                time.sleep(self.wait_for_ppc_run_stop)
+                    
+                print "Sending CMD_ACQ_STOP to PPC"
+                self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+            
+                print "======== Run Completed ===========" 
+                print "--"           
+    
+                # Run Summary printout
+                self.print_run_summary()
+    
+            # Switch back to FEM Osc clock as Asic clock source for run end       
+            #print "Switching back to FEM Osc clock as Asic clock source at Run Stop"       
+            #self.config_asic_clock_source_from_osc()
     
 
-            print "======== Train Cycle Completed ===========" 
-            print "--"           
-            #time.sleep(2)   # just to see output before dumping registers
+        except FemClientError as e:
+            raise e
+        except Exception as e:
+            raise FemClientError(str(e))
 
+
+    def print_run_summary(self):
+        '''
+            Print out Summary of Run
+        '''
+        try:
+
+            print "--"           
+            print "DAQ Run Summary ..."
+
+                                                                                        
             if self.femDebugLevel >= 1:
                 print "--"           
                 print "=======================================================================" 
@@ -3250,7 +3721,7 @@ class LpdFemClient(FemClient):
             if self.femDebugLevel >= 0:
                 print "--"
                 print "Dump of FEM Registers : TOP LEVEL CTRL"
-                self.dump_regs_hex(self.fem_ctrl_0, 32)
+                self.dump_regs_hex(self.fem_ctrl_0, 34)
 
             if self.femDebugLevel >= 1:
                 print "Dump of FEM Registers : ASIC DATA RX"
@@ -3291,7 +3762,7 @@ class LpdFemClient(FemClient):
                 self.dump_regs_hex(self.fast_cmd_0, 12)
                 
                 print "Dump of FEM Registers : ASIC FAST BRAM"
-                self.dump_regs_hex(self.fast_cmd_1, 16)          
+                self.dump_regs_hex(self.fast_cmd_1, 64)          
                 
                 print "Dump of FEM Registers : ASIC SLOW CTRL"
                 self.dump_regs_hex(self.slow_ctr_0, 12)
@@ -3308,7 +3779,9 @@ class LpdFemClient(FemClient):
                     print "Dump of FEM Registers : CCC PATTERN ID REG"
                     self.dump_regs_hex(self.ccc_pattern_id, 12)                  
                     print "Dump of FEM Registers : CCC PATTERN BRAM"
-                    self.dump_regs_hex(self.ccc_pattern_bram, 16)
+                    #for i in range (self.NR_CCC_VETO_PATTERNS):
+                    for i in range (1):
+                        self.dump_regs_hex(self.ccc_pattern_bram + i*self.NR_WORDS_PER_CCC_VETO_PATTERN, 32)    
                 
                 if ((self.get_v5_firmware_vers()&0xffff) >= 0x022d):
                     print "Dump of FEM Registers : CCC CMD GEN REG"
@@ -3358,27 +3831,36 @@ class LpdFemClient(FemClient):
                 cccBunchPatternId = (0xff000000 & self.rdmaRead(self.asic_srx_0+16+2, 1)[0]) >> 24
                 cccNumTriggers = (0x001ff000 & self.rdmaRead(self.asic_srx_0+16+2, 1)[0]) >> 12
             
-            if self.cccSystemMode != 0:  
+            if (self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC): # for LEGACY F/W only
+                if self.cccSystemMode != 0:  
+                    print "  ------------------------------------------------------------------------" 
+                    print "Info from CCC Veto System for last Train in Run:"
+                    #print " cccTrainIdUpper = $%08x" %(cccTrainIdUpper)
+                    #print " cccTrainIdLower = $%08x" %(cccTrainIdLower)
+                    print " Train ID = $%x (%d)" %(cccTrainId, cccTrainId)
+                    print " Bunch Pattern ID = %d" %(cccBunchPatternId)
+                    if self.cccSystemMode == 2:  
+                        print " Number Triggers sent to Asic = %d" %(cccNumTriggers)
+                        if self.cccProvideNumberImages == False: 
+                            print "*** WARNING: Overiding Number of Images to readout = %d" %(self.numberImages)
+    
+                else:
+                    cccTrainId = 0L
+                    cccTrainIdUpper = 0
+                    cccTrainIdLower = 0
+                    cccTrainId = (cccTrainIdUpper << 32) + cccTrainIdLower
+                    cccBunchPatternId = 0
+                    cccNumTriggers = self.numberImages
+            else:
                 print "  ------------------------------------------------------------------------" 
                 print "Info from CCC Veto System for last Train in Run:"
                 #print " cccTrainIdUpper = $%08x" %(cccTrainIdUpper)
                 #print " cccTrainIdLower = $%08x" %(cccTrainIdLower)
                 print " Train ID = $%x" %(cccTrainId)
                 print " Bunch Pattern ID = %d" %(cccBunchPatternId)
-                if self.cccSystemMode == 2:  
-                    print " Number Triggers sent to Asic = %d" %(cccNumTriggers)
-                    if self.cccProvideNumberImages == False: 
-                        print "*** WARNING: Overiding Number of Images to readout = %d" %(self.numberImages)
-
-            else:
-                cccTrainId = 0L
-                cccTrainIdUpper = 0
-                cccTrainIdLower = 0
-                cccTrainId = (cccTrainIdUpper << 32) + cccTrainIdLower
-                cccBunchPatternId = 0
-                cccNumTriggers = self.numberImages
-
-            
+                print " Number Triggers sent to Asic = %d" %(cccNumTriggers)
+                
+                            
             llmonEventLength = self.rdmaRead(self.llink_mon_asicrx+16+0, 1)[0]
 
             llmonTotalDataLsw = self.rdmaRead(self.llink_mon_asicrx+16+7, 1)[0]
@@ -3390,26 +3872,38 @@ class LpdFemClient(FemClient):
             else:
                 dataFormat = 1
               
-            if self.cccSystemMode != 2:  
-                numImages = self.numberImages
+            if (self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC): # for LEGACY F/W only
+                if self.cccSystemMode != 2:
+                    numImages = self.numberImages
+                else:
+                    if self.cccProvideNumberImages == True:
+                        numImages = cccNumTriggers
+                    else:
+                        numImages = self.numberImages                         
             else:
-                if self.cccProvideNumberImages == True:
+                if self.cccSystemMode == 2:
                     numImages = cccNumTriggers
                 else:
-                    numImages = self.numberImages 
-              
+                    if self.cccProvideNumberImages == True:
+                        numImages = cccNumTriggers
+                    else:
+                        numImages = self.numberImages                         
+                  
             if self.femPpcMode == 1:
                 numRxFramesperTrain = 2
             else:
                 numRxFramesperTrain = 1
               
             if self.cccEmulatorFixedRateStarts == True:
-                numTrainsTot = self.numberTrains * self.cccEmulatorNumFixedRateStarts  # fixed rate trains
+                #numTrainsTot = self.numberTrains * self.cccEmulatorNumFixedRateStarts  # fixed rate trains
+                numTrainsTot = self.numberTrains  # fixed rate trains
             else:
                 numTrainsTot = self.numberTrains  
             
+            if self.numberTrains == 0:  # if run without predefined number of trains then use actual accepted CC starts
+                numTrainsTot = self.rdmaRead(self.fem_ctrl_0+27, 1)[0]
+
             self.checkEventLength(numImages, numTrainsTot, llmonEventLength, llmonTotalData, dataFormat, numRxFramesperTrain)
-    
     
 
             if self.femPpcMode == 1:
@@ -3441,24 +3935,59 @@ class LpdFemClient(FemClient):
             print " Num Trailer Words = %d" %(lpd_chk_nr_trl_words)
 
             
+            asic_fifo_full_count = self.rdmaRead(self.fem_ctrl_top2+17, 1)[0]
+            start_asic_rx_count = self.rdmaRead(self.fem_ctrl_top2+18, 1)[0]
+            ccc_reset_count = self.rdmaRead(self.fem_ctrl_top2+19, 1)[0]
+            
+            start_write_pointer_sent_count = self.rdmaRead(self.fem_ctrl_top2+20, 1)[0]
+            start_trigger_pointer_sent_count = self.rdmaRead(self.fem_ctrl_top2+21, 1)[0]
+            trigger_flag_sent_count = self.rdmaRead(self.fem_ctrl_top2+22, 1)[0]
+            read_out_data_sent_count = self.rdmaRead(self.fem_ctrl_top2+23, 1)[0]
+            stop_read_out_count = self.rdmaRead(self.fem_ctrl_top2+24, 1)[0]
 
-            # Switch back to FEM Osc clock as Asic clock source for run end       
-            print "---------------"
-            self.config_asic_clock_source_from_osc()
+            ccc_veto_pulse_id_good_count = self.rdmaRead(self.fem_ctrl_0+22, 1)[0]
+            ccc_veto_pulse_id_bad_count = self.rdmaRead(self.fem_ctrl_0+23, 1)[0]
+
+            if self.femDebugLevel >= 1:
+                print "---------------"
+                print "Extra counters:"
+                print " Num AsicRx Starts Received = %d" %(start_asic_rx_count)
+                print " Num CC Resets Received = %d" %(ccc_reset_count)
+                print " Num AsicRx Fifo Full counts = %d" %(asic_fifo_full_count)
+                if self.cccSystemMode == 0:
+                    print " Num Train Gen Strobes = %d" %(self.get_ext_trig_strobe_count())
+                    print " Num Train Gen Strobes Accepted = %d" %(self.get_ext_trig_strobe_accepted_count())
+                else:
+                    print " Num Train Gen Strobes = %d  [NOT USED]" %(self.get_ext_trig_strobe_count())
+                    print " Num Train Gen Strobes Accepted = %d  [NOT USED]" %(self.get_ext_trig_strobe_accepted_count())
+                print " Num Veto Pulse IDs == $BBB = %d" %(ccc_veto_pulse_id_good_count)
+                print " Num Veto Pulse IDs != $BBB = %d" %(ccc_veto_pulse_id_bad_count)
+                print "Asic Command Word Counters:"                
+                print "\tNum START_WRITE_POINTER Cmds sent to Asic = %d" %(start_write_pointer_sent_count)
+                print "\tNum START_TRIGGER_POINTER Cmds sent to Asic = %d" %(start_trigger_pointer_sent_count)
+                print "\tNum TRIGGER_FLAG_SET Cmds sent to Asic = %d" %(trigger_flag_sent_count)
+                print "\tNum READ_OUT_DATA Cmds sent to Asic = %d" %(read_out_data_sent_count)
+                print "\tNum STOP_READ_OUT Cmds sent to Asic = %d" %(stop_read_out_count)
     
+            if self.cccProvideNumberImages == False:
+                print "**WARNING: LEGACY mode using Trigger Flags from asic command file."
+                print "**WARNING: Number of Images to readout was set from parameter in config xml file"
+
+            print ">>> Asic Command File Latency = %d pulses" %(self.asic_command_latency)
+            if self.asic_command_start_write_pointers != 1 or self.asic_command_start_trigger_pointers != 1:
+                print "*** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers)
+
             print "--"           
-            print "======== Run Completed ==========="
+            print "======== Summary End ==========="
             print "--"           
         
         
-            #print "Stopping PPC1 Readout CMD_ACQ_STOP. "
-            #self.acquireSend(FemTransaction.CMD_ACQ_STOP)
 
         except FemClientError as e:
             raise e
         except Exception as e:
             raise FemClientError(str(e))
-
+    
     def tenGig0SourceMacGet(self):
         '''
             Get tenGig0SourceMac
@@ -4101,25 +4630,15 @@ class LpdFemClient(FemClient):
         '''
         self.cccVetoPatternFile = aValue
     
-    def cccEmulatorFixedRateStartsGet(self):
+    def trainGenIntervalGet(self):
         ''' 
         '''
-        return self.cccEmulatorFixedRateStarts
+        return self.trainGenInterval
     
-    def cccEmulatorFixedRateStartsSet(self, aValue):
+    def trainGenIntervalSet(self, aValue):
         ''' 
         '''
-        self.cccEmulatorFixedRateStarts = aValue
-
-    def cccEmulatorIntervalBetweenFixedRateStartsGet(self):
-        ''' 
-        '''
-        return self.cccEmulatorIntervalBetweenFixedRateStarts
-    
-    def cccEmulatorIntervalBetweenFixedRateStartsSet(self, aValue):
-        ''' 
-        '''
-        self.cccEmulatorIntervalBetweenFixedRateStarts = aValue
+        self.trainGenInterval = aValue
 
     def cccEmulatorNumFixedRateStartsGet(self):
         ''' 
@@ -4191,6 +4710,58 @@ class LpdFemClient(FemClient):
         '''
         self.femTrainIdInitMsw = aValue
 
+    def timeoutTrainSet(self, aValue):
+        ''' 
+        '''
+        self.timeoutTrain = aValue
+
+    def timeoutTrainGet(self):
+        ''' 
+        '''
+        return self.timeoutTrain
+    
+    def numPulsesInTrainOverrideSet(self, aValue):
+        ''' 
+        '''
+        self.numPulsesInTrainOverride = aValue
+
+    def numPulsesInTrainOverrideGet(self):
+        ''' 
+        '''
+        return self.numPulsesInTrainOverride
+    
+    def cccIoDelayNumberTapsSet(self, aValue):
+        ''' 
+        '''
+        self.cccIoDelayNumberTaps = aValue
+
+    def cccIoDelayNumberTapsGet(self):
+        ''' 
+        '''
+        return self.cccIoDelayNumberTaps
+
+    def cccOutputClockDownscaleSet(self, aValue):
+        ''' 
+        '''
+        self.cccOutputClockDownscale = aValue
+
+    def cccOutputClockDownscaleGet(self):
+        ''' 
+        '''
+        return self.cccOutputClockDownscale
+
+
+    #def pipelineLatencySet(self, aValue):
+        #''' 
+        #'''
+        #self.pipelineLatency = aValue
+
+    #def pipelineLatencyGet(self):
+        #''' 
+        #'''
+        #return self.pipelineLatency
+    
+    
     def dump_raw_memory_hex(self, base_addr, nr_regs):
         ''' Hex dump of raw memory mapped space (not rdma reg space) '''
         
@@ -4228,17 +4799,23 @@ class LpdFemClient(FemClient):
         nrErrorsPipelineSkipFull = self.rawRead(base_addr+(64*4), 1)[0]
 
         maxIterationsPipeline = self.rawRead(base_addr+(65*4), 1)[0]
+                       
+        watchdogTimer = self.rawRead(base_addr+(66*4), 1)[0]
         
         print "PPC1 Ctrl Params  --------------------------"  
-        pNumPulsesInTrain = self.rawRead(base_addr+(128*4 + 8), 1)[0]        
-        pPipelineLength = self.rawRead(base_addr+(128*4 + 12), 1)[0]
+        pNumPulsesInTrain = self.rawRead(base_addr+(128 + 2)*4, 1)[0]        
+        pPipelineLength = self.rawRead(base_addr+(128 + 3)*4, 1)[0]       
+        pPipelineLatency = self.rawRead(base_addr+(128 + 5)*4, 1)[0]
         print "NumPulsesInTrain = %d" %(pNumPulsesInTrain)     
-        print "PipelineLength = %d" %(pPipelineLength)
-
+        print "PipelineLength = %d" %(pPipelineLength)   
+        print "PipelineLatency = %d" %(pPipelineLatency) 
 
         print "PPC1 Status  --------------------------"         
-        print "PPC1 Status from Shared BRAM @ $%08x :" % base_addr         
-        print "Num Trains Requested this run = %d" %(numTrainsRequested)        
+        print "PPC1 Status from Shared BRAM @ $%08x :" % base_addr
+        if numTrainsRequested == 0: 
+            print "===Num Trains Requested this run = %d (run until stop command)" %(numTrainsRequested)        
+        else:        
+            print "Num Trains Requested this run = %d" %(numTrainsRequested)        
         print "Total Nr Rx BDs = %d" %(totalRecvBot)       
         print "Total Num Rx Frame 1 = %d" %(numRxFrameTot1)      
         print "Total Num Rx Frame 2 = %d" %(numRxFrameTot2)       
@@ -4253,30 +4830,33 @@ class LpdFemClient(FemClient):
         print "Peak Nr Tx BD Buffers = %d" %(numTxBDsToSendPeak)       
         print "Peak Nr Images in any Train = %d" %(numImagesPeak)       
         print "Trough Nr Images in any Train = %d" %(numImagesTrough) 
+        print "Watchdog Timer = %d" %(watchdogTimer) 
         
               
         print "PPC1 Errors  --------------------------"          
-        print "PipeLine Overflow = %d" %(nrErrorsPipelineOverflow)          
         print "Validate Buffer Rx = %d" %(nrErrorsValidateBufferRx)          
         print "Validate Buffer Tx = %d" %(nrErrorsValidateBufferTx)          
         print "Recycle Buffer Rx = %d" %(nrErrorsRecycleBufferRx)          
         print "Recycle Buffer Tx = %d" %(nrErrorsRecycleBufferTx)          
         print "Committing BDRingToHW Rx = %d" %(nrErrorsRingToHWRx)          
         print "Committing BDRingToHW Tx = %d" %(nrErrorsRingToHWTx)        
-        print "Pipeline Skips FULL= %d" %(nrErrorsPipelineSkipFull)
+        print "Asic PipeLine Overflow = %d" %(nrErrorsPipelineOverflow)          
+        #print "Pipeline Skips FULL= %d" %(nrErrorsPipelineSkipFull)
         if totalErrors == 0:         
             print "OK TOTAL PPC1 Errors = %d" %(totalErrors) 
         else:                  
+            print "***"
             print "*** TOTAL PPC1 Errors = %d" %(totalErrors)
+            print "***"
         
              
         print "--" 
         print "PPC1 Timers for Final Train -----------------" 
         ppc1_timer0 = self.rawRead(base_addr+(28*4), 1)[0]
         
-        ppc1_timer = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ppc1_timer = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         
-        for i in range(0, 12):
+        for i in range(0, 13):
             ppc1_timer[i] = self.rawRead(base_addr+((28+i)*4), 1)[0] 
             print "Timer %d - 0 = %.3g msec" %( i, float((( (ppc1_timer[i] - ppc1_timer0) * self.ppc_clock_period ) / 1000) ) / 1000 )         
         
