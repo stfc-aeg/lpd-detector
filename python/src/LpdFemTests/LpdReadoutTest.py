@@ -12,6 +12,18 @@ from datetime import datetime
 from xml.etree.ElementInclude import ElementTree
 from xml.etree.ElementTree import ParseError
 
+# for keyboard interrupts
+import select
+import tty
+import termios
+
+import time
+
+# next lines for ESC key interrupt
+def isData():
+    return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
+old_settings = termios.tcgetattr(sys.stdin)
+
 ############# Copied in XML Parser class ###########
 
 class LpdReadoutConfigError(Exception):
@@ -268,9 +280,9 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
                                     'femAsicSetupClockPhase', 'femAsicVersion', 'femDebugLevel', 'femEnableTenGig',
                                     'femStartTrainPolarity', 'femVetoPolarity', 'femPpcMode',
                                     'cccSystemMode', 'cccEmulationMode', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay',
-                                    'cccEmulatorFixedRateStarts', 'cccEmulatorIntervalBetweenFixedRateStarts','cccEmulatorNumFixedRateStarts', 
-                                    'femAsicTestDataPatternType', 'femPpcEmulatePipeline', 'femPpcImageReordering',  
-                                    'femTrainIdInitLsw', 'femTrainIdInitMsw']
+                                    'trainGenInterval', 
+                                    'femAsicTestDataPatternType', 'femPpcEmulatePipeline', 'femPpcImageReordering',
+                                    'femTrainIdInitLsw', 'femTrainIdInitMsw', 'timeoutTrain', 'numPulsesInTrainOverride', 'trainGenInterval']
 
         for param in paramExpertVariables:
             (rc, value) = theDevice.paramGet(param)

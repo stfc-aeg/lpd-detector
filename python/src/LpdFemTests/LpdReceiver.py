@@ -175,7 +175,7 @@ class ImageDisplay(FigureCanvas):
     dataRxSignal = QtCore.pyqtSignal(object)
 
     #def __init__(self, femHost, femPort, asicModuleType):
-    def __init__(self, femhost, femport, asicmodule, canvasrows, canvascols, colorbar, debuglevel, timeinfo, writedata, lpdheadertrailer):
+    def __init__(self, femhost, femport, asicmodule, canvasrows, canvascols, colorbar, debuglevel, timeinfo, writedata, lpdheadertrailer, subtractPedestals):
         
         self.host           = femhost
         self.port           = femport
@@ -331,7 +331,7 @@ class ImageDisplay(FigureCanvas):
         if self.bTimeStamp:
             timeX1 = time.time()
         
-        print "Raw Image Data Received: %16i" % len(lpdFrame.rawImageData), "(bytes, @%s)" % str( datetime.now())[11:-4],
+        print "Raw Image Data Received: %16i ($%08x)" %(len(lpdFrame.rawImageData), len(lpdFrame.rawImageData)), "(bytes, @%s)" % str( datetime.now())[11:-4],
         if self.bTimeStamp:
             print "Rx time: ", lpdFrame.processingTime
         else:
@@ -419,7 +419,7 @@ class ImageDisplay(FigureCanvas):
                 #plotMaxPlots = 511  # (0-511 = 512 plots)
             else:
                 # Differentiate between XFEL format revisions
-                if self.lpdheadertrailer == 2:
+                if self.lpdheadertrailer == 2 or self.lpdheadertrailer == 3:
                     LPD_HEADER_SIZE = 64
 
                 dataBeginning = (self.superModuleImageSize)*currentPlot + LPD_HEADER_SIZE/2
@@ -427,26 +427,57 @@ class ImageDisplay(FigureCanvas):
                 # Print XFEL header information
                 if currentPlot == 0:
 
-                    trainLsb = self.pixelDataArray[2] + (self.pixelDataArray[3] << 8)
-                    trainMsb = self.pixelDataArray[0] + (self.pixelDataArray[1] << 8)
-                    trainId  = (trainMsb << 16) + trainLsb
+                    if self.lpdheadertrailer == 3:
 
-                    dataLsb = self.pixelDataArray[2+4] + (self.pixelDataArray[3+4] << 8)
-                    dataMsb = self.pixelDataArray[0+4] + (self.pixelDataArray[1+4] << 8)
-                    dataId  = (dataMsb << 16) + dataLsb
-
-                    linkLsb = self.pixelDataArray[2+8] + (self.pixelDataArray[3+8] << 8)
-                    linkMsb = self.pixelDataArray[0+8] + (self.pixelDataArray[1+8] << 8)
-                    linkId  = (linkMsb << 16) + linkLsb
-
-                    imgCountId  = self.pixelDataArray[22] #[13] # Previous XFEL header version or older??
+    # Corrections to match f/w from vers $0298 which made all 64b fields Little Endian    John C Oct 2015
+    # previous code also had wrong offsets 
+    
+                        magicMsb = self.pixelDataArray[2+0] + (self.pixelDataArray[3+0] << 16)  
+                        print "MAGIC Word Msw = $%08x " %(magicMsb)
+                        
+                        trainLsb = self.pixelDataArray[0+8] + (self.pixelDataArray[1+8] << 16)
+                        trainMsb = self.pixelDataArray[2+8] + (self.pixelDataArray[3+8] << 16)
+                        trainId  = (trainMsb << 32) + trainLsb
+    
+                        dataLsb = self.pixelDataArray[0+12] + (self.pixelDataArray[1+12] << 16)
+                        dataMsb = self.pixelDataArray[2+12] + (self.pixelDataArray[3+12] << 16)
+                        dataId  = (dataMsb << 32) + dataLsb
+    
+                        linkLsb = self.pixelDataArray[0+16] + (self.pixelDataArray[1+16] << 16)
+                        linkMsb = self.pixelDataArray[2+16] + (self.pixelDataArray[3+16] << 16)
+                        linkId  = (linkMsb << 32) + linkLsb
+    
+                        imgCountIdLsb = self.pixelDataArray[0+20] + (self.pixelDataArray[1+20] << 16)
+                        imgCountIdMsb = self.pixelDataArray[2+20] + (self.pixelDataArray[3+20] << 16)
+                        imgCountId  = (imgCountIdMsb << 32) + imgCountIdLsb
+                    
+                    else:
+                    
+                        # corrected offsets 
+    
+                        magicMsb = self.pixelDataArray[0+0] + (self.pixelDataArray[1+0] << 16)  
+                        print "MAGIC Word Msw = $%08x " %(magicMsb)
+                        
+                        trainLsb = self.pixelDataArray[2+8] + (self.pixelDataArray[3+8] << 8)
+                        trainMsb = self.pixelDataArray[0+8] + (self.pixelDataArray[1+8] << 8)
+                        trainId  = (trainMsb << 16) + trainLsb
+    
+                        dataLsb = self.pixelDataArray[2+12] + (self.pixelDataArray[3+12] << 8)
+                        dataMsb = self.pixelDataArray[0+12] + (self.pixelDataArray[1+12] << 8)
+                        dataId  = (dataMsb << 16) + dataLsb
+    
+                        linkLsb = self.pixelDataArray[2+16] + (self.pixelDataArray[3+16] << 8)
+                        linkMsb = self.pixelDataArray[0+16] + (self.pixelDataArray[1+16] << 8)
+                        linkId  = (linkMsb << 16) + linkLsb
+    
+                        imgCountId  = self.pixelDataArray[22] #[13] # Previous XFEL header version or older??
 
                     # Overwrite maximum plots with image number extracted from XFEL header
                     plotMaxPlots = imgCountId
 
                     print "trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X} ({4:})".format(trainId, dataId, linkId, imgCountId, imgCountId)
 
-                    if self.debugLevel > 1:
+                    if self.debugLevel > 0:
                         print "_______________________________________________________________________________________________"
                         print " * plot: %d dataBegin: %7d (0x%X) of %d S-ModSize: %d (0x%X) LPD hdr offset = %d." % \
                         (currentPlot, dataBeginning, dataBeginning, len(self.pixelDataArray), self.superModuleImageSize, self.superModuleImageSize, (LPD_HEADER_SIZE/2))
@@ -470,9 +501,50 @@ class ImageDisplay(FigureCanvas):
                 print "len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols
                 exit()
             
+                           
             # Mask out gain bits from data
             self.data = self.data & 0xfff
             
+            
+            # jac ; dec 2015
+            #subtractPedestals = 0;
+            
+            if self.subtractPedestals == 1:
+                
+                #print "\nBefore test print 0"
+                #print self.data[0]
+                                
+            
+                # calculate simple pedestal summing central row of each asic
+                pix_row = 16    # pick central row 
+                ncol_per_asic = 16
+                nrow_per_asic = 32
+                nasics = 8
+                sum = 0
+                ped_factor = 1
+                ped = [0,0,0,0,0,0,0,0]
+                ped_width = 200  # spread of pedestals
+                
+                for asicNr in range (nasics):                
+                    sum = 0
+                    for col in range (ncol_per_asic):
+                        sum += self.data[28, asicNr*ncol_per_asic + col]                    
+                        sum += self.data[29, asicNr*ncol_per_asic + col]                   
+                        sum += self.data[30, asicNr*ncol_per_asic + col]                   
+                        sum += self.data[31, asicNr*ncol_per_asic + col]
+                    ped[asicNr] = sum / (ncol_per_asic*4) / ped_factor
+                    print "asicNr = %d ; sum = %d ; ped = %d" %(asicNr, sum, ped[asicNr]*ped_factor)
+    
+                for asicNr in range (nasics):                
+                    for col in range (ncol_per_asic):                
+                        for row in range (nrow_per_asic):
+                            self.data[row, asicNr*ncol_per_asic + col] -= ped[asicNr]
+                            if self.data[row, asicNr*ncol_per_asic + col] > (65536 - ped_width):
+                                self.data[row, asicNr*ncol_per_asic + col] = 0
+    
+                #print "\nAfter test print 0"
+                #print self.data[0]
+
             self.ax[currentPlot % self.plotsInFigure].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
             
             # Load image into figure
@@ -717,6 +789,7 @@ if __name__ == "__main__":
     plotCols            = 2
     numberPlotsPerFile  = 1
     lpdheadertrailer    = 0
+    subtract_pedestals  = 0
 
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="LpdReceiver.py - Receive data from an LPD detector. ",
@@ -731,7 +804,8 @@ if __name__ == "__main__":
     parser.add_argument("--debuglevel",     help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=range(9), default=0)
     parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
     parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
-    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=None, 1=32 byte header, 2=64 byte hdr; D: 0)",type=int, default=0)    
+    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=None, 1=32 byte header, 2=64 byte hdr; D: 0)",type=int, default=0)
+    parser.add_argument("--subtractPedestals",       help="Subtract pedestals (0=Disable, 1=Enable; D: 0)",      type=int, choices=[0, 1], default=0)   
     args = parser.parse_args()
 
     asicModule  = args.asicmodule
@@ -774,6 +848,7 @@ if __name__ == "__main__":
         print "debugLevel(%i)" % debugLevel
         print "plotCols(%i)" % args.canvascols
         print "plotRows(%i)" % args.canvasrows
+        print "subtractPedestals: ", subtractPedestals
     #print vars(args), "\n\n"
     app = QtGui.QApplication(sys.argv)
     widget = ImageDisplay(**vars(args)) #femHost, femPort, asicModule)

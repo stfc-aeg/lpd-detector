@@ -170,7 +170,7 @@ class LpdDevice(object):
     
         if not self.simulateFemClient:
             try:
-                # TODO implement: self.femClient.stop()
+                self.femClient.stop()
                 pass
             except FemClientError as e:
                 rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION

@@ -13,6 +13,7 @@
     <femStartTrainSource 	type="int" val="1"/>            <!-- Train start signal source 0=XFEL Clock & Ctrl system, 1=Software, 2=LCLS, 3=Petra III -->
     <femStartTrainDelay 	type="int" val="90"/>			<!-- Delay between trigger arrival and start of train [in units of 10 ns] -->
     <femStartTrainInhibit 	type="int" val="10168"/>        <!-- Inhibit period after each trigger [in ASIC clock cycles] MINIMUM: Duration of Cmd Seq XML file (!) -->
+															<!-- At PETRA for Trigger Rate = N Hz set ext_trig_strobe_inhibit = N x 10**7 x 22 / 192 -->
     <femStartTrainPolarity 	type="int" val="0"/>            <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
     <femVetoPolarity 		type="int" val="1"/>            <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
 
@@ -28,6 +29,14 @@
 	<cccEmulatorFixedRateStarts     type="bool" val="False"/>        	<!--  Enables fixed rate train triggers, only used if running with cccEmulationMode = True -->
 	<cccEmulatorIntervalBetweenFixedRateStarts  type="int" val="10000000"/>	<!-- Interval (in 100 mhz clock periods) between fixed rate triggers, only used if running with cccEmulationMode = True -->
 	<cccEmulatorNumFixedRateStarts    type="int" val="1"/>		<!-- Number of fixed rate triggers to send this run - Applicable if cccEmulationMode=True -->
+
+	<!-- New commands added: 24/02/2016 -->
+    <cccProvideNumberImages type="bool" val="True"/>     		<!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
+    <timeoutTrain type="int" val="30"/>                  		<!-- Timeout in seconds on waiting for next Train during run -->
+    <numPulsesInTrainOverride type="int" val="2700"/>           <!-- Length of XRay Pulse Train (number pulses) -->    
+    <femPpcImageReordering type="bool" val="True"/>
+    <trainGenInterval type="int" val="100000000"/>				<!-- gap (in asic clocks) between trains if internally generated -->
+
 
 	<femAsicTestDataPatternType type="int" val="0"/>			<!-- Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image' -->
 	<femPpcEmulatePipeline      type="bool" val="True"/>     	<!-- Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors -->

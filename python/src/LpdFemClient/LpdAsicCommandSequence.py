@@ -192,7 +192,17 @@ class LpdAsicCommandSequence():
                         if nops > 0:
                             localNopsSum += nops
 
-                    
+                        # count number of commands between start_write_pointer and start_trigger_pointer for pipeline latency 
+                    if cmd == 'start_write_pointer':
+                        self.latency_counter+=1
+                        self.num_start_write_pointers+=1
+                    elif cmd == 'start_trigger_pointer':
+                        self.num_start_trigger_pointers+=1
+                        self.latency = self.latency_counter
+                    else:   # increment for commands between start_write_pointer and start_trigger_pointer
+                        if self.latency_counter > 0:                         
+                            self.latency_counter+=1   
+                
                     # Append packed command word to the encoded sequence the number of times
                     # specified by the count attribute
                     encodedSequence.extend([cmdWord] * count)
@@ -223,7 +233,28 @@ class LpdAsicCommandSequence():
         '''
         
         return self.total_number_words
+    
+    def getLatency(self):
+        '''
+        Returns the latency = number of commands between start write and start trigger pointers
+        '''
         
+        return self.latency
+        
+    def getNumStartWritePointers(self):
+        '''
+        Returns the number of Start Write Pointer commands in file ; should be only one
+        '''
+        
+        return self.num_start_write_pointers
+
+    def getNumStartTriggerPointers(self):
+        '''
+        Returns the number of Start Trigger Pointer commands in file ; should be only one
+        '''
+        
+        return self.num_start_trigger_pointers
+
     def getCountAttrib(self, theElement):
         '''
         Returns the value of the count attribute of the specified element if it exists,

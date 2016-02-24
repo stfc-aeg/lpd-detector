@@ -516,7 +516,7 @@ class LpdDeviceParameters(object):
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
         
         self.expectedParameters['numberImages']                 = AttributeContainer(uint32, 'NumberImages', 'Sets the number of images per trigger',
-                                                                         0, 512, 4,
+                                                                         0, 511, 4,
                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
         
         self.expectedParameters['integrationCycles']            = AttributeContainer(uint32, 'integrationCycles', 'Sets the number of integration cycles per images',
@@ -655,7 +655,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['cccProvideNumberImages']         = AttributeContainer(bool, 'cccProvideNumberImages', 'ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages',
-                                                                          (True, False), None, False,
+                                                                          (True, False), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['cccVetoStartDelay']              = AttributeContainer(uint32, 'cccVetoStartDelay', 'Adjust timing of veto arrival (in steps of clock cycles)',
@@ -678,14 +678,10 @@ class LpdDeviceParameters(object):
                                                                           (True, False), None, False,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
-        self.expectedParameters['cccEmulatorIntervalBetweenFixedRateStarts']     = AttributeContainer(uint32, 'cccEmulatorIntervalBetweenFixedRateStarts', 'Interval (in 100 mhz clock periods) between fixed rate triggers, only used if running with cccEmulationMode = True',
+        self.expectedParameters['trainGenInterval']     = AttributeContainer(uint32, 'trainGenInterval', 'Interval (in 100 mhz clock periods) between internally generated Train start commands',
                                                                           0, 4294967295, 10000000,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['cccEmulatorNumFixedRateStarts']         = AttributeContainer(uint32, 'cccEmulatorNumFixedRateStarts', 'Number of fixed rate triggers to send this run - Applicable if cccEmulationMode=True',
-                                                                          0, 4294967295,  1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-                                
+                                        
         self.expectedParameters['femAsicTestDataPatternType']            = AttributeContainer(uint32, 'FemAsicTestDataPatternType', 'Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
@@ -700,7 +696,7 @@ class LpdDeviceParameters(object):
 
         self.expectedParameters['femLpdClientVersion']                   = AttributeContainer(uint32, 'FemLpdClientVersion', ' LpdFemClient Software Version - Read Only',
                                                                           0, 4294967295, 0x10000004,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+                                                                          AccessRead, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femTrainIdInitLsw']                     = AttributeContainer(uint32, 'FemTrainIdInitLsw', 'Train ID initial (lower 32-bit) value, Not applicable for C&C nor Data Checker',
                                                                           0, 4294967295,  1,
@@ -709,6 +705,19 @@ class LpdDeviceParameters(object):
         self.expectedParameters['femTrainIdInitMsw']                     = AttributeContainer(uint32, 'FemTrainIdInitMsw', 'Train ID initial (upper 32-bit) value, Not applicable for C&C nor Data Checker',
                                                                           0, 4294967295,  0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['timeoutTrain']                          = AttributeContainer(uint32, 'timeoutTrain', 'Timeout in seconds on waiting for next Train during run',
+                                                                          0, 4294967295,  10,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['numPulsesInTrainOverride']                     = AttributeContainer(uint32, 'numPulsesInTrainOverride', 'Length of XRay Pulse Train (number pulses)',
+                                                                          0, 4294967295,  1536,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        #self.expectedParameters['pipelineLatency']                     = AttributeContainer(uint32, 'pipelineLatency', 'Latency of Asic pipeline. Separation in number of pulses between pipeline write and trigger pointers ;  NB Must be set by user to match contents of asic command file. Min = 2. Max = 511.',
+                                                                          #0, 511, 2,
+                                                                          #AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
 
         # 
         # Firmware version variables - used to obtain read only, firmware version numbers

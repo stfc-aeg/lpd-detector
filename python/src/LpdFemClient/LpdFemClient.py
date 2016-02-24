@@ -4631,122 +4631,119 @@ class LpdFemClient(FemClient):
         self.cccVetoPatternFile = aValue
     
     def trainGenIntervalGet(self):
-        ''' 
+        ''' Get gap (in asic clocks) between trains if internally generated in CC emulation mode
         '''
         return self.trainGenInterval
     
     def trainGenIntervalSet(self, aValue):
-        ''' 
+        '''  Set gap (in asic clocks) between trains if internally generated in CC emulation mode
         '''
         self.trainGenInterval = aValue
 
     def cccEmulatorNumFixedRateStartsGet(self):
-        ''' 
+        ''' Get Number of fixed rate triggers to send this run in CC emulation mode
         '''
         return self.cccEmulatorNumFixedRateStarts
     
     def cccEmulatorNumFixedRateStartsSet(self, aValue):
-        ''' 
+        ''' Set Number of fixed rate triggers to send this run in CC emulation mode
         '''
         self.cccEmulatorNumFixedRateStarts = aValue
 
     def femAsicTestDataPatternTypeGet(self):
-        ''' 
+        ''' Get type of Asic pattern data used if Asic test pattern enabled.
         '''
         return self.femAsicTestDataPatternType
     
     def femAsicTestDataPatternTypeSet(self, aValue):
-        ''' 
+        ''' Set type of Asic pattern data used if Asic test pattern enabled.
         '''
         self.femAsicTestDataPatternType = aValue
 
     def femPpcEmulatePipelineGet(self):
-        ''' 
+        ''' Get whether  LPD Asic Pipeline Emulation is enabled to compute the Pulse Nr and Cell Id for the Image Descriptors.
         '''
         return self.femPpcEmulatePipeline
     
     def femPpcEmulatePipelineSet(self, aValue):
-        ''' 
+        ''' Set whether  LPD Asic Pipeline Emulation is enabled to compute the Pulse Nr and Cell Id for the Image Descriptors.
         '''
         self.femPpcEmulatePipeline = aValue
 
     def femPpcImageReorderingGet(self):
-        ''' 
+        ''' Get whether Image Reordering is enabled in readout. 
         '''
         return self.femPpcImageReordering
     
     def femPpcImageReorderingSet(self, aValue):
-        ''' 
+        ''' Set whether Image Reordering is enabled in readout.
         '''
         self.femPpcImageReordering = aValue
 
     def femLpdClientVersionGet(self):
-        ''' 
+        ''' Get version of LpdClient software (read only)
         '''
         return self.femLpdClientVersion
     
-    def femLpdClientVersionSet(self, aValue):
-        ''' 
-        '''
-        self.femLpdClientVersion = aValue
+#     def femLpdClientVersionSet(self, aValue):    #TODO: Set function required by API?
 
     def femTrainIdInitLswGet(self):
-        ''' 
+        ''' Get init value for train id (only used if cccSystemMode = 0)  lower 32b value
         '''
         return self.femTrainIdInitLsw
     
     def femTrainIdInitLswSet(self, aValue):
-        ''' 
+        ''' Set init value for train id (only used if cccSystemMode = 0)  lower 32b value
         '''
         self.femTrainIdInitLsw = aValue
 
     def femTrainIdInitMswGet(self):
-        ''' 
+        ''' Get init value for train id (only used if cccSystemMode = 0)  upper 32b value
         '''
         return self.femTrainIdInitMsw
     
     def femTrainIdInitMswSet(self, aValue):
-        ''' 
+        ''' Set init value for train id (only used if cccSystemMode = 0)  upper 32b value
         '''
         self.femTrainIdInitMsw = aValue
 
     def timeoutTrainSet(self, aValue):
-        ''' 
+        ''' Set Timeout in seconds on waiting for next Train during run()
         '''
         self.timeoutTrain = aValue
 
     def timeoutTrainGet(self):
-        ''' 
+        ''' Get Timeout in seconds on waiting for next Train during run()
         '''
         return self.timeoutTrain
     
     def numPulsesInTrainOverrideSet(self, aValue):
-        ''' 
+        ''' Set Length of XRay Pulse Train in number of pulses
         '''
         self.numPulsesInTrainOverride = aValue
 
     def numPulsesInTrainOverrideGet(self):
-        ''' 
+        ''' Get Length of XRay Pulse Train in number of pulses
         '''
         return self.numPulsesInTrainOverride
     
     def cccIoDelayNumberTapsSet(self, aValue):
-        ''' 
+        ''' Set Number of Delay Taps for IODELAY on CC cmd and veto inputs
         '''
         self.cccIoDelayNumberTaps = aValue
 
     def cccIoDelayNumberTapsGet(self):
-        ''' 
+        ''' Get Number of Delay Taps for IODELAY on CC cmd and veto inputs
         '''
         return self.cccIoDelayNumberTaps
 
     def cccOutputClockDownscaleSet(self, aValue):
-        ''' 
+        ''' Set downscale factor (applied to asic clock) for clock output on CC RJ45 used for Power Card synchronisation
         '''
         self.cccOutputClockDownscale = aValue
 
     def cccOutputClockDownscaleGet(self):
-        ''' 
+        ''' Get downscale factor (applied to asic clock) for clock output on CC RJ45 used for Power Card synchronisation
         '''
         return self.cccOutputClockDownscale
 
