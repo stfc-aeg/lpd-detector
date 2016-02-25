@@ -314,7 +314,7 @@ class LpdFemGui:
             self.dataListenAddr = self.loadedConfig['tenGig0DestIp']
             self.dataListenPort = self.loadedConfig['tenGig0DestPort']
         except Exception as e:
-            print >> sys.stderr, "Got exception storing reaodut config variables", e 
+            print >> sys.stderr, "Got exception, missing XML config variable", e 
         
         # Set ASIC setup parameters file
         self.msgPrint("Loading Setup Params from file %s" % currentParams['setupParamFile'])
