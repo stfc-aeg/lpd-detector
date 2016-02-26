@@ -71,6 +71,11 @@ class LpdAsicCommandSequence():
         
         # Count total number of words
         self.total_number_words = 0
+        
+        self.num_start_write_pointers = 0
+        self.num_start_trigger_pointers = 0
+        self.latency_counter = 0
+        self.latency = 2    # default to minimum
                 
         # Parse the XML specified, either from a file if the fromFile flag
         # was set or from the string passed
@@ -192,7 +197,7 @@ class LpdAsicCommandSequence():
                         if nops > 0:
                             localNopsSum += nops
 
-                        # count number of commands between start_write_pointer and start_trigger_pointer for pipeline latency 
+                    # count number of commands between start_write_pointer and start_trigger_pointer for pipeline latency 
                     if cmd == 'start_write_pointer':
                         self.latency_counter+=1
                         self.num_start_write_pointers+=1
@@ -202,7 +207,7 @@ class LpdAsicCommandSequence():
                     else:   # increment for commands between start_write_pointer and start_trigger_pointer
                         if self.latency_counter > 0:                         
                             self.latency_counter+=1   
-                
+                    
                     # Append packed command word to the encoded sequence the number of times
                     # specified by the count attribute
                     encodedSequence.extend([cmdWord] * count)

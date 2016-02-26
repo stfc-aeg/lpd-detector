@@ -638,8 +638,8 @@ class LpdDeviceParameters(object):
                                                                           (0, 1), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femModuleId']                  = AttributeContainer([uint32]*16, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from',
-                                                                          0, 4294967295, [0]*16,
+        self.expectedParameters['femModuleId']                  = AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from  0 - 15',
+                                                                          0, 15, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         # 
@@ -694,10 +694,6 @@ class LpdDeviceParameters(object):
                                                                           (True, False), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femLpdClientVersion']                   = AttributeContainer(uint32, 'FemLpdClientVersion', ' LpdFemClient Software Version - Read Only',
-                                                                          0, 4294967295, 0x10000004,
-                                                                          AccessRead, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
         self.expectedParameters['femTrainIdInitLsw']                     = AttributeContainer(uint32, 'FemTrainIdInitLsw', 'Train ID initial (lower 32-bit) value, Not applicable for C&C nor Data Checker',
                                                                           0, 4294967295,  1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
@@ -738,6 +734,10 @@ class LpdDeviceParameters(object):
         self.expectedParameters['femCfgSp3FirmwareVersion']     = AttributeContainer(uint32, 'FemCfgSp3FirmwareVersion', 'FEM Config SP3 FPGA Firmware Version',
                                                                           0, 4294967295,  None,
                                                                           AccessRead, None, ExternalParam, 'AllOk.Idle', "once", None, None)
+        self.expectedParameters['femLpdClientVersion']          = AttributeContainer(uint32, 'FemLpdClientVersion', ' LpdFemClient Software Version - Read Only',
+                                                                          0, 4294967295, 0x10000004,
+                                                                          AccessRead, None, ExternalParam, 'AllOk.Idle', "once, set")
+
     
     def get(self):
         '''

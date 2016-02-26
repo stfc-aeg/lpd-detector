@@ -13,6 +13,7 @@
     <femStartTrainSource 	type="int" val="1"/>             	<!-- Train start signal source 0=XFEL Clock & Ctrl system, 1=Software, 2=LCLS, 3=Petra III -->
     <femStartTrainDelay 	type="int" val=" 90"/>				<!-- Delay between trigger arrival and start of train [in ASIC clock periods] -->
     <femStartTrainInhibit 	type="int" val="0"/>            	<!-- Inhibit period after each trigger [in ASIC clock cycles]  -->
+																<!-- At PETRA for Trigger Rate = N Hz set ext_trig_strobe_inhibit = N x 10**7 x 22 / 192 -->
     <femStartTrainPolarity	type="int" val="1"/>          		<!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
     <femVetoPolarity 		type="int" val="0"/>                <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
 
@@ -25,37 +26,15 @@
     <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
     <cccVetoPatternFile   	   type="str" val="config/veto_file_test.xml"/>-->     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
 
-	<cccEmulatorFixedRateStarts     type="bool" val="False"/>        	<!--  Enables fixed rate train triggers, only used if running with cccEmulationMode = True -->
-	<cccEmulatorIntervalBetweenFixedRateStarts  type="int" val="10000000"/>	<!-- Interval (in 100 mhz clock periods) between fixed rate triggers, only used if running with cccEmulationMode = True -->
-	<cccEmulatorNumFixedRateStarts    type="int" val="1"/>		<!-- Number of fixed rate triggers to send this run - Applicable if cccEmulationMode=True -->
-
-	<femAsicTestDataPatternType type="int" val="0"/>			<!-- Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image' -->
-	<femPpcEmulatePipeline      type="bool" val="True"/>     	<!-- Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors -->
-	<femPpcImageReordering      type="bool" val="True"/>        <!-- Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled -->
-	<femTrainIdInitLsw          type="int" val="1"/>		 	<!-- Train ID initial (lower 32-bit) value -->
-	<femTrainIdInitMsw          type="int" val="0"/>		 	<!-- Train ID initial (upper 32-bit) value -->
 
     <!-- 'Expert' Variables: -->
-    <tenGig0SourceMac 		type="str" val="62-00-00-00-00-01"/>
-    <tenGig0SourceIp 		type="str" val="10.0.0.2"/>
-    <tenGig0SourcePort 		type="int" val="0"/>
-    <tenGig0DestMac 		type="str" val="00-07-43-10-65-A0"/>  <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
-    <tenGig0DestIp 			type="str" val="10.0.0.1"/>
-    <tenGig0DestPort 		type="int" val="61649"/>
-    <tenGig0DataFormat 		type="int" val="0"/>              	<!-- Data format type, 0=counting data - doesn't affect sensor data -->
-    <tenGig0DataGenerator 	type="int" val="1"/>           		<!-- Data generator 1=DataGen 2=PPC DDR2 -->
-    <tenGig0FrameLength 	type="int" val="0x10000"/>			<!-- 10GigE 0 Frame length in bytes -->
-    <tenGig0NumberOfFrames 	type="int" val="1"/>          		<!-- Number of frames to send in each cycle -->
-    <tenGigFarmMode 		type="int" val="1"/>                <!-- 10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists-->
-    <tenGigInterframeGap 	type="int" val="0"/>
-    <tenGigUdpPacketLen 	type="int" val="8000"/>
-
     <femEnableTenGig 				type="bool" val="True"/>    <!-- Enables transmission of image data via 10GigE UDP interface -->
     <femDataSource 					type="int"  val="1"/>       <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
-
+	 
+	<femAsicEnableMask 				type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>            <!-- Which ASICs to enable  [0=Disable] -->
     <femAsicPixelFeedbackOverride	type="int"  val="1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
     <femAsicPixelSelfTestOverride	type="int"  val="-1"/>   	<!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
-
+	<!-- <femReadoutOperatingMode		type="int"  val="0"/>  --> <!-- Not yet implemented (?) --> 
     <femAsicDataType 				type="int"  val="0"/>       <!-- 0=Sensor Data, 1=Fem Internal counting, 2=ASIC Pseudo random -->
     <femAsicLocalClock 				type="int"  val="0"/>       <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
     <femAsicSetupLoadMode 			type="int"  val="0"/>       <!-- ASIC control load mode 0=parallel, 1=serial -->
@@ -67,6 +46,36 @@
     <femAsicGainOverride			type="bool" val="False"/>	<!-- FEM Gain Selection Mode; False=Gain set by femAsicGain, True=Asic Command Word decides -->
     <femDebugLevel 					type="int" val="0"/>
 
+	<!-- New commands added: 24/02/2016 -->
+    <timeoutTrain type="int" val="30"/>                  		<!-- Timeout in seconds on waiting for next Train during run -->
+    <numPulsesInTrainOverride type="int" val="2700"/>           <!-- Length of XRay Pulse Train (number pulses) -->    
+    <femPpcImageReordering type="bool" val="True"/>
+    <trainGenInterval type="int" val="100000000"/>				<!-- gap (in asic clocks) between trains if internally generated -->
+
+                                    'trainGenInterval', 
+                                    'femAsicTestDataPatternType', 'femPpcEmulatePipeline', 'femPpcImageReordering',
+                                    'femTrainIdInitLsw', 'femTrainIdInitMsw', 'timeoutTrain', 'numPulsesInTrainOverride', 'trainGenInterval']
+	<femAsicTestDataPatternType type="int" val="0"/>			<!-- Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image' -->
+	<femPpcEmulatePipeline      type="bool" val="True"/>     	<!-- Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors -->
+	<femPpcImageReordering      type="bool" val="True"/>        <!-- Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled -->
+	<femTrainIdInitLsw          type="int" val="1"/>		 	<!-- Train ID initial (lower 32-bit) value -->
+	<femTrainIdInitMsw          type="int" val="0"/>		 	<!-- Train ID initial (upper 32-bit) value -->
+
+    <tenGig0SourceMac 		type="str" val="62-00-00-00-00-01"/>
+    <tenGig0SourceIp 		type="str" val="10.0.0.2"/>
+    <tenGig0SourcePort 		type="int" val="0"/>
+    <tenGig0DestMac 		type="str" val="00-07-43-10-65-A0"/>  <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
+    <tenGig0DestIp 			type="str" val="10.0.0.1"/>
+    <tenGig0DestPort 		type="int" val="61649"/>
+    <tenGig0DataGenerator 	type="int" val="1"/>           		<!-- Data generator 1=DataGen 2=PPC DDR2 -->
+    <tenGig0DataFormat 		type="int" val="0"/>              	<!-- Data format type, 0=counting data - doesn't affect sensor data -->
+    <tenGig0FrameLength 	type="int" val="0x10000"/>			<!-- 10GigE 0 Frame length in bytes -->
+    <tenGig0NumberOfFrames 	type="int" val="1"/>          		<!-- Number of frames to send in each cycle -->
+    <tenGigFarmMode 		type="int" val="1"/>                <!-- 10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists-->
+
+<!-- Commands not yet documented by "XFEL LPD Readout Config Manual" -->
+x    <tenGigInterframeGap 	type="int" val="0"/>
+x    <tenGigUdpPacketLen 	type="int" val="8000"/>
     <femAsicModuleType				type="int" val="0"/>		<!-- 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone' -->
 
 </lpd_readout_config>

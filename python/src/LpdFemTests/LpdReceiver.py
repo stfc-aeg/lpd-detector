@@ -187,6 +187,7 @@ class ImageDisplay(FigureCanvas):
         self.bTimeStamp     = False if timeinfo == 0 else True
         self.bHDF5          = False if writedata == 0 else True
         self.lpdheadertrailer = lpdheadertrailer
+        self.subtractPedestals = subtractPedestals
         # Remember number of plots in figure in case future train contain too many images
         self.plotsInFigure = canvasrows * canvascols
 
@@ -804,7 +805,7 @@ if __name__ == "__main__":
     parser.add_argument("--debuglevel",     help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=range(9), default=0)
     parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
     parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
-    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=None, 1=32 byte header, 2=64 byte hdr; D: 0)",type=int, default=0)
+    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=None, 1=32 byte header, 2=64 byte hdr, 3=64b fields little-endian (f/w vers $0298); D: 0)",type=int, default=0)
     parser.add_argument("--subtractPedestals",       help="Subtract pedestals (0=Disable, 1=Enable; D: 0)",      type=int, choices=[0, 1], default=0)   
     args = parser.parse_args()
 

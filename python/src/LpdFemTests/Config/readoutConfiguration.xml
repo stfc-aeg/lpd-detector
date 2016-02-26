@@ -26,10 +26,6 @@
     <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
     <cccVetoPatternFile		   type="str" val="Config/VetoPatterns/veto_file_test.xml"/>     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
 
-	<cccEmulatorFixedRateStarts     type="bool" val="False"/>        	<!--  Enables fixed rate train triggers, only used if running with cccEmulationMode = True -->
-	<cccEmulatorIntervalBetweenFixedRateStarts  type="int" val="10000000"/>	<!-- Interval (in 100 mhz clock periods) between fixed rate triggers, only used if running with cccEmulationMode = True -->
-	<cccEmulatorNumFixedRateStarts    type="int" val="1"/>		<!-- Number of fixed rate triggers to send this run - Applicable if cccEmulationMode=True -->
-
 	<!-- New commands added: 24/02/2016 -->
     <cccProvideNumberImages type="bool" val="True"/>     		<!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
     <timeoutTrain type="int" val="30"/>                  		<!-- Timeout in seconds on waiting for next Train during run -->

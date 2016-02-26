@@ -4685,8 +4685,6 @@ class LpdFemClient(FemClient):
         '''
         return self.femLpdClientVersion
     
-#     def femLpdClientVersionSet(self, aValue):    #TODO: Set function required by API?
-
     def femTrainIdInitLswGet(self):
         ''' Get init value for train id (only used if cccSystemMode = 0)  lower 32b value
         '''
