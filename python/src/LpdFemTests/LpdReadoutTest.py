@@ -179,17 +179,17 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp):
         else:
             asicSetupParams = "Config/SetupParams/Setup_Serial_8through1.xml"    # Left to right: ascending order
             asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_V2.xml'
-#        asicSetupParams = "Config/SetupParams/Setup_Serial_1through8.xml"    # Left to right: ascending order
-#        asicSetupParams = "Config/SetupParams/Setup_Serial_8through1.xml"    # Left to right: ascending order
-            asicSetupParams = "Config/SetupParams/Setup_Serial_XFEL.xml"
+#            asicSetupParams = "Config/SetupParams/Setup_Serial_XFEL.xml"
 #            asicSetupParams = "Config/SetupParams/Setup_Serial_KLASSE.xml"
 
     #configFilename = 'Config/readoutConfiguration.xml'
-    vetoFilename   = 'Config/VetoPatterns/veto_file_test.xml'
-#    asicSetupParams = "/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/SetupParams/Setup_Matt.xml"    # Left to right: ascending order
-#    asicCmdSequence = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Command_LongExposure_V2.xml'
-    configFilename = '/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Johns_settings.xml'
-    configFilename ='/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/superModuleReadout.xml'
+    configFilename = 'Config/readoutConfiguration_02b0.xml'
+    
+    # Testing using the same configurations file as on John's branch:
+    asicSetupParams = "Config/SetupParams/Setup_LowPower.xml"
+    asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_Start_and_Stop_with_trigger_section.xml'
+    configFilename = 'Config/readoutConfiguration_John.xml'
+    vetoFilename   = 'Config/VetoPatterns/veto_pattern_test2.xml'    # Same as from John's readoutConfiguration file entry
     
     print "================    XML Filenames   ================"
     print asicSetupParams

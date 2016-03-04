@@ -68,7 +68,7 @@
     <cccStopDelay type="int" val="0"/>                   <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccResetDelay type="int" val="0"/>                  <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
 
-    <cccVetoPatternFile type="str" val="Config/VetoPatterns/veto_pattern_test2.xml"/>
+    <!-- <cccVetoPatternFile type="str" val="Config/VetoPatterns/veto_pattern_test2.xml"/> -->
 
     <timeoutTrain type="int" val="30"/>                  <!-- Timeout in seconds on waiting for next Train during run -->
     
