@@ -4,6 +4,8 @@ Created on Mar 22, 2012
 @author: tcn45
 '''
 
+from __future__ import print_function
+
 import struct
 
 class FemAcquireConfig():
@@ -70,12 +72,12 @@ if __name__ == '__main__':
     
     testAcqConfig = FemAcquireConfig(testMode, testBufSize, testBufCount, testNumAcqs, testCoalesce)
     
-    print "Test acquire config parameters:"
-    print testAcqConfig
+    print("Test acquire config parameters:")
+    print(testAcqConfig)
     testPacked    = testAcqConfig.encode()
-    print "Packed acq config:", binascii.hexlify(testPacked)
+    print("Packed acq config:", binascii.hexlify(testPacked))
     
     reverseConfig = FemAcquireConfig(encoded=testPacked)
     testUnpacked  = reverseConfig.decode()
-    print "Unpacked reverse config:" , [hex(unpackedField) for unpackedField in testUnpacked]
+    print("Unpacked reverse config:" , [hex(unpackedField) for unpackedField in testUnpacked])
     

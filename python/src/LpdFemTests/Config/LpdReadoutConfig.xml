@@ -28,7 +28,7 @@
     <femAsicClockSource type="int" val="0"/>              <!--  0=FEM local clock 1=External -->
     <femAsicDataType type="int" val="0"/>                 <!-- 0=Normal Data, 1=Counting data, 2=Pseudo random -->
     <!-- femAsicEnableMask type="int" val="9999"/> --> <!-- Not set while API can't pass array -->
-    <femAsicGain type="int" val="9"/>                     <!-- 8=100x, 9=10x, 11=1x [WILL BE CHANGED TO 0=def, 3=100x, 2=10x, 1=1x SOON / ckd]-->
+    <femAsicGain type="int" val="10"/>                     <!-- 0=def, 100, 10, 1-->
 
     <femAsicGainOverride type="bool" val="False"/>        <!-- FEM Gain Selection Mode; False=Register, True=Asic Command Word XML decides -->
     

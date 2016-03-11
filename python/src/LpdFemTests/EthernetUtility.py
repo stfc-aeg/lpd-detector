@@ -2,29 +2,32 @@
     EthernetUtility.py - Some tool(s) for obtaining Ethernet card information
 '''
 
+from __future__ import print_function
+
 import os, re
 
 class EthernetUtility():
     
-    def __init__(self, ethernetNumber="eth0"):
+    def __init__(self, interface="eth0"):
         
+        self.interface = interface
         self.macAddress = ""
         self.ipAddress  = ""
         
-        self.ethernetInterface = os.popen("/sbin/ifconfig %s" % ethernetNumber)
-        #print "2"
+        self.ifconfig_data = os.popen("/sbin/ifconfig %s" % self.interface)
+        #print("2")
         try:
-            for line in self.ethernetInterface.readlines():
+            for line in self.ifconfig_data.readlines():
                 if 'HWaddr' in line:
                     self.macLine = line
-                    #print "'HWaddr': ", line
+                    #print("'HWaddr': ", line)
                 if 'inet addr:' in line:
                     self.ipLine = line
-                    #print "'inet addr':", line
+                    #print("'inet addr':", line)
         except Exception as e:
-            print "EthernetUtility error: ", e
-        #print "3"
-        self.ethernetInterface.close()
+            print("EthernetUtility error: ", e)
+        #print("3")
+        self.ifconfig_data.close()
         
         # If ethernetNumber's card doesn't exist, and uncatchable error thrown between "2" and "3"..!
     
@@ -36,10 +39,11 @@ class EthernetUtility():
         self.macAddress = None        
         try:
             self.macAddress = re.compile(r'HWaddr (\w+\:\w+\:\w+\:\w+\:\w+\:\w+)').search(self.macLine).group(1)
-        except IOError,(errno, strerror):
-            print "MAC Address IO Error(%s): %s" % (errno, strerror)
+        except IOError as e:
+            (errno, strerror) = e.args
+            print("MAC Address IO Error(%s): %s" % (errno, strerror))
         except AttributeError:
-            print "Error extracting MAC address"
+            print("Error extracting MAC address")
         else:
             # Replace ':' in MAC address with '-'
             self.macAddress = self.macAddress.replace(":", "-")
@@ -54,9 +58,10 @@ class EthernetUtility():
         try:
             self.ipAddress = re.compile(r'inet addr:(\d+\.\d+\.\d+\.\d+)').search(self.ipLine).group(1)
         except AttributeError:
-            print "EthernetUtility: Unable to extract IP address"
-        except IOError,(errno, strerror):
-            print "IP Address IO Error(%s): %s" % (errno, strerror)
+            print("EthernetUtility: Unable to extract IP address")
+        except IOError as e:
+            (errno, strerror) = e.args
+            print("IP Address IO Error(%s): %s" % (errno, strerror))
         
         return self.ipAddress
     
@@ -72,12 +77,12 @@ class EthernetUtility():
         try:
             ipEnding = int(ipList[3])
         except Exception as e:
-            print "obtainAddressEnding Error: ", e
+            print("obtainAddressEnding Error: ", e)
         if ipEnding is None:
             # try statement returned blank
             pass
         else:
-            #print "IP: ", ip, "ipList: ", ipList, "ipEnding: ", ipEnding, "\n"
+            #print("IP: ", ip, "ipList: ", ipList, "ipEnding: ", ipEnding, "\n")
             # Increment, eg 10.0.0.1 => 10.0.0.2
             ipList[3] = ipEnding + 1
             # Turn into string
@@ -92,11 +97,11 @@ if __name__ == '__main__':
     
     ethCard = EthernetUtility("eth1")
     
-    print "In ethernet interface: %s" % ethCard.ethernerNumber
+    print("In ethernet interface: %s" % ethCard.interface)
     mac     = ethCard.macAddressGet()
     srcIp   = ethCard.ipAddressGet()
     dstIp   = ethCard.obtainDestIpAddress(srcIp)
-    print "Src MAC: %r (%r)" % (mac, type(mac)) 
-    print "Src IP:  %r (%r)" % (srcIp,  type(srcIp))
-    print "Dst IP:  %r (%r)" % (dstIp,  type(dstIp))
+    print("Src MAC: %r (%r)" % (mac, type(mac))) 
+    print("Src IP:  %r (%r)" % (srcIp,  type(srcIp)))
+    print("Dst IP:  %r (%r)" % (dstIp,  type(dstIp)))
     

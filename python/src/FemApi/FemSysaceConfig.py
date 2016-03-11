@@ -4,6 +4,8 @@ Created on Jun 25, 2013
 @author: mt47
 '''
 
+from __future__ import print_function
+
 import struct
 
 class FemSysaceConfig():
@@ -85,20 +87,20 @@ if __name__ == '__main__':
     
     testImgSize = 64
     testSlot = 1
-    #testDescription = "TEST_FIRMWARE_UPLOAD"
-    testDescription = 0
+    testDescription = b'TEST_FIRMWARE_UPLOAD'
+    #testDescription = 0
     testFileDate = 1234567
     testUploadDate = 7654321
     
     testSysaceConfig = FemSysaceConfig(FemSysaceConfig.HEADER_MAGIC_WORD, testImgSize, testSlot, testDescription, testFileDate, testUploadDate, 0, 0, 0)
     
-    print "Test SystemACE config parameters:"
-    print testSysaceConfig
+    print("Test SystemACE config parameters:")
+    print(testSysaceConfig)
     testPacked    = testSysaceConfig.encode()
-    print "Packed config:", binascii.hexlify(testPacked)
+    print("Packed config:", binascii.hexlify(testPacked))
     
     reverseConfig = FemSysaceConfig(encoded=testPacked)
     testUnpacked  = reverseConfig.decode()
-    print testUnpacked, type(testUnpacked), [type(field) for field in testUnpacked]
-    print "Unpacked reverse config:" , [hex(unpackedField) for unpackedField in testUnpacked]
+    print(testUnpacked, type(testUnpacked), [type(field) for field in testUnpacked])
+    print("Unpacked reverse config:" , [unpackedField for unpackedField in testUnpacked])
     

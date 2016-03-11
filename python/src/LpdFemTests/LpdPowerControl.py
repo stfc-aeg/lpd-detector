@@ -4,6 +4,8 @@
     @author: ckd
 '''
 
+from __future__ import print_function
+
 import argparse, sys
 
 from FemClient.FemClient import  *
@@ -18,7 +20,7 @@ class LpdPowerControl(object):
     OFF = 0
     ON  = 1
     
-    def __init__(self, hostAddr=None, port=None, asicModule=None):
+    def __init__(self, hostAddr=None, port=None, asicModule=None, legacyPowerCard=False):
 
 #        moduleType = ""
         if asicModule == 0:
@@ -34,10 +36,10 @@ class LpdPowerControl(object):
 
         # Call superclass initialising function
         self.theDevice = LpdDevice()
-        rc = self.theDevice.open(hostAddr, port, asicModuleType=asicModule)
+        rc = self.theDevice.open(hostAddr, port, asicModuleType=asicModule, legacyPowerCard=legacyPowerCard)
         
         if rc != LpdDevice.ERROR_OK:
-            print "Failed to open FEM device: %s" % (self.theDevice.errorStringGet())
+            print("Failed to open FEM device: %s" % (self.theDevice.errorStringGet()))
             sys.exit()
         
     def updateQuantity(self, quantity, newValue):
@@ -50,10 +52,10 @@ class LpdPowerControl(object):
             rc = self.theDevice.paramSet(paramName, newValue)
             
             if rc!= self.theDevice.ERROR_OK:
-                print "Unable to set parameter '%s' to '%d', Error number %d: %s." % (paramName, newValue, rc, self.theDevice.errorStringGet())
+                print("Unable to set parameter '%s' to '%d', Error number %d: %s." % (paramName, newValue, rc, self.theDevice.errorStringGet()))
 
     def close(self):
-        print "Closing down Fem connection.."
+        print("Closing down Fem connection..")
         self.theDevice.close()
 
 
@@ -69,6 +71,8 @@ if __name__ == "__main__":
     parser.add_argument("--lv",         help="Switch LV on (1) or off (0)", type=int, choices=[0, 1], default=0)
     parser.add_argument("--hv",         help="Switch HV on (1) or off (0)", type=int, choices=[0, 1], default=0)
     parser.add_argument("--hvbias",     help="Set HV bias level (in volts) - BIAS ONLY CHANGED: if HV switched off (using --hv 0 flag)", type=int, default=-1)
+    parser.add_argument("--legacy",         help="Use legacy power card support",       action='store_true')
+    
     args = parser.parse_args()
 
     # Define FEM IP address, port etc
@@ -78,54 +82,55 @@ if __name__ == "__main__":
     lv          = args.lv
     hv          = args.hv
     hvbias      = args.hvbias
+    legacy      = args.legacy
 
     # Connect to fem..
-    powerControl = LpdPowerControl(host, port, asicModule)
+    powerControl = LpdPowerControl(host, port, asicModule, legacy)
     
     # Only use if they decided to switch off lv but switch on hv
     if (lv == 0) and (hv):
-        print "Illegal choice: You decided to switch on HV while switching off LV; Aborting.."
+        print("Illegal choice: You decided to switch on HV while switching off LV; Aborting..")
         powerControl.close()
         sys.exit()
     if (lv == 1) and (hv == 1) and (hvbias > -1):
-        print "Illegal choice: Switching on LV, HV and changing HV bias; Aborting.."
+        print("Illegal choice: Switching on LV, HV and changing HV bias; Aborting..")
         powerControl.close()
         sys.exit()
     
     # Execute according to supplied flags
     if lv:
-        print "Switching: LV on, ",
+        print("Switching: LV on, ", end=' ')
         powerControl.updateQuantity(quantity='asicPowerEnable', newValue=LpdPowerControl.ON)
         
         # Is HV set to be switched on?
         if hv:
             # Yes - switch HV on
-            print "HV on.."
+            print("HV on..")
             powerControl.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.ON)
 
         else:
             # No - switch HV off
-            print "HV off.. ",
+            print("HV off.. ", end=' ')
             powerControl.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.OFF)
 
             # Change bias, if bias specified
             if hvbias > -1:
-                print "Setting HV bias to ", hvbias, " V.."
+                print("Setting HV bias to ", hvbias, " V..")
                 powerControl.updateQuantity(quantity='sensorBias', newValue=hvbias)
             else:
-                print ""
+                print("")
     else:
         # Switch off lv, BUT Switch off HV first
         
-        print "Switching: HV off, ",
+        print("Switching: HV off, ", end=' ')
         powerControl.updateQuantity(quantity='sensorBiasEnable', newValue=LpdPowerControl.OFF)
 
-        print "LV off.. ",
+        print("LV off.. ", end=' ')
         powerControl.updateQuantity(quantity='asicPowerEnable', newValue=LpdPowerControl.OFF)
         
         if hvbias > -1:
-            print "Setting HV bias to ", hvbias, " V.."
+            print("Setting HV bias to ", hvbias, " V..")
             powerControl.updateQuantity(quantity='sensorBias', newValue=hvbias)
         else:
-            print ""
+            print("")
 

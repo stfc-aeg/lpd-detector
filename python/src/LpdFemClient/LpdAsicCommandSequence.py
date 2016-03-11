@@ -4,6 +4,8 @@ Created on 20 Apr 2012
 @author: Tim Nicholls, STFC Application Engineering Group
 '''
 
+from __future__ import print_function
+
 from xml.etree.ElementInclude import ElementTree
 from xml.etree.ElementTree import ParseError
 
@@ -464,35 +466,35 @@ class LpdAsicCommandSequenceTest(unittest.TestCase):
 
         # Read entire XML file, with clock and control disabled
         cccEna=False
-        print "---------------------\nClock and control is set to be ", cccEna, "\n---------------------"
+        print("---------------------\nClock and control is set to be ", cccEna, "\n---------------------")
         fileCmdSeqComplete = LpdAsicCommandSequence(femAsicCmdSequenceComplete, fromFile=True, cccEnabled=cccEna)
         encodedSequenceComplete  = fileCmdSeqComplete.encode()
         nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
         nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
-        print "Complete          fast cmds file =%s: " %(femAsicCmdSequenceComplete)
-        print "Complete          fast cmds nr_words = %d, nr_nops =%d: " % (nr_wordsComplete, nr_nopsComplete)
-        print "encodedSequenceComplete:\n\n", encodedSequenceComplete
+        print("Complete          fast cmds file =%s: " %(femAsicCmdSequenceComplete))
+        print("Complete          fast cmds nr_words = %d, nr_nops =%d: " % (nr_wordsComplete, nr_nopsComplete))
+        print("encodedSequenceComplete:\n\n", encodedSequenceComplete)
 
         # Read XML file but would clock and control enabled, trigger section will be omitted
         cccEna=True
-        print "---------------------\nClock and control is set to be ", cccEna, "\n---------------------"
+        print("---------------------\nClock and control is set to be ", cccEna, "\n---------------------")
         fileCmdSeqComplete = LpdAsicCommandSequence(femAsicCmdSequenceComplete, fromFile=True, cccEnabled=cccEna)
         encodedSequenceComplete  = fileCmdSeqComplete.encode()
         nr_wordsComplete = fileCmdSeqComplete.getTotalNumberWords()
         nr_nopsComplete  = fileCmdSeqComplete.getTotalNumberNops()
 
-        print "Without triggers, fast cmds nr_words = %d, nr_nops =%d: " % (nr_wordsComplete, nr_nopsComplete)
-        print "encodedSequenceComplete:\n\n", encodedSequenceComplete
+        print("Without triggers, fast cmds nr_words = %d, nr_nops =%d: " % (nr_wordsComplete, nr_nopsComplete))
+        print("encodedSequenceComplete:\n\n", encodedSequenceComplete)
         
         # Ask where trigger section begins ( .getTriggerLocation() will return (-1, -1) if clock and control disabled)
         (initial_nops, initial_words) = (fileCmdSeqComplete.getTriggerLocation())
-        print "Initial fast cmds nr_words = %d, nr_nops =%d: " % (initial_words, initial_nops)
+        print("Initial fast cmds nr_words = %d, nr_nops =%d: " % (initial_words, initial_nops))
 
         setupSection = encodedSequenceComplete[:initial_words]
         readoutSection = encodedSequenceComplete[initial_words:]
         
-        print "--------------------\nsetupSection:   \n", setupSection
-        print "--------------------\nreadoutSection: \n", readoutSection
+        print("--------------------\nsetupSection:   \n", setupSection)
+        print("--------------------\nreadoutSection: \n", readoutSection)
 
 if __name__ == '__main__':
          

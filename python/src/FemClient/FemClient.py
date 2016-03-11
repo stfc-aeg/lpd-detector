@@ -4,6 +4,8 @@ Created on 22 Mar 2011
 @author: tcn
 '''
 
+from __future__ import print_function
+
 import socket
 from FemApi.FemTransaction import FemTransaction
 from FemApi.FemConfig import FemConfig
@@ -11,6 +13,7 @@ from FemApi.FemAcquireConfig import FemAcquireConfig
 
 import binascii
 from types import *
+import sys
 
 class FemClientError(Exception):
     
@@ -33,7 +36,7 @@ class FemClient(object):
     '''
 
     def __init__(self, hostAddr=None, timeout=None):
-        #print "Connecting to FEM at", hostAddr
+        #print("Connecting to FEM at", hostAddr)
         self.femSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.femSocket.settimeout(timeout)
         self.femSocket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024*1024)
@@ -44,7 +47,7 @@ class FemClient(object):
                 self.femSocket.close()
             raise FemClientError("Socket connection timed out")
 
-        except socket.error, e:
+        except socket.error as e:
             if self.femSocket:
                 self.femSocket.close()
             raise FemClientError(str(e))
@@ -53,14 +56,14 @@ class FemClient(object):
              theAddr=None, thePayload=None, theReadLen=None, theTransaction=None):
 
         if theTransaction == None:
-            #print "Sending cmd: ", theCmd, "bus:", theBus, "width:", theWidth, "addr:", theAddr, "values: ", thePayload
+            #print("Sending cmd: ", theCmd, "bus:", theBus, "width:", theWidth, "addr:", theAddr, "values: ", thePayload)
         
             theTransaction = FemTransaction(cmd=theCmd, bus=theBus, width=theWidth, state=theState, 
                                            addr=theAddr, payload=thePayload, readLen=theReadLen)
         data = theTransaction.encode()
         try:
             self.femSocket.sendall(data)
-        except socket.error, e:
+        except socket.error as e:
             if self.femSocket:
                 self.femSocket.close()
             raise FemClientError("Socket error: %s" % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
@@ -69,7 +72,7 @@ class FemClient(object):
         initRecvLen = FemTransaction.headerSize()
         try:
             data = self.femSocket.recv(initRecvLen)
-        except socket.error, e:
+        except socket.error as e:
             if self.femSocket:
                 self.femSocket.close()
             raise FemClientError("Socket error : %s"  % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
@@ -78,7 +81,7 @@ class FemClient(object):
             raise FemClientError("FEM has closed socket connection", FemClientError.ERRNO_SOCK_CLOSED)
         
         response = FemTransaction(encoded=data)
-        #print "Response payload length:", response.payloadLen
+        #print("Response payload length:", response.payloadLen)
         
         while response.incomplete:
             payloadRecvLen = response.payloadRemaining
@@ -138,7 +141,12 @@ class FemClient(object):
         address = FemConfig.configAddress
         length  = FemConfig.configSize()
         values = self.read(bus, width, address, length)
-        encoded = ''.join([chr(x) for x in values])
+
+        if sys.version_info > (3,):
+            encoded = bytes(values)
+        else:
+            encoded = ''.join([chr(x) for x in values])
+
         theConfig = FemConfig(encoded=encoded)
         
         return theConfig

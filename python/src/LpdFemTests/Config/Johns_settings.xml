@@ -29,7 +29,7 @@
     <femAsicClockSource type="int" val="0"/>              <!-- 0=FEM local clock 1=Sync with Xray 2=Petra clock sync 3=Diamond B16-->
     <femAsicDataType type="int" val="0"/>                 <!-- 0=Normal Data, 1=Counting data, 2=Pseudo random -->
     <femAsicEnableMask type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>            <!-- .. -->
-    <femAsicGain type="int" val="3"/>                     <!-- 0=normal, 3=100x, 2=10x, 1=1x -->
+    <femAsicGain type="int" val="100"/>                     <!-- 0=normal, 100, 10, 1 -->
     <femAsicGainOverride type="bool" val="False"/>        <!-- FEM Gain Selection Mode; False=Register, True=Asic Command Word XML decides -->
     
     <femAsicLocalClock type="int" val="0"/>               <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->

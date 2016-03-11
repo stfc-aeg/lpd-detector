@@ -4,6 +4,8 @@ Created on 20 Apr 2012
 @author: Tim Nicholls, STFC Application Engineering Group
 '''
 
+from __future__ import print_function
+
 from xml.etree.ElementInclude import ElementTree
 from xml.etree.ElementTree import ParseError
 import os # os.getcwd()
@@ -86,7 +88,7 @@ class LpdAsicBunchPattern():
                 if value == -1:
                     raise LpdAsicBunchPatternError('Error XML tag %s missing value attribute' % cmd)
 #                else:
-#                    print "%s, pattern = %d, word = %d, value = %d" % (cmd, pattern, word, value)
+#                    print("%s, pattern = %d, word = %d, value = %d" % (cmd, pattern, word, value))
                 
                 if pattern != -1:
                     # pattern specified
@@ -130,7 +132,7 @@ class LpdAsicBunchPattern():
         # Get the count attribute or a default value of -1
         countAttrib = theElement.get(attribute, default='-1')
         
-        if self.bDebug: print "getPatternAttrib() ", countAttrib, type(countAttrib), " attribute = ", attribute
+        if self.bDebug: print("getPatternAttrib() ", countAttrib, type(countAttrib), " attribute = ", attribute)
         
         # Convert count to integer or raise an exception if this failed
         try:

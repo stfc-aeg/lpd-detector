@@ -1,6 +1,8 @@
 '''
     Author: ckd27546
     
+    Support for legacy LPD power card - new version is supported by LpdPowerCard.py
+    
     A helper class to handle I2C function calls initiated and completed by LpdFemClient
     That is: The API requests a set/get function call from LpdFemClient. 
             LpdFemClient constructs a function call targeted to LpdPowerCard
@@ -18,22 +20,28 @@ class LpdPowerCard(object):
 
     # ADC channel numbers
     HV_VOLTS_CHAN   =  0
+    V5_VOLTS_CHAN   =  1
     V12_VOLTS_CHAN  =  2
     HV_AMPS_CHAN    =  3
+    V5_AMPS_CHAN    =  4
     V12_AMPS_CHAN   =  5
     PSU_TEMP_CHAN   =  6
-    V33A_VOLTS_CHAN =  8
-    V33E_VOLTS_CHAN =  9
-    V5_VOLTS_CHAN   = 10
-    V5_AMPS_CHAN    = 11
-    V33A_AMPS_CHAN  = 16
-    V33B_AMPS_CHAN  = 17
-    V33C_AMPS_CHAN  = 18
-    V33D_AMPS_CHAN  = 19
-    V33E_AMPS_CHAN  = 20
-    V33F_AMPS_CHAN  = 21
-    V33G_AMPS_CHAN  = 22
-    V33H_AMPS_CHAN  = 23
+    V25A_VOLTS_CHAN =  8
+    V25B_VOLTS_CHAN =  9
+    V25C_VOLTS_CHAN = 10
+    V25D_VOLTS_CHAN = 11
+    V25E_VOLTS_CHAN = 12
+    V25F_VOLTS_CHAN = 13
+    V25G_VOLTS_CHAN = 14
+    V25H_VOLTS_CHAN = 15
+    V25A_AMPS_CHAN  = 16
+    V25B_AMPS_CHAN  = 17
+    V25C_AMPS_CHAN  = 18
+    V25D_AMPS_CHAN  = 19
+    V25E_AMPS_CHAN  = 20
+    V25F_AMPS_CHAN  = 21
+    V25G_AMPS_CHAN  = 22
+    V25H_AMPS_CHAN  = 23
     SENSA_TEMP_CHAN = 24
     SENSB_TEMP_CHAN = 25
     SENSC_TEMP_CHAN = 26
@@ -49,6 +57,7 @@ class LpdPowerCard(object):
 
     # Bit numbers for status bits
     FEM_STATUS_BIT  =  2
+    EXT_TRIP_BIT    =  3
     FAULT_FLAG_BIT  =  4
     OVERCURRENT_BIT =  5
     HIGH_TEMP_BIT   =  6
@@ -101,24 +110,15 @@ class LpdPowerCard(object):
         
     def sensorVoltageGet(self, sensorIdx):
  
-        # Squash sensor index onto two remaining channels
-        if sensorIdx < 4:
-            channel = self.V33A_VOLTS_CHAN
-        else:
-            channel = self.V33E_VOLTS_CHAN
-            
-        adcVal = self.ad7998Read(self.AD7998ADDRESS[1], channel)
-        scale = 5.0
-        voltageValue = (adcVal * scale / 4095.0)
-        
-        return voltageValue 
-    
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[1], self.V25A_VOLTS_CHAN + sensorIdx)
+        scale = 3.0
+        return (adcVal * scale / 4095.0)
+
     def sensorCurrentGet(self, sensorIdx):
 
-        adcVal = self.ad7998Read(self.AD7998ADDRESS[2], self.V33A_AMPS_CHAN + sensorIdx)
-        scale = 16.6
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[2], self.V25A_AMPS_CHAN + sensorIdx)
+        scale = 10.0
         currentValue = (adcVal * scale / 4095.0)
-        
         return currentValue
 
     def sensorBiasGet(self):
@@ -157,9 +157,10 @@ class LpdPowerCard(object):
     
     def powerCardExtStatusGet(self):
         '''
-            This status bit is not present on the new (V2) power card
+            Get power card External status
         '''
-        return self.flag_message[0]
+        value = self.pcf7485ReadAllBits()
+        return self.flag_message[ (value & (1 << self.EXT_TRIP_BIT)) != 0]
     
     def powerCardFaultGet(self):
         '''
@@ -236,16 +237,16 @@ class LpdPowerCard(object):
         '''
             Get Fem 5V Supply Voltage [V]
         '''
-        adcVal = self.ad7998Read(self.AD7998ADDRESS[1], self.V5_VOLTS_CHAN)
-        scale = 10.0
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V5_VOLTS_CHAN)
+        scale = 6.0
         return (adcVal * scale / 4095.0)
 
     def femCurrentGet(self):
         '''
             Get Fem 5V Supply Current [A]
         '''
-        adcVal = self.ad7998Read(self.AD7998ADDRESS[1], self.V5_AMPS_CHAN)
-        scale = 16.6
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V5_AMPS_CHAN)
+        scale = 10.0
         return (adcVal * scale / 4095.0)
 
     def digitalVoltageGet(self):

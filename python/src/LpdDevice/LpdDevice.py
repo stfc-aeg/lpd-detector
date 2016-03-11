@@ -6,8 +6,10 @@ Created on 18 Sep 2012
 @author: Tim Nicholls, STFC Application Engineering Group
 '''
 
+from __future__ import print_function, absolute_import
+
 from LpdFemClient.LpdFemClient import LpdFemClient, FemClientError
-from LpdDeviceParameters import *
+from LpdDevice.LpdDeviceParameters import *
 import time
 
 class LpdDevice(object):
@@ -57,7 +59,7 @@ class LpdDevice(object):
         self.expectedParams = LpdDeviceParameters().get()
         
         # Generate attributes containing default value for the internal parameters
-        for param, attrib in self.expectedParams.iteritems():
+        for param, attrib in self.expectedParams.items():
             if attrib.isInternal:
                 setattr(self, param, attrib.defaultValue)
         
@@ -69,7 +71,7 @@ class LpdDevice(object):
         '''
         return repr(self.errorString)
     
-    def open(self, host, port, timeout=defaultTimeout, asicModuleType=0):
+    def open(self, host, port, timeout=defaultTimeout, asicModuleType=0, legacyPowerCard=False):
         '''
         Opens a client connection to the LPD front-end module (FEM).
         
@@ -84,7 +86,7 @@ class LpdDevice(object):
         if not self.simulateFemClient:
             try:
                 
-                self.femClient = LpdFemClient((host, int(port)), timeout, asicModuleType)
+                self.femClient = LpdFemClient((host, int(port)), timeout, asicModuleType, legacyPowerCard)
 
             except FemClientError as e:
                 
@@ -137,11 +139,12 @@ class LpdDevice(object):
         
         return rc
     
-    def start(self):
+    def start(self, no_wait=False):
         '''
         Starts an acquisition sequence - prepares the FEM and ASICs to receive
         triggers and read out
 
+        @param no_wait - signal to FEM client to not wait for run to complete
         @return LpdDevice error code, ERROR_OK or other error condition
         '''
         
@@ -149,7 +152,7 @@ class LpdDevice(object):
     
         if not self.simulateFemClient:
             try:
-                self.femClient.run()
+                self.femClient.run(no_wait)
             except FemClientError as e:
                 rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
                 self.errorString = 'Error during FEM acquisition start: %s' % e.msg
@@ -410,18 +413,18 @@ if __name__ == '__main__':
     # Open client connection to the FEM - IP address and port are ignored in
     # simulation mode
     rc = theDevice.open('127.0.0.1', '6969', timeout=30)
-    print 'Open device, rc =', rc
+    print('Open device, rc =', rc)
     
     # Set the sensor bias parameter
     sensorBias = 130.3
     rc = theDevice.paramSet('sensorBias', 130.3)
-    print 'Sensor bias set, rc =', rc
+    print('Sensor bias set, rc =', rc)
     
     # Read it back and verify value
     (rc, value) = theDevice.paramGet('sensorBias')
-    print 'Sensor bias get, rc =', rc, 'value =', value
+    print('Sensor bias get, rc =', rc, 'value =', value)
     if value != sensorBias:
-        print 'ERROR, mismatch in sensor bias set and get values'
+        print('ERROR, mismatch in sensor bias set and get values')
     
     # Set a pixel and asic specific parameter. ASIC and pixel values are specified by
     # keyword arguments as shown below    
@@ -429,25 +432,25 @@ if __name__ == '__main__':
     pixel = 149
     selfTest = 1
     rc = theDevice.paramSet('femAsicPixelSelfTestOverride', selfTest, asic=asic, pixel=pixel)
-    print 'Pixel self test override set, rc = ', rc
+    print('Pixel self test override set, rc = ', rc)
     
     # Read the same value back and verify
     (rc, value) = theDevice.paramGet('femAsicPixelSelfTestOverride', asic=asic, pixel=pixel)
-    print 'Pixel self test override, rc = ', rc, 'value =', value
+    print('Pixel self test override, rc = ', rc, 'value =', value)
     if value != selfTest:
-        print "ERROR, mismatch in pixel self-test override set and get values"
+        print("ERROR, mismatch in pixel self-test override set and get values")
      
     # Send a configure command to load parameters into FEM and ASICs    
     rc = theDevice.configure()
-    print 'Device configure, rc =', rc
+    print('Device configure, rc =', rc)
     
     # Start acquisition
     rc = theDevice.start()
-    print 'Device start, rc =', rc
+    print('Device start, rc =', rc)
     
     # Stop acquisition
     rc = theDevice.stop()
-    print 'Device stop, rc =', rc
+    print('Device stop, rc =', rc)
     
     # Close the client connection
     theDevice.close()

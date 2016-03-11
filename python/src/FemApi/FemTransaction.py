@@ -4,7 +4,10 @@ Created on 28 Mar 2011
 @author: tcn
 '''
 
+from __future__ import print_function, division
+
 import struct  
+import sys
 
 class FemTransaction():
     '''
@@ -105,17 +108,18 @@ class FemTransaction():
                 # Build the remaining payload format specifier
                 if (self.payloadLen -payloadInitLen) > 0:
                     (payloadMult, payloadFormat) = FemTransaction.widthEncoding[self.width]
-                    payloadItems = (self.payloadLen - payloadInitLen) / payloadMult
+                    payloadItems = (self.payloadLen - payloadInitLen) // payloadMult
                     self.payloadFormatStr = self.payloadFormatStr + str(payloadItems) + payloadFormat
 
             # Calculate how much of the payload is not yet received
             self.payloadRemaining = self.payloadLen - (len(self.encoded) - headerStructLen)
             if self.payloadRemaining > 0:
-                #print "Payload remaining =", self.payloadRemaining
+                #print("Payload remaining =", self.payloadRemaining)
                 self.incomplete = True
             else:
                 if (self.payloadLen > 0):
                     payloadFormat = '!' + self.payloadFormatStr
+                    #print("Payload format =", payloadFormat)
                     self.payload = struct.unpack(payloadFormat, self.encoded[headerStructLen:])
                 else:
                     self.payload = ()
@@ -172,7 +176,7 @@ class FemTransaction():
                     self.payloadLen = len(self.payload) * payloadMult
                     self.payloadFormatStr = str(len(self.payload)) + payloadFormat
 
-                    #print self.width, payloadMult, payloadFormat, self.payloadLen, self.payloadFormatStr, self.payload
+                    #print(self.width, payloadMult, payloadFormat, self.payloadLen, self.payloadFormatStr, self.payload)
          
         self.formatStr = self.formatStr + self.payloadFormatStr       
 
@@ -182,7 +186,7 @@ class FemTransaction():
             
             dataLen = len(data)
             if dataLen > self.payloadRemaining:
-                print "Too much data"
+                print("Too much data")
                 #TODO exception
             else:
                 self.encoded = self.encoded + data
@@ -200,16 +204,24 @@ class FemTransaction():
                 
     def encode(self):
         transaction = (self.magicWord, self.command, self.bus, self.width, self.state, self.address, self.payloadLen) + self.payload
-        return struct.pack(self.formatStr, *(transaction))
+        #print(self.formatStr)
+        try:
+            return struct.pack(self.formatStr, *(transaction))
+        except:
+            print(transaction)
 
     def decode(self):
         return struct.unpack(self.formatStr, self.encoded)
     
     def decodeErrorResponse(self):
         
-        (errNo,) = struct.unpack('!b', self.encoded[FemTransaction.headerSize()])
-        errStr = "".join(self.encoded[FemTransaction.headerSize()+1:])
+        if sys.version_info > (3,):
+            errNo = self.encoded[FemTransaction.headerSize()]
+            errStr = self.encoded[FemTransaction.headerSize()+1:].decode()
+            return (errNo, errStr)
         
+        (errNo,) = struct.unpack('!b', str(self.encoded[FemTransaction.headerSize()]))
+        errStr = "".join(self.encoded[FemTransaction.headerSize()+1:])
         return (errNo, errStr)
     
     def __str__(self):
@@ -239,12 +251,12 @@ if __name__ == '__main__':
                                      width=FemTransaction.WIDTH_LONG, state=FemTransaction.STATE_WRITE,  
                                      addr=testAddr, payload=testPayload)
     testPacked = testTransaction.encode()
-    print "Packed transaction : ", binascii.hexlify(testPacked)
+    print("Packed transaction : ", binascii.hexlify(testPacked))
     
     reverseTransaction = FemTransaction(encoded=testPacked)
     testUnpacked = reverseTransaction.decode()
-    print 'Unpacked reverse transaction:', [hex(unpackedField) for unpackedField in testUnpacked]
-    print 'Unpacked payload:', [hex(payloadField) for payloadField in reverseTransaction.payload]
+    print('Unpacked reverse transaction:', [hex(unpackedField) for unpackedField in testUnpacked])
+    print('Unpacked payload:', [hex(payloadField) for payloadField in reverseTransaction.payload])
     
     assert testPayload == reverseTransaction.payload
         

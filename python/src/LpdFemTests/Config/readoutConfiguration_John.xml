@@ -25,7 +25,7 @@
 
     <!-- 'User' Variables: -->
     <femAsicEnableMask type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>            <!-- .. -->
-    <femAsicGain type="int" val="3"/>                     <!-- 0=normal, 3=100x, 2=10x, 1=1x -->
+    <femAsicGain type="int" val="100"/>                     <!-- 0=normal, 100, 10, 1 -->
     <femAsicGainOverride type="bool" val="False"/>        <!-- FEM Gain Selection Mode; False=Register, True=Asic Command Word XML decides -->
     
     <femAsicLocalClock type="int" val="0"/>               <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
@@ -50,7 +50,7 @@
     
     <femStartTrainSource type="int" val="1"/>             <!-- 0 = XFEL clock and controls system, 1 = Software, 2 = LCLS , 3 = PETRA-III , 4= Diamond B16-->
     <femStartTrainPolarity type="int" val="0"/>     <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
-    <femVetoPolarity type="int" val="1"/>           <!-- External veto signal polarity 0=No inversion, 1=Invert signal (used for at Petra for shutter polarity) -->
+    <femVetoPolarity type="int" val="0"/>           <!-- External veto signal polarity 0=No inversion, 1=Invert signal (used for at Petra for shutter polarity) -->
     <femDataSource type="int" val="0"/>                   <!-- 0=ASIC [via PPC], 1=ASIC [from Rxblock], 2=frame generator, 3=PPC [preprogrammed] -->    
     <femAsicDataType type="int" val="0"/>                 <!-- 0=Normal Data, 1=Counting data, 2=Pseudo random -->
     <femAsicTestDataPatternType type="int" val="0"/>                  <!-- # 0 = if test data counter increments every Pixel ; 1 = only increments every Image -->

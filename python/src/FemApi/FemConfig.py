@@ -4,6 +4,9 @@ Created on Aug 2, 2011
 @author: tcn45
 '''
 
+from __future__ import print_function
+from functools import reduce
+
 import struct
 from operator import xor
 
@@ -96,9 +99,10 @@ class FemConfig():
         encoded = struct.pack(FemConfig.configFormat, *(self.getConfig()))
         
         # Calculate checksum disregarding last byte, which is current checksum
-        checksum = reduce(xor, map(ord, encoded[:-1]))
-        
-        return checksum        
+        # Python 3 and 'encoded' is type of bytes
+        if type(encoded[0]) is int:
+            return reduce(xor, encoded[:-1])           # python 3
+        return reduce(xor, map(ord, encoded[:-1]))     # python 2
     
     def getConfig(self):
         
@@ -154,7 +158,7 @@ class FemConfig():
     
 if __name__ == '__main__':
     
-    print "FemConfig object has length", FemConfig.configSize(), "bytes"
+    print("FemConfig object has length", FemConfig.configSize(), "bytes")
     
     mac_addr = [0x00, 0x0a, 0x35, 0x00, 0xbe, 0xef]
     ip_addr  = [192, 168, 1, 10]
@@ -174,6 +178,10 @@ if __name__ == '__main__':
     aConfig = FemConfig(mac_addr, ip_addr, ip_mask, ip_gw, temp_high, temp_crit, 
                         sw_major, sw_minor, fw_major, fw_minor, hw_major, hw_minor,
                         board_id, board_type)
-    
-    print map(ord, aConfig.encode())
-    print aConfig
+                        
+    encoded = aConfig.encode()
+    if type(encoded[0]) is int:
+        print(list(encoded))                   # python 3
+    else:
+        print(list(map(ord, encoded)))         # python 2
+    print(aConfig)

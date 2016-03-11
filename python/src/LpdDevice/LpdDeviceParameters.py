@@ -4,6 +4,8 @@ Created on 25 Sep 2012
 @author: tcn
 '''
 
+from __future__ import print_function
+
 from collections import OrderedDict
 
 # Parameter access types
@@ -126,6 +128,10 @@ class LpdDeviceParameters(object):
                                                                     0, 3, 0,
                                                                     AccessWrite, AssignmentOptional, InternalParam, 
                                                                     'AllOk.Disconnected')
+        self.expectedParameters['femLegacyPowerCard'] = AttributeContainer(bool, 'FemLegacyPowerCard', 'Enable legacy power card support',
+                                                                    (True, False), None, False,
+                                                                    AccessWrite, AssignmentOptional, InternalParam,
+                                                                    'AllOK.Disconnected')
 
         #
         # Power card control parameters
@@ -161,6 +167,256 @@ class LpdDeviceParameters(object):
                                                                         AccessWrite, AssignmentOptional, ExternalParam,
                                                                         'AllOk.Idle', "once, set, composite")
             
+        #
+        # TenGig Ethernet UDP Parameters - one 10GiGE interface
+        #
+                            
+        self.expectedParameters['tenGig0SourceMac']     = AttributeContainer(str, 'TenGigE0SourceMAC', '10GigE 0 UDP Source MAC Address',
+                                                                      None, None, '62-00-00-00-00-01',
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGig0SourceIp']      = AttributeContainer(str, 'TenGigE0SourceIp', '10GigE 0 UDP Source IP Address',
+                                                                      None, None, '10.0.0.2',
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGig0SourcePort']    = AttributeContainer(uint32, 'TenGigE0SourcePort', '10GigE 0 UDP Source Port',
+                                                                      0, 65535, 0,
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGig0DestMac']       = AttributeContainer(str, 'TenGigE0DestMAC', '10GigE 0 UDP Destination MAC Address',
+                                                                      None, None, '00-07-43-10-65-A0',
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGig0DestIp']        = AttributeContainer(str, 'TenGigE0DestIp', '10GigE 0 UDP Destination IP Address',
+                                                                      None, None, '10.0.0.1',
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGig0DestPort']      = AttributeContainer(uint32, 'TenGigE0DestPort', '10GigE 0 UDP Destination Port',
+                                                                      0, 65535, 61649,
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+                
+        self.expectedParameters['tenGigInterframeGap']  = AttributeContainer(uint32, 'TenGigInterframeGap', '10GigE Inter-frame gap timer [clock cycles]',
+                                                                      0, 0xFFFFFFFF, 0x0,
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGigUdpPacketLen']   = AttributeContainer(uint32, 'TenGigUDPPacketLength', '10GigE UDP packet payload length',
+                                                                      0, 65535, 8000,
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+                           
+        #
+        # LPD FEM firmware block parameters. Note these are simply based on all exposed
+        # parameters in the original test scripts - many may be replaced or hard-coded in
+        # production firmware iterations
+        #
+        
+        self.expectedParameters['femEnableTenGig']              = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
+                                                                      (True, False), None, True,
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['femDataSource']                = AttributeContainer(uint32, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (bypassing PPC), 2=Frame Generator, 3=PPC (pattern data)',
+                                                                      0, 3, 0,
+                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['femAsicEnableMask']            = AttributeContainer([uint32]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
+                                                                         0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
+        
+        self.expectedParameters['numberImages']                 = AttributeContainer(uint32, 'NumberImages', 'Sets the number of images per trigger',
+                                                                         0, 511, 4,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+        
+        self.expectedParameters['integrationCycles']            = AttributeContainer(uint32, 'integrationCycles', 'Sets the number of integration cycles per images',
+                                                                         0, 100, 1,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+        
+        self.expectedParameters['femAsicGain']                  = AttributeContainer(uint32, 'FemAsicGain', 'Set the ASIC gain selection mode (0=ASIC algorithm, 1, 10, 100)',
+                                                                         (0, 1, 10, 100), None, 0,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+        
+        self.expectedParameters['femAsicSetupParams']           = AttributeContainer(str, 'FemAsicSetupParams', 'ASIC Setup Parameters defined in XML syntax',
+                                                                          None, None, 'asicSlowControl.xml',
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+        
+        self.expectedParameters['femAsicCmdSequence']           = AttributeContainer(str, 'FemAsicCmdSequence', 'ASIC Command Words defined in XML syntax',
+                                                                          None, None, 'asicFastCommandSequence.xml',
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+        
+        self.expectedParameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int32, 'FemAsicPixelFeedbackOverride', 'ASIC pixel feedback override selection: 0=low(50pF), 1=high(5pF), -1=XML decides',
+                                                                          -1, 1, -1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam ,'AllOk.Idle', "once, set, composite")
+        
+        self.expectedParameters['femAsicPixelSelfTestOverride'] = AttributeContainer(int32, 'FemAsicPixelSelfTestOverride', 'ASIC pixel self-test override selection: 0=off, 1-5=test selection, -1=XML decides',
+                                                                          -1, 5, -1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        #TODO: Not yet Implemented
+        self.expectedParameters['femReadoutOperatingMode']      = AttributeContainer(uint32, 'FemReadoutOperatingMode', 'FEM readout operating mode (e.g. Normal, Self-test scan etc, TBD',
+                                                                          0, 255, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        ############ Additional Variables ############
+    
+        self.expectedParameters['femAsicDataType']              = AttributeContainer(uint32, 'FemAsicDataType', 'ASIC data type 0=Sensor data, 1=FEM internal counting, 2=ASIC pseudorandom',
+                                                                          0, 2, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femAsicLocalClock']            = AttributeContainer(uint32, 'FemAsicLocalClock', 'ASIC clock scaling 0=100 MHz (no scaling), 1=Scaled down clock (10 MHz)',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femAsicSetupLoadMode']         = AttributeContainer(uint32, 'FemAsicSetupLoadMode', 'ASIC control load mode 0=parallel, 1=serial (being tested)',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femInvertAdcData']             = AttributeContainer(bool, 'FemInvertAdcData', 'Enable Invert ADC ASIC data True=Invert Data',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femAsicRxCmdWordStart']        = AttributeContainer(bool, 'FemAsicRxCmdWordStart', 'Enable ASIC readout started by Command Word in femAsicCmdSequence file',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femAsicSetupClockPhase']       = AttributeContainer(uint32, 'FemAsicSetupClockPhase', 'ASIC Setup Params additional phase adjustment of clock rsync wrt ASIC reset',
+                                                                          0, 65535, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femPpcMode']                   = AttributeContainer(uint32, 'FemPpcMode', 'Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout',
+                                                                          0, 1, 1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['numberTrains']                 = AttributeContainer(uint32, 'NumberTrains', 'Number of trains [if LL Data Generator or PPC Data Direct selected]',
+                                                                          0, 10024, 1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['tenGigFarmMode']               = AttributeContainer(uint32, 'TenGigFarmMode', '10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists',
+                                                                          1, 3, 1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femAsicVersion']               = AttributeContainer(uint32, 'FemAsicVersion', 'ASIC Version 1=version 1, 2=version 2',
+                                                                          1, 2, 2,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['femAsicClockSource']           = AttributeContainer(uint32, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz), 3=Diamond',
+                                                                          0, 3, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['femStartTrainSource']          = AttributeContainer(uint32, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra (derived from PETRAIII clock), 4=Diamond',
+                                                                          0, 4, 1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+                                                                          
+        self.expectedParameters['femStartTrainDelay']           = AttributeContainer(uint32, 'FemStartTrainDelay', 'Delay between trigger arrival and start of train (in FEM clock cycles)',
+                                                                          0, 4294967295, 100,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['femStartTrainInhibit']         = AttributeContainer(uint32, 'FemStartTrainInhibit', 'Inhibit period after each trigger (in FEM clock cycles) which holds off further triggers to allow data to be readout',
+                                                                          0, 4294967295, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femAsicGainOverride']          = AttributeContainer(bool, 'FemAsicGainOverride', 'Enable Fem gain selection override False=Gain set by femAsicGain, True=Gain set by Asic Command Sequence XML tag(s)',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femDebugLevel']                = AttributeContainer(uint32, 'FemDebugLevel', 'Set the debug level',
+                                                                          0, 6, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['tenGig0DataGenerator']         = AttributeContainer(uint32, 'TenGig0DataGenerator', '10GigE 0 Data generator 1=Data Generator 2=PPC DDR2; Only relevant if femDataSource=2 [Frame Generator]',
+                                                                          1, 2, 1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGig0DataFormat']            = AttributeContainer(uint32, 'TenGig0DataFormat', '10GigE 0 Data format type 0=counting data; Only relevant if femDataSource=2 [Frame Generator]',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['tenGig0FrameLength']           = AttributeContainer(uint32, 'TenGig0FrameLength', '10GigE 0 Frame length in bytes; Only relevant if femDataSource=2 [Frame Generator]',
+                                                                          0, 0xFFFFFF, 0x10000,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['tenGig0NumberOfFrames']        = AttributeContainer(uint32, 'TenGig0NumberOfFrames', '10GigE 0 Number of frames to send in each cycle; Only relevant if femDataSource=2 [Frame Generator]',
+                                                                          0, 512, 1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femStartTrainPolarity']        = AttributeContainer(uint32, 'FemStartTrainPolarity', 'Set polarity of the external signal indicating start of train 0=No inversion, 1=Invert signal',
+                                                                          (0, 1), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femVetoPolarity']              = AttributeContainer(uint32, 'FemVetoPolarity', 'Set polarity of the external veto signal 0=No inversion, 1=Invert signal',
+                                                                          (0, 1), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femModuleId']                  = AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from  0 - 15',
+                                                                          0, 15, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        # 
+        # Clock & Control Card Variables - To Assist Integration of C&C into FEM
+        #
+
+        self.expectedParameters['cccSystemMode']                  = AttributeContainer(uint32, 'cccSystemMode', 'Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes',
+                                                                          0, 2,  0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['cccEmulationMode']               = AttributeContainer(bool, 'cccEmulationMode', 'Enable to emulate Clock & Control commands (for testing in absence of C&C)',
+                                                                          (True, False), None, False,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['cccProvideNumberImages']         = AttributeContainer(bool, 'cccProvideNumberImages', 'ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['cccVetoStartDelay']              = AttributeContainer(uint32, 'cccVetoStartDelay', 'Adjust timing of veto arrival (in steps of clock cycles)',
+                                                                          0, 4294967295,  0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['cccStopDelay']                   = AttributeContainer(uint32, 'cccStopDelay', 'Adjust timing of the stop (in steps of clock cycles)',
+                                                                          0, 4294967295,  0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['cccResetDelay']                  = AttributeContainer(uint32, 'cccResetDelay', 'Adjust timing of reset (in steps of clock cycles)',
+                                                                          0, 4294967295,  0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['cccVetoPatternFile']             = AttributeContainer(str, 'cccVetoPatternFile', 'Filename containing the veto bunch pattern (10 patterns, 3072 bits each)',
+                                                                          None, None, 'vetoBunchPattern.xml',
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+        
+        self.expectedParameters['trainGenInterval']               = AttributeContainer(uint32, 'trainGenInterval', 'Interval (in 100 mhz clock periods) between internally generated Train start commands',
+                                                                          0, 4294967295, 10000000,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+                                        
+        self.expectedParameters['femAsicTestDataPatternType']     = AttributeContainer(uint32, 'FemAsicTestDataPatternType', 'Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image',
+                                                                          0, 1, 0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['femPpcEmulatePipeline']          = AttributeContainer(bool, 'femPpcEmulatePipeline', 'Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femPpcImageReordering']          = AttributeContainer(bool, 'femPpcImageReordering', 'Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled',
+                                                                          (True, False), None, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femTrainIdInitLsw']              = AttributeContainer(uint32, 'FemTrainIdInitLsw', 'Train ID initial (lower 32-bit) value, Not applicable for C&C nor Data Checker',
+                                                                          0, 4294967295,  1,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        self.expectedParameters['femTrainIdInitMsw']              = AttributeContainer(uint32, 'FemTrainIdInitMsw', 'Train ID initial (upper 32-bit) value, Not applicable for C&C nor Data Checker',
+                                                                          0, 4294967295,  0,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['timeoutTrain']                   = AttributeContainer(uint32, 'timeoutTrain', 'Timeout in seconds on waiting for next Train during run',
+                                                                          0, 4294967295,  10,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['numPulsesInTrainOverride']       = AttributeContainer(uint32, 'numPulsesInTrainOverride', 'Length of XRay Pulse Train (number pulses)',
+                                                                          0, 4294967295,  1536,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        #self.expectedParameters['pipelineLatency']                = AttributeContainer(uint32, 'pipelineLatency', 'Latency of Asic pipeline. Separation in number of pulses between pipeline write and trigger pointers ;  NB Must be set by user to match contents of asic command file. Min = 2. Max = 511.',
+        #                                                                  0, 511, 2,
+        #                                                                  AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+
         #
         # Power card monitoring parameters
         #
@@ -286,19 +542,19 @@ class LpdDeviceParameters(object):
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Celsius', 'C')
         
         self.expectedParameters['femVoltage0']           = AttributeContainer(float, 'FemVoltage0', 'FEM 5V Supply 0 Voltage [V]',
-                                                                        0, 6,  None,
+                                                                        0, 10,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
         self.expectedParameters['femVoltage1']           = AttributeContainer(float, 'FemVoltage1', 'FEM 5V Supply 1 Voltage [V]',
-                                                                        0, 6,  None,
+                                                                        0, 10,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
         self.expectedParameters['femCurrent0']           = AttributeContainer(float, 'FemCurrent0', 'FEM 5V Supply 0 Current [A]',
-                                                                        0, 10,  None,
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
         self.expectedParameters['femCurrent1']           = AttributeContainer(float, 'FemCurrent1', 'FEM 5V Supply 1 Current [A]',
-                                                                        0, 10,  None,
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
         self.expectedParameters['digitalVoltage0']       = AttributeContainer(float, 'DigitalVoltage0', 'ASIC 1.2V Digital Supply 0 Voltage [V]',
@@ -317,132 +573,132 @@ class LpdDeviceParameters(object):
                                                                         0, 1000,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Milliamp', 'mA')
         
-        self.expectedParameters['sensor0Voltage']        = AttributeContainer(float, 'Sensor0Voltage', 'Sensor 0 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor0Voltage']        = AttributeContainer(float, 'Sensor0Voltage', 'Sensor 0 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensor1Voltage']        = AttributeContainer(float, 'Sensor1Voltage', 'Sensor 1 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-                            
-        self.expectedParameters['sensor2Voltage']        = AttributeContainer(float, 'Sensor2Voltage', 'Sensor 2 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-        
-        self.expectedParameters['sensor3Voltage']        = AttributeContainer(float, 'Sensor3Voltage', 'Sensor 3 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-        
-        self.expectedParameters['sensor4Voltage']        = AttributeContainer(float, 'Sensor4Voltage', 'Sensor 4 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-        
-        self.expectedParameters['sensor5Voltage']        = AttributeContainer(float, 'Sensor5Voltage', 'Sensor 5 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-        
-        self.expectedParameters['sensor6Voltage']        = AttributeContainer(float, 'Sensor6Voltage', 'Sensor 6 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-        
-        self.expectedParameters['sensor7Voltage']        = AttributeContainer(float, 'Sensor7Voltage', 'Sensor 7 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-        
-        self.expectedParameters['sensor8Voltage']        = AttributeContainer(float, 'Sensor8Voltage', 'Sensor 8 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
-                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
-        
-        self.expectedParameters['sensor9Voltage']        = AttributeContainer(float, 'Sensor9Voltage', 'Sensor 9 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor1Voltage']        = AttributeContainer(float, 'Sensor1Voltage', 'Sensor 1 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
                             
-        self.expectedParameters['sensor10Voltage']       = AttributeContainer(float, 'Sensor10Voltage', 'Sensor 10 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor2Voltage']        = AttributeContainer(float, 'Sensor2Voltage', 'Sensor 2 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensor11Voltage']       = AttributeContainer(float, 'Sensor11Voltage', 'Sensor 11 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor3Voltage']        = AttributeContainer(float, 'Sensor3Voltage', 'Sensor 3 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensor12Voltage']       = AttributeContainer(float, 'Sensor12Voltage', 'Sensor 12 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor4Voltage']        = AttributeContainer(float, 'Sensor4Voltage', 'Sensor 4 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensor13Voltage']       = AttributeContainer(float, 'Sensor13Voltage', 'Sensor 13 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor5Voltage']        = AttributeContainer(float, 'Sensor5Voltage', 'Sensor 5 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensor14Voltage']       = AttributeContainer(float, 'Sensor14Voltage', 'Sensor 14 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor6Voltage']        = AttributeContainer(float, 'Sensor6Voltage', 'Sensor 6 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensor15Voltage']       = AttributeContainer(float, 'Sensor15Voltage', 'Sensor 15 2.5V Supply Voltage [V]',
-                                                                        0, 3,  None,
+        self.expectedParameters['sensor7Voltage']        = AttributeContainer(float, 'Sensor7Voltage', 'Sensor 7 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
         
-        self.expectedParameters['sensor0Current']        = AttributeContainer(float, 'Sensor0Current', 'Sensor 0 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor8Voltage']        = AttributeContainer(float, 'Sensor8Voltage', 'Sensor 8 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+        
+        self.expectedParameters['sensor9Voltage']        = AttributeContainer(float, 'Sensor9Voltage', 'Sensor 9 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+                            
+        self.expectedParameters['sensor10Voltage']       = AttributeContainer(float, 'Sensor10Voltage', 'Sensor 10 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+        
+        self.expectedParameters['sensor11Voltage']       = AttributeContainer(float, 'Sensor11Voltage', 'Sensor 11 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+        
+        self.expectedParameters['sensor12Voltage']       = AttributeContainer(float, 'Sensor12Voltage', 'Sensor 12 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+        
+        self.expectedParameters['sensor13Voltage']       = AttributeContainer(float, 'Sensor13Voltage', 'Sensor 13 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+        
+        self.expectedParameters['sensor14Voltage']       = AttributeContainer(float, 'Sensor14Voltage', 'Sensor 14 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+        
+        self.expectedParameters['sensor15Voltage']       = AttributeContainer(float, 'Sensor15Voltage', 'Sensor 15 3.3V Supply Voltage [V]',
+                                                                        0, 5,  None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Volt', 'V')
+        
+        self.expectedParameters['sensor0Current']        = AttributeContainer(float, 'Sensor0Current', 'Sensor 0 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor1Current']        = AttributeContainer(float, 'Sensor1Current', 'Sensor 1 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor1Current']        = AttributeContainer(float, 'Sensor1Current', 'Sensor 1 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
                             
-        self.expectedParameters['sensor2Current']        = AttributeContainer(float, 'Sensor2Current', 'Sensor 2 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor2Current']        = AttributeContainer(float, 'Sensor2Current', 'Sensor 2 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor3Current']        = AttributeContainer(float, 'Sensor3Current', 'Sensor 3 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor3Current']        = AttributeContainer(float, 'Sensor3Current', 'Sensor 3 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor4Current']        = AttributeContainer(float, 'Sensor4Current', 'Sensor 4 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor4Current']        = AttributeContainer(float, 'Sensor4Current', 'Sensor 4 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor5Current']        = AttributeContainer(float, 'Sensor5Current', 'Sensor 5 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor5Current']        = AttributeContainer(float, 'Sensor5Current', 'Sensor 5 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor6Current']        = AttributeContainer(float, 'Sensor6Current', 'Sensor 6 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor6Current']        = AttributeContainer(float, 'Sensor6Current', 'Sensor 6 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor7Current']        = AttributeContainer(float, 'Sensor7Current', 'Sensor 7 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor7Current']        = AttributeContainer(float, 'Sensor7Current', 'Sensor 7 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor8Current']        = AttributeContainer(float, 'Sensor8Current', 'Sensor 8 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor8Current']        = AttributeContainer(float, 'Sensor8Current', 'Sensor 8 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor9Current']        = AttributeContainer(float, 'Sensor9Current', 'Sensor 9 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor9Current']        = AttributeContainer(float, 'Sensor9Current', 'Sensor 9 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
                             
-        self.expectedParameters['sensor10Current']       = AttributeContainer(float, 'Sensor10Current', 'Sensor 10 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor10Current']       = AttributeContainer(float, 'Sensor10Current', 'Sensor 10 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor11Current']       = AttributeContainer(float, 'Sensor11Current', 'Sensor 11 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor11Current']       = AttributeContainer(float, 'Sensor11Current', 'Sensor 11 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor12Current']       = AttributeContainer(float, 'Sensor12Current', 'Sensor 12 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor12Current']       = AttributeContainer(float, 'Sensor12Current', 'Sensor 12 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor13Current']       = AttributeContainer(float, 'Sensor13Current', 'Sensor 13 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor13Current']       = AttributeContainer(float, 'Sensor13Current', 'Sensor 13 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor14Current']       = AttributeContainer(float, 'Sensor14Current', 'Sensor 14 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor14Current']       = AttributeContainer(float, 'Sensor14Current', 'Sensor 14 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
-        self.expectedParameters['sensor15Current']       = AttributeContainer(float, 'Sensor15Current', 'Sensor 15 2.5V Supply Current [A]',
-                                                                        0, 10,  None,
+        self.expectedParameters['sensor15Current']       = AttributeContainer(float, 'Sensor15Current', 'Sensor 15 3.3V Supply Current [A]',
+                                                                        0, 16.6,  None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Amp', 'A')
         
         self.expectedParameters['sensorBiasVoltage0']    = AttributeContainer(float, 'SensorBiasVoltage0', 'Sensor bias 0 voltage readback [V]',
@@ -460,260 +716,6 @@ class LpdDeviceParameters(object):
         self.expectedParameters['sensorBiasCurrent1']    = AttributeContainer(float, 'SensorBiasCurrent1', 'Sensor bias 1 current readback [uA]',
                                                                         0, 600, None,
                                                                         AccessRead, None, ExternalParam, None, "poll", 'Microamp', 'uA')
-
-        #
-        # TenGig Ethernet UDP Parameters - one 10GiGE interface
-        #
-                            
-        self.expectedParameters['tenGig0SourceMac']     = AttributeContainer(str, 'TenGigE0SourceMAC', '10GigE 0 UDP Source MAC Address',
-                                                                      None, None, '62-00-00-00-00-01',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGig0SourceIp']      = AttributeContainer(str, 'TenGigE0SourceIp', '10GigE 0 UDP Source IP Address',
-                                                                      None, None, '10.0.0.2',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGig0SourcePort']    = AttributeContainer(uint32, 'TenGigE0SourcePort', '10GigE 0 UDP Source Port',
-                                                                      0, 65535, 0,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGig0DestMac']       = AttributeContainer(str, 'TenGigE0DestMAC', '10GigE 0 UDP Destination MAC Address',
-                                                                      None, None, '00-07-43-10-65-A0',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGig0DestIp']        = AttributeContainer(str, 'TenGigE0DestIp', '10GigE 0 UDP Destination IP Address',
-                                                                      None, None, '10.0.0.1',
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGig0DestPort']      = AttributeContainer(uint32, 'TenGigE0DestPort', '10GigE 0 UDP Destination Port',
-                                                                      0, 65535, 61649,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-                
-        self.expectedParameters['tenGigInterframeGap']  = AttributeContainer(uint32, 'TenGigInterframeGap', '10GigE Inter-frame gap timer [clock cycles]',
-                                                                      0, 0xFFFFFFFF, 0x0,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGigUdpPacketLen']   = AttributeContainer(uint32, 'TenGigUDPPacketLength', '10GigE UDP packet payload length',
-                                                                      0, 65535, 8000,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-                           
-        #
-        # LPD FEM firmware block parameters. Note these are simply based on all exposed
-        # parameters in the original test scripts - many may be replaced or hard-coded in
-        # production firmware iterations
-        #
-        
-        self.expectedParameters['femEnableTenGig']              = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
-                                                                      (True, False), None, True,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['femDataSource']                = AttributeContainer(uint32, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (bypassing PPC), 2=Frame Generator, 3=PPC (pattern data)',
-                                                                      0, 3, 0,
-                                                                      AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['femAsicEnableMask']            = AttributeContainer([uint32]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
-                                                                         0, 0xFFFFFFFF, [0xFFFFFFFF]*4,
-                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle')
-        
-        self.expectedParameters['numberImages']                 = AttributeContainer(uint32, 'NumberImages', 'Sets the number of images per trigger',
-                                                                         0, 511, 4,
-                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-        
-        self.expectedParameters['integrationCycles']            = AttributeContainer(uint32, 'integrationCycles', 'Sets the number of integration cycles per images',
-                                                                         0, 100, 1,
-                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-        
-        self.expectedParameters['femAsicGain']                  = AttributeContainer(uint32, 'FemAsicGain', 'Set the ASIC gain selection mode (0=ASIC algorithm, 3=x100, 2=x10, 1=x1)',
-                                                                         (0, 3, 2, 1), None, 0,
-                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-        
-        self.expectedParameters['femAsicSetupParams']           = AttributeContainer(str, 'FemAsicSetupParams', 'ASIC Setup Parameters defined in XML syntax',
-                                                                          None, None, 'asicSlowControl.xml',
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-        
-        self.expectedParameters['femAsicCmdSequence']           = AttributeContainer(str, 'FemAsicCmdSequence', 'ASIC Command Words defined in XML syntax',
-                                                                          None, None, 'asicFastCommandSequence.xml',
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-        
-        self.expectedParameters['femAsicPixelFeedbackOverride'] = AttributeContainer(int32, 'FemAsicPixelFeedbackOverride', 'ASIC pixel feedback override selection: 0=low(50pF), 1=high(5pF), -1=XML decides',
-                                                                          -1, 1, -1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam ,'AllOk.Idle', "once, set, composite")
-        
-        self.expectedParameters['femAsicPixelSelfTestOverride'] = AttributeContainer(int32, 'FemAsicPixelSelfTestOverride', 'ASIC pixel self-test override selection: 0=off, 1-5=test selection, -1=XML decides',
-                                                                          -1, 5, -1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        #TODO: Not yet Implemented
-        self.expectedParameters['femReadoutOperatingMode']      = AttributeContainer(uint32, 'FemReadoutOperatingMode', 'FEM readout operating mode (e.g. Normal, Self-test scan etc, TBD',
-                                                                          0, 255, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        ############ Additional Variables ############
-    
-        self.expectedParameters['femAsicDataType']              = AttributeContainer(uint32, 'FemAsicDataType', 'ASIC data type 0=Sensor data, 1=FEM internal counting, 2=ASIC pseudorandom',
-                                                                          0, 2, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femAsicLocalClock']            = AttributeContainer(uint32, 'FemAsicLocalClock', 'ASIC clock scaling 0=100 MHz (no scaling), 1=Scaled down clock (10 MHz)',
-                                                                          0, 1, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femAsicSetupLoadMode']         = AttributeContainer(uint32, 'FemAsicSetupLoadMode', 'ASIC control load mode 0=parallel, 1=serial (being tested)',
-                                                                          0, 1, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femInvertAdcData']             = AttributeContainer(bool, 'FemInvertAdcData', 'Enable Invert ADC ASIC data True=Invert Data',
-                                                                          (True, False), None, False,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femAsicRxCmdWordStart']        = AttributeContainer(bool, 'FemAsicRxCmdWordStart', 'Enable ASIC readout started by Command Word in femAsicCmdSequence file',
-                                                                          (True, False), None, True,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femAsicSetupClockPhase']       = AttributeContainer(uint32, 'FemAsicSetupClockPhase', 'ASIC Setup Params additional phase adjustment of clock rsync wrt ASIC reset',
-                                                                          0, 65535, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femPpcMode']                   = AttributeContainer(uint32, 'FemPpcMode', 'Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout',
-                                                                          0, 1, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['numberTrains']                 = AttributeContainer(uint32, 'NumberTrains', 'Number of trains [if LL Data Generator or PPC Data Direct selected]',
-                                                                          0, 10024, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-
-        self.expectedParameters['tenGigFarmMode']               = AttributeContainer(uint32, 'TenGigFarmMode', '10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists',
-                                                                          1, 3, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femAsicVersion']               = AttributeContainer(uint32, 'FemAsicVersion', 'ASIC Version 1=version 1, 2=version 2',
-                                                                          1, 2, 2,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['femAsicClockSource']           = AttributeContainer(uint32, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz), 3=Diamond',
-                                                                          0, 3, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-
-        self.expectedParameters['femStartTrainSource']          = AttributeContainer(uint32, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra (derived from PETRAIII clock), 4=Diamond',
-                                                                          0, 4, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-                                                                          
-        self.expectedParameters['femStartTrainDelay']           = AttributeContainer(uint32, 'FemStartTrainDelay', 'Delay between trigger arrival and start of train (in FEM clock cycles)',
-                                                                          0, 4294967295, 100,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
-
-        self.expectedParameters['femStartTrainInhibit']         = AttributeContainer(uint32, 'FemStartTrainInhibit', 'Inhibit period after each trigger (in FEM clock cycles) which holds off further triggers to allow data to be readout',
-                                                                          0, 4294967295, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femAsicGainOverride']          = AttributeContainer(bool, 'FemAsicGainOverride', 'Enable Fem gain selection override False=Gain set by femAsicGain, True=Gain set by Asic Command Sequence XML tag(s)',
-                                                                          (True, False), None, False,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femDebugLevel']                = AttributeContainer(uint32, 'FemDebugLevel', 'Set the debug level',
-                                                                          0, 6, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['tenGig0DataGenerator']         = AttributeContainer(uint32, 'TenGig0DataGenerator', '10GigE 0 Data generator 1=Data Generator 2=PPC DDR2; Only relevant if femDataSource=2 [Frame Generator]',
-                                                                          1, 2, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGig0DataFormat']            = AttributeContainer(uint32, 'TenGig0DataFormat', '10GigE 0 Data format type 0=counting data; Only relevant if femDataSource=2 [Frame Generator]',
-                                                                          0, 1, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['tenGig0FrameLength']           = AttributeContainer(uint32, 'TenGig0FrameLength', '10GigE 0 Frame length in bytes; Only relevant if femDataSource=2 [Frame Generator]',
-                                                                          0, 0xFFFFFF, 0x10000,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['tenGig0NumberOfFrames']        = AttributeContainer(uint32, 'TenGig0NumberOfFrames', '10GigE 0 Number of frames to send in each cycle; Only relevant if femDataSource=2 [Frame Generator]',
-                                                                          0, 512, 1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femStartTrainPolarity']        = AttributeContainer(uint32, 'FemStartTrainPolarity', 'Set polarity of the external signal indicating start of train 0=No inversion, 1=Invert signal',
-                                                                          (0, 1), None, True,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femVetoPolarity']              = AttributeContainer(uint32, 'FemVetoPolarity', 'Set polarity of the external veto signal 0=No inversion, 1=Invert signal',
-                                                                          (0, 1), None, True,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femModuleId']                  = AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from  0 - 15',
-                                                                          0, 15, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        # 
-        # Clock & Control Card Variables - To Assist Integration of C&C into FEM
-        #
-
-        self.expectedParameters['cccSystemMode']                  = AttributeContainer(uint32, 'cccSystemMode', 'Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes',
-                                                                          0, 2,  0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['cccEmulationMode']               = AttributeContainer(bool, 'cccEmulationMode', 'Enable to emulate Clock & Control commands (for testing in absence of C&C)',
-                                                                          (True, False), None, False,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['cccProvideNumberImages']         = AttributeContainer(bool, 'cccProvideNumberImages', 'ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages',
-                                                                          (True, False), None, True,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['cccVetoStartDelay']              = AttributeContainer(uint32, 'cccVetoStartDelay', 'Adjust timing of veto arrival (in steps of clock cycles)',
-                                                                          0, 4294967295,  0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['cccStopDelay']                   = AttributeContainer(uint32, 'cccStopDelay', 'Adjust timing of the stop (in steps of clock cycles)',
-                                                                          0, 4294967295,  0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['cccResetDelay']                  = AttributeContainer(uint32, 'cccResetDelay', 'Adjust timing of reset (in steps of clock cycles)',
-                                                                          0, 4294967295,  0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['cccVetoPatternFile']             = AttributeContainer(str, 'cccVetoPatternFile', 'Filename containing the veto bunch pattern (10 patterns, 3072 bits each)',
-                                                                          None, None, 'vetoBunchPattern.xml',
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['cccEmulatorFixedRateStarts']            = AttributeContainer(bool, 'cccEmulatorFixedRateStarts', 'Enables fixed rate train triggers, only used if running with cccEmulationMode = True',
-                                                                          (True, False), None, False,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['trainGenInterval']     = AttributeContainer(uint32, 'trainGenInterval', 'Interval (in 100 mhz clock periods) between internally generated Train start commands',
-                                                                          0, 4294967295, 10000000,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-                                        
-        self.expectedParameters['femAsicTestDataPatternType']            = AttributeContainer(uint32, 'FemAsicTestDataPatternType', 'Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image',
-                                                                          0, 1, 0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['femPpcEmulatePipeline']                 = AttributeContainer(bool, 'femPpcEmulatePipeline', 'Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors',
-                                                                          (True, False), None, True,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femPpcImageReordering']                 = AttributeContainer(bool, 'femPpcImageReordering', 'Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled',
-                                                                          (True, False), None, True,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['femTrainIdInitLsw']                     = AttributeContainer(uint32, 'FemTrainIdInitLsw', 'Train ID initial (lower 32-bit) value, Not applicable for C&C nor Data Checker',
-                                                                          0, 4294967295,  1,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-        
-        self.expectedParameters['femTrainIdInitMsw']                     = AttributeContainer(uint32, 'FemTrainIdInitMsw', 'Train ID initial (upper 32-bit) value, Not applicable for C&C nor Data Checker',
-                                                                          0, 4294967295,  0,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['timeoutTrain']                          = AttributeContainer(uint32, 'timeoutTrain', 'Timeout in seconds on waiting for next Train during run',
-                                                                          0, 4294967295,  10,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        self.expectedParameters['numPulsesInTrainOverride']                     = AttributeContainer(uint32, 'numPulsesInTrainOverride', 'Length of XRay Pulse Train (number pulses)',
-                                                                          0, 4294967295,  1536,
-                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
-        #self.expectedParameters['pipelineLatency']                     = AttributeContainer(uint32, 'pipelineLatency', 'Latency of Asic pipeline. Separation in number of pulses between pipeline write and trigger pointers ;  NB Must be set by user to match contents of asic command file. Min = 2. Max = 511.',
-                                                                          #0, 511, 2,
-                                                                          #AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
-
 
         # 
         # Firmware version variables - used to obtain read only, firmware version numbers
@@ -736,7 +738,14 @@ class LpdDeviceParameters(object):
                                                                           AccessRead, None, ExternalParam, 'AllOk.Idle', "once", None, None)
         self.expectedParameters['femLpdClientVersion']          = AttributeContainer(uint32, 'FemLpdClientVersion', ' LpdFemClient Software Version - Read Only',
                                                                           0, 4294967295, 0x10000004,
-                                                                          AccessRead, None, ExternalParam, 'AllOk.Idle', "once, set")
+                                                                          AccessRead, None, ExternalParam, 'AllOk.Idle', "once", None, None)
+        
+        #
+        # Readout state variables - read only
+        #
+        self.expectedParameters['femReadoutActive']     = AttributeContainer(bool, 'FemReadoutActive', 'FEM readout is active',
+                                                                        (True, False), None, None,
+                                                                        AccessRead, None, ExternalParam, None, "poll")
 
     
     def get(self):
@@ -755,6 +764,10 @@ class LpdDeviceParameters(object):
         
         # Mapping of native parameter type to Karabo parameter template expression
         paramTypeMapping = { 'int'    : 'UINT32_ELEMENT',
+                             'uint32' : 'UINT32_ELEMENT',
+                             'int32'  : 'INT32_ELEMENT',
+                             'int64'  : 'INT64_ELEMENT',
+                             'uint64' : 'UINT64_ELEMENT',
                              'long'   : 'UINT64_ELEMENT',
                              'bool'   : 'BOOL_ELEMENT',
                              'float'  : 'DOUBLE_ELEMENT',
@@ -768,7 +781,7 @@ class LpdDeviceParameters(object):
                             }
         
         # Iterate over parameter dictionary, build a template string and yield it
-        for param, attrib in self.expectedParameters.iteritems():
+        for param, attrib in self.expectedParameters.items():
     
             paramType = attrib.type.__name__
 
@@ -820,4 +833,4 @@ if __name__ == '__main__':
     
     deviceParams = LpdDeviceParameters()
     for paramTemplate in deviceParams.parameterTemplateStr('expected'):
-        print paramTemplate
+        print (paramTemplate)

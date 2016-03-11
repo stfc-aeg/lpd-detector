@@ -3,6 +3,8 @@ Created on 18 Sep 2012
 
 @author: tcn
 '''
+from __future__ import print_function
+
 import unittest
 from LpdDevice import * 
 
@@ -99,7 +101,7 @@ class Test(unittest.TestCase):
         rc = self.lpdDevice.paramSet(name, value)
         self.assertEqual(rc, LpdDevice.ERROR_OK, 'Failed to set legal non-standard int parameter: rc=%d : %s' % (rc, self.lpdDevice.errorStringGet()))
         (rc, result) = self.lpdDevice.paramGet(name)
-        print type(result)
+        print(type(result))
         self.assertEqual(rc, LpdDevice.ERROR_OK, 'Failed to get legal non-standard int parameter: rc=%d : %s' % (rc, self.lpdDevice.errorStringGet()))
         self.assertEqual(result, value, "Mismatch between set and get of legal non-standard int parameter")
         

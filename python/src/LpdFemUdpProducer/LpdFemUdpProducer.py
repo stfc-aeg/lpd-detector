@@ -4,6 +4,8 @@ Created on Jun 18, 2013
 @author: tcn45
 '''
 
+from __future__ import print_function
+
 import argparse
 import numpy as np
 import socket
@@ -155,7 +157,7 @@ class LpdFemUdpProducer(object):
         startOfFrame    = 0x80000000
         endOfFrame      = 0x40000000
 
-        print "Starting LPD data transmission to address", self.host, "port", self.port, "..." 
+        print("Starting LPD data transmission to address", self.host, "port", self.port, "..." )
         
         self.running = True
                 
@@ -203,7 +205,7 @@ class LpdFemUdpProducer(object):
                 streamPosn += bytesToSend
                  
             if not self.quiet:
-                print "  Sent frame", frame, "packets", packetCounter, "bytes", bytesSent
+                print("  Sent frame", frame, "packets", packetCounter, "bytes", bytesSent)
                  
             self.framesSent     += 1
             self.packetsSent    += packetCounter
@@ -224,7 +226,7 @@ class LpdFemUdpProducer(object):
         # Close socket
         sock.close()
         
-        print "%d frames completed, %d bytes sent in %.3f secs" % (self.framesSent, self.totalBytesSent, runTime)
+        print("%d frames completed, %d bytes sent in %.3f secs" % (self.framesSent, self.totalBytesSent, runTime))
         
         if self.display:
             self.displayImage()
