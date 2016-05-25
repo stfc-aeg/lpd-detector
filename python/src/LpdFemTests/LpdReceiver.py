@@ -233,7 +233,7 @@ class ImageDisplay(FigureCanvas):
         self.ncols = 256                        # 256 columns [2-Tile, Super Module]
         
         # superModuleImageSize [65536] used by all module types
-        self.superModuleImageSize = 256*256
+        self.imageFullLpdSize = 256*256
         # moduleImageSize differs according to self.asicModuleType
         self.moduleImageSize = self.nrows * self.ncols
 
@@ -341,10 +341,10 @@ class ImageDisplay(FigureCanvas):
 
         # Simultaneously extract 16 bit words and swap the byte order
         #     eg: ABCD => DCBA
-        self.pixelDataArray = np.fromstring(lpdFrame.rawImageData, dtype=pixelDataType)
+        self.pixelData = np.fromstring(lpdFrame.rawImageData, dtype=pixelDataType)
     
         if (self.debugLevel > 2) and (self.debugLevel < 8):
-            print("Extracted 16 bit words: ", len(self.pixelDataArray), ". Array contents:")
+            print("Extracted 16 bit words: ", len(self.pixelData), ". Array contents:")
             self.display16BitArrayInHex()
             print(" -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
 
@@ -355,10 +355,10 @@ class ImageDisplay(FigureCanvas):
             # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
             gainCounter = [0, 0, 0, 0]
 
-            for idx in range( len(self.pixelDataArray) ):
+            for idx in range( len(self.pixelData) ):
 
                 # Check bits 12-13: 
-                gainBits = self.pixelDataArray[idx] & 0x3000
+                gainBits = self.pixelData[idx] & 0x3000
                 if gainBits > 0:
                     # Gain isn't x100, determine its type
                     gain = gainBits >> 12
@@ -382,14 +382,14 @@ class ImageDisplay(FigureCanvas):
             print("      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3]))
 
         # Define variables that increase with each loop iteration
-        currentPlot = 0
+        currentImage = 0
         bNextImageAvailable = True
         
         # Track how many plots in figure, as subsequent trains may contain more/less images
         plotMaxPlots = self.plotsInFigure
         
         # Loop over the specified number of plots
-        while bNextImageAvailable and currentPlot < plotMaxPlots:
+        while bNextImageAvailable and currentImage < plotMaxPlots:
 
             if self.bTimeStamp:
                 timeD1 = time.time()
@@ -399,20 +399,20 @@ class ImageDisplay(FigureCanvas):
 # lpd headers and trailers in the data payload
 # lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
             # following sizes in BYTES
-            LPD_HEADER_SIZE = 32; # includes train id
+            LPD_HEADER_SIZE = 32  # includes train id
             # Image Descriptors are fixed with 512 entries each of 4 blocks of descriptors:
             # 1) storageCellNumber (2 bytes)
             # 2) bunchNumber (8 bytes)
             # 3) status (2 bytes)
             # 4) length (4 bytes)
-            LPD_IMAGE_DESCRIPTOR_SIZE = 0;  # 8192
-            LPD_DETECTOR_DEPENDENT_SIZE = (13*32); # fixed with trigger information from C&C module
-            LPD_TRAILER_SIZE = 32; # includes crc
+            LPD_IMAGE_DESCRIPTOR_SIZE = 0  # 8192
+            LPD_DETECTOR_DEPENDENT_SIZE = (13*32) # fixed with trigger information from C&C module
+            LPD_TRAILER_SIZE = 32  # includes crc
 
             LPD_FORMATTING_SIZE = LPD_HEADER_SIZE + LPD_IMAGE_DESCRIPTOR_SIZE + LPD_DETECTOR_DEPENDENT_SIZE + LPD_TRAILER_SIZE
 
             if self.lpdheadertrailer == 0:           
-                dataBeginning = self.superModuleImageSize*currentPlot
+                imageOffset = self.imageFullLpdSize*currentImage
                 # Change maximum plots to be 512 (effectively size of incoming image data) for old header format
                 #plotMaxPlots = 511  # (0-511 = 512 plots)
             else:
@@ -420,55 +420,55 @@ class ImageDisplay(FigureCanvas):
                 if self.lpdheadertrailer == 2 or self.lpdheadertrailer == 3:
                     LPD_HEADER_SIZE = 64
 
-                dataBeginning = (self.superModuleImageSize)*currentPlot + LPD_HEADER_SIZE/2
+                imageOffset = (self.imageFullLpdSize)*currentImage + LPD_HEADER_SIZE/2
                 
                 # Print XFEL header information
-                if currentPlot == 0:
+                if currentImage == 0:
 
                     if self.lpdheadertrailer == 3:
 
     # Corrections to match f/w from vers $0298 which made all 64b fields Little Endian    John C Oct 2015
     # previous code also had wrong offsets 
     
-                        magicMsb = self.pixelDataArray[2+0] + (self.pixelDataArray[3+0] << 16)  
+                        magicMsb = self.pixelData[2+0] + (self.pixelData[3+0] << 16)  
                         print("MAGIC Word Msw = $%08x " %(magicMsb))
                         
-                        trainLsb = self.pixelDataArray[0+8] + (self.pixelDataArray[1+8] << 16)
-                        trainMsb = self.pixelDataArray[2+8] + (self.pixelDataArray[3+8] << 16)
+                        trainLsb = self.pixelData[0+8] + (self.pixelData[1+8] << 16)
+                        trainMsb = self.pixelData[2+8] + (self.pixelData[3+8] << 16)
                         trainId  = (trainMsb << 32) + trainLsb
     
-                        dataLsb = self.pixelDataArray[0+12] + (self.pixelDataArray[1+12] << 16)
-                        dataMsb = self.pixelDataArray[2+12] + (self.pixelDataArray[3+12] << 16)
+                        dataLsb = self.pixelData[0+12] + (self.pixelData[1+12] << 16)
+                        dataMsb = self.pixelData[2+12] + (self.pixelData[3+12] << 16)
                         dataId  = (dataMsb << 32) + dataLsb
     
-                        linkLsb = self.pixelDataArray[0+16] + (self.pixelDataArray[1+16] << 16)
-                        linkMsb = self.pixelDataArray[2+16] + (self.pixelDataArray[3+16] << 16)
+                        linkLsb = self.pixelData[0+16] + (self.pixelData[1+16] << 16)
+                        linkMsb = self.pixelData[2+16] + (self.pixelData[3+16] << 16)
                         linkId  = (linkMsb << 32) + linkLsb
     
-                        imgCountIdLsb = self.pixelDataArray[0+20] + (self.pixelDataArray[1+20] << 16)
-                        imgCountIdMsb = self.pixelDataArray[2+20] + (self.pixelDataArray[3+20] << 16)
+                        imgCountIdLsb = self.pixelData[0+20] + (self.pixelData[1+20] << 16)
+                        imgCountIdMsb = self.pixelData[2+20] + (self.pixelData[3+20] << 16)
                         imgCountId  = (imgCountIdMsb << 32) + imgCountIdLsb
                     
                     else:
                     
                         # corrected offsets 
     
-                        magicMsb = self.pixelDataArray[0+0] + (self.pixelDataArray[1+0] << 16)  
+                        magicMsb = self.pixelData[0+0] + (self.pixelData[1+0] << 16)  
                         print("MAGIC Word Msw = $%08x " %(magicMsb))
                         
-                        trainLsb = self.pixelDataArray[2+8] + (self.pixelDataArray[3+8] << 8)
-                        trainMsb = self.pixelDataArray[0+8] + (self.pixelDataArray[1+8] << 8)
+                        trainLsb = self.pixelData[2+8] + (self.pixelData[3+8] << 8)
+                        trainMsb = self.pixelData[0+8] + (self.pixelData[1+8] << 8)
                         trainId  = (trainMsb << 16) + trainLsb
     
-                        dataLsb = self.pixelDataArray[2+12] + (self.pixelDataArray[3+12] << 8)
-                        dataMsb = self.pixelDataArray[0+12] + (self.pixelDataArray[1+12] << 8)
+                        dataLsb = self.pixelData[2+12] + (self.pixelData[3+12] << 8)
+                        dataMsb = self.pixelData[0+12] + (self.pixelData[1+12] << 8)
                         dataId  = (dataMsb << 16) + dataLsb
     
-                        linkLsb = self.pixelDataArray[2+16] + (self.pixelDataArray[3+16] << 8)
-                        linkMsb = self.pixelDataArray[0+16] + (self.pixelDataArray[1+16] << 8)
+                        linkLsb = self.pixelData[2+16] + (self.pixelData[3+16] << 8)
+                        linkMsb = self.pixelData[0+16] + (self.pixelData[1+16] << 8)
                         linkId  = (linkMsb << 16) + linkLsb
     
-                        imgCountId  = self.pixelDataArray[22] #[13] # Previous XFEL header version or older??
+                        imgCountId  = self.pixelData[22] #[13] # Previous XFEL header version or older??
 
                     # Overwrite maximum plots with image number extracted from XFEL header
                     plotMaxPlots = imgCountId
@@ -478,17 +478,17 @@ class ImageDisplay(FigureCanvas):
                     if self.debugLevel > 0:
                         print("_______________________________________________________________________________________________")
                         print(" * plot: %d dataBegin: %7d (0x%X) of %d S-ModSize: %d (0x%X) LPD hdr offset = %d." % \
-                        (currentPlot, dataBeginning, dataBeginning, len(self.pixelDataArray), self.superModuleImageSize, self.superModuleImageSize, (LPD_HEADER_SIZE/2)))
+                        (currentImage, imageOffset, imageOffset, len(self.pixelData), self.imageFullLpdSize, self.imageFullLpdSize, (LPD_HEADER_SIZE/2)))
                         for index in range(32):
                             if (index!= 0) and (index % 16 == 0):
                                 print("")
-                            print("%4X " % self.pixelDataArray[index], end=' ')
+                            print("%4X " % self.pixelData[index], end=' ')
                         print("")
 
 #################################################################
 
             # Get the first image of the train
-            bNextImageAvailable = self.retrieveImage(dataBeginning)
+            bNextImageAvailable = self.retrieveImage(imageOffset)
             
             # The first image, imageArray, has now been stripped from the image
             # Reshape image into pixel array according to module geometry
@@ -543,13 +543,13 @@ class ImageDisplay(FigureCanvas):
                 #print "\nAfter test print 0"
                 #print self.data[0]
 
-            self.ax[currentPlot % self.plotsInFigure].set_title("Train %i Image %i" % (self.trainNumber, currentPlot))
+            self.ax[currentImage % self.plotsInFigure].set_title("Train %i Image %i" % (self.trainNumber, currentImage))
             
             # Load image into figure
-            self.img[currentPlot % self.plotsInFigure].set_data(self.data)
+            self.img[currentImage % self.plotsInFigure].set_data(self.data)
 
-            self.ax[currentPlot % self.plotsInFigure].draw_artist(self.img[currentPlot % self.plotsInFigure])
-            self.blit(self.ax[currentPlot % self.plotsInFigure].bbox)
+            self.ax[currentImage % self.plotsInFigure].draw_artist(self.img[currentImage % self.plotsInFigure])
+            self.blit(self.ax[currentImage % self.plotsInFigure].bbox)
 
             # Write image to file - if HDF5 Library present
             if self.bHDF5:
@@ -597,7 +597,7 @@ class ImageDisplay(FigureCanvas):
                 self.trainNumberDs[fileIndex] = self.trainNumber
                 
                 self.imageNumberDs.resize((fileIndex+1, ))
-                self.imageNumberDs[fileIndex] = currentPlot
+                self.imageNumberDs[fileIndex] = currentImage
 
                 # Close file if specified number of images written
                 if fileIndex == (numberPlotsPerFile-1):
@@ -615,10 +615,10 @@ class ImageDisplay(FigureCanvas):
 
             if self.bTimeStamp:
                 timeD2 = time.time()
-                print("plot %i took   %.9f seconds to process." % (currentPlot, timeD2 - timeD1))
+                print("plot %i took   %.9f seconds to process." % (currentImage, timeD2 - timeD1))
             
-            # Increment currentPlot
-            currentPlot += 1
+            # Increment currentImage
+            currentImage += 1
         else:
             # Finished drawing subplots
 
@@ -654,13 +654,13 @@ class ImageDisplay(FigureCanvas):
             .. Unless data_len hardcoded to 160..
         """
         if self.debugLevel > 6:
-            data_len = len(self.pixelDataArray)
+            data_len = len(self.pixelData)
         elif self.debugLevel > 5:
-            data_len = len(self.pixelDataArray) / 2
+            data_len = len(self.pixelData) / 2
         elif self.debugLevel > 4:
-            data_len = len(self.pixelDataArray) / 4
+            data_len = len(self.pixelData) / 4
         elif self.debugLevel > 3:
-            data_len = len(self.pixelDataArray) / 8
+            data_len = len(self.pixelData) / 8
         elif self.debugLevel > 2:
             data_len = 160
         
@@ -672,7 +672,7 @@ class ImageDisplay(FigureCanvas):
                 if (idx %16 == 0):
                     print("%6d : " % idx, end=' ')
                     
-                currentArrayElement =  currentArrayElement + "   %04X " % self.pixelDataArray[idx]
+                currentArrayElement =  currentArrayElement + "   %04X " % self.pixelData[idx]
                 
                 if (idx % 16 == 15):
                     print(currentArrayElement)
@@ -684,9 +684,9 @@ class ImageDisplay(FigureCanvas):
             exit(0)
 
 
-    def retrieveImage(self, dataBeginning):
-        """ Extracts one image beginning at argument dataBeginning in the member array 
-            self.pixelDataArray array. Returns boolean bImageAvailable indicating whether
+    def retrieveImage(self, imageOffset):
+        """ Extracts one image beginning at argument imageOffset in the member array 
+            self.pixelData array. Returns boolean bImageAvailable indicating whether
             the current image is the last image in the data
         """
 
@@ -694,11 +694,11 @@ class ImageDisplay(FigureCanvas):
         bNextImageAvailable = False
         
         #DEBUG
-#        f = open("LpdReceiver_debugged_%s.txt" % str(dataBeginning), 'w')
+#        f = open("LpdReceiver_debugged_%s.txt" % str(imageOffset), 'w')
         # Check Asic Module type to determine how to process data
         if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             # Raw data - no not re-order
-            self.imageArray = self.pixelDataArray[dataBeginning:dataBeginning + self.superModuleImageSize].reshape(256, 256)
+            self.imageArray = self.pixelData[imageOffset:imageOffset + self.imageFullLpdSize].reshape(256, 256)
         else:
             # Not raw data, proceed to reorder data
             numAsicCols = 16
@@ -714,7 +714,7 @@ class ImageDisplay(FigureCanvas):
             self.imageLpdFullArray = np.zeros(numPixels, dtype=np.uint16)
             self.imageLpdFullArray = np.reshape(self.imageLpdFullArray, (numAsicRows * numRowsPerAsic, numAsicCols * numColsPerAsic))
     
-            rawOffset = dataBeginning
+            rawOffset = imageOffset
     
             try:
                 for asicRow in range(numRowsPerAsic):
@@ -722,16 +722,16 @@ class ImageDisplay(FigureCanvas):
                         
                         #DEBUGGING
 #                        print >> sys.stderr, "{0:>9} [{1:>2}::{2:>2}, {3:>2}::{4:>2}] = {5:>9} [{6:>7}:({7:>7})]".format( self.imageLpdFullArray.shape, asicRow, numRowsPerAsic, asicCol, numColsPerAsic, 
-#                                                              self.pixelDataArray.shape, rawOffset, (rawOffset + numAsics) )
+#                                                              self.pixelData.shape, rawOffset, (rawOffset + numAsics) )
 #                        f.write( "{0:>9} [{1:>2}::{2:>2}, {3:>2}::{4:>2}] = {5:>9} [{6:>7}:({7:>7})]".format( self.imageLpdFullArray.shape, asicRow, numRowsPerAsic, asicCol, numColsPerAsic, 
-#                                                              self.pixelDataArray.shape, rawOffset, (rawOffset + numAsics) )  + '\n')
-                        self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelDataArray[rawOffset:(rawOffset + numAsics)].reshape(8,16)
+#                                                              self.pixelData.shape, rawOffset, (rawOffset + numAsics) )  + '\n')
+                        self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelData[rawOffset:(rawOffset + numAsics)].reshape(8,16)
                         rawOffset += numAsics
             
             except IndexError:
                 print("Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics ))
             except Exception as e:
-                print("Error extracting image at %i Bytes, need %i but only %i Bytes available" % (dataBeginning, self.superModuleImageSize, self.pixelDataArray.shape[0] - dataBeginning))
+                print("Error extracting image at %i Bytes, need %i but only %i Bytes available" % (imageOffset, self.imageFullLpdSize, self.pixelData.shape[0] - imageOffset))
                 print("(Error: %s)" % e)
     
             # Module specific data processing
@@ -757,16 +757,16 @@ class ImageDisplay(FigureCanvas):
                     self.imageArray[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
                 except Exception as e:
                     print("Error accessing 2 Tile data: ", e)
-                    print("dataBeginning: ", dataBeginning)
+                    print("imageOffset: ", imageOffset)
                     sys.exit()
 
         # Last image in the data?
         try:
-#             print >> sys.stderr, "pixelDataArray: {0:>9} dataBeginning: {1:>9}  imageSize: {2:>9} data+image: {3:>9}".format( \
-#                                                 self.pixelDataArray.shape, dataBeginning, self.superModuleImageSize, dataBeginning + self.superModuleImageSize)
-            # Increment dataBeginning to start of next image
-            dataBeginning += self.superModuleImageSize
-            self.pixelDataArray[dataBeginning + self.superModuleImageSize]
+#             print >> sys.stderr, "pixelDataArray: {0:>9} imageOffset: {1:>9}  imageSize: {2:>9} data+image: {3:>9}".format( \
+#                                                 self.pixelData.shape, imageOffset, self.imageFullLpdSize, imageOffset + self.imageFullLpdSize)
+            # Increment imageOffset to start of next image
+            imageOffset += self.imageFullLpdSize
+            self.pixelData[imageOffset + self.imageFullLpdSize]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:

@@ -164,52 +164,49 @@ class UdpReceiver(QtCore.QObject):
         '''
 
         try:
-            offset = 0
-            # TODO: Extract train number (the first four bytes)
-            frame_number = 0
-
-            # Extract packet number (the following four bytes)
-            packet_number = ord(data[offset-4]) 
-
-            trailer_info = ord(data[-1])
-
+            # Extract Trailer information
+            trailerInfo = np.zeros(2, dtype=np.uint32)
+            trailerInfo = np.fromstring(data[-8:], dtype=np.uint32)
+            
+            # Extract train/frame number (the second last 32 bit word from the raw data)
+            frameNumber = trailerInfo[0]
+            # Extract packet number (last 32 bit word)
+            packetNumber = trailerInfo[1] & 0x3FFFFFFF
+            
             # Extract Start Of Frame, End of Frame
-            frm_sof = (trailer_info & 0x80) >> 7
-            frm_eof = (trailer_info & 0x40) >> 6
-            
-            # frame_number = train number relative to execution of this software
-            #lpdFrame.frameNumber = frame_number
-            
+            sof = (trailerInfo[1] >> (31)) & 0x1
+            eof = (trailerInfo[1] >> (30)) & 0x1
+
             if self.first_frm_num == -1:
-                self.first_frm_num = frame_number
+                self.first_frm_num = frameNumber
                 
-            frame_number = frame_number - self.first_frm_num
+            frameNumber = frameNumber - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packet_number != (self.packetNumber +1):
+            if packetNumber != (self.packetNumber +1):
                 # packet numbering not consecutive
-                if packet_number > self.packetNumber:
+                if packetNumber > self.packetNumber:
                     # this packet lost between this packet and the last packet received
-                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packet_number)
+                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packetNumber)
 
             # Update current packet number
-            self.packetNumber = packet_number
+            self.packetNumber = packetNumber
 
             # Timestamp start of frame (when we received first data of train)
-            if frm_sof == 1:
+            if sof == 1:
 
                 lpdFrame.timeStampSof = time.time()
         
                 # It's the start of a new train, clear any data left from previous train..
                 lpdFrame.rawImageData = ""                
 
-            if frm_eof == 1:
+            if eof == 1:
                 lpdFrame.timeStampEof = time.time()
             
             # Append current packet data onto raw image omitting trailer info
             lpdFrame.rawImageData += data[0:-8]
             
-            return frm_eof
+            return eof
         except Exception as e:
             print "processRxData() error: ", e
             return -1
@@ -306,10 +303,10 @@ class FrameProcessor(QtCore.QObject):
         self.xmlDs = {}
         str_type = h5py.new_vlen(str)
         for paramFile in ('readoutParamFile', 'cmdSequenceFile', 'setupParamFile'):
-            self.xmlDs['paramFile'] = self.metaGroup.create_dataset(paramFile, shape=(1,), dtype=str_type)
+            self.xmlDs[paramFile] = self.metaGroup.create_dataset(paramFile, shape=(1,), dtype=str_type)
             try:
                 with open(cachedParams[paramFile], 'r') as xmlFile:
-                    self.xmlDs['paramFile'][:] = xmlFile.read()
+                    self.xmlDs[paramFile][:] = xmlFile.read()
                     
             except IOError as e:
                 print "Failed to read %s XML file %s : %s " (paramFile, cachedParams[paramFile], e)
@@ -341,54 +338,87 @@ class FrameProcessor(QtCore.QObject):
         # Loop over the specified number of plots
         while bNextImageAvailable and currentImage < plotMaxPlots:
 
-            imageOffset = self.imageFullLpdSize * currentImage
 #################################################################
 # For readout with LPD Data Formatting ; 
 # lpd headers and trailers in the data payload
 # lpd header ; image data ; image descriptors ; lpd detector dependent ; lpd trailer ; 
             # following sizes in BYTES
-            LPD_HEADER_SIZE = 32; # includes train id
+            LPD_HEADER_SIZE = 32  # includes train id
             # Image Descriptors are fixed with 512 entries each of 4 blocks of descriptors:
             # 1) storageCellNumber (2 bytes)
             # 2) bunchNumber (8 bytes)
             # 3) status (2 bytes)
             # 4) length (4 bytes)
-            LPD_IMAGE_DESCRIPTOR_SIZE = 0;  # 8192
+            LPD_IMAGE_DESCRIPTOR_SIZE = 0  # 8192
             LPD_DETECTOR_DEPENDENT_SIZE = (13*32); # fixed with trigger information from C&C module
-            LPD_TRAILER_SIZE = 32; # includes crc
+            LPD_TRAILER_SIZE = 32 # includes crc
 
             LPD_FORMATTING_SIZE = LPD_HEADER_SIZE + LPD_IMAGE_DESCRIPTOR_SIZE + LPD_DETECTOR_DEPENDENT_SIZE + LPD_TRAILER_SIZE
-#            lpdheadertrailer = True
+
             if self.headersVersion == 0:           
                 imageOffset = self.imageFullLpdSize*currentImage
-            elif self.headersVersion == 1:
+                # Change maximum plots to be 512 (effectively size of incoming image data) for old header format
+                #plotMaxPlots = 511  # (0-511 = 512 plots)
+            else:
+                # Differentiate between XFEL format revisions
+                if self.headersVersion == 2 or self.headersVersion == 3:
+                    LPD_HEADER_SIZE = 64
                 
                 imageOffset = (self.imageFullLpdSize)*currentImage + LPD_HEADER_SIZE/2
                 
                 # Print XFEL header information
                 if currentImage == 0:
 
-                    trainLsb = self.pixelData[2] + (self.pixelData[3] << 8)
-                    trainMsb = self.pixelData[0] + (self.pixelData[1] << 8)
-                    trainId  = (trainMsb << 16) + trainLsb
+                    if self.headersVersion == 3:
+                        
+    # Corrections to match f/w from vers $0298 which made all 64b fields Little Endian    John C Oct 2015
+    # previous code also had wrong offsets 
+    
+                        magicMsb = self.pixelData[2+0] + (self.pixelData[3+0] << 16)  
+                        print("MAGIC Word Msw = $%08x " %(magicMsb))
+                        
+                        trainLsb = self.pixelData[0+8] + (self.pixelData[1+8] << 16)
+                        trainMsb = self.pixelData[2+8] + (self.pixelData[3+8] << 16)
+                        trainId  = (trainMsb << 32) + trainLsb
 
-                    dataLsb = self.pixelData[2+4] + (self.pixelData[3+4] << 8)
-                    dataMsb = self.pixelData[0+4] + (self.pixelData[1+4] << 8)
-                    dataId  = (dataMsb << 16) + dataLsb
+                        dataLsb = self.pixelData[0+12] + (self.pixelData[1+12] << 16)
+                        dataMsb = self.pixelData[2+12] + (self.pixelData[3+12] << 16)
+                        dataId  = (dataMsb << 32) + dataLsb
 
-                    linkLsb = self.pixelData[2+8] + (self.pixelData[3+8] << 8)
-                    linkMsb = self.pixelData[0+8] + (self.pixelData[1+8] << 8)
-                    linkId  = (linkMsb << 16) + linkLsb
+                        dataLsb = self.pixelData[0+12] + (self.pixelData[1+12] << 16)
+                        dataMsb = self.pixelData[2+12] + (self.pixelData[3+12] << 16)
+                        dataId  = (dataMsb << 32) + dataLsb
 
-                    imgCountId  = self.pixelData[13]
+                        imgCountIdLsb = self.pixelData[0+20] + (self.pixelData[1+20] << 16)
+                        imgCountIdMsb = self.pixelData[2+20] + (self.pixelData[3+20] << 16)
+                        imgCountId  = (imgCountIdMsb << 32) + imgCountIdLsb
+
+                    else:
+                    
+                        # corrected offsets 
+    
+                        magicMsb = self.pixelData[0+0] + (self.pixelData[1+0] << 16)  
+                        print("MAGIC Word Msw = $%08x " %(magicMsb))
+                        
+                        trainLsb = self.pixelData[2+8] + (self.pixelData[3+8] << 8)
+                        trainMsb = self.pixelData[0+8] + (self.pixelData[1+8] << 8)
+                        trainId  = (trainMsb << 16) + trainLsb
+    
+                        dataLsb = self.pixelData[2+12] + (self.pixelData[3+12] << 8)
+                        dataMsb = self.pixelData[0+12] + (self.pixelData[1+12] << 8)
+                        dataId  = (dataMsb << 16) + dataLsb
+    
+                        linkLsb = self.pixelData[2+16] + (self.pixelData[3+16] << 8)
+                        linkMsb = self.pixelData[0+16] + (self.pixelData[1+16] << 8)
+                        linkId  = (linkMsb << 16) + linkLsb
+    
+                        imgCountId  = self.pixelData[22] #[13] # Previous XFEL header version or older??
+
                     # Overwrite maximum plots with image number extracted from XFEL header
                     plotMaxPlots = imgCountId
 
-                    #print "trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X}".format(trainId, dataId, linkId, imgCountId)
+                    print("trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X} ({4:})".format(trainId, dataId, linkId, imgCountId, imgCountId))
 
-            else:
-                print "ERROR: Unsupported headersVersion in Json file"
-                return
 #################################################################
 
             # Get the first image of the image

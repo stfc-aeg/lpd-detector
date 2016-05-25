@@ -10,6 +10,7 @@ from __future__ import print_function, absolute_import
 
 from LpdFemClient.LpdFemClient import LpdFemClient, FemClientError
 from LpdDevice.LpdDeviceParameters import *
+#from LpdDevice.LpdDeviceParameters import LpdDeviceParameters   # Alternative import; Doesn't work either though..!
 import time
 
 class LpdDevice(object):

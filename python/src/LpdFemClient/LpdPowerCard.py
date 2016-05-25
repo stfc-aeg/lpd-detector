@@ -272,7 +272,7 @@ class LpdPowerCard(object):
         '''
             Get Sensor bias voltage readback [V]
         '''
-        return self.sensorSixHundredMilliAmpsScaleRead(self.AD7998ADDRESS[0], self.HV_VOLTS_CHAN)
+        return self.sensorVoltageScaleRead(self.AD7998ADDRESS[0], self.HV_VOLTS_CHAN)
     
     def sensorBiasCurrentGet(self): 
         '''
@@ -284,6 +284,16 @@ class LpdPowerCard(object):
     """     -=-=-=-=-=- Helper Functions -=-=-=-=-=-     """
     ########################################################
 
+    def sensorVoltageScaleRead(self, device, channel):
+        '''
+            Helper function: Reads the sensible at 'channel' in address 'address'
+        '''
+        adcVal = self.ad7998Read(device, channel)
+        scale = 895.2
+        convertedValue = (adcVal * scale / 4095.0)
+        #print("sensorVoltageScaleRead: ", adcVal,  convertedValue)
+        return convertedValue
+        
     def sensorSixHundredMilliAmpsScaleRead(self, device, channel):
         '''
             Helper function: Reads sensor voltage at 'channel' in address 'address',
@@ -356,9 +366,13 @@ class LpdPowerCard(object):
         # Define constants since resistance and temperature is already known for one point
         resistanceZero = 10000
         tempZero = 25.0
-        invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / LpdPowerCard.Beta) * log(float(resistanceOne) / float(resistanceZero)) )
-        # Invert the value to obtain temperature (in Kelvin) and subtract 273.15 to obtain Celsius
-        return (1 / invertedTemperature) - 273.15
+        if resistanceOne > 0.0:
+            invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / LpdPowerCard.Beta) * log(float(resistanceOne) / float(resistanceZero)) )
+            # Invert the value to obtain temperature (in Kelvin) and subtract 273.15 to obtain Celsius
+            return (1 / invertedTemperature) - 273.15
+        else:
+            #print("WARNING resistanceOne  = 0.0 !")
+            return 0
 
     def calculateResistance(self, aVoltage):
         '''

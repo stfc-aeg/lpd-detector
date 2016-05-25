@@ -7,7 +7,7 @@
     <numberTrains 			type="int" val="5"/>                <!-- Set number of trains [if LL Data Generator / PPC Data Direct selected] -->
 
 	<!-- 'User may need to change' Variables: --> 
-    <femAsicGain 			type="int" val="2"/>                <!-- 0=normal, 3=100x, 2=10x, 1=1x -->
+    <femAsicGain 			type="int" val="0"/>                <!-- 0=normal, 100, 10, 1  -->
     <femAsicVersion 		type="int" val="2"/>
     <femAsicClockSource 	type="int" val="0"/>              	<!-- 0=FEM local oscillator 1=Sync with Xray 2=Petra clock sync-->
     <femStartTrainSource 	type="int" val="1"/>             	<!-- Train start signal source 0=XFEL Clock & Ctrl system, 1=Software, 2=LCLS, 3=Petra III -->
@@ -49,12 +49,8 @@
 	<!-- New commands added: 24/02/2016 -->
     <timeoutTrain type="int" val="30"/>                  		<!-- Timeout in seconds on waiting for next Train during run -->
     <numPulsesInTrainOverride type="int" val="2700"/>           <!-- Length of XRay Pulse Train (number pulses) -->    
-    <femPpcImageReordering type="bool" val="True"/>
     <trainGenInterval type="int" val="100000000"/>				<!-- gap (in asic clocks) between trains if internally generated -->
 
-                                    'trainGenInterval', 
-                                    'femAsicTestDataPatternType', 'femPpcEmulatePipeline', 'femPpcImageReordering',
-                                    'femTrainIdInitLsw', 'femTrainIdInitMsw', 'timeoutTrain', 'numPulsesInTrainOverride', 'trainGenInterval']
 	<femAsicTestDataPatternType type="int" val="0"/>			<!-- Increment test data option [if femAsicDataType=1] 0=Every Pixel 1=Only Every Image' -->
 	<femPpcEmulatePipeline      type="bool" val="True"/>     	<!-- Emulate Pipeline to compute the Pulse Number and Cell ID for the Image Descriptors -->
 	<femPpcImageReordering      type="bool" val="True"/>        <!-- Enable reordering images in readout by Pulse Number if femPpcEmulatePipeline enabled -->
@@ -64,7 +60,7 @@
     <tenGig0SourceMac 		type="str" val="62-00-00-00-00-01"/>
     <tenGig0SourceIp 		type="str" val="10.0.0.2"/>
     <tenGig0SourcePort 		type="int" val="0"/>
-    <tenGig0DestMac 		type="str" val="00-07-43-10-65-A0"/>  <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
+    <tenGig0DestMac 		type="str" val="00-07-43-13-ED-80"/>	<!-- "Alaska"'s: "00-07-43-10-65-A0" -->  <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
     <tenGig0DestIp 			type="str" val="10.0.0.1"/>
     <tenGig0DestPort 		type="int" val="61649"/>
     <tenGig0DataGenerator 	type="int" val="1"/>           		<!-- Data generator 1=DataGen 2=PPC DDR2 -->
