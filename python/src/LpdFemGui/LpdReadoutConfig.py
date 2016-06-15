@@ -88,7 +88,7 @@ class LpdReadoutConfigTest(unittest.TestCase):
     def testFileParse(self):    
         basicConfig = LpdReadoutConfig('tests/basicConfig.xml', fromFile=True)
         for (paramName, paramVal) in basicConfig.parameters():
-            print paramName, paramVal, type(paramVal)
+            print(paramName, paramVal, type(paramVal))
     
     def testIllegalFileParse(self):
         with self.assertRaises(LpdReadoutConfigError):

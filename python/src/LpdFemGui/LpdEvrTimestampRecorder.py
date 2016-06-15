@@ -27,11 +27,11 @@ class LpdEvrTimestampRecorder():
             
 
         except Exception as e:
-            print "LpdEvrTimestampRecorder got exception during initialisation: %s" % e
+            print("LpdEvrTimestampRecorder got exception during initialisation: %s" % e)
 
     def awaitCompletion(self):
 
-        print "Waiting for EVR timestamp receiver to complete"
+        print("Waiting for EVR timestamp receiver to complete")
         self.timestampReceiver.terminateLoop()
         while self.timestampReceiver.running == True:
             time.sleep(0.1)
@@ -63,8 +63,8 @@ class TimestampMcastReceiver(QtCore.QObject):
         # Bind the socket to the server address
         self.mcastSock.bind((mcastGroup, mcastPort))
 
-        print "EVR timestamp receiver thread listening on MCAST group %s port %d interface %s)" % \
-            (mcastGroup, mcastPort, interfaceAddr)
+        print("EVR timestamp receiver thread listening on MCAST group %s port %d interface %s)" % \
+            (mcastGroup, mcastPort, interfaceAddr))
 
 
     def receiveLoop(self):
@@ -97,7 +97,7 @@ class TimestampMcastReceiver(QtCore.QObject):
             except socket.timeout:
                 pass
 
-        print "EVR timestamp receiver finished after receiving %d DAQ events" % self.daqEventsReceived
+        print("EVR timestamp receiver finished after receiving %d DAQ events" % self.daqEventsReceived)
 
         self.mcastSock.close()
         self.running = False

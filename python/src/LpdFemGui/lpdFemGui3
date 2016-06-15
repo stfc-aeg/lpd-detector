@@ -1,0 +1,10 @@
+#!/bin/sh
+
+export LPD_FEM_SW_PATH=/u/ckd27546/workspace/lpdSoftware/
+export LPD_FEM_GUI_PATH=$LPD_FEM_SW_PATH/LpdFemGui
+
+export PYTHONPATH=$LPD_FEM_SW_PATH/LpdFemGui:$LPD_FEM_SW_PATH:${PYTHONPATH:-}
+export LPD_FEM_GUI_CONFIG_PATH=$LPD_FEM_GUI_PATH/config
+
+python3 $LPD_FEM_GUI_PATH/LpdFemGui.py -style gtk
+

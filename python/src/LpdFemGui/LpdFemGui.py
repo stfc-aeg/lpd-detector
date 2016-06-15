@@ -1,3 +1,4 @@
+from __future__ import print_function
 from LpdFemGuiMainWindow import *
 from LpdFemGuiLiveViewWindow import *
 from LpdPowerCardManager import *
@@ -19,6 +20,9 @@ class PrintRedirector():
     def write(self, text):
         if ord(text[0]) != 10:
             self.printFn(text)
+            
+    def flush(self):
+        print("PrintRedirector now has a flush() function..")
         
 class LpdFemGui:
     
@@ -71,7 +75,7 @@ class LpdFemGui:
             #self.asicWindow.show()    # Hide window for now while testing
 
         except Exception as e:
-            print >> sys.stderr, "LpdAsicTester initialisation exception: %s" % e
+            print("LpdAsicTester initialisation exception: %s" % e, file=sys.stderr)
             
         # Redirect stdout to PrintRedirector
         sys.stdout = PrintRedirector(self.msgPrint)
@@ -135,7 +139,7 @@ class LpdFemGui:
 
         # Load default parameters into cache if not already existing        
         for param in defaultParams:
-            if not self.cachedParams.has_key(param):
+            if param not in self.cachedParams:
                 self.cachedParams[param] = defaultParams[param]
         
         # Sync cached parameters back to file
@@ -143,7 +147,7 @@ class LpdFemGui:
         
     def getCachedParam(self, param):
         
-        if self.cachedParams.has_key(param):
+        if param in self.cachedParams:
             return self.cachedParams[param]
         else:
             return None
@@ -153,7 +157,7 @@ class LpdFemGui:
         Update a cached parameter with a new value and flag that the device needs
         reconfiguring if the parameter is volatile
         '''
-        if not self.cachedParams.has_key(param) or self.cachedParams[param] != val:
+        if param not in self.cachedParams or self.cachedParams[param] != val:
             self.cachedParams[param] = val
             self.cachedParams.sync()
             if not param in self.nonVolatileParams:
@@ -211,7 +215,7 @@ class LpdFemGui:
                 currentParams  = self.cachedParams
 
         except Exception as e:
-            print >> sys.stderr, "\ndeviceConfigure Exception: %s doesn't exist?" % e
+            print("\ndeviceConfigure Exception: %s doesn't exist?" % e, file=sys.stderr)
         
 #        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 'cmdSequenceFile'
 #                      'pixelGain', 'femAsicPixelFeedbackOverride', 'testingShortExposureFile', 'fileWriteEnable', 'liveViewEnable', 'arduinoShutterEnable']
@@ -241,7 +245,7 @@ class LpdFemGui:
                     self.shutter.__del__()
                     self.shutter = 0
         except Exception as e:
-            print >> sys.stderr, "configurable issues: ", e
+            print("configurable issues: ", e, file=sys.stderr)
 
         # Clear current loaded configuration
         self.loadedConfig= {}
@@ -265,7 +269,7 @@ class LpdFemGui:
             try:
                 self.loadedConfig[param] = value
             except Exception as e:
-                print >> sys.stderr, "%s" % e
+                print("%s" % e, file=sys.stderr)
 
         # Set up number of frames based on cached parameter value of number of trains
         self.numFrames = currentParams['numTrains']
@@ -314,7 +318,7 @@ class LpdFemGui:
             self.dataListenAddr = self.loadedConfig['tenGig0DestIp']
             self.dataListenPort = self.loadedConfig['tenGig0DestPort']
         except Exception as e:
-            print >> sys.stderr, "Got exception, missing XML config variable", e 
+            print("Got exception, missing XML config variable", e, file=sys.stderr) 
         
         # Set ASIC setup parameters file
         self.msgPrint("Loading Setup Params from file %s" % currentParams['setupParamFile'])

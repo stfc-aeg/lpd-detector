@@ -21,15 +21,17 @@
 	<cccSystemMode 			   type="int" val="0"/>			  	<!-- Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
     <cccEmulationMode          type="bool" val="True"/>        	<!--  Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
     <cccProvideNumberImages    type="bool" val="True"/>         <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages -->
-    <cccVetoStartDelay         type="int" val="0"/>             <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+    <cccVetoStartDelay         type="int" val="1000"/>             <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccStopDelay              type="int" val="0"/>             <!-- Adjust timing of the stop (in steps of clock cycles) -->
     <cccResetDelay             type="int" val="0"/>        		<!-- Adjust timing of reset (in steps of clock cycles) -->
-    <cccVetoPatternFile   	   type="str" val="config/veto_file_test.xml"/>-->     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
-
+    <!-- <cccVetoPatternFile   	   type="str" val="config/veto_file_test.xml"/>-->     <!-- Filename containing the veto bunch pattern (10 patterns, 3072 bits each) -->
+	<cccVetoPatternFile   	   type="str" val="/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/veto_pattern_test2.xml"/> 
+	<!-- <cccVetoPatternFile type="str" val="/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/VetoPatterns/veto_pattern_test2.xml"/> -->
+	
 
     <!-- 'Expert' Variables: -->
     <femEnableTenGig 				type="bool" val="True"/>    <!-- Enables transmission of image data via 10GigE UDP interface -->
-    <femDataSource 					type="int"  val="1"/>       <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
+    <femDataSource 					type="int"  val="0"/>       <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
 	 
 	<femAsicEnableMask 				type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>            <!-- Which ASICs to enable  [0=Disable] -->
     <femAsicPixelFeedbackOverride	type="int"  val="1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->

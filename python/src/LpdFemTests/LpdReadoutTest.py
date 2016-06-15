@@ -180,6 +180,12 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp, legacyPower
     asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_Start_and_Stop_with_trigger_section.xml'
     configFilename = 'Config/readoutConfiguration_John.xml'
     vetoFilename   = 'Config/VetoPatterns/veto_pattern_test2.xml'    # Same as from John's readoutConfiguration file entry
+    asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'
+    # Hard code NOT to use low power xml file:
+    asicSetupParams = 'Config/SetupParams/DiamondSlowParam.xml'
+#     asicSetupParams = '/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/SetupParams/DiamondSlowParam.xml'
+#     asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_legacy_using_trigger_flags_modified.xml'
+#     asicCmdSequence = 'Config/CmdSequence/SuperModuleNormalOperation_PLtest_jac.xml'
     
     print("================    XML Filenames   ================")
     print(asicSetupParams)

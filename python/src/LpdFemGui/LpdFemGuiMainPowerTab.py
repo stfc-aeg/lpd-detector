@@ -4,6 +4,7 @@ Created on Apr 19, 2013
 @author: tcn45
 '''
 
+from __future__ import print_function
 from PyQt4 import QtCore, QtGui
 from LpdFemGuiMainWindow_ui import Ui_MainWindow
 from LpdFemGui import *
@@ -150,7 +151,7 @@ class LpdFemGuiMainPowerTab(object):
         for powerCard in range(self.appMain.pwrCard.numPowerCards):
             
             # Update flags
-            for paramStem, uiObjStem in powerCardFlags.iteritems():
+            for paramStem, uiObjStem in list(powerCardFlags.items()):
                 
                 paramName = paramStem + str(powerCard)
                 uiObjName= powerCardName[powerCard] + uiObjStem
@@ -160,10 +161,10 @@ class LpdFemGuiMainPowerTab(object):
                     if paramStem == 'asicPowerEnable' or paramStem == 'sensorBiasEnable':
                         powerStateVal = 'Yes' if powerState[paramName] == 0 else 'No'
                     else:
-                        powerStateVal = powerState[paramName]                        
+                        powerStateVal = powerState[paramName]
                     self.updateFlag(uiObj, powerStateVal)
                 except Exception as e:
-                    print >> sys.stderr, "Exception during UI object mapping:", e
+                    print("Exception during UI object mapping: %s" % e, file=sys.stderr)
                     
             # Update sensor bias
             paramName = 'sensorBias' + str(powerCard)
@@ -172,7 +173,7 @@ class LpdFemGuiMainPowerTab(object):
                 uiObj = getattr(self.ui, uiObjName)
                 uiObj.setText("{:.1f}".format(powerState[paramName]))
             except Exception as e:
-                print >> sys.stderr,"Exception during UI object mapping:", e
+                print("Exception during UI object mapping: %s" % e, file=sys.stderr)
             
             # Update sensor parameters
             for sensor in range(self.appMain.pwrCard.numSensorsPerCard):
@@ -184,10 +185,10 @@ class LpdFemGuiMainPowerTab(object):
                         uiObj = getattr(self.ui, uiObjName)
                         uiObj.setText("{:.2f}".format(powerState[paramName]))
                     except Exception as e:
-                        print >> sys.stderr, "Exception during UI object mapping:", e
+                        print("Exception during UI object mapping: %s" % e, file=sys.stderr)
             
             # Update power card parameters
-            for paramStem, uiObjStem in powerCardParams.iteritems():
+            for paramStem, uiObjStem in list(powerCardParams.items()):
                 
                 paramName = paramStem + str(powerCard)
                 uiObjName   = powerCardName[powerCard] + uiObjStem
@@ -195,7 +196,7 @@ class LpdFemGuiMainPowerTab(object):
                     uiObj = getattr(self.ui, uiObjName)
                     uiObj.setText("{:.2f}".format(powerState[paramName]))
                 except Exception as e:
-                    print >> sys.stderr, "Exception during UI object mapping:", e
+                    print("Exception during UI object mapping: %s" % e, file=sys.stderr)
                     
         timeStr = time.strftime("%H:%M:%S")
         self.ui.lastUpdate.setText(timeStr)
@@ -238,7 +239,7 @@ class PowerAutoUpdateThread(QtCore.QThread):
         
     def run(self):
         
-        print "Starting power card auto monitoring thread"
+        print("Starting power card auto monitoring thread")
         self.updateDone.connect(self.pwrTab.powerStatusUpdateDone)
         
         while self.pwrTab.autoUpdate == True and self.appMain.deviceState != LpdFemGui.DeviceDisconnected:
@@ -248,5 +249,5 @@ class PowerAutoUpdateThread(QtCore.QThread):
             self.updateDone.emit()
             time.sleep(self.appMain.getCachedParam('pwrUpdateInterval'))
             
-        print "Power card auto monitoring thread terminating"
+        print("Power card auto monitoring thread terminating")
         

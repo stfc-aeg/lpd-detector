@@ -17,8 +17,8 @@ import h5py
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+from matplotlib.backends.backend_qt4agg import FigureCanvasQT as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 class LpdFemGuiAsicWindow(QtGui.QDialog):
@@ -87,21 +87,21 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
 
             # Define colour range, colourmap according to plot number
             if idx == 0:
-                vMax = '4095'
+                vMax = 4095
                 cMap = defaultColourMap
                 cTicks = [0, 511, 1023, 1535, 2047, 2559, 3071, 3583, 4095]
             elif idx == 1:
                 maximum = 2000
-                vMax = str(maximum)
+                vMax = maximum
                 cMap = 'binary'
                 cTicks = [0, int(maximum/4), int(maximum/2), int(3*maximum/4), maximum]
             else:
                 maximum = 1
-                vMax = str(maximum)
+                vMax = maximum
                 cMap = 'binary'
                 cTicks = [0, maximum]
 
-            imgObject = self.axes[idx].imshow(self.data, cmap=cMap, interpolation='nearest', vmin='0', vmax=vMax)
+            imgObject = self.axes[idx].imshow(self.data, cmap=cMap, interpolation='nearest', vmin=0, vmax=vMax)
             self.img.extend([imgObject])
 
             # Create and show a colourbar

@@ -173,8 +173,11 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         
     def femConnectionStatus(self, bConnected):
         ''' Enables/Disable testTab's components according to bConnected argument '''
+        # Fix checking of QLineEdit's contents that both python 2 & 3 compatible
+        moduleNumString = self.ui.moduleNumberEdit.text()
+        moduleNumLength = moduleNumString.count("")
         # Buttons remained locked until moduleNumber entered
-        if self.ui.moduleNumberEdit.text().count() != 0:
+        if moduleNumLength != 1:
             self.ui.asicBondingBtn.setEnabled(bConnected)
             self.ui.sensorBondingBtn.setEnabled(bConnected)
         self.ui.operatorEdit.setEnabled(bConnected)
@@ -225,8 +228,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     
     def moduleNumberUpdate(self):
 
-        moduleNumber = self.ui.moduleNumberEdit.text()
-        if moduleNumber.count() == 0:
+        moduleNumString = self.ui.moduleNumberEdit.text()
+        moduleNumLength = moduleNumString.count("")
+        # Fix checking of QLineEdit's contents that both python 2 & 3 compatible
+        if moduleNumLength == 1:
             self.testMsgPrint("The entered moduleNumber is blank, buttons remains locked..")
             self.ui.asicBondingBtn.setEnabled(False)
             self.ui.sensorBondingBtn.setEnabled(False)

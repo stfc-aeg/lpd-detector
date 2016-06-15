@@ -164,15 +164,16 @@ class LpdFemGuiMainDaqTab(object):
         if self.ui.gainModeAutoSel.isChecked():
             gainOverride = 0
         elif self.ui.gainModex100Sel.isChecked():
-            gainOverride = 3
+            gainOverride = 100  #3
         elif self.ui.gainModex10Sel.isChecked():
-            gainOverride = 2
+            gainOverride = 10   #2
         elif self.ui.gainModex1Sel.isChecked():
             gainOverride = 1
         else:
             self.msgPrint("Illegal gain override selection - should not happen")
             return
 
+        #self.msgPrint("  DEBUGGING - GUI selection femAsicGain: %d " % gainOverride)
         self.appMain.setCachedParam('femAsicGainOverride', gainOverride)
         self.mainWindow.updateEnabledWidgets()
 
@@ -266,7 +267,7 @@ class LpdFemGuiMainDaqTab(object):
                                 LpdFemGui.DeviceRunning      : 'Running'
                               }
         
-        if deviceStateMapping.has_key(deviceState):
+        if deviceState in deviceStateMapping:
             stateStr = deviceStateMapping[deviceState]
         else:
             stateStr = "Unknown"

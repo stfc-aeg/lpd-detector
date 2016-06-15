@@ -3,6 +3,7 @@ Created on Apr 22, 2013
 
 @author: tcn45
 '''
+from __future__ import print_function
 
 from LpdDataContainers import LpdImageContainer
 from LpdFemClient.LpdFemClient import LpdFemClient
@@ -15,7 +16,7 @@ import numpy as np
 
 import matplotlib
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 class LpdFemGuiLiveViewWindow(QtGui.QDialog):
@@ -44,7 +45,7 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
             self.nrows = 256 
             self.ncols = 256
         else:
-            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.asicModuleType
+            print("Error: Unsupported asicModuleType selected: %r" % self.asicModuleType, file=sys.stderr)
         
         self.setWindowTitle('Plotting data from %s' % moduleType)
 
@@ -73,7 +74,7 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
 
         # Create an empty plot
         self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)                   
-        self.imgObject = self.axes.imshow(self.data, interpolation='nearest', vmin='0', vmax='4095')
+        self.imgObject = self.axes.imshow(self.data, interpolation='nearest', vmin=0, vmax=4095)
 
         # Position colorbar according to selected asicModuleType
         if self.asicModuleType == 2:
@@ -86,6 +87,9 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
         # Create nd show a colourbar
         axc, kw = matplotlib.colorbar.make_axes(self.axes, orientation=cBarPosn)
         cb = matplotlib.colorbar.Colorbar(axc, self.imgObject, orientation=cBarPosn)
+        # Fix: Re-adjust tick marks along colour bar:
+        cTicks = [0, 511, 1023, 1535, 2047, 2559, 3071, 3583, 4095]
+        cb.set_ticks(ticks=cTicks, update_ticks=True)
         self.imgObject.colorbar = cb
 
         # Add lines according to module type

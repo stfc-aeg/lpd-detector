@@ -3,6 +3,7 @@ Created on Apr 19, 2013
 
 @author: tcn45
 '''
+from __future__ import print_function
 
 from LpdDataContainers import *
 from LpdFemClient.LpdFemClient import LpdFemClient
@@ -12,6 +13,9 @@ import numpy as np
 from PyQt4 import QtCore
 
 import h5py
+
+# Test if running python 3
+is_python3 = sys.version_info > (3,)
 
 #Display received data in plots
 bDisplayPlotData = True
@@ -59,7 +63,7 @@ class LpdFemDataReceiver():
             self.udpReceiverThread.start()
             
         except Exception as e:
-            print "LdpFemDataReceiver got exception during initialisation: %s" % e
+            print("LdpFemDataReceiver got exception during initialisation: %s" % e)
         
     def injectTimestampData(self, evrData):
 
@@ -67,16 +71,16 @@ class LpdFemDataReceiver():
 
     def awaitCompletion(self):
 
-            print "Waiting for frame processing to complete"
+            print("Waiting for frame processing to complete")
             while self.frameProcessor.framesHandled < self.numFrames and self.appMain.abortRun == False:
                 time.sleep(0.1)
             
             if self.appMain.abortRun:
-                print "Run aborted by user"
+                print("Run aborted by user")
                 self.udpReceiver.abortRun()
                 self.dataMonitor.abortRun()
             else:
-                print "Frame processor handled all frames, terminating data receiver threads"
+                print("Frame processor handled all frames, terminating data receiver threads")
                 
             self.frameProcessorThread.quit()
             self.udpReceiverThread.quit()
@@ -88,11 +92,11 @@ class LpdFemDataReceiver():
             
             try:
                 if self.udpReceiver.frameCount > 0:            
-                    print "Average frame UDP receive time : %f secs" % (self.udpReceiver.totalReceiveTime / self.udpReceiver.frameCount)
+                    print("Average frame UDP receive time : %f secs" % (self.udpReceiver.totalReceiveTime / self.udpReceiver.frameCount))
                 if self.frameProcessor.framesHandled > 0:
-                    print "Average frame processing time  : %f secs" % (self.frameProcessor.totalProcessingTime / self.frameProcessor.framesHandled)
+                    print("Average frame processing time  : %f secs" % (self.frameProcessor.totalProcessingTime / self.frameProcessor.framesHandled))
             except Exception as e:
-                print >> sys.stderr, "Got exception", e
+                print("Got exception%s" % e, file=sys.stderr)
                 
             self.frameProcessor.cleanUp()
 
@@ -125,7 +129,7 @@ class UdpReceiver(QtCore.QObject):
         # Set socket timeout to allow receiver loop to tick and remain responsive to aborts
         self.sock.settimeout(0.5)
         
-        print "UDP Receiver thread listening on address %s port %s" % (listenAddr, listenPort)
+        print("UDP Receiver thread listening on address %s port %s" % (listenAddr, listenPort))
 
     def abortRun(self):
         self.abort = True
@@ -152,7 +156,7 @@ class UdpReceiver(QtCore.QObject):
                         pass
                     
         except Exception as e:
-            print "UDP receiver event loop got an exception: %s" % e
+            print("UDP receiver event loop got an exception: %s" % e)
             raise(e)
             
         #print >> sys.stderr, "Receiver thread completed"
@@ -187,7 +191,7 @@ class UdpReceiver(QtCore.QObject):
                 # packet numbering not consecutive
                 if packetNumber > self.packetNumber:
                     # this packet lost between this packet and the last packet received
-                    print "Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packetNumber)
+                    print("Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packetNumber))
 
             # Update current packet number
             self.packetNumber = packetNumber
@@ -198,7 +202,7 @@ class UdpReceiver(QtCore.QObject):
                 lpdFrame.timeStampSof = time.time()
         
                 # It's the start of a new train, clear any data left from previous train..
-                lpdFrame.rawImageData = ""                
+                lpdFrame.rawImageData = b'' if is_python3 else ''
 
             if eof == 1:
                 lpdFrame.timeStampEof = time.time()
@@ -208,7 +212,7 @@ class UdpReceiver(QtCore.QObject):
             
             return eof
         except Exception as e:
-            print "processRxData() error: ", e
+            print("processRxData() error: %s" % e)
             return -1
         
 
@@ -253,7 +257,7 @@ class FrameProcessor(QtCore.QObject):
             self.nrows = 256 
             self.ncols = 256
         else:
-            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.asicModuleType
+            print("Error: Unsupported asicModuleType selected: %r" % self.asicModuleType, file=sys.stderr)
             
         # Define Module and Full Lpd size (Module differs if 2-tile, SuperMod, Fem, etc)
         self.imageModuleSize = self.nrows * self.ncols
@@ -276,11 +280,11 @@ class FrameProcessor(QtCore.QObject):
 
         self.fileName = "{:s}/lpdData-{:05d}.hdf5".format(self.dataFilePath, self.runNumber)
         
-        print "Creating HDF5 data file %s" % self.fileName
+        print("Creating HDF5 data file %s" % self.fileName)
         try:
             self.hdfFile = h5py.File(self.fileName, 'w')
         except IOError as e:
-            print "Failed to open HDF file with error: %s" % e
+            print("Failed to open HDF file with error: %s" % e)
             raise(e)
         
         # Create group structure
@@ -296,7 +300,7 @@ class FrameProcessor(QtCore.QObject):
         self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         # Build metadata attributes from cached parameters
-        for param, val in cachedParams.iteritems():
+        for param, val in cachedParams.items():
             self.metaGroup.attrs[param] = val
 
         # Write the XML configuration files into the metadata group        
@@ -309,10 +313,10 @@ class FrameProcessor(QtCore.QObject):
                     self.xmlDs[paramFile][:] = xmlFile.read()
                     
             except IOError as e:
-                print "Failed to read %s XML file %s : %s " (paramFile, cachedParams[paramFile], e)
+                print("Failed to read %s XML file %s : %s " (paramFile, cachedParams[paramFile], e))
                 raise(e)
             except Exception as e:
-                print "Got exception trying to create metadata for %s XML file %s : %s " % (paramFile, cachedParams[paramFile], e)
+                print("Got exception trying to create metadata for %s XML file %s : %s " % (paramFile, cachedParams[paramFile], e))
                 raise(e)
                 
 
@@ -364,7 +368,7 @@ class FrameProcessor(QtCore.QObject):
                 if self.headersVersion == 2 or self.headersVersion == 3:
                     LPD_HEADER_SIZE = 64
                 
-                imageOffset = (self.imageFullLpdSize)*currentImage + LPD_HEADER_SIZE/2
+                imageOffset = (self.imageFullLpdSize)*currentImage + int(LPD_HEADER_SIZE/2) # Prevent Python3 creating float type
                 
                 # Print XFEL header information
                 if currentImage == 0:
@@ -375,7 +379,7 @@ class FrameProcessor(QtCore.QObject):
     # previous code also had wrong offsets 
     
                         magicMsb = self.pixelData[2+0] + (self.pixelData[3+0] << 16)  
-                        print("MAGIC Word Msw = $%08x " %(magicMsb))
+                        print("MAGIC Word Msw = $%08x " % magicMsb)
                         
                         trainLsb = self.pixelData[0+8] + (self.pixelData[1+8] << 16)
                         trainMsb = self.pixelData[2+8] + (self.pixelData[3+8] << 16)
@@ -385,9 +389,9 @@ class FrameProcessor(QtCore.QObject):
                         dataMsb = self.pixelData[2+12] + (self.pixelData[3+12] << 16)
                         dataId  = (dataMsb << 32) + dataLsb
 
-                        dataLsb = self.pixelData[0+12] + (self.pixelData[1+12] << 16)
-                        dataMsb = self.pixelData[2+12] + (self.pixelData[3+12] << 16)
-                        dataId  = (dataMsb << 32) + dataLsb
+                        linkLsb = self.pixelData[0+16] + (self.pixelData[1+16] << 16)
+                        linkMsb = self.pixelData[2+16] + (self.pixelData[3+16] << 16)
+                        linkId  = (linkMsb << 32) + linkLsb
 
                         imgCountIdLsb = self.pixelData[0+20] + (self.pixelData[1+20] << 16)
                         imgCountIdMsb = self.pixelData[2+20] + (self.pixelData[3+20] << 16)
@@ -398,7 +402,7 @@ class FrameProcessor(QtCore.QObject):
                         # corrected offsets 
     
                         magicMsb = self.pixelData[0+0] + (self.pixelData[1+0] << 16)  
-                        print("MAGIC Word Msw = $%08x " %(magicMsb))
+                        print("MAGIC Word Msw = $%08x " % magicMsb)
                         
                         trainLsb = self.pixelData[2+8] + (self.pixelData[3+8] << 8)
                         trainMsb = self.pixelData[0+8] + (self.pixelData[1+8] << 8)
@@ -469,7 +473,7 @@ class FrameProcessor(QtCore.QObject):
         # If timestamp data has been injected, add to the HDF file structure
         if self.evrData != None:
             if len(self.evrData.event) > 0:
-                print "Injecting EVR timestamp data into HDF file structure"
+                print("Injecting EVR timestamp data into HDF file structure")
                 evrGroup          = self.lpdGroup.create_group('evr')
                 self.evrEvent     = evrGroup.create_dataset('event', (len(self.evrData.event),), 'uint32')
                 self.evrFiducial  = evrGroup.create_dataset('fiducial', (len(self.evrData.fiducial),), 'uint32')
@@ -479,7 +483,7 @@ class FrameProcessor(QtCore.QObject):
                 self.evrFiducial[...] = np.array(self.evrData.fiducial)
                 self.evrTimestamp[...] = np.array(self.evrData.timestamp)
             else:
-                print "No EVR timestamp data received during run"
+                print("No EVR timestamp data received during run")
 
         # Close file if enabled
         if self.fileWriteEnable:
@@ -516,17 +520,17 @@ class FrameProcessor(QtCore.QObject):
             rawOffset = imageOffset
     
             try:
-                for asicRow in xrange(numRowsPerAsic):
-                    for asicCol in xrange(numColsPerAsic):
+                for asicRow in range(numRowsPerAsic):
+                    for asicCol in range(numColsPerAsic):
                         
                         self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelData[rawOffset:(rawOffset + numAsics)].reshape(8,16)
                         rawOffset += numAsics
             
             except IndexError:
-                print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
+                print("Image Processing Error @ %6i %6i %6i %6i %6i %6i " % (asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics))
             except Exception as e:
-                print "Error extracting image at %i Bytes, need %i but only %i Bytes available" % (imageOffset, self.imageFullLpdSize, self.pixelData.shape[0] - imageOffset)
-                print "(Error: %s)" % e
+                print("Error extracting image at %i Bytes, need %i but only %i Bytes available" % (imageOffset, self.imageFullLpdSize, self.pixelData.shape[0] - imageOffset))
+                print("(Error: %s)" % e)
 
             # Module specific data processing
             if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
@@ -548,8 +552,8 @@ class FrameProcessor(QtCore.QObject):
                     # RHS Tile located in the seventh ASIC row, second ASIC column
                     self.imageArray[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
                 except Exception as e:
-                    print "Error accessing 2 Tile data: ", e
-                    print "imageOffset: ", imageOffset
+                    print("Error accessing 2 Tile data: %s" % e)
+                    print("imageOffset: ", imageOffset)
                     sys.exit()
 
         # Last image in the data?
@@ -595,4 +599,4 @@ class DataMonitor(QtCore.QObject):
             self.updateSignal.emit(runStatus)
             
         except Exception as e:
-            print >> sys.stderr, "Got exception in data monitor loop:", e
+            print("Got exception in data monitor loop:%s" % e, file=sys.stderr)
