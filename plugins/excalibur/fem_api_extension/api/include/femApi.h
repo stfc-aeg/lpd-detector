@@ -33,8 +33,8 @@ extern "C" {
 #define FEM_CHIP_GAP_PIXELS_Y_SMALL 3
 #define FEM_PIXELS_PER_STRIPE_X ((FEM_PIXELS_PER_CHIP_X+FEM_CHIP_GAP_PIXELS_X)*FEM_CHIPS_PER_STRIPE_X-FEM_CHIP_GAP_PIXELS_X)
 #define FEM_TOTAL_PIXELS_Y (FEM_PIXELS_PER_CHIP_Y*FEM_CHIPS_PER_STRIPE_Y*FEM_STRIPES_PER_IMAGE +\
-                (FEM_STRIPES_PER_IMAGE/2-1)*FEM_CHIP_GAP_PIXELS_Y_LARGE +\
-                (FEM_STRIPES_PER_IMAGE/2)*FEM_CHIP_GAP_PIXELS_Y_SMALL)
+		(FEM_STRIPES_PER_IMAGE/2-1)*FEM_CHIP_GAP_PIXELS_Y_LARGE +\
+		(FEM_STRIPES_PER_IMAGE/2)*FEM_CHIP_GAP_PIXELS_Y_SMALL)
 #define FEM_TOTAL_PIXELS_X FEM_PIXELS_PER_STRIPE_X
 
 /*
@@ -83,7 +83,7 @@ typedef struct CtlCallbacks
 } CtlCallbacks;
 
 /* A structure that contains fem configuration data.
-*/
+ */
 typedef struct CtlConfig
 {
     int femNumber;
@@ -111,11 +111,11 @@ void femClose(void* femHandle);
 void femDummy(void);
 
 /* An identifier that indicates 'all chips'.
-*/
+ */
 #define FEM_CHIP_ALL 0
 
 /* The return codes used by various functions.
-*/
+ */
 #define FEM_RTN_OK 0
 #define FEM_RTN_UNKNOWNOPID 1
 #define FEM_RTN_ILLEGALCHIP 2
@@ -123,7 +123,7 @@ void femDummy(void);
 #define FEM_RTN_INITFAILED 4
 
 /* Operation mode constants
-*/
+ */
 #define FEM_OPMODE_NORMAL 0
 #define FEM_OPMODE_BURST 1
 #define FEM_OPMODE_HISTOGRAM 2
@@ -131,19 +131,19 @@ void femDummy(void);
 #define FEM_OPMODE_MATRIXREAD 4
 
 /* Trigger mode constants
-*/
+ */
 #define FEM_TRIGMODE_INTERNAL 0
 #define FEM_TRIGMODE_EXTERNAL 1
 #define FEM_TRIGMODE_SYNC 2
 
 /* Counter select constants
-*/
+ */
 #define FEM_CTRSELECT_A 0
 #define FEM_CTRSELECT_B 1
 #define FEM_CTRSELECT_AB 2
 
 /* The operation identifiers for the get, set, cmd and signal functions.
-*/
+ */
 /* Commands */
 #define FEM_OP_STARTACQUISITION 1
 #define FEM_OP_STOPACQUISITION 2
@@ -152,7 +152,6 @@ void femDummy(void);
 #define FEM_OP_LOADDACCONFIG 5
 #define FEM_OP_FEINIT 6
 #define FEM_OP_REBOOT 7
-
 
 /* Medipix III global registers */
 #define FEM_OP_MPXIII_COLOURMODE 1000
@@ -262,6 +261,11 @@ void femDummy(void);
 #define FEM_OP_SCAN_STOP 4051
 #define FEM_OP_SCAN_STEP 4052
 #define FEM_OP_BURST_SUBMIT_PERIOD 4053
+#define FEM_OP_DATA_RECEIVER_ENABLE 4054
+#define FEM_OP_FRAMES_ACQUIRED 4055
+#define FEM_OP_CONTROL_STATE 4056
+#define FEM_OP_DAC_SCAN_STATE 4057
+#define FEM_OP_DAC_SCAN_STEPS_COMPLETE 4058
 
 /* Ids 5000..5999 are signals */
 #define FEM_OP_ACQUISITIONCOMPLETE 5000
