@@ -17,7 +17,7 @@ install:
   - python setup.py install
   - cd ..
   - cd plugins/excalibur
-  - python setup.py install
+  - python setup.py --stub-only install
   - cd ../..
   - pip install coveralls
 
