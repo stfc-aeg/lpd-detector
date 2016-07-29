@@ -176,7 +176,7 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     int chip_id, param_id, size;
     FemPtr fem_ptr;
 
-    int* value_ptr;
+    unsigned int* value_ptr;
     PyObject* values;
 
     if (!PyArg_ParseTuple(args, "Oiii", &_handle, &chip_id, &param_id, &size)) {
@@ -187,13 +187,13 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "get_int");
 
-    value_ptr = (int *)malloc(size * sizeof(int));
+    value_ptr = (unsigned int *)malloc(size * sizeof(unsigned int));
     if (value_ptr == NULL) {
         _set_api_error_string("get_int: unable to allocate space for %d integer values", size);
         return NULL;
     }
 
-    rc = femGetInt(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    rc = femGetInt(fem_ptr->handle, chip_id, param_id, size, (int *)(value_ptr));
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
