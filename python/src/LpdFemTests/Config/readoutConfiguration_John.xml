@@ -18,13 +18,14 @@
     <femVetoPolarity type="int" val="0"/>           <!-- External veto signal polarity 0=No inversion, 1=Invert signal (used for at Petra for shutter polarity) -->
 
     <!-- CCC Configuration commands -->
-    <cccSystemMode type="int" val="1"/>                   <!-- 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
+    <cccSystemMode type="int" val="0"/>                   <!-- 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
     <cccEmulationMode type="bool" val="False"/>          <!-- Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
     <cccProvideNumberImages type="bool" val="False"/>     <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
-    <cccVetoStartDelay type="int" val="1000"/>              <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+    <cccVetoStartDelay type="int" val="3000000"/>              <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccStopDelay type="int" val="0"/>                   <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccResetDelay type="int" val="0"/>                  <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
-    <cccVetoPatternFile type="str" val="/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/VetoPatterns/veto_pattern_test2.xml"/>
+    <!-- <cccVetoPatternFile type="str" val="/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/VetoPatterns/veto_pattern_test2.xml"/> -->
+    <cccVetoPatternFile   	   type="str" val="/home/lpduser/lpdSoftware/python/src/LpdFemGui/config/veto_pattern_test2.xml"/>
 
 
     <!-- 'Expert' Variables: -->
@@ -62,10 +63,12 @@
     <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
     <tenGig0SourceIp type="str" val="10.0.0.2"/>
     <tenGig0SourcePort type="int" val="0"/>
-    <tenGig0DestMac type="str" val= "00-07-43-13-ED-80"/> <!-- "00-07-43-10-61-88"/ -->   <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
+    <!-- <tenGig0DestMac type="str" val="00-07-43-13-ED-80"/> --> <!-- te7grenadier's MAC address -->
+    <tenGig0DestMac type="str" val="00-07-43-13-ED-60"/>      <!-- te7garland's MAC Address ends in "..-60" ! -->
+                                                              <!-- "Alaska"'s: "00-07-43-10-65-A0" -->  <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
     <tenGig0DestIp type="str" val="10.0.0.1"/>
     <tenGig0DestPort type="int" val="61649"/>
-    <tenGig0DataFormat type="int" val="0"/>         <!-- Data format type, 0=counting data - doesn't affect "normal" data" -->
+    <tenGig0DataFormat type="int" val="0"/>         <!-- Data format type, 0=counting data - doesn't affect "normal" data" --> 
     <tenGig0DataGenerator type="int" val="1"/>      <!-- Data generator 1=DataGen 2=PPC DDR2 -->
     <tenGig0FrameLength type="int" val="0x10000"/>
     <tenGig0NumberOfFrames type="int" val="1"/>     <!--  Number of frames to send in each cycle -->
