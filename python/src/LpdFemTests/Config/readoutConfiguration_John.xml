@@ -20,7 +20,7 @@
     <!-- CCC Configuration commands -->
     <cccSystemMode type="int" val="0"/>                   <!-- 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
     <cccEmulationMode type="bool" val="False"/>          <!-- Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
-    <cccProvideNumberImages type="bool" val="False"/>     <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
+    <cccProvideNumberImages type="bool" val="True"/>     <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
     <cccVetoStartDelay type="int" val="3000000"/>              <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccStopDelay type="int" val="0"/>                   <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccResetDelay type="int" val="0"/>                  <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
