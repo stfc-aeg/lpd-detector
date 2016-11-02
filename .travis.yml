@@ -1,24 +1,30 @@
 language: python
 sudo: false
 python:
-- 2.7
-- 3.5
+  - 2.7
+  - 3.5
+
 addons:
   apt:
     packages:
-    - libboost-system-dev
-    - libboost-test-dev
-    - libboost-thread-dev
-    - libzmq3-dev
+      - libboost-dev
+      - libboost-system-dev
+      - libboost-test-dev
+      - libboost-thread-dev
+      - libzmq3-dev
+
 install:
-- python setup.py --stub-only install
-- pip install -e .[test]
-- pip install coveralls
+  - python setup.py --stub-only install
+  - pip install -e .[test]
+  - pip install coveralls
+
 script:
-- python setup.py --stub-only nosetests
-- coverage report -m
+  - python setup.py --stub-only nosetests
+  - coverage report -m
+
 after_success:
-- coveralls
+  - coveralls
+
 notifications:
   slack:
     secure: Fy8ATOPzsEGvP3mkiJBlF23/QNTzQAt7ApjR72cegmfl/GZsixnwNzIZZiaLclJyoaKXQG2jjXAGqGw6RGq0FPmccX5j+opVzsu/Fhez6nz5Hl+yOfReashcfZZJHHVsPnxOhs/hsq3A0h73CUffn91sH6KYFmkmyiizqlPjwHnhXkU5q5bOuRD1lhRH2cPODzU6/Fi1KSVGLvsdqYpBnE3stECKAedTsrwuUZFJHXdS5jDvIEMNQwXfiBpC90kzGbODt+6hxg42R7wKqYiS2CHo3IAwPdnF2rVOCTz1fznK98fFk5k8R3/Bty4aaPDRM6lb8Ofg6hxdknVb/Buk96hFHM9/np/xHSlMGCheLiYtstqEjI5STqGYL5LpzjookAo+Ij107qKF9eC50m3gxoe3ZfRBBIXp29ty0l6fyx9S6LzWKh88KXp8H3mA+G0VI5OAy5W0GMGX/V+zeuQwBtSY+LvgNPq66NQWB3BxkTvDm4b6VPpsKF2nG4r34KvLZMbgp8PEG/0bf2NDZqUyyIqFl4ohOuIuZIu886M65u72aECpygVYQLrXNvO/GGaPcPYrbnNbnU+rvN2XFOXi+Ikrj8zp/y20Qjs8LseFEFhK+/eN1PZIKs0cmKDbbr71IY9XuMEP8cfudkV9AEjYg0a/f+456kOkK9LPwb2HfWg=
