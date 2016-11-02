@@ -7,8 +7,7 @@ python:
 
 addons:
   apt:
-    packages:
-    - libzmq3-dev
+    packages: ['libboost-system-dev','libboost-test-dev','libboost-thread-dev','libzmq3-dev']
  
 install:
   - python setup.py --stub-only install
