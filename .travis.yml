@@ -15,7 +15,7 @@ addons:
 
 install:
   - python setup.py --stub-only install
-  - pip install -e .[test]
+  - pip install --install-option='--stub-only' -e .[test]
   - pip install coveralls
 
 script:
