@@ -12,10 +12,6 @@ if '--stub-only' in sys.argv:
     stub_only = True
     sys.argv.remove('--stub-only')
     
-# Import requirements from file
-with open('requirements.txt') as f:
-    required = f.read().splitlines()
-
 # Define the stub fem_api extension modules 
 fem_api_extension_path='fem_api_extension'
 fem_api_wrapper_source = os.path.join(fem_api_extension_path, 'fem_api_wrapper.c')
@@ -112,11 +108,15 @@ setup(
     name='excalibur',
     version='0.1',
     description='EXCALIBUR detector plugin for ODIN framework',
-    url='https://github.com/timcnicholls/odin',
+    url='https://github.com/stfc-aeg/odin-excalibur',
     author='Tim Nicholls',
     author_email='tim.nicholls@stfc.ac.uk',
     ext_modules=fem_ext_modules,
-    packages = find_packages(),
-    install_requires=required,
+    packages=find_packages(),
+    install_requires=['odin==0.1'],
+    dependency_links=['https://github.com/percival-detector/odin/zipball/v0.1#egg=odin-0.1'],
+    extras_require={
+      'test': ['nose', 'coverage', 'mock'],  
+    },
     cmdclass = { 'build_ext' : ExcaliburBuildExt},
 )
