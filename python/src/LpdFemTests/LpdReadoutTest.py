@@ -1,6 +1,7 @@
 '''
+
     LpdReadoutTest.py - Readout a system using the API
-                    
+
 '''
 
 from __future__ import print_function
