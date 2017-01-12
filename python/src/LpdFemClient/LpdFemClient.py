@@ -210,6 +210,8 @@ class LpdFemClient(FemClient):
     top_sp3_ctrl        = 0x20000000    #  0
     cfg_sp3_ctrl        = 0x30000000    #  0
 
+    # Fem temperature sensor address:
+    lm82_addr           = 0x18
    
     # BRAM memory shared by ppc1 and ppc2 
     # filled by ppc1 with status information
@@ -633,7 +635,19 @@ class LpdFemClient(FemClient):
     def _powerCardParamGet(self, cardIdx, method):
         
         return getattr(self.powerCards[cardIdx], method)()
-    
+
+    def read_fem_temperature(self, temp_channel):
+
+        try:
+            self.i2cWrite(LpdFemClient.lm82_addr, (temp_channel))
+            response = self.i2cRead(LpdFemClient.lm82_addr, 1)
+            temperature = float(response[0])
+        except FemClientError as e:
+            print("Error reading temperature from FEM: {}".format(str(e)))
+            temperature = None
+
+        return temperature
+        
     '''
         --------------------------------------------------------
         Support functions taken from John's version of LpdFemClient.py:
@@ -2986,6 +3000,10 @@ class LpdFemClient(FemClient):
         print("  PPC2 s/w vers = %08x" % self.ppc2_get_sw_vers())
 
         print(" Python LPD Client Software Vers = %08x:"  %(self.femLpdClientVersion))
+
+        tempBoard = self.read_fem_temperature(0)
+        tempCore  = self.read_fem_temperature(1)
+        print(" FEM Temperature; Board = {}C  Core = {}C".format(tempBoard, tempCore))
 
         print("=======================================================================") 
 
