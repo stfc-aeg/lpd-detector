@@ -743,9 +743,17 @@ class LpdDeviceParameters(object):
         #
         # Readout state variables - read only
         #
-        self.expectedParameters['femReadoutActive']     = AttributeContainer(bool, 'FemReadoutActive', 'FEM readout is active',
+        self.expectedParameters['femReadoutActive']             = AttributeContainer(bool, 'FemReadoutActive', 'FEM readout is active',
                                                                         (True, False), None, None,
                                                                         AccessRead, None, ExternalParam, None, "poll")
+
+        self.expectedParameters['femBoardTemperature']          = AttributeContainer(bool, 'FemBoardTemperature', 'FEM Board Sensor Temperature [C] Reading',
+                                                                        0, 125.0, None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Celsius', 'C')
+        
+        self.expectedParameters['femCoreTemperature']           = AttributeContainer(bool, 'FemCoreTemperature', 'FEM Core Sensor Temperature [C] Reading',
+                                                                        0, 125.0, None,
+                                                                        AccessRead, None, ExternalParam, None, "poll", 'Celsius', 'C')
 
     
     def get(self):

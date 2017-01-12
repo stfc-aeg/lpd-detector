@@ -637,7 +637,7 @@ class LpdFemClient(FemClient):
         return getattr(self.powerCards[cardIdx], method)()
 
     def read_fem_temperature(self, temp_channel):
-
+ 
         try:
             self.i2cWrite(LpdFemClient.lm82_addr, (temp_channel))
             response = self.i2cRead(LpdFemClient.lm82_addr, 1)
@@ -645,7 +645,7 @@ class LpdFemClient(FemClient):
         except FemClientError as e:
             print("Error reading temperature from FEM: {}".format(str(e)))
             temperature = None
-
+ 
         return temperature
         
     '''
@@ -3001,10 +3001,6 @@ class LpdFemClient(FemClient):
 
         print(" Python LPD Client Software Vers = %08x:"  %(self.femLpdClientVersion))
 
-        tempBoard = self.read_fem_temperature(0)
-        tempCore  = self.read_fem_temperature(1)
-        print(" FEM Temperature; Board = {}C  Core = {}C".format(tempBoard, tempCore))
-
         print("=======================================================================") 
 
 
@@ -4773,7 +4769,17 @@ class LpdFemClient(FemClient):
                 readout_active = (self.num_trains_received < self.numberTrains) 
             
         return readout_active
-    
+
+    def femBoardTemperatureGet(self):
+        ''' Get fem board temperature reading
+        '''
+        return self.read_fem_temperature(0)
+     
+    def femCoreTemperatureGet(self):
+        ''' Get fem core temperature reading
+        '''
+        return self.read_fem_temperature(1)
+
     #def pipelineLatencySet(self, aValue):
         #''' 
         #'''

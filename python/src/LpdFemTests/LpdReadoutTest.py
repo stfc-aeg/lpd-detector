@@ -329,6 +329,22 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp, legacyPower
                 print("%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet()))
 #            else:
 #                print "{0:<32} = {1:<10}".format(param, value)
+
+        # Readout fem temperatures
+ 
+        param = "femBoardTemperature"
+        (rc, value) = theDevice.paramGet(param)
+        if rc != LpdDevice.ERROR_OK:
+            print("%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet()))
+        else:
+            print("{0:<32} = {1:<4}C".format(param, value.__repr__()))
+        
+        param = "femCoreTemperature"
+        (rc, value) = theDevice.paramGet(param)
+        if rc != LpdDevice.ERROR_OK:
+            print("%s get failed rc=%d : %s" % (param, rc, theDevice.errorStringGet()))
+        else:
+            print("{0:<32} = {1:<4}C".format(param, value.__repr__()))
         
         num_trains_configured = -1
         (rc, num_trains_configured) = theDevice.paramGet("numberTrains")
