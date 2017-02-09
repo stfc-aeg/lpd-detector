@@ -565,10 +565,10 @@ class LpdFemClient(FemClient):
         # Delayed import of power card type, using appropriate module to support new or legacy power card
         if legacyPowerCard:
             powerCardType = importlib.import_module('LpdFemClient.LpdPowerCardLegacy').LpdPowerCard
-            print("Using legacy power card module")
+            #print("Using legacy power card module")
         else:
             powerCardType = importlib.import_module('LpdFemClient.LpdPowerCard').LpdPowerCard
-            print("Using new power card module")
+            #print("Using new power card module")
         
         self.powerCards = []
         for idx in range(numberPowerCards):
