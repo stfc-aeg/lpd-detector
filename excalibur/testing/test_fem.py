@@ -1,9 +1,10 @@
 from nose.tools import *
 import random
+import sys
 
 #from excalibur.fem import ExcaliburFemConfig, ExcaliburFem, ExcaliburFemError
 from excalibur.fem import ExcaliburFem, ExcaliburFemError
-
+from excalibur.parameter import *
 
 class TestExcaliburFemError:
 
@@ -52,6 +53,11 @@ class TestExcaliburFem:
         # Enable use of stub API for testing
         ExcaliburFem.use_stub_api = True
 
+        # Unload any previously loaded API module, to ensure we use the correct stub version for this test class
+        if ExcaliburFem._fem_api is not None:
+            del sys.modules[ExcaliburFem._fem_api.__name__]
+            ExcaliburFem._fem_api = None
+            
         cls.the_fem = ExcaliburFem(
             cls.fem_id, cls.fem_address, cls.fem_port, cls.data_address
         )
@@ -65,7 +71,7 @@ class TestExcaliburFem:
         id = -1
         with assert_raises(ExcaliburFemError) as cm:
             bad_fem = ExcaliburFem(id, self.fem_address, self.fem_port, self.data_address)
-        assert_equal(cm.exception.value, 'Error trying to initialise FEM id {}: Illegal ID specified'.format(id))
+        assert_equal(cm.exception.value, 'Failed to initialise FEM connection: Illegal ID specified')
 
     def test_fem_id_exception(self):
 
@@ -90,7 +96,7 @@ class TestExcaliburFem:
         param_len = 10
         (rc, values) = self.the_fem.get_int(chip_id, param_id, param_len)
 
-        assert_equal(rc, ExcaliburFem.FEM_RTN_OK)
+        assert_equal(rc, FEM_RTN_OK)
         assert_equal(len(values), param_len)
         assert_equal(values, list(range(param_id, param_id+param_len)))
 
@@ -115,7 +121,7 @@ class TestExcaliburFem:
 
         rc = self.the_fem.set_int(chip_id, param_id, value)
 
-        assert_equal(rc, ExcaliburFem.FEM_RTN_OK)
+        assert_equal(rc, FEM_RTN_OK)
 
     def test_legal_set_ints(self):
 
@@ -126,7 +132,7 @@ class TestExcaliburFem:
 
         rc = self.the_fem.set_int(chip_id, param_id, values)
 
-        assert_equal(rc, ExcaliburFem.FEM_RTN_OK)
+        assert_equal(rc, FEM_RTN_OK)
 
     def test_illegal_set_int(self):
 
@@ -146,10 +152,10 @@ class TestExcaliburFem:
         values_in = [random.randint(0, 1000000) for x in range(param_len)]
 
         rc = self.the_fem.set_int(chip_id, param_id, values_in)
-        assert_equal(rc, ExcaliburFem.FEM_RTN_OK)
+        assert_equal(rc, FEM_RTN_OK)
 
         (rc, values_out) = self.the_fem.get_int(chip_id, param_id, param_len)
-        assert_equal(rc, ExcaliburFem.FEM_RTN_OK)
+        assert_equal(rc, FEM_RTN_OK)
         assert_equal(values_in, values_out)
 
     def test_legal_cmd(self):
@@ -157,14 +163,14 @@ class TestExcaliburFem:
         chip_id = 0
         cmd_id = 1
         rc = self.the_fem.cmd(chip_id, cmd_id)
-        assert_equal(rc, ExcaliburFem.FEM_RTN_OK)
+        assert_equal(rc, FEM_RTN_OK)
 
     def test_illegal_cmd(self):
 
         chip_id  = 0;
         cmd_id = -1
         rc = self.the_fem.cmd(chip_id, cmd_id)
-        assert_equal(rc, ExcaliburFem.FEM_RTN_UNKNOWNOPID)
+        assert_equal(rc, FEM_RTN_UNKNOWNOPID)
 
     def test_cmd_exception(self):
 

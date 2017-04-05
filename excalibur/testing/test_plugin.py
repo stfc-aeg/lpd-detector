@@ -35,16 +35,19 @@ class TestExcaliburPlugin(OdinTestServer):
 
     def test_simple_get(self):
         result = requests.get(
-            self.build_url('excalibur/config/none'),
+            self.build_url('excalibur/status/fem'),
             headers=self.json_request_headers
         )
+        
         assert_equal(result.status_code, 200)
-        assert_equal(result.json()['response'], 'ExcaliburAdapter: GET on path config/none')
+        assert_true('fem' in result.json())
 
     def test_adapter_connect(self):
+        connect_params = {'connect': {'state': True}}
         result = requests.put(
-            self.build_url('excalibur/command/connnect'),
-            headers=self.json_request_headers
+            self.build_url('excalibur/command'),
+            headers=self.json_request_headers,
+            data = json.dumps(connect_params)
         )
         assert_equal(result.status_code, 200)
-        print(result.json())
+        assert_true('command' in result.json())

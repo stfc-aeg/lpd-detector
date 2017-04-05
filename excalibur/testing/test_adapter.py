@@ -5,6 +5,7 @@ Tim Nicholls, STFC Application Engineering Group
 """
 
 import sys
+import json
 from nose.tools import *
 
 if sys.version_info[0] == 3:  # pragma: no cover
@@ -19,7 +20,7 @@ class ExcaliburAdapterFixture(object):
     @classmethod
     def setup_class(cls, **adapter_params):
         cls.adapter = ExcaliburAdapter(**adapter_params)
-        cls.path = 'test/path'
+        cls.path = 'status/fem'
         cls.request = Mock()
         cls.request.headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
 
@@ -49,15 +50,15 @@ class TestExcaliburAdapter(ExcaliburAdapterFixture):
         assert_equal(adapter.detector, None)
 
     def test_adapter_get(self):
-        expected_response = {'response': '{}: GET on path {}'.format(self.adapter.name, self.path)}
         response = self.adapter.get(self.path, self.request)
-        assert_equal(response.data, expected_response)
+        assert_true(isinstance(response.data, dict))
         assert_equal(response.status_code, 200)
 
-    def test_adapter_put(self):
-        expected_response = {'response': '{}: PUT on path {}'.format(self.adapter.name, self.path)}
-        response = self.adapter.put(self.path, self.request)
-        assert_equal(response.data, expected_response)
+    def test_adapter_put(self):     
+        self.request.body = json.dumps({'connect': {'state': True}})
+        put_path = 'command'
+        response = self.adapter.put(put_path, self.request)
+        assert_true(isinstance(response.data, dict))
         assert_equal(response.status_code, 200)
 
     def test_adapter_bad_path(self):

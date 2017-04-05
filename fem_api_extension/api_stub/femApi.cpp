@@ -7,6 +7,8 @@
 #include "ExcaliburFemClient.h"
 
 std::map<int, std::vector<int> > int_params;
+std::map<int, std::vector<short> > short_params;
+std::map<int, std::vector<double> > double_params;
 
 const unsigned int kClientTimeoutMsecs = 10000;
 
@@ -54,25 +56,6 @@ int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfi
     return rc;
 }
 
-int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
-{
-    int rc = FEM_RTN_OK;
-
-    //ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
-    if (int_params.count(id) > 0) {
-        for (size_t i = 0; i < size; i++) {
-            value[i] = int_params[id][i];
-        }
-    } else {
-        for (size_t i = 0; i < size; i++) {
-            value[i] = id + i;
-        }
-    }
-
-    return rc;
-}
-
 int femGetId(void* handle)
 {
 	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
@@ -97,6 +80,76 @@ int femSetInt(void* handle, int chipId, int id, size_t size, int* value)
     int rc = FEM_RTN_OK;
 
     int_params[id] = std::vector<int>(value, value + size);
+
+    return rc;
+}
+
+int femSetShort(void* handle, int chipId, int id, std::size_t size, short* value)
+{
+	int rc = FEM_RTN_OK;
+
+	short_params[id] = std::vector<short>(value, value+size);
+
+	return rc;
+}
+
+
+int femSetFloat(void* handle, int chipId, int id, std::size_t size, double* value)
+{
+	int rc = FEM_RTN_OK;
+
+	double_params[id] = std::vector<double>(value, value+size);
+
+	return rc;
+}
+
+int femGetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
+{
+    int rc = FEM_RTN_OK;
+
+    if (int_params.count(id) > 0) {
+        for (size_t i = 0; i < size; i++) {
+            value[i] = int_params[id][i];
+        }
+    } else {
+        for (size_t i = 0; i < size; i++) {
+            value[i] = id + i;
+        }
+    }
+
+    return rc;
+}
+
+int femGetShort(void* femHandle, int chipId, int id, std::size_t size, short* value)
+{
+    int rc = FEM_RTN_OK;
+
+    if (short_params.count(id) > 0) {
+        for (std::size_t i = 0; i < size; i++) {
+            value[i] = short_params[id][i];
+        }
+    } else {
+        for (std::size_t i = 0; i < size; i++) {
+            value[i] = id + i;
+        }
+    }
+
+    return rc;
+}
+
+int femGetFloat(void* femHandle, int chipId, int id, std::size_t size, double* value)
+{
+    int rc = FEM_RTN_OK;
+
+    if (double_params.count(id) > 0) {
+        for (std::size_t i = 0; i < size; i++) {
+            value[i] = double_params[id][i];
+        }
+    } else {
+        for (std::size_t i = 0; i < size; i++) {
+            value[i] = double(id + i);
+        }
+    }
 
     return rc;
 }

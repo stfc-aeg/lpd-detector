@@ -52,4 +52,5 @@ class TestExcaliburDetector():
     def test_detector_connect_fems(self):
 
         detector = ExcaliburDetector(self.detector_fems)
-        detector.connect()
+        connect_params = {'state': True}
+        detector.connect(connect_params)
