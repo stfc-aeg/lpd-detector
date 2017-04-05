@@ -10,28 +10,48 @@ std::map<int, std::vector<int> > int_params;
 
 const unsigned int kClientTimeoutMsecs = 10000;
 
-const char* femErrorMsg(void)
+typedef struct {
+	ExcaliburFemClient* client;
+	FemApiError         error;
+} FemHandle;
+
+const char* femErrorMsg(void* handle)
 {
-    return FemApiError::get_string();
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
+    return (femHandle->error).get_string();
 }
 
-int femErrorCode(void)
+int femErrorCode(void* handle)
 {
-    return FemApiError::get_code();
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
+    return (femHandle->error).get_code();
 }
 
-void* femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config)
+int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config, void** handle)
 {
-    ExcaliburFemClient* theFem = NULL;
-    try {
-        theFem = new ExcaliburFemClient(ctlHandle, callbacks, config, kClientTimeoutMsecs);
-    }
-    catch (FemClientException& e)
-    {
-        FemApiError().Set(e.which()) << "Error trying to initialise FEM id " << config->femNumber << ": " << e.what();
-    }
 
-    return (void*)theFem;
+	int rc = FEM_RTN_OK;
+
+	// Initialise FEM handle and client objects, which opens and manages the connection with the FEM
+	FemHandle* femHandle = new FemHandle;
+	femHandle->client = NULL;
+	*handle = reinterpret_cast<void*>(femHandle);
+
+	try
+	{
+		femHandle->client = new ExcaliburFemClient(ctlHandle, callbacks, config, kClientTimeoutMsecs);
+
+	}
+	catch (FemClientException& e)
+	{
+		femHandle->error.set() << "Failed to initialise FEM connection: " << e.what();
+		rc = FEM_RTN_INITFAILED;
+	}
+
+
+    return rc;
 }
 
 int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
@@ -53,7 +73,26 @@ int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
     return rc;
 }
 
-int femSetInt(void* femHandle, int chipId, int id, size_t size, int* value)
+int femGetId(void* handle)
+{
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
+    return (femHandle->client)->get_id();
+}
+
+void femClose(void* handle)
+{
+
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
+	if (femHandle->client != NULL) {
+		delete femHandle->client;
+	}
+
+	delete femHandle;
+}
+
+int femSetInt(void* handle, int chipId, int id, size_t size, int* value)
 {
     int rc = FEM_RTN_OK;
 
@@ -62,11 +101,11 @@ int femSetInt(void* femHandle, int chipId, int id, size_t size, int* value)
     return rc;
 }
 
-int femCmd(void* femHandle, int chipId, int id)
+int femCmd(void* handle, int chipId, int id)
 {
     int rc = FEM_RTN_OK;
 
-    //ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+    FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
 
     switch (id)
     {
@@ -82,22 +121,9 @@ int femCmd(void* femHandle, int chipId, int id)
 
         default:
             rc = FEM_RTN_UNKNOWNOPID;
-            FemApiError().Set() << "femCmd: illegal command ID: " << id;
+            (femHandle->error).set() << "femCmd: illegal command ID: " << id;
     }
 
     return rc;
 }
 
-int femGetId(void* femHandle)
-{
-    ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
-    return theFem->get_id();
-}
-
-void femClose(void* femHandle)
-{
-    ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
-    delete theFem;
-}

@@ -77,7 +77,6 @@ int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfi
 
 int femGetId(void* handle)
 {
-    //ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
 	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
 
     return (femHandle->client)->get_id();

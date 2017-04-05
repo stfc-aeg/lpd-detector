@@ -1,6 +1,8 @@
 from setuptools import setup, find_packages, Extension
 from distutils.command.build_ext import build_ext
+from distutils.command.clean import clean
 from distutils import log
+
 import os
 import glob
 import sys
@@ -102,7 +104,20 @@ class ExcaliburBuildExt(build_ext):
             if not os.path.isdir(path):
                 raise
         
+class ExcaliburClean(clean):
+    
+    def run(self):
+
+        target_path = 'excalibur'
+        ext_targets = [os.path.join(target_path, lib_name) for lib_name in ['fem_api.so', 'fem_api_stub.so']]
         
+        removed = False
+        for ext_target in ext_targets:
+            if os.path.exists(ext_target):
+                print 'removing', ext_target
+                os.remove(ext_target)
+                                   
+        clean.run(self)        
         
 setup(
     name='excalibur',
@@ -118,5 +133,8 @@ setup(
     extras_require={
       'test': ['nose', 'coverage', 'mock'],  
     },
-    cmdclass = { 'build_ext' : ExcaliburBuildExt},
+    cmdclass = { 
+        'build_ext' : ExcaliburBuildExt,
+        'clean' : ExcaliburClean,
+        },
 )
