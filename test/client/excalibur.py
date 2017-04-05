@@ -287,7 +287,7 @@ class ExcaliburClient(object):
             
         return succeeded
     
-    def do_command(self, cmd, fem=ExcaliburDefinitions.ALL_FEMS, chip=ExcaliburDefinitions.ALL_CHIPS):
+    def do_command(self, cmd, fem=[ExcaliburDefinitions.ALL_FEMS], chip=[ExcaliburDefinitions.ALL_CHIPS]):
         
         cmd_params = {
             'fem': fem,
