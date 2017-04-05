@@ -13,10 +13,6 @@ from odin.adapters.parameter_tree import ParameterTree, ParameterTreeError
 from excalibur.fem import ExcaliburFem, ExcaliburFemError
 from excalibur.parameter import *
 
-import time
-from excalibur import fem
-
-
 class ExcaliburDetectorError(Exception):
     """Simple exception class for ExcaliburDetector."""
 
