@@ -111,10 +111,9 @@ class ExcaliburClean(clean):
         target_path = 'excalibur'
         ext_targets = [os.path.join(target_path, lib_name) for lib_name in ['fem_api.so', 'fem_api_stub.so']]
         
-        removed = False
         for ext_target in ext_targets:
             if os.path.exists(ext_target):
-                print 'removing', ext_target
+                print('removing {}'.format(ext_target))
                 os.remove(ext_target)
                                    
         clean.run(self)        
