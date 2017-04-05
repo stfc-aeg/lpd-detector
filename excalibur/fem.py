@@ -1,6 +1,7 @@
 #from excalibur import fem_api
 #import excalibur.fem_api_stub as fem_api
 import importlib
+import logging
 
 class ExcaliburFemError(Exception):
 
@@ -12,12 +13,6 @@ class ExcaliburFemError(Exception):
 
 
 class ExcaliburFem(object):
-
-    FEM_RTN_OK = 0
-    FEM_RTN_UNKNOWNOPID = 1
-    FEM_RTN_ILLEGALCHIP = 2
-    FEM_RTN_BADSIZE = 3
-    FEM_RTN_INITFAILED = 4
 
     use_stub_api = False
     api_stem = 'excalibur.fem_api'
@@ -43,6 +38,7 @@ class ExcaliburFem(object):
             self.fem_handle = self._fem_api.initialise(
                 fem_id, fem_address, fem_port, data_address
             )
+            
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
 
@@ -65,16 +61,54 @@ class ExcaliburFem(object):
     def get_int(self, chip_id, param_id, size):
 
         try:
-            rc = self._fem_api.get_int(self.fem_handle, chip_id, param_id, size)
+            (rc, values) = self._fem_api.get_int(self.fem_handle, chip_id, param_id, size)
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
 
-        return rc
+        return (rc, values)
 
     def set_int(self, chip_id, param_id, values):
 
         try:
             rc = self._fem_api.set_int(self.fem_handle, chip_id, param_id, values)
+        except self._fem_api.error as e:
+            raise ExcaliburFemError(str(e))
+
+        return rc
+ 
+    def get_short(self, chip_id, param_id, size):
+
+        try:
+            (rc, values) = self._fem_api.get_short(self.fem_handle, chip_id, param_id, size)
+        except self._fem_api.error as e:
+            raise ExcaliburFemError(str(e))
+
+        return (rc, values)
+
+    def set_short(self, chip_id, param_id, values):
+
+        try:
+            rc = self._fem_api.set_short(self.fem_handle, chip_id, param_id, values)
+        except self._fem_api.error as e:
+            raise ExcaliburFemError(str(e))
+
+        return rc
+       
+    def get_float(self, chip_id, param_id, size):
+        
+        try:
+            (rc, values) = self._fem_api.get_float(self.fem_handle, chip_id, param_id, size)
+        except self._fem_api.error as e:
+            raise ExcaliburFemError(str(e))
+        except Exception as e:
+            raise ExcaliburFemError(e)
+        
+        return (rc, values)
+
+    def set_float(self, chip_id, param_id, values):
+
+        try:
+            rc = self._fem_api.set_float(self.fem_handle, chip_id, param_id, values)
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
 
@@ -88,3 +122,12 @@ class ExcaliburFem(object):
             raise ExcaliburFemError(str(e))
 
         return rc
+
+    def get_error_msg(self):
+        
+        try:
+            error_msg = self._fem_api.get_error_msg(self.fem_handle)
+        except self._fem_api_error as e:
+            raise ExcaliburFemError(str(e))
+
+        return error_msg

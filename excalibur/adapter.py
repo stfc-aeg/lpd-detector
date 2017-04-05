@@ -6,8 +6,8 @@ Tim Nicholls, STFC Application Engineering Group
 
 import logging
 import re
+from tornado.escape import json_decode
 from odin.adapters.adapter import ApiAdapter, ApiAdapterResponse, request_types, response_types
-
 from excalibur.detector import ExcaliburDetector, ExcaliburDetectorError
 
 
@@ -45,15 +45,32 @@ class ExcaliburAdapter(ApiAdapter):
         # detector object
         self.detector = None
         if 'detector_fems' in self.options:
-            fems = [tuple(fem.split(':')) for fem in self.options['detector_fems'].split(',')]
+            fems = [tuple(fem.strip().split(':')) for fem in self.options['detector_fems'].split(',')]
             try:
                 self.detector = ExcaliburDetector(fems)
                 logging.debug('ExcaliburAdapter loaded')
+                
+                if 'powercard_fem_idx' in self.options:
+                    logging.debug('Setting power card FEM index to %d', int(self.options['powercard_fem_idx']))
+                    self.detector.set_powercard_fem_idx(int(self.options['powercard_fem_idx']))
+                    
+                if 'chip_enable_mask' in self.options:
+                    try:
+                        chip_enable_mask = [int(mask, 0) for mask in self.options['chip_enable_mask'].split(',')]
+                    except ValueError as e:
+                        logging.error("Failed to parse chip enable mask from options: {}".format(e))
+                    else:
+                        logging.debug("Setting chip enable mask for FEMS: {}".format(
+                            ', '.join([hex(mask) for mask in chip_enable_mask]))
+                        )
+                        self.detector.set_chip_enable_mask(chip_enable_mask)
+                        
             except ExcaliburDetectorError as e:
                 logging.error('ExcaliburAdapter failed to initialise detector: %s', e)
         else:
             logging.warning('No detector FEM option specified in configuration')
-
+            
+            
     @request_types('application/json')
     @response_types('application/json', default='application/json')
     @require_valid_detector
@@ -66,11 +83,14 @@ class ExcaliburAdapter(ApiAdapter):
         :param request: Tornado HTTP request object
         :return: ApiAdapterResponse object to be returned to the client
         """
-        response = {'response': '{}: GET on path {}'.format(self.name, path)}
-        status_code = 200
-
-        logging.debug(response)
-
+        try:
+            response = self.detector.get(path)
+            status_code = 200
+        except ExcaliburDetectorError as e:
+            response = {'error': str(e)}
+            logging.error(e)
+            status_code = 400
+            
         return ApiAdapterResponse(response, status_code=status_code)
 
     @request_types('application/json')
@@ -85,16 +105,20 @@ class ExcaliburAdapter(ApiAdapter):
         :param request: Tornado HTTP request object
         :return: ApiAdapterResponse object to be returned to the client
         """
-        (action, resource) = self.resolve_path(path)
-        if (action, resource) == (None, None):
-            response = {'response': '{} PUT could not resolve path {}'.format(self.name, path)}
-            status_code = 400
-        else:
-            response = {'response': '{}: PUT on path {}'.format(self.name, path)}
+        try:
+            data = json_decode(request.body)
+            self.detector.set(path, data)
+            response = self.detector.get(path)
             status_code = 200
-
-        logging.debug(response)
-
+        except ExcaliburDetectorError as e:
+            response = {'error': str(e)}
+            status_code = 400
+            logging.error(e)
+        except (TypeError, ValueError) as e:
+            response = {'error': 'Failed to decode PUT request body: {}'.format(str(e))}
+            logging.error(e)
+            status_code = 400
+            
         return ApiAdapterResponse(response, status_code=status_code)
 
     @request_types('application/json')
