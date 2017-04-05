@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "femApi.h"
 
@@ -38,6 +39,7 @@
 typedef struct Fem {
     void* handle;
     CtlConfig config;
+    int api_trace;
 } Fem;
 typedef Fem* FemPtr;
 
@@ -141,6 +143,9 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
     fem_ptr->config.femPort = fem_port;
     fem_ptr->config.dataAddress = data_address;
 
+    /* Initialise the API trace flag */
+    fem_ptr->api_trace = 0;
+
     Py_BEGIN_ALLOW_THREADS
     rc = femInitialise((void*)NULL, (const CtlCallbacks*)NULL, (const CtlConfig*)&(fem_ptr->config), &(fem_ptr->handle));
     Py_END_ALLOW_THREADS
@@ -155,6 +160,27 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
         (unsigned long)(fem_ptr->handle), fem_id);
 
     return PyCapsule_New(fem_ptr, "FemPtr", _del);
+}
+
+static PyObject* _set_api_trace(PyObject* self, PyObject* args)
+{
+    PyObject* _handle;
+    FemPtr fem_ptr;
+    int api_trace;
+
+    if (!PyArg_ParseTuple(args, "Oi", &_handle, &api_trace)) {
+    	return NULL;
+    }
+
+    fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
+    _validate_ptr_and_handle(fem_ptr, "set_api_trace");
+
+    log_msg(debug, "Setting API trace to %s for FEM handle %lu",
+    		api_trace ? "enabled" : "disabled", (fem_ptr->handle));
+    fem_ptr->api_trace = api_trace;
+
+    return Py_BuildValue("");
+
 }
 
 static PyObject* _get_id(PyObject* self, PyObject* args)
@@ -202,6 +228,11 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     Py_BEGIN_ALLOW_THREADS
     rc = femGetInt(fem_ptr->handle, chip_id, param_id, size, (int *)(value_ptr));
     Py_END_ALLOW_THREADS
+
+	if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+	}
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -265,6 +296,11 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
             value_ptr[ival] = PyInt_AsLong(PyList_GetItem(values_obj, ival));
         }
     }
+	if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+	}
+
     Py_BEGIN_ALLOW_THREADS
     rc = femSetInt(fem_ptr->handle, chip_id, param_id, size, value_ptr);
     Py_END_ALLOW_THREADS
@@ -303,6 +339,9 @@ static PyObject* _get_short(PyObject* self, PyObject* args)
     Py_BEGIN_ALLOW_THREADS
     rc = femGetShort(fem_ptr->handle, chip_id, param_id, size, value_ptr);
     Py_END_ALLOW_THREADS
+
+	log_msg(info, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
+			__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -364,6 +403,11 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
         }
     }
 
+	if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+	}
+
     Py_BEGIN_ALLOW_THREADS
     rc = femSetShort(fem_ptr->handle, chip_id, param_id, size, value_ptr);
     Py_END_ALLOW_THREADS
@@ -402,6 +446,11 @@ static PyObject* _get_float(PyObject* self, PyObject* args)
     Py_BEGIN_ALLOW_THREADS
     rc = femGetFloat(fem_ptr->handle, chip_id, param_id, size, (double *)(value_ptr));
     Py_END_ALLOW_THREADS
+
+	if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%f",
+				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+	}
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -463,6 +512,11 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
         }
     }
 
+	if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%f",
+				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+	}
+
     Py_BEGIN_ALLOW_THREADS
     rc = femSetFloat(fem_ptr->handle, chip_id, param_id, size, value_ptr);
     Py_END_ALLOW_THREADS
@@ -478,18 +532,23 @@ static PyObject* _cmd(PyObject* self, PyObject* args)
 {
     PyObject* _handle;
     FemPtr fem_ptr;
-    int chipId, cmdId;
+    int chip_id, cmd_id;
     int rc;
 
-    if (!PyArg_ParseTuple(args, "Oii", &_handle, &chipId, &cmdId)) {
+    if (!PyArg_ParseTuple(args, "Oii", &_handle, &chip_id, &cmd_id)) {
         return NULL;
     }
 
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "cmd");
 
+	if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), chip_id, cmd_id);
+	}
+
     Py_BEGIN_ALLOW_THREADS
-    rc = femCmd(fem_ptr->handle, chipId, cmdId);
+    rc = femCmd(fem_ptr->handle, chip_id, cmd_id);
     Py_END_ALLOW_THREADS
 
     return Py_BuildValue("i", rc);
@@ -548,6 +607,7 @@ static void _del(PyObject* obj)
 static PyMethodDef fem_api_methods[] =
 {
      {"initialise", _initialise, METH_VARARGS, "initialise a module"},
+	 {"set_api_trace", _set_api_trace, METH_VARARGS, "set API trace debugging"},
      {"get_id",     _get_id,     METH_VARARGS, "get a module ID"},
      {"get_int",    _get_int,    METH_VARARGS, "get one or more integer parameters"},
      {"set_int",    _set_int,    METH_VARARGS, "set one or more integer parameters"},

@@ -240,7 +240,16 @@ class ExcaliburClient(object):
         self.exec_command('connect', {'state': False})
         self.logger.info('Disconnected from detector')
         
+    
+    def set_api_trace(self, enabled):
         
+        cmd = 'api_trace'
+        cmd_params = {
+            'enabled': enabled 
+        }
+        (succeeded, _) = self.exec_command(cmd, cmd_params)
+        return succeeded
+            
     def fe_init(self):
              
         self.logger.info('Initialising front-end')

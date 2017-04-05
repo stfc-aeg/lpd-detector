@@ -75,6 +75,8 @@ class ExcaliburDetector(object):
         self.connected = False
         self.num_pending = 0   
         self.command_succeeded = True
+        
+        self.api_trace = False
         self.state_lock = threading.Lock()
         
         self.powercard_fem_idx = None
@@ -116,6 +118,7 @@ class ExcaliburDetector(object):
         self.fe_cmd_map = ExcaliburFrontEndCommandMap()
             
         cmd_tree = OrderedDict()
+        cmd_tree['api_trace'] = (self._get('api_trace'), self.set_api_trace)
         cmd_tree['connect'] = (None, self.connect)
         cmd_tree.update(self.fe_cmd_map)
         for cmd in self.fe_cmd_map:
@@ -194,6 +197,20 @@ class ExcaliburDetector(object):
         
         return command_pending
     
+    def set_api_trace(self, params):
+        
+        trace = False
+        if 'enabled' in params:
+            trace = params['enabled']
+        
+        if not isinstance(trace, bool):
+            raise ExcaliburDetectorError('api_trace requires a bool enabled parameter')
+        
+        if trace != self.api_trace:
+            self.api_trace = bool(trace)
+            for idx in range(len(self.fems)):
+                self.fems[idx].fem.set_api_trace(trace)
+                
     def connect(self, params):
         
         state = True

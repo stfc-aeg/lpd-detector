@@ -11,7 +11,7 @@
 #include <map>
 #include <sstream>
 
-#define FEM_API_TRACE
+//#define FEM_API_TRACE
 #ifdef FEM_API_TRACE
 #include <stdio.h>
 #include <time.h>

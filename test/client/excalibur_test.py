@@ -73,6 +73,9 @@ class ExcaliburTestApp(object):
             default=self.defaults.log_level,
             choices=['error', 'warning', 'info', 'debug'],
             help='Setting logging output level')
+        config_group.add_argument('--trace', type=str, dest='api_trace',
+            choices=['off', 'on'],
+            help='Toggle API trace output (requires debug logging to be enabled on server)')
         
         cmd_group = parser.add_argument_group('Commands')
         cmd_group.add_argument('--dump', action='store_true',
@@ -173,6 +176,12 @@ class ExcaliburTestApp(object):
             return
         
         self.client.connect()
+
+        if self.args.api_trace:
+            logging.debug('Setting API trace mode to {}'.format(self.args.api_trace))
+            trace_enable = (self.args.api_trace == 'on')
+            self.client.set_api_trace(trace_enable)
+            
 
         (self.fem_ids, self.chip_ids) = self.client.get_fem_chip_ids()
         self.num_fems = len(self.fem_ids)

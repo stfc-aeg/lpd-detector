@@ -48,6 +48,13 @@ class ExcaliburFem(object):
             self._fem_api.close(self.fem_handle)
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
+        
+    def set_api_trace(self, trace):
+        
+        try:
+            self._fem_api.set_api_trace(self.fem_handle, int(trace))
+        except self._fem_api.error as e:
+            raise ExcaliburFemError(str(e))
 
     def get_id(self):
 
