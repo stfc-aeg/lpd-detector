@@ -7,10 +7,10 @@ class FemApiError
 public:
     FemApiError();
     virtual ~FemApiError();
-    std::ostringstream& Set();
-    std::ostringstream& Set(const int error_code);
-    static const char* get_string(void);
-    static const int get_code(void);
+    std::ostringstream& set();
+    std::ostringstream& set(const int error_code);
+    const char* get_string(void);
+    const int get_code(void);
 
 protected:
     std::ostringstream os;
@@ -18,7 +18,7 @@ protected:
 private:
     FemApiError(const FemApiError&);
     FemApiError& operator =(const FemApiError&);
-    static std::string error_string_;
-    static int error_code_;
+    std::string error_string_;
+    int error_code_;
 
 };

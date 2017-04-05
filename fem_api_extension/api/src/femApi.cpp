@@ -8,7 +8,10 @@
 #include "FemApiError.h"
 #include "ExcaliburFemClient.h"
 
-//#define FEM_API_TRACE
+#include <map>
+#include <sstream>
+
+#define FEM_API_TRACE
 #ifdef FEM_API_TRACE
 #include <stdio.h>
 #include <time.h>
@@ -25,61 +28,74 @@ static const CtlCallbacks* lCallbacks = NULL;
 
 const unsigned int kClientTimeoutMsecs = 10000;
 
-const char* femErrorMsg(void)
+typedef struct {
+	ExcaliburFemClient* client;
+	FemApiError         error;
+} FemHandle;
+
+const char* femErrorMsg(void* handle)
 {
-    return FemApiError::get_string();
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
+    return (femHandle->error).get_string();
 }
 
-int femErrorCode(void)
+int femErrorCode(void* handle)
 {
-    return FemApiError::get_code();
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
+    return (femHandle->error).get_code();
 }
 
-void femDummy(void)
-{
-	std::cout << "Hello!!" << std::endl;
-}
-
-void* femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config)
+int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config, void** handle)
 {
 
-	std::cout << "**************************************************************" << std::endl;
-	std::cout << "Connecting to FEM at address " << config->femAddress << std::endl;
+	int rc = FEM_RTN_OK;
 
-	// Initialise FEM client object, which opens and handles connection with the FEM
-	ExcaliburFemClient* theFem = NULL;
+	// Initialise FEM handle and client objects, which opens and manages the connection with the FEM
+	FemHandle* femHandle = new FemHandle;
+	femHandle->client = NULL;
+	*handle = reinterpret_cast<void*>(femHandle);
+
 	try
 	{
-		theFem = new ExcaliburFemClient(ctlHandle, callbacks, config, kClientTimeoutMsecs);
+		femHandle->client = new ExcaliburFemClient(ctlHandle, callbacks, config, kClientTimeoutMsecs);
 
 	}
 	catch (FemClientException& e)
 	{
-		std::cerr << "Exception caught trying to initialise FEM connection: " << e.what() << std::endl;
+		femHandle->error.set() << "Failed to initialise FEM connection: " << e.what();
+		rc = FEM_RTN_INITFAILED;
 	}
 
 	// Store the control API handle and callback structures
 	lCtlHandle = ctlHandle;
 	lCallbacks = callbacks;
 
-	return (void*) theFem;
+	return rc;
 }
 
-int femGetId(void* femHandle)
+int femGetId(void* handle)
 {
-    ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+    //ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
 
-    return theFem->get_id();
+    return (femHandle->client)->get_id();
 }
 
-void femClose(void* femHandle)
+void femClose(void* handle)
 {
-	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+	//ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
 
-	delete theFem;
+	if (femHandle->client != NULL) {
+		delete femHandle->client;
+	}
+
+	delete femHandle;
 }
 
-int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
+int femSetInt(void* handle, int chipId, int id, std::size_t size, int* value)
 {
 	int rc = FEM_RTN_OK;
 
@@ -93,17 +109,17 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 	}
 #endif
 
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
 	if ((chipId < 0) || (chipId > (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
+		femHandle->error.set() << "Illegal chipID (" << chipId << ") specified";
 		rc = FEM_RTN_ILLEGALCHIP;
 	}
 	else
 	{
-
-		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
-		try {
-
+		try
+		{
 			switch (id)
 			{
 
@@ -111,7 +127,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3ColourModeSet((int)*value);
+					(femHandle->client)->mpx3ColourModeSet((int)*value);
 				}
 				else
 				{
@@ -123,7 +139,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3CounterDepthSet((int)*value);
+					(femHandle->client)->mpx3CounterDepthSet((int)*value);
 				}
 				else
 				{
@@ -135,7 +151,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->triggerModeSet((int)*value);
+					(femHandle->client)->triggerModeSet((int)*value);
 				}
 				else
 				{
@@ -147,7 +163,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->operationModeSet((int)*value);
+					(femHandle->client)->operationModeSet((int)*value);
 				}
 				else
 				{
@@ -159,7 +175,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3CounterSelectSet((int)*value);
+					(femHandle->client)->mpx3CounterSelectSet((int)*value);
 				}
 				else
 				{
@@ -171,7 +187,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->numTestPulsesSet((int)*value);
+					(femHandle->client)->numTestPulsesSet((int)*value);
 				}
 				else
 				{
@@ -183,7 +199,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3ReadWriteModeSet((unsigned int)*value);
+					(femHandle->client)->mpx3ReadWriteModeSet((unsigned int)*value);
 				}
 				else
 				{
@@ -195,7 +211,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3DiscCsmSpmSet((unsigned int)*value);
+					(femHandle->client)->mpx3DiscCsmSpmSet((unsigned int)*value);
 				}
 				else
 				{
@@ -207,7 +223,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3EqualizationModeSet((unsigned int)*value);
+					(femHandle->client)->mpx3EqualizationModeSet((unsigned int)*value);
 				}
 				else
 				{
@@ -219,7 +235,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3CsmSpmModeSet((unsigned int)*value);
+					(femHandle->client)->mpx3CsmSpmModeSet((unsigned int)*value);
 				}
 				else
 				{
@@ -231,7 +247,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3GainModeSet((unsigned int)*value);
+					(femHandle->client)->mpx3GainModeSet((unsigned int)*value);
 				}
 				else
 				{
@@ -243,7 +259,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->triggerPolaritySet((unsigned int)*value);
+					(femHandle->client)->triggerPolaritySet((unsigned int)*value);
 				}
 				else
 				{
@@ -255,7 +271,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->lfsrBypassEnableSet((unsigned int)*value);
+					(femHandle->client)->lfsrBypassEnableSet((unsigned int)*value);
 				}
 				else
 				{
@@ -267,7 +283,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3DacSenseSet((unsigned int)chipId, (int)*value);
+					(femHandle->client)->mpx3DacSenseSet((unsigned int)chipId, (int)*value);
 				}
 				else
 				{
@@ -279,7 +295,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3DacExternalSet((unsigned int)chipId, (int)*value);
+					(femHandle->client)->mpx3DacExternalSet((unsigned int)chipId, (int)*value);
 				}
 				else
 				{
@@ -318,7 +334,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3DacSet(chipId, id, (unsigned int)*value);
+					(femHandle->client)->mpx3DacSet(chipId, id, (unsigned int)*value);
 				}
 				else
 				{
@@ -328,39 +344,39 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 			case FEM_OP_NUMFRAMESTOACQUIRE:
 
-				theFem->numFramesSet((unsigned int)*value);
+				(femHandle->client)->numFramesSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_ACQUISITIONTIME:
 
-				theFem->acquisitionTimeSet((unsigned int)*value);
+				(femHandle->client)->acquisitionTimeSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_ACQUISITIONPERIOD:
 
-				theFem->acquisitionPeriodSet((unsigned int)*value);
+				(femHandle->client)->acquisitionPeriodSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_VDD_ON_OFF:
 
-				theFem->frontEndEnableSet((unsigned int)*value);
+				(femHandle->client)->frontEndEnableSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_BIAS_ON_OFF:
 
-				theFem->powerCardBiasEnableWrite((unsigned int)*value);
+				(femHandle->client)->powerCardBiasEnableWrite((unsigned int)*value);
 				break;
 
 			case FEM_OP_LV_ON_OFF:
 
-				theFem->powerCardLowVoltageEnableWrite((unsigned int)*value);
+				(femHandle->client)->powerCardLowVoltageEnableWrite((unsigned int)*value);
 				break;
 
 			case FEM_OP_MEDIPIX_CHIP_DISABLE:
 
 				if (size == 1)
 				{
-					theFem->mpx3DisableSet((unsigned int)chipId, (unsigned int)*value);
+					(femHandle->client)->mpx3DisableSet((unsigned int)chipId, (unsigned int)*value);
 				}
 				else
 				{
@@ -372,7 +388,7 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 				if (size == 1)
 				{
-					theFem->mpx3TestPulseEnableSet((unsigned int)chipId, (unsigned int)*value);
+					(femHandle->client)->mpx3TestPulseEnableSet((unsigned int)chipId, (unsigned int)*value);
 				}
 				else
 				{
@@ -382,59 +398,63 @@ int femSetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 
 			case FEM_OP_SCAN_DAC:
 
-				theFem->dacScanDacSet((unsigned int)*value);
+				(femHandle->client)->dacScanDacSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_SCAN_START:
 
-				theFem->dacScanStartSet((unsigned int)*value);
+				(femHandle->client)->dacScanStartSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_SCAN_STOP:
 
-				theFem->dacScanStopSet((unsigned int)*value);
+				(femHandle->client)->dacScanStopSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_SCAN_STEP:
 
-				theFem->dacScanStepSet((unsigned int)*value);
+				(femHandle->client)->dacScanStepSet((unsigned int)*value);
 				break;
 
 			case FEM_OP_DATA_RECEIVER_ENABLE:
 
-				theFem->dataReceiverEnable((unsigned int)*value);
+				(femHandle->client)->dataReceiverEnable((unsigned int)*value);
 				break;
 
 			default:
+				femHandle->error.set() << "Illegal parameter ID (" << id << ") specified";
 				rc = FEM_RTN_UNKNOWNOPID;
 				break;
+			}
+			if (rc == FEM_RTN_BADSIZE)
+			{
+				femHandle->error.set() << "Bad value size (" << size << ") for parameter ID " << id << "specified";
 			}
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femSetInt: " << e.what() << std::endl;
+			(femHandle->error).set() << e.what();
 			rc = translateFemErrorCode(e.which());
 		}
 	}
 	return rc;
 }
 
-int femSetShort(void* femHandle, int chipId, int id, std::size_t size, short* value)
+int femSetShort(void* handle, int chipId, int id, std::size_t size, short* value)
 {
 	int rc = FEM_RTN_OK;
 
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
 	if ((chipId < 0) || (chipId > (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
+		femHandle->error.set() << "Illegal chipID (" << chipId << ") specified";
 		rc = FEM_RTN_ILLEGALCHIP;
 	}
 	else
 	{
-
-		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
 		try
 		{
-
 			switch (id)
 			{
 
@@ -446,7 +466,7 @@ int femSetShort(void* femHandle, int chipId, int id, std::size_t size, short* va
 
 				if (size == (FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y))
 				{
-					theFem->mpx3PixelConfigSet((unsigned int)chipId, id, size, (unsigned short*)value);
+					(femHandle->client)->mpx3PixelConfigSet((unsigned int)chipId, id, size, (unsigned short*)value);
 				}
 				else
 				{
@@ -455,58 +475,66 @@ int femSetShort(void* femHandle, int chipId, int id, std::size_t size, short* va
 				break;
 
 			default:
+				(femHandle->error).set() << "Illegal parameter id (" << id << ") specified";
+				rc = FEM_RTN_UNKNOWNOPID;
 				break;
+			}
+			if (rc == FEM_RTN_BADSIZE)
+			{
+				femHandle->error.set() << "Bad value size (" << size << ") for parameter ID " << id << "specified";
 			}
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femSetShort: " << e.what() << std::endl;
+			(femHandle->error).set() << e.what();
 			rc = translateFemErrorCode(e.which());
 		}
 	}
 	return rc;
 }
 
-int femSetFloat(void* femHandle, int chipId, int id, std::size_t size, double* value)
+int femSetFloat(void* handle, int chipId, int id, std::size_t size, double* value)
 {
 	int rc = FEM_RTN_OK;
 
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
 	if ((chipId < 0) || (chipId > (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
+		femHandle->error.set() << "Illegal chipID (" << chipId << ") specified";
 		rc = FEM_RTN_ILLEGALCHIP;
 	}
 	else
 	{
-		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
-		try {
-
+		try
+		{
 			switch (id)
 			{
 
 			case FEM_OP_DAC_IN_TO_MEDIPIX:
 
-				theFem->frontEndDacInWrite(chipId, *value);
+				(femHandle->client)->frontEndDacInWrite(chipId, *value);
 				break;
 
 			case FEM_OP_BIAS_LEVEL:
 
-				theFem->powerCardBiasLevelWrite(*value);
+				(femHandle->client)->powerCardBiasLevelWrite(*value);
 				break;
 
 			case FEM_OP_BURST_SUBMIT_PERIOD:
 
-				theFem->burstModeSubmitPeriodSet(*value);
+				(femHandle->client)->burstModeSubmitPeriodSet(*value);
 				break;
 
 			default:
+				(femHandle->error).set() << "Illegal parameter id (" << id << ") specified";
 				rc = FEM_RTN_UNKNOWNOPID;
 				break;
 			}
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femSetFloat: " << e.what() << std::endl;
+			(femHandle->error).set() << e.what();
 			rc = translateFemErrorCode(e.which());
 		}
 	}
@@ -514,96 +542,98 @@ int femSetFloat(void* femHandle, int chipId, int id, std::size_t size, double* v
 	return rc;
 }
 
-int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
+int femGetInt(void* handle, int chipId, int id, size_t size, int* value)
 {
 	int rc = FEM_RTN_OK;
 
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
 	if ((chipId < 0) || (chipId > (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
+		femHandle->error.set() << "Illegal chipID (" << chipId << ") specified";
 		rc = FEM_RTN_ILLEGALCHIP;
 	}
 	else
 	{
-		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
 		try
 		{
 			switch (id)
 			{
 
 			case FEM_OP_P1V5_AVDD_1_POK:
-				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD1);
+				*value = (femHandle->client)->frontEndSupplyStatusRead(frontEndAVDD1);
 				break;
 
 			case FEM_OP_P1V5_AVDD_2_POK:
-				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD2);
+				*value = (femHandle->client)->frontEndSupplyStatusRead(frontEndAVDD2);
 				break;
 
 			case FEM_OP_P1V5_AVDD_3_POK:
-				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD3);
+				*value = (femHandle->client)->frontEndSupplyStatusRead(frontEndAVDD3);
 				break;
 
 			case FEM_OP_P1V5_AVDD_4_POK:
-				*value = theFem->frontEndSupplyStatusRead(frontEndAVDD4);
+				*value = (femHandle->client)->frontEndSupplyStatusRead(frontEndAVDD4);
 				break;
 
 			case FEM_OP_P1V5_VDD_1_POK:
-				*value = theFem->frontEndSupplyStatusRead(frontEndVDD);
+				*value = (femHandle->client)->frontEndSupplyStatusRead(frontEndVDD);
 				break;
 
 			case FEM_OP_P2V5_DVDD_1_POK:
-				*value = theFem->frontEndSupplyStatusRead(frontEndDVDD);
+				*value = (femHandle->client)->frontEndSupplyStatusRead(frontEndDVDD);
 				break;
 
 			case FEM_OP_COOLANT_TEMP_STATUS:
-				*value = theFem->powerCardStatusRead(coolantTempStatus);
+				*value = (femHandle->client)->powerCardStatusRead(coolantTempStatus);
 				break;
 
 			case FEM_OP_HUMIDITY_STATUS:
-				*value = theFem->powerCardStatusRead(humidityStatus);
+				*value = (femHandle->client)->powerCardStatusRead(humidityStatus);
 				break;
 
 			case FEM_OP_COOLANT_FLOW_STATUS:
-				*value = theFem->powerCardStatusRead(coolantFlowStatus);
+				*value = (femHandle->client)->powerCardStatusRead(coolantFlowStatus);
 				break;
 
 			case FEM_OP_AIR_TEMP_STATUS:
-				*value = theFem->powerCardStatusRead(airTempStatus);
+				*value = (femHandle->client)->powerCardStatusRead(airTempStatus);
 				break;
 
 			case FEM_OP_FAN_FAULT:
-				*value = theFem->powerCardStatusRead(fanFaultStatus);
+				*value = (femHandle->client)->powerCardStatusRead(fanFaultStatus);
 				break;
 
 			case FEM_OP_MPXIII_EFUSEID:
-				*value = theFem->mpx3eFuseIdRead(chipId);
+				*value = (femHandle->client)->mpx3eFuseIdRead(chipId);
 				break;
 
 			case FEM_OP_BIAS_ON_OFF:
-				*value = theFem->powerCardBiasEnableRead();
+				*value = (femHandle->client)->powerCardBiasEnableRead();
 				break;
 
 			case FEM_OP_LV_ON_OFF:
-				*value = theFem->powerCardLowVoltageEnableRead();
+				*value = (femHandle->client)->powerCardLowVoltageEnableRead();
 				break;
 
 			case FEM_OP_FRAMES_ACQUIRED:
-				*value = theFem->frameCountGet();
+				*value = (femHandle->client)->frameCountGet();
 				break;
 
 			case FEM_OP_CONTROL_STATE:
-				*value = theFem->controlStateGet();
+				*value = (femHandle->client)->controlStateGet();
 				break;
 
 			case FEM_OP_DAC_SCAN_STATE:
-				*value = theFem->dacScanStateGet();
+				*value = (femHandle->client)->dacScanStateGet();
 				break;
 
 			case FEM_OP_DAC_SCAN_STEPS_COMPLETE:
-				*value = theFem->dacScanStepsCompleteGet();
+				*value = (femHandle->client)->dacScanStepsCompleteGet();
 				break;
 
 			default:
+				(femHandle->error).set() <<"Illegal parameter ID (" << id << ") specified";
 				rc = FEM_RTN_UNKNOWNOPID;
 				break;
 
@@ -611,8 +641,7 @@ int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femGetInt, chipId: " << chipId << " opId: "
-					  << id << " : " << e.what() << std::endl;
+			(femHandle->error).set() << e.what();
 			rc = translateFemErrorCode(e.which());
 		}
 
@@ -621,24 +650,26 @@ int femGetInt(void* femHandle, int chipId, int id, size_t size, int* value)
 	return rc;
 }
 
-int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value)
+int femGetShort(void* handle, int chipId, int id, size_t size, short* value)
 {
 	int rc = FEM_RTN_OK;
 
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
 	if ((chipId < 0) || (chipId >= (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
+		femHandle->error.set() << "Illegal chipID (" << chipId << ") specified";
 		rc = FEM_RTN_ILLEGALCHIP;
 	}
 	else
 	{
-		//ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
 		try
 		{
 			switch (id)
 			{
 
 			default:
+				(femHandle->error).set() << "Illegal parameter id (" << id << ") specified";
 				rc = FEM_RTN_UNKNOWNOPID;
 				break;
 
@@ -646,7 +677,7 @@ int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value)
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femGetShort: " << e.what() << std::endl;
+			(femHandle->error).set() << e.what();
 			rc = translateFemErrorCode(e.which());
 		}
 
@@ -655,19 +686,20 @@ int femGetShort(void* femHandle, int chipId, int id, size_t size, short* value)
 	return rc;
 }
 
-int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
+int femGetFloat(void* handle, int chipId, int id, size_t size, double* value)
 {
 
 	int rc = FEM_RTN_OK;
 
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
 	if ((chipId < 0) || (chipId > (FEM_CHIPS_PER_BLOCK_X * FEM_BLOCKS_PER_STRIPE_X)))
 	{
+		femHandle->error.set() << "Illegal chipID (" << chipId << ") specified";
 		rc = FEM_RTN_ILLEGALCHIP;
 	}
 	else
 	{
-		ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
-
 		try
 		{
 			switch(id)
@@ -677,7 +709,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p5vAVoltageMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p5vAVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -688,7 +720,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p5vBVoltageMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p5vBVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -705,7 +737,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 				if (size == 1)
 				{
 					excaliburPowerCardMonitor theMon = (excaliburPowerCardMonitor)(p5vFem0CurrentMonitor + (id - FEM_OP_P5V_FEMO0_IMON));
-					*value = theFem->powerCardMonitorRead(theMon);
+					*value = (femHandle->client)->powerCardMonitorRead(theMon);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -717,7 +749,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p48vVoltageMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p48vVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -728,7 +760,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p48vCurrentMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p48vCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -739,7 +771,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p5vSupVoltageMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p5vSupVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -750,7 +782,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p5vSupCurrentMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p5vSupCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -761,7 +793,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(humidityMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(humidityMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -772,7 +804,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(airTempMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(airTempMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -783,7 +815,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(coolantTempMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(coolantTempMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -794,7 +826,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(coolantFlowMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(coolantFlowMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -805,7 +837,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p3v3CurrentMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p3v3CurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -816,7 +848,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p1v8ACurrentMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p1v8ACurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -827,7 +859,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(biasCurrentMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(biasCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -838,7 +870,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p3v3VoltageMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p3v3VoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -849,7 +881,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p1v8AVoltageMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p1v8AVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -860,7 +892,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(biasVoltageMontor);
+					*value = (femHandle->client)->powerCardMonitorRead(biasVoltageMontor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -871,7 +903,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p1v8BCurrentMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p1v8BCurrentMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -882,7 +914,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->powerCardMonitorRead(p1v8BVoltageMonitor);
+					*value = (femHandle->client)->powerCardMonitorRead(p1v8BVoltageMonitor);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -893,7 +925,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 
 				if (size == 1)
 				{
-					*value = theFem->tempSensorRead(femFpgaTemp);
+					*value = (femHandle->client)->tempSensorRead(femFpgaTemp);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -903,7 +935,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 			case FEM_OP_LOCAL_TEMP:
 				if (size == 1)
 				{
-					*value = theFem->tempSensorRead(femBoardTemp);
+					*value = (femHandle->client)->tempSensorRead(femBoardTemp);
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -913,7 +945,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 			case FEM_OP_MOLY_TEMPERATURE:
 				if (size == 1)
 				{
-					*value = theFem->frontEndTemperatureRead();
+					*value = (femHandle->client)->frontEndTemperatureRead();
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -923,7 +955,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 			case FEM_OP_MOLY_HUMIDITY:
 				if (size == 1)
 				{
-					*value = theFem->frontEndHumidityRead();
+					*value = (femHandle->client)->frontEndHumidityRead();
 				}
 				else {
 					rc = FEM_RTN_BADSIZE;
@@ -933,7 +965,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 			case FEM_OP_DAC_OUT_FROM_MEDIPIX:
 				if (size == 1)
 				{
-					*value = theFem->frontEndDacOutRead(chipId);
+					*value = (femHandle->client)->frontEndDacOutRead(chipId);
 				}
 				else
 				{
@@ -942,13 +974,19 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 				break;
 
 			default:
+				(femHandle->error).set() << "Illegal parameter id (" << id << ") specified";
 				rc = FEM_RTN_UNKNOWNOPID;
 				break;
 			}
+			if (rc == FEM_RTN_BADSIZE)
+			{
+				femHandle->error.set() << "Bad value size (" << size << ") for parameter ID " << id << "specified";
+			}
+
 		}
 		catch (FemClientException& e)
 		{
-			std::cerr << "Exception caught during femGetFloat with id=" << id << " : "<< e.what() << std::endl;
+			(femHandle->error).set() << e.what();
 			rc = translateFemErrorCode(e.which());
 		}
 
@@ -956,7 +994,7 @@ int femGetFloat(void* femHandle, int chipId, int id, size_t size, double* value)
 	return rc;
 }
 
-int femCmd(void* femHandle, int chipId, int id)
+int femCmd(void* handle, int chipId, int id)
 {
 	int rc = FEM_RTN_OK;
 
@@ -970,7 +1008,7 @@ int femCmd(void* femHandle, int chipId, int id)
 	}
 #endif
 
-	ExcaliburFemClient* theFem = reinterpret_cast<ExcaliburFemClient*>(femHandle);
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
 
 	try
 	{
@@ -979,32 +1017,32 @@ int femCmd(void* femHandle, int chipId, int id)
 
 		case FEM_OP_STARTACQUISITION:
 		case FEM_OP_STOPACQUISITION:
-			theFem->command(id);
+			(femHandle->client)->command(id);
 			break;
 
 		case FEM_OP_LOADDACCONFIG:
-			theFem->mpx3DacsWrite(chipId);
+			(femHandle->client)->mpx3DacsWrite(chipId);
 			break;
 
 		case FEM_OP_LOADPIXELCONFIG:
-			theFem->mpx3PixelConfigWrite(chipId);
+			(femHandle->client)->mpx3PixelConfigWrite(chipId);
 			break;
 
 		case FEM_OP_FEINIT:
-			theFem->frontEndInitialise();
+			(femHandle->client)->frontEndInitialise();
 			break;
 
 		case FEM_OP_FREEALLFRAMES:
-			theFem->freeAllFrames();
+			(femHandle->client)->freeAllFrames();
 			break;
 
 		case FEM_OP_REBOOT:
-			theFem->command(0);
+			(femHandle->client)->command(0);
 			break;
 
 		case 10:
 		{
-			FemAcquireStatus acqStatus = theFem->acquireStatus();
+			FemAcquireStatus acqStatus = (femHandle->client)->acquireStatus();
 			std::cout << "Acquisition status" << std::endl;
 			std::cout << "------------------" << std::endl;
 			std::cout << "   State            : "   << acqStatus.state << std::endl;
@@ -1023,22 +1061,23 @@ int femCmd(void* femHandle, int chipId, int id)
 		}
 
 		case 11:
-			theFem->acquireConfig(1, 0x1000, 2, 0x30000000, 1);
+			(femHandle->client)->acquireConfig(1, 0x1000, 2, 0x30000000, 1);
 			break;
 
 		case 12:
-			theFem->dacScanExecute();
+			(femHandle->client)->dacScanExecute();
 
 		break;
 
 		default:
+			(femHandle->error).set() << "Illegal command id (" << id << ") specified";
 			rc = FEM_RTN_UNKNOWNOPID;
 			break;
 		}
 	}
 	catch (FemClientException& e)
 	{
-		std::cerr << "Exception caught during femCmd: " << e.what() << std::endl;
+		(femHandle->error).set() << e.what();
 		rc = translateFemErrorCode(e.which());
 	}
 

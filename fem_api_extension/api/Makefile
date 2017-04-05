@@ -1,9 +1,9 @@
-CXXFLAGS = -fPIC -Wall -Iinclude
-#LDFLAGS = -shared 
-LDFLAGS = 
-
 ifndef SRC_DIR
 	SRC_DIR = src
+endif
+
+ifndef INC_DIR
+	INC_DIR = include
 endif
 
 ifndef OBJ_DIR
@@ -13,6 +13,11 @@ endif
 ifndef LIB_DIR
 	LIB_DIR = .
 endif
+
+CXXFLAGS = -fPIC -Wall -I${INC_DIR}
+#LDFLAGS = -shared 
+LDFLAGS = 
+
 
 ifdef BOOST_ROOT
 	CXXFLAGS += -I${BOOST_ROOT}/include
@@ -36,3 +41,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 clean:
 	rm -f $(TARGET)
 	rm -f $(OBJECTS)
+	
+../../excalibur/fem_api_parameters.py: ${INC_DIR}/femApi.h
+	@/bin/echo "Generating $@ ..."
+	@python generate_fem_api_parameters.py $< $@

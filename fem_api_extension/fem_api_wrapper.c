@@ -121,9 +121,11 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
     char* fem_address;
     int fem_port;
     char* data_address;
+    int rc;
 
     if (!PyArg_ParseTuple(args, "isis", &fem_id, &fem_address, &fem_port,
                           &data_address)) {
+    	PyErr_SetString(fem_api_error, "Incorrect arguments passed to initialise FEM API");
         return NULL;
     }
 
@@ -139,11 +141,15 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
     fem_ptr->config.femPort = fem_port;
     fem_ptr->config.dataAddress = data_address;
 
-    fem_ptr->handle = femInitialise((void*)NULL, (const CtlCallbacks*)NULL, (const CtlConfig*)&(fem_ptr->config));
-    if (fem_ptr->handle == NULL) {
-        PyErr_SetString(fem_api_error, femErrorMsg());
+    Py_BEGIN_ALLOW_THREADS
+    rc = femInitialise((void*)NULL, (const CtlCallbacks*)NULL, (const CtlConfig*)&(fem_ptr->config), &(fem_ptr->handle));
+    Py_END_ALLOW_THREADS
+
+    if (rc != FEM_RTN_OK) {
+        PyErr_SetString(fem_api_error, femErrorMsg(fem_ptr->handle));
         return NULL;
     }
+
     //printf("Initialised module with handle %lu\n", (unsigned long)(fem_ptr->handle));
     log_msg(debug, "Initialised fem_api module with handle %lu for FEM ID %d",
         (unsigned long)(fem_ptr->handle), fem_id);
@@ -182,7 +188,7 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     if (!PyArg_ParseTuple(args, "Oiii", &_handle, &chip_id, &param_id, &size)) {
         return NULL;
     }
-    //printf("_get_int: chip_id %d param_id %d size %d\n", chip_id, param_id, size);
+    // printf("_get_int: chip_id %d param_id %d size %d\n", chip_id, param_id, size);
 
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "get_int");
@@ -193,7 +199,9 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
         return NULL;
     }
 
+    Py_BEGIN_ALLOW_THREADS
     rc = femGetInt(fem_ptr->handle, chip_id, param_id, size, (int *)(value_ptr));
+    Py_END_ALLOW_THREADS
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -216,6 +224,7 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
     FemPtr fem_ptr;
 
     int* value_ptr = NULL;
+    int single_value = 0;
 
     if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
         return NULL;
@@ -226,9 +235,11 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
 
     if (PyInt_Check(values_obj)) {
         size = 1;
+        single_value = 1;
     }
     else if(PyList_Check(values_obj)) {
         size = PyList_Size(values_obj);
+        single_value = 0;
     } else {
         _set_api_error_string("set_int: specified value(s) not int or list");
         return NULL;
@@ -240,7 +251,7 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    if (size == 1) {
+    if (single_value == 1) {
         *value_ptr = PyInt_AsLong(values_obj);
     } else {
         int ival;
@@ -254,8 +265,207 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
             value_ptr[ival] = PyInt_AsLong(PyList_GetItem(values_obj, ival));
         }
     }
-
+    Py_BEGIN_ALLOW_THREADS
     rc = femSetInt(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    Py_END_ALLOW_THREADS
+
+    if (value_ptr != NULL) {
+        free(value_ptr);
+    }
+
+    return Py_BuildValue("i", rc);
+}
+
+static PyObject* _get_short(PyObject* self, PyObject* args)
+{
+    int rc;
+    PyObject* _handle;
+    int chip_id, param_id, size;
+    FemPtr fem_ptr;
+
+    short* value_ptr;
+    PyObject* values;
+
+    if (!PyArg_ParseTuple(args, "Oiii", &_handle, &chip_id, &param_id, &size)) {
+        return NULL;
+    }
+    //printf("_get_int: chip_id %d param_id %d size %d\n", chip_id, param_id, size);
+
+    fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
+    _validate_ptr_and_handle(fem_ptr, "get_short");
+
+    value_ptr = (short *)malloc(size * sizeof(short));
+    if (value_ptr == NULL) {
+        _set_api_error_string("get_short: unable to allocate space for %d short values", size);
+        return NULL;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    rc = femGetShort(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    Py_END_ALLOW_THREADS
+
+    values = PyList_New(size);
+    if (rc == FEM_RTN_OK) {
+        int ival;
+        for (ival = 0; ival < size; ival++) {
+            PyList_SetItem(values, ival, PyInt_FromLong((long)value_ptr[ival]));
+        }
+    }
+    free(value_ptr);
+
+    return Py_BuildValue("iO", rc, values);
+}
+
+static PyObject* _set_short(PyObject* self, PyObject* args)
+{
+    int rc;
+    PyObject* _handle;
+    int chip_id, param_id, size;
+    PyObject* values_obj;
+    FemPtr fem_ptr;
+
+    short* value_ptr = NULL;
+
+    if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
+        return NULL;
+    }
+
+    fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
+    _validate_ptr_and_handle(fem_ptr, "set_short");
+
+    if (PyInt_Check(values_obj)) {
+        size = 1;
+    }
+    else if(PyList_Check(values_obj)) {
+        size = PyList_Size(values_obj);
+    } else {
+        _set_api_error_string("set_short: specified value(s) not int or list");
+        return NULL;
+    }
+
+    value_ptr = (short *)malloc(size * sizeof(short));
+    if (value_ptr == NULL) {
+        _set_api_error_string("set_short: unable to allocate space for %d short values", size);
+        return NULL;
+    }
+
+    if (size == 1) {
+        *value_ptr = (short)PyInt_AsLong(values_obj);
+    } else {
+        int ival;
+        for (ival = 0; ival < size; ival++) {
+            PyObject* value_obj = PyList_GetItem(values_obj, ival);
+            if (!PyInt_Check(value_obj)) {
+                _set_api_error_string("set_short: non-integer value specified");
+                free(value_ptr);
+                return NULL;
+            }
+            value_ptr[ival] = (short)PyInt_AsLong(PyList_GetItem(values_obj, ival));
+        }
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    rc = femSetShort(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    Py_END_ALLOW_THREADS
+
+    if (value_ptr != NULL) {
+        free(value_ptr);
+    }
+
+    return Py_BuildValue("i", rc);
+}
+
+static PyObject* _get_float(PyObject* self, PyObject* args)
+{
+    int rc;
+    PyObject* _handle;
+    int chip_id, param_id, size;
+    FemPtr fem_ptr;
+
+    double* value_ptr;
+    PyObject* values;
+
+    if (!PyArg_ParseTuple(args, "Oiii", &_handle, &chip_id, &param_id, &size)) {
+        return NULL;
+    }
+    //printf("_get_int: chip_id %d param_id %d size %d\n", chip_id, param_id, size);
+
+    fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
+    _validate_ptr_and_handle(fem_ptr, "get_int");
+
+    value_ptr = (double *)malloc(size * sizeof(double));
+    if (value_ptr == NULL) {
+        _set_api_error_string("get_float: unable to allocate space for %d float values", size);
+        return NULL;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    rc = femGetFloat(fem_ptr->handle, chip_id, param_id, size, (double *)(value_ptr));
+    Py_END_ALLOW_THREADS
+
+    values = PyList_New(size);
+    if (rc == FEM_RTN_OK) {
+        int ival;
+        for (ival = 0; ival < size; ival++) {
+            PyList_SetItem(values, ival, PyFloat_FromDouble(value_ptr[ival]));
+        }
+    }
+    free(value_ptr);
+
+    return Py_BuildValue("iO", rc, values);
+}
+
+static PyObject* _set_float(PyObject* self, PyObject* args)
+{
+    int rc;
+    PyObject* _handle;
+    int chip_id, param_id, size;
+    PyObject* values_obj;
+    FemPtr fem_ptr;
+
+    double* value_ptr = NULL;
+
+    if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
+        return NULL;
+    }
+
+    fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
+    _validate_ptr_and_handle(fem_ptr, "set_float");
+
+    if (PyInt_Check(values_obj)) {
+        size = 1;
+    }
+    else if(PyList_Check(values_obj)) {
+        size = PyList_Size(values_obj);
+    } else {
+        _set_api_error_string("set_float: specified value(s) not float or list");
+        return NULL;
+    }
+
+    value_ptr = (double *)malloc(size * sizeof(double));
+    if (value_ptr == NULL) {
+        _set_api_error_string("set_float: unable to allocate space for %d float values", size);
+        return NULL;
+    }
+
+    if (size == 1) {
+        *value_ptr =PyFloat_AsDouble(values_obj);
+    } else {
+        int ival;
+        for (ival = 0; ival < size; ival++) {
+            PyObject* value_obj = PyList_GetItem(values_obj, ival);
+            if (!PyFloat_Check(value_obj)) {
+                _set_api_error_string("set_float: non-float value specified");
+                free(value_ptr);
+                return NULL;
+            }
+            value_ptr[ival] = (short)PyFloat_AsDouble(PyList_GetItem(values_obj, ival));
+        }
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    rc = femSetFloat(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    Py_END_ALLOW_THREADS
 
     if (value_ptr != NULL) {
         free(value_ptr);
@@ -278,7 +488,9 @@ static PyObject* _cmd(PyObject* self, PyObject* args)
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "cmd");
 
+    Py_BEGIN_ALLOW_THREADS
     rc = femCmd(fem_ptr->handle, chipId, cmdId);
+    Py_END_ALLOW_THREADS
 
     return Py_BuildValue("i", rc);
 }
@@ -301,6 +513,25 @@ static PyObject* _close(PyObject* self, PyObject* args)
     return Py_BuildValue("");
 }
 
+static PyObject* _get_error_msg(PyObject* self, PyObject* args)
+{
+    PyObject* _handle;
+    FemPtr fem_ptr;
+    char* error_str;
+
+    if (!PyArg_ParseTuple(args, "O", &_handle)) {
+        return NULL;
+    }
+
+    fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
+    _validate_ptr_and_handle(fem_ptr, "get_error_str");
+
+    error_str = (char*)femErrorMsg(fem_ptr->handle);
+
+    return Py_BuildValue("s", error_str);
+
+}
+
 static void _del(PyObject* obj)
 {
     FemPtr fem_ptr = (FemPtr) PyCapsule_GetPointer(obj, "FemPtr");
@@ -320,6 +551,11 @@ static PyMethodDef fem_api_methods[] =
      {"get_id",     _get_id,     METH_VARARGS, "get a module ID"},
      {"get_int",    _get_int,    METH_VARARGS, "get one or more integer parameters"},
      {"set_int",    _set_int,    METH_VARARGS, "set one or more integer parameters"},
+	 {"get_short",  _get_short,  METH_VARARGS, "get one ore more short integer parameters"},
+	 {"set_short",  _set_short,  METH_VARARGS, "set one ore more short integer parameters"},
+	 {"get_float",  _get_float,  METH_VARARGS, "get one or more float parameters"},
+	 {"set_float",  _set_float,  METH_VARARGS, "set one or more float parameters"},
+	 {"get_error_msg", _get_error_msg, METH_VARARGS, "get module error message"},
      {"cmd",        _cmd,        METH_VARARGS, "issue a command to a module"},
      {"close",      _close,      METH_VARARGS, "close a module"},
      {NULL, NULL, 0, NULL}
