@@ -79,15 +79,15 @@ class ExcaliburTestApp(object):
         
         cmd_group = parser.add_argument_group('Commands')
         cmd_group.add_argument('--dump', action='store_true',
-            help="Dump the state of the control server")
+            help='Dump the state of the control server')
         cmd_group.add_argument('--reset', '-r', action='store_true', 
             help='Issue front-end reset/init')
         cmd_group.add_argument('--efuse', '-e', action='store_true',
-            help="Read and diplay MPX3 eFuse IDs")
+            help='Read and diplay MPX3 eFuse IDs')
         cmd_group.add_argument('--slow', '-s', action='store_true',
             help='Display front-end slow control parameters')
         cmd_group.add_argument('--acquire', '-a', action='store_true',
-            help="Execute image acquisition sequence")
+            help='Execute image acquisition sequence')
         cmd_group.add_argument('--stop', action='store_true',
             help='Stop acquisition execution')
         cmd_group.add_argument('--disconnect', action='store_true',
@@ -120,7 +120,7 @@ class ExcaliburTestApp(object):
             dest='disch_file', metavar='FILE',
             help='Specify MPX3 pixel DiscH configuration filename to load')
        
-        acq_group = parser.add_argument_group("Acquisition parameters")
+        acq_group = parser.add_argument_group('Acquisition parameters')
         acq_group.add_argument('--nowait', action='store_true', dest='no_wait',
             help='Do not wait for acqusition to complete before returning')
         acq_group.add_argument('--burst', action='store_true', dest='burst_mode',
@@ -185,7 +185,7 @@ class ExcaliburTestApp(object):
     def run(self):
         
         if self.args.dump:
-            logging.info("Dumping state of control server:")
+            logging.info('Dumping state of control server:')
             self.client.print_all(logging.INFO)
             return
         
@@ -243,7 +243,7 @@ class ExcaliburTestApp(object):
                     fem_efuse_ids = [fem_efuse_ids]
                 logging.info('FEM {} : efuse IDs: {}'.format(fem_idx, ' '.join([hex(efuse_id) for efuse_id in fem_efuse_ids])))
         else:
-            logging.error("eFuse ID read command failed")
+            logging.error('eFuse ID read command failed')
     
     def do_slow_control_read(self):
 
@@ -270,9 +270,9 @@ class ExcaliburTestApp(object):
                  
                 fe_dacs = ' '.join(['{}: {:.3f}V'.format(idx, val) for (idx, val) in enumerate(param_vals['mpx3_dac_out'][fem_idx])])
                  
-                logging.info("FEM {} : Front-end DAC channels: {}".format(fem_idx, fe_dacs))
+                logging.info('FEM {} : Front-end DAC channels: {}'.format(fem_idx, fe_dacs))
         else:
-            logging.error("Slow control read command failed")
+            logging.error('Slow control read command failed')
     
     def do_dac_load(self):
 
@@ -316,12 +316,12 @@ class ExcaliburTestApp(object):
         
         write_ok = self.client.fe_param_write(dac_params)
         if not write_ok:
-            logging.error("Failed to write DAC parameters for FEM ID {}, chip ID {}".format(fem_id, chip_id))
+            logging.error('Failed to write DAC parameters for FEM ID {}, chip ID {}'.format(fem_id, chip_id))
             return
         
         load_ok = self.client.do_command('load_dacconfig', self.args.config_fem, self.args.config_chip)
         if load_ok:
-            logging.info("DAC load completed OK")
+            logging.info('DAC load completed OK')
         else:
             logging.error('Failed to execute DAC load command: {}'.format(self.client.error_msg))
     
@@ -339,12 +339,12 @@ class ExcaliburTestApp(object):
         
         if self.args.matrixread:
             if self.args.burst_mode:
-                logging.warning("Cannot select burst mode and matrix read simultaneously, ignoring burst option")
+                logging.warning('Cannot select burst mode and matrix read simultaneously, ignoring burst option')
             operation_mode =  ExcaliburDefinitions.FEM_OPERATION_MODE_MAXTRIXREAD
            
         # TODO - handle 24 bit readout here - needs to check frame count etc and execute C0 read 
         
-        logging.info("Executing acquisition ...")
+        logging.info('Executing acquisition ...')
         
         # Build a list of parameters to be written to the system to set up acquisition
         write_params = []
@@ -420,10 +420,10 @@ class ExcaliburTestApp(object):
         write_params.append(ExcaliburParameter('datareceiver_enable', [[0]]))
         
         # Write all the parameters to system
-        logging.info("Writing configuration parameters to system")
+        logging.info('Writing configuration parameters to system')
         write_ok = self.client.fe_param_write(write_params)
         if not write_ok:
-            logging.error("Failed to write configuration parameters to system: {}".format(self.client.error_msg))
+            logging.error('Failed to write configuration parameters to system: {}'.format(self.client.error_msg))
             return
         
         # Send start acquisition command
@@ -455,11 +455,11 @@ class ExcaliburTestApp(object):
                 if wait_count % 5 == 0:
                     logging.info('  {:d} frames read out  ...'.format(frames_acquired))
             
-            logging.info("Completed readout of {} frames".format(frames_acquired))
+            logging.info('Completed readout of {} frames'.format(frames_acquired))
             self.do_stop()    
-            logging.info("Acquisition complete")
+            logging.info('Acquisition complete')
         else:
-            logging.info("Acquisition started, not waiting for completion, will not send stop command")
+            logging.info('Acquisition started, not waiting for completion, will not send stop command')
         
     def do_stop(self):
         
