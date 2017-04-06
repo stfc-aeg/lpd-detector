@@ -15,6 +15,8 @@ class ExcaliburDefinitions(object):
     ALL_FEMS = 0
     ALL_CHIPS = 0
     
+    FEM_PIXELS_PER_CHIP = 256 * 256
+    
     FEM_TRIGMODE_INTERNAL = 0
     FEM_TRIGMODE_EXTERNAL = 1
     FEM_TRIGMODE_SYNC = 2
@@ -277,7 +279,7 @@ class ExcaliburClient(object):
         else:
             values = []
             self.logger.error('Read of frontend parameter {} failed'.format(param))
-            self.json_print(response, logging.ERROR)
+            #self.json_print(response, logging.ERROR)
         
         return (succeeded, values)
     
@@ -288,11 +290,11 @@ class ExcaliburClient(object):
         if not isinstance(params, list):
             params = [params]
             
-        (succeeded, response) = self.exec_command(cmd, params)
+        (succeeded, _) = self.exec_command(cmd, params)
         
         if not succeeded:
             self.logger.error('Write of frontend parameter failed: {}'.format(self.error_msg))
-            self.json_print(response, logging.ERROR)
+            #self.json_print(response, logging.ERROR)
             
         return succeeded
     

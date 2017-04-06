@@ -9,7 +9,9 @@ import ConfigParser
 import logging
 import os
 import re
-        
+
+from excalibur import ExcaliburDefinitions
+    
 class ExcaliburDacConfiguration(OrderedDict):
     
     def __init__(self, fem=0, chip=0):
@@ -154,3 +156,41 @@ class ExcaliburDacConfigParser(object):
         for dac_name in ExcaliburDacConfiguration():
             dac_param = 'mpx3_{}dac'.format(dac_name.lower())
             yield dac_name, dac_param
+            
+            
+class ExcaliburPixelConfigParser(object):
+    
+    mask_format_ext = ['.mask']
+    hdf_format_ext = ['.h5', '.hdf', '.hdf5']
+     
+    def __init__(self, config_file, expected_size=ExcaliburDefinitions.FEM_PIXELS_PER_CHIP):
+        
+        self._pixels = None
+        self.expected_size = expected_size    
+        
+        file_ext = os.path.splitext(config_file)[1]
+        
+        if file_ext in self.mask_format_ext:
+            self._pixels = []
+            try:
+                with open(config_file) as config_fp:
+                    for line in config_fp:
+                        self._pixels.extend([int(val) for val in line.strip().split(' ')])
+            except Exception as e:
+                logging.error('Failed to parse pixel configuration mask file: {}'.format(e))  
+                
+        elif file_ext in self.hdf_format_ext:
+            logging.error('Parsing of HDF format pixel configuration files not yet supported, using defaults')
+            self._pixels = [0] * self.expected_size
+    
+        else:
+            logging.error('Unrecognised pixel configuration type for file: {}'.format(config_file))
+            self._pixels = [0] * self.expected_size
+            
+    @property
+    def pixels(self):
+        if self._pixels is None or len(self._pixels) != self.expected_size:
+            return [0] * self.expected_size
+        else:
+            return self._pixels
+        

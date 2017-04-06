@@ -345,9 +345,12 @@ void ExcaliburFemClient::mpx3PixelConfigSet(unsigned int aChipId, int aConfigId,
 void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 {
 
+//#define SHOW_CONFIG_WRITE_TIME
+#ifdef SHOW_CONFIG_WRITE_TIME
 	struct timespec startTime, endTime, writeTime;
 
 	clock_gettime(CLOCK_REALTIME, &startTime);
+#endif
 
 	// If chip ID = 0, loop over all chips and call this function recursively
 	if (aChipId == 0) {
@@ -547,7 +550,7 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 #ifndef MPX3_0
 		// Set up rowBlock to 0x7 for pixel config load workaround on 3RX
 		unsigned int savedOmrRowBlock = mMpx3OmrParams[chipIdx].rowBlock;
-		std::cout << "Row block saved value: " << savedOmrRowBlock << std::endl;
+		// std::cout << "Row block saved value: " << savedOmrRowBlock << std::endl;
 
 		mMpx3OmrParams[chipIdx].rowBlock = 0x7;
 #endif
@@ -562,7 +565,9 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		// Write counter 1 configuration into the FEM memory
 		this->memoryWrite(kPixelConfigBaseAddr + kPixelConfigBufferSizeBytes, (u32*)&pixelConfigCounter1Buffer, kPixelConfigBufferSizeWords);
 
+#ifdef SHOW_CONFIG_WRITE_TIME
 		clock_gettime(CLOCK_REALTIME, &writeTime);
+#endif
 
 #ifdef MPX3_0
 		// Set up the PPC1 DMA engine for upload mode for two configurations
@@ -599,20 +604,20 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 		this->asicControlCommandExecute(asicPixelConfigLoad);
 
 		u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
-		std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
+		//std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
 
 #ifndef MPX3_0
 		// Execute the config load command
 		this->asicControlCommandExecute(asicPixelConfigLoad);
 
 		ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
-		std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
+		//std::cout << "ctrlState1=0x" << std::hex << ctrlState << std::dec << std::endl;
 
 #endif
 
 		// Poll state of acquisition to test for completion of upload
 		FemAcquireStatus acqStatus = this->acquireStatus();
-		std::cout << "ACQ state=" << acqStatus.state << std::endl;
+		//std::cout << "ACQ state=" << acqStatus.state << std::endl;
 
 		int retries = 0;
 		while  ((retries < 100) && (acqStatus.state != acquireIdle))
@@ -635,6 +640,7 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 #endif
 
 	}
+#ifdef SHOW_CONFIG_WRITE_TIME
 	clock_gettime(CLOCK_REALTIME, &endTime);
 
 	double startSecs = startTime.tv_sec  + ((double)startTime.tv_nsec / 1.0E9);
@@ -646,7 +652,7 @@ void ExcaliburFemClient::mpx3PixelConfigWrite(unsigned int aChipId)
 
 	std::cout << "Config write time          " << elapsedWrite << " secs" << std::endl;
 	std::cout << "pixelConfigWrite call took " << elapsedSecs << " secs" << std::endl;
-
+#endif
 }
 
 unsigned int ExcaliburFemClient::mpx3eFuseIdRead(unsigned int aChipId)

@@ -190,6 +190,12 @@ class ExcaliburDetector(object):
             if not success:
                 self.command_succeeded = False
         
+    def _set_fem_error_state(self, fem_idx, error_code, error_msg):
+        
+        with self.state_lock:
+            self.fems[fem_idx].error_code = error_code
+            self.fems[fem_idx].error_msg = error_msg
+            
     def command_pending(self):
         
         with self.state_lock:    
@@ -202,7 +208,8 @@ class ExcaliburDetector(object):
         trace = False
         if 'enabled' in params:
             trace = params['enabled']
-        
+
+        self.command_succeeded = True        
         if not isinstance(trace, bool):
             raise ExcaliburDetectorError('api_trace requires a bool enabled parameter')
         
@@ -317,28 +324,28 @@ class ExcaliburDetector(object):
             self._do_command(idx, chip_ids, *self.fe_cmd_map[cmd_name])
         
     @run_on_executor(executor='_fem_thread_pool')
-    def _do_command(self, idx, chip_ids, cmd_id, cmd_text, param_err):
+    def _do_command(self, fem_idx, chip_ids, cmd_id, cmd_text, param_err):
         
-        cmd_ok =True
         logging.debug("FEM {} chip {}: {} command (id={}) in thread {:x}".format(
-            self.fems[idx].fem_id, chip_ids, cmd_text, cmd_id, threading.current_thread().ident
+            self.fems[fem_idx].fem_id, chip_ids, cmd_text, cmd_id, threading.current_thread().ident
         ))
+
+        self._set_fem_error_state(fem_idx, FEM_RTN_OK, '')
+        cmd_ok =True
   
         for chip_id in chip_ids:
             try:
-                rc = self.fems[idx].fem.cmd(chip_id, cmd_id)
-                self.fems[idx].error_code = rc
+                rc = self.fems[fem_idx].fem.cmd(chip_id, cmd_id)
                 if rc != FEM_RTN_OK:
-                    self.fems[idx].error_msg = self.fems[idx].fem.get_error_msg()
+                    self._set_fem_error_state(fem_idx, rc, self.fems[fem_idx].fem.get_error_msg())
                     logging.error("FEM {}: {} command returned error {}: {}".format(
-                        self.fems[idx].fem_id, cmd_text, rc, self.fems[idx].error_msg
+                        self.fems[fem_idx].fem_id, cmd_text, rc, self.fems[fem_idx].error_msg
                     ))
                     cmd_ok = False
             except ExcaliburFemError as e:
-                self.fems[idx].error_code = param_err
-                self.fems[idx].error_msg = str(e)
+                self._set_fem_error_state(fem_idx, param_err, str(e))
                 logging.error("FEM {}: {} command raised exception: {}".format(
-                    self.fems[idx].fem_id, cmd_text, str(e)
+                    self.fems[fem_idx].fem_id, cmd_text, str(e)
                 ))
                 cmd_ok = False
   
@@ -390,8 +397,7 @@ class ExcaliburDetector(object):
         
         logging.debug("FEM {}: _read_fe_param in thread {:x}".format(self.fems[fem_idx].fem_id, threading.current_thread().ident))
         
-        self.fems[fem_idx].error_code = FEM_RTN_OK
-        self.fems[fem_idx].error_msg = ''
+        self._set_fem_error_state(fem_idx, FEM_RTN_OK, '')
         read_ok = True
         
         try:
@@ -403,8 +409,8 @@ class ExcaliburDetector(object):
                     fem_get_method = getattr(self.fems[fem_idx].fem, 'get_' + param_type)
                     
                 except AttributeError:
-                    self.fems[fem_idx].error_code = FEM_RTN_INTERNALERROR
-                    self.fems[fem_idx].error_msg = 'Read of frontend parameter {} failed: cannot resolve read method'.format(param)
+                    self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR,
+                        'Read of frontend parameter {} failed: cannot resolve read method'.format(param))
                     read_ok = False
                     
                 else:
@@ -420,8 +426,7 @@ class ExcaliburDetector(object):
                     for chip in chip_list:
                         (rc, value) = fem_get_method(chip, param_id, param_read_len)
                         if rc != FEM_RTN_OK:
-                            self.fems[fem_idx].error_code = rc
-                            self.fems[fem_idx].error_msg = self.fems[fem_idx].fem.get_error_msg()
+                            self._set_fem_error_state(fem_idx, rc, self.fems[fem_idx].fem.get_error_msg())
         
                             value = [-1]
                             read_ok = False
@@ -435,8 +440,8 @@ class ExcaliburDetector(object):
                         self.fe_param_read['value'][param][fem_idx] = values
         
         except Exception as e:
-            self.fems[fem_idx].error_code = FEM_RTN_INTERNALERROR
-            self.fems[fem_idx].error_msg = 'Read of frontend parameter {} failed: {}'.format(param, e)
+            self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR,
+                'Read of frontend parameter {} failed: {}'.format(param, e))
             read_ok = False
                         
         if not read_ok:
@@ -448,7 +453,7 @@ class ExcaliburDetector(object):
         
     def write_fe_param(self, params):
         
-        logging.debug("In write_fe_param with params {} thread id {}".format(params, threading.current_thread().ident))
+        logging.debug("In write_fe_param with params {:50.50} thread id {}".format(params, threading.current_thread().ident))
 
         self.command_succeeded = True        
         self.fe_param_write = []
@@ -493,7 +498,7 @@ class ExcaliburDetector(object):
             # If single-valued, expand outer level of values list to match length of number of FEMs
             if len(values) == 1:
                 values = [values[0]] * num_fems 
-                        
+            
             if len(values) != num_fems:
                 self.command_succeeded = False 
                 raise ExcaliburDetectorError(
@@ -522,8 +527,7 @@ class ExcaliburDetector(object):
         
         logging.debug("FEM {}: _write_fe_param in thread {:x}".format(self.fems[fem_idx].fem_id, threading.current_thread().ident))
         
-        self.fems[fem_idx].error_code = FEM_RTN_OK
-        self.fems[fem_idx].error_msg = ''
+        self._set_fem_error_state(fem_idx, FEM_RTN_OK, '')
         write_ok = True
         
         try:
@@ -531,14 +535,14 @@ class ExcaliburDetector(object):
             for param in params:
                 
                 param_name = param['param']
-                (param_id, param_type, param_write_Len, param_per_chip, param_mode) = self.fe_param_map[param_name]
+                (param_id, param_type, param_write_len, param_per_chip, param_mode) = self.fe_param_map[param_name]
                 
                 try:
                     fem_set_method = getattr(self.fems[fem_idx].fem, "set_" + param_type)
                 
                 except AttributeError:
-                    self.fems[fem_idx].error_code = FEM_RTN_INTERNALERROR
-                    self.fems[fem_idx].error_msg = 'Write of frontend parameter {} failed: cannot resolve write method'.format(param_name)
+                    self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR, 
+                        'Write of frontend parameter {} failed: cannot resolve write method'.format(param_name))
                     write_ok = False
                 else:
                     
@@ -558,24 +562,36 @@ class ExcaliburDetector(object):
                         chip_list = [0]
                     
                     if len(values) != len(chip_list):
-                        self.fems[fem_idx].error_code = FEM_RTN_INTERNALERROR
-                        self.fems[fem_idx].error_msg = 'Write of frontend parameter {} failed: mismatch between number of chips and values'.format(param_name)
+                        self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR,
+                            'Write of frontend parameter {} failed: ' \
+                            'mismatch between number of chips and values'.format(param_name))
                         write_ok = False
                         break
                     
                     for (idx, chip) in enumerate(chip_list):
                        
+                        if isinstance(values[idx], list):
+                            values_len = len(values[idx])
+                        else:
+                            values_len = 1
+                            
+                        if values_len != param_write_len:
+                            self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR, 
+                                'Write of frontend parameter {} failed: ' \
+                                'mismatch in number of values specified (got {} expected {})'.format(
+                                    param_name, values_len, param_write_len
+                                ))
+                            write_ok = False
+                            break
                         try:
                             rc = fem_set_method(chip, param_id, values[idx])
                             if rc != FEM_RTN_OK:
-                                self.fems[fem_idx].error_code = rc
-                                self.fems[fem_idx].error_msg = self.fems[fem_idx].fem.get_error_msg()
+                                self._set_fem_error_state(fem_idx, rc,self.fems[fem_idx].fem.get_error_msg())
                                 write_ok = False
                                 break
 
                         except ExcaliburFemError as e:
-                            self.fems[fem_idx].error_code = FEM_RTN_INTERNALERROR
-                            self.fems[fem_idx].error_msg = str(e)
+                            self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR, str(e))
                             write_ok = False
                             break
                  
@@ -583,8 +599,8 @@ class ExcaliburDetector(object):
                     break
                     
         except Exception as e:
-            self.fems[fem_idx].error_code = FEM_RTN_INTERNALERROR
-            self.fems[fem_idx].error_msg = 'Write of frontend parameter {} failed: {}'.format(param, e)
+            self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR,
+                'Write of frontend parameter {} failed: {}'.format(param, e))
             write_ok = False
         
         if not write_ok:

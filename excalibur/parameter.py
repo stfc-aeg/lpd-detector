@@ -10,6 +10,7 @@ from .fem_api_parameters import *
 
 FEM_RTN_INTERNALERROR = -1
 CHIPS_PER_FEM = FEM_CHIPS_PER_STRIPE_X
+FEM_PIXELS_PER_CHIP = FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y
 
 ParamReadOnly = 1
 ParamReadWrite = 2
@@ -102,6 +103,11 @@ class ExcaliburFrontEndParameterMap(ParameterMap):
         self['mpx3_dischdac'] = ParameterSpec(FEM_OP_MPXIII_DISCHDAC, 'int', 1, True) 
         self['efuseid'] = ParameterSpec(FEM_OP_MPXIII_EFUSEID, 'int', 1, True)
         self['testpulse_enable'] = ParameterSpec(FEM_OP_MPXIII_TESTPULSE_ENABLE, 'int', 1, True)
+        
+        self['mpx3_pixel_mask'] = ParameterSpec(FEM_OP_MPXIII_PIXELMASK, 'short', FEM_PIXELS_PER_CHIP, True)
+        self['mpx3_pixel_discl'] = ParameterSpec(FEM_OP_MPXIII_PIXELDISCL, 'short', FEM_PIXELS_PER_CHIP, True)
+        self['mpx3_pixel_disch'] = ParameterSpec(FEM_OP_MPXIII_PIXELDISCH, 'short', FEM_PIXELS_PER_CHIP, True)
+        self['mpx3_pixel_test'] = ParameterSpec(FEM_OP_MPXIII_PIXELTEST, 'short', FEM_PIXELS_PER_CHIP, True)
         
         self['num_frames_to_acquire'] = ParameterSpec(FEM_OP_NUMFRAMESTOACQUIRE, 'int', 1, False)
         self['acquisition_time'] = ParameterSpec(FEM_OP_ACQUISITIONTIME, 'int', 1, False)

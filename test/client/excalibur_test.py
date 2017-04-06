@@ -108,16 +108,16 @@ class ExcaliburTestApp(object):
             type=int, default=self.defaults.sense_dac,
             help='Set MPX3 sense DAC id. NB Requires DAC load command to take effect')
         config_group.add_argument('--tpmask', type=str, 
-            dest='tp_mask_file',  metavar='FILE',
+            dest='pixel_test_file',  metavar='FILE',
             help='Specify MPX3 pixel test pulse mask configuration filename to load')
         config_group.add_argument('--pixelmask', type=str, 
             dest='pixel_mask_file', metavar='FILE',
             help='Specify MPX3 pixel test pulse mask configuration filename to load')
         config_group.add_argument('--discl', type=str, 
-            dest='discl_file', metavar='FILE',
+            dest='pixel_discl_file', metavar='FILE',
             help='Specify MPX3 pixel DiscL configuration filename to load')
         config_group.add_argument('--disch', type=str, 
-            dest='disch_file', metavar='FILE',
+            dest='pixel_disch_file', metavar='FILE',
             help='Specify MPX3 pixel DiscH configuration filename to load')
        
         acq_group = parser.add_argument_group('Acquisition parameters')
@@ -327,8 +327,49 @@ class ExcaliburTestApp(object):
     
     def do_pixel_config_load(self):
         
-        logging.info('Loading pixel config')
-                               
+        logging.info('Loading pixel configuration')
+        
+        mpx3_pixel_mask = [0] * ExcaliburDefinitions.FEM_PIXELS_PER_CHIP
+        mpx3_pixel_discl = [0] * ExcaliburDefinitions.FEM_PIXELS_PER_CHIP
+        mpx3_pixel_disch = [0] * ExcaliburDefinitions.FEM_PIXELS_PER_CHIP
+        mpx3_pixel_test = [0] * ExcaliburDefinitions.FEM_PIXELS_PER_CHIP
+        
+        if self.args.pixel_mask_file:
+            logging.info('  Loading pixel mask configuration from {}'.format(self.args.pixel_disch_file))
+            mpx3_pixel_mask = ExcaliburPixelConfigParser(self.args.pixel_mask_file).pixels
+        if self.args.pixel_discl_file:
+            logging.info('  Loading pixel DiscL configuration from {}'.format(self.args.pixel_discl_file))
+            mpx3_pixel_discl = ExcaliburPixelConfigParser(self.args.pixel_discl_file).pixels
+        if self.args.pixel_disch_file:
+            logging.info('  Loading pixel DiscH configuration from {}'.format(self.args.pixel_disch_file))
+            mpx3_pixel_disch = ExcaliburPixelConfigParser(self.args.pixel_disch_file).pixels
+        if self.args.pixel_test_file:
+            logging.info('  Loading pixel test configuration from {}'.format(self.args.pixel_test_file))
+            mpx3_pixel_test = ExcaliburPixelConfigParser(self.args.pixel_test_file).pixels
+        
+        pixel_params = []
+        pixel_params.append(ExcaliburParameter('mpx3_pixel_mask', [[mpx3_pixel_mask]], 
+                            fem=self.args.config_fem, chip=self.args.config_chip))
+        pixel_params.append(ExcaliburParameter('mpx3_pixel_discl', [[mpx3_pixel_discl]], 
+                            fem=self.args.config_fem, chip=self.args.config_chip))
+        pixel_params.append(ExcaliburParameter('mpx3_pixel_disch', [[mpx3_pixel_disch]], 
+                            fem=self.args.config_fem, chip=self.args.config_chip))
+        pixel_params.append(ExcaliburParameter('mpx3_pixel_test', [[mpx3_pixel_test]], 
+                            fem=self.args.config_fem, chip=self.args.config_chip))
+        
+        logging.info('  Writing pixel configuration to system')
+        write_ok = self.client.fe_param_write(pixel_params)
+        if not write_ok:
+            logging.error('Failed to write pixel config parameters')
+            return
+        
+        logging.info(('  Sending configuration load command to system'))
+        load_ok = self.client.do_command('load_pixelconfig', self.args.config_fem, self.args.config_chip)
+        if load_ok:
+            logging.info('Pixel configuration load completed OK')
+        else:
+            logging.error('Failed to execute pixel config load command: {}'.format(self.client.error_msg))
+            
     def do_acquisition(self):
         
         # Resolve the acquisition operating mode appropriately, handling burst and matrix read if necessary
