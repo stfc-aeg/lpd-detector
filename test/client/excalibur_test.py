@@ -94,8 +94,10 @@ class ExcaliburTestApp(object):
             help='Disconnect server from detector system')
         cmd_group.add_argument('--dacs', nargs='*', metavar='FILE',
             help='Load MPX3 DAC values from a filename if given, otherwise use default values')
+        cmd_group.add_argument('--config', action='store_true',
+            help='Load MPX3 pixel configuration')
         
-        config_group = parser.add_argument_group('Configuration mode parameters')
+        config_group = parser.add_argument_group('DAC and pixel configuration mode parameters')
         config_group.add_argument('--fem', metavar='FEM', dest='config_fem',
             nargs='+', type=int, default=[ExcaliburDefinitions.ALL_FEMS],
             help='Specify FEM(s) for configuration loading (0=all)')
@@ -105,6 +107,18 @@ class ExcaliburTestApp(object):
         config_group.add_argument('--sensedac', metavar='DAC', dest='sense_dac',
             type=int, default=self.defaults.sense_dac,
             help='Set MPX3 sense DAC id. NB Requires DAC load command to take effect')
+        config_group.add_argument('--tpmask', type=str, 
+            dest='tp_mask_file',  metavar='FILE',
+            help='Specify MPX3 pixel test pulse mask configuration filename to load')
+        config_group.add_argument('--pixelmask', type=str, 
+            dest='pixel_mask_file', metavar='FILE',
+            help='Specify MPX3 pixel test pulse mask configuration filename to load')
+        config_group.add_argument('--discl', type=str, 
+            dest='discl_file', metavar='FILE',
+            help='Specify MPX3 pixel DiscL configuration filename to load')
+        config_group.add_argument('--disch', type=str, 
+            dest='disch_file', metavar='FILE',
+            help='Specify MPX3 pixel DiscH configuration filename to load')
        
         acq_group = parser.add_argument_group("Acquisition parameters")
         acq_group.add_argument('--nowait', action='store_true', dest='no_wait',
@@ -201,7 +215,10 @@ class ExcaliburTestApp(object):
         
         if self.args.dacs is not None:
             self.do_dac_load()
-               
+         
+        if self.args.config:
+            self.do_pixel_config_load()
+                  
         if self.args.acquire:
             self.do_acquisition()
             
@@ -307,7 +324,11 @@ class ExcaliburTestApp(object):
             logging.info("DAC load completed OK")
         else:
             logging.error('Failed to execute DAC load command: {}'.format(self.client.error_msg))
-                           
+    
+    def do_pixel_config_load(self):
+        
+        logging.info('Loading pixel config')
+                               
     def do_acquisition(self):
         
         # Resolve the acquisition operating mode appropriately, handling burst and matrix read if necessary
