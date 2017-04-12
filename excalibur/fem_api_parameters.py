@@ -1,6 +1,6 @@
 """fem_api_parameters.py - EXCALIBUR FEM API parameter definitions
 
-Automatically generated on: Mon Apr  3 11:35:47 2017 by generate_fem_api_parameters.py - do not edit manually!
+Automatically generated on: Thu Apr  6 16:58:11 2017 by generate_fem_api_parameters.py - do not edit manually!
 
 """
 
@@ -156,5 +156,11 @@ FEM_OP_FRAMES_ACQUIRED = 4055
 FEM_OP_CONTROL_STATE = 4056
 FEM_OP_DAC_SCAN_STATE = 4057
 FEM_OP_DAC_SCAN_STEPS_COMPLETE = 4058
+FEM_OP_SOURCE_DATA_ADDR = 4059
+FEM_OP_SOURCE_DATA_MAC = 4060
+FEM_OP_SOURCE_DATA_PORT = 4061
+FEM_OP_DEST_DATA_ADDR = 4062
+FEM_OP_DEST_DATA_MAC = 4063
+FEM_OP_DEST_DATA_PORT = 4064
 FEM_OP_ACQUISITIONCOMPLETE = 5000
 FEM_OP_CORRUPTIMAGE = 5001

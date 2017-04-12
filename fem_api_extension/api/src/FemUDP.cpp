@@ -43,20 +43,26 @@ const u32 kTenGigUdpRdmaAddr       = 0x00000000;
  * @param hostPort integer containing the port number of the host PC
  * @return 0 if success else -1
  */
-u32 FemClient::configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort, char* hostIPaddress, u32 hostPort) {
+u32 FemClient::configUDP(
+		const char* fpgaMACaddress, const char* fpgaIPaddress, u32 fpgaPort,
+		const char* hostMACaddress, const char* hostIPaddress, u32 hostPort)
+{
+
 	int rc = 0;
 	u_int32_t value;
-	unsigned char* hostMAC = getMacAddressFromIP(hostIPaddress);
+
+	unsigned char hostMAC[6];
 	unsigned char fpgaMAC[6];
 	unsigned char fpgaIP[4];
 	unsigned char hostIP[4];
-	if (hostMAC == NULL) {
-		return -1;
-	}
+
 	try {
+
+		to_bytes(hostMACaddress, hostMAC, 6, 16);
 		to_bytes(fpgaMACaddress, fpgaMAC, 6, 16);
 		to_bytes(fpgaIPaddress, fpgaIP, 4, 10);
 		to_bytes(hostIPaddress, hostIP, 4, 10);
+
 		value = (fpgaMAC[3] << 24) + (fpgaMAC[2] << 16) + (fpgaMAC[1] << 8) + fpgaMAC[0];
 		this->rdmaWrite(kTenGigUdpRdmaAddr + 0, value); // UDP Block 0 MAC Source Lower 32
 
@@ -94,14 +100,13 @@ u32 FemClient::configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort
 		std::cerr << "Exception caught during configUDP: " << e.what() << std::endl;
 		rc = -1;
 	}
-	free(hostMAC);
 	return rc;
 }
 
 
-void FemClient::to_bytes(char *ipName, unsigned char* b, int n, int base) {
+void FemClient::to_bytes(const char *ipName, unsigned char* b, int n, int base) {
 	char *end;
-	char* iptr = ipName;
+	const char* iptr = ipName;
 	for (int i=0; i<n; i++) {
 		b[i] = (unsigned char) strtol(iptr, &end, base);
 		iptr = end + 1;
@@ -114,7 +119,7 @@ void FemClient::to_bytes(char *ipName, unsigned char* b, int n, int base) {
  * @param ip byte array containing the IP address
  * @return the mac address of the interface as a byte array or NULL if not found
  */
-unsigned char* FemClient::getMacAddressFromIP(char *ipName) {
+int FemClient::getMacAddressFromIP(const char *ipName, char* mac_str) {
 
 	struct ifaddrs *ifaddr, *ifa;
 	int family, s;
@@ -125,8 +130,9 @@ unsigned char* FemClient::getMacAddressFromIP(char *ipName) {
 	unsigned char* mac_addr = (unsigned char*) calloc(sizeof(unsigned char), 6);
 
 	if (getifaddrs(&ifaddr) == -1) {
-		return NULL;
+		return -1;
 	}
+
 
 	//iterate to find interface name for given server_ip
 	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
@@ -137,7 +143,7 @@ unsigned char* FemClient::getMacAddressFromIP(char *ipName) {
 						(family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host,
 						NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
 				if (s != 0) {
-					return NULL;
+					return -1;
 				}
 				if (strcmp(host, ipName) == 0) {
 					ifa_name = ifa->ifa_name;
@@ -146,7 +152,7 @@ unsigned char* FemClient::getMacAddressFromIP(char *ipName) {
 		}
 	}
 	if (ifa_name == NULL) {
-		return NULL;
+		return -1;
 	}
 
 	int i;
@@ -164,7 +170,10 @@ unsigned char* FemClient::getMacAddressFromIP(char *ipName) {
 		}
 	}
 	freeifaddrs(ifaddr);
-	return mac_addr;
+
+	sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+
+	return 0;
 }
 
 char* FemClient::getFpgaIpAddressFromHost(const char *ipAddr)

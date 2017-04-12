@@ -155,7 +155,6 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    //printf("Initialised module with handle %lu\n", (unsigned long)(fem_ptr->handle));
     log_msg(debug, "Initialised fem_api module with handle %lu for FEM ID %d",
         (unsigned long)(fem_ptr->handle), fem_id);
 
@@ -528,6 +527,90 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
     return Py_BuildValue("i", rc);
 }
 
+static PyObject* _set_string(PyObject* self, PyObject* args)
+{
+	int i, rc;
+	PyObject* _handle;
+	int chip_id, param_id, size;
+	PyObject* values_obj;
+	FemPtr fem_ptr;
+
+	char** value_ptr;
+	PyObject** bytes_ptr;
+
+    if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
+        return NULL;
+    }
+
+    fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
+    _validate_ptr_and_handle(fem_ptr, "set_string");
+
+    if (PyUnicode_Check(values_obj)) {
+    	size = 1;
+    }
+    else if (PyList_Check(values_obj)) {
+    	size = PyList_Size(values_obj);
+    }
+    else {
+    	_set_api_error_string("set_string: specified value(s) not string or list");
+    	return NULL;
+    }
+
+    value_ptr = (char**)malloc(size * sizeof(char*));
+    if (value_ptr == NULL) {
+    	_set_api_error_string("set_string: unable to allocate space for %d string values", size);
+    	return NULL;
+    }
+
+    bytes_ptr = (PyObject**)malloc(size * sizeof(PyObject*));
+    if (bytes_ptr == NULL) {
+    	_set_api_error_string("set_string: unable to allocate space for %d byte pointer objects", size);
+    	free(value_ptr);
+    	return NULL;
+    }
+
+    if (size == 1) {
+    	bytes_ptr[0] = PyUnicode_AsUTF8String(values_obj);
+    	value_ptr[0] = PyBytes_AsString(bytes_ptr[0]);
+    }
+    else {
+    	for (i = 0; i < size; i++) {
+    		PyObject* value_obj = PyList_GetItem(values_obj, i);
+    		if (!PyUnicode_Check(value_obj)) {
+    			_set_api_error_string("set_string: non-unicode string value sepcified");
+    			free(bytes_ptr);
+    			free(value_ptr);
+    			return NULL;
+    		}
+    		bytes_ptr[i] = PyUnicode_AsUTF8String(value_obj);
+    		value_ptr[i] = PyBytes_AsString(bytes_ptr[i]);
+    	}
+    }
+
+	if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%s",
+				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+	}
+
+    Py_BEGIN_ALLOW_THREADS
+    rc = femSetString(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    Py_END_ALLOW_THREADS
+
+    for (i = 0; i < size; i++) {
+    	Py_DECREF(bytes_ptr[i]);
+    }
+
+    if (bytes_ptr != NULL) {
+    	free(bytes_ptr);
+    }
+
+    if (value_ptr != NULL) {
+    	free(value_ptr);
+    }
+
+    return Py_BuildValue("i", rc);
+}
+
 static PyObject* _cmd(PyObject* self, PyObject* args)
 {
     PyObject* _handle;
@@ -615,6 +698,7 @@ static PyMethodDef fem_api_methods[] =
 	 {"set_short",  _set_short,  METH_VARARGS, "set one ore more short integer parameters"},
 	 {"get_float",  _get_float,  METH_VARARGS, "get one or more float parameters"},
 	 {"set_float",  _set_float,  METH_VARARGS, "set one or more float parameters"},
+	 {"set_string", _set_string, METH_VARARGS, "set on ore more string parameters"},
 	 {"get_error_msg", _get_error_msg, METH_VARARGS, "get module error message"},
      {"cmd",        _cmd,        METH_VARARGS, "issue a command to a module"},
      {"close",      _close,      METH_VARARGS, "close a module"},

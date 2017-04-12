@@ -121,6 +121,15 @@ class ExcaliburFem(object):
 
         return rc
 
+    def set_string(self, chip_id, param_id, values):
+
+        try:
+            rc = self._fem_api.set_string(self.fem_handle, chip_id, param_id, values)
+        except self._fem_api.error as e:
+            raise ExcaliburFemError(str(e))
+
+        return rc
+    
     def cmd(self, chip_id, cmd_id):
 
         try:

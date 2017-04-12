@@ -542,7 +542,7 @@ class ExcaliburDetector(object):
                 
                 except AttributeError:
                     self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR, 
-                        'Write of frontend parameter {} failed: cannot resolve write method'.format(param_name))
+                        'Write of frontend parameter {} failed: cannot resolve write method {}'.format(param_name, 'set_' + param_type))
                     write_ok = False
                 else:
                     
@@ -558,15 +558,16 @@ class ExcaliburDetector(object):
                         # If single-valued for a per-chip parameter, expand to match number of chips
                         if len(values) == 1:
                             values = [values[0]] * len(chip_list)
+
+                        if len(values) != len(chip_list):
+                            self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR,
+                                'Write of frontend parameter {} failed: ' \
+                                'mismatch between number of chips and values'.format(param_name))
+                            write_ok = False
+                            break
+
                     else:
                         chip_list = [0]
-                    
-                    if len(values) != len(chip_list):
-                        self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR,
-                            'Write of frontend parameter {} failed: ' \
-                            'mismatch between number of chips and values'.format(param_name))
-                        write_ok = False
-                        break
                     
                     for (idx, chip) in enumerate(chip_list):
                        

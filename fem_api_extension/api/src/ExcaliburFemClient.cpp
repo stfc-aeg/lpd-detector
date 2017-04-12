@@ -24,7 +24,6 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 	mMpx3GlobalTestPulseEnable(false),
 	mMpx3TestPulseCount(4000),
 	mDataReceiverEnable(true),
-	mFemDataHostPort(kHostDataPort),
 	mCtlHandle(aCtlHandle),
 	mCallbacks(aCallbacks),
 	mConfig(aConfig),
@@ -105,21 +104,38 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
 	mCallbackBundle.signal   = boost::bind(&ExcaliburFemClient::signalCallback, this, _1);
 
 
-	// Resolve data connection source and destination IP addresses from config
-	const char* hostIpAddress = aConfig->dataAddress;
-	char* fpgaIpAddress = this->getFpgaIpAddressFromHost(hostIpAddress);
-	const char* fpgaMacAddress = "62:00:00:00:00:01";
-	u32 hostPort = kHostDataPort;
-	u32 fpgaPort = 8;
-	std::cout << "Configuring 10GigE data interface: host IP: " << hostIpAddress << " port: " << hostPort
-			  << " FEM data IP: " << fpgaIpAddress << " port: " << fpgaPort << " MAC: " << fpgaMacAddress << std::endl;
+	// Set up default source and destination data connection addresses and ports
+	mDataDestIpAddress = "10.0.2.1";
+	char dest_mac[18];
 
-	// Initialise 10GigE UDP interface in FEM
-	u32 rc = this->configUDP((char *)fpgaMacAddress, fpgaIpAddress, fpgaPort, (char *)hostIpAddress, hostPort);
-	if (rc != 0)
-	{
-		throw FemClientException((FemClientErrorCode)excaliburFemClientUdpSetupFailed, "Failed to set up FEM UDP firmware block");
+	if (this->getMacAddressFromIP(mDataDestIpAddress.c_str(), (char*)dest_mac) == 0) {
+		mDataDestMacAddress = dest_mac;
 	}
+	else {
+		std::cout << "Warning, failed to resolve default destination MAC address, setting to zero" << std::endl;
+		mDataDestMacAddress = "00:00:00:00:00:00";
+	}
+	mDataDestPort = kDataDestPort;
+
+	mDataSourceIpAddress = this->getFpgaIpAddressFromHost(mDataDestIpAddress.c_str());
+	mDataSourceMacAddress = "62:00:00:00:00:01";
+	mDataSourcePort = kDataSourcePort;
+
+	// Resolve data connection source and destination IP addresses from config
+//	const char* hostIpAddress = aConfig->dataAddress;
+//	char* fpgaIpAddress = this->getFpgaIpAddressFromHost(hostIpAddress);
+//	const char* fpgaMacAddress = "62:00:00:00:00:01";
+//	u32 hostPort = kHostDataPort;
+//	u32 fpgaPort = 8;
+//	std::cout << "Configuring 10GigE data interface: host IP: " << hostIpAddress << " port: " << hostPort
+//			  << " FEM data IP: " << fpgaIpAddress << " port: " << fpgaPort << " MAC: " << fpgaMacAddress << std::endl;
+//
+//	// Initialise 10GigE UDP interface in FEM
+//	u32 rc = this->configUDP((char *)fpgaMacAddress, fpgaIpAddress, fpgaPort, (char *)hostIpAddress, hostPort);
+//	if (rc != 0)
+//	{
+//		throw FemClientException((FemClientErrorCode)excaliburFemClientUdpSetupFailed, "Failed to set up FEM UDP firmware block");
+//	}
 
 //	try
 //	{
@@ -380,7 +396,7 @@ void ExcaliburFemClient::startAcquisition(void)
 	{
 		try
 		{
-			mFemDataReceiver = new FemDataReceiver(mFemDataHostPort);
+			mFemDataReceiver = new FemDataReceiver(mDataDestPort);
 		}
 		catch (boost::system::system_error &e)
 		{
@@ -390,6 +406,21 @@ void ExcaliburFemClient::startAcquisition(void)
 		}
 	}
 
+	// Configure the 10GigE UDP interface on the FEM
+	std::cout << "Configuring UDP data interface: source IP:" << mDataSourceIpAddress
+			<< " MAC:" << mDataSourceMacAddress << " port:" << mDataSourcePort
+			<< " dest IP:" << mDataDestIpAddress
+			<< " MAC:" << mDataDestMacAddress << " port:" << mDataDestPort
+			<< std::endl;
+
+			u32 rc = this->configUDP(
+				mDataSourceMacAddress.c_str(), mDataSourceIpAddress.c_str(), mDataSourcePort,
+				mDataDestMacAddress.c_str(), mDataDestIpAddress.c_str(), mDataDestPort
+			);
+	if (rc != 0)
+	{
+		throw  FemClientException((FemClientErrorCode)excaliburFemClientUdpSetupFailed, "Failed to set up FEM 10GigE UDP data interface");
+	}
 
 	// Default values for various acquisition parameters
 	u32 acqMode, numAcq, bdCoalesce = 0;
@@ -1038,3 +1069,55 @@ unsigned int ExcaliburFemClient::controlStateGet(void)
 {
 	return (unsigned int)(this->rdmaRead(kExcaliburAsicCtrlState1));
 }
+
+void ExcaliburFemClient::dataAddrParamSet(excaliburDataAddrParam aAddrParam, std::size_t size, const char** aAddrValues)
+{
+	if (size != 1)
+	{
+		std::cout << "WARNING, data address configuration does not yet support > 1 parameter, ignoring others" << std::endl;
+	}
+	switch (aAddrParam) {
+
+	case excaliburDataAddrSourceIp:
+		mDataSourceIpAddress = aAddrValues[0];
+		break;
+	case excaliburDataAddrSourceMac:
+		mDataSourceMacAddress = aAddrValues[0];
+		break;
+	case excaliburDataAddrDestIp:
+		mDataDestIpAddress = aAddrValues[0];
+		break;
+	case excaliburDataAddrDestMac:
+		mDataDestMacAddress = aAddrValues[0];
+		break;
+	default:
+		std::ostringstream msg;
+		msg << "Illegal data address parameter specified: " << aAddrParam;
+		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalDataParam, msg.str());
+		break;
+	}
+
+}
+
+void ExcaliburFemClient::dataPortParamSet(excaliburDataPortParam aPortParam, std::size_t size, const unsigned int* aPortValues)
+{
+	if (size != 1)
+	{
+		std::cout << "WARNING, data port configuration does not yet support > 1 parameter, ignoring others" << std::endl;
+	}
+	switch (aPortParam) {
+	case excaliburDataPortSource:
+		mDataSourcePort = aPortValues[0];
+		break;
+	case excaliburDataPortDest:
+		mDataDestPort = aPortValues[0];
+		break;
+	default:
+		std::ostringstream msg;
+		msg << "Illegal data port parameter specified: " << aPortParam;
+		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalDataParam, msg.str());
+		break;
+	}
+
+}
+

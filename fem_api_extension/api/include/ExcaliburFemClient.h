@@ -12,6 +12,7 @@
 #include <FemClient.h>
 #include <FemDataReceiver.h>
 #include <list>
+#include <string>
 #include <time.h>
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
@@ -25,7 +26,8 @@ const unsigned int kPixelConfigBitsPerPixel = 12;
 const unsigned int kPixelConfigBufferSizeBytes = ((FEM_PIXELS_PER_CHIP_X * FEM_PIXELS_PER_CHIP_Y * kPixelConfigBitsPerPixel)) / 8;
 const unsigned int kPixelConfigBufferSizeWords = kPixelConfigBufferSizeBytes /sizeof(u32);
 
-const unsigned int kHostDataPort = 61649;
+const unsigned int kDataSourcePort = 8;
+const unsigned int kDataDestPort = 61649;
 
 typedef enum
 {
@@ -46,6 +48,7 @@ typedef enum
 	excaliburFemClientIllegalTriggerMode,
 	excaliburFemClientIllegalTriggerPolarity,
 	excaliburFemClientIllegalReadWriteMode,
+	excaliburFemClientIllegalDataParam,
 
 } ExcaliburFemClientErrorCode;
 
@@ -133,6 +136,22 @@ typedef enum
 
 } excaliburTriggerPolarity;
 
+typedef enum
+{
+	excaliburDataAddrSourceIp = 0,
+	excaliburDataAddrSourceMac = 1,
+	excaliburDataAddrDestIp = 2,
+	excaliburDataAddrDestMac = 3,
+
+} excaliburDataAddrParam;
+
+typedef enum
+{
+	excaliburDataPortSource = 0,
+	excaliburDataPortDest = 1,
+
+} excaliburDataPortParam;
+
 class ExcaliburFemClient: public FemClient {
 public:
 	ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCallbacks,
@@ -170,6 +189,9 @@ public:
 	void dataReceiverEnable(unsigned int aEnable);
 	unsigned int frameCountGet(void);
 	unsigned int controlStateGet(void);
+
+	void dataAddrParamSet(excaliburDataAddrParam aAddrParam, std::size_t size, const char** aAddrValues);
+	void dataPortParamSet(excaliburDataPortParam aPortParam, std::size_t size, const unsigned int* aPortValues);
 
 	// EXCALIBUR detector front-end functions in ExcaliburFemClientFrontEndDevices.cpp
 	void   frontEndEnableSet(unsigned int aVal);
@@ -287,7 +309,6 @@ private:
 
 	bool                  mDataReceiverEnable;
 	FemDataReceiver*      mFemDataReceiver;
-	unsigned int          mFemDataHostPort;
 	void*                 mCtlHandle;
 	const CtlCallbacks*   mCallbacks;
 	const CtlConfig*      mConfig;
@@ -314,6 +335,15 @@ private:
 	unsigned int		  mDacScanStart;
 	unsigned int		  mDacScanStop;
 	unsigned int		  mDacScanStep;
+
+	std::string			  mDataSourceIpAddress;
+	std::string			  mDataSourceMacAddress;
+	unsigned int          mDataSourcePort;
+
+	std::string			  mDataDestIpAddress;
+	std::string			  mDataDestMacAddress;
+	unsigned int          mDataDestPort;
+
 
 };
 

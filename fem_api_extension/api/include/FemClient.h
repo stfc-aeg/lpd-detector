@@ -107,8 +107,10 @@ public:
 
 	void runIoService(void); // test function
 
-	u32 configUDP(char* fpgaMACaddress, char* fpgaIPaddress, u32 fpgaPort, char* hostIPaddress, u32 hostPort);
+	u32 configUDP(const char* fpgaMACaddress, const char* fpgaIPaddress, u32 fpgaPort,
+			const char* hostMACaddress, const char* hostIPaddress, u32 hostPort);
 	char* getFpgaIpAddressFromHost(const char* ipAddr);
+	int getMacAddressFromIP(const char *ipName, char* mac_str);
 
 	u32 personalityWrite(unsigned int aCommand, unsigned int aWidth, u8* aPayload, std::size_t size);
 	FemTransaction personalityCommand(unsigned int aCommand, unsigned int aWidth, u8* aPayload, std::size_t size);
@@ -127,8 +129,7 @@ private:
 	static void asyncCompletionHandler(
 			const boost::system::error_code& aErrorCode, std::size_t aLength,
 		    boost::system::error_code* apOutputErrorCode, std::size_t* apOutputLength);
-	void to_bytes(char *ipName, unsigned char* b, int n, int base=10);
-	unsigned char* getMacAddressFromIP(char *ipName);
+	void to_bytes(const char *ipName, unsigned char* b, int n, int base=10);
 
 };
 

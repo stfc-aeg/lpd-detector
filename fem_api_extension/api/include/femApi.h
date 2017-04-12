@@ -105,6 +105,8 @@ int femSetFloat(void* handle, int chipId, int id, size_t size, double* value);
 int femGetInt(void* handle, int chipId, int id, size_t size, int* value);
 int femGetShort(void* handle, int chipId, int id, size_t size, short* value);
 int femGetFloat(void* handle, int chipId, int id, size_t size, double* value);
+int femGetString(void* handle, int chipId, int id, size_t size, char** value);
+int femSetString(void* handle, int chipId, int id, size_t size, char** value);
 int femCmd(void* handle, int chipId, int id);
 void femClose(void* handle);
 
@@ -264,6 +266,12 @@ void femClose(void* handle);
 #define FEM_OP_CONTROL_STATE 4056
 #define FEM_OP_DAC_SCAN_STATE 4057
 #define FEM_OP_DAC_SCAN_STEPS_COMPLETE 4058
+#define FEM_OP_SOURCE_DATA_ADDR 4059
+#define FEM_OP_SOURCE_DATA_MAC 4060
+#define FEM_OP_SOURCE_DATA_PORT 4061
+#define FEM_OP_DEST_DATA_ADDR 4062
+#define FEM_OP_DEST_DATA_MAC 4063
+#define FEM_OP_DEST_DATA_PORT 4064
 
 /* Ids 5000..5999 are signals */
 #define FEM_OP_ACQUISITIONCOMPLETE 5000

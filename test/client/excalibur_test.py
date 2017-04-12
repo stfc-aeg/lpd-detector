@@ -11,8 +11,14 @@ class ExcaliburTestAppDefaults(object):
         
         self.ip_addr = 'localhost'
         self.port = 8888
-        self.tengig_addr = '10.0.2.1'
         self.log_level = 'info'
+
+        self.source_data_addr = ['10.0.2.2']
+        self.source_data_mac = ['62:00:00:00:00:01']
+        self.source_data_port = [8]
+        self.dest_data_addr = ['10.0.2.1']
+        self.dest_data_mac = ['00:07:43:06:31:A7']
+        self.dest_data_port = [61649]
         
         self.log_levels = {
             'error': logging.ERROR,
@@ -66,9 +72,6 @@ class ExcaliburTestApp(object):
         config_group.add_argument('--port', '-p', type=int, dest='port',
             default=self.defaults.port, 
             help='Port number of EXCALIBUBR control server to connect to')
-        config_group.add_argument('--tengigaddress', '-g', type=str, dest='tengig_addr',
-            default=self.defaults.tengig_addr,  metavar='ADDR',
-            help='Destination IP address for 10G UDP data stream')
         config_group.add_argument('--logging', type=str, dest='log_level',
             default=self.defaults.log_level,
             choices=['error', 'warning', 'info', 'debug'],
@@ -96,6 +99,26 @@ class ExcaliburTestApp(object):
             help='Load MPX3 DAC values from a filename if given, otherwise use default values')
         cmd_group.add_argument('--config', action='store_true',
             help='Load MPX3 pixel configuration')
+        
+        dataif_group = parser.add_argument_group('10GigE UDP data interface parameters')
+        dataif_group.add_argument('--sourceaddr', metavar='IP', dest='source_data_addr',
+            nargs='+', type=str, default=self.defaults.source_data_addr,
+            help='Set the data source IP address(es)')
+        dataif_group.add_argument('--sourcemac', metavar='MAC', dest='source_data_mac',
+            nargs='+', type=str, default=self.defaults.source_data_mac,
+            help='Set the data source MAC address(es)')
+        dataif_group.add_argument('--sourceport', metavar='PORT', dest='source_data_port',
+            nargs='+', type=int, default=self.defaults.source_data_port,
+            help='Set the data source port(s)')
+        dataif_group.add_argument('--destaddr', metavar='IP', dest='dest_data_addr',
+            nargs='+', type=str, default=self.defaults.dest_data_addr,
+            help='Set the data destination IP address(es)')
+        dataif_group.add_argument('--destmac', metavar='MAC', dest='dest_data_mac',
+            nargs='+', type=str, default=self.defaults.dest_data_mac,
+            help='Set the data destination MAC address(es)')
+        dataif_group.add_argument('--destport', metavar='PORT', dest='dest_data_port',
+            nargs='+', type=int, default=self.defaults.dest_data_port,
+            help='Set the data destination port(s)')
         
         config_group = parser.add_argument_group('DAC and pixel configuration mode parameters')
         config_group.add_argument('--fem', metavar='FEM', dest='config_fem',
@@ -369,7 +392,7 @@ class ExcaliburTestApp(object):
             logging.info('Pixel configuration load completed OK')
         else:
             logging.error('Failed to execute pixel config load command: {}'.format(self.client.error_msg))
-            
+    
     def do_acquisition(self):
         
         # Resolve the acquisition operating mode appropriately, handling burst and matrix read if necessary
@@ -456,10 +479,18 @@ class ExcaliburTestApp(object):
             ExcaliburDefinitions.lfsr_bypass_mode_name(lfsr_bypass_mode)
         ))
         write_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[lfsr_bypass_mode]]))
+
+        logging.info('  Setting data interface address and port parameters')
+        write_params.append(ExcaliburParameter('source_data_addr', [[addr] for addr in self.args.source_data_addr]))
+        write_params.append(ExcaliburParameter('source_data_mac', [[mac] for mac in self.args.source_data_mac]))
+        write_params.append(ExcaliburParameter('source_data_port', [[port] for port in self.args.source_data_port]))
+        write_params.append(ExcaliburParameter('dest_data_addr', [[addr] for addr in self.args.dest_data_addr]))
+        write_params.append(ExcaliburParameter('dest_data_mac', [[mac] for mac in self.args.dest_data_mac]))
+        write_params.append(ExcaliburParameter('dest_data_port', [[port] for port in self.args.dest_data_port]))
         
         logging.info('  Disabling local data receiver thread')
         write_params.append(ExcaliburParameter('datareceiver_enable', [[0]]))
-        
+
         # Write all the parameters to system
         logging.info('Writing configuration parameters to system')
         write_ok = self.client.fe_param_write(write_params)

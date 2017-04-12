@@ -130,6 +130,13 @@ class ExcaliburFrontEndParameterMap(ParameterMap):
         self['frames_acquired'] = ParameterSpec(FEM_OP_FRAMES_ACQUIRED, 'int', 1 , False)
         self['control_state'] = ParameterSpec(FEM_OP_CONTROL_STATE, 'int', 1 , False)
         
+        self['source_data_addr'] = ParameterSpec(FEM_OP_SOURCE_DATA_ADDR, 'string', 1, False)
+        self['source_data_mac'] = ParameterSpec(FEM_OP_SOURCE_DATA_MAC, 'string', 1, False)
+        self['source_data_port'] = ParameterSpec(FEM_OP_SOURCE_DATA_PORT, 'int', 1, False)
+        self['dest_data_addr'] = ParameterSpec(FEM_OP_DEST_DATA_ADDR, 'string', 1, False)
+        self['dest_data_mac'] = ParameterSpec(FEM_OP_DEST_DATA_MAC, 'string', 1, False)
+        self['dest_data_port'] = ParameterSpec(FEM_OP_DEST_DATA_PORT, 'int', 1, False)
+        
         
 class ExcaliburFrontEndCommandMap(OrderedDict):
     

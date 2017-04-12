@@ -10,6 +10,7 @@
 
 #include <map>
 #include <sstream>
+#include <cstring>
 
 //#define FEM_API_TRACE
 #ifdef FEM_API_TRACE
@@ -420,6 +421,26 @@ int femSetInt(void* handle, int chipId, int id, std::size_t size, int* value)
 				(femHandle->client)->dataReceiverEnable((unsigned int)*value);
 				break;
 
+			case FEM_OP_SOURCE_DATA_PORT:
+			case FEM_OP_DEST_DATA_PORT:
+			{
+				static std::map<int, excaliburDataPortParam> dataParamMap;
+				if (dataParamMap.empty())
+				{
+					dataParamMap[FEM_OP_SOURCE_DATA_PORT] = excaliburDataPortSource;
+					dataParamMap[FEM_OP_DEST_DATA_PORT] = excaliburDataPortDest;
+				}
+				if (dataParamMap.count(id))
+				{
+					(femHandle->client)->dataPortParamSet(dataParamMap[id], size, (const unsigned int*)value);
+				}
+				else
+				{
+					(femHandle->error).set() << "Internal error: param id " << id << "not in data port parameter map";
+					rc = FEM_RTN_BADSIZE;
+				}
+			}
+			break;
 			default:
 				femHandle->error.set() << "Illegal parameter ID (" << id << ") specified";
 				rc = FEM_RTN_UNKNOWNOPID;
@@ -990,6 +1011,67 @@ int femGetFloat(void* handle, int chipId, int id, size_t size, double* value)
 		}
 
 	}
+	return rc;
+}
+
+int femGetString(void* handle, int chipId, int id, size_t size, char** value)
+{
+	int rc = FEM_RTN_OK;
+
+
+	return rc;
+}
+
+int femSetString(void* handle, int chipId, int id, size_t size, char** values)
+{
+	int rc = FEM_RTN_OK;
+
+
+	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
+
+	try
+	{
+		switch(id)
+		{
+		case FEM_OP_SOURCE_DATA_ADDR:
+		case FEM_OP_SOURCE_DATA_MAC:
+		case FEM_OP_DEST_DATA_ADDR:
+		case FEM_OP_DEST_DATA_MAC:
+
+			{
+				static std::map<int, excaliburDataAddrParam> dataParamMap;
+				if (dataParamMap.empty())
+				{
+					dataParamMap[FEM_OP_SOURCE_DATA_ADDR] = excaliburDataAddrSourceIp;
+					dataParamMap[FEM_OP_SOURCE_DATA_MAC] = excaliburDataAddrSourceMac;
+					dataParamMap[FEM_OP_DEST_DATA_ADDR] = excaliburDataAddrDestIp;
+					dataParamMap[FEM_OP_DEST_DATA_MAC] = excaliburDataAddrDestMac;
+				}
+				if (dataParamMap.count(id))
+				{
+					(femHandle->client)->dataAddrParamSet(dataParamMap[id], size, (const char **)values);
+				}
+				else
+				{
+					(femHandle->error).set() << "Internal error: param id " << id << "not in data address parameter map";
+					rc = FEM_RTN_BADSIZE;
+				}
+			}
+			break;
+
+		default:
+			(femHandle->error).set() << "Illegal parameter id (" << id << ") specified";
+			rc = FEM_RTN_UNKNOWNOPID;
+			break;
+
+		}
+	}
+	catch (FemClientException& e)
+	{
+		(femHandle->error).set() << e.what();
+		rc = translateFemErrorCode(e.which());
+	}
+
 	return rc;
 }
 
