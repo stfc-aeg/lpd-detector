@@ -21,13 +21,14 @@ class TestExcaliburDetector():
                              ('192.168.0.2', 6969, '10.0.2.1'), 
                              ('192.168.0.3', 6969, '10.0.2.1')
                             ]
+
+        cls.detector = ExcaliburDetector(cls.detector_fems)
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
 
     def test_detector_simple_init(self):
 
-        detector = ExcaliburDetector(self.detector_fems)
-        assert_equal(len(detector.fems), len(self.detector_fems))
+        assert_equal(len(self.detector.fems), len(self.detector_fems))
 
     def test_detector_single_fem(self):
 
@@ -51,10 +52,19 @@ class TestExcaliburDetector():
 
     def test_detector_connect_fems(self):
 
-        detector = ExcaliburDetector(self.detector_fems)
         connect_params = {'state': True}
-        detector.connect(connect_params)
+        self.detector.connect(connect_params)
+        response = self.detector.get('')
+        assert_equal(response['status']['command_succeeded'], True)
 
+    def test_detector_disonnect_fems(self):
+
+        connect_params = {'state': False}
+        self.detector.connect(connect_params)
+        response = self.detector.get('')
+        assert_equal(response['status']['command_succeeded'], True)
+        
+        
     def test_detector_powercard_idx(self):
         
         detector = ExcaliburDetector(self.detector_fems)
@@ -91,3 +101,37 @@ class TestExcaliburDetector():
         chip_enable_mask = [0xff, 0x3f]
         with assert_raises_regexp(ExcaliburDetectorError, 'Mismatch in length of asic enable mask'):
             detector.set_chip_enable_mask(chip_enable_mask)
+
+    def test_detector_get(self):
+        
+        response = self.detector.get('')
+        assert_equal(type(response), dict)
+        assert_true('status' in response)
+    
+    def test_detector_bad_get(self):
+        
+        bad_path = 'missing_path'
+        with assert_raises_regexp(ExcaliburDetectorError, 'The path {} is invalid'.format(bad_path)):
+            response = self.detector.get(bad_path)
+        
+    def test_detector_bad_set(self):
+        
+        bad_path = 'missing_path'
+        with assert_raises_regexp(ExcaliburDetectorError, 'Invalid path: {}'.format(bad_path)):
+            response = self.detector.set(bad_path, 1234)
+
+    def test_decrement_pending_cmd_succeeded(self):
+        
+        self.detector.command_succeeded = True
+        self.detector._increment_pending()
+        self.detector._decrement_pending(True)
+        response = self.detector.get('')
+        assert_equal(response['status']['command_succeeded'], True)       
+
+    def test_decrement_pending_cmd_failed(self):
+        
+        self.detector.command_succeeded = True
+        self.detector._increment_pending()
+        self.detector._decrement_pending(False)
+        response = self.detector.get('')
+        assert_equal(response['status']['command_succeeded'], False)       
