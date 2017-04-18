@@ -2,6 +2,7 @@ from setuptools import setup, find_packages, Extension
 from distutils.command.build_ext import build_ext
 from distutils.command.clean import clean
 from distutils import log
+import versioneer
 
 import os
 import glob
@@ -120,7 +121,8 @@ class ExcaliburClean(clean):
         
 setup(
     name='excalibur',
-    version='0.1',
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description='EXCALIBUR detector plugin for ODIN framework',
     url='https://github.com/stfc-aeg/odin-excalibur',
     author='Tim Nicholls',
