@@ -51,8 +51,13 @@ class ExcaliburAdapter(ApiAdapter):
                 logging.debug('ExcaliburAdapter loaded')
                 
                 if 'powercard_fem_idx' in self.options:
-                    logging.debug('Setting power card FEM index to %d', int(self.options['powercard_fem_idx']))
-                    self.detector.set_powercard_fem_idx(int(self.options['powercard_fem_idx']))
+                    try:
+                        powercard_fem_idx = int(self.options['powercard_fem_idx'])
+                    except Exception as e:
+                        logging.error('Failed to parse powercard FEM index from options: {}'.format(e))
+                    else:
+                        logging.debug('Setting power card FEM index to %d', int(self.options['powercard_fem_idx']))
+                        self.detector.set_powercard_fem_idx(powercard_fem_idx)
                     
                 if 'chip_enable_mask' in self.options:
                     try:
@@ -140,20 +145,3 @@ class ExcaliburAdapter(ApiAdapter):
 
         return ApiAdapterResponse(response, status_code=status_code)
 
-    def resolve_path(self, path):
-        """Resolve adapter request path to yield action and resource.
-
-        This method resolves a request path passed to the adapter into an action and a resource
-        associated with that action, returning them as a tuple. For instance, given a path of
-        'command/connect', a tuple of action 'command' and resource 'connect' is returned.
-
-        :param path: path to resolve for action and resource
-        :return: tuple containing action and resource
-        """
-        match = self.path_regexp.match(path)
-        if match is not None:
-            (action, resource) = match.groups()
-        else:
-            (action, resource) = (None, None)
-
-        return (action, resource)

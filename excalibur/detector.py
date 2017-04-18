@@ -80,7 +80,8 @@ class ExcaliburDetector(object):
         self.state_lock = threading.Lock()
         
         self.powercard_fem_idx = None
-
+        self.chip_enable_mask = None
+        
         self.fe_param_map = ExcaliburFrontEndParameterMap()
             
         self.fe_param_read = {
@@ -159,6 +160,8 @@ class ExcaliburDetector(object):
             for chip_idx in range(CHIPS_PER_FEM):
                 if mask & (1<<(7 - chip_idx)):
                     self.fems[fem_idx].chips_enabled.append(chip_idx + 1)
+                    
+        self.chip_enable_mask = chip_enable_mask
                                                             
     def get(self, path):
         
