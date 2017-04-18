@@ -118,11 +118,17 @@ class ExcaliburClean(clean):
                 os.remove(ext_target)
                                    
         clean.run(self)        
-        
+
+merged_cmdclass = versioneer.get_cmdclass()
+merged_cmdclass.update({
+    'build_ext': ExcaliburBuildExt,
+    'clean': ExcaliburClean,
+    })
+
 setup(
     name='excalibur',
     version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    cmdclass=merged_cmdclass,
     description='EXCALIBUR detector plugin for ODIN framework',
     url='https://github.com/stfc-aeg/odin-excalibur',
     author='Tim Nicholls',
@@ -134,8 +140,4 @@ setup(
     extras_require={
       'test': ['nose', 'coverage', 'mock'],  
     },
-    cmdclass = { 
-        'build_ext' : ExcaliburBuildExt,
-        'clean' : ExcaliburClean,
-        },
 )
