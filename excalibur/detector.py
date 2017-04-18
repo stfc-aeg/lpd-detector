@@ -483,7 +483,7 @@ class ExcaliburDetector(object):
                 self.command_succeeded = False 
                 raise ExcaliburDetectorError('Illegal parameter name {}'.format(param['param']))
         
-            if param['fem'] == ExcaliburDetector.ALL_FEMS:
+            if param['fem'] == [ExcaliburDetector.ALL_FEMS] or param['fem'] == ExcaliburDetector.ALL_FEMS:
                 fem_idx_list = range(len(self.fems))
             else:
                 if isinstance(param['fem'], list):

@@ -76,7 +76,6 @@ typedef enum log_level_ {info, warning, error, debug} log_level;
 static void log_msg(log_level level, const char* format, ...)
 {
     static PyObject *logging = NULL;
-    static PyObject *string = NULL;
 
     // Import logging module when needed
     if (logging == NULL){
@@ -93,28 +92,25 @@ static void log_msg(log_level level, const char* format, ...)
     vsnprintf(msg, MAX_LOG_STRING_LEN, format, arglist);
     va_end(arglist);
 
-    string = Py_BuildValue("s", msg);
-
     // Call the logging function depending on loglevel
     switch (level)
     {
         case info:
-            PyObject_CallMethod(logging, "info", "O", string);
+            PyObject_CallMethod(logging, "info", "s", msg);
             break;
 
         case warning:
-            PyObject_CallMethod(logging, "warn", "O", string);
+            PyObject_CallMethod(logging, "warn", "s", msg);
             break;
 
         case error:
-            PyObject_CallMethod(logging, "error", "O", string);
+            PyObject_CallMethod(logging, "error", "s", msg);
             break;
 
         case debug:
-            PyObject_CallMethod(logging, "debug", "O", string);
+            PyObject_CallMethod(logging, "debug", "s", msg);
             break;
     }
-    Py_DECREF(string);
 }
 
 static PyObject* _initialise(PyObject* self, PyObject* args)
@@ -213,7 +209,6 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     if (!PyArg_ParseTuple(args, "Oiii", &_handle, &chip_id, &param_id, &size)) {
         return NULL;
     }
-    // printf("_get_int: chip_id %d param_id %d size %d\n", chip_id, param_id, size);
 
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "get_int");
@@ -229,8 +224,8 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     Py_END_ALLOW_THREADS
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
 	}
 
     values = PyList_New(size);
@@ -292,12 +287,13 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
                 free(value_ptr);
                 return NULL;
             }
-            value_ptr[ival] = PyInt_AsLong(PyList_GetItem(values_obj, ival));
+            value_ptr[ival] = PyInt_AsLong(value_obj);
         }
     }
-	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+
+    if (fem_ptr->api_trace) {
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
@@ -324,7 +320,6 @@ static PyObject* _get_short(PyObject* self, PyObject* args)
     if (!PyArg_ParseTuple(args, "Oiii", &_handle, &chip_id, &param_id, &size)) {
         return NULL;
     }
-    //printf("_get_int: chip_id %d param_id %d size %d\n", chip_id, param_id, size);
 
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "get_short");
@@ -339,8 +334,8 @@ static PyObject* _get_short(PyObject* self, PyObject* args)
     rc = femGetShort(fem_ptr->handle, chip_id, param_id, size, value_ptr);
     Py_END_ALLOW_THREADS
 
-	log_msg(info, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
-			__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+	log_msg(info, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
+			__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -398,13 +393,13 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
                 free(value_ptr);
                 return NULL;
             }
-            value_ptr[ival] = (short)PyInt_AsLong(PyList_GetItem(values_obj, ival));
+            value_ptr[ival] = (short)PyInt_AsLong(value_obj);
         }
     }
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
@@ -431,7 +426,6 @@ static PyObject* _get_float(PyObject* self, PyObject* args)
     if (!PyArg_ParseTuple(args, "Oiii", &_handle, &chip_id, &param_id, &size)) {
         return NULL;
     }
-    //printf("_get_int: chip_id %d param_id %d size %d\n", chip_id, param_id, size);
 
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "get_int");
@@ -447,8 +441,8 @@ static PyObject* _get_float(PyObject* self, PyObject* args)
     Py_END_ALLOW_THREADS
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%f",
-				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%f",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
 	}
 
     values = PyList_New(size);
@@ -507,13 +501,13 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
                 free(value_ptr);
                 return NULL;
             }
-            value_ptr[ival] = (short)PyFloat_AsDouble(PyList_GetItem(values_obj, ival));
+            value_ptr[ival] = PyFloat_AsDouble(value_obj);
         }
     }
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%f",
-				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%f",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
@@ -588,8 +582,8 @@ static PyObject* _set_string(PyObject* self, PyObject* args)
     }
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d size=%d value[0]=%s",
-				__FUNCTION__, (unsigned int)pthread_self(), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%s",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
@@ -626,8 +620,8 @@ static PyObject* _cmd(PyObject* self, PyObject* args)
     _validate_ptr_and_handle(fem_ptr, "cmd");
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x chip=%d id=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), chip_id, cmd_id);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, cmd_id);
 	}
 
     Py_BEGIN_ALLOW_THREADS
