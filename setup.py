@@ -127,8 +127,8 @@ setup(
     author_email='tim.nicholls@stfc.ac.uk',
     ext_modules=fem_ext_modules,
     packages=find_packages(),
-    install_requires=['odin==0.1'],
-    dependency_links=['https://github.com/percival-detector/odin/zipball/0.1#egg=odin-0.1'],
+    install_requires=['odin==0.2'],
+    dependency_links=['https://github.com/percival-detector/odin/zipball/0.2#egg=odin-0.2'],
     extras_require={
       'test': ['nose', 'coverage', 'mock'],  
     },
