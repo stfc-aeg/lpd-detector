@@ -157,7 +157,16 @@ class TestExcaliburFem:
         (rc, values_out) = self.the_fem.get_int(chip_id, param_id, param_len)
         assert_equal(rc, FEM_RTN_OK)
         assert_equal(values_in, values_out)
-
+        
+    def test_legal_set_string(self):
+        
+        chip_id = 0
+        param_id = 1000
+        values = [u"these", u"are", u"strings"]
+        
+        rc = self.the_fem.set_string(chip_id, param_id, values)
+        assert_equal(rc, FEM_RTN_OK)
+        
     def test_legal_cmd(self):
 
         chip_id = 0

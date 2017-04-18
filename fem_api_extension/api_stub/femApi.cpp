@@ -1,6 +1,8 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <string>
+#include <sstream>
 
 #include "femApi.h"
 #include "FemApiError.h"
@@ -9,6 +11,7 @@
 std::map<int, std::vector<int> > int_params;
 std::map<int, std::vector<short> > short_params;
 std::map<int, std::vector<double> > double_params;
+std::map<int, std::vector<std::string> > string_params;
 
 const unsigned int kClientTimeoutMsecs = 10000;
 
@@ -103,6 +106,16 @@ int femSetFloat(void* handle, int chipId, int id, std::size_t size, double* valu
 	return rc;
 }
 
+
+int femSetString(void* handle, int chipId, int id, size_t size, char** values)
+{
+	int rc = FEM_RTN_OK;
+
+	string_params[id] = std::vector<std::string>(values, values+size);
+
+	return rc;
+}
+
 int femGetInt(void* femHandle, int chipId, int id, std::size_t size, int* value)
 {
     int rc = FEM_RTN_OK;
@@ -153,6 +166,26 @@ int femGetFloat(void* femHandle, int chipId, int id, std::size_t size, double* v
 
     return rc;
 }
+
+
+int femGetString(void* handle, int chipId, int id, size_t size, char** value)
+{
+	int rc = FEM_RTN_OK;
+
+	if (string_params.count(id) > 0) {
+		for (std::size_t i = 0; i < size; i++) {
+			value[i] = const_cast<char*>(string_params[id][i].c_str());
+		}
+	} else {
+		for (std::size_t i = 0; i < size; i++) {
+			std::stringstream out;
+			out << "string " << i;
+			value[i] = const_cast<char*>(out.str().c_str());
+		}
+	}
+	return rc;
+}
+
 
 int femCmd(void* handle, int chipId, int id)
 {

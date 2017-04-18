@@ -577,7 +577,7 @@ static PyObject* _set_string(PyObject* self, PyObject* args)
     	for (i = 0; i < size; i++) {
     		PyObject* value_obj = PyList_GetItem(values_obj, i);
     		if (!PyUnicode_Check(value_obj)) {
-    			_set_api_error_string("set_string: non-unicode string value sepcified");
+    			_set_api_error_string("set_string: non-unicode string value specified");
     			free(bytes_ptr);
     			free(value_ptr);
     			return NULL;
