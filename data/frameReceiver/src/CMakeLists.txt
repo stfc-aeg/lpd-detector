@@ -7,4 +7,4 @@ include_directories(${FRAMERECEIVER_DIR}/include ${ODINDATA_INCLUDE_DIR}
 
 # Add library for Excalibur frame decoder
 add_library(ExcaliburFrameDecoder SHARED ExcaliburFrameDecoder.cpp ExcaliburFrameDecoderLib.cpp)
-#target_link_libraries(ExcaliburFrameDecoder ${COMMON_LIBRARY} ${Boost_LIBRARIES} ${LOG4CXX_LIBRARIES} ${ZEROMQ_LIBRARIES})
+

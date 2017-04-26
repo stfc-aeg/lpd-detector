@@ -41,10 +41,9 @@ include_directories(${COMMON_DIR}/include)
 
 # Add the frameReceiver subdirectory
 add_subdirectory(${FRAMERECEIVER_DIR})
-#add_subdirectory(${FRAMEPROCESSOR_DIR})
 
-# Add the test subdirectory
-#add_subdirectory(test)
+# Add the frameReceiver subdirectory
+add_subdirectory(${FRAMEPROCESSOR_DIR})
 
 # Add the doc subdirectory
 #add_subdirectory(doc)
