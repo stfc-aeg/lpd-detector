@@ -24,7 +24,7 @@ namespace FrameReceiver
         ExcaliburFrameDecoder();
         ~ExcaliburFrameDecoder();
 
-        void init(LoggerPtr& logger, bool ebable_packet_logging=false, unsigned int frame_timeout_ms=1000);
+        void init(LoggerPtr& logger, bool enable_packet_logging=false, unsigned int frame_timeout_ms=1000);
 
         const size_t get_frame_buffer_size(void) const;
         const size_t get_frame_header_size(void) const;
