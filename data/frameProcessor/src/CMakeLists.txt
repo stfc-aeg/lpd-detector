@@ -8,4 +8,4 @@ include_directories(${FRAMEPROCESSOR_DIR}/include ${ODINDATA_INCLUDE_DIRS}
 # Add library for excalibur plugin
 add_library(ExcaliburReorderPlugin SHARED ExcaliburReorderPlugin.cpp)
 
-        
+install(TARGETS ExcaliburReorderPlugin LIBRARY DESTINATION lib)

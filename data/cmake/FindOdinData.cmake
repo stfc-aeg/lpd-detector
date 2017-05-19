@@ -48,7 +48,7 @@ find_path(ODINDATA_INCLUDE_DIR
 	NAMES
 		ClassLoader.h
     PATHS 
-		${ODINDATA_ROOT_DIR}/common/include
+		${ODINDATA_ROOT_DIR}/include
         ${PC_ODINDATA_INCLUDEDIR} 
         ${PC_ODINDATA_INCLUDE_DIRS}
 )
@@ -57,7 +57,7 @@ find_path(FRAMERECEIVER_INCLUDE_DIR
 	NAMES
 		FrameDecoder.h
 	PATHS
-		${ODINDATA_ROOT_DIR}/frameReceiver/include
+		${ODINDATA_ROOT_DIR}/include/frameReceiver
         ${PC_ODINDATA_INCLUDEDIR} 
         ${PC_ODINDATA_INCLUDE_DIRS}
 )
@@ -66,16 +66,16 @@ find_path(FRAMEPROCESSOR_INCLUDE_DIR
 	NAMES
 		DataBlock.h
 	PATHS
-		${ODINDATA_ROOT_DIR}/frameProcessor/include
+		${ODINDATA_ROOT_DIR}/include/frameProcessor
         ${PC_ODINDATA_INCLUDEDIR} 
         ${PC_ODINDATA_INCLUDE_DIRS}
 )
 
 find_library(ODINDATA_LIBRARY
     NAMES 
-		odinData
+		OdinData
     PATHS 
-		${ODINDATA_ROOT_DIR}/build/lib 
+		${ODINDATA_ROOT_DIR}/lib 
         ${PC_ODINDATA_LIBDIR} 
         ${PC_ODINDATA_LIBRARY_DIRS}         
 )
@@ -84,7 +84,7 @@ find_library(FRAMEPROCESSOR_LIBRARY
 	NAMES
 		FrameProcessor
 	PATHS
-		${ODINDATA_ROOT_DIR}/build/lib
+		${ODINDATA_ROOT_DIR}/lib
 		${PC_ODINDATA_LIBDIR}
 		${PC_ODINDATA_LIBRARY_DIRS}
 )
