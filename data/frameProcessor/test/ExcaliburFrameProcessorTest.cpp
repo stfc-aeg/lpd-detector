@@ -5,27 +5,27 @@
 
 #include <iostream>
 
-#include "ExcaliburReorderPlugin.h"
+#include "ExcaliburProcessPlugin.h"
 
-class ExcaliburReorderPluginTestFixture
+class ExcaliburProcessPluginTestFixture
 {
 public:
-	ExcaliburReorderPluginTestFixture()
+	ExcaliburProcessPluginTestFixture()
 	{
-		std::cout << "ExcaliburReorderPluginTestFixture constructor" << std::endl;
+		std::cout << "ExcaliburProcessPluginTestFixture constructor" << std::endl;
 	}
 
-	~ExcaliburReorderPluginTestFixture()
+	~ExcaliburProcessPluginTestFixture()
 	{
-		std::cout << "ExcaliburReorderPluginTestFixture destructor" << std::endl;
+		std::cout << "ExcaliburProcessPluginTestFixture destructor" << std::endl;
 	}
 };
 
-BOOST_FIXTURE_TEST_SUITE(ExcaliburReorderPluginUnitTest, ExcaliburReorderPluginTestFixture);
+BOOST_FIXTURE_TEST_SUITE(ExcaliburProcessPluginUnitTest, ExcaliburProcessPluginTestFixture);
 
-BOOST_AUTO_TEST_CASE(ExcaliburReorderPluginTestFixture)
+BOOST_AUTO_TEST_CASE(ExcaliburProcessPluginTestFixture)
 {
-	std::cout << "ExcaliburReorderPluginTestFixture test case" << std::endl;
+	std::cout << "ExcaliburProcessPluginTestFixture test case" << std::endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END();

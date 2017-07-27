@@ -1,42 +1,42 @@
 /*
- * ExcaliburReorderPlugin.cpp
+ * ExcaliburProcessPlugin.cpp
  *
  *  Created on: 6 Jun 2016
  *      Author: gnx91527
  */
 
-#include <ExcaliburReorderPlugin.h>
+#include <ExcaliburProcessPlugin.h>
 
 namespace FrameProcessor
 {
 
-  const std::string ExcaliburReorderPlugin::CONFIG_ASIC_COUNTER_DEPTH = "bitdepth";
-  const std::string ExcaliburReorderPlugin::CONFIG_IMAGE_WIDTH = "width";
-  const std::string ExcaliburReorderPlugin::CONFIG_IMAGE_HEIGHT = "height";
-  const std::string ExcaliburReorderPlugin::CONFIG_RESET_24_BIT = "reset";
-  const std::string ExcaliburReorderPlugin::BIT_DEPTH[4] = {"1-bit", "6-bit", "12-bit", "24-bit"};
+  const std::string ExcaliburProcessPlugin::CONFIG_ASIC_COUNTER_DEPTH = "bitdepth";
+  const std::string ExcaliburProcessPlugin::CONFIG_IMAGE_WIDTH = "width";
+  const std::string ExcaliburProcessPlugin::CONFIG_IMAGE_HEIGHT = "height";
+  const std::string ExcaliburProcessPlugin::CONFIG_RESET_24_BIT = "reset";
+  const std::string ExcaliburProcessPlugin::BIT_DEPTH[4] = {"1-bit", "6-bit", "12-bit", "24-bit"};
 
   /**
    * The constructor sets up logging used within the class.
    */
-  ExcaliburReorderPlugin::ExcaliburReorderPlugin() :
+  ExcaliburProcessPlugin::ExcaliburProcessPlugin() :
       gAsicCounterDepth_(DEPTH_12_BIT),
       imageWidth_(2048),
       imageHeight_(256),
       framesReceived_(0)
   {
     // Setup logging for the class
-    logger_ = Logger::getLogger("FW.ExcaliburReorderPlugin");
+    logger_ = Logger::getLogger("FW.ExcaliburProcessPlugin");
     logger_->setLevel(Level::getAll());
-    LOG4CXX_TRACE(logger_, "ExcaliburReorderPlugin constructor.");
+    LOG4CXX_TRACE(logger_, "ExcaliburProcessPlugin constructor.");
   }
 
   /**
    * Destructor.
    */
-  ExcaliburReorderPlugin::~ExcaliburReorderPlugin()
+  ExcaliburProcessPlugin::~ExcaliburProcessPlugin()
   {
-    LOG4CXX_TRACE(logger_, "ExcaliburReorderPlugin destructor.");
+    LOG4CXX_TRACE(logger_, "ExcaliburProcessPlugin destructor.");
   }
 
   /**
@@ -48,10 +48,10 @@ namespace FrameProcessor
    * \param[in] config - Reference to the configuration IpcMessage object.
    * \param[out] reply - Reference to the reply IpcMessage object.
    */
-  void ExcaliburReorderPlugin::configure(OdinData::IpcMessage& config, OdinData::IpcMessage& reply)
+  void ExcaliburProcessPlugin::configure(OdinData::IpcMessage& config, OdinData::IpcMessage& reply)
   {
-    if (config.has_param(ExcaliburReorderPlugin::CONFIG_ASIC_COUNTER_DEPTH)){
-      std::string sBitDepth = config.get_param<std::string>(ExcaliburReorderPlugin::CONFIG_ASIC_COUNTER_DEPTH);
+    if (config.has_param(ExcaliburProcessPlugin::CONFIG_ASIC_COUNTER_DEPTH)){
+      std::string sBitDepth = config.get_param<std::string>(ExcaliburProcessPlugin::CONFIG_ASIC_COUNTER_DEPTH);
       if (sBitDepth == BIT_DEPTH[DEPTH_1_BIT]){
         gAsicCounterDepth_ = DEPTH_1_BIT;
       } else if (sBitDepth == BIT_DEPTH[DEPTH_6_BIT]){
@@ -66,15 +66,15 @@ namespace FrameProcessor
       }
     }
 
-    if (config.has_param(ExcaliburReorderPlugin::CONFIG_IMAGE_WIDTH)){
-      imageWidth_ = config.get_param<int>(ExcaliburReorderPlugin::CONFIG_IMAGE_WIDTH);
+    if (config.has_param(ExcaliburProcessPlugin::CONFIG_IMAGE_WIDTH)){
+      imageWidth_ = config.get_param<int>(ExcaliburProcessPlugin::CONFIG_IMAGE_WIDTH);
     }
 
-    if (config.has_param(ExcaliburReorderPlugin::CONFIG_IMAGE_HEIGHT)){
-      imageHeight_ = config.get_param<int>(ExcaliburReorderPlugin::CONFIG_IMAGE_HEIGHT);
+    if (config.has_param(ExcaliburProcessPlugin::CONFIG_IMAGE_HEIGHT)){
+      imageHeight_ = config.get_param<int>(ExcaliburProcessPlugin::CONFIG_IMAGE_HEIGHT);
     }
 
-    if (config.has_param(ExcaliburReorderPlugin::CONFIG_RESET_24_BIT)){
+    if (config.has_param(ExcaliburProcessPlugin::CONFIG_RESET_24_BIT)){
       framesReceived_ = 0;
     }
   }
@@ -84,7 +84,7 @@ namespace FrameProcessor
    *
    * \param[out] status - Reference to an IpcMessage value to store the status.
    */
-  void ExcaliburReorderPlugin::status(OdinData::IpcMessage& status)
+  void ExcaliburProcessPlugin::status(OdinData::IpcMessage& status)
   {
     // Record the plugin's status items
     LOG4CXX_DEBUG(logger_, "Status requested for Excalibur plugin");
@@ -97,7 +97,7 @@ namespace FrameProcessor
    *
    * \param[in] frame - Pointer to a Frame object.
    */
-  void ExcaliburReorderPlugin::processFrame(boost::shared_ptr<Frame> frame)
+  void ExcaliburProcessPlugin::processFrame(boost::shared_ptr<Frame> frame)
   {
     LOG4CXX_TRACE(logger_, "Reordering frame.");
     LOG4CXX_TRACE(logger_, "Frame size: " << frame->get_data_size());
@@ -184,8 +184,8 @@ namespace FrameProcessor
       if (reorderedImage){
         // Setup the frame dimensions
         dimensions_t dims(2);
-        dims[0] = imageWidth_;
-        dims[1] = imageHeight_;
+        dims[0] = imageHeight_;
+        dims[1] = imageWidth_;
 
         boost::shared_ptr<Frame> data_frame;
         data_frame = boost::shared_ptr<Frame>(new Frame("data"));
@@ -195,7 +195,7 @@ namespace FrameProcessor
         } else {
           data_frame->set_frame_number(hdrPtr->frame_number);
         }
-        data_frame->set_dimensions("frame", dims);
+        data_frame->set_dimensions("data", dims);
         data_frame->copy_data(reorderedImage, frame->get_data_size()*memScaleFactor);
         LOG4CXX_TRACE(logger_, "Pushing data frame.");
         this->push(data_frame);
@@ -218,7 +218,7 @@ namespace FrameProcessor
    * \param[in] in - Pointer to the incoming image data.
    * \param[out] out - Pointer to the allocated memory where the reordered image is written.
    */
-  void ExcaliburReorderPlugin::reorder1BitImage(unsigned int* in, unsigned char* out)
+  void ExcaliburProcessPlugin::reorder1BitImage(unsigned int* in, unsigned char* out)
   {
     int block, y, x, x2, chip, pixelX, pixelY, pixelAddr, bitPosn;
     int rawAddr = 0;
@@ -259,7 +259,7 @@ namespace FrameProcessor
    * \param[in] in - Pointer to the incoming image data.
    * \param[out] out - Pointer to the allocated memory where the reordered image is written.
    */
-  void ExcaliburReorderPlugin::reorder6BitImage(unsigned char* in, unsigned char* out)
+  void ExcaliburProcessPlugin::reorder6BitImage(unsigned char* in, unsigned char* out)
   {
     int block, y, x, chip, x2, pixelX, pixelY, pixelAddr;
     int rawAddr = 0;
@@ -297,7 +297,7 @@ namespace FrameProcessor
    * \param[in] in - Pointer to the incoming image data.
    * \param[out] out - Pointer to the allocated memory where the reordered image is written.
    */
-  void ExcaliburReorderPlugin::reorder12BitImage(unsigned short* in, unsigned short* out)
+  void ExcaliburProcessPlugin::reorder12BitImage(unsigned short* in, unsigned short* out)
   {
     int block, y, x, chip, x2, pixelX, pixelY, pixelAddr;
     int rawAddr = 0;
@@ -334,7 +334,7 @@ namespace FrameProcessor
    * \param[in] inC1 - Pointer to the incoming second image data.
    * \param[out] out - Pointer to the allocated memory where the combined image is written.
    */
-  void ExcaliburReorderPlugin::build24BitImage(unsigned short* inC0, unsigned short* inC1, unsigned int* out)
+  void ExcaliburProcessPlugin::build24BitImage(unsigned short* inC0, unsigned short* inC1, unsigned int* out)
   {
     int addr;
     for (addr = 0; addr < FEM_TOTAL_PIXELS; addr++)

@@ -1,5 +1,5 @@
 /*
- * ExcaliburReorderPlugin.h
+ * ExcaliburProcessPlugin.h
  *
  *  Created on: 6 Jun 2016
  *      Author: gnx91527
@@ -51,15 +51,15 @@ namespace FrameProcessor
 
   /** Processing of Excalibur Frame objects.
    *
-   * The ExcaliburReorderPlugin class is currently responsible for receiving a raw data
+   * The ExcaliburProcessPlugin class is currently responsible for receiving a raw data
    * Frame object and reordering the data into valid Excalibur frames according to the selected
    * bit depth.
    */
-  class ExcaliburReorderPlugin : public FrameProcessorPlugin
+  class ExcaliburProcessPlugin : public FrameProcessorPlugin
   {
   public:
-    ExcaliburReorderPlugin();
-    virtual ~ExcaliburReorderPlugin();
+    ExcaliburProcessPlugin();
+    virtual ~ExcaliburProcessPlugin();
     void configure(OdinData::IpcMessage& config, OdinData::IpcMessage& reply);
     void status(OdinData::IpcMessage& status);
 
@@ -106,7 +106,7 @@ namespace FrameProcessor
    * Registration of this plugin through the ClassLoader.  This macro
    * registers the class without needing to worry about name mangling
    */
-  REGISTER(FrameProcessorPlugin, ExcaliburReorderPlugin, "ExcaliburReorderPlugin");
+  REGISTER(FrameProcessorPlugin, ExcaliburProcessPlugin, "ExcaliburProcessPlugin");
 
 } /* namespace FrameProcessor */
 
