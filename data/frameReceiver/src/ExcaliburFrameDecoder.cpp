@@ -107,7 +107,7 @@ void ExcaliburFrameDecoder::process_packet_header (size_t bytes_received,
   bool end_of_frame_marker = get_end_of_frame_marker ();
 
   uint32_t subframe_idx = subframe_counter % 2;
-  uint32_t frame = subframe_counter / 2;
+  int frame = static_cast<int>(subframe_counter / 2);
 
   LOG4CXX_DEBUG_LEVEL (
       3,
