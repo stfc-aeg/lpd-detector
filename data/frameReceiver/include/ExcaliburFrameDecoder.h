@@ -58,7 +58,7 @@ namespace FrameReceiver
     boost::shared_ptr<void> current_packet_header_;
     boost::shared_ptr<void> dropped_frame_buffer_;
 
-    uint32_t current_frame_seen_;
+    int current_frame_seen_;
     int current_frame_buffer_id_;
     void* current_frame_buffer_;
     Excalibur::FrameHeader* current_frame_header_;

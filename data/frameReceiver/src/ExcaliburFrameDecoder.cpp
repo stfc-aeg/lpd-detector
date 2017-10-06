@@ -107,7 +107,7 @@ void ExcaliburFrameDecoder::process_packet_header (size_t bytes_received,
   bool end_of_frame_marker = get_end_of_frame_marker ();
 
   uint32_t subframe_idx = subframe_counter % 2;
-  uint32_t frame = subframe_counter / 2;
+  int frame = static_cast<int>(subframe_counter / 2);
 
   LOG4CXX_DEBUG_LEVEL (
       3,
@@ -330,11 +330,11 @@ void ExcaliburFrameDecoder::monitor_buffers (void)
   gettime (&current_time);
 
   // Loop over frame buffers currently in map and check their state
-  std::map<uint32_t, int>::iterator buffer_map_iter =
+  std::map<int, int>::iterator buffer_map_iter =
       frame_buffer_map_.begin ();
   while (buffer_map_iter != frame_buffer_map_.end ())
   {
-    uint32_t frame_num = buffer_map_iter->first;
+    int frame_num = buffer_map_iter->first;
     int buffer_id = buffer_map_iter->second;
     void* buffer_addr = buffer_manager_->get_buffer_address (buffer_id);
     Excalibur::FrameHeader* frame_header =
