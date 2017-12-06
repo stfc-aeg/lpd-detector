@@ -712,28 +712,36 @@ void ExcaliburFemClient::startAcquisition(void)
     // Build the configuration register based on trigger mode and polarity
     unsigned int controlConfigRegister = 0;
 
-    switch (mTriggerMode)
+    if (mOperationMode != excaliburOperationModeMatrixRead)
     {
-      case excaliburTriggerModeInternal:
-        controlConfigRegister |= internalTriggerMode;
-        break;
-
-      case excaliburTriggerModeExternal:
-        controlConfigRegister |= externalTriggerMode;
-        break;
-
-      case excaliburTriggerModeSync:
-        controlConfigRegister |= externalSyncMode;
-        break;
-
-      default:
+      switch (mTriggerMode)
       {
-        std::ostringstream msg;
-        msg << "Cannot start acquisition, illegal trigger mode specified: " << mTriggerMode;
-        throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalTriggerMode,
-                                  msg.str ());
+        case excaliburTriggerModeInternal:
+          controlConfigRegister |= internalTriggerMode;
+          break;
+
+        case excaliburTriggerModeExternal:
+          controlConfigRegister |= externalTriggerMode;
+          break;
+
+        case excaliburTriggerModeSync:
+          controlConfigRegister |= externalSyncMode;
+          break;
+
+        default:
+        {
+          std::ostringstream msg;
+          msg << "Cannot start acquisition, illegal trigger mode specified: " << mTriggerMode;
+          throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalTriggerMode,
+                                    msg.str ());
+        }
+          break;
       }
-        break;
+    }
+    else
+    {
+      std::cout << "Forcing trigger mode to internal for matrix counter read" << std::endl;
+      controlConfigRegister |= internalTriggerMode;
     }
 
     switch (mTriggerPolarity)
