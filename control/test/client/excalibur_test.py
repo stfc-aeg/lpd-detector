@@ -13,11 +13,11 @@ class ExcaliburTestAppDefaults(object):
         self.port = 8888
         self.log_level = 'info'
 
-        self.source_data_addr = ['10.0.2.2']
+        self.source_data_addr = ['10.1.0.100']
         self.source_data_mac = ['62:00:00:00:00:01']
         self.source_data_port = [8]
-        self.dest_data_addr = ['10.0.2.1']
-        self.dest_data_mac = ['00:07:43:06:31:A7']
+        self.dest_data_addr = ['10.1.0.1']
+        self.dest_data_mac = ['00:07:43:10:63:00']
         self.dest_data_port = [61649]
         
         self.log_levels = {
