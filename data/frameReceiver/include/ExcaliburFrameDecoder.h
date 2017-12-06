@@ -20,40 +20,39 @@ namespace FrameReceiver
   {
   public:
 
-    ExcaliburFrameDecoder ();
-    ~ExcaliburFrameDecoder ();
+    ExcaliburFrameDecoder();
+    ~ExcaliburFrameDecoder();
 
-    void init (LoggerPtr& logger, bool enable_packet_logging = false,
-        unsigned int frame_timeout_ms = 1000);
+    void init(LoggerPtr& logger, OdinData::IpcMessage& config_msg);
 
-    const size_t get_frame_buffer_size (void) const;
-    const size_t get_frame_header_size (void) const;
+    const size_t get_frame_buffer_size(void) const;
+    const size_t get_frame_header_size(void) const;
 
-    inline const bool requires_header_peek (void) const
+    inline const bool requires_header_peek(void) const
     {
       return true;
     };
 
-    const size_t get_packet_header_size (void) const;
+    const size_t get_packet_header_size(void) const;
     void process_packet_header (size_t bytes_received, int port,
         struct sockaddr_in* from_addr);
 
-    void* get_next_payload_buffer (void) const;
-    size_t get_next_payload_size (void) const;
+    void* get_next_payload_buffer(void) const;
+    size_t get_next_payload_size(void) const;
     FrameDecoder::FrameReceiveState process_packet (size_t bytes_received);
 
-    void monitor_buffers (void);
+    void monitor_buffers(void);
 
-    void* get_packet_header_buffer (void);
+    void* get_packet_header_buffer(void);
 
-    uint32_t get_subframe_counter (void) const;
-    uint32_t get_packet_number (void) const;
-    bool get_start_of_frame_marker (void) const;
-    bool get_end_of_frame_marker (void) const;
+    uint32_t get_subframe_counter(void) const;
+    uint32_t get_packet_number(void) const;
+    bool get_start_of_frame_marker(void) const;
+    bool get_end_of_frame_marker(void) const;
 
   private:
 
-    unsigned int elapsed_ms (struct timespec& start, struct timespec& end);
+    unsigned int elapsed_ms(struct timespec& start, struct timespec& end);
 
     boost::shared_ptr<void> current_packet_header_;
     boost::shared_ptr<void> dropped_frame_buffer_;

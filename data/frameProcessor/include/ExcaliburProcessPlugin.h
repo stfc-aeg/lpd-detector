@@ -1,5 +1,5 @@
 /*
- * ExcaliburProcessPlugin.h
+x * ExcaliburProcessPlugin.h
  *
  *  Created on: 6 Jun 2016
  *      Author: gnx91527
@@ -84,22 +84,22 @@ namespace FrameProcessor
     /** Configuration string representations for the bit depths */
     static const std::string BIT_DEPTH[4];
 
-    void processFrame(boost::shared_ptr<Frame> frame);
-    void reorder1BitImage(unsigned int* in, unsigned char* out);
-    void reorder6BitImage(unsigned char* in, unsigned char* out);
-    void reorder12BitImage(unsigned short* in, unsigned short* out);
-    void build24BitImage(unsigned short* inC0, unsigned short* inC1, unsigned int* out);
+    void process_frame(boost::shared_ptr<Frame> frame);
+    void reorder_1bit_image(unsigned int* in, unsigned char* out);
+    void reorder_6bit_image(unsigned char* in, unsigned char* out);
+    void reorder_12bit_image(unsigned short* in, unsigned short* out);
+    void build_24bit_image(unsigned short* inC0, unsigned short* inC1, unsigned int* out);
 
     /** Pointer to logger **/
     LoggerPtr logger_;
     /** Bit depth of the incoming frames **/
-    int gAsicCounterDepth_;
+    int asic_counter_depth_;
     /** Image width **/
-    int imageWidth_;
+    int image_width_;
     /** Image height **/
-    int imageHeight_;
+    int image_height_;
     /** Counter used for construction of 24 bit frames **/
-    int framesReceived_;
+    int frames_received_;
   };
 
   /**
