@@ -93,8 +93,9 @@ u32 FemClient::configUDP(
 		value = INT_PKT_GAP_VAL;
 		this->rdmaWrite(kTenGigUdpRdmaAddr + 0xD, value); // UDP Block 0 IFG Value
 
-		value = INT_PKT_GAP_EN;
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 0xF, value); // UDP Block 0 IFG Enable
+		uint32_t mode_reg = this->rdmaRead(kTenGigUdpRdmaAddr + 0xF);
+		mode_reg |= INT_PKT_GAP_EN;
+		this->rdmaWrite(kTenGigUdpRdmaAddr + 0xF, mode_reg); // UDP Block 0 IFG Enable
 
 	} catch (FemClientException& e) {
 		std::cerr << "Exception caught during configUDP: " << e.what() << std::endl;
