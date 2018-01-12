@@ -191,8 +191,6 @@ class ExcaliburFrameProducer(object):
         # Parse arguments
         self.args = parser.parse_args()
 
-        print(self.args.drop_list)
-
         # Map logging level option onto real level
         if self.args.log_level in self.defaults.log_levels:
             log_level = self.defaults.log_levels[self.args.log_level]
