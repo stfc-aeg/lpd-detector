@@ -36,6 +36,9 @@
 #define FXD_PKT_SZE	0x8
 
 const u32 kTenGigUdpRdmaAddr = 0x00000000;
+const u32 kTenGigUdpFarmModePortTable = kTenGigUdpRdmaAddr + 0x10000;
+const u32 kTenGigUdpFarmModeIpTable   = kTenGigUdpRdmaAddr + 0x10100;
+const u32 kTenGigUdpFarmModeMacTable  = kTenGigUdpRdmaAddr + 0x10200;
 
 const unsigned int kFarmModeLutSize = 256;
 
@@ -167,9 +170,13 @@ u32 FemClient::configUDPFarmMode
   }
 
   // Write the port, IP and MAC settings into the appropriate RDMA registers
-  this->rdmaWrite(kTenGigUdpRdmaAddr + 0x10000, port_regs);
-  this->rdmaWrite(kTenGigUdpRdmaAddr + 0x10100, ip_regs);
-  this->rdmaWrite(kTenGigUdpRdmaAddr + 0x10200, mac_regs);
+  this->rdmaWrite(kTenGigUdpFarmModePortTable, port_regs);
+  this->rdmaWrite(kTenGigUdpFarmModeIpTable, ip_regs);
+  this->rdmaWrite(kTenGigUdpFarmModeMacTable, mac_regs);
+
+  // Set the LUT location register to point to the location in the LocalLink header where the
+  // farm mode LUT index is located
+  this->rdmaWrite(kTenGigUdpRdmaAddr + 0xA, 1);
 
   // Modify the farm mode enable bit in the register as appropriate
   std::cout << "Setting UDP farm mode to " << (farmModeEnabled ? "enabled" : "disabled")
