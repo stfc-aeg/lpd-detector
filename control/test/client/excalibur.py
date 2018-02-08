@@ -111,18 +111,19 @@ class ExcaliburDefinitions(object):
 
 class ExcaliburParameter(OrderedDict):
     
-    def __init__(self, param, value, 
-                 fem=ExcaliburDefinitions.ALL_FEMS, chip=ExcaliburDefinitions.ALL_CHIPS):
+    def __init__(self, param, value, fem=ExcaliburDefinitions.ALL_FEMS, 
+                 chip=ExcaliburDefinitions.ALL_CHIPS, offset=0):
         
         super(ExcaliburParameter, self).__init__()
         self['param'] = param
         self['value'] = value
         self['fem'] = fem
         self['chip'] = chip
+        self['offset'] = offset 
         
     def get(self):
          
-        return (self.param, self.value, self.fem, self.chip)
+        return (self.param, self.value, self.fem, self.chip, self.offset)
 
      
 class ExcaliburClient(object):
