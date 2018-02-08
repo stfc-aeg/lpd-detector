@@ -74,10 +74,10 @@ class ExcaliburFem(object):
 
         return (rc, values)
 
-    def set_int(self, chip_id, param_id, values):
+    def set_int(self, chip_id, param_id, offset, values):
 
         try:
-            rc = self._fem_api.set_int(self.fem_handle, chip_id, param_id, values)
+            rc = self._fem_api.set_int(self.fem_handle, chip_id, param_id, offset, values)
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
 
@@ -92,10 +92,10 @@ class ExcaliburFem(object):
 
         return (rc, values)
 
-    def set_short(self, chip_id, param_id, values):
+    def set_short(self, chip_id, param_id, offset, values):
 
         try:
-            rc = self._fem_api.set_short(self.fem_handle, chip_id, param_id, values)
+            rc = self._fem_api.set_short(self.fem_handle, chip_id, param_id, offset, values)
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
 
@@ -112,19 +112,19 @@ class ExcaliburFem(object):
         
         return (rc, values)
 
-    def set_float(self, chip_id, param_id, values):
+    def set_float(self, chip_id, param_id, offset, values):
 
         try:
-            rc = self._fem_api.set_float(self.fem_handle, chip_id, param_id, values)
+            rc = self._fem_api.set_float(self.fem_handle, chip_id, param_id, offset, values)
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
 
         return rc
 
-    def set_string(self, chip_id, param_id, values):
+    def set_string(self, chip_id, param_id, offset, values):
 
         try:
-            rc = self._fem_api.set_string(self.fem_handle, chip_id, param_id, values)
+            rc = self._fem_api.set_string(self.fem_handle, chip_id, param_id, offset, values)
         except self._fem_api.error as e:
             raise ExcaliburFemError(str(e))
 
