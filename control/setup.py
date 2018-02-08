@@ -2,6 +2,7 @@ from setuptools import setup, find_packages, Extension
 from distutils.command.build_ext import build_ext
 from distutils.command.clean import clean
 from distutils import log
+from distutils.errors import LibError
 import versioneer
 
 import os
@@ -59,8 +60,12 @@ class ExcaliburBuildExt(build_ext):
 
         # Precompile the API library if necessary        
         if not stub_only:
-            self.precompile_api_library(fem_api)
-            
+            if (self.precompile_api_library(fem_api)):
+                log.info("API library {} was recompiled, forcing rebuild of extension".format(
+                    fem_api.name
+                ))
+                os.remove(self.get_ext_fullpath(fem_api.name))
+           
         # Run the real build_ext command
         build_ext.run(self)
         
@@ -70,33 +75,42 @@ class ExcaliburBuildExt(build_ext):
 
         # If BOOST_ROOT set in environment, set up so we can pass into Makefile 
         if 'BOOST_ROOT' in os.environ:
-            boost_root = os.environ['BOOST_ROOT']
+            self.boost_root = os.environ['BOOST_ROOT']
         else:
-            boost_root = None
+            log.warn("BOOST_ROOT is not set in environment - library compilation may be affected")
+            self.boost_root = None
                     
         # Set and create object compile path
-        build_temp_obj_path = os.path.abspath(os.path.join(self.build_temp, 'fem_api', 'obj'))
-        self.makedir(build_temp_obj_path)
+        self.build_temp_obj_path = os.path.abspath(os.path.join(self.build_temp, 'fem_api', 'obj'))
+        self.makedir(self.build_temp_obj_path)
             
         # Set and create the library output path
-        build_temp_lib_path = os.path.abspath(os.path.join(self.build_temp, 'fem_api', 'lib'))
-        self.makedir(build_temp_lib_path)
+        self.build_temp_lib_path = os.path.abspath(os.path.join(self.build_temp, 'fem_api', 'lib'))
+        self.makedir(self.build_temp_lib_path)
+        
+        # Build a make query command and run it
+        make_query_cmd = self.build_make_cmd('-q')
+        make_needed = subprocess.call(shlex.split(make_query_cmd), cwd=fem_api_path)
         
         # Build the make command
-        make_cmd = 'make OBJ_DIR={} LIB_DIR={}'.format(build_temp_obj_path, build_temp_lib_path)
-        if boost_root:
-            make_cmd = make_cmd + ' BOOST_ROOT={}'.format(boost_root)
+        make_cmd = self.build_make_cmd()
         
         # Run the make command
-        subprocess.call(shlex.split(make_cmd), cwd=fem_api_path)
+        make_rc = subprocess.call(shlex.split(make_cmd), cwd=fem_api_path)
+        if make_rc != 0:
+            raise LibError("Pre-compilation of API library failed")
         
         # Inject the appropriate paths and libraries into the Extension configuration
-        fem_api_ext.library_dirs.append(build_temp_lib_path)
+        fem_api_ext.library_dirs.append(self.build_temp_lib_path)
 
-        if boost_root:        
-            fem_api_ext.library_dirs.append(os.path.join(boost_root, 'lib'))
+        if self.boost_root:        
+            fem_api_ext.library_dirs.append(os.path.join(self.boost_root, 'lib'))
             
-        fem_api_ext.libraries.extend(['boost_system', 'boost_thread', 'fem_api'])
+        fem_api_ext.libraries.extend(['fem_api', 'boost_thread', 'boost_system'])
+
+        api_library_precompiled = (make_needed > 0) and (make_rc == 0)
+        
+        return api_library_precompiled
         
     def makedir(self, path):
         try:
@@ -104,6 +118,16 @@ class ExcaliburBuildExt(build_ext):
         except OSError:
             if not os.path.isdir(path):
                 raise
+            
+    def build_make_cmd(self, flags=''):
+
+        make_cmd = 'make {} OBJ_DIR={} LIB_DIR={}'.format(
+            flags, self.build_temp_obj_path, self.build_temp_lib_path
+            )
+        if self.boost_root:
+            make_cmd = make_cmd + ' BOOST_ROOT={}'.format(self.boost_root)
+        
+        return make_cmd
         
 class ExcaliburClean(clean):
     
