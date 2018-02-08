@@ -1,24 +1,24 @@
 #include <Python.h>
 
 #if PY_MAJOR_VERSION >= 3
-  #define MOD_ERROR_VAL NULL
-  #define MOD_SUCCESS_VAL(val) val
-  #define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
-  #define MOD_DEF(ob, name, doc, methods) \
-          static struct PyModuleDef moduledef = { \
-            PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
-          ob = PyModule_Create(&moduledef);
+#define MOD_ERROR_VAL NULL
+#define MOD_SUCCESS_VAL(val) val
+#define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
+#define MOD_DEF(ob, name, doc, methods) \
+        static struct PyModuleDef moduledef = { \
+                PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
+                ob = PyModule_Create(&moduledef);
 
-  #define PyInt_FromLong PyLong_FromLong
-  #define PyInt_AsLong   PyLong_AsLong
-  #define PyInt_Check    PyLong_Check
+#define PyInt_FromLong PyLong_FromLong
+#define PyInt_AsLong   PyLong_AsLong
+#define PyInt_Check    PyLong_Check
 
 #else
-  #define MOD_ERROR_VAL
-  #define MOD_SUCCESS_VAL(val)
-  #define MOD_INIT(name) void init##name(void)
-  #define MOD_DEF(ob, name, doc, methods) \
-          ob = Py_InitModule3(name, methods, doc);
+#define MOD_ERROR_VAL
+#define MOD_SUCCESS_VAL(val)
+#define MOD_INIT(name) void init##name(void)
+#define MOD_DEF(ob, name, doc, methods) \
+        ob = Py_InitModule3(name, methods, doc);
 #endif
 
 #if PY_MAJOR_VERSION >= 3
@@ -35,7 +35,7 @@
  * A simple structure to be used as an opaque pointer to a FEM object in API
  * calls. This wraps the real handle, which can then be set to NULL if the
  * user explicitly calls close(), and tested in methods accordingly.
-*/
+ */
 typedef struct Fem {
     void* handle;
     CtlConfig config;
@@ -62,12 +62,12 @@ void _set_api_error_string(const char* format, ...) {
 
 /* Helper to validate the opaque FEM pointer object and the handle it contains */
 #define _validate_ptr_and_handle(ptr, func_name) \
-    if (ptr == NULL) { \
-        _set_api_error_string("%s: resolved FEM object pointer to null", func_name); \
-        return NULL; } \
-    if (ptr->handle == NULL) { \
-        _set_api_error_string("%s: FEM object pointer has null FEM handle", func_name); \
-        return NULL; }
+        if (ptr == NULL) { \
+            _set_api_error_string("%s: resolved FEM object pointer to null", func_name); \
+            return NULL; } \
+            if (ptr->handle == NULL) { \
+                _set_api_error_string("%s: FEM object pointer has null FEM handle", func_name); \
+                return NULL; }
 
 
 typedef enum log_level_ {info, warning, error, debug} log_level;
@@ -82,7 +82,7 @@ static void log_msg(log_level level, const char* format, ...)
         logging = PyImport_ImportModuleNoBlock("logging");
         if (logging == NULL)
             PyErr_SetString(PyExc_ImportError,
-                "Could not import module 'logging'");
+                            "Could not import module 'logging'");
     }
 
     // Build the log message from the format and variable argument list
@@ -123,7 +123,7 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
 
     if (!PyArg_ParseTuple(args, "isis", &fem_id, &fem_address, &fem_port,
                           &data_address)) {
-    	PyErr_SetString(fem_api_error, "Incorrect arguments passed to initialise FEM API");
+        PyErr_SetString(fem_api_error, "Incorrect arguments passed to initialise FEM API");
         return NULL;
     }
 
@@ -143,7 +143,9 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
     fem_ptr->api_trace = 0;
 
     Py_BEGIN_ALLOW_THREADS
-    rc = femInitialise((void*)NULL, (const CtlCallbacks*)NULL, (const CtlConfig*)&(fem_ptr->config), &(fem_ptr->handle));
+    rc = femInitialise((void*)NULL, (const CtlCallbacks*)NULL,
+                       (const CtlConfig*)&(fem_ptr->config), &(fem_ptr->handle)
+                       );
     Py_END_ALLOW_THREADS
 
     if (rc != FEM_RTN_OK) {
@@ -152,7 +154,7 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
     }
 
     log_msg(debug, "Initialised fem_api module with handle %lu for FEM ID %d",
-        (unsigned long)(fem_ptr->handle), fem_id);
+            (unsigned long)(fem_ptr->handle), fem_id);
 
     return PyCapsule_New(fem_ptr, "FemPtr", _del);
 }
@@ -164,14 +166,14 @@ static PyObject* _set_api_trace(PyObject* self, PyObject* args)
     int api_trace;
 
     if (!PyArg_ParseTuple(args, "Oi", &_handle, &api_trace)) {
-    	return NULL;
+        return NULL;
     }
 
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "set_api_trace");
 
     log_msg(debug, "Setting API trace to %s for FEM handle %lu",
-    		api_trace ? "enabled" : "disabled", (fem_ptr->handle));
+            api_trace ? "enabled" : "disabled", (fem_ptr->handle));
     fem_ptr->api_trace = api_trace;
 
     return Py_BuildValue("");
@@ -223,10 +225,11 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     rc = femGetInt(fem_ptr->handle, chip_id, param_id, size, (int *)(value_ptr));
     Py_END_ALLOW_THREADS
 
-	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
-	}
+    if (fem_ptr->api_trace) {
+        log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
+                __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+                chip_id, param_id, size, value_ptr[0]);
+    }
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -292,9 +295,11 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
     }
 
     if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
-	}
+        log_msg(debug,
+                "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%d",
+                __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+                chip_id, param_id, size, offset, value_ptr[0]);
+    }
 
     Py_BEGIN_ALLOW_THREADS
     rc = femSetInt(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
@@ -334,8 +339,9 @@ static PyObject* _get_short(PyObject* self, PyObject* args)
     rc = femGetShort(fem_ptr->handle, chip_id, param_id, size, value_ptr);
     Py_END_ALLOW_THREADS
 
-	log_msg(info, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
-			__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
+    log_msg(info, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
+            __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+            chip_id, param_id, size, value_ptr[0]);
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -358,6 +364,7 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
     FemPtr fem_ptr;
 
     short* value_ptr = NULL;
+    int single_value = 0;
 
     if (!PyArg_ParseTuple(args, "OiiiO", &_handle, &chip_id, &param_id, &offset, &values_obj)) {
         return NULL;
@@ -368,9 +375,11 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
 
     if (PyInt_Check(values_obj)) {
         size = 1;
+        single_value = 1;
     }
     else if(PyList_Check(values_obj)) {
         size = PyList_Size(values_obj);
+        single_value = 0;
     } else {
         _set_api_error_string("set_short: specified value(s) not int or list");
         return NULL;
@@ -382,7 +391,7 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    if (size == 1) {
+    if (single_value == 1) {
         *value_ptr = (short)PyInt_AsLong(values_obj);
     } else {
         int ival;
@@ -397,10 +406,12 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
         }
     }
 
-	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
-	}
+    if (fem_ptr->api_trace) {
+        log_msg(debug,
+                "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%d",
+                __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+                chip_id, param_id, size, offset, value_ptr[0]);
+    }
 
     Py_BEGIN_ALLOW_THREADS
     rc = femSetShort(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
@@ -440,10 +451,11 @@ static PyObject* _get_float(PyObject* self, PyObject* args)
     rc = femGetFloat(fem_ptr->handle, chip_id, param_id, size, (double *)(value_ptr));
     Py_END_ALLOW_THREADS
 
-	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%f",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
-	}
+    if (fem_ptr->api_trace) {
+        log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%f",
+                __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+                chip_id, param_id, size, value_ptr[0]);
+    }
 
     values = PyList_New(size);
     if (rc == FEM_RTN_OK) {
@@ -466,6 +478,7 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
     FemPtr fem_ptr;
 
     double* value_ptr = NULL;
+    int single_value = 0;
 
     if (!PyArg_ParseTuple(args, "OiiiO", &_handle, &chip_id, &param_id, &offset, &values_obj)) {
         return NULL;
@@ -476,9 +489,11 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
 
     if (PyInt_Check(values_obj)) {
         size = 1;
+        single_value = 1;
     }
     else if(PyList_Check(values_obj)) {
         size = PyList_Size(values_obj);
+        single_value = 0;
     } else {
         _set_api_error_string("set_float: specified value(s) not float or list");
         return NULL;
@@ -490,7 +505,7 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    if (size == 1) {
+    if (single_value == 1) {
         *value_ptr =PyFloat_AsDouble(values_obj);
     } else {
         int ival;
@@ -505,10 +520,12 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
         }
     }
 
-	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%f",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
-	}
+    if (fem_ptr->api_trace) {
+        log_msg(debug,
+                "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%f",
+                __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+                chip_id, param_id, size, offset, value_ptr[0]);
+    }
 
     Py_BEGIN_ALLOW_THREADS
     rc = femSetFloat(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
@@ -523,14 +540,15 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
 
 static PyObject* _set_string(PyObject* self, PyObject* args)
 {
-	int i, rc;
-	PyObject* _handle;
-	int chip_id, param_id, size, offset;
-	PyObject* values_obj;
-	FemPtr fem_ptr;
+    int i, rc;
+    PyObject* _handle;
+    int chip_id, param_id, size, offset;
+    PyObject* values_obj;
+    FemPtr fem_ptr;
 
-	char** value_ptr;
-	PyObject** bytes_ptr;
+    char** value_ptr;
+    PyObject** bytes_ptr;
+    int single_value = 0;
 
     if (!PyArg_ParseTuple(args, "OiiiO", &_handle, &chip_id, &param_id, &offset, &values_obj)) {
         return NULL;
@@ -540,66 +558,72 @@ static PyObject* _set_string(PyObject* self, PyObject* args)
     _validate_ptr_and_handle(fem_ptr, "set_string");
 
     if (PyUnicode_Check(values_obj)) {
-    	size = 1;
+        size = 1;
+        single_value = 1;
     }
     else if (PyList_Check(values_obj)) {
-    	size = PyList_Size(values_obj);
+        size = PyList_Size(values_obj);
+        single_value = 0;
     }
     else {
-    	_set_api_error_string("set_string: specified value(s) not string or list");
-    	return NULL;
+        _set_api_error_string("set_string: specified value(s) not string or list");
+        return NULL;
     }
 
     value_ptr = (char**)malloc(size * sizeof(char*));
     if (value_ptr == NULL) {
-    	_set_api_error_string("set_string: unable to allocate space for %d string values", size);
-    	return NULL;
+        _set_api_error_string("set_string: unable to allocate space for %d string values", size);
+        return NULL;
     }
 
     bytes_ptr = (PyObject**)malloc(size * sizeof(PyObject*));
     if (bytes_ptr == NULL) {
-    	_set_api_error_string("set_string: unable to allocate space for %d byte pointer objects", size);
-    	free(value_ptr);
-    	return NULL;
+        _set_api_error_string(
+                "set_string: unable to allocate space for %d byte pointer objects", size
+                );
+        free(value_ptr);
+        return NULL;
     }
 
-    if (size == 1) {
-    	bytes_ptr[0] = PyUnicode_AsUTF8String(values_obj);
-    	value_ptr[0] = PyBytes_AsString(bytes_ptr[0]);
+    if (single_value) {
+        bytes_ptr[0] = PyUnicode_AsUTF8String(values_obj);
+        value_ptr[0] = PyBytes_AsString(bytes_ptr[0]);
     }
     else {
-    	for (i = 0; i < size; i++) {
-    		PyObject* value_obj = PyList_GetItem(values_obj, i);
-    		if (!PyUnicode_Check(value_obj)) {
-    			_set_api_error_string("set_string: non-unicode string value specified");
-    			free(bytes_ptr);
-    			free(value_ptr);
-    			return NULL;
-    		}
-    		bytes_ptr[i] = PyUnicode_AsUTF8String(value_obj);
-    		value_ptr[i] = PyBytes_AsString(bytes_ptr[i]);
-    	}
+        for (i = 0; i < size; i++) {
+            PyObject* value_obj = PyList_GetItem(values_obj, i);
+            if (!PyUnicode_Check(value_obj)) {
+                _set_api_error_string("set_string: non-unicode string value specified");
+                free(bytes_ptr);
+                free(value_ptr);
+                return NULL;
+            }
+            bytes_ptr[i] = PyUnicode_AsUTF8String(value_obj);
+            value_ptr[i] = PyBytes_AsString(bytes_ptr[i]);
+        }
     }
 
-	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%s",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
-	}
+    if (fem_ptr->api_trace) {
+        log_msg(debug,
+                "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%s",
+                __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+                chip_id, param_id, size, offset, value_ptr[0]);
+    }
 
     Py_BEGIN_ALLOW_THREADS
     rc = femSetString(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
     Py_END_ALLOW_THREADS
 
     for (i = 0; i < size; i++) {
-    	Py_DECREF(bytes_ptr[i]);
+        Py_DECREF(bytes_ptr[i]);
     }
 
     if (bytes_ptr != NULL) {
-    	free(bytes_ptr);
+        free(bytes_ptr);
     }
 
     if (value_ptr != NULL) {
-    	free(value_ptr);
+        free(value_ptr);
     }
 
     return Py_BuildValue("i", rc);
@@ -619,10 +643,11 @@ static PyObject* _cmd(PyObject* self, PyObject* args)
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "cmd");
 
-	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, cmd_id);
-	}
+    if (fem_ptr->api_trace) {
+        log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d",
+                __FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle),
+                chip_id, cmd_id);
+    }
 
     Py_BEGIN_ALLOW_THREADS
     rc = femCmd(fem_ptr->handle, chip_id, cmd_id);
@@ -683,20 +708,20 @@ static void _del(PyObject* obj)
 /*  define functions in module */
 static PyMethodDef fem_api_methods[] =
 {
-     {"initialise", _initialise, METH_VARARGS, "initialise a module"},
-	 {"set_api_trace", _set_api_trace, METH_VARARGS, "set API trace debugging"},
-     {"get_id",     _get_id,     METH_VARARGS, "get a module ID"},
-     {"get_int",    _get_int,    METH_VARARGS, "get one or more integer parameters"},
-     {"set_int",    _set_int,    METH_VARARGS, "set one or more integer parameters"},
-	 {"get_short",  _get_short,  METH_VARARGS, "get one ore more short integer parameters"},
-	 {"set_short",  _set_short,  METH_VARARGS, "set one ore more short integer parameters"},
-	 {"get_float",  _get_float,  METH_VARARGS, "get one or more float parameters"},
-	 {"set_float",  _set_float,  METH_VARARGS, "set one or more float parameters"},
-	 {"set_string", _set_string, METH_VARARGS, "set on ore more string parameters"},
-	 {"get_error_msg", _get_error_msg, METH_VARARGS, "get module error message"},
-     {"cmd",        _cmd,        METH_VARARGS, "issue a command to a module"},
-     {"close",      _close,      METH_VARARGS, "close a module"},
-     {NULL, NULL, 0, NULL}
+    {"initialise", _initialise, METH_VARARGS, "initialise a module"},
+    {"set_api_trace", _set_api_trace, METH_VARARGS, "set API trace debugging"},
+    {"get_id",     _get_id,     METH_VARARGS, "get a module ID"},
+    {"get_int",    _get_int,    METH_VARARGS, "get one or more integer parameters"},
+    {"set_int",    _set_int,    METH_VARARGS, "set one or more integer parameters"},
+    {"get_short",  _get_short,  METH_VARARGS, "get one ore more short integer parameters"},
+    {"set_short",  _set_short,  METH_VARARGS, "set one ore more short integer parameters"},
+    {"get_float",  _get_float,  METH_VARARGS, "get one or more float parameters"},
+    {"set_float",  _set_float,  METH_VARARGS, "set one or more float parameters"},
+    {"set_string", _set_string, METH_VARARGS, "set on ore more string parameters"},
+    {"get_error_msg", _get_error_msg, METH_VARARGS, "get module error message"},
+    {"cmd",        _cmd,        METH_VARARGS, "issue a command to a module"},
+    {"close",      _close,      METH_VARARGS, "close a module"},
+    {NULL, NULL, 0, NULL}
 };
 
 /* module initialization */
