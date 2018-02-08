@@ -4,6 +4,7 @@ import logging
 import argparse
 import os
 import time
+import json
 
 class ExcaliburTestAppDefaults(object):
     
@@ -19,7 +20,10 @@ class ExcaliburTestAppDefaults(object):
         self.dest_data_addr = ['10.1.0.1']
         self.dest_data_mac = ['00:07:43:10:63:00']
         self.dest_data_port = [61649]
+        self.farm_mode_enable = 0
+        self.farm_mode_num_dests = 1
         
+        self.udp_config_file = 'udp_config.json'
         self.log_levels = {
             'error': logging.ERROR,
             'warning': logging.WARNING,
@@ -99,6 +103,9 @@ class ExcaliburTestApp(object):
             help='Load MPX3 DAC values from a filename if given, otherwise use default values')
         cmd_group.add_argument('--config', action='store_true',
             help='Load MPX3 pixel configuration')
+        cmd_group.add_argument('--udpconfig', nargs='?', metavar='FILE',
+            default=None, const=self.defaults.udp_config_file,
+            help='Load 10GigE UDP data interface parameters, otherwise use default values')
         
         dataif_group = parser.add_argument_group('10GigE UDP data interface parameters')
         dataif_group.add_argument('--sourceaddr', metavar='IP', dest='source_data_addr',
@@ -119,6 +126,12 @@ class ExcaliburTestApp(object):
         dataif_group.add_argument('--destport', metavar='PORT', dest='dest_data_port',
             nargs='+', type=int, default=self.defaults.dest_data_port,
             help='Set the data destination port(s)')
+        dataif_group.add_argument('--farmenable', metavar='ENABLE', dest='farm_mode_enable',
+            type=int, default=self.defaults.farm_mode_enable,
+            help='Enable UDP farm mode')
+        dataif_group.add_argument('--farmdests', metavar='NUM_DESTS', dest='farm_mode_num_dests',
+            type=int, default=self.defaults.farm_mode_num_dests,
+            help='Set the number of destination nodes in UDP farm mode')
         
         config_group = parser.add_argument_group('DAC and pixel configuration mode parameters')
         config_group.add_argument('--fem', metavar='FEM', dest='config_fem',
@@ -204,7 +217,7 @@ class ExcaliburTestApp(object):
             
         logging.basicConfig(level=log_level, format='%(levelname)1.1s %(asctime)s.%(msecs)03d %(message)s', datefmt='%y%m%d %H:%M:%S')
         self.client = ExcaliburClient(address=self.args.ip_addr, port=self.args.port, log_level=log_level)
-    
+        
     def run(self):
         
         if self.args.dump:
@@ -241,7 +254,10 @@ class ExcaliburTestApp(object):
          
         if self.args.config:
             self.do_pixel_config_load()
-                  
+        
+        if self.args.udpconfig:
+            self.do_udp_config()
+                      
         if self.args.acquire:
             self.do_acquisition()
             
@@ -392,7 +408,54 @@ class ExcaliburTestApp(object):
             logging.info('Pixel configuration load completed OK')
         else:
             logging.error('Failed to execute pixel config load command: {}'.format(self.client.error_msg))
-    
+
+    def do_udp_config(self):
+        
+        logging.info("Loading UDP configuration from file {}".format(self.args.udpconfig))
+        
+        try:
+            with open(self.args.udpconfig) as config_file:
+                udp_config = json.load(config_file)
+        except IOError as io_error:
+            logging.error("Failed to open UDP configuration file: {}".format(io_error))
+            return
+        except ValueError as value_error:
+            logging.error("Failed to parse UDP json config: {}".format(value_error))
+            return
+
+        self.args.source_data_addr = []
+        self.args.source_data_mac = []
+        self.args.source_data_port = []
+        
+        for idx, fem in enumerate(udp_config['fems']):
+            
+            self.args.source_data_addr.append(fem['ipaddr'])
+            self.args.source_data_mac.append(fem['mac'])
+            self.args.source_data_port.append(fem['port'])
+
+            logging.debug('    FEM  {:d} : ip {:16s} mac: {:s} port: {:5d}'.format(
+                idx, self.args.source_data_addr[-1], self.args.source_data_mac[-1], 
+                self.args.source_data_port[-1]
+            ))
+            
+        self.args.dest_data_addr = []
+        self.args.dest_data_mac = []
+        self.args.dest_data_port = []
+        
+        for idx, node in enumerate(udp_config['nodes']):
+            
+            self.args.dest_data_addr.append(node['ipaddr'])
+            self.args.dest_data_mac.append(node['mac'])
+            self.args.dest_data_port.append(int(node['port']))
+                
+            logging.debug('    Node {:d} : ip {:16s} mac: {:s} port: {:5d}'.format(
+                idx, self.args.dest_data_addr[-1], self.args.dest_data_mac[-1],
+                self.args.dest_data_port[-1]
+            ))
+
+        self.args.farm_mode_enable = udp_config['farm_mode']['enable']
+        self.args.farm_mode_num_dests = udp_config['farm_mode']['num_dests']
+            
     def do_acquisition(self):
         
         # Resolve the acquisition operating mode appropriately, handling burst and matrix read if necessary
@@ -481,13 +544,35 @@ class ExcaliburTestApp(object):
         write_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[lfsr_bypass_mode]]))
 
         logging.info('  Setting data interface address and port parameters')
-        write_params.append(ExcaliburParameter('source_data_addr', [[addr] for addr in self.args.source_data_addr]))
-        write_params.append(ExcaliburParameter('source_data_mac', [[mac] for mac in self.args.source_data_mac]))
-        write_params.append(ExcaliburParameter('source_data_port', [[port] for port in self.args.source_data_port]))
-        write_params.append(ExcaliburParameter('dest_data_addr', [[addr] for addr in self.args.dest_data_addr]))
-        write_params.append(ExcaliburParameter('dest_data_mac', [[mac] for mac in self.args.dest_data_mac]))
-        write_params.append(ExcaliburParameter('dest_data_port', [[port] for port in self.args.dest_data_port]))
         
+        # Append per-FEM UDP source parameters, truncating to number of FEMs present in system
+        write_params.append(ExcaliburParameter(
+            'source_data_addr', [[addr] for addr in self.args.source_data_addr[:self.num_fems]],
+        ))
+        write_params.append(ExcaliburParameter(
+            'source_data_mac', [[mac] for mac in self.args.source_data_mac[:self.num_fems]],
+        ))
+        write_params.append(ExcaliburParameter(
+            'source_data_port', [[port] for port in self.args.source_data_port[:self.num_fems]]
+        ))
+         
+        # Append the UDP destination parameters, noting [[[ ]]] indexing as they are common for
+        # all FEMs and chips - there must be a better way to do this 
+        write_params.append(ExcaliburParameter(
+            'dest_data_addr', [[[addr for addr in self.args.dest_data_addr]]]
+        ))
+        write_params.append(ExcaliburParameter(
+            'dest_data_mac', [[[mac for mac in self.args.dest_data_mac]]]
+        ))
+        write_params.append(ExcaliburParameter(
+            'dest_data_port', [[[port for port in self.args.dest_data_port]]]
+        ))
+         
+        # Append the farm mode configuration parameters
+        write_params.append(ExcaliburParameter('farm_mode_enable', [[self.args.farm_mode_enable]]))
+        write_params.append(ExcaliburParameter('farm_mode_num_dests', [[self.args.farm_mode_num_dests]]))
+  
+        # Disable local receiver thread
         logging.info('  Disabling local data receiver thread')
         write_params.append(ExcaliburParameter('datareceiver_enable', [[0]]))
 
@@ -497,7 +582,7 @@ class ExcaliburTestApp(object):
         if not write_ok:
             logging.error('Failed to write configuration parameters to system: {}'.format(self.client.error_msg))
             return
-        
+
         # Send start acquisition command
         logging.info('Sending start acquisition command')
         cmd_ok = self.client.do_command('start_acquisition')
