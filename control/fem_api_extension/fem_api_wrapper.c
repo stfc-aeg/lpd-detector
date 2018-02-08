@@ -244,14 +244,14 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
 {
     int rc;
     PyObject* _handle;
-    int chip_id, param_id, size;
+    int chip_id, param_id, size, offset;
     PyObject* values_obj;
     FemPtr fem_ptr;
 
     int* value_ptr = NULL;
     int single_value = 0;
 
-    if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
+    if (!PyArg_ParseTuple(args, "OiiiO", &_handle, &chip_id, &param_id, &offset, &values_obj)) {
         return NULL;
     }
 
@@ -292,12 +292,12 @@ static PyObject* _set_int(PyObject* self, PyObject* args)
     }
 
     if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
-    rc = femSetInt(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    rc = femSetInt(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
     Py_END_ALLOW_THREADS
 
     if (value_ptr != NULL) {
@@ -353,13 +353,13 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
 {
     int rc;
     PyObject* _handle;
-    int chip_id, param_id, size;
+    int chip_id, param_id, size, offset;
     PyObject* values_obj;
     FemPtr fem_ptr;
 
     short* value_ptr = NULL;
 
-    if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
+    if (!PyArg_ParseTuple(args, "OiiiO", &_handle, &chip_id, &param_id, &offset, &values_obj)) {
         return NULL;
     }
 
@@ -398,12 +398,12 @@ static PyObject* _set_short(PyObject* self, PyObject* args)
     }
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%d",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%d",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
-    rc = femSetShort(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    rc = femSetShort(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
     Py_END_ALLOW_THREADS
 
     if (value_ptr != NULL) {
@@ -461,13 +461,13 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
 {
     int rc;
     PyObject* _handle;
-    int chip_id, param_id, size;
+    int chip_id, param_id, size, offset;
     PyObject* values_obj;
     FemPtr fem_ptr;
 
     double* value_ptr = NULL;
 
-    if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
+    if (!PyArg_ParseTuple(args, "OiiiO", &_handle, &chip_id, &param_id, &offset, &values_obj)) {
         return NULL;
     }
 
@@ -506,12 +506,12 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
     }
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%f",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%f",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
-    rc = femSetFloat(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    rc = femSetFloat(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
     Py_END_ALLOW_THREADS
 
     if (value_ptr != NULL) {
@@ -525,14 +525,14 @@ static PyObject* _set_string(PyObject* self, PyObject* args)
 {
 	int i, rc;
 	PyObject* _handle;
-	int chip_id, param_id, size;
+	int chip_id, param_id, size, offset;
 	PyObject* values_obj;
 	FemPtr fem_ptr;
 
 	char** value_ptr;
 	PyObject** bytes_ptr;
 
-    if (!PyArg_ParseTuple(args, "OiiO", &_handle, &chip_id, &param_id, &values_obj)) {
+    if (!PyArg_ParseTuple(args, "OiiiO", &_handle, &chip_id, &param_id, &offset, &values_obj)) {
         return NULL;
     }
 
@@ -582,12 +582,12 @@ static PyObject* _set_string(PyObject* self, PyObject* args)
     }
 
 	if (fem_ptr->api_trace) {
-		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d value[0]=%s",
-				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, value_ptr[0]);
+		log_msg(debug, "API_TRACE %10s tid=0x%08x fem=%d chip=%d id=%d size=%d offset=%d value[0]=%s",
+				__FUNCTION__, (unsigned int)pthread_self(), femGetId(fem_ptr->handle), chip_id, param_id, size, offset, value_ptr[0]);
 	}
 
     Py_BEGIN_ALLOW_THREADS
-    rc = femSetString(fem_ptr->handle, chip_id, param_id, size, value_ptr);
+    rc = femSetString(fem_ptr->handle, chip_id, param_id, size, offset, value_ptr);
     Py_END_ALLOW_THREADS
 
     for (i = 0; i < size; i++) {

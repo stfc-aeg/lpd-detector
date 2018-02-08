@@ -21,6 +21,9 @@
 #include <string.h>
 #include "FemClient.h"
 
+#define IP_FLAG_FRAG 0x00
+#define IP_TIME_TO_LIVE 0x80
+#define IP_PROTOCOL_UDP 0x11
 #define IP_IDENT_COUNT 0xDB00
 #define IP_PKT_LENGTH_BASE 0x1c
 #define UDP_LENGTH_BASE 0x0008
@@ -32,9 +35,36 @@
 #define DEBUG_MODE_STEP 0x4
 #define FXD_PKT_SZE	0x8
 
-const u32 kTenGigUdpRdmaAddr       = 0x00000000;
+const u32 kTenGigUdpRdmaAddr = 0x00000000;
 
-/** configUDP - configure the RDMA channel on the FEM
+const unsigned int kFarmModeLutSize = 256;
+
+/** configUDP - configure the FEM X10G UDP block
+ *
+ */
+u32 FemClient::configUDP(
+    const std::string sourceMacAddress, const std::string sourceIpAddress, const u32 sourcePort,
+    const std::string destMacAddress[], const std::string destIpAddress[], const u32 destPort[],
+    const u32 num_lut_entries, const bool farmModeEnabled
+)
+{
+  u32 core_rc, farm_rc;
+
+  core_rc = this->configUDPCoreReg(
+      sourceMacAddress.c_str(), sourceIpAddress.c_str(), sourcePort,
+      destMacAddress[0].c_str(), destIpAddress[0].c_str(), destPort[0]
+  );
+  if (core_rc != 0) {
+   return core_rc;
+  }
+
+  farm_rc = this->configUDPFarmMode(destMacAddress, destIpAddress, destPort,
+                                    num_lut_entries, farmModeEnabled);
+
+  return farm_rc;
+}
+
+/** configUDP - configure the core registers of the FEM X10G UDP block
  *
  * @param fpgaMACaddress string representation of an IP address in dotted quad format
  * @param fpgaIPaddress string representation of an IP address in dotted quad format
@@ -43,75 +73,161 @@ const u32 kTenGigUdpRdmaAddr       = 0x00000000;
  * @param hostPort integer containing the port number of the host PC
  * @return 0 if success else -1
  */
-u32 FemClient::configUDP(
-		const char* fpgaMACaddress, const char* fpgaIPaddress, u32 fpgaPort,
-		const char* hostMACaddress, const char* hostIPaddress, u32 hostPort)
+u32 FemClient::configUDPCoreReg(
+    const char* fpgaMACaddress, const char* fpgaIPaddress, const u32 fpgaPort,
+    const char* hostMACaddress, const char* hostIPaddress, const u32 hostPort)
 {
 
-	int rc = 0;
-	u_int32_t value;
+  int rc = 0;
+  u_int32_t value;
 
-	unsigned char hostMAC[6];
-	unsigned char fpgaMAC[6];
-	unsigned char fpgaIP[4];
-	unsigned char hostIP[4];
+  unsigned char hostMAC[6];
+  unsigned char fpgaMAC[6];
+  unsigned char fpgaIP[4];
+  unsigned char hostIP[4];
 
-	try {
+  try
+  {
 
-		to_bytes(hostMACaddress, hostMAC, 6, 16);
-		to_bytes(fpgaMACaddress, fpgaMAC, 6, 16);
-		to_bytes(fpgaIPaddress, fpgaIP, 4, 10);
-		to_bytes(hostIPaddress, hostIP, 4, 10);
+    to_bytes(hostMACaddress, hostMAC, 6, 16);
+    to_bytes(fpgaMACaddress, fpgaMAC, 6, 16);
+    to_bytes(fpgaIPaddress, fpgaIP, 4, 10);
+    to_bytes(hostIPaddress, hostIP, 4, 10);
 
-		value = (fpgaMAC[3] << 24) + (fpgaMAC[2] << 16) + (fpgaMAC[1] << 8) + fpgaMAC[0];
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 0, value); // UDP Block 0 MAC Source Lower 32
+    value = (fpgaMAC[3] << 24) + (fpgaMAC[2] << 16) + (fpgaMAC[1] << 8) + fpgaMAC[0];
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 0, value); // UDP Block 0 MAC Source Lower 32
 
-		value = (hostMAC[1] << 24) + (hostMAC[0] << 16) + (fpgaMAC[5] << 8) + (fpgaMAC[4]);
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 1, value); // UDP Block 0 MAC Source Upper 16/Dest Lower 16
+    value = (hostMAC[1] << 24) + (hostMAC[0] << 16) + (fpgaMAC[5] << 8) + (fpgaMAC[4]);
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 1, value); // UDP Block 0 MAC Source Upper 16/Dest Lower 16
 
-		value = (hostMAC[5] << 24) + (hostMAC[4] << 16) + (hostMAC[3] << 8) + hostMAC[2];
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 2, value); // UDP Block 0 MAC Dest Upper 32
+    value = (hostMAC[5] << 24) + (hostMAC[4] << 16) + (hostMAC[3] << 8) + hostMAC[2];
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 2, value); // UDP Block 0 MAC Dest Upper 32
 
-		value = (IP_IDENT_COUNT << 16) + IP_PKT_LENGTH_BASE;
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 4, value); // UDP Block 0 IP Ident / Header Length
+    value = (IP_IDENT_COUNT << 16) + IP_PKT_LENGTH_BASE;
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 4, value); // UDP Block 0 IP Ident / Header Length
 
-		value = (hostIP[1] << 24) + (hostIP[0] << 16) + (0xDE << 8) + 0xAD;
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 6, value); // UDP Block 0 IP Dest Addr / Checksum
+    value = (IP_PROTOCOL_UDP << 24) + (IP_TIME_TO_LIVE << 16) + IP_FLAG_FRAG;
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 5, value); // UDP protocol, TTL, flags & fragment count
 
-		value = (fpgaIP[1] << 24) + (fpgaIP[0] << 16) + (hostIP[3] << 8) + hostIP[2];
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 7, value); // UDP Block 0 IP Src Addr / Dest Addr
+    value = (hostIP[1] << 24) + (hostIP[0] << 16) + (0xDE << 8) + 0xAD;
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 6, value); // UDP Block 0 IP Dest Addr / Checksum
 
-		value = ((fpgaPort & 0xff) << 24) + ((fpgaPort & 0xff00) << 8) + (fpgaIP[3] << 8) + fpgaIP[2];
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 8, value); // UDP Block 0 IP Src Port / Src Addr
+    value = (fpgaIP[1] << 24) + (fpgaIP[0] << 16) + (hostIP[3] << 8) + hostIP[2];
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 7, value); // UDP Block 0 IP Src Addr / Dest Addr
 
-		value = (UDP_LENGTH_BASE << 16) + ((hostPort & 0xff) << 8) + (hostPort >> 8);
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 9, value); // UDP Block 0 UDP Length / Dest Port
+    value = ((fpgaPort & 0xff) << 24) + ((fpgaPort & 0xff00) << 8) + (fpgaIP[3] << 8) + fpgaIP[2];
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 8, value); // UDP Block 0 IP Src Port / Src Addr
 
-		value = PACKET_SPLIT_SIZE;
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 0xC, value); // UDP Block 0 Packet Size
+    value = (UDP_LENGTH_BASE << 16) + ((hostPort & 0xff) << 8) + (hostPort >> 8);
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 9, value); // UDP Block 0 UDP Length / Dest Port
 
-		value = INT_PKT_GAP_VAL;
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 0xD, value); // UDP Block 0 IFG Value
+    value = PACKET_SPLIT_SIZE;
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 0xC, value); // UDP Block 0 Packet Size
 
-		uint32_t mode_reg = this->rdmaRead(kTenGigUdpRdmaAddr + 0xF);
-		mode_reg |= INT_PKT_GAP_EN;
-		this->rdmaWrite(kTenGigUdpRdmaAddr + 0xF, mode_reg); // UDP Block 0 IFG Enable
+    value = INT_PKT_GAP_VAL;
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 0xD, value); // UDP Block 0 IFG Value
 
-	} catch (FemClientException& e) {
-		std::cerr << "Exception caught during configUDP: " << e.what() << std::endl;
-		rc = -1;
-	}
-	return rc;
+    uint32_t mode_reg = this->rdmaRead(kTenGigUdpRdmaAddr + 0xF);
+    mode_reg |= INT_PKT_GAP_EN;
+    this->rdmaWrite(kTenGigUdpRdmaAddr + 0xF, mode_reg); // UDP Block 0 IFG Enable
+
+  }
+  catch (FemClientException& e)
+  {
+    std::cerr << "Exception caught during configUDP: " << e.what() << std::endl;
+    rc = -1;
+  }
+  return rc;
 }
 
+u32 FemClient::configUDPFarmMode
+(
+    const std::string destMacAddress[], const std::string destIpAddress[],
+    const u32 destPort[], u32 num_lut_entries, const bool farmModeEnabled
+)
+{
+  u32 rc = 0;
+  std::vector<u32> ip_regs;
+  std::vector<u32> mac_regs;
+  std::vector<u32> port_regs;
 
-void FemClient::to_bytes(const char *ipName, unsigned char* b, int n, int base) {
-	char *end;
-	const char* iptr = ipName;
-	for (int i=0; i<n; i++) {
-		b[i] = (unsigned char) strtol(iptr, &end, base);
-		iptr = end + 1;
-	}
+  // Extract and parse the farm mode destination MAC, IP and port settings, limiting
+  // to valid entries only. Pack the parsed values into vectors to be loaded into
+  // the appropriate RDMA registers
+  for (unsigned int idx = 0; idx < num_lut_entries; idx++)
+  {
+
+    std::cout << "LUT table entry " << idx << " :  IP:" << destIpAddress[idx]
+              << " MAC:" << destMacAddress[idx] << " port:" << destPort[idx] << std::endl;
+
+    ip_regs.push_back(farmIpRegFromStr(destIpAddress[idx]));
+    std::vector<u32> mac_reg_vals = farmMacRegFromStr(destMacAddress[idx]);
+    mac_regs.insert(mac_regs.end(), mac_reg_vals.begin(), mac_reg_vals.end());
+    port_regs.push_back(destPort[idx]);
+  }
+
+  // Write the port, IP and MAC settings into the appropriate RDMA registers
+  this->rdmaWrite(kTenGigUdpRdmaAddr + 0x10000, port_regs);
+  this->rdmaWrite(kTenGigUdpRdmaAddr + 0x10100, ip_regs);
+  this->rdmaWrite(kTenGigUdpRdmaAddr + 0x10200, mac_regs);
+
+  // Modify the farm mode enable bit in the register as appropriate
+  std::cout << "Setting UDP farm mode to " << (farmModeEnabled ? "enabled" : "disabled")
+      << std::endl;
+  u32 mode_reg = this->rdmaRead(kTenGigUdpRdmaAddr + 0xF);
+  mode_reg = (farmModeEnabled ? (mode_reg | (1 << 5)) : (mode_reg & ~(1<<5)));
+  this->rdmaWrite(kTenGigUdpRdmaAddr + 0xF, mode_reg);
+
+  return rc;
+}
+
+void FemClient::to_bytes(const char *ipName, unsigned char* b, int n, int base)
+{
+  char *end;
+  const char* iptr = ipName;
+  for (int i = 0; i < n; i++)
+  {
+    b[i] = (unsigned char) strtol(iptr, &end, base);
+    iptr = end + 1;
+  }
+}
+
+u32 FemClient::farmIpRegFromStr(std::string ip_str)
+{
+  std::string octet;
+  std::istringstream octet_stream(ip_str);
+  u32 ip_reg = 0;
+
+  while (std::getline(octet_stream, octet, '.'))
+  {
+    char *end;
+    ip_reg = (ip_reg << 8) | ((strtol(octet.c_str(), &end, 10)) & 0xFF);
+  }
+
+  return ip_reg;
+}
+
+std::vector<u32> FemClient::farmMacRegFromStr(std::string mac_str)
+{
+  std::string octet;
+  std::istringstream octet_stream(mac_str);
+  u32 reg_val = 0;
+  std::vector<u32> mac_reg;
+
+  unsigned int octet_count = 0;
+  while (std::getline(octet_stream, octet, ':'))
+  {
+    char *end;
+    reg_val = (reg_val << 8) | ((strtol(octet.c_str(), &end, 16)) & 0xFF);
+    if (++octet_count == 2) {
+      mac_reg.insert(mac_reg.begin(), reg_val);
+      reg_val = 0;
+    }
+  }
+  mac_reg.insert(mac_reg.begin(), reg_val);
+
+  return mac_reg;
+
 }
 
 /** getMacAddressFromIP - get the MAC address corresponding to the given IP address
@@ -120,73 +236,86 @@ void FemClient::to_bytes(const char *ipName, unsigned char* b, int n, int base) 
  * @param ip byte array containing the IP address
  * @return the mac address of the interface as a byte array or NULL if not found
  */
-int FemClient::getMacAddressFromIP(const char *ipName, char* mac_str) {
+int FemClient::getMacAddressFromIP(const char *ipName, char* mac_str)
+{
 
-	struct ifaddrs *ifaddr, *ifa;
-	int family, s;
-	char host[NI_MAXHOST];
-	struct sockaddr *sdl;
-	unsigned char *ptr;
-	char *ifa_name = NULL;
-	unsigned char* mac_addr = (unsigned char*) calloc(sizeof(unsigned char), 6);
+  struct ifaddrs *ifaddr, *ifa;
+  int family, s;
+  char host[NI_MAXHOST];
+  struct sockaddr *sdl;
+  unsigned char *ptr;
+  char *ifa_name = NULL;
+  unsigned char* mac_addr = (unsigned char*) calloc(sizeof(unsigned char), 6);
 
-	if (getifaddrs(&ifaddr) == -1) {
-		return -1;
-	}
+  if (getifaddrs(&ifaddr) == -1)
+  {
+    return -1;
+  }
 
+  //iterate to find interface name for given server_ip
+  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+  {
+    if (ifa->ifa_addr != NULL)
+    {
+      family = ifa->ifa_addr->sa_family;
+      if (family == AF_INET)
+      {
+        s = getnameinfo(
+            ifa->ifa_addr,
+            (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host,
+            NI_MAXHOST,
+            NULL, 0, NI_NUMERICHOST);
+        if (s != 0)
+        {
+          return -1;
+        }
+        if (strcmp(host, ipName) == 0)
+        {
+          ifa_name = ifa->ifa_name;
+        }
+      }
+    }
+  }
+  if (ifa_name == NULL)
+  {
+    return -1;
+  }
 
-	//iterate to find interface name for given server_ip
-	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if (ifa->ifa_addr != NULL) {
-			family = ifa->ifa_addr->sa_family;
-			if (family == AF_INET) {
-				s = getnameinfo(ifa->ifa_addr,
-						(family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host,
-						NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-				if (s != 0) {
-					return -1;
-				}
-				if (strcmp(host, ipName) == 0) {
-					ifa_name = ifa->ifa_name;
-				}
-			}
-		}
-	}
-	if (ifa_name == NULL) {
-		return -1;
-	}
+  int i;
+  //iterate to find corresponding MAC address
+  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+  {
+    family = ifa->ifa_addr->sa_family;
+    if (family == PF_PACKET && strcmp(ifa_name, ifa->ifa_name) == 0)
+    {
+      sdl = (struct sockaddr *) (ifa->ifa_addr);
+      ptr = (unsigned char *) sdl->sa_data;
+      ptr += 10;
+      for (i = 0; i < 6; i++)
+      {
+        mac_addr[i] = *ptr++;
+      }
+      break;
+    }
+  }
+  freeifaddrs(ifaddr);
 
-	int i;
-	//iterate to find corresponding MAC address
-	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		family = ifa->ifa_addr->sa_family;
-		if (family == PF_PACKET && strcmp(ifa_name, ifa->ifa_name) == 0) {
-			sdl = (struct sockaddr *) (ifa->ifa_addr);
-			ptr = (unsigned char *) sdl->sa_data;
-			ptr += 10;
-			for (i=0; i<6; i++) {
-				mac_addr[i] = *ptr++;
-			}
-			break;
-		}
-	}
-	freeifaddrs(ifaddr);
+  sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2],
+          mac_addr[3], mac_addr[4], mac_addr[5]);
 
-	sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-
-	return 0;
+  return 0;
 }
 
 char* FemClient::getFpgaIpAddressFromHost(const char *ipAddr)
 {
 
-	struct in_addr addr;
-	if (inet_aton(ipAddr, &addr) == 0)
-	{
-		std::cout << "Invalid address: " << ipAddr <<std::endl;
-		return NULL;
-	}
-	addr.s_addr += 1 << 24;
-	return inet_ntoa(addr);
+  struct in_addr addr;
+  if (inet_aton(ipAddr, &addr) == 0)
+  {
+    std::cout << "Invalid address: " << ipAddr << std::endl;
+    return NULL;
+  }
+  addr.s_addr += 1 << 24;
+  return inet_ntoa(addr);
 
 }

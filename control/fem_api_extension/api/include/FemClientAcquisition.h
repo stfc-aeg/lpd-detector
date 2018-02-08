@@ -10,16 +10,15 @@
 
 typedef enum
 {
-	acquireIdle = 0,
-	acquireConfigBusy,
-	acquireConfigNormal,
-	acquireConfigUpload,
-	acquireConfigStopping
+  acquireIdle = 0,
+  acquireConfigBusy,
+  acquireConfigNormal,
+  acquireConfigUpload,
+  acquireConfigStopping
 
 } FemAcquireState;
 
 typedef protocol_acq_config FemAcquireConfiguration;
 typedef acqStatusBlock FemAcquireStatus;
-
 
 #endif /* FEMCLIENTACQUISITION_H_ */

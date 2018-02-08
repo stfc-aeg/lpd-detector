@@ -19,14 +19,25 @@ typedef void (ExcaliburFemClient::*ExcaliburScanFunc)(void);
 
 ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCallbacks,
     const CtlConfig* aConfig, unsigned int aTimeoutInMsecs) :
-    FemClient (aConfig->femAddress, aConfig->femPort, aTimeoutInMsecs), mFemId (aConfig->femNumber),
-    mMpx3GlobalTestPulseEnable (false), mMpx3TestPulseCount (4000), mDataReceiverEnable (true),
-    mCtlHandle (aCtlHandle), mCallbacks (aCallbacks), mConfig (aConfig),
-    mAsicDataReorderMode (reorderedDataMode), mNumSubFrames (2),
-    mTriggerMode (excaliburTriggerModeInternal),
-    mTriggerPolarity (excaliburTriggerPolarityActiveHigh), mBurstModeSubmitPeriod (0),
-    mLfsrBypassEnable (false), mEnableDeferredBufferRelease (false), mDacScanDac (0),
-    mDacScanStart (0), mDacScanStop (0), mDacScanStep (0)
+    FemClient(aConfig->femAddress, aConfig->femPort, aTimeoutInMsecs),
+    mFemId(aConfig->femNumber),
+    mMpx3GlobalTestPulseEnable(false),
+    mMpx3TestPulseCount(4000),
+    mDataReceiverEnable(true),
+    mCtlHandle(aCtlHandle),
+    mCallbacks(aCallbacks),
+    mConfig(aConfig),
+    mAsicDataReorderMode(reorderedDataMode),
+    mNumSubFrames(2),
+    mTriggerMode(excaliburTriggerModeInternal),
+    mTriggerPolarity(excaliburTriggerPolarityActiveHigh),
+    mBurstModeSubmitPeriod(0),
+    mLfsrBypassEnable(false),
+    mEnableDeferredBufferRelease(false),
+    mDacScanDac(0),
+    mDacScanStart(0),
+    mDacScanStop(0),
+    mDacScanStep(0)
 {
 
   // Initialize MPX3 DAC settings, values and pixel config caches to zero
@@ -88,65 +99,49 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
   //this->frontEndDacInitialise();
 
   // Build callback bundle to be registered with the data receiver
-  mCallbackBundle.allocate = boost::bind (&ExcaliburFemClient::allocateCallback, this);
-  mCallbackBundle.free = boost::bind (&ExcaliburFemClient::freeCallback, this, _1);
-  mCallbackBundle.receive = boost::bind (&ExcaliburFemClient::receiveCallback, this, _1, _2);
-  mCallbackBundle.signal = boost::bind (&ExcaliburFemClient::signalCallback, this, _1);
+  mCallbackBundle.allocate = boost::bind(&ExcaliburFemClient::allocateCallback, this);
+  mCallbackBundle.free = boost::bind(&ExcaliburFemClient::freeCallback, this, _1);
+  mCallbackBundle.receive = boost::bind(&ExcaliburFemClient::receiveCallback, this, _1, _2);
+  mCallbackBundle.signal = boost::bind(&ExcaliburFemClient::signalCallback, this, _1);
+
+  // Clear data source and destination addressing tables
+  for (unsigned int i = 0; i < kFarmModeLutSize; i++)
+  {
+    mDataDestIpAddress[i] = "0.0.0.0";
+    mDataDestMacAddress[i] = "00:00:00:00:00:00";
+    mDataDestPort[i] = 0;
+  }
 
   // Set up default source and destination data connection addresses and ports
-  mDataDestIpAddress = "10.0.2.1";
+  mDataDestIpAddress[0] = "10.0.2.1";
   char dest_mac[18];
 
-  if (this->getMacAddressFromIP (mDataDestIpAddress.c_str (), (char*) dest_mac) == 0)
+  if (this->getMacAddressFromIP(mDataDestIpAddress[0].c_str(), (char*) dest_mac) == 0)
   {
-    mDataDestMacAddress = dest_mac;
+    mDataDestMacAddress[0] = dest_mac;
   }
   else
   {
     std::cout << "Warning, failed to resolve default destination MAC address, setting to zero"
         << std::endl;
-    mDataDestMacAddress = "00:00:00:00:00:00";
+    mDataDestMacAddress[0] = "00:00:00:00:00:00";
   }
-  mDataDestPort = kDataDestPort;
+  mDataDestPort[0] = kDataDestPort;
 
-  mDataSourceIpAddress = this->getFpgaIpAddressFromHost (mDataDestIpAddress.c_str ());
+  mDataSourceIpAddress = this->getFpgaIpAddressFromHost(mDataDestIpAddress[0].c_str());
   mDataSourceMacAddress = "62:00:00:00:00:01";
   mDataSourcePort = kDataSourcePort;
 
-  // Resolve data connection source and destination IP addresses from config
-//	const char* hostIpAddress = aConfig->dataAddress;
-//	char* fpgaIpAddress = this->getFpgaIpAddressFromHost(hostIpAddress);
-//	const char* fpgaMacAddress = "62:00:00:00:00:01";
-//	u32 hostPort = kHostDataPort;
-//	u32 fpgaPort = 8;
-//	std::cout << "Configuring 10GigE data interface: host IP: " << hostIpAddress << " port: " << hostPort
-//			  << " FEM data IP: " << fpgaIpAddress << " port: " << fpgaPort << " MAC: " << fpgaMacAddress << std::endl;
-//
-//	// Initialise 10GigE UDP interface in FEM
-//	u32 rc = this->configUDP((char *)fpgaMacAddress, fpgaIpAddress, fpgaPort, (char *)hostIpAddress, hostPort);
-//	if (rc != 0)
-//	{
-//		throw FemClientException((FemClientErrorCode)excaliburFemClientUdpSetupFailed, "Failed to set up FEM UDP firmware block");
-//	}
-
-//	try
-//	{
-//		mFemDataReceiver = new FemDataReceiver(mFemDataHostPort);
-//	}
-//	catch (boost::system::system_error &e)
-//	{
-//		std::ostringstream msg;
-//		msg << "Failed to create FEM data receiver: " << e.what();
-//		throw FemClientException((FemClientErrorCode)excaliburFemClientDataReceviverSetupFailed, msg.str());
-//	}
+  mDataFarmModeEnable = false;
+  mDataFarmModeNumDestinations = 1;
 
   // Check DMA engine acquisition state and reset to IDLE if in a different state
-  FemAcquireStatus acqStatus = this->acquireStatus ();
+  FemAcquireStatus acqStatus = this->acquireStatus();
   if (acqStatus.state != acquireIdle)
   {
     std::cout << "Acquisition state at startup is " << acqStatus.state << " sending stop to reset"
         << std::endl;
-    this->acquireStop ();
+    this->acquireStop();
   }
   else
   {
@@ -180,14 +175,14 @@ BufferInfo ExcaliburFemClient::allocateCallback(void)
   // If the frame queue is empty (i.e. no pre-allocated frame buffers), request
   // a frame via the callback, otherwise use the front-most frame in the queue
 
-  if (mFrameQueue.empty ())
+  if (mFrameQueue.empty())
   {
-    frame = mCallbacks->ctlAllocate (mCtlHandle);
-    mFrameQueue.push_back (frame);
+    frame = mCallbacks->ctlAllocate(mCtlHandle);
+    mFrameQueue.push_back(frame);
   }
   else
   {
-    frame = mFrameQueue.front ();
+    frame = mFrameQueue.front();
   }
 
   // TODO handle frame being NULL here
@@ -203,7 +198,7 @@ BufferInfo ExcaliburFemClient::allocateCallback(void)
 void ExcaliburFemClient::freeCallback(int aVal)
 {
 
-  mCallbacks->ctlFree (mCtlHandle, 0);
+  mCallbacks->ctlFree(mCtlHandle, 0);
 
 }
 
@@ -211,7 +206,7 @@ void ExcaliburFemClient::receiveCallback(int aFrameCounter, time_t aRecvTime)
 {
 
   // Get the first frame on our queue
-  CtlFrame* frame = mFrameQueue.front ();
+  CtlFrame* frame = mFrameQueue.front();
 
   // Fill fields into frame metadata
   frame->frameCounter = aFrameCounter;
@@ -222,15 +217,15 @@ void ExcaliburFemClient::receiveCallback(int aFrameCounter, time_t aRecvTime)
   // to release the frame
   if (mEnableDeferredBufferRelease)
   {
-    mReleaseQueue.push_back (frame);
+    mReleaseQueue.push_back(frame);
   }
   else
   {
-    mCallbacks->ctlReceive (mCtlHandle, frame);
+    mCallbacks->ctlReceive(mCtlHandle, frame);
   }
 
   // Pop the frame off the queue
-  mFrameQueue.pop_front ();
+  mFrameQueue.pop_front();
 
 }
 
@@ -253,7 +248,7 @@ void ExcaliburFemClient::signalCallback(int aSignal)
       // out through the receive callback at the requested rate
       if (mEnableDeferredBufferRelease)
       {
-        this->releaseAllFrames ();
+        this->releaseAllFrames();
       }
       break;
 
@@ -268,7 +263,7 @@ void ExcaliburFemClient::signalCallback(int aSignal)
 
   }
 
-  mCallbacks->ctlSignal (mCtlHandle, theSignal);
+  mCallbacks->ctlSignal(mCtlHandle, theSignal);
 
 }
 
@@ -276,24 +271,23 @@ void ExcaliburFemClient::preallocateFrames(unsigned int aNumFrames)
 {
   for (unsigned int i = 0; i < aNumFrames; i++)
   {
-    CtlFrame* frame = mCallbacks->ctlAllocate (mCtlHandle);
+    CtlFrame* frame = mCallbacks->ctlAllocate(mCtlHandle);
     if (frame != NULL)
     {
-      mFrameQueue.push_back (frame);
+      mFrameQueue.push_back(frame);
     }
     else
     {
-      throw FemClientException ((FemClientErrorCode) excaliburFemClientBufferAllocateFailed,
-                                "Buffer allocation callback failed");
+      throw FemClientException((FemClientErrorCode) excaliburFemClientBufferAllocateFailed,
+                               "Buffer allocation callback failed");
     }
   }
-  std::cout << "Preallocate complete - frame queue size is now " << mFrameQueue.size ()
-      << std::endl;
+  std::cout << "Preallocate complete - frame queue size is now " << mFrameQueue.size() << std::endl;
 }
 
 void ExcaliburFemClient::releaseAllFrames(void)
 {
-  int numFramesToRelease = mReleaseQueue.size ();
+  int numFramesToRelease = mReleaseQueue.size();
   std::cout << "Deferred buffer release - draining release queue of " << numFramesToRelease
       << " frames" << std::endl;
 
@@ -304,20 +298,20 @@ void ExcaliburFemClient::releaseAllFrames(void)
     { releaseSecs, releaseNsecs };
 
   struct timespec startTime, endTime;
-  clock_gettime (CLOCK_REALTIME, &startTime);
+  clock_gettime(CLOCK_REALTIME, &startTime);
 
-  while (mReleaseQueue.size () > 0)
+  while (mReleaseQueue.size() > 0)
   {
-    CtlFrame* frame = mReleaseQueue.front ();
-    mCallbacks->ctlReceive (mCtlHandle, frame);
-    mReleaseQueue.pop_front ();
+    CtlFrame* frame = mReleaseQueue.front();
+    mCallbacks->ctlReceive(mCtlHandle, frame);
+    mReleaseQueue.pop_front();
     if (mBurstModeSubmitPeriod > 0.0)
     {
-      nanosleep ((const struct timespec *) &releasePeriod, NULL);
+      nanosleep((const struct timespec *) &releasePeriod, NULL);
     }
   }
 
-  clock_gettime (CLOCK_REALTIME, &endTime);
+  clock_gettime(CLOCK_REALTIME, &endTime);
   double startSecs = startTime.tv_sec + ((double) startTime.tv_nsec / 1.0E9);
   double endSecs = endTime.tv_sec + ((double) endTime.tv_nsec / 1.0E9);
   double elapsedSecs = endSecs - startSecs;
@@ -331,11 +325,11 @@ void ExcaliburFemClient::releaseAllFrames(void)
 void ExcaliburFemClient::freeAllFrames(void)
 {
 
-  while (mFrameQueue.size () > 0)
+  while (mFrameQueue.size() > 0)
   {
-    CtlFrame* frame = mFrameQueue.front ();
-    mCallbacks->ctlFree (mCtlHandle, frame);
-    mFrameQueue.pop_front ();
+    CtlFrame* frame = mFrameQueue.front();
+    mCallbacks->ctlFree(mCtlHandle, frame);
+    mFrameQueue.pop_front();
   }
 
 }
@@ -346,17 +340,17 @@ void ExcaliburFemClient::command(unsigned int aCommand)
   switch (aCommand)
   {
     case FEM_OP_STARTACQUISITION:
-      this->startAcquisition ();
+      this->startAcquisition();
       //this->toyAcquisition();
       break;
 
     case FEM_OP_STOPACQUISITION:
-      this->stopAcquisition ();
+      this->stopAcquisition();
       break;
 
     default:
       theCommand = aCommand;
-      FemClient::command (theCommand);
+      FemClient::command(theCommand);
       break;
   }
 
@@ -367,10 +361,10 @@ void ExcaliburFemClient::toyAcquisition(void)
   std::cout << "Running toy acquisition loop for numFrames=" << mNumFrames << std::endl;
   for (unsigned int iBuffer = 0; iBuffer < mNumFrames; iBuffer++)
   {
-    BufferInfo aBuffer = this->allocateCallback ();
-    this->receiveCallback (iBuffer, (time_t) 1234);
+    BufferInfo aBuffer = this->allocateCallback();
+    this->receiveCallback(iBuffer, (time_t) 1234);
   }
-  this->signalCallback (FemDataReceiverSignal::femAcquisitionComplete);
+  this->signalCallback(FemDataReceiverSignal::femAcquisitionComplete);
   std::cout << "Ending toy acq loop" << std::endl;
 
 }
@@ -380,38 +374,68 @@ void ExcaliburFemClient::startAcquisition(void)
 
   struct timespec startTime, endTime;
 
-  clock_gettime (CLOCK_REALTIME, &startTime);
+  clock_gettime(CLOCK_REALTIME, &startTime);
 
   // Create a data receiver object if enabled
   if (mDataReceiverEnable)
   {
     try
     {
-      mFemDataReceiver = new FemDataReceiver (mDataDestPort);
+      mFemDataReceiver = new FemDataReceiver(mDataDestPort[0]);
     }
     catch (boost::system::system_error &e)
     {
       std::ostringstream msg;
-      msg << "Failed to create FEM data receiver: " << e.what ();
-      throw FemClientException ((FemClientErrorCode) excaliburFemClientDataReceviverSetupFailed,
-                                msg.str ());
+      msg << "Failed to create FEM data receiver: " << e.what();
+      throw FemClientException((FemClientErrorCode) excaliburFemClientDataReceviverSetupFailed,
+                               msg.str());
     }
   }
 
   // Configure the 10GigE UDP interface on the FEM
-  std::cout << "Configuring UDP data interface: source IP:" << mDataSourceIpAddress << " MAC:"
-      << mDataSourceMacAddress << " port:" << mDataSourcePort << " dest IP:" << mDataDestIpAddress
-      << " MAC:" << mDataDestMacAddress << " port:" << mDataDestPort << std::endl;
 
-  u32 rc = this->configUDP (mDataSourceMacAddress.c_str (), mDataSourceIpAddress.c_str (),
-                            mDataSourcePort, mDataDestMacAddress.c_str (),
-                            mDataDestIpAddress.c_str (), mDataDestPort);
-  if (rc != 0)
+  std::cout << "Configuring UDP data interface: source IP:" << mDataSourceIpAddress << " MAC:"
+      << mDataSourceMacAddress << " port:" << mDataSourcePort << " dest IP:" << mDataDestIpAddress[0]
+      << " MAC:" << mDataDestMacAddress[0] << " port:" << mDataDestPort[0] << std::endl;
+
+  // Validate the farm mode LUT parameters, determining the number of consecutive valid entries
+  u32 valid_lut_entries = 0;
+  while ((mDataDestMacAddress[valid_lut_entries] != "00:00:00:00:00:00") &&
+      (mDataDestIpAddress[valid_lut_entries] != "0.0.0.0") &&
+      (mDataDestPort[valid_lut_entries] > 0))
   {
-    throw FemClientException ((FemClientErrorCode) excaliburFemClientUdpSetupFailed,
-                              "Failed to set up FEM 10GigE UDP data interface");
+    valid_lut_entries++;
+  }
+  std::cout << "UDP farm mode configuration has " << valid_lut_entries << " valid LUT entries" << std::endl;
+
+  // Set the number of farm mode destinations to use, warning and truncating if this is greater
+  // than the number of valid LUT entries - note this is distinct from the underlying 10GigE UDP
+  // firmware block
+  if (mDataFarmModeNumDestinations > valid_lut_entries)
+  {
+    std::cout << "WARNING: requested number of farm mode destinations " <<
+        mDataFarmModeNumDestinations << "exceeds valid LUT entries, truncating" << std::endl;
+    mDataFarmModeNumDestinations = valid_lut_entries;
   }
 
+  std::cout << "Setting number of UDP farm mode destinations to " << mDataFarmModeNumDestinations << std::endl;
+  this->asicControlFarmModeNumDestinationsSet(mDataFarmModeNumDestinations);
+
+  // Reset the LUT counter in the top-level block so each acquisition starts sending data to the
+  // same node
+  this->asicControlFarmModeLutReset();
+
+  // Load the UDP core and farm mode configuration into the 10GigE UDP block on the FEM
+  u32 rc = this->configUDP(mDataSourceMacAddress, mDataSourceIpAddress, mDataSourcePort,
+                           mDataDestMacAddress, mDataDestIpAddress, mDataDestPort,
+                           mDataFarmModeNumDestinations, mDataFarmModeEnable);
+  if (rc != 0)
+  {
+    throw FemClientException((FemClientErrorCode) excaliburFemClientUdpSetupFailed,
+                             "Failed to set up FEM 10GigE UDP data interface");
+  }
+
+  // Set the number of farm mode destinations in the top-level firmware control register
   // Default values for various acquisition parameters
   u32 acqMode, numAcq, bdCoalesce = 0;
   unsigned int numRxFrames = mNumFrames; // Default data receiver to receive specified number of frames
@@ -449,7 +473,7 @@ void ExcaliburFemClient::startAcquisition(void)
       bdCoalesce = 1;
       mEnableDeferredBufferRelease = false;
       enableFrameCounterCheck = false;
-      numRxFrames = this->dacScanNumSteps (); // Override number of frames to receive based on number of steps in scan
+      numRxFrames = this->dacScanNumSteps(); // Override number of frames to receive based on number of steps in scan
       clientAcquisitionControl = false; // FEM will be in control of acquisition sequence for DAC scan
       theScanFunc = &ExcaliburFemClient::dacScanExecute; // Set scan function pointer to DAC scan execute member function
       break;
@@ -472,8 +496,8 @@ void ExcaliburFemClient::startAcquisition(void)
     {
       std::ostringstream msg;
       msg << "Cannot start acquisition, illegal operation mode specified: " << mOperationMode;
-      throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalOperationMode,
-                                msg.str ());
+      throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalOperationMode,
+                               msg.str());
     }
       break;
   }
@@ -507,8 +531,8 @@ void ExcaliburFemClient::startAcquisition(void)
       std::ostringstream msg;
       msg << "Cannot start acquisition, illegal counter depth specified: "
           << mMpx3OmrParams[0].counterDepth;
-      throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalCounterDepth,
-                                msg.str ());
+      throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalCounterDepth,
+                               msg.str());
     }
       break;
   }
@@ -517,29 +541,29 @@ void ExcaliburFemClient::startAcquisition(void)
   if (doMatrixClearFirst)
   {
     std::cout << "Executing ASIC fast matrix clear" << std::endl;
-    this->asicControlFastMatrixClear ();
-    usleep (10);
+    this->asicControlFastMatrixClear();
+    usleep(10);
   }
 
   // Set up counter depth for ASIC control based on current OMR settings
-  this->asicControlCounterDepthSet (mMpx3OmrParams[0].counterDepth);
+  this->asicControlCounterDepthSet(mMpx3OmrParams[0].counterDepth);
 
   // Set LFSR decode mode
-  this->asicControlLfsrDecodeModeSet (lfsrMode);
+  this->asicControlLfsrDecodeModeSet(lfsrMode);
 
   // Set ASIC data reordering mode
-  this->asicControlDataReorderModeSet (reorderMode);
+  this->asicControlDataReorderModeSet(reorderMode);
 
   // Set up the readout length in clock cycles for the ASIC control block
-  unsigned int readoutLengthCycles = this->asicReadoutLengthCycles ();
-  this->asicControlReadoutLengthSet (readoutLengthCycles);
+  unsigned int readoutLengthCycles = this->asicReadoutLengthCycles();
+  this->asicControlReadoutLengthSet(readoutLengthCycles);
 
   // Set up the acquisition DMA controller and arm it, based on operation mode
-  unsigned int dmaSize = this->asicReadoutDmaSize ();
+  unsigned int dmaSize = this->asicReadoutDmaSize();
   //std::cout << "Configuring DMA controller" << std::endl;
-  this->acquireConfig (acqMode, dmaSize, 0, numAcq, bdCoalesce);
+  this->acquireConfig(acqMode, dmaSize, 0, numAcq, bdCoalesce);
   //std::cout << "Starting DMA controller" << std::endl;
-  this->acquireStart ();
+  this->acquireStart();
   //std::cout << "Done" <<std::endl;
 
   if (mDataReceiverEnable)
@@ -548,33 +572,33 @@ void ExcaliburFemClient::startAcquisition(void)
     // Pre-allocate frame buffers for data receiver if necessary
     if (bufferPreAllocate)
     {
-      this->preallocateFrames (numRxFrames);
+      this->preallocateFrames(numRxFrames);
     }
 
     // Register callbacks for data receiver
-    mFemDataReceiver->registerCallbacks (&mCallbackBundle);
+    mFemDataReceiver->registerCallbacks(&mCallbackBundle);
 
     // Set up the number of frames, acquisition period and time for the receiver thread
-    mFemDataReceiver->setNumFrames (numRxFrames);
-    mFemDataReceiver->setAcquisitionPeriod (mAcquisitionPeriodMs);
-    mFemDataReceiver->setAcquisitionTime (mAcquisitionTimeMs);
+    mFemDataReceiver->setNumFrames(numRxFrames);
+    mFemDataReceiver->setAcquisitionPeriod(mAcquisitionPeriodMs);
+    mFemDataReceiver->setAcquisitionTime(mAcquisitionTimeMs);
 
     // Set up frame length and header sizes for the data receiver thread
-    mFemDataReceiver->setFrameHeaderLength (8);
-    mFemDataReceiver->setFrameHeaderPosition (headerAtStart);
-    mFemDataReceiver->setNumSubFrames (mNumSubFrames);
+    mFemDataReceiver->setFrameHeaderLength(8);
+    mFemDataReceiver->setFrameHeaderPosition(headerAtStart);
+    mFemDataReceiver->setNumSubFrames(mNumSubFrames);
 
-    unsigned int frameDataLengthBytes = this->frameDataLengthBytes ();
-    mFemDataReceiver->setFrameLength (frameDataLengthBytes);
+    unsigned int frameDataLengthBytes = this->frameDataLengthBytes();
+    mFemDataReceiver->setFrameLength(frameDataLengthBytes);
 
     bool hasFrameCounter = (reorderMode == reorderedDataMode) ? true : false;
     std::cout << "Setting frame counter mode to " << (hasFrameCounter ? "true" : "false")
         << std::endl;
-    mFemDataReceiver->enableFrameCounter (hasFrameCounter);
-    mFemDataReceiver->enableFrameCounterCheck (enableFrameCounterCheck);
+    mFemDataReceiver->enableFrameCounter(hasFrameCounter);
+    mFemDataReceiver->enableFrameCounterCheck(enableFrameCounterCheck);
 
     // Start the data receiver thread
-    mFemDataReceiver->startAcquisition ();
+    mFemDataReceiver->startAcquisition();
 
   }
   else
@@ -593,12 +617,12 @@ void ExcaliburFemClient::startAcquisition(void)
       case sequentialReadWriteMode:
       {
         // Set up the number of frames to be acquired in the ASIC control block
-        this->asicControlNumFramesSet (numRxFrames);
+        this->asicControlNumFramesSet(numRxFrames);
 
         // Set up the acquisition time in the ASIC control block, converting from milliseconds
         // to microseconds. Set both shutters to the same value (why??)
         unsigned int shutterTime = mAcquisitionTimeMs * 1000;
-        this->asicControlShutterDurationSet (shutterTime, shutterTime);
+        this->asicControlShutterDurationSet(shutterTime, shutterTime);
       }
         break;
 
@@ -616,10 +640,10 @@ void ExcaliburFemClient::startAcquisition(void)
 
         std::cout << "CRW mode, setting shutter 0 duration to " << shutter0Time
             << "us and shutter 1 duration to " << shutter1Time << "us" << std::endl;
-        this->asicControlShutterDurationSet (shutter0Time, shutter1Time);
+        this->asicControlShutterDurationSet(shutter0Time, shutter1Time);
 
         // Set frame counter to zero is this mode
-        this->asicControlNumFramesSet (0);
+        this->asicControlNumFramesSet(0);
 
       }
         break;
@@ -629,8 +653,8 @@ void ExcaliburFemClient::startAcquisition(void)
         std::ostringstream msg;
         msg << "Cannot start acquisition, illegal read write modeh specified: "
             << mMpx3OmrParams[0].readWriteMode;
-        throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalReadWriteMode,
-                                  msg.str ());
+        throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalReadWriteMode,
+                                 msg.str());
       }
         break;
 
@@ -656,7 +680,7 @@ void ExcaliburFemClient::startAcquisition(void)
         << firstChipActive << std::endl;
 
     // Set up the ASIC mux based on calculated chip mask
-    this->asicControlMuxSet (chipMask);
+    this->asicControlMuxSet(chipMask);
 
     // Check if test pulses are enabled on any enabled chip, if so set the global test pulse enable flag
     for (unsigned int iChip = 0; iChip < kNumAsicsPerFem; iChip++)
@@ -671,7 +695,7 @@ void ExcaliburFemClient::startAcquisition(void)
     {
       std::cout << "Enabling test pulse injection on FEM (count=" << mMpx3TestPulseCount << ")"
           << std::endl;
-      this->asicControlTestPulseCountSet (mMpx3TestPulseCount);
+      this->asicControlTestPulseCountSet(mMpx3TestPulseCount);
     }
 
     // Set up OMR mode and execute command based on which counter is selected
@@ -690,8 +714,8 @@ void ExcaliburFemClient::startAcquisition(void)
       {
         std::ostringstream msg;
         msg << "Cannot start acquisition, illegal counter select specified: " << mMpx3CounterSelect;
-        throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalCounterSelect,
-                                  msg.str ());
+        throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalCounterSelect,
+                                 msg.str());
       }
 
         break;
@@ -699,9 +723,9 @@ void ExcaliburFemClient::startAcquisition(void)
 
     // Set up the OMR for readout using the first active chip to retrieve
     // default values for OMR fields
-    mpx3Omr theOmr = this->mpx3OMRBuild (firstChipActive, omrMode);
+    mpx3Omr theOmr = this->mpx3OMRBuild(firstChipActive, omrMode);
     //std::cout << "Using MPX OMR: 0x" << std::hex << theOmr.raw << std::dec << std::endl;
-    this->asicControlOmrSet (theOmr);
+    this->asicControlOmrSet(theOmr);
 
     // Enable test pulses in the execute command if necessary
     if (mMpx3GlobalTestPulseEnable)
@@ -732,8 +756,8 @@ void ExcaliburFemClient::startAcquisition(void)
         {
           std::ostringstream msg;
           msg << "Cannot start acquisition, illegal trigger mode specified: " << mTriggerMode;
-          throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalTriggerMode,
-                                    msg.str ());
+          throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalTriggerMode,
+                                   msg.str());
         }
           break;
       }
@@ -758,8 +782,8 @@ void ExcaliburFemClient::startAcquisition(void)
       {
         std::ostringstream msg;
         msg << "Cannot start acquisition, illegal trigger polarity specified: " << mTriggerPolarity;
-        throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalTriggerPolarity,
-                                  msg.str ());
+        throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalTriggerPolarity,
+                                 msg.str());
       }
         break;
     }
@@ -767,11 +791,11 @@ void ExcaliburFemClient::startAcquisition(void)
     // Set the control configuration register accordingly
     std::cout << "Setting control configuration register to 0x" << std::hex << controlConfigRegister
         << std::dec << std::endl;
-    this->asicControlConfigRegisterSet (controlConfigRegister);
+    this->asicControlConfigRegisterSet(controlConfigRegister);
 
     // Execute the command
     std::cout << "Sending execute command 0x" << std::hex << executeCmd << std::dec << std::endl;
-    this->asicControlCommandExecute ((asicControlCommand) executeCmd);
+    this->asicControlCommandExecute((asicControlCommand) executeCmd);
 
   }
   else
@@ -781,17 +805,17 @@ void ExcaliburFemClient::startAcquisition(void)
     {
       std::cout << "Executing autonomous scan sequence with " << numRxFrames << " steps"
           << std::endl;
-      (this->*(theScanFunc)) ();
+      (this->*(theScanFunc))();
     }
     else
     {
-      throw FemClientException ((FemClientErrorCode) excaliburFemClientMissingScanFunction,
-                                "Missing scan function for this acquisition mode");
+      throw FemClientException((FemClientErrorCode) excaliburFemClientMissingScanFunction,
+                               "Missing scan function for this acquisition mode");
     }
 
   }
 
-  clock_gettime (CLOCK_REALTIME, &endTime);
+  clock_gettime(CLOCK_REALTIME, &endTime);
 
   double startSecs = startTime.tv_sec + ((double) startTime.tv_nsec / 1.0E9);
   double endSecs = endTime.tv_sec + ((double) endTime.tv_nsec / 1.0E9);
@@ -810,7 +834,7 @@ void ExcaliburFemClient::stopAcquisition(void)
   // system to a graceful halt. This is dependent on the operation mode currently in force.
   if (mFemDataReceiver != 0)
   {
-    if (mFemDataReceiver->acqusitionActive ())
+    if (mFemDataReceiver->acqusitionActive())
     {
       switch (mOperationMode)
       {
@@ -818,15 +842,15 @@ void ExcaliburFemClient::stopAcquisition(void)
         {
           std::cout << "Normal mode acquisition is still active, sending stop to FEM ASIC control"
               << std::endl;
-          this->asicControlCommandExecute (asicStopAcquisition);
+          this->asicControlCommandExecute(asicStopAcquisition);
 
           // Wait at least the acquisition time (shutter time) plus 500us readout time before
           // checking the state to allow last frame to be read out
-          usleep ((mAcquisitionTimeMs * 1000) + 500);
+          usleep((mAcquisitionTimeMs * 1000) + 500);
 
           // Read control state register for diagnostics
-          u32 ctrlState = this->rdmaRead (kExcaliburAsicCtrlState1);
-          framesRead = this->rdmaRead (kExcaliburAsicCtrlFrameCount);
+          u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
+          framesRead = this->rdmaRead(kExcaliburAsicCtrlFrameCount);
           std::cout << "FEM ASIC control has completed " << framesRead
               << " frames, control state register1: 0x" << std::hex << ctrlState << std::dec
               << std::endl;
@@ -849,7 +873,7 @@ void ExcaliburFemClient::stopAcquisition(void)
           doFullAcqStop = false;
 #else
           std::cout << "Performing asynchronous stop of DAC scan" << std::endl;
-          framesRead = this->dacScanAbort ();
+          framesRead = this->dacScanAbort();
 
 #endif
         }
@@ -859,8 +883,8 @@ void ExcaliburFemClient::stopAcquisition(void)
         {
           std::ostringstream msg;
           msg << "Cannot stop acquisition, illegal operation mode specified: " << mOperationMode;
-          throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalOperationMode,
-                                    msg.str ());
+          throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalOperationMode,
+                                   msg.str());
         }
           break;
 
@@ -875,7 +899,7 @@ void ExcaliburFemClient::stopAcquisition(void)
 
       while (acqCompletePending && (numAcqCompleteLoops < maxAcqCompleteLoops))
       {
-        FemAcquireStatus acqState = this->acquireStatus ();
+        FemAcquireStatus acqState = this->acquireStatus();
         std::cout << "Asynchronous stop of DMA acquisition loop: " << numAcqCompleteLoops
             << " attempts, ACQ state: " << acqState.state << " sent BDs: " << acqState.totalSent
             << std::endl;
@@ -888,7 +912,7 @@ void ExcaliburFemClient::stopAcquisition(void)
         else
         {
           numAcqCompleteLoops++;
-          usleep (mAcquisitionTimeMs * 1000);
+          usleep(mAcquisitionTimeMs * 1000);
         }
       }
       if (acqCompletePending)
@@ -905,12 +929,12 @@ void ExcaliburFemClient::stopAcquisition(void)
 
     // Send ACQUIRE stop command to the FEM
     //std::cout << "Sending acquire STOP to FEM" << std::endl;
-    this->acquireStop ();
+    this->acquireStop();
 
     if (mFemDataReceiver != 0)
     {
       // Ensure that the data receiver has stopped cleanly
-      mFemDataReceiver->stopAcquisition (framesRead);
+      mFemDataReceiver->stopAcquisition(framesRead);
 
       // Delete the data receiver
       delete (mFemDataReceiver);
@@ -919,7 +943,7 @@ void ExcaliburFemClient::stopAcquisition(void)
 
     // Reset ASIC control firmware block
     //std::cout << "Sending ASIC control reset to FEM" << std::endl;
-    this->asicControlReset ();
+    this->asicControlReset();
 
     //std::cout << "End of doFullAcqStop clause" << std::endl;
   }
@@ -986,7 +1010,7 @@ unsigned int ExcaliburFemClient::asicReadoutDmaSize(void)
 {
 
   // Get counter bit depth of ASIC
-  unsigned int counterBitDepth = this->mpx3CounterBitDepth (mMpx3OmrParams[0].counterDepth);
+  unsigned int counterBitDepth = this->mpx3CounterBitDepth(mMpx3OmrParams[0].counterDepth);
 
   // DMA size is (numRows * numCols * (numAsics/2) counterDepth /  8 bits per bytes
   unsigned int theLength = (kNumRowsPerAsic * kNumColsPerAsic * (kNumAsicsPerFem / 2)
@@ -998,8 +1022,8 @@ unsigned int ExcaliburFemClient::asicReadoutDmaSize(void)
 unsigned int ExcaliburFemClient::asicReadoutLengthCycles(void)
 {
 
-  unsigned int counterBitDepth = this->mpx3CounterBitDepth (mMpx3OmrParams[0].counterDepth);
-  unsigned int readoutBitWidth = this->mpx3ReadoutBitWidth (mMpx3OmrParams[0].readoutWidth);
+  unsigned int counterBitDepth = this->mpx3CounterBitDepth(mMpx3OmrParams[0].counterDepth);
+  unsigned int readoutBitWidth = this->mpx3ReadoutBitWidth(mMpx3OmrParams[0].readoutWidth);
 
   unsigned int theLength = (kNumRowsPerAsic * kNumColsPerAsic * counterBitDepth) / readoutBitWidth;
 
@@ -1013,7 +1037,7 @@ unsigned int ExcaliburFemClient::frameDataLengthBytes(void)
   unsigned int frameDataLengthBytes = 0;
 
   // Get the counter bit depth
-  unsigned int counterBitDepth = this->mpx3CounterBitDepth (mMpx3OmrParams[0].counterDepth);
+  unsigned int counterBitDepth = this->mpx3CounterBitDepth(mMpx3OmrParams[0].counterDepth);
 
   // Calculate raw length of ASIC data in bits
   unsigned int asicDataLengthBits = kNumRowsPerAsic * kNumColsPerAsic * kNumAsicsPerFem
@@ -1059,14 +1083,14 @@ void ExcaliburFemClient::frontEndInitialise(void)
 {
 
   std::cout << "**** Front-end initialise ****" << std::endl;
-  sleep (3);
+  sleep(3);
 
   // Initialise front-end DACs
-  this->frontEndDacInitialise ();
+  this->frontEndDacInitialise();
 
   // Reset the ASIC control f/w block and ASICS
-  this->asicControlReset ();
-  this->asicControlAsicReset ();
+  this->asicControlReset();
+  this->asicControlAsicReset();
 
   std::cout << "**** Front-end init done ****" << std::endl;
 
@@ -1086,72 +1110,135 @@ void ExcaliburFemClient::dataReceiverEnable(unsigned int aEnable)
 
 unsigned int ExcaliburFemClient::frameCountGet(void)
 {
-  return (unsigned int) (this->rdmaRead (kExcaliburAsicCtrlFrameCount - 1));
+  return (unsigned int) (this->rdmaRead(kExcaliburAsicCtrlFrameCount - 1));
 }
 
 unsigned int ExcaliburFemClient::controlStateGet(void)
 {
-  return (unsigned int) (this->rdmaRead (kExcaliburAsicCtrlState1));
+  return (unsigned int) (this->rdmaRead(kExcaliburAsicCtrlState1));
 }
 
 void ExcaliburFemClient::dataAddrParamSet(excaliburDataAddrParam aAddrParam, std::size_t size,
-    const char** aAddrValues)
+    std::size_t offset, const char** aAddrValues)
 {
-  if (size != 1)
-  {
-    std::cout
-        << "WARNING, data address configuration does not yet support > 1 parameter, ignoring others"
-        << std::endl;
-  }
+
+  std::size_t max_size;
   switch (aAddrParam)
   {
-
     case excaliburDataAddrSourceIp:
-      mDataSourceIpAddress = aAddrValues[0];
-      break;
     case excaliburDataAddrSourceMac:
-      mDataSourceMacAddress = aAddrValues[0];
+      max_size = 1;
       break;
+
     case excaliburDataAddrDestIp:
-      mDataDestIpAddress = aAddrValues[0];
-      break;
     case excaliburDataAddrDestMac:
-      mDataDestMacAddress = aAddrValues[0];
+      max_size = kFarmModeLutSize;
       break;
+
     default:
       std::ostringstream msg;
       msg << "Illegal data address parameter specified: " << aAddrParam;
-      throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalDataParam,
-                                msg.str ());
+      throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
       break;
   }
 
+  if ((size  + offset) > max_size)
+  {
+    std::ostringstream msg;
+    msg << "Data address parameter: " << excaliburDataAddrParamName[aAddrParam]
+        << " indexing error: size " << size << " and offset " << offset
+        << " exceeds max size " << max_size;
+    throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
+  }
+
+  for (std::size_t val_idx = offset; val_idx < (offset + size); val_idx++)
+  {
+    switch (aAddrParam)
+    {
+
+      case excaliburDataAddrSourceIp:
+        mDataSourceIpAddress = aAddrValues[val_idx];
+        break;
+      case excaliburDataAddrSourceMac:
+        mDataSourceMacAddress = aAddrValues[val_idx];
+        break;
+      case excaliburDataAddrDestIp:
+        mDataDestIpAddress[val_idx] = aAddrValues[val_idx];
+        break;
+      case excaliburDataAddrDestMac:
+        mDataDestMacAddress[val_idx] = aAddrValues[val_idx];
+        break;
+      default:
+        std::ostringstream msg;
+        msg << "Illegal data address parameter specified: " << aAddrParam;
+        throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
+        break;
+    }
+  }
 }
 
 void ExcaliburFemClient::dataPortParamSet(excaliburDataPortParam aPortParam, std::size_t size,
-    const unsigned int* aPortValues)
+   std::size_t offset, const unsigned int* aPortValues)
 {
-  if (size != 1)
-  {
-    std::cout
-        << "WARNING, data port configuration does not yet support > 1 parameter, ignoring others"
-        << std::endl;
-  }
+  std::size_t max_size;
   switch (aPortParam)
   {
     case excaliburDataPortSource:
-      mDataSourcePort = aPortValues[0];
+      max_size = 1;
       break;
+
     case excaliburDataPortDest:
-      mDataDestPort = aPortValues[0];
+      max_size = kFarmModeLutSize;
       break;
+
     default:
       std::ostringstream msg;
       msg << "Illegal data port parameter specified: " << aPortParam;
-      throw FemClientException ((FemClientErrorCode) excaliburFemClientIllegalDataParam,
-                                msg.str ());
+      throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
       break;
   }
 
+  if ((size  + offset) > max_size)
+  {
+    std::ostringstream msg;
+    msg << "Data port parameter: " << excaliburDataPortParamName[aPortParam]
+        << " indexing error: size " << size << " and offset " << offset
+        << " exceeds max size " << max_size;
+    throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
+  }
+
+  for (std::size_t val_idx = offset; val_idx < (offset + size); val_idx++)
+  {
+    switch (aPortParam)
+    {
+      case excaliburDataPortSource:
+        mDataSourcePort = aPortValues[val_idx];
+        break;
+      case excaliburDataPortDest:
+        mDataDestPort[val_idx] = aPortValues[val_idx];
+        break;
+      default:
+        std::ostringstream msg;
+        msg << "Illegal data port parameter specified: " << aPortParam;
+        throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
+        break;
+    }
+  }
 }
 
+void ExcaliburFemClient::dataFarmModeNumDestinationsSet(unsigned int aNumDestinations)
+{
+  if (aNumDestinations > kFarmModeLutSize)
+  {
+    std::ostringstream msg;
+    msg << "UDP data farm mode number of destinations requested (" << aNumDestinations
+        << ") exceeds maximum (" << kFarmModeLutSize;
+    throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
+  }
+  mDataFarmModeNumDestinations = aNumDestinations;
+}
+
+void ExcaliburFemClient::dataFarmModeEnableSet(unsigned int aEnable)
+{
+    mDataFarmModeEnable = (aEnable > 0) ? true : false;
+}

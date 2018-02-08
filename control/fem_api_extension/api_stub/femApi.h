@@ -99,14 +99,14 @@ int femErrorCode(void* handle);
 int femGetId(void* handle);
 
 int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config, void** handle);
-int femSetInt(void* handle, int chipId, int id, size_t size, int* value);
-int femSetShort(void* handle, int chipId, int id, size_t size, short* value);
-int femSetFloat(void* handle, int chipId, int id, size_t size, double* value);
+int femSetInt(void* handle, int chipId, int id, size_t size, size_t offset, int* value);
+int femSetShort(void* handle, int chipId, int id, size_t size, size_t offset, short* value);
+int femSetFloat(void* handle, int chipId, int id, size_t size, size_t offset, double* value);
+int femSetString(void* handle, int chipId, int id, size_t size, size_t offset, char** value);
 int femGetInt(void* handle, int chipId, int id, size_t size, int* value);
 int femGetShort(void* handle, int chipId, int id, size_t size, short* value);
 int femGetFloat(void* handle, int chipId, int id, size_t size, double* value);
 int femGetString(void* handle, int chipId, int id, size_t size, char** value);
-int femSetString(void* handle, int chipId, int id, size_t size, char** value);
 int femCmd(void* handle, int chipId, int id);
 void femClose(void* handle);
 
