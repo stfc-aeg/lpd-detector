@@ -374,6 +374,8 @@ class ExcaliburFrameProducer(object):
                         packet, (self.args.ip_addr, self.args.port)
                     )
                     frame_packets_sent += 1
+                    if frame_packets_sent % 25 == 0:
+                        time.sleep(0.01)
                 except socket.error as exc:
                     logging.error("Got error sending frame packet: %s", exc)
                     break
