@@ -43,6 +43,9 @@ class LpdFemGuiMainDaqTab(object):
         self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
         self.ui.liveViewOffsetEdit.setText(str(self.appMain.getCachedParam('liveViewOffset')))
         self.ui.shutterSel.setCheckState(checkButtonState(self.appMain.getCachedParam('arduinoShutterEnable')))
+        self.ui.multiRunSel.setCheckState(checkButtonState(self.appMain.getCachedParam('multiRunEnable')))
+        self.ui.multiRunEdit.setText(str(self.appMain.getCachedParam('multiRunNumRuns')))
+
         serialPort = self.appMain.getCachedParam('arduinoShutterPort')
 
         fbkOverride = self.appMain.getCachedParam('femAsicPixelFeedbackOverride')
@@ -86,7 +89,10 @@ class LpdFemGuiMainDaqTab(object):
         QtCore.QObject.connect(self.ui.gainOverrideButtonGroup, QtCore.SIGNAL("buttonClicked(int)"), self.gainOverrideUpdate)
         # Arduino Shutter
         QtCore.QObject.connect(self.ui.shutterSel,    QtCore.SIGNAL("toggled(bool)"), self.shutterSelect)
-        
+        # Multi-run parameters
+        QtCore.QObject.connect(self.ui.multiRunSel,   QtCore.SIGNAL("toggled(bool)"), self.multiRunSelect)
+        QtCore.QObject.connect(self.ui.multiRunEdit,  QtCore.SIGNAL("editingFinished()"), self.multiRunNumRunsUpdate)
+
     def updateEnabledWidgets(self):
         
         self.ui.runNumber.setText(str(self.appMain.getCachedParam('runNumber')))
@@ -192,6 +198,21 @@ class LpdFemGuiMainDaqTab(object):
         self.appMain.deviceState = LpdFemGui.DeviceIdle
         self.mainWindow.updateEnabledWidgets()
 
+    def multiRunSelect(self, state):
+
+        self.appMain.setCachedParam('multiRunEnable', state)
+        self.mainWindow.updateEnabledWidgets()
+
+    def multiRunNumRunsUpdate(self):
+        multiRunNumRuns = self.ui.multiRunEdit.text()
+        try:
+            multiRunNumRunsVal = int(multiRunNumRuns)
+
+            self.appMain.setCachedParam('multiRunNumRuns', multiRunNumRunsVal)
+            self.mainWindow.updateEnabledWidgets()
+        except ValueError:
+            self.ui.multiRunEdit.setText(str(self.appMain.getCachedParam('multiRunNumRuns')))
+
     def liveViewDivisorUpdate(self):
         liveViewDivisor = self.ui.liveViewDivisorEdit.text()
         try:
@@ -226,10 +247,12 @@ class LpdFemGuiMainDaqTab(object):
 
         if self.appMain.deviceState == LpdFemGui.DeviceReady:
             self.msgPrint("Device configured OK")
-            self.appMain.mainWindow.testTab.configDeviceSignal.emit("Device configured OK")
+            if (self.appMain.asicTestingEnabled):
+                self.appMain.mainWindow.testTab.configDeviceSignal.emit("Device configured OK")
         else:
             self.msgPrint("Failed to configure device")
-            self.appMain.mainWindow.testTab.configDeviceSignal.emit("Failed to configure device")
+            if (self.appMain.asicTestingEnabled):
+                self.appMain.mainWindow.testTab.configDeviceSignal.emit("Failed to configure device")
             
         self.mainWindow.updateEnabledWidgets()
         

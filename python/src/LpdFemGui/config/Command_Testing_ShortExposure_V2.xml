@@ -58,9 +58,9 @@
 	<read_out_data/>
 	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
         840 NOPs per image (512 pixels x 3 x 12 bits) -->
-	<loop count="4">
+	<loop count="512">
 		<nop/>
-		<nop count="838"/>
+		<nop count="850"/>
 	</loop>
     <nop count="31"/>   # one extra row
 	<stop_read_out/>

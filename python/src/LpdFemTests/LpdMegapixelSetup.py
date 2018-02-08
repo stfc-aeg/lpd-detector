@@ -8,6 +8,8 @@ from __future__ import print_function
 import logging
 import os
 import time
+import argparse
+import sys
 
 from LpdDevice.LpdDevice import LpdDevice
 from LpdFemGui.LpdReadoutConfig import LpdReadoutConfig, LpdReadoutConfigError
@@ -20,6 +22,15 @@ fem_addr_list = [
     '192.168.2.6',
     '192.168.2.7',
     '192.168.2.8',
+    '192.168.2.9',
+    '192.168.2.10',
+    '192.168.2.11',
+    '192.168.2.12',
+    '192.168.2.13',
+    '192.168.2.14',
+    '192.168.2.15',
+    '192.168.2.16',
+    '192.168.2.17',
 ]
 
 fem_port = 6969
@@ -31,15 +42,24 @@ readout_param_file = 'readoutParam.xml'
 asic_setup_param_file = 'slowParam.xml'
 asic_cmd_sequence_file='cmdSequence.xml'
 
-def lpdMegapixelSetup():
+def lpdMegapixelSetup(disable):
     
     logging.basicConfig(level=logging.INFO, format='%(levelname)1.1s %(asctime)s %(message)s', datefmt='%y/%m/%d %H:%M:%S')
 
-    powercard_params = [
-        ('asicPowerEnable', 1),
-        ('sensorBiasEnable', 1),
-        ('sensorBias', sensor_bias),
-    ]
+    if not disable:
+        action = 'Enabling'
+        powercard_params = [
+            ('asicPowerEnable', 1),
+            ('sensorBiasEnable', 1),
+            ('sensorBias', sensor_bias),
+        ]
+    else:
+        action = 'Disabling'
+        powercard_params = [
+            ('sensorBiasEnable', 0),
+            ('asicPowerEnable', 0),
+        ]
+        
     
     readout_param_file_path = os.path.join(config_dir, readout_param_file)
     logging.info("Loading readout parameters from file {}".format(readout_param_file_path))
@@ -82,7 +102,7 @@ def lpdMegapixelSetup():
         if not fem_connected[idx]:
             continue
         
-        logging.info("Enabling ASIC power and sensor bias on FEM {}".format(idx))
+        logging.info("{} ASIC power and sensor bias on FEM {}".format(action, idx))
         
         for (param, target) in powercard_params:
             for power_card in range(num_powercards):
@@ -90,40 +110,42 @@ def lpdMegapixelSetup():
                 
                 param_set_verify(idx, fem_device[idx], param_name, target)
 
-               
-    logging.info("Pausing to allow all ASICs to power up...")        
-    time.sleep(4.0)
     
-    for idx in range(num_fems):
+    if not disable:
+                   
+        logging.info("Pausing to allow all ASICs to power up...")        
+        time.sleep(4.0)
         
-        fem_addr = fem_addr_list[idx]
-
-        if not fem_connected[idx]:
-            continue
-        
-        logging.info("Setting readout parameters on FEM {}".format(idx))
-        
-        for (param, target) in readout_config.parameters():
-            param_set_verify(idx, fem_device[idx], param, target)
+        for idx in range(num_fems):
             
-        logging.info("Setting ASIC setup parameter file on FEM {}".format(idx))
-        param_set_verify(idx, fem_device[idx], 'femAsicSetupParams', asic_setup_param_file_path)
-        
-        logging.info("Setting ASIC command sequence file on FEM {}".format(idx))
-        param_set_verify(idx, fem_device[idx], 'femAsicCmdSequence', asic_cmd_sequence_file_path)
-        
-        logging.info("Uploading configuration to FEM {}".format(idx))
-        rc = fem_device[idx].configure()
-        if rc != LpdDevice.ERROR_OK:
-            logging.error("Configuration upload to FEM {} failed: rc={}: {}".format(idx, rc, fem_device[idx].errorStringGet()))
+            fem_addr = fem_addr_list[idx]
     
-    for idx in range(num_fems):
+            if not fem_connected[idx]:
+                continue
+            
+            logging.info("Setting readout parameters on FEM {}".format(idx))
+            
+            for (param, target) in readout_config.parameters():
+                param_set_verify(idx, fem_device[idx], param, target)
+                
+            logging.info("Setting ASIC setup parameter file on FEM {}".format(idx))
+            param_set_verify(idx, fem_device[idx], 'femAsicSetupParams', asic_setup_param_file_path)
+            
+            logging.info("Setting ASIC command sequence file on FEM {}".format(idx))
+            param_set_verify(idx, fem_device[idx], 'femAsicCmdSequence', asic_cmd_sequence_file_path)
+            
+            logging.info("Uploading configuration to FEM {}".format(idx))
+            rc = fem_device[idx].configure()
+            if rc != LpdDevice.ERROR_OK:
+                logging.error("Configuration upload to FEM {} failed: rc={}: {}".format(idx, rc, fem_device[idx].errorStringGet()))
         
-        if not fem_connected[idx]:
-            continue
-                                        
-        fem_device[idx].close()
-        fem_connected[idx] = False
+        for idx in range(num_fems):
+            
+            if not fem_connected[idx]:
+                continue
+                                            
+            fem_device[idx].close()
+            fem_connected[idx] = False
 
 def param_set_verify(fem_idx, the_device, param_name, target):
     
@@ -146,4 +168,11 @@ def param_set_verify(fem_idx, the_device, param_name, target):
   
 if __name__ == '__main__':
     
-    lpdMegapixelSetup()
+    parser = argparse.ArgumentParser(description="LpdMegapixelSetup.py - configure the megapixel system")
+    group = parser.add_mutually_exclusive_group()
+
+    group.add_argument('--enable', help="Disable all ASIC HV and LV outputs", action='store_true')
+    group.add_argument("--disable", help="Disable all ASIC HV and LV outputs", action='store_true')
+    args = parser.parse_args()
+    
+    lpdMegapixelSetup(args.disable)

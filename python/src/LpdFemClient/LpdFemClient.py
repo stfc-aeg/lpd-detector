@@ -1834,11 +1834,14 @@ class LpdFemClient(FemClient):
             if cccVetoPatternSource == "fromFile":
                 if self.femDebugLevel >= 2:
                     print("cccVetoPatternSource is from File: ")
-                # from file
-                #self.cccVetoPatternFile = "Config/VetoPatterns/veto_pattern_test1.xml"
-                stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
-                print("Veto Mask Pattern File Name = %s " %self.cccVetoPatternFile)
-            
+                try:
+                    # from file
+                    #self.cccVetoPatternFile = "Config/VetoPatterns/veto_pattern_test1.xml"
+                    stringCmdSeq = LpdAsicBunchPattern(self.cccVetoPatternFile, fromFile=True) #False)
+                    print("Veto Mask Pattern File Name = %s " %self.cccVetoPatternFile)
+                except Exception as e:
+                    print("Error parsing Veto Pattern File")
+                    raise(FemClientError(e))
             else:          
                 if self.femDebugLevel >= 2:
                     print("cccVetoPatternSource is from TEST String: ")
@@ -1852,7 +1855,11 @@ class LpdFemClient(FemClient):
                                     <veto pattern="1"  value="0xAAAAAAAA"/>
                                 </lpd_bunch_pattern>
                 '''
-                stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
+                try:
+                    stringCmdSeq = LpdAsicBunchPattern(stringCmdXml)
+                except Exception as e:
+                    print("Error parsing Veto Pattern test string")
+                    raise(FemClientError(e))
 
             
             vetoPatterns = stringCmdSeq.encode()
@@ -3212,9 +3219,13 @@ class LpdFemClient(FemClient):
                 pPipelineLength = self.LPD_PIPELINE_LENGTH_OVERRIDE
 
                 # parse asic command file to get pipeline latency
-                fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=True)
-                encodedSequenceComplete  = fileCmdSeqComplete.encode()
-
+                try:
+                    fileCmdSeqComplete = LpdAsicCommandSequence(self.femAsicCmdSequence, fromFile=True, cccEnabled=True)
+                    encodedSequenceComplete  = fileCmdSeqComplete.encode()
+                except Exception as e:
+                    print("Error parsing Command Sequence File")
+                    raise(FemClientError(e))
+                
                 self.asic_command_start_write_pointers  = fileCmdSeqComplete.getNumStartWritePointers()
                 self.asic_command_start_trigger_pointers  = fileCmdSeqComplete.getNumStartTriggerPointers()
                 if self.asic_command_start_write_pointers != 1 or self.asic_command_start_trigger_pointers != 1:

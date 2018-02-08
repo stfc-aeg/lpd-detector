@@ -174,7 +174,6 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp, legacyPower
 #            asicSetupParams = "Config/SetupParams/Setup_Serial_KLASSE.xml"
 
     #configFilename = 'Config/readoutConfiguration.xml'
-    configFilename = 'Config/readoutConfiguration_02b0.xml'
     
     # Testing using the same configurations file as on John's branch:
     asicSetupParams = "Config/SetupParams/Setup_LowPower.xml"
@@ -187,7 +186,14 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp, legacyPower
 #     asicSetupParams = '/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/SetupParams/DiamondSlowParam.xml'
 #     asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_legacy_using_trigger_flags_modified.xml'
 #     asicCmdSequence = 'Config/CmdSequence/SuperModuleNormalOperation_PLtest_jac.xml'
-    
+
+    configFilename = 'Config/readoutConfiguration_John.xml'
+    vetoFilename   = 'Config/VetoPatterns/veto_pattern_test2_jac.xml'
+    asicCmdSequence = 'Config/CmdSequence/LPD_cmdSeq_NormalOperation.xml' # JAC's
+    #asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'   # LpdFemGui file..
+    #asicSetupParams = 'Config/SetupParams/LPD_SetupParams_XFEL_test.xml'
+    asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'    # Writes upside down 'L' shape in each ASIC
+
     print("================    XML Filenames   ================")
     print(asicSetupParams)
     print(asicCmdSequence)

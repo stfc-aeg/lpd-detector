@@ -60,23 +60,27 @@ class LpdFemGui:
         # Create a power card manager instance
         self.pwrCard = LpdPowerCardManager(self, self.device)
 
+        # Show/hide (ASIC) Testing tab?
+        self.asicTestingEnabled = self.getCachedParam('asicTesting')
+        
         # Create the main window GUI and show it
         self.mainWindow= LpdFemGuiMainWindow(self)
         self.mainWindow.show()
 
-        # Create an LPD ASIC tester instance
-        self.asicTester = LpdAsicTester(self, self.device)
-
         # Create the live view window but don't show it
         self.liveViewWindow = LpdFemGuiLiveViewWindow(asicModuleType=self.cachedParams['asicModuleType'])
 
-        try:
-            self.asicWindow = LpdFemGuiAsicWindow(appMain=self)
-            #self.asicWindow.show()    # Hide window for now while testing
+        if (self.asicTestingEnabled):
+            try:
+                # Create an LPD ASIC tester instance
+                self.asicTester = LpdAsicTester(self, self.device)
 
-        except Exception as e:
-            print("LpdAsicTester initialisation exception: %s" % e, file=sys.stderr)
-            
+                self.asicWindow = LpdFemGuiAsicWindow(self)
+                self.asicWindow.show()    # Hide window for now while testing
+    
+            except Exception as e:
+                print("LpdFemGui initialisation exception: %s" % e, file=sys.stderr)
+
         # Redirect stdout to PrintRedirector
         sys.stdout = PrintRedirector(self.msgPrint)
 
@@ -90,7 +94,7 @@ class LpdFemGui:
             try:
                 self.shutter = ServoShutter(usbport)
                 # Ensure shutter shut when GUI starts
-                self.shutter.move(0)
+                self.shutter.move(b'\0')
             except Exception as e:
                 self.msgPrint("Shutter %s" % e)
 
@@ -131,11 +135,14 @@ class LpdFemGui:
                           'femAsicGainOverride' : 8,
                           'femAsicPixelFeedbackOverride' : 0,
                           'asicModuleType'      : 0,
+                          'multiRunEnable'    : True,
+                          'multiRunNumRuns'   : 123,
                          }
 
         # List of parameter names that don't need to force a system reconfigure
         self.nonVolatileParams = ('fileWriteEnable', 'liveViewEnable', 'liveViewDivisor', 'liveViewOffset',
-                                  'pwrAutoUpdate', 'pwrUpdateInterval', 'dataFilePath', 'hvBiasBolts')
+                                  'pwrAutoUpdate', 'pwrUpdateInterval', 'dataFilePath', 'hvBiasBolts',
+                                  'multiRunEnable', 'multiNumRuns')
 
         # Load default parameters into cache if not already existing        
         for param in defaultParams:
@@ -174,13 +181,15 @@ class LpdFemGui:
         else:
             self.deviceState = LpdFemGui.DeviceIdle
             self.deviceErrString = ""
-            self.mainWindow.testTab.femConnectionSignal.emit(True)
+            if (self.asicTestingEnabled):
+                self.mainWindow.testTab.femConnectionSignal.emit(True)
         
     def deviceDisconnect(self):
         
         self.device.close()
         self.deviceState = LpdFemGui.DeviceDisconnected
-        self.mainWindow.testTab.femConnectionSignal.emit(False)
+        if (self.asicTestingEnabled):
+            self.mainWindow.testTab.femConnectionSignal.emit(False)
 
     def cleanup(self):
         
@@ -216,13 +225,6 @@ class LpdFemGui:
 
         except Exception as e:
             print("\ndeviceConfigure Exception: %s doesn't exist?" % e, file=sys.stderr)
-        
-#        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 'cmdSequenceFile'
-#                      'pixelGain', 'femAsicPixelFeedbackOverride', 'testingShortExposureFile', 'fileWriteEnable', 'liveViewEnable', 'arduinoShutterEnable']
-#        print >> sys.stderr, "--------------------\nLpdFemGui settings:"
-#        for key in currentParams.keys():
-#            if key in parameters:
-#                print >> sys.stderr, "  ", key, ":", currentParams[key]
 
         try:
             self.shutterEnabled = currentParams['arduinoShutterEnable']
@@ -236,7 +238,7 @@ class LpdFemGui:
                     try:
                         self.shutter = ServoShutter(usbport)
                         # Ensure shutter shut when GUI starts
-                        self.shutter.move(0)
+                        self.shutter.move(b'\0')
                     except Exception as e:
                         self.msgPrint("Shutter %s" % e)
             else:
@@ -276,7 +278,7 @@ class LpdFemGui:
         self.loadedConfig['numTrains'] = self.numFrames
         rc = self.device.paramSet('numberTrains', self.numFrames)
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femNumTestCycles failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.msgPrint("Setting parameter numberTrains failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
         
@@ -285,7 +287,7 @@ class LpdFemGui:
         beamTriggerSource = 1 if externalTrigger == False else 0
         rc = self.device.paramSet('femStartTrainSource', beamTriggerSource)
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femBeamTriggerSource failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.msgPrint("Setting parameter femStartTrainSource failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
         
@@ -293,7 +295,7 @@ class LpdFemGui:
         triggerDelay = currentParams['triggerDelay']
         rc = self.device.paramSet('femStartTrainDelay', triggerDelay)
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femExternalTriggerStrobeDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.msgPrint("Setting parameter femStartTrainDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
 
@@ -356,7 +358,7 @@ class LpdFemGui:
             # Check shutter defined
             if self.shutter != 0:
                 try:
-                    self.shutter.move(1)
+                    self.shutter.move(b'\1')
                     self.msgPrint("Wait a second for shutter to open..")
                     time.sleep(1)
                 except Exception as e:
@@ -369,66 +371,84 @@ class LpdFemGui:
         if not currentParams:
             currentParams  = self.cachedParams
 
-        # Increment the run number
-        currentParams['runNumber'] = currentParams['runNumber'] + 1
-        
         # Clear abort run flag
         self.abortRun = False
 
-        # Launch LCLS EVR timestamp recorder thread if selected
-        if currentParams['evrRecordEnable'] == True:
-            try:
-                timestampRecorder = LpdEvrTimestampRecorder(currentParams, self)
-            except Exception as e:
-                self.msgPrint("ERROR: failed to create timestamp recorder: %s" % e)
-                self.deviceState = LpdFemGui.DevicdeIdle
-                return
+        # Set up number of runs based on multi-run enable flag
+        numRuns = 1
+        if currentParams['multiRunEnable']:
+            numRuns = currentParams['multiRunNumRuns']
+            self.msgPrint("Multiple runs enabled: executing %d runs" % numRuns)
+
+        for run in range(numRuns):
+
+            if numRuns > 1:
+                self.msgPrint("Starting run %d of %d ..." % (run+1, numRuns))
+
+            # Increment the run number
+            currentParams['runNumber'] = currentParams['runNumber'] + 1
         
-        # Create an LpdFemDataReceiver instance to launch readout threads
-        try:
-            dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
-                                              self.dataListenAddr, self.dataListenPort, self.numFrames, currentParams, self)
-        except Exception as e:
-            self.msgPrint("ERROR: failed to create data receiver: %s" % e)
-            self.deviceState = LpdFemGui.DeviceIdle
-            return
-        
-        # Set device state as running and trigger update of run state in GUI    
-        self.deviceState = LpdFemGui.DeviceRunning
-        self.runStateUpdate()        
-
-        # Execute the run on the device
-        rc = self.device.start()
-        if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Acquisition start failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
-
-        # Wait for timestamp recorder thread to complete
-        if currentParams['evrRecordEnable'] == True:
-            try:
-                timestampRecorder.awaitCompletion()
-                dataReceiver.injectTimestampData(timestampRecorder.evrData)
-
-            except Exception as e:
-                self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)
-
-        # Wait for the data receiver threads to complete
-        try:
-            dataReceiver.awaitCompletion()
-            self.lastDataFile = dataReceiver.lastDataFile()
-        except Exception as e:
-            self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
-        
-        # Close the shutter - if selected
-        if self.shutterEnabled:
-            # Check shutter defined
-            if self.shutter != 0:
+            # Launch LCLS EVR timestamp recorder thread if selected
+            if currentParams['evrRecordEnable'] == True:
                 try:
-                    self.shutter.move(0)
+                    timestampRecorder = LpdEvrTimestampRecorder(currentParams, self)
                 except Exception as e:
-                    self.msgPrint(e)
-            else:
-                self.msgPrint("Error: Shutter undefined, check configurations file?")
+                    self.msgPrint("ERROR: failed to create timestamp recorder: %s" % e)
+                    self.deviceState = LpdFemGui.DevicdeIdle
+                    return
+
+            # Create an LpdFemDataReceiver instance to launch readout threads
+            try:
+                dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
+                                                  self.dataListenAddr, self.dataListenPort, self.numFrames, currentParams, self)
+            except Exception as e:
+                self.msgPrint("ERROR: failed to create data receiver: %s" % e)
+                self.deviceState = LpdFemGui.DeviceIdle
+                return
+
+            # Set device state as running and trigger update of run state in GUI    
+            self.deviceState = LpdFemGui.DeviceRunning
+            self.runStateUpdate()        
+
+            # Execute the run on the device
+            rc = self.device.start()
+            if rc != LpdDevice.ERROR_OK:
+                self.msgPrint("Acquisition start failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
+                self.deviceState = LpdFemGui.DeviceIdle
+
+            # Last iteration of loop? Close shutter as all runs now completed
+            if run == (numRuns-1):
+                # Close the shutter - if selected
+                if self.shutterEnabled:
+                    # Check shutter defined
+                    if self.shutter != 0:
+                        try:
+                            self.shutter.move(b'\0')
+                        except Exception as e:
+                            self.msgPrint(e)
+                    else:
+                        self.msgPrint("Error: Shutter undefined, check configurations file?")
+
+            # Wait for timestamp recorder thread to complete
+            if currentParams['evrRecordEnable'] == True:
+                try:
+                    timestampRecorder.awaitCompletion()
+                    dataReceiver.injectTimestampData(timestampRecorder.evrData)
+    
+                except Exception as e:
+                    self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)
+    
+            # Wait for the data receiver threads to complete
+            try:
+                dataReceiver.awaitCompletion()
+                self.lastDataFile = dataReceiver.lastDataFile()
+            except Exception as e:
+                self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
+
+            # Delete dataReceiver or multi-run produces no data for even runs
+            del dataReceiver
+
+        # Closing Shutter code just to sit here (it's now in the above loop)
 
         # Signal device state as ready
         self.deviceState = LpdFemGui.DeviceReady

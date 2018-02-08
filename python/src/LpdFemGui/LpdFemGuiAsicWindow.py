@@ -17,7 +17,7 @@ import h5py
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from matplotlib.backends.backend_qt4agg import FigureCanvasQT as FigureCanvas
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
@@ -26,9 +26,6 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     REALIMAGE   = 0
     FAULTYIMAGE = 1
     THRESHIMAGE = 2
-
-    RHS_MODULE = 15
-    LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
 
     trainSignal     = QtCore.pyqtSignal(object)
     imageSignal     = QtCore.pyqtSignal(object)
@@ -39,9 +36,9 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     
     matplotlib.rcParams.update({'font.size': 8})
     
-    def __init__(self, appMain, parent=None):
+    def __init__(self, appMain): #, parent=None):
  
-        QtGui.QDialog.__init__(self, parent)
+        QtGui.QDialog.__init__(self) #, parent)
         
         self.appMain = appMain
         self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
@@ -50,7 +47,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         self.ncols = 128
         
         self.moduleString = "LHS"
-        self.moduleNumber = LpdFemGuiAsicWindow.LHS_MODULE
+        self.moduleNumber = self.appMain.asicTester.LHS_MODULE
         
         self.setWindowTitle('Plotting data from Asic Module')
 
@@ -60,10 +57,9 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         # 5x4 inches, 100 dots-per-inch
         #
         self.dpi = 100
-        self.fig = Figure((8.0, 6.0), dpi=self.dpi)
+        self.fig = Figure((8.0, 6.0), dpi=self.dpi)       
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.plotFrame)
-
         self.imageSize = self.nrows * self.ncols
         
         #self.axes = self.fig.add_subplot(111)
@@ -159,8 +155,8 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         ''' Helper function '''
 
         self.moduleNumber = moduleNumber
-        if moduleNumber == LpdFemGuiAsicWindow.LHS_MODULE:    self.moduleString = "LHS"
-        elif moduleNumber == LpdFemGuiAsicWindow.RHS_MODULE:  self.moduleString = "RHS"
+        if moduleNumber == self.appMain.asicTester.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == self.appMain.asicTester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 

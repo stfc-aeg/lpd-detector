@@ -24,9 +24,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     Helper class to manager TEST tab in main window
     '''
 
-    RHS_MODULE = 15
-    LHS_MODULE = 14 #0 # 0 is the REAL LHS module !
-
     messageSignal        = QtCore.pyqtSignal(object, bool)
     loggingSignal        = QtCore.pyqtSignal(str, bool)
     configDeviceSignal   = QtCore.pyqtSignal(str)
@@ -53,7 +50,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.msgPrint = self.testMsgPrint   # Use MessageBox element within this tab
         
         self.ui.moduleLhsSel.setChecked(True)
-        self.moduleNumber   = LpdFemGuiMainTestTab.LHS_MODULE   # LHS = 0, RHS = 15
+        self.moduleNumber   = LpdAsicTester.LHS_MODULE
         self.moduleString   = ""
         self.setModuleType(self.moduleNumber)
 
@@ -78,7 +75,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.messageSignal.connect(self.testMsgPrint)
 
     def __del__(self):
-        
+
         pass
 
     def sensorBondingTest(self):
@@ -162,8 +159,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         ''' Helper function '''
 
         self.moduleNumber = moduleNumber
-        if moduleNumber == LpdFemGuiMainTestTab.LHS_MODULE:    self.moduleString = "LHS"
-        elif moduleNumber == LpdFemGuiMainTestTab.RHS_MODULE:  self.moduleString = "RHS"
+        if moduleNumber == LpdAsicTester.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == LpdAsicTester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
         
@@ -250,12 +247,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         
         if self.ui.moduleLhsSel.isChecked():
             self.msgPrint("LHS module selected")
-            self.moduleNumber = LpdFemGuiMainTestTab.LHS_MODULE
+            self.moduleNumber = LpdAsicTester.LHS_MODULE
             #self.setModuleType(self.moduleNumber)
 
         elif self.ui.moduleRhsSel.isChecked():
             self.msgPrint("RHS module selected")
-            self.moduleNumber = LpdFemGuiMainTestTab.RHS_MODULE
+            self.moduleNumber = LpdAsicTester.RHS_MODULE
             
         self.setModuleType(self.moduleNumber)
         self.appMain.asicWindow.moduleSignal.emit(self.moduleNumber)

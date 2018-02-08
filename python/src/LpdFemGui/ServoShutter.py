@@ -24,9 +24,9 @@ class ServoShutter():
         ''' Moves the shutter to the supplied position
             0=shut, 1=open '''
 
-        if (0 <= position <= 1):
+        if (position == b'\0' or position == b'\1'):
             try:
-                self.ser.write(chr(position))
+                self.ser.write(position)
             except Exception as e:
                 raise Exception("Error %s shutter: %s" % (("closing" if position is 0 else "opening"), e))
             #print >> sys.stderr, "Exercising the shutter by %s it.." % (("closing" if position is 0 else "opening"))

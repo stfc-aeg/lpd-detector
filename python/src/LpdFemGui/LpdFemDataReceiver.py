@@ -19,7 +19,7 @@ is_python3 = sys.version_info > (3,)
 
 #Display received data in plots
 bDisplayPlotData = True
-  
+
 class LpdFemDataReceiver():
     
     def __init__(self, liveViewSignal, runStatusSignal, listenAddr, listenPort, numFrames, cachedParams, appMain):

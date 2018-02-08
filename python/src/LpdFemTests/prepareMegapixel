@@ -1,9 +1,9 @@
 #!/bin/sh
 
-export LPD_FEM_SW_PATH=/home/lpduser/lpdSoftware_september
+export LPD_FEM_SW_PATH=/u/ckd27546/workspace/lpdSoftware
 export LPD_FEM_TESTS_PATH=$LPD_FEM_SW_PATH/LpdFemTests
 export LPD_MEGAPIXEL_CONFIG_DIR=$LPD_FEM_TESTS_PATH/megapixel_config
 
 export PYTHONPATH=$LPD_FEM_SW_PATH:${PYTHONPATH:-}
 
-python $LPD_FEM_TESTS_PATH/LpdMegapixelSetup.py
+python $LPD_FEM_TESTS_PATH/LpdMegapixelSetup.py $*

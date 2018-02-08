@@ -74,7 +74,7 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
 
         # Create an empty plot
         self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)                   
-        self.imgObject = self.axes.imshow(self.data, interpolation='nearest', vmin=0, vmax=4095)
+        self.imgObject = self.axes.imshow(self.data, interpolation='nearest', vmin=0, vmax=4095, cmap='jet')
 
         # Position colorbar according to selected asicModuleType
         if self.asicModuleType == 2:

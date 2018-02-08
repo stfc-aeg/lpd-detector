@@ -30,13 +30,12 @@ def timingMethodDecorator(methodToDecorate):
 class LpdAsicTester(object):
     ''' Perform ASIC modules analysis, creating/display in results analysis window '''
 
-    RHS_MODULE = 15
+    RHS_MODULE = 10 #15
     LHS_MODULE = 12 #0 # 0 is the REAL LHS module !
     
     def __init__(self, appMain, device):
         
         super(LpdAsicTester, self).__init__()    # Required for pyqtSignal
-        
         self.appMain = appMain
         self.device = device
         
@@ -50,7 +49,8 @@ class LpdAsicTester(object):
         self.currentParams = self.appMain.cachedParams.copy()
         # Ensure a set of known defaults (common to all tests)
         self.currentParams['liveViewEnable']                = False
-        self.currentParams['femAsicGainOverride']           = 3     # Copied into femAsicGain by LpdFemGui (!)
+        self.currentParams['femAsicGainOverride']           = 100   # Copied into femAsicGain by LpdFemGui.deviceConfigure() !
+                                                                    # LpdDeviceParameters' femAsicGainOverride is different!
         self.currentParams['femAsicPixelFeedbackOverride']  = 1     # 0=50pF, 1=5pF
         self.currentParams['numTrain']                      = 10
         self.currentParams['fileWriteEnable']               = True
@@ -58,15 +58,6 @@ class LpdAsicTester(object):
         self.currentParams['readoutParamFile']              = self.currentParams['testingReadoutParamFile']
         self.currentParams['setupParamFile']                = self.currentParams['testingSetupParamFile']
         self.currentParams['runNumber']                     = 9000
-
-#        # Debug: Display default settings
-#        parameters = ['readoutParamFile', 'femAsicGainOverride', 'testingReadoutParamFile', 'setupParamFile', 'testingSetupParamFile', 
-#                      'cmdSequenceFile', 'pixelGain', 'femAsicPixelFeedbackOverride', 'testingShortExposureFile', 'fileWriteEnable', 
-#                      'liveViewEnable', 'testingSetupParamFile', 'testingReadoutParamFile']
-#        print >> sys.stderr, "--------------------\nLpdAsicTester settings:"
-#        for key in self.currentParams.keys():
-#            if key in parameters:
-#                print >> sys.stderr, "  ", key, ":", self.currentParams[key]
 
         self.moduleString = "-1"
         self.moduleDescription = ""
@@ -511,7 +502,6 @@ class LpdAsicTester(object):
 
         currentState = self.appMain.pwrCard.lvEnableGet()        
         nextState = not currentState
-        print >> sys.stderr, "nextState, currentState: "
         self.appMain.pwrCard.lvEnableSet(nextState)
 
         stateNow = self.appMain.pwrCard.lvEnableGet()

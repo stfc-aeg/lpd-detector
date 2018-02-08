@@ -38,7 +38,13 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.evrTab = LpdFemGuiMainEvrTab(appMain, self)
         self.testTab = LpdFemGuiMainTestTab(appMain, self)
         self.ui.operatorEdit.text()
-
+        
+        if (self.appMain.asicTestingEnabled):
+            pass
+        else:
+            # ASIC testing disabled, remove test tab
+            testIdx = self.ui.verticalTabWidget.indexOf(self.ui.testTab)
+            self.ui.verticalTabWidget.removeTab(testIdx)
 
         # Initialise default fields based on appMain object
         self.ui.connectAddr.setText(self.appMain.getCachedParam('femAddr'))
@@ -147,7 +153,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.progressBar.hide()
                             
     def deviceConnectToggle(self):
-        
+
         if self.appMain.deviceState == LpdFemGui.DeviceDisconnected:
 
             # Extract address and port from GUI fields and validate
