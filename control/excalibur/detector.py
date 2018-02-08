@@ -88,12 +88,14 @@ class ExcaliburDetector(object):
             'param': ['none'],
             'fem': -1,
             'chip': -1,
+            'offset': -1,
             'value': {},
         }
         self.fe_param_write = [{
             'param': 'none',
             'fem': -1,
             'chip': -1,
+            'offset': -1,
             'value': [],
         }]
         
@@ -303,25 +305,27 @@ class ExcaliburDetector(object):
 
         logging.debug('{} called with params {}'.format(cmd_name, params))
         
-        fem_idxs = []
-        if 'fem' in params:
-            fem_ids = params['fem']
-            if not isinstance(fem_ids, list):
-                fem_ids = [fem_ids]
-            if fem_ids == [self.ALL_FEMS]:
-                fem_idxs = range(len(self.fems))
-            else:
-                for idx in range(len(self.fems)):
-                    if self.fems[idx].fem_id in fem_ids:
-                        fem_idxs.append(idx)
-        else:
-            fem_idxs = range(len(self.fems))
-
+        fem_idxs = range(len(self.fems))
         chip_ids = [self.ALL_CHIPS]
-        if 'chip' in params:
-            chip_ids = params['chip']
+        
+        if params is not None:
+
+            if 'fem' in params:
+                fem_ids = params['fem']
+                if not isinstance(fem_ids, list):
+                    fem_ids = [fem_ids]
+                if fem_ids == [self.ALL_FEMS]:
+                    fem_idxs = range(len(self.fems))
+                else:
+                    for idx in range(len(self.fems)):
+                        if self.fems[idx].fem_id in fem_ids:
+                            fem_idxs.append(idx)
+
+            if 'chip' in params:
+                chip_ids = params['chip']
         
         self.command_succeeded = True
+        
         for idx in fem_idxs:
             self._increment_pending()
             self._do_command(idx, chip_ids, *self.fe_cmd_map[cmd_name])
@@ -406,7 +410,7 @@ class ExcaliburDetector(object):
         try:
             for param in params:
     
-                (param_id, param_type, param_read_len, param_per_chip, param_mode) = self.fe_param_map[param]
+                (param_id, param_type, param_read_len, param_mode, param_access) = self.fe_param_map[param]
                 
                 try:
                     fem_get_method = getattr(self.fems[fem_idx].fem, 'get_' + param_type)
@@ -417,7 +421,7 @@ class ExcaliburDetector(object):
                     read_ok = False
                     
                 else:
-                    if param_per_chip:
+                    if param_mode == ParamPerChip:
                         if chips == ExcaliburDetector.ALL_CHIPS:
                             chip_list = self.fems[fem_idx].chips_enabled
                         else:
@@ -472,7 +476,7 @@ class ExcaliburDetector(object):
 
             self.fe_param_write.append({})
                         
-            required_attrs = ('param', 'fem', 'chip', 'value')
+            required_attrs = ('param', 'fem', 'chip', 'value', 'offset')
             for attr in required_attrs:
                 try:
                     self.fe_param_write[idx][attr] = param[attr]
@@ -505,7 +509,9 @@ class ExcaliburDetector(object):
             if len(values) != num_fems:
                 self.command_succeeded = False 
                 raise ExcaliburDetectorError(
-                    'Mismatch in shape of frontend parameter values list of FEMs'
+                    'Mismatch in shape of frontend parameter {} values list of FEMs'.format(
+                        param['param']
+                    )
                 )
                     
             # Remap onto per-FEM list of expanded parameters
@@ -514,8 +520,8 @@ class ExcaliburDetector(object):
                 params_by_fem[fem_idx].append({
                     'param': param['param'],
                     'chip': param['chip'],
-                    'value': values[fem_idx],
-                    
+                    'offset': param['offset'],
+                    'value': values[fem_idx]
                 })
                                 
         # Execute write params for all FEMs (launched in threads)
@@ -538,7 +544,7 @@ class ExcaliburDetector(object):
             for param in params:
                 
                 param_name = param['param']
-                (param_id, param_type, param_write_len, param_per_chip, param_mode) = self.fe_param_map[param_name]
+                (param_id, param_type, param_write_len, param_mode, param_access) = self.fe_param_map[param_name]
                 
                 try:
                     fem_set_method = getattr(self.fems[fem_idx].fem, "set_" + param_type)
@@ -551,7 +557,12 @@ class ExcaliburDetector(object):
                     
                     values = param['value']
                     
-                    if param_per_chip:
+                    if param_mode == ParamPerFemRandomAccess and 'offset' in param:
+                        offset = param['offset']
+                    else:
+                        offset = 0
+                    
+                    if param_mode == ParamPerChip:
                         chip_list = param['chip']
                         if not isinstance(chip_list, list):
                             chip_list = [chip_list]
@@ -578,17 +589,22 @@ class ExcaliburDetector(object):
                             values_len = len(values[idx])
                         else:
                             values_len = 1
-                            
-                        if values_len != param_write_len:
-                            self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR, 
-                                'Write of frontend parameter {} failed: ' \
-                                'mismatch in number of values specified (got {} expected {})'.format(
-                                    param_name, values_len, param_write_len
-                                ))
-                            write_ok = False
-                            break
+                        
+                        if param_mode == ParamPerFemRandomAccess:
+                            # TODO validate random access offset and size don't exceed param_write_len
+                            pass
+                        else:    
+                            if values_len != param_write_len:
+                                self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR, 
+                                    'Write of frontend parameter {} failed: ' \
+                                    'mismatch in number of values specified (got {} expected {})'.format(
+                                        param_name, values_len, param_write_len
+                                    ))
+                                write_ok = False
+                                break
+                        
                         try:
-                            rc = fem_set_method(chip, param_id, values[idx])
+                            rc = fem_set_method(chip, param_id, offset, values[idx])
                             if rc != FEM_RTN_OK:
                                 self._set_fem_error_state(fem_idx, rc,self.fems[fem_idx].fem.get_error_msg())
                                 write_ok = False
