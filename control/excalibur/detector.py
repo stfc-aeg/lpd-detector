@@ -136,13 +136,14 @@ class ExcaliburDetector(object):
                 'command_succeeded': (self._get('command_succeeded'), None),
                 'num_pending': (self._get('num_pending'), None),
                 'fem': [fem.param_tree for fem in self.fems],
+                'powercard_fem_idx': (self._get('powercard_fem_idx'), None),
             },
             'command': cmd_tree, 
         })
     
     def set_powercard_fem_idx(self, idx):
         
-        if idx < 0 or idx > len(self.fems):
+        if idx < -1 or idx > len(self.fems):
             raise ExcaliburDetectorError('Illegal FEM index {} specified for power card'.format(idx))
         
         self.powercard_fem_idx = idx
