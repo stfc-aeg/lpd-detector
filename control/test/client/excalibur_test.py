@@ -334,6 +334,13 @@ class ExcaliburTestApp(object):
 
     def do_frontend_init(self):
         
+        params = []
+        params.append(ExcaliburParameter('fe_vdd_enable', [[1]]))
+        
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to enable FE VDD on system: {}'.format(self.client.error_msg))
+            
         self.client.fe_init()
         
     def do_efuseid_read(self):
