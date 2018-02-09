@@ -234,7 +234,10 @@ class ExcaliburTestApp(object):
             return
         
         self.powercard_fem_idx = self.client.get_powercard_fem_idx()
-        logging.debug("Server reports powercard is on FEM {}".format(self.powercard_fem_idx))
+        if self.powercard_fem_idx >= 0:
+            logging.debug("Server reports powercard is on FEM {}".format(self.powercard_fem_idx))
+        else:
+            logging.debug("Server reports no powercard present in system")
 
         self.client.connect()
 
@@ -289,6 +292,10 @@ class ExcaliburTestApp(object):
     
     def do_lv_enable(self):
 
+        if self.powercard_fem_idx < 0:
+            logging.warning("Unable to set LV enable as server reports no powercard")
+            return
+        
         params = []
         params.append(ExcaliburParameter('fe_lv_enable', [[self.args.lv_enable]], 
                       fem=self.powercard_fem_idx))
@@ -299,6 +306,10 @@ class ExcaliburTestApp(object):
 
     def do_hv_enable(self):
 
+        if self.powercard_fem_idx < 0:
+            logging.warning("Unable to set HV enable as server reports no powercard")
+            return
+        
         params = []
         params.append(ExcaliburParameter('fe_hv_enable', [[self.args.hv_enable]], 
                       fem=self.powercard_fem_idx))
@@ -309,6 +320,10 @@ class ExcaliburTestApp(object):
 
     def do_hv_bias_set(self):
 
+        if self.powercard_fem_idx < 0:
+            logging.warning("Unable to set HV bias as server reports no powercard")
+            return
+        
         params = []
         params.append(ExcaliburParameter('fe_hv_bias', [[self.args.hv_bias]], 
                       fem=self.powercard_fem_idx))
