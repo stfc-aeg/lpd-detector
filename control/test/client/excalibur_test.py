@@ -20,6 +20,7 @@ class ExcaliburTestAppDefaults(object):
         self.dest_data_addr = ['10.1.0.1']
         self.dest_data_mac = ['00:07:43:10:63:00']
         self.dest_data_port = [61649]
+        self.dest_data_port_offset = [0]
         self.farm_mode_enable = 0
         self.farm_mode_num_dests = 1
         
@@ -134,6 +135,9 @@ class ExcaliburTestApp(object):
         dataif_group.add_argument('--destport', metavar='PORT', dest='dest_data_port',
             nargs='+', type=int, default=self.defaults.dest_data_port,
             help='Set the data destination port(s)')
+        dataif_group.add_argument('--destportoffset', metavar='OFFSET', dest='dest_data_port_offset',
+            nargs='+', type=int, default=self.defaults.dest_data_port_offset,
+            help='Set the FEM data destination port offset')
         dataif_group.add_argument('--farmenable', metavar='ENABLE', dest='farm_mode_enable',
             type=int, default=self.defaults.farm_mode_enable,
             help='Enable UDP farm mode')
@@ -498,16 +502,18 @@ class ExcaliburTestApp(object):
         self.args.source_data_addr = []
         self.args.source_data_mac = []
         self.args.source_data_port = []
+        self.args.dest_data_port_offset = []
         
         for idx, fem in enumerate(udp_config['fems']):
             
             self.args.source_data_addr.append(fem['ipaddr'])
             self.args.source_data_mac.append(fem['mac'])
             self.args.source_data_port.append(fem['port'])
-
-            logging.debug('    FEM  {:d} : ip {:16s} mac: {:s} port: {:5d}'.format(
+            self.args.dest_data_port_offset.append(fem['dest_port_offset']
+                                                   )
+            logging.debug('    FEM  {:d} : ip {:16s} mac: {:s} port: {:5d} offset: {:d}'.format(
                 idx, self.args.source_data_addr[-1], self.args.source_data_mac[-1], 
-                self.args.source_data_port[-1]
+                self.args.source_data_port[-1], self.args.dest_data_port_offset[-1]
             ))
             
         self.args.dest_data_addr = []
@@ -626,6 +632,10 @@ class ExcaliburTestApp(object):
         ))
         write_params.append(ExcaliburParameter(
             'source_data_port', [[port] for port in self.args.source_data_port[:self.num_fems]]
+        ))
+        write_params.append(ExcaliburParameter(
+            'dest_data_port_offset', 
+            [[offset] for offset in self.args.dest_data_port_offset[:self.num_fems]]
         ))
          
         # Append the UDP destination parameters, noting [[[ ]]] indexing as they are common for

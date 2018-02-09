@@ -4,37 +4,43 @@
             "name": "fem0",
             "mac": "62:00:00:00:00:01",
             "ipaddr": "10.1.0.101",
-            "port": 60001
+            "port": 60001,
+            "dest_port_offset": 0
         },
         {
             "name": "fem1",
             "mac": "62:00:00:00:00:02",
             "ipaddr": "10.1.0.102",
-            "port": 60002
+            "port": 60002,
+            "dest_port_offset": 0
         },
         {
             "name": "fem2",
             "mac": "62:00:00:00:00:03",
             "ipaddr": "10.1.0.103",
-            "port": 60003
+            "port": 60003,
+            "dest_port_offset": 0
         },
         {
             "name": "fem4",
             "mac": "62:00:00:00:00:04",
             "ipaddr": "10.1.0.104",
-            "port": 60004
+            "port": 60004,
+            "dest_port_offset": 0
         },
         {
             "name": "fem5",
             "mac": "62:00:00:00:00:05",
             "ipaddr": "10.1.0.105",
-            "port": 60005
+            "port": 60005,
+            "dest_port_offset": 0
         },
         {
             "name": "fem6",
             "mac": "62:00:00:00:00:06",
             "ipaddr": "10.1.0.106",
-            "port": 60006
+            "port": 60006,
+            "dest_port_offset": 0
         }       
     ],
     "nodes": [
@@ -89,7 +95,7 @@
     ],
     "farm_mode" : {
         "enable": 1,
-        "num_dests": 1
+        "num_dests": 8
     },
     "core" : {
         "source_mac" : "62:00:00:00:00:01",
