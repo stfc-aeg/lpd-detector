@@ -132,6 +132,7 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
   mDataSourceMacAddress = "62:00:00:00:00:01";
   mDataSourcePort = kDataSourcePort;
 
+  mDataDestPortOffset = 0;
   mDataFarmModeEnable = false;
   mDataFarmModeNumDestinations = 1;
 
@@ -427,7 +428,7 @@ void ExcaliburFemClient::startAcquisition(void)
 
   // Load the UDP core and farm mode configuration into the 10GigE UDP block on the FEM
   u32 rc = this->configUDP(mDataSourceMacAddress, mDataSourceIpAddress, mDataSourcePort,
-                           mDataDestMacAddress, mDataDestIpAddress, mDataDestPort,
+                           mDataDestMacAddress, mDataDestIpAddress, mDataDestPort, mDataDestPortOffset,
                            mDataFarmModeNumDestinations, mDataFarmModeEnable);
   if (rc != 0)
   {
@@ -1224,6 +1225,11 @@ void ExcaliburFemClient::dataPortParamSet(excaliburDataPortParam aPortParam, std
         break;
     }
   }
+}
+
+void ExcaliburFemClient::dataDestPortOffsetSet(unsigned int aDestPortOffset)
+{
+    mDataDestPortOffset = aDestPortOffset;
 }
 
 void ExcaliburFemClient::dataFarmModeNumDestinationsSet(unsigned int aNumDestinations)

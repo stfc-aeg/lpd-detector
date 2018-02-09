@@ -48,20 +48,20 @@ const unsigned int kFarmModeLutSize = 256;
 u32 FemClient::configUDP(
     const std::string sourceMacAddress, const std::string sourceIpAddress, const u32 sourcePort,
     const std::string destMacAddress[], const std::string destIpAddress[], const u32 destPort[],
-    const u32 num_lut_entries, const bool farmModeEnabled
+    const u32 destPortOffset, const u32 num_lut_entries, const bool farmModeEnabled
 )
 {
   u32 core_rc, farm_rc;
 
   core_rc = this->configUDPCoreReg(
       sourceMacAddress.c_str(), sourceIpAddress.c_str(), sourcePort,
-      destMacAddress[0].c_str(), destIpAddress[0].c_str(), destPort[0]
+      destMacAddress[0].c_str(), destIpAddress[0].c_str(), destPort[0] + destPortOffset
   );
   if (core_rc != 0) {
    return core_rc;
   }
 
-  farm_rc = this->configUDPFarmMode(destMacAddress, destIpAddress, destPort,
+  farm_rc = this->configUDPFarmMode(destMacAddress, destIpAddress, destPort, destPortOffset,
                                     num_lut_entries, farmModeEnabled);
 
   return farm_rc;
@@ -146,7 +146,7 @@ u32 FemClient::configUDPCoreReg(
 u32 FemClient::configUDPFarmMode
 (
     const std::string destMacAddress[], const std::string destIpAddress[],
-    const u32 destPort[], u32 num_lut_entries, const bool farmModeEnabled
+    const u32 destPort[], const u32 destPortOffset, u32 num_lut_entries, const bool farmModeEnabled
 )
 {
   u32 rc = 0;
@@ -161,12 +161,13 @@ u32 FemClient::configUDPFarmMode
   {
 
     std::cout << "LUT table entry " << idx << " :  IP:" << destIpAddress[idx]
-              << " MAC:" << destMacAddress[idx] << " port:" << destPort[idx] << std::endl;
+              << " MAC:" << destMacAddress[idx]
+              << " port:" << destPort[idx] + destPortOffset << std::endl;
 
     ip_regs.push_back(farmIpRegFromStr(destIpAddress[idx]));
     std::vector<u32> mac_reg_vals = farmMacRegFromStr(destMacAddress[idx]);
     mac_regs.insert(mac_regs.end(), mac_reg_vals.begin(), mac_reg_vals.end());
-    port_regs.push_back(destPort[idx]);
+    port_regs.push_back(destPort[idx] + destPortOffset);
   }
 
   // Write the port, IP and MAC settings into the appropriate RDMA registers

@@ -199,6 +199,7 @@ public:
       std::size_t offset, const char** aAddrValues);
   void dataPortParamSet(excaliburDataPortParam aPortParam, std::size_t size,
       std::size_t offset, const unsigned int* aPortValues);
+  void dataDestPortOffsetSet(unsigned int aDestPortOffset);
   void dataFarmModeNumDestinationsSet(unsigned int aNumDestinations);
   void dataFarmModeEnableSet(unsigned int aEnable);
 
@@ -355,6 +356,7 @@ private:
   std::string mDataDestIpAddress[kFarmModeLutSize];
   std::string mDataDestMacAddress[kFarmModeLutSize];
   unsigned int mDataDestPort[kFarmModeLutSize];
+  unsigned int mDataDestPortOffset;
   unsigned int mDataFarmModeNumDestinations;
   bool mDataFarmModeEnable;
 

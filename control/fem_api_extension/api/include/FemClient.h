@@ -116,7 +116,7 @@ public:
   u32 configUDP(
       const std::string sourceMacAddress, const std::string sourceIpAddress, const u32 sourcePort,
       const std::string destMacAddress[], const std::string destIpAddress[], const u32 destPort[],
-      const u32 num_lut_entries, const bool farmModeEnabled
+      const u32 destPortOffset, const u32 num_lut_entries, const bool farmModeEnabled
   );
   char* getFpgaIpAddressFromHost(const char* ipAddr);
   int getMacAddressFromIP(const char *ipName, char* mac_str);
@@ -144,7 +144,8 @@ private:
   u32 configUDPCoreReg(const char* fpgaMACaddress, const char* fpgaIPaddress, u32 fpgaPort,
       const char* hostMACaddress, const char* hostIPaddress, u32 hostPort);
   u32 configUDPFarmMode(const std::string destMacAddress[], const std::string destIpAddress[],
-      const u32 destPort[], u32 numDestinations, const bool farmModeEnabled);
+      const u32 destPort[], const u32 destPortOffset, u32 numDestinations,
+      const bool farmModeEnabled);
 
   void to_bytes(const char *ipName, unsigned char* b, int n, int base = 10);
   u32 farmIpRegFromStr(std::string ip_str);

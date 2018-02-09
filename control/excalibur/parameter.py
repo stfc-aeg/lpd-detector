@@ -145,6 +145,7 @@ class ExcaliburFrontEndParameterMap(ParameterMap):
         self['dest_data_addr'] = ParameterSpec(FEM_OP_DEST_DATA_ADDR, 'string', FEM_FARM_MODE_LUT_SIZE, ParamPerFemRandomAccess)
         self['dest_data_mac'] = ParameterSpec(FEM_OP_DEST_DATA_MAC, 'string', FEM_FARM_MODE_LUT_SIZE, ParamPerFemRandomAccess)
         self['dest_data_port'] = ParameterSpec(FEM_OP_DEST_DATA_PORT, 'int', FEM_FARM_MODE_LUT_SIZE, ParamPerFemRandomAccess)
+        self['dest_data_port_offset'] = ParameterSpec(FEM_OP_DEST_DATA_PORT_OFFSET, 'int', 1, ParamPerFem)
         self['farm_mode_num_dests'] = ParameterSpec(FEM_OP_FARM_MODE_NUM_DESTS, 'int', 1, ParamPerFem)
         self['farm_mode_enable'] = ParameterSpec(FEM_OP_FARM_MODE_ENABLE, 'int', 1, ParamPerFem)
         

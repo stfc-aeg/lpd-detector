@@ -448,6 +448,11 @@ int femSetInt(void* handle, int chipId, int id, std::size_t size, size_t offset,
         }
           break;
 
+        case FEM_OP_DEST_DATA_PORT_OFFSET:
+
+          (femHandle->client)->dataDestPortOffsetSet((unsigned int) *value);
+          break;
+
         case FEM_OP_FARM_MODE_NUM_DESTS:
 
           (femHandle->client)->dataFarmModeNumDestinationsSet((unsigned int) *value);
