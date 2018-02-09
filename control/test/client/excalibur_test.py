@@ -676,34 +676,73 @@ class ExcaliburTestApp(object):
         # have been read out by the system
         if not self.args.no_wait:
 
-            wait_count = 0
-            acq_completion_state_mask = 0x40000000
-            frames_acquired = 0
-                    
-            while True:
-                
-                (read_ok, vals) = self.client.fe_param_read(['frames_acquired','control_state'])
-                frames_acquired = min(vals['frames_acquired'])                
-                acq_completed = all(
-                    [((state & acq_completion_state_mask) == acq_completion_state_mask) for state in vals['control_state']]
-                )
-                if acq_completed:
-                    break
-                
-                wait_count += 1
-                if wait_count % 5 == 0:
-                    logging.info('  {:d} frames read out  ...'.format(frames_acquired))
+            frames_acquired = self.await_acquistion_completion(0x40000000)
             
-            logging.info('Completed readout of {} frames'.format(frames_acquired))
-            self.do_stop()    
-            logging.info('Acquisition complete')
+            if self.args.counter_depth == 24:
+                self.client.do_command('stop_acquisition')
+                self.do_c0_matrix_read()
+            
+            self.do_stop()
+
+            logging.info('Acquistion of {} frames completed'.format(frames_acquired))
         else:
             logging.info('Acquisition started, not waiting for completion, will not send stop command')
+    
+    def do_c0_matrix_read(self):
+
+        logging.info('Performing a C0 matrix read for 24 bit mode')
+
+        c0_read_params = []
+        c0_read_params.append(ExcaliburParameter(
+            'mpx3_operationmode', [[ExcaliburDefinitions.FEM_OPERATION_MODE_MAXTRIXREAD]]
+        ))
+        c0_read_params.append(ExcaliburParameter('mpx3_counterselect', [[0]]))
+        c0_read_params.append(ExcaliburParameter('num_frames_to_acquire', [[1]]))
+        c0_read_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[0]]))
         
+        logging.info("Sending configuration parameters for C0 matrix read")
+        write_ok = self.client.fe_param_write(c0_read_params)
+        if not write_ok:
+            logging.error("Failed to write C0 matix read configuration parameters: {}".format(
+                self.client.error_msg)
+            )
+            return
+        
+        logging.info("Sending matrix read acquisition command")
+        cmd_ok = self.client.do_command('start_acquisition')
+        if not cmd_ok:
+            logging.error("start_acqusition command failed: {}".format(self.client.error_msg))
+            return
+
+        self.await_acquistion_completion(0x1f)
+        self.client.do_command('stop_acquisition')
+    
+    def await_acquistion_completion(self, acq_completion_state_mask):
+        
+        wait_count = 0
+        frames_acquired = 0
+                
+        while True:
+            
+            (read_ok, vals) = self.client.fe_param_read(['frames_acquired','control_state'])
+            frames_acquired = min(vals['frames_acquired'])
+            acq_completed = all(
+                [((state & acq_completion_state_mask) == acq_completion_state_mask) for state in vals['control_state']]
+            )
+            if acq_completed:
+                break
+            
+            wait_count += 1
+            if wait_count % 5 == 0:
+                logging.info('  {:d} frames read out  ...'.format(frames_acquired))
+        
+        return frames_acquired        
+
     def do_stop(self):
         
         logging.info('Sending stop acquisition command')
         self.client.do_command('stop_acquisition')
+        
         
 if __name__ == '__main__':
     
