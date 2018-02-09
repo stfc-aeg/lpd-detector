@@ -229,6 +229,11 @@ class ExcaliburClient(object):
         for (idx, state) in enumerate(fem_state):
             yield (idx, state['id'], state['error_code'], state['error_msg'])
 
+    def get_powercard_fem_idx(self):
+
+        powercard_fem_idx = self.get_param('status/powercard_fem_idx')
+        return powercard_fem_idx
+
     def connect(self):
         
         connected = self.get_param('status/connected')

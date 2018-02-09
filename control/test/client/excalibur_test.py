@@ -89,6 +89,14 @@ class ExcaliburTestApp(object):
             help='Dump the state of the control server')
         cmd_group.add_argument('--reset', '-r', action='store_true', 
             help='Issue front-end reset/init')
+        cmd_group.add_argument('--lvenable', type=int, dest='lv_enable',
+            choices=[0, 1], 
+            help='Set power card LV enable: 0=off (default), 1=on')
+        cmd_group.add_argument('--hvenable', type=int, dest='hv_enable',
+            choices=[0, 1], 
+            help='Set power card HV enable: 0=off (default), 1=on')
+        cmd_group.add_argument('--hvbias', type=int, dest='hv_bias', metavar='VOLTS',
+            help='Set power card HV bias in volts')
         cmd_group.add_argument('--efuse', '-e', action='store_true',
             help='Read and diplay MPX3 eFuse IDs')
         cmd_group.add_argument('--slow', '-s', action='store_true',
@@ -225,6 +233,9 @@ class ExcaliburTestApp(object):
             self.client.print_all(logging.INFO)
             return
         
+        self.powercard_fem_idx = self.client.get_powercard_fem_idx()
+        logging.debug("Server reports powercard is on FEM {}".format(self.powercard_fem_idx))
+
         self.client.connect()
 
         if self.args.api_trace:
@@ -239,7 +250,16 @@ class ExcaliburTestApp(object):
             self.num_fems, ('' if self.num_fems == 1 else 's'), 
             ','.join([str(fem_id) for fem_id in self.fem_ids])
         ))
-                    
+                  
+        if self.args.lv_enable:
+            self.do_lv_enable()
+
+        if self.args.hv_enable:
+            self.do_hv_enable()
+
+        if self.args.hv_bias:
+            self.do_hv_bias_set()
+
         if self.args.reset:
             self.do_frontend_init()
             
@@ -267,6 +287,36 @@ class ExcaliburTestApp(object):
         if self.args.disconnect:    
             self.client.disconnect()
     
+    def do_lv_enable(self):
+
+        params = []
+        params.append(ExcaliburParameter('fe_lv_enable', [[self.args.lv_enable]], 
+                      fem=self.powercard_fem_idx))
+                
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to write LV enable parameter to system: {}'.format(self.client.error_msg))
+
+    def do_hv_enable(self):
+
+        params = []
+        params.append(ExcaliburParameter('fe_hv_enable', [[self.args.hv_enable]], 
+                      fem=self.powercard_fem_idx))
+                
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to write HV enable parameter to system: {}'.format(self.client.error_msg))
+
+    def do_hv_bias_set(self):
+
+        params = []
+        params.append(ExcaliburParameter('fe_hv_bias', [[self.args.hv_bias]], 
+                      fem=self.powercard_fem_idx))
+                
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to write HV bias parameter to system: {}'.format(self.client.error_msg))
+
     def do_frontend_init(self):
         
         self.client.fe_init()
