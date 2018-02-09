@@ -409,18 +409,47 @@ void ExcaliburFemClient::startAcquisition(void)
   }
   std::cout << "UDP farm mode configuration has " << valid_lut_entries << " valid LUT entries" << std::endl;
 
-  // Set the number of farm mode destinations to use, warning and truncating if this is greater
-  // than the number of valid LUT entries - note this is distinct from the underlying 10GigE UDP
-  // firmware block
+  // Determine the number of farm mode destinations to use, warning and truncating if this is greater
+  // than the number of valid LUT entries
   if (mDataFarmModeNumDestinations > valid_lut_entries)
   {
     std::cout << "WARNING: requested number of farm mode destinations " <<
         mDataFarmModeNumDestinations << "exceeds valid LUT entries, truncating" << std::endl;
     mDataFarmModeNumDestinations = valid_lut_entries;
   }
-
   std::cout << "Setting number of UDP farm mode destinations to " << mDataFarmModeNumDestinations << std::endl;
-  this->asicControlFarmModeNumDestinationsSet(mDataFarmModeNumDestinations);
+
+  // For 24-bit mode expand out the LUT to double-up consecutive entries, as the FEM
+  // sends two frames per image (C1 and C0), which both need to go to the same readout node
+  bool expand_lut = false;
+  unsigned int dataFarmModeNumDestinations = mDataFarmModeNumDestinations;
+  std::string dataDestMacAddress[kFarmModeLutSize];
+  std::string dataDestIpAddress[kFarmModeLutSize];
+  unsigned int dataDestPort[kFarmModeLutSize];
+
+  if (mMpx3OmrParams[0].counterDepth == counterDepth24)
+  {
+      expand_lut = true;
+      dataFarmModeNumDestinations *= 2;
+      std::cout << "Expanding farm mode LUT to " << dataFarmModeNumDestinations
+              << " to accommodate 24 bit mode readout" << std::endl;
+  }
+  for (unsigned int idx = 0, expand_idx = 0; idx < mDataFarmModeNumDestinations; idx++, expand_idx++)
+  {
+      dataDestMacAddress[expand_idx] = mDataDestMacAddress[idx];
+      dataDestIpAddress[expand_idx] = mDataDestIpAddress[idx];
+      dataDestPort[expand_idx] = mDataDestPort[idx];
+      if (expand_lut) {
+          expand_idx++;
+          dataDestMacAddress[expand_idx] = mDataDestMacAddress[idx];
+          dataDestIpAddress[expand_idx] = mDataDestIpAddress[idx];
+          dataDestPort[expand_idx] = mDataDestPort[idx];
+      }
+  }
+
+  // Set the number of farm mode destination nodes in the top-level control register - note this is
+  // distinct from the underlying 10GigE UDP firmware block
+  this->asicControlFarmModeNumDestinationsSet(dataFarmModeNumDestinations);
 
   // Reset the LUT counter in the top-level block so each acquisition starts sending data to the
   // same node
@@ -428,8 +457,8 @@ void ExcaliburFemClient::startAcquisition(void)
 
   // Load the UDP core and farm mode configuration into the 10GigE UDP block on the FEM
   u32 rc = this->configUDP(mDataSourceMacAddress, mDataSourceIpAddress, mDataSourcePort,
-                           mDataDestMacAddress, mDataDestIpAddress, mDataDestPort, mDataDestPortOffset,
-                           mDataFarmModeNumDestinations, mDataFarmModeEnable);
+                           dataDestMacAddress, dataDestIpAddress, dataDestPort, mDataDestPortOffset,
+                           dataFarmModeNumDestinations, mDataFarmModeEnable);
   if (rc != 0)
   {
     throw FemClientException((FemClientErrorCode) excaliburFemClientUdpSetupFailed,
@@ -1234,11 +1263,11 @@ void ExcaliburFemClient::dataDestPortOffsetSet(unsigned int aDestPortOffset)
 
 void ExcaliburFemClient::dataFarmModeNumDestinationsSet(unsigned int aNumDestinations)
 {
-  if (aNumDestinations > kFarmModeLutSize)
+  if (aNumDestinations > kFarmModeLutSize/2)
   {
     std::ostringstream msg;
     msg << "UDP data farm mode number of destinations requested (" << aNumDestinations
-        << ") exceeds maximum (" << kFarmModeLutSize;
+        << ") exceeds maximum (" << kFarmModeLutSize/2;
     throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
   }
   mDataFarmModeNumDestinations = aNumDestinations;
