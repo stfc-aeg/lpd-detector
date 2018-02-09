@@ -129,7 +129,12 @@ class ExcaliburFrontEndParameterMap(ParameterMap):
         self['fem_remote_temp'] = ParameterSpec(FEM_OP_REMOTE_DIODE_TEMP, 'float', 1, ParamPerFem)
         self['moly_humidity'] = ParameterSpec(FEM_OP_MOLY_HUMIDITY, 'float', 1, ParamPerFem)
         self['medipix_chip_disable'] = ParameterSpec(FEM_OP_MEDIPIX_CHIP_DISABLE, 'int', 1, ParamPerChip)
-        
+ 
+        self['fe_lv_enable'] = ParameterSpec(FEM_OP_LV_ON_OFF, 'int', 1, ParamPerFem)
+        self['fe_hv_enable'] = ParameterSpec(FEM_OP_BIAS_ON_OFF, 'int', 1, ParamPerFem)
+        self['fe_hv_bias'] = ParameterSpec(FEM_OP_BIAS_LEVEL, 'float', 1, ParamPerFem)
+        self['fe_vdd_enable'] = ParameterSpec(FEM_OP_VDD_ON_OFF, 'int', 1, ParamPerFem)
+               
         self['datareceiver_enable'] = ParameterSpec(FEM_OP_DATA_RECEIVER_ENABLE, 'int', 1 , ParamPerFem)
         self['frames_acquired'] = ParameterSpec(FEM_OP_FRAMES_ACQUIRED, 'int', 1 , ParamPerFem)
         self['control_state'] = ParameterSpec(FEM_OP_CONTROL_STATE, 'int', 1 , ParamPerFem)
