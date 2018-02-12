@@ -1181,8 +1181,9 @@ void ExcaliburFemClient::dataAddrParamSet(excaliburDataAddrParam aAddrParam, std
     throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
   }
 
-  for (std::size_t val_idx = offset; val_idx < (offset + size); val_idx++)
+  for (std::size_t val_idx = 0; val_idx < size; val_idx++)
   {
+    std::size_t param_idx = val_idx + offset;
     switch (aAddrParam)
     {
 
@@ -1193,10 +1194,10 @@ void ExcaliburFemClient::dataAddrParamSet(excaliburDataAddrParam aAddrParam, std
         mDataSourceMacAddress = aAddrValues[val_idx];
         break;
       case excaliburDataAddrDestIp:
-        mDataDestIpAddress[val_idx] = aAddrValues[val_idx];
+        mDataDestIpAddress[param_idx] = aAddrValues[val_idx];
         break;
       case excaliburDataAddrDestMac:
-        mDataDestMacAddress[val_idx] = aAddrValues[val_idx];
+        mDataDestMacAddress[param_idx] = aAddrValues[val_idx];
         break;
       default:
         std::ostringstream msg;
@@ -1237,15 +1238,16 @@ void ExcaliburFemClient::dataPortParamSet(excaliburDataPortParam aPortParam, std
     throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalDataParam, msg.str());
   }
 
-  for (std::size_t val_idx = offset; val_idx < (offset + size); val_idx++)
+  for (std::size_t val_idx = 0; val_idx < size; val_idx++)
   {
+    std::size_t param_idx = val_idx + offset;
     switch (aPortParam)
     {
       case excaliburDataPortSource:
         mDataSourcePort = aPortValues[val_idx];
         break;
       case excaliburDataPortDest:
-        mDataDestPort[val_idx] = aPortValues[val_idx];
+        mDataDestPort[param_idx] = aPortValues[val_idx];
         break;
       default:
         std::ostringstream msg;
