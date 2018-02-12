@@ -88,14 +88,13 @@ class ExcaliburDetector(object):
             'param': ['none'],
             'fem': -1,
             'chip': -1,
-            'offset': -1,
             'value': {},
         }
         self.fe_param_write = [{
             'param': 'none',
             'fem': -1,
             'chip': -1,
-            'offset': -1,
+            'offset': 0,
             'value': [],
         }]
         
@@ -477,7 +476,7 @@ class ExcaliburDetector(object):
 
             self.fe_param_write.append({})
                         
-            required_attrs = ('param', 'fem', 'chip', 'value', 'offset')
+            required_attrs = ('param', 'fem', 'chip', 'value')
             for attr in required_attrs:
                 try:
                     self.fe_param_write[idx][attr] = param[attr]
@@ -486,7 +485,9 @@ class ExcaliburDetector(object):
                     raise ExcaliburDetectorError(
                         'Frontend parameter write command is missing {} attribute'.format(attr)
                     )
-           
+            self.fe_param_write[idx]['offset'] = param['offset'] if 'offset' in param else 0
+                
+            print self.fe_param_write
             if param['param'] not in self.fe_param_map:
                 self.command_succeeded = False 
                 raise ExcaliburDetectorError('Illegal parameter name {}'.format(param['param']))
@@ -521,7 +522,7 @@ class ExcaliburDetector(object):
                 params_by_fem[fem_idx].append({
                     'param': param['param'],
                     'chip': param['chip'],
-                    'offset': param['offset'],
+                    'offset': param['offset'] if 'offset' in param else 0,
                     'value': values[fem_idx]
                 })
                                 
