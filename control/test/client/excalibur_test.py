@@ -24,7 +24,6 @@ class ExcaliburTestAppDefaults(object):
         self.farm_mode_enable = 0
         self.farm_mode_num_dests = 1
         
-        self.udp_config_file = 'udp_config.json'
         self.log_levels = {
             'error': logging.ERROR,
             'warning': logging.WARNING,
@@ -113,8 +112,8 @@ class ExcaliburTestApp(object):
         cmd_group.add_argument('--config', action='store_true',
             help='Load MPX3 pixel configuration')
         cmd_group.add_argument('--udpconfig', nargs='?', metavar='FILE',
-            default=None, const=self.defaults.udp_config_file,
-            help='Load 10GigE UDP data interface parameters, otherwise use default values')
+            default=None, const='-',
+            help='Load 10GigE UDP data interface parameters from file, otherwise use default values')
         
         dataif_group = parser.add_argument_group('10GigE UDP data interface parameters')
         dataif_group.add_argument('--sourceaddr', metavar='IP', dest='source_data_addr',
@@ -284,7 +283,7 @@ class ExcaliburTestApp(object):
         
         if self.args.udpconfig:
             self.do_udp_config()
-                      
+
         if self.args.acquire:
             self.do_acquisition()
             
@@ -293,7 +292,7 @@ class ExcaliburTestApp(object):
         
         if self.args.disconnect:    
             self.client.disconnect()
-    
+            
     def do_lv_enable(self):
 
         if self.powercard_fem_idx < 0:
@@ -487,53 +486,110 @@ class ExcaliburTestApp(object):
 
     def do_udp_config(self):
         
-        logging.info("Loading UDP configuration from file {}".format(self.args.udpconfig))
-        
-        try:
-            with open(self.args.udpconfig) as config_file:
-                udp_config = json.load(config_file)
-        except IOError as io_error:
-            logging.error("Failed to open UDP configuration file: {}".format(io_error))
-            return
-        except ValueError as value_error:
-            logging.error("Failed to parse UDP json config: {}".format(value_error))
-            return
-
-        self.args.source_data_addr = []
-        self.args.source_data_mac = []
-        self.args.source_data_port = []
-        self.args.dest_data_port_offset = []
-        
-        for idx, fem in enumerate(udp_config['fems']):
+        if self.args.udpconfig != '-':
+            logging.info("Loading UDP configuration from file {}".format(self.args.udpconfig))
             
-            self.args.source_data_addr.append(fem['ipaddr'])
-            self.args.source_data_mac.append(fem['mac'])
-            self.args.source_data_port.append(fem['port'])
-            self.args.dest_data_port_offset.append(fem['dest_port_offset']
-                                                   )
-            logging.debug('    FEM  {:d} : ip {:16s} mac: {:s} port: {:5d} offset: {:d}'.format(
-                idx, self.args.source_data_addr[-1], self.args.source_data_mac[-1], 
-                self.args.source_data_port[-1], self.args.dest_data_port_offset[-1]
-            ))
+            try:
+                with open(self.args.udpconfig) as config_file:
+                    udp_config = json.load(config_file)
+            except IOError as io_error:
+                logging.error("Failed to open UDP configuration file: {}".format(io_error))
+                return
+            except ValueError as value_error:
+                logging.error("Failed to parse UDP json config: {}".format(value_error))
+                return
+    
+            source_data_addr = []
+            source_data_mac = []
+            source_data_port = []
+            dest_data_port_offset = []
             
-        self.args.dest_data_addr = []
-        self.args.dest_data_mac = []
-        self.args.dest_data_port = []
-        
-        for idx, node in enumerate(udp_config['nodes']):
-            
-            self.args.dest_data_addr.append(node['ipaddr'])
-            self.args.dest_data_mac.append(node['mac'])
-            self.args.dest_data_port.append(int(node['port']))
+            for idx, fem in enumerate(udp_config['fems']):
                 
-            logging.debug('    Node {:d} : ip {:16s} mac: {:s} port: {:5d}'.format(
-                idx, self.args.dest_data_addr[-1], self.args.dest_data_mac[-1],
-                self.args.dest_data_port[-1]
-            ))
-
-        self.args.farm_mode_enable = udp_config['farm_mode']['enable']
-        self.args.farm_mode_num_dests = udp_config['farm_mode']['num_dests']
+                source_data_addr.append(fem['ipaddr'])
+                source_data_mac.append(fem['mac'])
+                source_data_port.append(fem['port'])
+                dest_data_port_offset.append(fem['dest_port_offset']
+                                                       )
+                logging.debug('    FEM  {:d} : ip {:16s} mac: {:s} port: {:5d} offset: {:d}'.format(
+                    idx, source_data_addr[-1], source_data_mac[-1], 
+                    source_data_port[-1], dest_data_port_offset[-1]
+                ))
+                
+            dest_data_addr = []
+            dest_data_mac = []
+            dest_data_port = []
             
+            for idx, node in enumerate(udp_config['nodes']):
+                
+                dest_data_addr.append(node['ipaddr'])
+                dest_data_mac.append(node['mac'])
+                dest_data_port.append(int(node['port']))
+                    
+                logging.debug('    Node {:d} : ip {:16s} mac: {:s} port: {:5d}'.format(
+                    idx, dest_data_addr[-1], dest_data_mac[-1],
+                    dest_data_port[-1]
+                ))
+    
+            farm_mode_enable = udp_config['farm_mode']['enable']
+            farm_mode_num_dests = udp_config['farm_mode']['num_dests']
+        
+        else:
+            
+            logging.info("Using default UDP configuration")
+            
+            source_data_addr = self.args.source_data_addr
+            source_data_mac = self.args.source_data_mac
+            source_data_port = self.args.source_data_port
+            dest_data_port_offset = self.args.dest_data_port_offset
+
+            dest_data_addr = self.args.dest_data_addr
+            dest_data_mac = self.args.dest_data_mac
+            dest_data_port = self.args.dest_data_port
+            
+            farm_mode_enable = self.args.farm_mode_enable
+            farm_mode_num_dests  = self.args.farm_mode_num_dests
+            
+        udp_params = []
+        
+        # Append per-FEM UDP source parameters, truncating to number of FEMs present in system
+        udp_params.append(ExcaliburParameter(
+            'source_data_addr', [[addr] for addr in source_data_addr[:self.num_fems]],
+        ))
+        udp_params.append(ExcaliburParameter(
+            'source_data_mac', [[mac] for mac in source_data_mac[:self.num_fems]],
+        ))
+        udp_params.append(ExcaliburParameter(
+            'source_data_port', [[port] for port in source_data_port[:self.num_fems]]
+        ))
+        udp_params.append(ExcaliburParameter(
+            'dest_data_port_offset', 
+            [[offset] for offset in dest_data_port_offset[:self.num_fems]]
+        ))
+          
+        # Append the UDP destination parameters, noting [[[ ]]] indexing as they are common for
+        # all FEMs and chips - there must be a better way to do this 
+        udp_params.append(ExcaliburParameter(
+            'dest_data_addr', [[[addr for addr in dest_data_addr]]]
+        ))
+        udp_params.append(ExcaliburParameter(
+            'dest_data_mac', [[[mac for mac in dest_data_mac]]]
+        ))
+        udp_params.append(ExcaliburParameter(
+            'dest_data_port', [[[port for port in dest_data_port]]]
+        ))
+          
+        # Append the farm mode configuration parameters
+        udp_params.append(ExcaliburParameter('farm_mode_enable', [[farm_mode_enable]]))
+        udp_params.append(ExcaliburParameter('farm_mode_num_dests', [[farm_mode_num_dests]]))
+  
+        # Write all the parameters to system
+        logging.info('Writing UDP configuration parameters to system')
+        write_ok = self.client.fe_param_write(udp_params)
+        if not write_ok:
+            logging.error('Failed to write UDP configuration parameters to system: {}'.format(self.client.error_msg))
+        
+
     def do_acquisition(self):
         
         # Resolve the acquisition operating mode appropriately, handling burst and matrix read if necessary
@@ -621,39 +677,6 @@ class ExcaliburTestApp(object):
         ))
         write_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[lfsr_bypass_mode]]))
 
-        logging.info('  Setting data interface address and port parameters')
-        
-        # Append per-FEM UDP source parameters, truncating to number of FEMs present in system
-        write_params.append(ExcaliburParameter(
-            'source_data_addr', [[addr] for addr in self.args.source_data_addr[:self.num_fems]],
-        ))
-        write_params.append(ExcaliburParameter(
-            'source_data_mac', [[mac] for mac in self.args.source_data_mac[:self.num_fems]],
-        ))
-        write_params.append(ExcaliburParameter(
-            'source_data_port', [[port] for port in self.args.source_data_port[:self.num_fems]]
-        ))
-        write_params.append(ExcaliburParameter(
-            'dest_data_port_offset', 
-            [[offset] for offset in self.args.dest_data_port_offset[:self.num_fems]]
-        ))
-         
-        # Append the UDP destination parameters, noting [[[ ]]] indexing as they are common for
-        # all FEMs and chips - there must be a better way to do this 
-        write_params.append(ExcaliburParameter(
-            'dest_data_addr', [[[addr for addr in self.args.dest_data_addr]]]
-        ))
-        write_params.append(ExcaliburParameter(
-            'dest_data_mac', [[[mac for mac in self.args.dest_data_mac]]]
-        ))
-        write_params.append(ExcaliburParameter(
-            'dest_data_port', [[[port for port in self.args.dest_data_port]]]
-        ))
-         
-        # Append the farm mode configuration parameters
-        write_params.append(ExcaliburParameter('farm_mode_enable', [[self.args.farm_mode_enable]]))
-        write_params.append(ExcaliburParameter('farm_mode_num_dests', [[self.args.farm_mode_num_dests]]))
-  
         # Disable local receiver thread
         logging.info('  Disabling local data receiver thread')
         write_params.append(ExcaliburParameter('datareceiver_enable', [[0]]))
