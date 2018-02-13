@@ -487,7 +487,6 @@ class ExcaliburDetector(object):
                     )
             self.fe_param_write[idx]['offset'] = param['offset'] if 'offset' in param else 0
                 
-            print self.fe_param_write
             if param['param'] not in self.fe_param_map:
                 self.command_succeeded = False 
                 raise ExcaliburDetectorError('Illegal parameter name {}'.format(param['param']))
