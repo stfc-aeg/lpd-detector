@@ -64,7 +64,8 @@ class ExcaliburBuildExt(build_ext):
                 log.info("API library {} was recompiled, forcing rebuild of extension".format(
                     fem_api.name
                 ))
-                os.remove(self.get_ext_fullpath(fem_api.name))
+                if os.path.exists(self.get_ext_fullpath(fem_api.name)):
+                    os.remove(self.get_ext_fullpath(fem_api.name))
            
         # Run the real build_ext command
         build_ext.run(self)
