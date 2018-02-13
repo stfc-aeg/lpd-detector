@@ -9,6 +9,7 @@
 #include "ExcaliburFrontEndDevices.h"
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
+#include "FemLogger.h"
 
 /** asicControlOmrSet - setup an OMR value in ASIC control
  *
@@ -71,7 +72,7 @@ void ExcaliburFemClient::asicControlMuxSet(unsigned int aMuxValue)
 void ExcaliburFemClient::asicControlCommandExecute(asicControlCommand aCommand)
 {
 
-//	std::cout << "Command execute: 0x" << std::hex << aCommand << std::dec << std::endl;
+  //FEMLOG(mFemId, logDEBUG) << "Command execute: 0x" << std::hex << aCommand << std::dec;
 
 // Execute the command by writing to the command word register
   this->rdmaWrite(kExcaliburAsicControlReg, (u32) aCommand);

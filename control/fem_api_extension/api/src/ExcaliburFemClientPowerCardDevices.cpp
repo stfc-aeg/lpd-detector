@@ -7,6 +7,7 @@
 
 #include "ExcaliburFemClient.h"
 #include "ExcaliburPowerCardDevices.h"
+#include "FemLogger.h"
 
 void ExcaliburFemClient::powerCardBiasEnableWrite(unsigned int aEnable)
 {
@@ -31,7 +32,7 @@ unsigned int ExcaliburFemClient::powerCardLowVoltageEnableRead(void)
 void ExcaliburFemClient::powerCardBiasLevelWrite(float aBiasLevel)
 {
 
-  std::cout << "Setting bias level to " << aBiasLevel << "V" << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "Setting bias level to " << aBiasLevel << "V";
   // Calculate 8-bit DAC value from requested bias level
   u8 dacValue = (int) ((aBiasLevel / kPwrCardBiasFullScale) * kPwrCardBiasMaxDacCode);
 
@@ -108,13 +109,6 @@ float ExcaliburFemClient::powerCardMonitorRead(excaliburPowerCardMonitor aMonito
 
     monitorResult = ((float) rawADCVal * theMonitor.scale) - theMonitor.offset;
 
-//		if (aMonitor == biasVoltageMontor)
-//		{
-//			std::cout << "powerCardMonitorRead: bias voltage monitor=" << (int) aMonitor
-//				      << " device=" << theMonitor.device << " channel=" << theMonitor.channel
-//				      << " raw ADC=" << rawADCVal
-//					  << " result=" << monitorResult << std::endl;
-//		}
   }
 
   return monitorResult;
@@ -137,7 +131,7 @@ int ExcaliburFemClient::powerCardPCF8574BitRead(int aBit)
 void ExcaliburFemClient::powerCardPCF8574BitWrite(int aBit, int aVal)
 {
 
-  std::cout << "powerCardPCF8475BitWrite aBit=" << aBit << " aVal=" << aVal << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "powerCardPCF8475BitWrite aBit=" << aBit << " aVal=" << aVal;
 
   // Read a single byte from the device
   std::vector<u8> response = this->i2cRead(kPwrCardPCF8574Address, 1);
@@ -149,8 +143,8 @@ void ExcaliburFemClient::powerCardPCF8574BitWrite(int aBit, int aVal)
   u8 otherWriteBits = response[0] & ~(kPwrCardPCF8574MonitorBitMask | (1 << aBit));
   cmd[0] = otherWriteBits | (aVal << aBit) | kPwrCardPCF8574MonitorBitMask;
 
-  std::cout << "Old value: 0x" << std::hex << (int) response[0] << " other write bits: 0x"
-      << (int) otherWriteBits << " new value: 0x" << (int) cmd[0] << std::dec << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "Old value: 0x" << std::hex << (int) response[0] << " other write bits: 0x"
+      << (int) otherWriteBits << " new value: 0x" << (int) cmd[0] << std::dec;
 
   // Send command
   this->i2cWrite(kPwrCardPCF8574Address, cmd);
@@ -166,8 +160,8 @@ void ExcaliburFemClient::powerCardAD5301Write(u8 aDacValue)
   cmd[0] = (u8) (dacWord >> 8);
   cmd[1] = (u8) (dacWord & 0xFF);
 
-  std::cout << "AD5301write: dac=" << (int) aDacValue << " MSB=0x" << std::hex << (int) cmd[0]
-      << "LSB=0x" << (int) cmd[1] << std::dec << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "AD5301write: dac=" << (int) aDacValue << " MSB=0x" << std::hex
+          << (int) cmd[0] << "LSB=0x" << (int) cmd[1] << std::dec;
 
   // Send 2-byte command to device
   this->i2cWrite(kPwrCardAD5301Address, cmd);
@@ -209,10 +203,6 @@ u16 ExcaliburFemClient::powerCardAD7998Read(unsigned int aDevice, unsigned int a
 
   // Decode ADC value to return
   u16 adcVal = ((((u16) response[0]) << 8) | response[1]) & 0xFFF;
-
-//	std::cout << "AD7998 read: dev=" << aDevice << " chan=" << aChan
-//			  << " addr=0x" << std::hex << kPwrCardAD7998Address[aDevice] << std::dec
-//			  << " val=" << adcVal << std::endl;
 
   return adcVal;
 }

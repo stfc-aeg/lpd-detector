@@ -63,7 +63,7 @@ class FemClient
 
 public:
 
-  FemClient(const char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs = 0);
+  FemClient(const int femId, const char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs = 0);
   virtual ~FemClient();
 
   void setTimeout(unsigned int aTimeoutInMsecs);
@@ -124,6 +124,10 @@ public:
   u32 personalityWrite(unsigned int aCommand, unsigned int aWidth, u8* aPayload, std::size_t size);
   FemTransaction personalityCommand(unsigned int aCommand, unsigned int aWidth, u8* aPayload,
       std::size_t size);
+
+protected:
+
+  int mFemId; // FEM identifier
 
 private:
 

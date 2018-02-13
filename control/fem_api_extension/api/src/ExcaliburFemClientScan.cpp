@@ -6,6 +6,7 @@
  */
 
 #include "ExcaliburFemClient.h"
+#include "FemLogger.h"
 
 void ExcaliburFemClient::dacScanDacSet(unsigned int aDac)
 {
@@ -115,14 +116,15 @@ void ExcaliburFemClient::dacScanExecute(void)
   scanParams.executeCommand = executeCmd;
   scanParams.acquisitionTimeMs = mAcquisitionTimeMs;
 
-  std::cout << "DAC     : " << scanParams.scanDac << std::endl << "Start   : "
-      << scanParams.dacStart << std::endl << "Stop    : " << scanParams.dacStop << std::endl
-      << "Step    : " << scanParams.dacStep << std::endl;
-  std::cout << "Mask    : 0x" << std::hex << scanParams.asicMask << std::dec << std::endl;
-  std::cout << "DAC OMR : 0x" << std::hex << omrDacSet.raw << std::dec << std::endl;
-  std::cout << "ACQ OMR : 0x" << std::hex << omrAcquire.raw << std::dec << std::endl;
-  std::cout << "Exec    : 0x" << std::hex << scanParams.executeCommand << std::endl;
-  std::cout << "Acq time: " << std::dec << scanParams.acquisitionTimeMs << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "DAC     : " << scanParams.scanDac
+          << " Start   : " << scanParams.dacStart
+          << " Stop    : " << scanParams.dacStop
+          << " Step    : " << scanParams.dacStep;
+  FEMLOG(mFemId, logDEBUG) << "Mask    : 0x" << std::hex << scanParams.asicMask << std::dec;
+  FEMLOG(mFemId, logDEBUG) << "DAC OMR : 0x" << std::hex << omrDacSet.raw << std::dec;
+  FEMLOG(mFemId, logDEBUG) << "ACQ OMR : 0x" << std::hex << omrAcquire.raw << std::dec;
+  FEMLOG(mFemId, logDEBUG) << "Exec    : 0x" << std::hex << scanParams.executeCommand;
+  FEMLOG(mFemId, logDEBUG) << "Acq time: " << std::dec << scanParams.acquisitionTimeMs;
 
   this->personalityCommand(excaliburPersonalityCommandDacScan, WIDTH_LONG, (u8*) &scanParams,
                            sizeof(scanParams));
@@ -138,13 +140,13 @@ int ExcaliburFemClient::dacScanAbort(void)
 
   if (theStatus.state == personalityCommandIdle)
   {
-    std::cout << "DAC scan has already completed" << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "DAC scan has already completed";
     scanStepsCompleted = theStatus.completedOps;
   }
   else
   {
-    std::cout << "Sending scan abort command to FEM, current state = " << theStatus.state
-        << " completed steps = " << theStatus.completedOps << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "Sending scan abort command to FEM, current state = "
+            << theStatus.state << " completed steps = " << theStatus.completedOps;
 
     // Send abort command to FEM personality module
     this->personalityCommand(excaliburPersonalityCommandAbort, WIDTH_LONG, 0, 0);
@@ -161,11 +163,11 @@ int ExcaliburFemClient::dacScanAbort(void)
     while (scanAbortPending && (numAbortLoops < maxAbortLoops))
     {
       theStatus = personalityCommandStatusGet();
-      std::cout << "Abort of scan command: " << numAbortLoops << " attempts, state: "
-          << theStatus.state << " completed steps: " << theStatus.completedOps << std::endl;
+      FEMLOG(mFemId, logDEBUG) << "Abort of scan command: " << numAbortLoops << " attempts, state: "
+          << theStatus.state << " completed steps: " << theStatus.completedOps;
       if (theStatus.state == personalityCommandIdle)
       {
-        std::cout << "Scan aborted OK after " << theStatus.completedOps << " steps" << std::endl;
+        FEMLOG(mFemId, logDEBUG) << "Scan aborted OK after " << theStatus.completedOps << " steps";
         scanAbortPending = false;
         scanStepsCompleted = theStatus.completedOps;
       }
@@ -177,7 +179,7 @@ int ExcaliburFemClient::dacScanAbort(void)
     }
     if (scanAbortPending)
     {
-      std::cout << "ERROR: FEM DAC scan failed to abort correctly " << std::endl;
+      FEMLOG(mFemId, logERROR) << "FEM DAC scan failed to abort correctly ";
       scanStepsCompleted = theStatus.completedOps;
     }
   }

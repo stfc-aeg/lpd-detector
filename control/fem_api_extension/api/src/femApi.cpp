@@ -7,7 +7,7 @@
 #include "femApi.h"
 #include "FemApiError.h"
 #include "ExcaliburFemClient.h"
-
+#include "FemLogger.h"
 #include <map>
 #include <sstream>
 #include <cstring>
@@ -18,6 +18,9 @@
 #include <time.h>
 #include <pthread.h>
 #endif
+
+/* Initialise logging function pointer */
+TLogFunc FemLogger::log_func_ = NULL;
 
 // Forward declarations of internal functions
 static int translateFemErrorCode(FemErrorCode error);
@@ -76,6 +79,11 @@ int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfi
   lCallbacks = callbacks;
 
   return rc;
+}
+
+void femSetLogFunction(logFunc log_func)
+{
+    FemLogger::SetLoggingFunction((TLogFunc)log_func);
 }
 
 int femGetId(void* handle)
@@ -1167,39 +1175,6 @@ int femCmd(void* handle, int chipId, int id)
 
       case FEM_OP_REBOOT:
         (femHandle->client)->command(0);
-        break;
-
-      case 10:
-      {
-        FemAcquireStatus acqStatus = (femHandle->client)->acquireStatus();
-        std::cout << "Acquisition status" << std::endl;
-        std::cout << "------------------" << std::endl;
-        std::cout << "   State            : " << acqStatus.state << std::endl;
-        std::cout << "   Buffer count     : 0x" << std::hex << acqStatus.bufferCnt << std::dec
-            << std::endl;
-        std::cout << "   Buffer size      : 0x" << std::hex << acqStatus.bufferSize << std::dec
-            << std::endl;
-        std::cout << "   Buffer dirty     : " << acqStatus.bufferDirty << std::endl;
-        std::cout << "   Read pointer     : 0x" << std::hex << acqStatus.readPtr << std::dec
-            << std::endl;
-        std::cout << "   Write pointer    : 0x" << std::hex << acqStatus.writePtr << std::dec
-            << std::endl;
-        std::cout << "   Number of acqs   : " << acqStatus.numAcq << std::endl;
-        std::cout << "   Configured BDs   : " << acqStatus.numConfigBds << std::endl;
-        std::cout << "   Total RX bottom  : " << acqStatus.totalRecvBot << std::endl;
-        std::cout << "   Total RX top     : " << acqStatus.totalRecvTop << std::endl;
-        std::cout << "   Total TX sent    : " << acqStatus.totalSent << std::endl;
-        std::cout << "   Total errors     : " << acqStatus.totalErrors << std::endl;
-
-      }
-
-      case 11:
-        (femHandle->client)->acquireConfig(1, 0x1000, 2, 0x30000000, 1);
-        break;
-
-      case 12:
-        (femHandle->client)->dacScanExecute();
-
         break;
 
       default:

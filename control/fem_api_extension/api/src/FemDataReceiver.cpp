@@ -7,6 +7,7 @@
 
 #include "FemClient.h"
 #include "FemDataReceiver.h"
+#include "FemLogger.h"
 #include <time.h>
 
 #ifdef SCRATCH_BUFFER
@@ -35,7 +36,7 @@ FemDataReceiver::FemDataReceiver(unsigned int aRecvPort) :
   int rc = setsockopt(nativeSocket, SOL_SOCKET, SO_RCVBUF, (void*) &rcvBufSize, sizeof(rcvBufSize));
   if (rc != 0)
   {
-    std::cout << "setsockopt failed" << std::endl;
+    LOG(logERROR) << "setsockopt failed";
   }
 }
 
@@ -57,12 +58,12 @@ void FemDataReceiver::startAcquisition(void)
     lScratchBuffer = malloc(mFrameLength*4);
     if (lScratchBuffer == 0)
     {
-      std::cout << "FATAL could not allocate scratch buffer";
+      LOG(logERROR) << "Could not allocate scratch buffer";
       return;
     }
 #endif
 
-    std::cout << "Starting acquisition loop for " << mNumFrames << " frames" << std::endl;
+    LOG(logINFO) << "Starting acquisition loop for " << mNumFrames << " frames";
 
     // Set acquisition flag
     mAcquiring = true;
@@ -101,13 +102,13 @@ void FemDataReceiver::startAcquisition(void)
       // and check that it is running OK
       if (mIoService.stopped())
       {
-        std::cout << "Resetting IO service" << std::endl;
+        LOG(logDEBUG) << "Resetting IO service";
         mIoService.reset();
       }
 
       if (mIoService.stopped())
       {
-        std::cout << "Resetting IO service FAILED" << std::endl;
+        LOG(logERROR) << "Resetting IO service FAILED";
         // TODO handle error here
       }
 
@@ -165,7 +166,7 @@ void FemDataReceiver::startAcquisition(void)
     }
     else
     {
-      std::cout << "Callbacks not initialised, cannot start receiver" << std::endl;
+      LOG(logERROR) << "Callbacks not initialised, cannot start receiver";
     }
   }
 
@@ -181,8 +182,8 @@ void FemDataReceiver::stopAcquisition(unsigned int aNumFrames)
   if (mCompleteAfterNumFrames)
   {
 
-    std::cout << "Waiting for data receiver thread to complete after " << mCompleteAfterNumFrames
-        << " frames ..." << std::endl;
+     LOG(logDEBUG) << "Waiting for data receiver thread to complete after " << mCompleteAfterNumFrames
+        << " frames ...";
 
     // Wait for receiver to complete otherwise timeout
     int numCompleteLoops = 0;
@@ -194,12 +195,11 @@ void FemDataReceiver::stopAcquisition(unsigned int aNumFrames)
     }
     if (mAcquiring)
     {
-      std::cout << "ERROR: timeout during asynchronous completion of acquisition receiver"
-          << std::endl;
+      LOG(logERROR) << "ERROR: timeout during asynchronous completion of acquisition receiver";
     }
     else
     {
-      std::cout << "Receive thread completed" << std::endl;
+      LOG(logDEBUG) << "Receive thread completed";
     }
   }
   else
@@ -211,11 +211,11 @@ void FemDataReceiver::stopAcquisition(unsigned int aNumFrames)
   if (!mIoService.stopped())
   {
     mIoService.stop();
-    std::cout << "Stopping asynchronous IO service" << std::endl;
+    LOG(logDEBUG) << "Stopping asynchronous IO service";
   }
   else
   {
-    std::cout << "Asynchronous IO service already stopped" << std::endl;
+      LOG(logDEBUG) << "Asynchronous IO service already stopped";
   }
 
   if (mCompleteAfterNumFrames)
@@ -308,8 +308,8 @@ void FemDataReceiver::watchdogHandler(void)
 
       if (numFramesReceived >= mCompleteAfterNumFrames)
       {
-        std::cout << "Receiver asynchronous stop: received " << numFramesReceived
-            << " frames, stopping" << std::endl;
+          LOG(logDEBUG) << "Receiver asynchronous stop: received " << numFramesReceived
+            << " frames, stopping";
         mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
         mAcquiring = false;
       }
@@ -359,8 +359,7 @@ void FemDataReceiver::simulateReceive(BufferInfo aBuffer)
       if (mCallbacks.allocate)
       {
         buffer = mCallbacks.allocate();
-        std::cout << "Frame ptr: 0x" << std::hex << (unsigned long) buffer.addr << std::dec
-            << std::endl;
+        LOG(logDEBUG) << "Frame ptr: 0x" << std::hex << (unsigned long) buffer.addr << std::dec;
       }
 
       // Reset deadline timer
@@ -403,13 +402,6 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
     // at the end of each subframe
     mFramePayloadBytesReceived += payloadBytesReceived;
 
-    // DEBUG output
-//		std::cout << std::hex << mPacketHeader.frameNumber << " " << mPacketHeader.packetNumberFlags << std::dec << " "
-//				  << bytesReceived << " " << mFrameTotalBytesReceived << " " << mFramePayloadBytesReceived << " "
-//				  << mSubFramesReceived << " " << mSubFramePacketsReceived << " "
-//				  << (mCurrentBuffer.length - mFramePayloadBytesReceived) << " "
-//				  << mSubFrameBytesReceived << std::endl;
-
     // If this is the first packet in a sub-frame, we expect packet header to have SOF marker and packet number to
     // be zero. Otherwise, check that the packet number is incrementing correctly, i.e. we have not dropped any
     // packets
@@ -417,7 +409,7 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
     {
       if (!(mPacketHeader.packetNumberFlags & kStartOfFrameMarker))
       {
-        std::cout << "Missing SOF marker" << std::endl;
+        LOG(logERROR) << "Missing SOF marker";
         errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
       }
       else
@@ -430,9 +422,9 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
       // Check packet number is incrementing as expected within subframe
       if ((mPacketHeader.packetNumberFlags & kPacketNumberMask) != mSubFramePacketsReceived)
       {
-        std::cout << "Incorrect packet number sequence, got: "
+        LOG(logERROR) << "Incorrect packet number sequence, got: "
             << (mPacketHeader.packetNumberFlags & kPacketNumberMask) << " expected: "
-            << mSubFramePacketsReceived << std::endl;
+            << mSubFramePacketsReceived;
         errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 
       }
@@ -442,9 +434,6 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
       // number of subframes received
       if (mPacketHeader.packetNumberFlags & kEndOfFrameMarker)
       {
-
-//				std::cout << "EOF CUR: " << mCurrentFrameNumber << " LAT: " << mLatchedFrameNumber << " SUB: "
-//						  <<mSubFramesReceived << " FRA: " << mFramesReceived << " REM: " << mRemainingFrames << std::endl;
 
         // Timestamp reception of last packet of frame
         time(&recvTime);
@@ -459,9 +448,9 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
 
             if (mCurrentFrameNumber != (mLatchedFrameNumber + 1))
             {
-              std::cout << "Incorrect frame counter on first subframe, got: " << mCurrentFrameNumber
+                LOG(logERROR) << "Incorrect frame counter on first subframe, got: " << mCurrentFrameNumber
                   << " expected: " << mLatchedFrameNumber + 1 << " frames recieved: "
-                  << mFramesReceived << std::endl;
+                  << mFramesReceived;
               errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 
             }
@@ -478,8 +467,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
           {
             if (mCurrentFrameNumber != mLatchedFrameNumber)
             {
-              std::cout << "Incorrect frame counter in subframe, got: " << mCurrentFrameNumber
-                  << " expected: " << mLatchedFrameNumber << std::endl;
+              LOG(logERROR) << "Incorrect frame counter in subframe, got: " << mCurrentFrameNumber
+                  << " expected: " << mLatchedFrameNumber;
               errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 
             }
@@ -503,14 +492,14 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
         {
           if (mFramePayloadBytesReceived != mFrameLength)
           {
-            std::cout << "Received complete frame with incorrect size, got "
-                << mFramePayloadBytesReceived << " expected " << mFrameLength << std::endl;
+            LOG(logERROR) << "Received complete frame with incorrect size, got "
+                << mFramePayloadBytesReceived << " expected " << mFrameLength;
             errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
 
           }
           else
           {
-            //std::cout << "Frame completed OK counter = " << mCurrentFrameNumber << std::endl;
+            //LOG(logDEBUG) << "Frame completed OK counter = " << mCurrentFrameNumber;
           }
           mFramesReceived++;
         }
@@ -527,9 +516,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
 
     if (mFramePayloadBytesReceived > mFrameLength)
     {
-      std::cout << "Buffer overrun detected in receive of frame number " << mCurrentFrameNumber
-          << " subframe " << mSubFramesReceived << " packet " << mSubFramePacketsReceived
-          << std::endl;
+      LOG(logERROR) << "Buffer overrun detected in receive of frame number " << mCurrentFrameNumber
+          << " subframe " << mSubFramesReceived << " packet " << mSubFramePacketsReceived;
       errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
     }
 
@@ -541,15 +529,13 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
       if (mCallbacks.receive)
       {
         mCallbacks.receive(mCurrentFrameNumber, recvTime);
-        //std::cout << "Frame complete, payload bytes received = " << mFramePayloadBytesReceived << std::endl;
       }
 
       if (mCompleteAfterNumFrames != 0)
       {
         unsigned int numFramesReceived = mNumFrames - mRemainingFrames;
-        std::cout << "Async stop after " << mCompleteAfterNumFrames
-            << " requested, currently finishing frame " << numFramesReceived << std::endl;
-
+        LOG(logDEBUG) << "Async stop after " << mCompleteAfterNumFrames
+            << " requested, currently finishing frame " << numFramesReceived;
         mAcquiring = false;
         mCallbacks.signal(FemDataReceiverSignal::femAcquisitionComplete);
       }
@@ -588,8 +574,8 @@ void FemDataReceiver::handleReceive(const boost::system::error_code& errorCode,
   }
   else
   {
-    std::cout << "Got error during receive: " << errorCode.value() << " : " << errorCode.message()
-        << " recvd=" << bytesReceived << std::endl;
+    LOG(logERROR) << "Got error during receive: " << errorCode.value() << " : " << errorCode.message()
+        << " recvd=" << bytesReceived;
     errorSignal = FemDataReceiverSignal::femAcquisitionCorruptImage;
   }
 

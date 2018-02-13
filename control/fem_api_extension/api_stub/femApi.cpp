@@ -59,6 +59,11 @@ int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfi
     return rc;
 }
 
+void femSetLogFunction(logFunc log_func)
+{
+    // Do nothing in stub API as no output needs to be logged
+}
+
 int femGetId(void* handle)
 {
 	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);

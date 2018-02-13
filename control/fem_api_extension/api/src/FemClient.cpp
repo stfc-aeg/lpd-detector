@@ -6,6 +6,7 @@
  */
 
 #include "FemClient.h"
+#include "FemLogger.h"
 #include <iostream>
 #include <sstream>
 
@@ -15,7 +16,8 @@
  * @param aTimeoutInMsecs transaction timeout in milliseconds (defaults to zero, i.e. no timeout)
  * @return FemClient instance, connected to FEM
  */
-FemClient::FemClient(const char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs) :
+FemClient::FemClient(const int femId, const char* aHostString, int aPortNum, unsigned int aTimeoutInMsecs) :
+    mFemId(femId),
     mEndpoint(boost::asio::ip::address::from_string(aHostString), aPortNum),
     mSocket(mIoService),
     mDeadline(mIoService),
@@ -95,7 +97,7 @@ FemClient::~FemClient()
   }
   catch (boost::system::system_error& e)
   {
-    std::cerr << "Exception caught closing FemClient connection: " << e.what() << std::endl;
+    FEMLOG(mFemId, logERROR) << "Exception caught closing FemClient connection: " << e.what();
     // Do nothing else, just catch the exception so it doesn't propagate out of the destructor
   }
 }
@@ -793,7 +795,6 @@ std::size_t FemClient::receivePart(std::vector<u8>& aBuffer, boost::system::erro
     mIoService.run_one();
   }
   while (aError == boost::asio::error::would_block);
-//	std::cout << "receive len " << recvLen << std::endl;
   return recvLen;
 }
 
@@ -811,8 +812,6 @@ void FemClient::checkDeadline(void)
   // Handle deadline if expired
   if (mDeadline.expires_at() <= boost::asio::deadline_timer::traits_type::now())
   {
-
-    // std::cout << "Deadline expired!" << std::endl;
 
     // Cancel any pending socket operation
     mSocket.cancel();

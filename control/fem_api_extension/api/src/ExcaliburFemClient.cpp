@@ -9,18 +9,19 @@
 #include "ExcaliburFrontEndDevices.h"
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
+#include "FemLogger.h"
 #include "time.h"
 #include <map>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
 
+
 typedef void (ExcaliburFemClient::*ExcaliburScanFunc)(void);
 
 ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCallbacks,
     const CtlConfig* aConfig, unsigned int aTimeoutInMsecs) :
-    FemClient(aConfig->femAddress, aConfig->femPort, aTimeoutInMsecs),
-    mFemId(aConfig->femNumber),
+    FemClient(aConfig->femNumber, aConfig->femAddress, aConfig->femPort, aTimeoutInMsecs),
     mMpx3GlobalTestPulseEnable(false),
     mMpx3TestPulseCount(4000),
     mDataReceiverEnable(true),
@@ -122,8 +123,7 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
   }
   else
   {
-    std::cout << "Warning, failed to resolve default destination MAC address, setting to zero"
-        << std::endl;
+    FEMLOG(mFemId, logWARNING) << "Failed to resolve default destination MAC address, setting to zero";
     mDataDestMacAddress[0] = "00:00:00:00:00:00";
   }
   mDataDestPort[0] = kDataDestPort;
@@ -140,13 +140,13 @@ ExcaliburFemClient::ExcaliburFemClient(void* aCtlHandle, const CtlCallbacks* aCa
   FemAcquireStatus acqStatus = this->acquireStatus();
   if (acqStatus.state != acquireIdle)
   {
-    std::cout << "Acquisition state at startup is " << acqStatus.state << " sending stop to reset"
-        << std::endl;
+      FEMLOG(mFemId, logINFO) << "Acquisition state at startup is "
+              << acqStatus.state << " sending stop to reset";
     this->acquireStop();
   }
   else
   {
-    std::cout << "Acquisition state is IDLE at startup" << std::endl;
+    FEMLOG(mFemId, logINFO) << "Acquisition state is IDLE at startup";
   }
 }
 
@@ -241,7 +241,7 @@ void ExcaliburFemClient::signalCallback(int aSignal)
     case FemDataReceiverSignal::femAcquisitionComplete:
 
       theSignal = FEM_OP_ACQUISITIONCOMPLETE;
-      std::cout << "Got acquisition complete signal" << std::endl;
+      FEMLOG(mFemId, logDEBUG) << "Got acquisition complete signal";
       //this->acquireStop();
       //this->stopAcquisition();
 
@@ -255,7 +255,7 @@ void ExcaliburFemClient::signalCallback(int aSignal)
 
     case FemDataReceiverSignal::femAcquisitionCorruptImage:
       theSignal = FEM_OP_CORRUPTIMAGE;
-      std::cout << "Got corrupt image signal" << std::endl;
+      FEMLOG(mFemId, logDEBUG) << "Got corrupt image signal";
       break;
 
     default:
@@ -283,14 +283,14 @@ void ExcaliburFemClient::preallocateFrames(unsigned int aNumFrames)
                                "Buffer allocation callback failed");
     }
   }
-  std::cout << "Preallocate complete - frame queue size is now " << mFrameQueue.size() << std::endl;
+  FEMLOG(mFemId, logINFO) << "Preallocate complete - frame queue size is now " << mFrameQueue.size();
 }
 
 void ExcaliburFemClient::releaseAllFrames(void)
 {
   int numFramesToRelease = mReleaseQueue.size();
-  std::cout << "Deferred buffer release - draining release queue of " << numFramesToRelease
-      << " frames" << std::endl;
+  FEMLOG(mFemId, logINFO) << "Deferred buffer release - draining release queue of " << numFramesToRelease
+      << " frames";
 
   // Build a timespec for the release period
   time_t releaseSecs = (time_t) ((int) mBurstModeSubmitPeriod);
@@ -318,8 +318,8 @@ void ExcaliburFemClient::releaseAllFrames(void)
   double elapsedSecs = endSecs - startSecs;
   double elapsedRate = (double) numFramesToRelease / elapsedSecs;
 
-  std::cout << "Release completed: " << numFramesToRelease << " frames released in " << elapsedSecs
-      << " secs, rate: " << elapsedRate << " Hz" << std::endl;
+  FEMLOG(mFemId, logINFO) << "Release completed: " << numFramesToRelease << " frames released in " << elapsedSecs
+      << " secs, rate: " << elapsedRate << " Hz";
 
 }
 
@@ -359,14 +359,14 @@ void ExcaliburFemClient::command(unsigned int aCommand)
 
 void ExcaliburFemClient::toyAcquisition(void)
 {
-  std::cout << "Running toy acquisition loop for numFrames=" << mNumFrames << std::endl;
+  FEMLOG(mFemId, logINFO) << "Running toy acquisition loop for numFrames=" << mNumFrames;
   for (unsigned int iBuffer = 0; iBuffer < mNumFrames; iBuffer++)
   {
     BufferInfo aBuffer = this->allocateCallback();
     this->receiveCallback(iBuffer, (time_t) 1234);
   }
   this->signalCallback(FemDataReceiverSignal::femAcquisitionComplete);
-  std::cout << "Ending toy acq loop" << std::endl;
+  FEMLOG(mFemId, logINFO) << "Ending toy acq loop";
 
 }
 
@@ -395,9 +395,9 @@ void ExcaliburFemClient::startAcquisition(void)
 
   // Configure the 10GigE UDP interface on the FEM
 
-  std::cout << "Configuring UDP data interface: source IP:" << mDataSourceIpAddress << " MAC:"
+  FEMLOG(mFemId, logDEBUG) << "Configuring UDP data interface: source IP:" << mDataSourceIpAddress << " MAC:"
       << mDataSourceMacAddress << " port:" << mDataSourcePort << " dest IP:" << mDataDestIpAddress[0]
-      << " MAC:" << mDataDestMacAddress[0] << " port:" << mDataDestPort[0] << std::endl;
+      << " MAC:" << mDataDestMacAddress[0] << " port:" << mDataDestPort[0];
 
   // Validate the farm mode LUT parameters, determining the number of consecutive valid entries
   u32 valid_lut_entries = 0;
@@ -407,17 +407,17 @@ void ExcaliburFemClient::startAcquisition(void)
   {
     valid_lut_entries++;
   }
-  std::cout << "UDP farm mode configuration has " << valid_lut_entries << " valid LUT entries" << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "UDP farm mode configuration has " << valid_lut_entries << " valid LUT entries";
 
   // Determine the number of farm mode destinations to use, warning and truncating if this is greater
   // than the number of valid LUT entries
   if (mDataFarmModeNumDestinations > valid_lut_entries)
   {
-    std::cout << "WARNING: requested number of farm mode destinations " <<
-        mDataFarmModeNumDestinations << "exceeds valid LUT entries, truncating" << std::endl;
+    FEMLOG(mFemId, logWARNING) << "Requested number of farm mode destinations " <<
+        mDataFarmModeNumDestinations << "exceeds valid LUT entries, truncating";
     mDataFarmModeNumDestinations = valid_lut_entries;
   }
-  std::cout << "Setting number of UDP farm mode destinations to " << mDataFarmModeNumDestinations << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "Setting number of UDP farm mode destinations to " << mDataFarmModeNumDestinations;
 
   // For 24-bit mode expand out the LUT to double-up consecutive entries, as the FEM
   // sends two frames per image (C1 and C0), which both need to go to the same readout node
@@ -431,8 +431,8 @@ void ExcaliburFemClient::startAcquisition(void)
   {
       expand_lut = true;
       dataFarmModeNumDestinations *= 2;
-      std::cout << "Expanding farm mode LUT to " << dataFarmModeNumDestinations
-              << " to accommodate 24 bit mode readout" << std::endl;
+      FEMLOG(mFemId, logDEBUG) << "Expanding farm mode LUT to " << dataFarmModeNumDestinations
+              << " to accommodate 24 bit mode readout";
   }
   for (unsigned int idx = 0, expand_idx = 0; idx < mDataFarmModeNumDestinations; idx++, expand_idx++)
   {
@@ -538,7 +538,7 @@ void ExcaliburFemClient::startAcquisition(void)
   asicDataReorderMode reorderMode = mAsicDataReorderMode;
   if (mLfsrBypassEnable)
   {
-    std::cout << "LFSR decoding bypass is enabled" << std::endl;
+      FEMLOG(mFemId, logDEBUG) << "LFSR decoding bypass is enabled";
   }
   switch (mMpx3OmrParams[0].counterDepth)
   {
@@ -570,7 +570,7 @@ void ExcaliburFemClient::startAcquisition(void)
   // Execute a fast matrix clear if necessary for this mode
   if (doMatrixClearFirst)
   {
-    std::cout << "Executing ASIC fast matrix clear" << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "Executing ASIC fast matrix clear";
     this->asicControlFastMatrixClear();
     usleep(10);
   }
@@ -590,11 +590,11 @@ void ExcaliburFemClient::startAcquisition(void)
 
   // Set up the acquisition DMA controller and arm it, based on operation mode
   unsigned int dmaSize = this->asicReadoutDmaSize();
-  //std::cout << "Configuring DMA controller" << std::endl;
+  //FEMLOG(mFemId, logDEBUG) << "Configuring DMA controller";
   this->acquireConfig(acqMode, dmaSize, 0, numAcq, bdCoalesce);
-  //std::cout << "Starting DMA controller" << std::endl;
+  //FEMLOG(mFemId, logDEBUG) << "Starting DMA controller";
   this->acquireStart();
-  //std::cout << "Done" <<std::endl;
+  //FEMLOG(mFemId, logDEBUG) << "Done";
 
   if (mDataReceiverEnable)
   {
@@ -622,8 +622,7 @@ void ExcaliburFemClient::startAcquisition(void)
     mFemDataReceiver->setFrameLength(frameDataLengthBytes);
 
     bool hasFrameCounter = (reorderMode == reorderedDataMode) ? true : false;
-    std::cout << "Setting frame counter mode to " << (hasFrameCounter ? "true" : "false")
-        << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "Setting frame counter mode to " << (hasFrameCounter ? "true" : "false");
     mFemDataReceiver->enableFrameCounter(hasFrameCounter);
     mFemDataReceiver->enableFrameCounterCheck(enableFrameCounterCheck);
 
@@ -633,7 +632,7 @@ void ExcaliburFemClient::startAcquisition(void)
   }
   else
   {
-    std::cout << "Data receiver thread is NOT enabled" << std::endl;
+      FEMLOG(mFemId, logDEBUG) << "Data receiver thread is NOT enabled";
   }
 
   // If the client is in control of this acquisition mode, set up and start the acquisition
@@ -668,8 +667,8 @@ void ExcaliburFemClient::startAcquisition(void)
         // set to the acquisition time multiplied by the number of frames
         unsigned int shutter0Time = (mAcquisitionTimeMs * 1000) * numRxFrames;
 
-        std::cout << "CRW mode, setting shutter 0 duration to " << shutter0Time
-            << "us and shutter 1 duration to " << shutter1Time << "us" << std::endl;
+        FEMLOG(mFemId, logDEBUG) << "CRW mode, setting shutter 0 duration to " << shutter0Time
+            << "us and shutter 1 duration to " << shutter1Time << "us";
         this->asicControlShutterDurationSet(shutter0Time, shutter1Time);
 
         // Set frame counter to zero is this mode
@@ -706,8 +705,8 @@ void ExcaliburFemClient::startAcquisition(void)
         }
       }
     }
-    std::cout << "Chip mask: 0x" << std::hex << chipMask << std::dec << " First chip active: "
-        << firstChipActive << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "Chip mask: 0x" << std::hex << chipMask << std::dec
+            << " First chip active: " << firstChipActive;
 
     // Set up the ASIC mux based on calculated chip mask
     this->asicControlMuxSet(chipMask);
@@ -723,8 +722,7 @@ void ExcaliburFemClient::startAcquisition(void)
 
     if (mMpx3GlobalTestPulseEnable)
     {
-      std::cout << "Enabling test pulse injection on FEM (count=" << mMpx3TestPulseCount << ")"
-          << std::endl;
+        FEMLOG(mFemId, logDEBUG) << "Enabling test pulse injection on FEM (count=" << mMpx3TestPulseCount << ")";
       this->asicControlTestPulseCountSet(mMpx3TestPulseCount);
     }
 
@@ -754,7 +752,7 @@ void ExcaliburFemClient::startAcquisition(void)
     // Set up the OMR for readout using the first active chip to retrieve
     // default values for OMR fields
     mpx3Omr theOmr = this->mpx3OMRBuild(firstChipActive, omrMode);
-    //std::cout << "Using MPX OMR: 0x" << std::hex << theOmr.raw << std::dec << std::endl;
+    //FEMLOG(mFemId, logDEBUG) << "Using MPX OMR: 0x" << std::hex << theOmr.raw << std::dec;
     this->asicControlOmrSet(theOmr);
 
     // Enable test pulses in the execute command if necessary
@@ -794,7 +792,7 @@ void ExcaliburFemClient::startAcquisition(void)
     }
     else
     {
-      std::cout << "Forcing trigger mode to internal for matrix counter read" << std::endl;
+      FEMLOG(mFemId, logDEBUG) << "Forcing trigger mode to internal for matrix counter read";
       controlConfigRegister |= internalTriggerMode;
     }
 
@@ -819,12 +817,12 @@ void ExcaliburFemClient::startAcquisition(void)
     }
 
     // Set the control configuration register accordingly
-    std::cout << "Setting control configuration register to 0x" << std::hex << controlConfigRegister
-        << std::dec << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "Setting control configuration register to 0x" << std::hex << controlConfigRegister
+        << std::dec;
     this->asicControlConfigRegisterSet(controlConfigRegister);
 
     // Execute the command
-    std::cout << "Sending execute command 0x" << std::hex << executeCmd << std::dec << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "Sending execute command 0x" << std::hex << executeCmd << std::dec;
     this->asicControlCommandExecute((asicControlCommand) executeCmd);
 
   }
@@ -833,8 +831,7 @@ void ExcaliburFemClient::startAcquisition(void)
     // Invoke the scan member execute function defined above
     if (theScanFunc != NULL)
     {
-      std::cout << "Executing autonomous scan sequence with " << numRxFrames << " steps"
-          << std::endl;
+        FEMLOG(mFemId, logDEBUG) << "Executing autonomous scan sequence with " << numRxFrames << " steps";
       (this->*(theScanFunc))();
     }
     else
@@ -851,7 +848,7 @@ void ExcaliburFemClient::startAcquisition(void)
   double endSecs = endTime.tv_sec + ((double) endTime.tv_nsec / 1.0E9);
   double elapsedSecs = endSecs - startSecs;
 
-  std::cout << "startAcquisition call took " << elapsedSecs << " secs" << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "startAcquisition call took " << elapsedSecs << " secs";
 }
 
 void ExcaliburFemClient::stopAcquisition(void)
@@ -870,8 +867,7 @@ void ExcaliburFemClient::stopAcquisition(void)
       {
         case excaliburOperationModeNormal:
         {
-          std::cout << "Normal mode acquisition is still active, sending stop to FEM ASIC control"
-              << std::endl;
+          FEMLOG(mFemId, logINFO) << "Normal mode acquisition is still active, sending stop to FEM ASIC control";
           this->asicControlCommandExecute(asicStopAcquisition);
 
           // Wait at least the acquisition time (shutter time) plus 500us readout time before
@@ -881,28 +877,26 @@ void ExcaliburFemClient::stopAcquisition(void)
           // Read control state register for diagnostics
           u32 ctrlState = this->rdmaRead(kExcaliburAsicCtrlState1);
           framesRead = this->rdmaRead(kExcaliburAsicCtrlFrameCount);
-          std::cout << "FEM ASIC control has completed " << framesRead
-              << " frames, control state register1: 0x" << std::hex << ctrlState << std::dec
-              << std::endl;
+          FEMLOG(mFemId, logINFO) << "FEM ASIC control has completed " << framesRead
+              << " frames, control state register1: 0x" << std::hex << ctrlState << std::dec;
 
         }
           break;
         case excaliburOperationModeBurst: // Deliberate fall-thru for these modes where async stop not supported
         case excaliburOperationModeHistogram:
         case excaliburOperationModeMatrixRead:
-          std::cout
-              << "Cannot complete asynchronous stop in this operation mode, ignoring stop command while running"
-              << std::endl;
+            FEMLOG(mFemId, logWARNING)
+              << "Cannot complete asynchronous stop in this operation mode, ignoring stop command while running";
           doFullAcqStop = false;
           break;
 
         case excaliburOperationModeDacScan:
         {
 #ifdef MPX3_0
-          std::cout << "Current FEM firmware does not support asynchronous stop of DAC scan" << std::endl;
+          FEMLOG(mFemId, logWARNING) << "Current FEM firmware does not support asynchronous stop of DAC scan";
           doFullAcqStop = false;
 #else
-          std::cout << "Performing asynchronous stop of DAC scan" << std::endl;
+          FEMLOG(mFemId, logINFO) << "Performing asynchronous stop of DAC scan";
           framesRead = this->dacScanAbort();
 
 #endif
@@ -930,13 +924,12 @@ void ExcaliburFemClient::stopAcquisition(void)
       while (acqCompletePending && (numAcqCompleteLoops < maxAcqCompleteLoops))
       {
         FemAcquireStatus acqState = this->acquireStatus();
-        std::cout << "Asynchronous stop of DMA acquisition loop: " << numAcqCompleteLoops
-            << " attempts, ACQ state: " << acqState.state << " sent BDs: " << acqState.totalSent
-            << std::endl;
+        FEMLOG(mFemId, logINFO) << "Asynchronous stop of DMA acquisition loop: " << numAcqCompleteLoops
+            << " attempts, ACQ state: " << acqState.state << " sent BDs: " << acqState.totalSent;
 
         if (acqState.totalSent >= framesRead * 2)
         {
-          std::cout << "DMA controller has transmitted " << framesRead << " frames OK" << std::endl;
+          FEMLOG(mFemId, logDEBUG) << "DMA controller has transmitted " << framesRead << " frames OK";
           acqCompletePending = false;
         }
         else
@@ -947,8 +940,8 @@ void ExcaliburFemClient::stopAcquisition(void)
       }
       if (acqCompletePending)
       {
-        std::cout << "ERROR: DMA transfer of " << framesRead
-            << " failed to complete in expected time during async stop" << std::endl;
+        FEMLOG(mFemId, logERROR) << "ERROR: DMA transfer of " << framesRead
+            << " failed to complete in expected time during async stop";
       }
 
     }
@@ -958,7 +951,7 @@ void ExcaliburFemClient::stopAcquisition(void)
   {
 
     // Send ACQUIRE stop command to the FEM
-    //std::cout << "Sending acquire STOP to FEM" << std::endl;
+    //FEMLOG(mFemId, logDEBUG) << "Sending acquire STOP to FEM";
     this->acquireStop();
 
     if (mFemDataReceiver != 0)
@@ -972,10 +965,10 @@ void ExcaliburFemClient::stopAcquisition(void)
     }
 
     // Reset ASIC control firmware block
-    //std::cout << "Sending ASIC control reset to FEM" << std::endl;
+    //FEMLOG(mFemId, logDEBUG) << "Sending ASIC control reset to FEM";
     this->asicControlReset();
 
-    //std::cout << "End of doFullAcqStop clause" << std::endl;
+    //FEMLOG(mFemId, logDEBUG) << "End of doFullAcqStop clause";
   }
 }
 
@@ -1020,7 +1013,7 @@ void ExcaliburFemClient::burstModeSubmitPeriodSet(double aPeriod)
 
   // Store burst mode submit period for use during acquisition
   mBurstModeSubmitPeriod = aPeriod;
-  std::cout << "Set burst mode submit period to " << aPeriod << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "Set burst mode submit period to " << aPeriod;
 
 }
 
@@ -1112,7 +1105,7 @@ unsigned int ExcaliburFemClient::frameDataLengthBytes(void)
 void ExcaliburFemClient::frontEndInitialise(void)
 {
 
-  std::cout << "**** Front-end initialise ****" << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "**** Front-end initialise ****";
   sleep(3);
 
   // Initialise front-end DACs
@@ -1122,7 +1115,7 @@ void ExcaliburFemClient::frontEndInitialise(void)
   this->asicControlReset();
   this->asicControlAsicReset();
 
-  std::cout << "**** Front-end init done ****" << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "**** Front-end init done ****";
 
 }
 

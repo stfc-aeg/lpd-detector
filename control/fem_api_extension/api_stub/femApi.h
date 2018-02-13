@@ -92,6 +92,10 @@ typedef struct CtlConfig
     const char* dataAddress;
 } CtlConfig;
 
+/* Typedef for a logging function pointer
+ */
+typedef void(*logFunc)(const unsigned int, const char *);
+
 /* The functions provided by the library.
 */
 const char* femErrorMsg(void* handle);
@@ -99,6 +103,7 @@ int femErrorCode(void* handle);
 int femGetId(void* handle);
 
 int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config, void** handle);
+void femSetLogFunction(logFunc log_func);
 int femSetInt(void* handle, int chipId, int id, size_t size, size_t offset, int* value);
 int femSetShort(void* handle, int chipId, int id, size_t size, size_t offset, short* value);
 int femSetFloat(void* handle, int chipId, int id, size_t size, size_t offset, double* value);

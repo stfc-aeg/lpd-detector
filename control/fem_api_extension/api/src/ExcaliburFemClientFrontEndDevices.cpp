@@ -10,6 +10,7 @@
 #include "ExcaliburFrontEndDevices.h"
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
+#include "FemLogger.h"
 #include "time.h"
 #include <map>
 #include <iostream>
@@ -145,8 +146,8 @@ void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, unsigned int a
   // Write the DAC value
   this->frontEndAD5625Write(device, chan, aDacCode);
 
-  std::cout << "Setting FE DAC for chip " << aChipId << " (dev=" << device << " chan=" << chan
-      << ") value: " << aDacCode << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "Setting FE DAC for chip " << aChipId << " (dev="
+          << device << " chan=" << chan << ") value: " << aDacCode;
 
 }
 
@@ -161,7 +162,7 @@ void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, unsigned int a
 void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, double aDacVolts)
 {
 
-  std::cout << "DAC volts: " << aDacVolts << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "DAC volts: " << aDacVolts;
 
   unsigned int aDacCode = (unsigned int) ((aDacVolts / kAD5625FullScale) * 4096) & 0xFFF;
 
@@ -248,9 +249,9 @@ u16 ExcaliburFemClient::frontEndAD7994Read(unsigned int aDevice, unsigned int aC
   // Decode ADC value to return
   u16 adcVal = ((((u16) response[0]) << 8) | response[1]) & 0xFFF;
 
-//	std::cout << "AD7994 read: dev=" << aDevice << " chan=" << aChan
+//	FEMLOG(mFemId, logDEBUG) << "AD7994 read: dev=" << aDevice << " chan=" << aChan
 //			  << " addr=0x" << std::hex << kAD7994Address[aDevice] << std::dec
-//			  << " val=" << adcVal << std::endl;
+//			  << " val=" << adcVal;
 
   return adcVal;
 }
@@ -318,8 +319,8 @@ void ExcaliburFemClient::frontEndAD5625Write(unsigned int aDevice, unsigned int 
   cmd[1] = (dacWord & 0xFF00) >> 8;
   cmd[2] = (dacWord & 0x00FF);
 
-//	std::cout << "AD5625 write: cmd=0x" << std::hex << (int)cmd[0] << " MSB=0x" << (int)cmd[1]
-//	          << " LSB=0x" << (int)cmd[2] << std::dec << std::endl;
+//	FEMLOG(mFemId, logDEBUG) << "AD5625 write: cmd=0x" << std::hex << (int)cmd[0] << " MSB=0x"
+//	          << (int)cmd[1]<< " LSB=0x" << (int)cmd[2] << std::dec;
   // Send transaction to DAC
   this->i2cWrite(kAD5625Address[aDevice], cmd);
 

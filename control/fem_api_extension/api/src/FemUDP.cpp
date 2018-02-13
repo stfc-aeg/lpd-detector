@@ -19,6 +19,8 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <string.h>
+
+#include "FemLogger.h"
 #include "FemClient.h"
 
 #define IP_FLAG_FRAG 0x00
@@ -137,7 +139,7 @@ u32 FemClient::configUDPCoreReg(
   }
   catch (FemClientException& e)
   {
-    std::cerr << "Exception caught during configUDP: " << e.what() << std::endl;
+    FEMLOG(mFemId, logERROR) << "Exception caught during configUDP: " << e.what();
     rc = -1;
   }
   return rc;
@@ -160,9 +162,9 @@ u32 FemClient::configUDPFarmMode
   for (unsigned int idx = 0; idx < num_lut_entries; idx++)
   {
 
-    std::cout << "LUT table entry " << idx << " :  IP:" << destIpAddress[idx]
+    FEMLOG(mFemId, logDEBUG) << "LUT table entry " << idx << " :  IP:" << destIpAddress[idx]
               << " MAC:" << destMacAddress[idx]
-              << " port:" << destPort[idx] + destPortOffset << std::endl;
+              << " port:" << destPort[idx] + destPortOffset;
 
     ip_regs.push_back(farmIpRegFromStr(destIpAddress[idx]));
     std::vector<u32> mac_reg_vals = farmMacRegFromStr(destMacAddress[idx]);
@@ -180,8 +182,7 @@ u32 FemClient::configUDPFarmMode
   this->rdmaWrite(kTenGigUdpRdmaAddr + 0xA, 1);
 
   // Modify the farm mode enable bit in the register as appropriate
-  std::cout << "Setting UDP farm mode to " << (farmModeEnabled ? "enabled" : "disabled")
-      << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "Setting UDP farm mode to " << (farmModeEnabled ? "enabled" : "disabled");
   u32 mode_reg = this->rdmaRead(kTenGigUdpRdmaAddr + 0xF);
   mode_reg = (farmModeEnabled ? (mode_reg | (1 << 5)) : (mode_reg & ~(1<<5)));
   this->rdmaWrite(kTenGigUdpRdmaAddr + 0xF, mode_reg);
@@ -320,7 +321,7 @@ char* FemClient::getFpgaIpAddressFromHost(const char *ipAddr)
   struct in_addr addr;
   if (inet_aton(ipAddr, &addr) == 0)
   {
-    std::cout << "Invalid address: " << ipAddr << std::endl;
+    FEMLOG(mFemId, logERROR) << "Invalid address: " << ipAddr;
     return NULL;
   }
   addr.s_addr += 1 << 24;

@@ -70,7 +70,7 @@ void _set_api_error_string(const char* format, ...) {
                 return NULL; }
 
 
-typedef enum log_level_ {info, warning, error, debug} log_level;
+typedef enum log_level_ {error, warning, info, debug} log_level;
 #define MAX_LOG_STRING_LEN 128
 
 static void log_msg(log_level level, const char* format, ...)
@@ -113,6 +113,13 @@ static void log_msg(log_level level, const char* format, ...)
     }
 }
 
+static void log_wrapper(unsigned int level, const char* msg)
+{
+    PyGILState_STATE gState = PyGILState_Ensure();
+    log_msg((log_level)level, msg);
+    PyGILState_Release( gState );
+}
+
 static PyObject* _initialise(PyObject* self, PyObject* args)
 {
     int fem_id;
@@ -141,6 +148,8 @@ static PyObject* _initialise(PyObject* self, PyObject* args)
 
     /* Initialise the API trace flag */
     fem_ptr->api_trace = 0;
+
+    femSetLogFunction(log_wrapper);
 
     Py_BEGIN_ALLOW_THREADS
     rc = femInitialise((void*)NULL, (const CtlCallbacks*)NULL,

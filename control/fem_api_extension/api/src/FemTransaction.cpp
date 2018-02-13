@@ -57,7 +57,6 @@ FemTransaction::FemTransaction(const std::vector<u8>& byteStream)
 
   payloadCompleted = 0;
   // Unpack payload from byte stream, converting from network byte order as appropriate
-  //std::cout << "bytes " << byteStream.size() << " header len " << headerLen() << std::endl;
   appendPayloadFromStream(byteStream, headerLen());
 }
 
