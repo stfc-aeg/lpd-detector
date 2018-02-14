@@ -1,10 +1,10 @@
-from excalibur import ExcaliburClient, ExcaliburParameter, ExcaliburDefinitions
-from config_parser import *
+from excalibur.client import *
 import logging
 import argparse
 import os
 import time
 import json
+import sys
 
 class ExcaliburTestAppDefaults(object):
     
@@ -62,9 +62,9 @@ class ExcaliburTestApp(object):
             term_columns = int(os.environ['COLUMNS']) - 2
         except:
             term_columns = 100
-            
+        
         parser = argparse.ArgumentParser(
-            prog='excalibur_test.py', description='EXCALIBUR test application',
+            prog= os.path.basename(sys.argv[0]), description='EXCALIBUR test application',
             formatter_class=lambda prog : argparse.ArgumentDefaultsHelpFormatter(
                 prog, max_help_position=40, width=term_columns)
         )
@@ -767,6 +767,10 @@ class ExcaliburTestApp(object):
         self.client.do_command('stop_acquisition')
         
         
-if __name__ == '__main__':
+def main():
     
     ExcaliburTestApp().run()
+
+if __name__ == '__main__':
+    
+    main()

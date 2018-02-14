@@ -5,7 +5,6 @@ import time
 import logging
 from collections import OrderedDict
 
-
 class ExcaliburDefinitions(object):
 
     ERROR_OK = 0

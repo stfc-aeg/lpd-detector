@@ -165,4 +165,9 @@ setup(
     extras_require={
       'test': ['nose', 'coverage', 'mock'],  
     },
+    entry_points={
+        'console_scripts': [
+            'excalibur_test_app  = excalibur.client.test_app:main',
+        ]
+    },
 )
