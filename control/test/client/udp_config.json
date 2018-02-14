@@ -96,19 +96,5 @@
     "farm_mode" : {
         "enable": 1,
         "num_dests": 8
-    },
-    "core" : {
-        "source_mac" : "62:00:00:00:00:01",
-        "source_ip" : "10.1.0.100",
-        "source_port" : 8,
-        "dest_mac" : "00:07:43:10:63:00",
-        "dest_ip" : "10.1.0.1",
-        "dest_port" : 61649, 
-        "ip_ident_count" : 56064,
-        "ip_pkt_length_base" : 28,
-        "udp_length_base" : 8,
-        "pkt_split_size" : 998,
-        "inter_pkt_gap_val": 2048,
-        "inter_pkt_gap_enable" : 1
     }
 }
