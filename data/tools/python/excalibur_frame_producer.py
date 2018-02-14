@@ -173,6 +173,10 @@ class ExcaliburFrameProducer(object):
             help='Interval in seconds between transmission of frames'
         )
         parser.add_argument(
+            '--pkt_gap', type=int, dest='pkt_gap', metavar='PACKETS',
+            help='Insert brief pause between every N packets'
+        )
+        parser.add_argument(
             '--drop_frac', type=float, dest='drop_frac',
             min=0.0, max=1.0, action=Range,
             default=self.defaults.drop_frac, metavar='FRACTION',
@@ -374,7 +378,8 @@ class ExcaliburFrameProducer(object):
                         packet, (self.args.ip_addr, self.args.port)
                     )
                     frame_packets_sent += 1
-                    if frame_packets_sent % 25 == 0:
+                    # Add brief pause if packet gap option specified
+                    if self.args.pkt_gap and (frame_packets_sent % self.args.pkt_gap == 0):
                         time.sleep(0.01)
                 except socket.error as exc:
                     logging.error("Got error sending frame packet: %s", exc)
