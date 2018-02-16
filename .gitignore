@@ -133,3 +133,6 @@ tags
 
 # VSCode metadata
 .vscode
+
+# Eclipse project settings directories
+.settings

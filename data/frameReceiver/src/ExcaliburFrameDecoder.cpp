@@ -16,6 +16,9 @@
 
 using namespace FrameReceiver;
 
+const std::string ExcaliburFrameDecoder::asic_bit_depth_str_[Excalibur::num_bit_depths] =
+    {"1-bit", "6-bit", "12-bit", "24-bit"};
+
 #define MAX_IGNORED_PACKET_REPORTS 10
 
 //! Constructor for ExcaliburFrameDecoder
@@ -25,6 +28,7 @@ using namespace FrameReceiver;
 //!
 ExcaliburFrameDecoder::ExcaliburFrameDecoder() :
     FrameDecoderUDP(),
+    asic_counter_bit_depth_(Excalibur::bitDepth12),
     current_frame_seen_(Excalibur::default_frame_number),
     current_frame_buffer_id_(Excalibur::default_frame_number),
     current_frame_buffer_(0),
@@ -91,6 +95,28 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   {
       throw OdinData::OdinDataException("Failed to parse FEM to port map entries from configuration");
   }
+
+  // Extract the ASIC counter bit depth from the config message
+  if (config_msg.has_param("bitdepth"))
+  {
+    std::string bit_depth_str = config_msg.get_param<std::string>("bitdepth");
+
+    Excalibur::AsicCounterBitDepth bit_depth =
+        parse_bit_depth(bit_depth_str);
+
+    if (bit_depth == Excalibur::bitDepthUnknown)
+    {
+      LOG4CXX_ERROR(logger_, "Unknown bit depth configuration parameter specified: "
+                    << bit_depth_str << ", defaulting to "
+                    << asic_bit_depth_str_[asic_counter_bit_depth_]);
+    }
+    else
+    {
+      asic_counter_bit_depth_ = bit_depth;
+    }
+  }
+  LOG4CXX_DEBUG_LEVEL(1, logger_, "Setting ASIC counter bit depth to "
+      << asic_bit_depth_str_[asic_counter_bit_depth_]);
 
   // Print a packet logger header to the appropriate logger if enabled
   if (enable_packet_logging_)
@@ -560,4 +586,38 @@ std::size_t ExcaliburFrameDecoder::parse_fem_port_map(const std::string fem_port
 
     // Return the number of valid entries parsed
     return fem_port_map_.size();
+}
+
+//! Parse the ASIC counter bit depth configuration string.
+//!
+//! This method parses a configurationg string specifying the EXCALIBUR ASIC counter bit
+//! depth currently in use, returning an enumerated constant for use in the decoder.
+//!
+//! \param[in] bit_depth_str - string of the bit depth
+//! \return enumerated constant defining bit depth, or unknown if the string is not recognised
+//!
+Excalibur::AsicCounterBitDepth ExcaliburFrameDecoder::parse_bit_depth(
+    const std::string bit_depth_str)
+{
+
+  //! Set the default bit depth to return to unknown
+  Excalibur::AsicCounterBitDepth bit_depth = Excalibur::bitDepthUnknown;
+
+  // Initialise a mapping of string to bit depth
+  static std::map<std::string, Excalibur::AsicCounterBitDepth>bit_depth_map;
+  if (bit_depth_map.empty())
+  {
+    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth1]]  = Excalibur::bitDepth1;
+    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth6]]  = Excalibur::bitDepth6;
+    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth12]] = Excalibur::bitDepth12;
+    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth24]] = Excalibur::bitDepth24;
+  }
+
+  // Set the bit depth value if present in the map
+  if (bit_depth_map.count(bit_depth_str))
+  {
+    bit_depth = bit_depth_map[bit_depth_str];
+  }
+
+  return bit_depth;
 }

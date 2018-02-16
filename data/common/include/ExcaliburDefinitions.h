@@ -10,6 +10,15 @@
 
 namespace Excalibur {
 
+    static const size_t num_bit_depths = 4;
+    typedef enum {
+      bitDepthUnknown = -1,
+      bitDepth1  = 0,
+      bitDepth6  = 1,
+      bitDepth12 = 2,
+      bitDepth24 = 3
+    } AsicCounterBitDepth;
+
     static const size_t primary_packet_size    = 8000;
     static const size_t num_primary_packets    = 65;
     static const size_t tail_packet_size       = 4296;
