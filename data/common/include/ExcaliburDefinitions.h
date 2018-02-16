@@ -15,10 +15,13 @@ namespace Excalibur {
     static const size_t tail_packet_size       = 4296;
     static const size_t num_tail_packets       = 1;
     static const size_t num_subframes          = 2;
+    static const size_t max_num_fems           = 6;
 
     static const uint32_t start_of_frame_mask = 1 << 31;
     static const uint32_t end_of_frame_mask   = 1 << 30;
     static const uint32_t packet_number_mask   = 0x3FFFFFFF;
+
+    static const uint32_t default_frame_number = -1;
 
     typedef struct
     {
@@ -33,20 +36,31 @@ namespace Excalibur {
 
     typedef struct
     {
+      uint32_t packets_received;
+      uint8_t  sof_marker_count;
+      uint8_t  eof_marker_count;
+      uint8_t  packet_state[num_subframes][num_primary_packets + num_tail_packets];
+    } FemReceiveState;
+
+    typedef struct
+    {
         uint32_t frame_number;
         uint32_t frame_state;
         struct timespec frame_start_time;
-        uint32_t packets_received;
-        uint8_t sof_marker_count;
-        uint8_t eof_marker_count;
-        uint8_t  packet_state[num_subframes][num_primary_packets + num_tail_packets];
+        uint32_t total_packets_received;
+        uint8_t total_sof_marker_count;
+        uint8_t total_eof_marker_count;
+        uint8_t num_active_fems;
+        uint8_t active_fem_idx[max_num_fems];
+        FemReceiveState fem_rx_state[max_num_fems];
     } FrameHeader;
 
-    static const size_t subframe_size       = (num_primary_packets * primary_packet_size)
-                                            + (num_tail_packets * tail_packet_size);
-    static const size_t data_type_size      = subframe_size * num_subframes;
-    static const size_t total_frame_size    = data_type_size + sizeof(FrameHeader);
-    static const size_t num_frame_packets   = num_subframes * (num_primary_packets + num_tail_packets);
+    static const size_t subframe_size         = (num_primary_packets * primary_packet_size)
+                                              + (num_tail_packets * tail_packet_size);
+    static const size_t fem_frame_size        = subframe_size * num_subframes;
+    static const size_t max_frame_size        = (fem_frame_size * max_num_fems) + sizeof(FrameHeader);
+    static const size_t num_fem_frame_packets = num_subframes * (num_primary_packets + num_tail_packets);
+
 
 }
 

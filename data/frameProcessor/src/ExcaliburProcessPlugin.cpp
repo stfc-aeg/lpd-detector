@@ -121,9 +121,9 @@ namespace FrameProcessor
         static_cast<const Excalibur::FrameHeader*>(frame->get_data());
 
     LOG4CXX_TRACE(logger_, "Raw frame number: " << hdr_ptr->frame_number);
-    LOG4CXX_TRACE(logger_, "Packets received: " << hdr_ptr->packets_received << " SOF markers: "
-        << (int)hdr_ptr->sof_marker_count << " EOF markers: "
-        << (int)hdr_ptr->eof_marker_count);
+    LOG4CXX_TRACE(logger_, "Packets received: " << hdr_ptr->total_packets_received << " SOF markers: "
+        << (int)hdr_ptr->total_sof_marker_count << " EOF markers: "
+        << (int)hdr_ptr->total_eof_marker_count);
 
     const void* data_ptr = static_cast<const void*>(
         static_cast<const char*>(frame->get_data()) + sizeof(Excalibur::FrameHeader)
