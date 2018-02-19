@@ -37,7 +37,7 @@ ExcaliburFrameDecoder::ExcaliburFrameDecoder() :
     dropping_frame_data_(false),
     packets_ignored_(0),
     has_subframe_trailer_(true),
-    shadow_frame_counter_(0)
+    shadow_frame_counter_(-1)
 {
 
   // Allocate buffers for packet header, dropped frames and scratched packets
@@ -130,7 +130,7 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
     has_subframe_trailer_ = true;
   }
   // Reset shadow frame counter
-  shadow_frame_counter_ = 0;
+  shadow_frame_counter_ = -1;
 
   // Print a packet logger header to the appropriate logger if enabled
   if (enable_packet_logging_)

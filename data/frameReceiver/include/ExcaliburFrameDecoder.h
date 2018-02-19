@@ -91,7 +91,7 @@ namespace FrameReceiver
     bool dropping_frame_data_;
     std::size_t packets_ignored_;
     bool has_subframe_trailer_;
-    uint32_t shadow_frame_counter_;
+    int32_t shadow_frame_counter_;
 
     static const std::string asic_bit_depth_str_[Excalibur::num_bit_depths];
 
