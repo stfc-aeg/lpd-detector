@@ -26,7 +26,7 @@ namespace FrameReceiver
     int fem_idx_;
     unsigned int buf_idx_;
 
-    ExcaliburDecoderFemMapEntry(int fem_idx=ILLEGAL_FEM_IDX, unsigned int buf_idx=ILLEGAL_FEM_IDX) :
+    ExcaliburDecoderFemMapEntry(int fem_idx=ILLEGAL_FEM_IDX, int buf_idx=ILLEGAL_FEM_IDX) :
       fem_idx_(fem_idx),
       buf_idx_(buf_idx)
     {};
@@ -90,6 +90,8 @@ namespace FrameReceiver
 
     bool dropping_frame_data_;
     std::size_t packets_ignored_;
+    bool has_subframe_trailer_;
+    uint32_t shadow_frame_counter_;
 
     static const std::string asic_bit_depth_str_[Excalibur::num_bit_depths];
 

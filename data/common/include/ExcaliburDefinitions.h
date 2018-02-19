@@ -20,8 +20,10 @@ namespace Excalibur {
     } AsicCounterBitDepth;
 
     static const size_t primary_packet_size    = 8000;
-    static const size_t num_primary_packets    = 65;
-    static const size_t tail_packet_size       = 4296;
+    static const size_t num_primary_packets[num_bit_depths] = { 4, 32, 65, 65 };
+    static const size_t max_primary_packets = 65;
+    static const size_t tail_packet_size[num_bit_depths] = { 768, 6152, 4296, 4296 };
+
     static const size_t num_tail_packets       = 1;
     static const size_t num_subframes          = 2;
     static const size_t max_num_fems           = 6;
@@ -30,7 +32,7 @@ namespace Excalibur {
     static const uint32_t end_of_frame_mask   = 1 << 30;
     static const uint32_t packet_number_mask   = 0x3FFFFFFF;
 
-    static const uint32_t default_frame_number = -1;
+    static const int32_t default_frame_number = -1;
 
     typedef struct
     {
@@ -48,7 +50,7 @@ namespace Excalibur {
       uint32_t packets_received;
       uint8_t  sof_marker_count;
       uint8_t  eof_marker_count;
-      uint8_t  packet_state[num_subframes][num_primary_packets + num_tail_packets];
+      uint8_t  packet_state[num_subframes][max_primary_packets + num_tail_packets];
     } FemReceiveState;
 
     typedef struct
@@ -64,13 +66,27 @@ namespace Excalibur {
         FemReceiveState fem_rx_state[max_num_fems];
     } FrameHeader;
 
-    static const size_t subframe_size         = (num_primary_packets * primary_packet_size)
-                                              + (num_tail_packets * tail_packet_size);
-    static const size_t fem_frame_size        = subframe_size * num_subframes;
-    static const size_t max_frame_size        = (fem_frame_size * max_num_fems) + sizeof(FrameHeader);
-    static const size_t num_fem_frame_packets = num_subframes * (num_primary_packets + num_tail_packets);
 
+    inline const std::size_t subframe_size(const AsicCounterBitDepth bit_depth)
+    {
+      std::size_t subframe_size = (primary_packet_size * num_primary_packets[bit_depth]) +
+          (tail_packet_size[bit_depth] * num_tail_packets);
+      return subframe_size;
+    }
 
+    inline const std::size_t max_frame_size(void)
+    {
+      std::size_t max_frame_size = (subframe_size(bitDepth24) * num_subframes * max_num_fems)
+           + sizeof(FrameHeader);
+      return max_frame_size;
+    }
+
+    inline const std::size_t num_fem_frame_packets(const AsicCounterBitDepth bit_depth)
+    {
+      std::size_t num_fem_frame_packets = num_subframes *
+          (num_primary_packets[bit_depth] + num_tail_packets);
+      return num_fem_frame_packets;
+    }
 }
 
 #endif /* INCLUDE_EXACLIBURDEFINITIONS_H_ */

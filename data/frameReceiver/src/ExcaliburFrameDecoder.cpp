@@ -35,12 +35,14 @@ ExcaliburFrameDecoder::ExcaliburFrameDecoder() :
     current_frame_header_(0),
     num_active_fems_(0),
     dropping_frame_data_(false),
-    packets_ignored_(0)
+    packets_ignored_(0),
+    has_subframe_trailer_(true),
+    shadow_frame_counter_(0)
 {
 
   // Allocate buffers for packet header, dropped frames and scratched packets
   current_packet_header_.reset(new uint8_t[sizeof(Excalibur::PacketHeader)]);
-  dropped_frame_buffer_.reset(new uint8_t[Excalibur::max_frame_size]);
+  dropped_frame_buffer_.reset(new uint8_t[Excalibur::max_frame_size()]);
   ignored_packet_buffer_.reset(new uint8_t[Excalibur::primary_packet_size]);
 
 }
@@ -118,6 +120,18 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   LOG4CXX_DEBUG_LEVEL(1, logger_, "Setting ASIC counter bit depth to "
       << asic_bit_depth_str_[asic_counter_bit_depth_]);
 
+  // Determine if this readout mode has a subframe trailer
+  if (asic_counter_bit_depth_ == Excalibur::bitDepth1)
+  {
+    has_subframe_trailer_ = false;
+  }
+  else
+  {
+    has_subframe_trailer_ = true;
+  }
+  // Reset shadow frame counter
+  shadow_frame_counter_ = 0;
+
   // Print a packet logger header to the appropriate logger if enabled
   if (enable_packet_logging_)
   {
@@ -137,7 +151,8 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
 
 const size_t ExcaliburFrameDecoder::get_frame_buffer_size(void) const
 {
-  size_t frame_buffer_size = get_frame_header_size() + (Excalibur::fem_frame_size * num_active_fems_);
+  size_t frame_buffer_size = get_frame_header_size() +
+      (Excalibur::subframe_size(asic_counter_bit_depth_) * Excalibur::num_subframes * num_active_fems_);
   return frame_buffer_size;
 }
 
@@ -263,6 +278,9 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
         current_frame_header_ = reinterpret_cast<Excalibur::FrameHeader*>(current_frame_buffer_);
         initialise_frame_header(current_frame_header_);
 
+        // Increment shadow frame counter
+        shadow_frame_counter_++;
+
       }
       else
       {
@@ -334,8 +352,12 @@ void* ExcaliburFrameDecoder::get_next_payload_buffer(void) const
 
   if (current_packet_fem_map_.fem_idx_ != ILLEGAL_FEM_IDX)
   {
+    std::size_t subframe_size = Excalibur::subframe_size(asic_counter_bit_depth_);
+
     next_receive_location = reinterpret_cast<uint8_t*>(current_frame_buffer_)
-          + get_frame_header_size () + (Excalibur::subframe_size * (get_subframe_counter() % 2))
+          + get_frame_header_size ()
+          + (subframe_size * Excalibur::num_subframes * current_packet_fem_map_.fem_idx_)
+          + (subframe_size * (get_subframe_counter() % 2))
           + (Excalibur::primary_packet_size * get_packet_number());
   }
   else
@@ -350,13 +372,13 @@ size_t ExcaliburFrameDecoder::get_next_payload_size(void) const
 {
   size_t next_receive_size = 0;
 
-  if (get_packet_number() < Excalibur::num_primary_packets)
+  if (get_packet_number() < Excalibur::num_primary_packets[asic_counter_bit_depth_])
   {
     next_receive_size = Excalibur::primary_packet_size;
   }
   else
   {
-    next_receive_size = Excalibur::tail_packet_size;
+    next_receive_size = Excalibur::tail_packet_size[asic_counter_bit_depth_];
   }
 
   return next_receive_size;
@@ -371,20 +393,30 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
   if (current_packet_fem_map_.fem_idx_ != ILLEGAL_FEM_IDX)
   {
     // If this packet is the last in subframe (i.e. has on EOF marker in the header), extract the
-    // frame number (which counts from 1) from the subframe trailer, update and/or validate in the
-    // frame buffer header appropriately.
+    // frame number (which counts from 1) from the subframe trailer where present, update and/or
+    // validate in the frame buffer header appropriately.
 
-    if (get_end_of_frame_marker ())
+    if (get_end_of_frame_marker())
     {
 
-      size_t payload_bytes_received = bytes_received - sizeof(Excalibur::PacketHeader);
+      uint32_t frame_number;
+      if (has_subframe_trailer_)
+      {
+        size_t payload_bytes_received = bytes_received - sizeof(Excalibur::PacketHeader);
 
-      Excalibur::SubframeTrailer* trailer =
-          reinterpret_cast<Excalibur::SubframeTrailer*>((uint8_t*) get_next_payload_buffer()
-              + payload_bytes_received - sizeof(Excalibur::SubframeTrailer));
+        Excalibur::SubframeTrailer* trailer =
+            reinterpret_cast<Excalibur::SubframeTrailer*>((uint8_t*) get_next_payload_buffer()
+                + payload_bytes_received - sizeof(Excalibur::SubframeTrailer));
 
-      uint32_t frame_number = static_cast<uint32_t>((trailer->frame_number & 0xFFFFFFFF) - 1);
-      LOG4CXX_DEBUG_LEVEL(3, logger_, "Subframe EOF trailer has frame number = " << frame_number);
+        frame_number = static_cast<uint32_t>((trailer->frame_number & 0xFFFFFFFF) - 1);
+        LOG4CXX_DEBUG_LEVEL(3, logger_, "Subframe EOF trailer has frame number = " << frame_number);
+      }
+      else
+      {
+        LOG4CXX_DEBUG_LEVEL(3, logger_, "No subframe EOF trailer present in this reaodut mode, "
+                            << "using shadow frame counter: " << shadow_frame_counter_);
+        frame_number = shadow_frame_counter_;
+      }
 
       uint32_t subframe_idx = get_subframe_counter() % 2;
 
@@ -416,7 +448,7 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
     // If we have received the expected number of packets, perform end of frame processing
     // and hand off the frame for downstream processing.
     if (current_frame_header_->total_packets_received ==
-        (Excalibur::num_fem_frame_packets * num_active_fems_))
+        (Excalibur::num_fem_frame_packets(asic_counter_bit_depth_) * num_active_fems_))
     {
 
       // Check that the appropriate number of SOF and EOF markers (one each per subframe) have
