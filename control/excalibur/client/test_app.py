@@ -603,7 +603,9 @@ class ExcaliburTestApp(object):
                 logging.warning('Cannot select burst mode and matrix read simultaneously, ignoring burst option')
             operation_mode =  ExcaliburDefinitions.FEM_OPERATION_MODE_MAXTRIXREAD
            
-        # TODO - handle 24 bit readout here - needs to check frame count etc and execute C0 read 
+        # Force counter select to C1 for 24 bit read. C0 is read manually afterwards
+        if self.args.counter_depth == 24:
+            self.args.counter_select = 1 
         
         logging.info('Executing acquisition ...')
         
