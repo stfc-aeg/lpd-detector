@@ -21,6 +21,9 @@ const std::string ExcaliburFrameDecoder::asic_bit_depth_str_[Excalibur::num_bit_
 
 #define MAX_IGNORED_PACKET_REPORTS 10
 
+static void* last_buffer_addr = NULL;
+static bool first_tp_found = false;
+
 //! Constructor for ExcaliburFrameDecoder
 //!
 //! This constructor sets up the decoder, setting default values of frame tracking information
@@ -37,7 +40,8 @@ ExcaliburFrameDecoder::ExcaliburFrameDecoder() :
     dropping_frame_data_(false),
     packets_ignored_(0),
     has_subframe_trailer_(true),
-    shadow_frame_counter_(-1)
+    last_shadow_frame_number_(0),
+    current_shadow_frame_number_(0)
 {
 
   // Allocate buffers for packet header, dropped frames and scratched packets
@@ -130,7 +134,7 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
     has_subframe_trailer_ = true;
   }
   // Reset shadow frame counter
-  shadow_frame_counter_ = -1;
+  last_shadow_frame_number_ = 0;
 
   // Print a packet logger header to the appropriate logger if enabled
   if (enable_packet_logging_)
@@ -278,8 +282,9 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
         current_frame_header_ = reinterpret_cast<Excalibur::FrameHeader*>(current_frame_buffer_);
         initialise_frame_header(current_frame_header_);
 
-        // Increment shadow frame counter
-        shadow_frame_counter_++;
+        // Track shadow frame counter for the current frame
+        current_shadow_frame_number_ = last_shadow_frame_number_++;
+        shadow_frame_counter_map[current_frame_seen_] = current_shadow_frame_number_;
 
       }
       else
@@ -287,6 +292,7 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
         current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
         current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
         current_frame_header_ = reinterpret_cast<Excalibur::FrameHeader*>(current_frame_buffer_);
+        current_shadow_frame_number_ = shadow_frame_counter_map[current_frame_seen_];
       }
 
     }
@@ -356,7 +362,7 @@ void* ExcaliburFrameDecoder::get_next_payload_buffer(void) const
 
     next_receive_location = reinterpret_cast<uint8_t*>(current_frame_buffer_)
           + get_frame_header_size ()
-          + (subframe_size * Excalibur::num_subframes * current_packet_fem_map_.fem_idx_)
+          + (subframe_size * Excalibur::num_subframes * current_packet_fem_map_.buf_idx_)
           + (subframe_size * (get_subframe_counter() % 2))
           + (Excalibur::primary_packet_size * get_packet_number());
   }
@@ -392,6 +398,7 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
   // Only process the packet if it is not being ignored due to an illegal port to FEM index mapping
   if (current_packet_fem_map_.fem_idx_ != ILLEGAL_FEM_IDX)
   {
+
     // If this packet is the last in subframe (i.e. has on EOF marker in the header), extract the
     // frame number (which counts from 1) from the subframe trailer where present, update and/or
     // validate in the frame buffer header appropriately.
@@ -400,7 +407,15 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
     {
 
       uint32_t frame_number;
-      if (has_subframe_trailer_)
+
+      if ((asic_counter_bit_depth_ == Excalibur::bitDepth24) &&
+          ((current_shadow_frame_number_ % 2) == 1))
+      {
+        LOG4CXX_DEBUG_LEVEL(3, logger_, "Using current shadow frame number "
+                            << current_shadow_frame_number_ << " for C0 frame in 24-bit mode");
+        frame_number = current_shadow_frame_number_;
+      }
+      else if (has_subframe_trailer_)
       {
         size_t payload_bytes_received = bytes_received - sizeof(Excalibur::PacketHeader);
 
@@ -414,8 +429,8 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
       else
       {
         LOG4CXX_DEBUG_LEVEL(3, logger_, "No subframe EOF trailer present in this reaodut mode, "
-                            << "using shadow frame counter: " << shadow_frame_counter_);
-        frame_number = shadow_frame_counter_;
+                            << "using current shadow frame number: " << current_shadow_frame_number_);
+        frame_number = current_shadow_frame_number_;
       }
 
       uint32_t subframe_idx = get_subframe_counter() % 2;
@@ -476,6 +491,9 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
         // Erase frame from buffer map
         frame_buffer_map_.erase(current_frame_seen_);
 
+        // Erase counter from shadow frame counter map
+        shadow_frame_counter_map.erase(current_frame_seen_);
+
         // Notify main thread that frame is ready
         ready_callback_(current_frame_buffer_id_, current_frame_header_->frame_number);
 
@@ -517,6 +535,7 @@ void ExcaliburFrameDecoder::monitor_buffers(void)
       frames_timedout++;
 
       frame_buffer_map_.erase(buffer_map_iter++);
+      shadow_frame_counter_map.erase(frame_num);
     }
     else
     {

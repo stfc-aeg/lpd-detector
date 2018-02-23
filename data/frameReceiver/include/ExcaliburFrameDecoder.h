@@ -33,6 +33,7 @@ namespace FrameReceiver
   } ExcaliburDecoderFemMapEntry;
 
   typedef std::map<int, ExcaliburDecoderFemMapEntry> ExcaliburDecoderFemMap;
+  typedef std::map<int32_t, int32_t> FrameCounterMap;
 
   class ExcaliburFrameDecoder : public FrameDecoderUDP
   {
@@ -91,7 +92,10 @@ namespace FrameReceiver
     bool dropping_frame_data_;
     std::size_t packets_ignored_;
     bool has_subframe_trailer_;
-    int32_t shadow_frame_counter_;
+
+    FrameCounterMap shadow_frame_counter_map;
+    int32_t last_shadow_frame_number_;
+    int32_t current_shadow_frame_number_;
 
     static const std::string asic_bit_depth_str_[Excalibur::num_bit_depths];
 
