@@ -85,10 +85,11 @@ namespace FrameProcessor
     static const std::string BIT_DEPTH[4];
 
     void process_frame(boost::shared_ptr<Frame> frame);
-    void reorder_1bit_image(unsigned int* in, unsigned char* out);
-    void reorder_6bit_image(unsigned char* in, unsigned char* out);
-    void reorder_12bit_image(unsigned short* in, unsigned short* out);
+    void reorder_1bit_image(unsigned int* in, unsigned char* out, bool stripe_is_even);
+    void reorder_6bit_image(unsigned char* in, unsigned char* out, bool stripe_is_even);
+    void reorder_12bit_image(unsigned short* in, unsigned short* out, bool stripe_is_even);
     void build_24bit_image(unsigned short* inC0, unsigned short* inC1, unsigned int* out);
+    std::size_t reordered_slice_size(int asic_counter_depth_);
 
     /** Pointer to logger **/
     LoggerPtr logger_;
