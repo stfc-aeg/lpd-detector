@@ -475,9 +475,9 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
               (Excalibur::num_subframes * num_active_fems_)))
       {
         LOG4CXX_WARN(logger_, "Incorrect number of SOF ("
-           << current_frame_header_->total_sof_marker_count << ") or EOF ("
-           << current_frame_header_->total_eof_marker_count << "markers seen on completed frame "
-           << current_frame_seen_);
+           << (int)current_frame_header_->total_sof_marker_count << ") or EOF ("
+           << (int)current_frame_header_->total_eof_marker_count << ") markers "
+           << "seen on completed frame " << current_frame_seen_);
       }
 
       // Set frame state accordingly
