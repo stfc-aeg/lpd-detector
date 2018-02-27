@@ -308,6 +308,7 @@ private:
 
   void asicControlFarmModeNumDestinationsSet(const unsigned int aNumDestinations);
   void asicControlFarmModeLutReset(void);
+  void asicControlUdpCounterReset(void);
 
   mpx3OMRParameters mMpx3OmrParams[kNumAsicsPerFem];
   unsigned int mMpx3DacCache[kNumAsicsPerFem][numExcaliburDacs];

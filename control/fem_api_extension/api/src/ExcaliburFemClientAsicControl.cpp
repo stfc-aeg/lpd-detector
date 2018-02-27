@@ -222,3 +222,9 @@ void ExcaliburFemClient::asicControlFarmModeLutReset(void)
   this->rdmaWrite(kExcaliburFarmModeLutReset, 0);
 }
 
+void ExcaliburFemClient::asicControlUdpCounterReset(void)
+{
+  this->rdmaWrite(kExcaliburUdpCounterReset, 0);
+  this->rdmaWrite(kExcaliburUdpCounterReset, 1);
+  this->rdmaWrite(kExcaliburUdpCounterReset, 0);
+}

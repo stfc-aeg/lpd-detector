@@ -19,6 +19,7 @@ const u32 kExcaliburTopLevelControlAddr = 0x30000000;
 const u32 kExcaliburTopLevelControlAddr = 0x06000000;
 #endif
 const u32 kExcaliburDataReorderMode = kExcaliburTopLevelControlAddr + 1;
+const u32 kExcaliburUdpCounterReset = kExcaliburTopLevelControlAddr + 2;
 const u32 kExcaliburFarmModeLutReset = kExcaliburTopLevelControlAddr + 4;
 const u32 kExcaliburFarmModeLutCount = kExcaliburTopLevelControlAddr + 5;
 
