@@ -209,10 +209,6 @@ namespace FrameProcessor
         // Calculate output image pixel offset based on active FEM index
         std::size_t output_offset = fem_idx * FEM_TOTAL_PIXELS;
 
-        std::cout << "*** idx: " << (int)idx << " fem_idx: " << (int)fem_idx
-            << " data_ptr: " << data_ptr << " input_ptr: " << input_ptr
-            << " output offset: " << output_offset << std::endl;
-
         // Determine stripe orientation based on FEM index
         bool stripe_is_even = ((fem_idx & 1) == 0);
         LOG4CXX_TRACE(logger_, "Active FEM idx=" << static_cast<int>(fem_idx)
@@ -258,10 +254,6 @@ namespace FrameProcessor
                 }
               }
 
-              std::cout << "About to reorder C1: addr: "
-                  << reordered_part_image_c1 << " offset: " << output_offset
-                  << " partial size " << partial_image_size << std::endl;
-
               reorder_12bit_stripe(static_cast<unsigned short *>(input_ptr),
                   static_cast<unsigned short *>(reordered_part_image_c1) + output_offset,
                   stripe_is_even);
@@ -273,7 +265,6 @@ namespace FrameProcessor
               // reorder and then build the full-depth output image
               if (reordered_part_image_c0 == NULL)
               {
-                std::cout << "Doing C0 malloc" << std::endl;
                 reordered_part_image_c0 = (void *)malloc(partial_image_size);
                 if (reordered_part_image_c0 == NULL)
                 {
@@ -282,10 +273,6 @@ namespace FrameProcessor
                       );
                 }
               }
-
-              std::cout << "About to reorder C0: addr: "
-                  << reordered_part_image_c0 << " offset: " << output_offset
-                  << " partial size " << partial_image_size << std::endl;
 
               // Reorder received buffer into C0
               reorder_12bit_stripe(static_cast<unsigned short *>(input_ptr),
