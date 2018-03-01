@@ -51,6 +51,22 @@ class ExcaliburTestAppDefaults(object):
         
         self.sense_dac = 0
         
+class CsvArgparseAction(argparse.Action):
+    """
+    Comma separated list of values action for argument parser.
+    """
+    def __init__(self, val_type=None, *args, **kwargs):
+        self.val_type =val_type
+        super(CsvArgparseAction, self).__init__(*args, **kwargs)
+        
+    def __call__(self, parser, namespace, value, option_string=None):
+        item_list=[]
+        try:
+            for item_str in value.split(','):
+                item_list.append(self.val_type(item_str))
+        except ValueError as e:
+            raise argparse.ArgumentError(self, e)
+        setattr(namespace, self.dest, item_list)
         
 class ExcaliburTestApp(object):
     
@@ -103,6 +119,9 @@ class ExcaliburTestApp(object):
             help='Display front-end slow control parameters')
         cmd_group.add_argument('--acquire', '-a', action='store_true',
             help='Execute image acquisition sequence')
+        cmd_group.add_argument('--dacscan', type=str, val_type=int, dest='dac_scan', 
+           action=CsvArgparseAction, metavar='DAC,START,STOP_STEP',
+           help='Execute DAC scan, params format is comma separated DAC,START,STOP,STEP')
         cmd_group.add_argument('--stop', action='store_true',
             help='Stop acquisition execution')
         cmd_group.add_argument('--disconnect', action='store_true',
@@ -284,6 +303,9 @@ class ExcaliburTestApp(object):
         if self.args.udpconfig:
             self.do_udp_config()
 
+        if self.args.dac_scan:
+            self.do_dac_scan()
+            
         if self.args.acquire:
             self.do_acquisition()
             
@@ -589,6 +611,134 @@ class ExcaliburTestApp(object):
         if not write_ok:
             logging.error('Failed to write UDP configuration parameters to system: {}'.format(self.client.error_msg))
         
+    def do_dac_scan(self):
+        
+        try:
+            (scan_dac, scan_start, scan_stop, scan_step) = self.args.dac_scan
+        except ValueError:
+            logging.error("DAC scan requires four parameters (dac, start, stop, step)")
+            return
+        
+        logging.info("Executing DAC scan ...")
+
+        # Build a list of parameters to be written toset up the DAC scan
+        scan_params = []
+        
+        logging.info('  Setting scan DAC to {}'.format(scan_dac))
+        scan_params.append(ExcaliburParameter('dac_scan_dac', [[scan_dac]]))
+        
+        logging.info('  Setting scan start value to {}'.format(scan_start))
+        scan_params.append(ExcaliburParameter('dac_scan_start', [[scan_start]]))
+        
+        logging.info('  Setting scan stop value to {}'.format(scan_stop))
+        scan_params.append(ExcaliburParameter('dac_scan_stop', [[scan_stop]]))
+        
+        logging.info('  Setting scan step size to {}'.format(scan_step))
+        scan_params.append(ExcaliburParameter('dac_scan_step', [[scan_step]]))
+        
+        logging.info('  Setting acquisition time to {} ms'.format(self.args.acquisition_time))
+        scan_params.append(ExcaliburParameter('acquisition_time', [[self.args.acquisition_time]]))
+        
+        readout_mode = ExcaliburDefinitions.FEM_READOUT_MODE_SEQUENTIAL
+        logging.info('  Setting ASIC readout mode to {}'.format(
+            ExcaliburDefinitions.readout_mode_name(readout_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_readwritemode', [[readout_mode]]))
+        
+        logging.info('  Setting ASIC colour mode to {} '.format(
+            ExcaliburDefinitions.colour_mode_name(self.args.colour_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_colourmode', [[self.args.colour_mode]]))
+
+        logging.info('  Setting ASIC pixel mode to {} '.format(
+            ExcaliburDefinitions.csmspm_mode_name(self.args.csmspm_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_csmspmmode', [[self.args.csmspm_mode]]))
+
+        logging.info('  Setting ASIC discriminator output mode to {} '.format(
+            ExcaliburDefinitions.disccsmspm_name(self.args.disccsmspm)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_disccsmspm', [[self.args.disccsmspm]]))
+
+        logging.info('  Setting ASIC equalization mode to {} '.format(
+            ExcaliburDefinitions.equalisation_mode_name(self.args.equalization_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_equalizationmode', [[self.args.equalization_mode]]))
+        
+        logging.info('  Setting ASIC gain mode to {} '.format(
+            ExcaliburDefinitions.gain_mode_name(self.args.gain_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_gainmode', [[self.args.gain_mode]]))
+
+        logging.info('  Setting ASIC counter select to {} '.format(self.args.counter_select))
+        scan_params.append(ExcaliburParameter('mpx3_counterselect', [[self.args.counter_select]]))
+        
+        counter_depth=12
+        logging.info('  Setting ASIC counter depth to {} bits'.format(counter_depth))
+        counter_depth_val = ExcaliburDefinitions.counter_depth(counter_depth)
+        scan_params.append(ExcaliburParameter('mpx3_counterdepth', [[counter_depth_val]]))
+        
+        operation_mode = ExcaliburDefinitions.FEM_OPERATION_MODE_DACSCAN
+        logging.info('  Setting operation mode to {}'.format(
+            ExcaliburDefinitions.operation_mode_name(operation_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_operationmode', [[operation_mode]]))
+
+        lfsr_bypass_mode = ExcaliburDefinitions.FEM_LFSR_BYPASS_MODE_DISABLED
+        logging.info('  Setting LFSR bypass mode to {}'.format(
+            ExcaliburDefinitions.lfsr_bypass_mode_name(lfsr_bypass_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[lfsr_bypass_mode]]))
+
+        logging.info('  Disabling local data receiver thread')
+        scan_params.append(ExcaliburParameter('datareceiver_enable', [[0]]))
+
+        # Write all the parameters to system
+        logging.info('Writing configuration parameters to system')
+        write_ok = self.client.fe_param_write(scan_params)
+        if not write_ok:
+            logging.error('Failed to write configuration parameters to system: {}'.format(self.client.error_msg))
+            return
+        
+        # Send start acquisition command
+        logging.info('Sending start acquisition command')
+        cmd_ok = self.client.do_command('start_acquisition')
+        if not cmd_ok:
+            logging.error('start_acquisition command failed: {}'.format(self.client.error_msg))
+            return
+
+        # If the nowait arguments wasn't given, monitor the scan state until all requested steps
+        # have been completed
+        if not self.args.no_wait:
+
+            wait_count = 0
+            scan_steps_completed = 0
+            
+            while True:
+
+                (_, vals) = self.client.fe_param_read(['dac_scan_steps_complete', 'dac_scan_state'])
+                scan_steps_completed = min(vals['dac_scan_steps_complete'])                
+                scan_completed = all(
+                    [(scan_state == 0) for scan_state in vals['dac_scan_state']]
+                )
+                
+                if scan_completed:
+                    break
+                
+                wait_count += 1
+                if wait_count % 5 == 0:
+                    logging.info('  {:d} scan steps completed  ...'.format(scan_steps_completed))
+
+
+            (_, vals) = self.client.fe_param_read(['dac_scan_steps_complete'])
+            scan_steps_completed = min(vals['dac_scan_steps_complete'])
+                            
+            self.do_stop()
+
+            logging.info('DAC scan with {} steps completed'.format(scan_steps_completed))
+        else:
+            logging.info('Acquisition of DAC scan started, not waiting for completion, will not send stop command')
+
 
     def do_acquisition(self):
         
