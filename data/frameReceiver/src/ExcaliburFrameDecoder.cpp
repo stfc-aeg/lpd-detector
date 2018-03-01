@@ -329,9 +329,13 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
 void ExcaliburFrameDecoder::initialise_frame_header(Excalibur::FrameHeader* header_ptr)
 {
 
+#ifdef USE_SUBFRAME_TRAILER_COUNTER
   // Initialise the frame number to -1 so we can pick this up from the first
   // subframe trailer seen in the packet stream
   header_ptr->frame_number = Excalibur::default_frame_number;
+#else
+  header_ptr->frame_number = current_frame_seen_;
+#endif
 
   header_ptr->frame_state = FrameDecoder::FrameReceiveStateIncomplete;
   header_ptr->total_packets_received = 0;
@@ -407,6 +411,9 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
     {
 
       uint32_t frame_number;
+      uint32_t subframe_idx = get_subframe_counter() % 2;
+
+#ifdef USE_SUBFRAME_TRAILER_COUNTER
 
       if ((asic_counter_bit_depth_ == Excalibur::bitDepth24) &&
           ((current_shadow_frame_number_ % 2) == 1))
@@ -425,6 +432,7 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
 
         frame_number = static_cast<uint32_t>((trailer->frame_number & 0xFFFFFFFF) - 1);
         LOG4CXX_DEBUG_LEVEL(3, logger_, "Subframe EOF trailer has frame number = " << frame_number);
+        LOG4CXX_DEBUG_LEVEL(3, logger_, "Current frame seen is: " << current_frame_seen_ );
       }
       else
       {
@@ -433,11 +441,13 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
         frame_number = current_shadow_frame_number_;
       }
 
-      uint32_t subframe_idx = get_subframe_counter() % 2;
 
       if ((current_frame_header_->frame_number == Excalibur::default_frame_number) &&
           (subframe_idx == 0))
       {
+        LOG4CXX_DEBUG_LEVEL(2, logger_, "Updating frame number in header from "
+                            << current_frame_header_->frame_number << " to "
+                            << frame_number);
         current_frame_header_->frame_number = frame_number;
       }
       else
@@ -450,6 +460,33 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
               << ", expected " << current_frame_header_->frame_number);
         }
       }
+#else
+      if (has_subframe_trailer_)
+      {
+        size_t payload_bytes_received = bytes_received - sizeof(Excalibur::PacketHeader);
+
+        Excalibur::SubframeTrailer* trailer =
+            reinterpret_cast<Excalibur::SubframeTrailer*>((uint8_t*) get_next_payload_buffer()
+                + payload_bytes_received - sizeof(Excalibur::SubframeTrailer));
+
+        frame_number = static_cast<uint32_t>((trailer->frame_number & 0xFFFFFFFF) - 1);
+        LOG4CXX_DEBUG_LEVEL(3, logger_, "Subframe EOF trailer FEM: "
+            << current_packet_fem_map_.fem_idx_ << " subframe_idx: " << subframe_idx
+            << " frame: " << frame_number
+            << " current frame: " << current_frame_header_->frame_number);
+
+#if TEST_SUBFRAME_TRAILER
+
+        if (frame_number != current_frame_header_->frame_number)
+        {
+          LOG4CXX_WARN(logger_, "Subframe EOF trailer frame number mismatch for frame "
+              << current_frame_seen_ << ": got " << frame_number
+              << " from FEM " << current_packet_fem_map_.fem_idx_
+              << ", expected " << current_frame_header_->frame_number);
+        }
+#endif
+      }
+#endif
     }
 
     // Get a convenience pointer to the FEM receive state data in the frame header
