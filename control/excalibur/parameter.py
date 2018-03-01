@@ -7,6 +7,7 @@ Created on Mar 21, 2017
 from collections import OrderedDict
 
 from .fem_api_parameters import *
+from fem_api_parameters import FEM_OP_DAC_SCAN_STEPS_COMPLETE
 
 FEM_RTN_INTERNALERROR = -1
 CHIPS_PER_FEM = FEM_CHIPS_PER_STRIPE_X
@@ -116,6 +117,37 @@ class ExcaliburFrontEndParameterMap(ParameterMap):
         self['num_frames_to_acquire'] = ParameterSpec(FEM_OP_NUMFRAMESTOACQUIRE, 'int', 1, ParamPerFem)
         self['acquisition_time'] = ParameterSpec(FEM_OP_ACQUISITIONTIME, 'int', 1, ParamPerFem)
 
+        self['pwr_p5va_vmon'] = ParameterSpec(FEM_OP_P5V_A_VMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5vb_vmon'] = ParameterSpec(FEM_OP_P5V_B_VMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5v_fem00_imon'] = ParameterSpec(FEM_OP_P5V_FEMO0_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5v_fem01_imon'] = ParameterSpec(FEM_OP_P5V_FEMO1_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5v_fem02_imon'] = ParameterSpec(FEM_OP_P5V_FEMO2_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5v_fem03_imon'] = ParameterSpec(FEM_OP_P5V_FEMO3_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5v_fem04_imon'] = ParameterSpec(FEM_OP_P5V_FEMO4_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5v_fem05_imon'] = ParameterSpec(FEM_OP_P5V_FEMO5_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p48v_vmon'] = ParameterSpec(FEM_OP_P48V_VMON, 'float', 1, ParamPerFem) 
+        self['pwr_p48v_imon'] = ParameterSpec(FEM_OP_P48V_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5vsup_vmon'] = ParameterSpec(FEM_OP_P5VSUP_VMON, 'float', 1, ParamPerFem) 
+        self['pwr_p5vsup_imon'] = ParameterSpec(FEM_OP_P5VSUP_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_humidity_mon'] = ParameterSpec(FEM_OP_HUMIDITY_MON, 'float', 1, ParamPerFem) 
+        self['pwr_air_temp_mon'] = ParameterSpec(FEM_OP_AIR_TEMP_MON, 'float', 1, ParamPerFem) 
+        self['pwr_coolant_temp_mon'] = ParameterSpec(FEM_OP_COOLANT_TEMP_MON, 'float', 1, ParamPerFem) 
+        self['pwr_coolant_flow_mon'] = ParameterSpec(FEM_OP_COOLANT_FLOW_MON, 'float', 1, ParamPerFem) 
+        self['pwr_p3v3_imon'] = ParameterSpec(FEM_OP_P3V3_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p1v8_imonA'] = ParameterSpec(FEM_OP_P1V8_IMON_A, 'float', 1, ParamPerFem) 
+        self['pwr_bias_imon'] = ParameterSpec(FEM_OP_BIAS_IMON, 'float', 1, ParamPerFem) 
+        self['pwr_p3v3_vmon'] = ParameterSpec(FEM_OP_P3V3_VMON, 'float', 1, ParamPerFem) 
+        self['pwr_p1v8_vmon'] = ParameterSpec(FEM_OP_P1V8_VMON_A, 'float', 1, ParamPerFem) 
+        self['pwr_bias_vmon'] = ParameterSpec(FEM_OP_BIAS_VMON, 'float', 1, ParamPerFem) 
+        self['pwr_p1v8_imonB'] = ParameterSpec(FEM_OP_P1V8_IMON_B, 'float', 1, ParamPerFem) 
+        self['pwr_p1v8_vmonB'] = ParameterSpec(FEM_OP_P1V8_VMON_B, 'float', 1, ParamPerFem) 
+        
+        self['pwr_coolant_temp_status'] = ParameterSpec(FEM_OP_COOLANT_TEMP_STATUS, 'int', 1, ParamPerFem) 
+        self['pwr_humidity_status'] = ParameterSpec(FEM_OP_HUMIDITY_STATUS, 'int', 1, ParamPerFem) 
+        self['pwr_coolant_flow_status'] = ParameterSpec(FEM_OP_COOLANT_FLOW_STATUS, 'int', 1, ParamPerFem) 
+        self['pwr_air_temp_status'] = ParameterSpec(FEM_OP_AIR_TEMP_STATUS, 'int', 1, ParamPerFem) 
+        self['pwr_fan_fault'] = ParameterSpec(FEM_OP_FAN_FAULT, 'int', 1, ParamPerFem) 
+
         self['supply_p1v5_avdd1'] = ParameterSpec(FEM_OP_P1V5_AVDD_1_POK, 'int', 1, ParamPerFem)
         self['supply_p1v5_avdd2'] = ParameterSpec(FEM_OP_P1V5_AVDD_2_POK, 'int', 1, ParamPerFem)
         self['supply_p1v5_avdd3'] = ParameterSpec(FEM_OP_P1V5_AVDD_3_POK, 'int', 1, ParamPerFem)
@@ -129,7 +161,15 @@ class ExcaliburFrontEndParameterMap(ParameterMap):
         self['fem_remote_temp'] = ParameterSpec(FEM_OP_REMOTE_DIODE_TEMP, 'float', 1, ParamPerFem)
         self['moly_humidity'] = ParameterSpec(FEM_OP_MOLY_HUMIDITY, 'float', 1, ParamPerFem)
         self['medipix_chip_disable'] = ParameterSpec(FEM_OP_MEDIPIX_CHIP_DISABLE, 'int', 1, ParamPerChip)
- 
+        
+        self['dac_scan_dac'] = ParameterSpec(FEM_OP_SCAN_DAC, 'int', 1, ParamPerFem)
+        self['dac_scan_start'] = ParameterSpec(FEM_OP_SCAN_START, 'int', 1, ParamPerFem)
+        self['dac_scan_stop'] = ParameterSpec(FEM_OP_SCAN_STOP, 'int', 1, ParamPerFem)
+        self['dac_scan_step'] = ParameterSpec(FEM_OP_SCAN_STEP, 'int', 1, ParamPerFem)
+        
+        self['dac_scan_steps_complete'] = ParameterSpec(FEM_OP_DAC_SCAN_STEPS_COMPLETE, 'int', 1, ParamPerFem)
+        self['dac_scan_state'] = ParameterSpec(FEM_OP_DAC_SCAN_STATE, 'int', 1, ParamPerFem)
+        
         self['fe_lv_enable'] = ParameterSpec(FEM_OP_LV_ON_OFF, 'int', 1, ParamPerFem)
         self['fe_hv_enable'] = ParameterSpec(FEM_OP_BIAS_ON_OFF, 'int', 1, ParamPerFem)
         self['fe_hv_bias'] = ParameterSpec(FEM_OP_BIAS_LEVEL, 'float', 1, ParamPerFem)
