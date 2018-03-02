@@ -106,6 +106,7 @@ class ExcaliburBuildExt(build_ext):
 
         if self.boost_root:        
             fem_api_ext.library_dirs.append(os.path.join(self.boost_root, 'lib'))
+            fem_api_ext.runtime_library_dirs.append(os.path.join(self.boost_root, 'lib'))
             
         fem_api_ext.libraries.extend(['fem_api', 'boost_thread', 'boost_system'])
 
