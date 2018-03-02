@@ -118,6 +118,8 @@ class ExcaliburTestApp(object):
             help='Read and diplay MPX3 eFuse IDs')
         cmd_group.add_argument('--slow', '-s', action='store_true',
             help='Display front-end slow control parameters')
+        cmd_group.add_argument('--pwrcard', action='store_true',
+            help='Display power card status')
         cmd_group.add_argument('--acquire', '-a', action='store_true',
             help='Execute image acquisition sequence')
         cmd_group.add_argument('--dacscan', type=str, val_type=int, dest='dac_scan', 
@@ -295,6 +297,9 @@ class ExcaliburTestApp(object):
         if self.args.slow:
             self.do_slow_control_read()
         
+        if self.args.pwrcard:
+            self.do_powercard_read()
+            
         if self.args.dacs is not None:
             self.do_dac_load()
          
@@ -411,6 +416,43 @@ class ExcaliburTestApp(object):
         else:
             logging.error('Slow control read command failed')
     
+    def do_powercard_read(self):
+        
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set LV enable as server reports no power card")
+            return
+        
+        status_params = [
+            'pwr_coolant_temp_status', 'pwr_humidity_status',
+            'pwr_coolant_flow_status', 'pwr_air_temp_status',
+            'pwr_fan_fault'
+        ]
+        
+        supply_params = [
+            'pwr_p5va_vmon', 'pwr_p5vb_vmon', 
+            'pwr_p5v_fem00_imon', 'pwr_p5v_fem01_imon', 'pwr_p5v_fem02_imon', 
+            'pwr_p5v_fem03_imon', 'pwr_p5v_fem04_imon', 'pwr_p5v_fem05_imon',
+            'pwr_p48v_vmon', 'pwr_p48v_imon', 
+            'pwr_p5vsup_vmon', 'pwr_p5vsup_imon',
+            'pwr_humidity_mon', 'pwr_air_temp_mon', 
+            'pwr_coolant_temp_mon', 'pwr_coolant_flow_mon',
+            'pwr_p3v3_imon', 'pwr_p1v8_imonA', 'pwr_bias_imon', 'pwr_p3v3_vmon',
+            'pwr_p1v8_vmon', 'pwr_bias_vmon', 'pwr_p1v8_imonB', 'pwr_p1v8_vmonB'
+        ]
+        
+        power_params = status_params + supply_params
+        
+        (read_ok, param_vals) = self.client.fe_param_read(
+            power_params, fem=self.powercard_fem_id
+        )
+        
+        if read_ok:
+            logging.info("Power card parameters read OK:")
+            for param in sorted(param_vals.iterkeys()):
+                logging.info("   {} : {}".format(param, param_vals[param][0]))
+        else:
+            logging.error("Power card read command failed")
+        
     def do_dac_load(self):
 
         try:
