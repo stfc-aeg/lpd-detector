@@ -301,32 +301,36 @@ class ExcaliburDetector(object):
         
         return partial(self.do_command, cmd_name)
     
+    def _build_fem_idx_list(self, fem_ids):
+        
+        if not isinstance(fem_ids, list):
+            fem_ids = [fem_ids]
+        
+        if fem_ids == [ExcaliburDetector.ALL_FEMS]:
+            fem_idx_list = range(len(self.fems))
+        else:
+            fem_idx_list = [fem_id - 1 for fem_id in fem_ids]
+        
+        return fem_idx_list
+            
     def do_command(self, cmd_name, params):
 
         logging.debug('{} called with params {}'.format(cmd_name, params))
         
-        fem_idxs = range(len(self.fems))
+        fem_idx_list = range(len(self.fems))
         chip_ids = [self.ALL_CHIPS]
         
         if params is not None:
 
             if 'fem' in params:
-                fem_ids = params['fem']
-                if not isinstance(fem_ids, list):
-                    fem_ids = [fem_ids]
-                if fem_ids == [self.ALL_FEMS]:
-                    fem_idxs = range(len(self.fems))
-                else:
-                    for idx in range(len(self.fems)):
-                        if self.fems[idx].fem_id in fem_ids:
-                            fem_idxs.append(idx)
+                fem_idx_list = self._build_fem_idx_list(params['fem'])
 
             if 'chip' in params:
                 chip_ids = params['chip']
         
         self.command_succeeded = True
         
-        for idx in fem_idxs:
+        for idx in fem_idx_list:
             self._increment_pending()
             self._do_command(idx, chip_ids, *self.fe_cmd_map[cmd_name])
         
@@ -385,11 +389,8 @@ class ExcaliburDetector(object):
                 raise ExcaliburDetectorError(
                     'Frontend parameter read - illegal parameter name {}'.format(param))
         
-        if attrs['fem'] == ExcaliburDetector.ALL_FEMS:
-            fem_idx_list = range(len(self.fems))
-        else:
-            fem_idx_list = [attrs['fem']]
-
+        fem_idx_list = self._build_fem_idx_list(attrs['fem'])
+        
         for param in params:
             self.fe_param_read['value'][param] = [[] for fem_idx in fem_idx_list]
         
@@ -491,14 +492,7 @@ class ExcaliburDetector(object):
                 self.command_succeeded = False 
                 raise ExcaliburDetectorError('Illegal parameter name {}'.format(param['param']))
         
-            if param['fem'] == [ExcaliburDetector.ALL_FEMS] or param['fem'] == ExcaliburDetector.ALL_FEMS:
-                fem_idx_list = range(len(self.fems))
-            else:
-                if isinstance(param['fem'], list):
-                    fem_idx_list = param['fem']
-                else:
-                    fem_idx_list = [param['fem']]
-
+            fem_idx_list = self._build_fem_idx_list(param['fem'])
             num_fems = len(fem_idx_list)     
             
             values = param['value']
@@ -514,19 +508,19 @@ class ExcaliburDetector(object):
                         param['param']
                     )
                 )
-                    
+            
             # Remap onto per-FEM list of expanded parameters
-            for fem_idx in range(len(self.fems)):
-
+            for (idx, fem_idx) in enumerate(fem_idx_list):
+            
                 params_by_fem[fem_idx].append({
                     'param': param['param'],
                     'chip': param['chip'],
                     'offset': param['offset'] if 'offset' in param else 0,
-                    'value': values[fem_idx]
+                    'value': values[idx]
                 })
                                 
-        # Execute write params for all FEMs (launched in threads)
-        for fem_idx in range(len(self.fems)):
+        # Execute write params for all specified FEMs (launched in threads)
+        for fem_idx in fem_idx_list:
             self._increment_pending()
             self._write_fe_param(fem_idx, params_by_fem[fem_idx])
             
