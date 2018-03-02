@@ -50,6 +50,7 @@ class ExcaliburTestAppDefaults(object):
         self.operation_mode = ExcaliburDefinitions.FEM_OPERATION_MODE_NORMAL
         
         self.sense_dac = 0
+        self.powercard_fem_id = 0
         
 class CsvArgparseAction(argparse.Action):
     """
@@ -91,7 +92,7 @@ class ExcaliburTestApp(object):
             help='Hostname or IP address of EXCALIBUR control server to connect to')
         config_group.add_argument('--port', '-p', type=int, dest='port',
             default=self.defaults.port, 
-            help='Port number of EXCALIBUBR control server to connect to')
+            help='Port number of EXCALIBUR control server to connect to')
         config_group.add_argument('--logging', type=str, dest='log_level',
             default=self.defaults.log_level,
             choices=['error', 'warning', 'info', 'debug'],
@@ -255,11 +256,11 @@ class ExcaliburTestApp(object):
             self.client.print_all(logging.INFO)
             return
         
-        self.powercard_fem_idx = self.client.get_powercard_fem_idx()
-        if self.powercard_fem_idx >= 0:
-            logging.debug("Server reports powercard is on FEM {}".format(self.powercard_fem_idx))
+        self.powercard_fem_id = self.client.get_powercard_fem_idx() + 1
+        if self.powercard_fem_id > 0:
+            logging.debug("Server reports power card is on FEM {}".format(self.powercard_fem_id))
         else:
-            logging.debug("Server reports no powercard present in system")
+            logging.debug("Server reports no power card present in system")
 
         self.client.connect()
 
@@ -276,7 +277,7 @@ class ExcaliburTestApp(object):
             ','.join([str(fem_id) for fem_id in self.fem_ids])
         ))
                   
-        if self.args.lv_enable:
+        if self.args.lv_enable is not None:
             self.do_lv_enable()
 
         if self.args.hv_enable:
@@ -317,13 +318,13 @@ class ExcaliburTestApp(object):
             
     def do_lv_enable(self):
 
-        if self.powercard_fem_idx < 0:
-            logging.warning("Unable to set LV enable as server reports no powercard")
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set LV enable as server reports no power card")
             return
         
         params = []
         params.append(ExcaliburParameter('fe_lv_enable', [[self.args.lv_enable]], 
-                      fem=self.powercard_fem_idx))
+                      fem=self.powercard_fem_id))
                 
         write_ok = self.client.fe_param_write(params)
         if not write_ok:
@@ -331,13 +332,13 @@ class ExcaliburTestApp(object):
 
     def do_hv_enable(self):
 
-        if self.powercard_fem_idx < 0:
-            logging.warning("Unable to set HV enable as server reports no powercard")
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set HV enable as server reports no power card")
             return
         
         params = []
         params.append(ExcaliburParameter('fe_hv_enable', [[self.args.hv_enable]], 
-                      fem=self.powercard_fem_idx))
+                      fem=self.powercard_fem_id))
                 
         write_ok = self.client.fe_param_write(params)
         if not write_ok:
@@ -345,13 +346,13 @@ class ExcaliburTestApp(object):
 
     def do_hv_bias_set(self):
 
-        if self.powercard_fem_idx < 0:
-            logging.warning("Unable to set HV bias as server reports no powercard")
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set HV bias as server reports no power card")
             return
         
         params = []
         params.append(ExcaliburParameter('fe_hv_bias', [[self.args.hv_bias]], 
-                      fem=self.powercard_fem_idx))
+                      fem=self.powercard_fem_id))
                 
         write_ok = self.client.fe_param_write(params)
         if not write_ok:
@@ -377,7 +378,7 @@ class ExcaliburTestApp(object):
                 fem_efuse_ids = efuse_ids[fem_idx]
                 if not isinstance(fem_efuse_ids, list):
                     fem_efuse_ids = [fem_efuse_ids]
-                logging.info('FEM {} : efuse IDs: {}'.format(fem_idx, ' '.join([hex(efuse_id) for efuse_id in fem_efuse_ids])))
+                logging.info('FEM {} : efuse IDs: {}'.format(fem_idx+1, ' '.join([hex(efuse_id) for efuse_id in fem_efuse_ids])))
         else:
             logging.error('eFuse ID read command failed')
     
@@ -421,7 +422,6 @@ class ExcaliburTestApp(object):
             logging.error('Error in FEM IDs specified for DAC loading: {}'.format(e))
             return
         
-        
         self.dac_config = ExcaliburDacConfigParser(
             self.args.dacs, fem_ids, self.args.config_chip)
  
@@ -445,17 +445,17 @@ class ExcaliburTestApp(object):
                 dac_vals.append(fem_vals)
             
             dac_params.append(ExcaliburParameter(dac_param, dac_vals, 
-                              fem=self.args.config_fem, chip=self.args.config_chip))
+                              fem=fem_ids, chip=chip_ids))
         
         dac_params.append(ExcaliburParameter('mpx3_dacsense', [[self.args.sense_dac]],
-                          fem=self.args.config_fem, chip=self.args.config_chip))
+                          fem=fem_ids, chip=chip_ids))
         
         write_ok = self.client.fe_param_write(dac_params)
         if not write_ok:
             logging.error('Failed to write DAC parameters for FEM ID {}, chip ID {}'.format(fem_id, chip_id))
             return
         
-        load_ok = self.client.do_command('load_dacconfig', self.args.config_fem, self.args.config_chip)
+        load_ok = self.client.do_command('load_dacconfig', fem=fem_ids, chip=chip_ids)
         if load_ok:
             logging.info('DAC load completed OK')
         else:
