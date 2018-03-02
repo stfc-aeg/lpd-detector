@@ -390,18 +390,18 @@ class ExcaliburDetector(object):
                     'Frontend parameter read - illegal parameter name {}'.format(param))
         
         fem_idx_list = self._build_fem_idx_list(attrs['fem'])
-        
+
         for param in params:
             self.fe_param_read['value'][param] = [[] for fem_idx in fem_idx_list]
         
-        for fem_idx in fem_idx_list:
+        for (res_idx, fem_idx) in enumerate(fem_idx_list):
             self._increment_pending()
-            self._read_fe_param(fem_idx, attrs['chip'], params)
+            self._read_fe_param(fem_idx, attrs['chip'], params, res_idx)
         
         logging.debug('read_fe_param returning')
         
     @run_on_executor(executor='_fem_thread_pool')
-    def _read_fe_param(self, fem_idx, chips, params):
+    def _read_fe_param(self, fem_idx, chips, params, res_idx):
         
         logging.debug("FEM {}: _read_fe_param in thread {:x}".format(self.fems[fem_idx].fem_id, threading.current_thread().ident))
         
@@ -445,7 +445,7 @@ class ExcaliburDetector(object):
             
                     values = values[0] if len(values) == 1 else values
                     with self.state_lock:
-                        self.fe_param_read['value'][param][fem_idx] = values
+                        self.fe_param_read['value'][param][res_idx] = values
         
         except Exception as e:
             self._set_fem_error_state(fem_idx, FEM_RTN_INTERNALERROR,
