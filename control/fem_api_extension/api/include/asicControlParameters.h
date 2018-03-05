@@ -64,7 +64,7 @@ const unsigned int kExcaliburSp3ConfigAddr = 0x10000000;
 const unsigned int kExcaliburSp3ConfigFirmwareVersion = kExcaliburSp3ConfigAddr + 16;
 const unsigned int kExcaliburSp3TopAddr = 0x20000000;
 const unsigned int kExcaliburSp3TopFirmwareVersion = kExcaliburSp3TopAddr + 16;
-const unsigned int kExcaliburSp3BotAddr = 0x20000000;
+const unsigned int kExcaliburSp3BotAddr = 0x30000000;
 const unsigned int kExcaliburSp3BotFirmwareVersion = kExcaliburSp3BotAddr + 16;
 
 
