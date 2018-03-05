@@ -14,12 +14,13 @@
 #include "time.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/*
- * Image dimension constants
- */
+  /*
+   * Image dimension constants
+   */
 #define FEM_PIXELS_PER_CHIP_X 256
 #define FEM_PIXELS_PER_CHIP_Y 256
 #define FEM_CHIPS_PER_BLOCK_X 4
@@ -37,26 +38,28 @@ extern "C" {
 		(FEM_STRIPES_PER_IMAGE/2)*FEM_CHIP_GAP_PIXELS_Y_SMALL)
 #define FEM_TOTAL_PIXELS_X FEM_PIXELS_PER_STRIPE_X
 
-/*
- * Edge pixel ratio (Note: don't put parentheses around this so that integer arithmetic works).
- */
+#define FEM_FARM_MODE_LUT_SIZE 128
+
+  /*
+   * Edge pixel ratio (Note: don't put parentheses around this so that integer arithmetic works).
+   */
 #define FEM_EDGE_PIXEL_RATIO_NUM 2
 #define FEM_EDGE_PIXEL_RATIO_DEN 5
 #define FEM_EDGE_PIXEL_RATIO 2/5
 
-/*
- * Bits per pixel constants
- */
+  /*
+   * Bits per pixel constants
+   */
 #define FEM_BITS_PER_PIXEL_1 0
 #define FEM_BITS_PER_PIXEL_4 1
 #define FEM_BITS_PER_PIXEL_12 2
 #define FEM_BITS_PER_PIXEL_24 3
 
-/* The frame buffer structure.  These are used to carry frame pixels and their
- * associated metadata.
- */
-typedef struct CtlFrame
-{
+  /* The frame buffer structure.  These are used to carry frame pixels and their
+   * associated metadata.
+   */
+  typedef struct CtlFrame
+  {
     void* buffer;
     size_t bufferLength;
     unsigned int sizeX;
@@ -68,47 +71,53 @@ typedef struct CtlFrame
     struct CtlFrame* internalNext;
     unsigned int frameCounter;
     int referenceCount;
-} CtlFrame;
+  } CtlFrame;
 
-/* A structure used to pass the call back functions to the library by
- * the femInitialise function.
- */
-typedef struct CtlCallbacks
-{
+  /* A structure used to pass the call back functions to the library by
+   * the femInitialise function.
+   */
+  typedef struct CtlCallbacks
+  {
     CtlFrame* (*ctlAllocate)(void* ctlHandle);
     void (*ctlFree)(void* ctlHandle, CtlFrame* buffer);
     void (*ctlReceive)(void* ctlHandle, CtlFrame* buffer);
     void (*ctlSignal)(void* ctlHandle, int id);
     void (*ctlReserve)(void* ctlHandle, CtlFrame* buffer);
-} CtlCallbacks;
+  } CtlCallbacks;
 
-/* A structure that contains fem configuration data.
- */
-typedef struct CtlConfig
-{
+  /* A structure that contains fem configuration data.
+   */
+  typedef struct CtlConfig
+  {
     int femNumber;
     const char* femAddress;
     int femPort;
     const char* dataAddress;
-} CtlConfig;
+  } CtlConfig;
 
-/* The functions provided by the library.
-*/
-const char* femErrorMsg(void* handle);
-int femErrorCode(void* handle);
-int femGetId(void* handle);
+  /* Typedef for a logging function pointer
+   */
+  typedef void(*logFunc)(const unsigned int, const char *);
 
-int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config, void** handle);
-int femSetInt(void* handle, int chipId, int id, size_t size, int* value);
-int femSetShort(void* handle, int chipId, int id, size_t size, short* value);
-int femSetFloat(void* handle, int chipId, int id, size_t size, double* value);
-int femGetInt(void* handle, int chipId, int id, size_t size, int* value);
-int femGetShort(void* handle, int chipId, int id, size_t size, short* value);
-int femGetFloat(void* handle, int chipId, int id, size_t size, double* value);
-int femGetString(void* handle, int chipId, int id, size_t size, char** value);
-int femSetString(void* handle, int chipId, int id, size_t size, char** value);
-int femCmd(void* handle, int chipId, int id);
-void femClose(void* handle);
+  /* The functions provided by the library.
+   */
+  const char* femErrorMsg(void* handle);
+  int femErrorCode(void* handle);
+  int femGetId(void* handle);
+
+  int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfig* config,
+      void** handle);
+  void femSetLogFunction(logFunc log_func);
+  int femSetInt(void* handle, int chipId, int id, size_t size, size_t offset, int* value);
+  int femSetShort(void* handle, int chipId, int id, size_t size, size_t offset, short* value);
+  int femSetFloat(void* handle, int chipId, int id, size_t size, size_t offset, double* value);
+  int femSetString(void* handle, int chipId, int id, size_t size, size_t offset, char** value);
+  int femGetInt(void* handle, int chipId, int id, size_t size, int* value);
+  int femGetShort(void* handle, int chipId, int id, size_t size, short* value);
+  int femGetFloat(void* handle, int chipId, int id, size_t size, double* value);
+  int femGetString(void* handle, int chipId, int id, size_t size, char** value);
+  int femCmd(void* handle, int chipId, int id);
+  void femClose(void* handle);
 
 /* An identifier that indicates 'all chips'.
  */
@@ -272,13 +281,17 @@ void femClose(void* handle);
 #define FEM_OP_DEST_DATA_ADDR 4062
 #define FEM_OP_DEST_DATA_MAC 4063
 #define FEM_OP_DEST_DATA_PORT 4064
+#define FEM_OP_DEST_DATA_PORT_OFFSET 4065
+#define FEM_OP_FARM_MODE_NUM_DESTS 4066
+#define FEM_OP_FARM_MODE_ENABLE 4067
+#define FEM_OP_FIRMWARE_VERSION 4068
 
 /* Ids 5000..5999 are signals */
 #define FEM_OP_ACQUISITIONCOMPLETE 5000
 #define FEM_OP_CORRUPTIMAGE 5001
 
 #ifdef __cplusplus
-}  /* Closing brace for extern "C" */
+} /* Closing brace for extern "C" */
 #endif
 
 #endif /* FEMAPI_H_ */

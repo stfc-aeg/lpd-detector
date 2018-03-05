@@ -5,7 +5,6 @@ import time
 import logging
 from collections import OrderedDict
 
-
 class ExcaliburDefinitions(object):
 
     ERROR_OK = 0
@@ -111,18 +110,25 @@ class ExcaliburDefinitions(object):
 
 class ExcaliburParameter(OrderedDict):
     
-    def __init__(self, param, value, 
-                 fem=ExcaliburDefinitions.ALL_FEMS, chip=ExcaliburDefinitions.ALL_CHIPS):
+    def __init__(self, param, value, fem=ExcaliburDefinitions.ALL_FEMS, 
+                 chip=ExcaliburDefinitions.ALL_CHIPS, offset=None):
         
         super(ExcaliburParameter, self).__init__()
         self['param'] = param
         self['value'] = value
         self['fem'] = fem
         self['chip'] = chip
+        if offset is not None:
+            self['offset'] = offset 
         
     def get(self):
-         
-        return (self.param, self.value, self.fem, self.chip)
+        
+        if hasattr(self, 'offset'):
+            ret_vals = (self.param, self.value, self.fem, self.chip, self.offset)
+        else:
+            ret_vals = (self.param, self.value, self.fem, self.chip) 
+            
+        return ret_vals
 
      
 class ExcaliburClient(object):
@@ -227,6 +233,11 @@ class ExcaliburClient(object):
         fem_state = self.get_param('status/fem')
         for (idx, state) in enumerate(fem_state):
             yield (idx, state['id'], state['error_code'], state['error_msg'])
+
+    def get_powercard_fem_idx(self):
+
+        powercard_fem_idx = self.get_param('status/powercard_fem_idx')
+        return powercard_fem_idx
 
     def connect(self):
         

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Compiled Object files
 *.slo
 *.lo
@@ -28,7 +27,6 @@
 *.exe
 *.out
 *.app
-=======
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -131,5 +129,10 @@ tags
 .project
 .pydevproject
 
->>>>>>> odin-excalibur-master
-/.cproject
+.cproject
+
+# VSCode metadata
+.vscode
+
+# Eclipse project settings directories
+.settings

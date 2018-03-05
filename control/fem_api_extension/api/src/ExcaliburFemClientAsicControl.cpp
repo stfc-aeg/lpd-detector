@@ -9,6 +9,7 @@
 #include "ExcaliburFrontEndDevices.h"
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
+#include "FemLogger.h"
 
 /** asicControlOmrSet - setup an OMR value in ASIC control
  *
@@ -21,9 +22,9 @@
 void ExcaliburFemClient::asicControlOmrSet(mpx3Omr aOmr)
 {
 
-	// Write bottom and top halves of OMR value into ASIC control RDMA registers
-	this->rdmaWrite(kExcaliburAsicOmrBottom, (u32)aOmr.fields.bottom);
-	this->rdmaWrite(kExcaliburAsicOmrTop, (u32)aOmr.fields.top);
+  // Write bottom and top halves of OMR value into ASIC control RDMA registers
+  this->rdmaWrite(kExcaliburAsicOmrBottom, (u32) aOmr.fields.bottom);
+  this->rdmaWrite(kExcaliburAsicOmrTop, (u32) aOmr.fields.top);
 
 }
 
@@ -36,11 +37,11 @@ void ExcaliburFemClient::asicControlOmrSet(mpx3Omr aOmr)
  */
 void ExcaliburFemClient::asicControlMuxChipSelect(unsigned int aChipIdx)
 {
-	// Generate the mux select value (chip 0 is at top of mux)
-	u32 muxSelectVal = ((u32)1 << (7 - aChipIdx));
+  // Generate the mux select value (chip 0 is at top of mux)
+  u32 muxSelectVal = ((u32) 1 << (7 - aChipIdx));
 
-	// Write generated value into ASIC control mux select register
-	this->rdmaWrite(kExcaliburAsicMuxSelect, muxSelectVal);
+  // Write generated value into ASIC control mux select register
+  this->rdmaWrite(kExcaliburAsicMuxSelect, muxSelectVal);
 
 }
 
@@ -54,8 +55,8 @@ void ExcaliburFemClient::asicControlMuxChipSelect(unsigned int aChipIdx)
  */
 void ExcaliburFemClient::asicControlMuxSet(unsigned int aMuxValue)
 {
-	// Write generated value into ASIC control mux select register
-	this->rdmaWrite(kExcaliburAsicMuxSelect, (u32)aMuxValue);
+  // Write generated value into ASIC control mux select register
+  this->rdmaWrite(kExcaliburAsicMuxSelect, (u32) aMuxValue);
 
 }
 
@@ -71,10 +72,10 @@ void ExcaliburFemClient::asicControlMuxSet(unsigned int aMuxValue)
 void ExcaliburFemClient::asicControlCommandExecute(asicControlCommand aCommand)
 {
 
-//	std::cout << "Command execute: 0x" << std::hex << aCommand << std::dec << std::endl;
+  //FEMLOG(mFemId, logDEBUG) << "Command execute: 0x" << std::hex << aCommand << std::dec;
 
-	// Execute the command by writing to the command word register
-	this->rdmaWrite(kExcaliburAsicControlReg, (u32)aCommand);
+// Execute the command by writing to the command word register
+  this->rdmaWrite(kExcaliburAsicControlReg, (u32) aCommand);
 
 }
 
@@ -87,9 +88,9 @@ void ExcaliburFemClient::asicControlCommandExecute(asicControlCommand aCommand)
 void ExcaliburFemClient::asicControlReset(void)
 {
 
-	// Toggle reset bit in ASIC control register
-	this->rdmaWrite(kExcaliburAsicControlReg, 0x400000);
-	this->rdmaWrite(kExcaliburAsicControlReg, 0x0);
+  // Toggle reset bit in ASIC control register
+  this->rdmaWrite(kExcaliburAsicControlReg, 0x400000);
+  this->rdmaWrite(kExcaliburAsicControlReg, 0x0);
 
 }
 
@@ -101,9 +102,9 @@ void ExcaliburFemClient::asicControlReset(void)
 void ExcaliburFemClient::asicControlAsicReset(void)
 {
 
-	// Toggle ASIC reset bit (23) in ASIC control register
-	this->rdmaWrite(kExcaliburAsicControlReg, 0x800000);
-	this->rdmaWrite(kExcaliburAsicControlReg, 0x0);
+  // Toggle ASIC reset bit (23) in ASIC control register
+  this->rdmaWrite(kExcaliburAsicControlReg, 0x800000);
+  this->rdmaWrite(kExcaliburAsicControlReg, 0x0);
 
 }
 
@@ -113,9 +114,9 @@ void ExcaliburFemClient::asicControlAsicReset(void)
  */
 void ExcaliburFemClient::asicControlFastMatrixClear(void)
 {
-	// Toggle matrix clear (30) in ASIC control register
-	this->rdmaWrite(kExcaliburAsicControlReg, 0x40000000);
-	this->rdmaWrite(kExcaliburAsicControlReg, 0x0);
+  // Toggle matrix clear (30) in ASIC control register
+  this->rdmaWrite(kExcaliburAsicControlReg, 0x40000000);
+  this->rdmaWrite(kExcaliburAsicControlReg, 0x0);
 
 }
 
@@ -128,8 +129,8 @@ void ExcaliburFemClient::asicControlFastMatrixClear(void)
  */
 void ExcaliburFemClient::asicControlNumFramesSet(unsigned int aNumFrames)
 {
-	// Set number of frames in ASIC control RDMA register
-	this->rdmaWrite(kExcaliburAsicFrameCounter, (u32)aNumFrames);
+  // Set number of frames in ASIC control RDMA register
+  this->rdmaWrite(kExcaliburAsicFrameCounter, (u32) aNumFrames);
 }
 
 /** asicControlShutterDurationSet - set the ASIC shutter duration in microseconds
@@ -141,18 +142,19 @@ void ExcaliburFemClient::asicControlNumFramesSet(unsigned int aNumFrames)
  *
  * @param aTimeUs shutter duration in microseconds
  */
-void ExcaliburFemClient::asicControlShutterDurationSet(unsigned int aShutter0TimeUs, unsigned int aShutter1TimeUs)
+void ExcaliburFemClient::asicControlShutterDurationSet(unsigned int aShutter0TimeUs,
+    unsigned int aShutter1TimeUs)
 {
 
-	u32 shutter0Counter = aShutter0TimeUs * 2;
-	u32 shutter1Counter = aShutter1TimeUs * 2;
+  u32 shutter0Counter = aShutter0TimeUs * 2;
+  u32 shutter1Counter = aShutter1TimeUs * 2;
 
-	// Set constant shutter resolution of 500ns = 0x64
-	this->rdmaWrite(kExcaliburAsicShutterResolution, 0x64);
+  // Set constant shutter resolution of 500ns = 0x64
+  this->rdmaWrite(kExcaliburAsicShutterResolution, 0x64);
 
-	// Set both shutter 0 and shutter 1 counters to value in 500ns steps
-	this->rdmaWrite(kExcaliburAsicShutter0Counter, shutter0Counter);
-	this->rdmaWrite(kExcaliburAsicShutter1Counter, shutter1Counter);
+  // Set both shutter 0 and shutter 1 counters to value in 500ns steps
+  this->rdmaWrite(kExcaliburAsicShutter0Counter, shutter0Counter);
+  this->rdmaWrite(kExcaliburAsicShutter1Counter, shutter1Counter);
 
 }
 
@@ -167,43 +169,63 @@ void ExcaliburFemClient::asicControlShutterDurationSet(unsigned int aShutter0Tim
 void ExcaliburFemClient::asicControlCounterDepthSet(mpx3CounterDepth aCounterDepth)
 {
 
-	u32 counterBitDepth = this->mpx3CounterBitDepth(aCounterDepth);
+  u32 counterBitDepth = this->mpx3CounterBitDepth(aCounterDepth);
 
-	// Throw exception if illegal counter depth specified
-	if (counterBitDepth == 0)
-	{
-		std::ostringstream msg;
-		msg << "Illegal counter depth specified: " << aCounterDepth;
-		throw FemClientException((FemClientErrorCode)excaliburFemClientIllegalCounterDepth, msg.str());
-	}
+  // Throw exception if illegal counter depth specified
+  if (counterBitDepth == 0)
+  {
+    std::ostringstream msg;
+    msg << "Illegal counter depth specified: " << aCounterDepth;
+    throw FemClientException((FemClientErrorCode) excaliburFemClientIllegalCounterDepth, msg.str());
+  }
 
-	// Set up the counter depth in the RDMA register
-	this->rdmaWrite(kExcaliburAsicPixelCounterDepth, counterBitDepth);
+  // Set up the counter depth in the RDMA register
+  this->rdmaWrite(kExcaliburAsicPixelCounterDepth, counterBitDepth);
 
 }
 
 void ExcaliburFemClient::asicControlReadoutLengthSet(unsigned int aLength)
 {
-	this->rdmaWrite(kExcaliburAsicReadoutLength, (u32)aLength);
+  this->rdmaWrite(kExcaliburAsicReadoutLength, (u32) aLength);
 }
 
 void ExcaliburFemClient::asicControlTestPulseCountSet(unsigned int aCount)
 {
-	this->rdmaWrite(kExcaliburAsicTestPulseCount, (u32)aCount);
+  this->rdmaWrite(kExcaliburAsicTestPulseCount, (u32) aCount);
 }
 
 void ExcaliburFemClient::asicControlConfigRegisterSet(unsigned int aConfigRegister)
 {
-	this->rdmaWrite(kExcaliburAsicConfig1Reg, (u32)aConfigRegister);
+  this->rdmaWrite(kExcaliburAsicConfig1Reg, (u32) aConfigRegister);
 }
 
 void ExcaliburFemClient::asicControlLfsrDecodeModeSet(asicLfsrDecodeMode aMode)
 {
-	this->rdmaWrite(kExcaliburAsicLfsrReg, (u32)aMode);
+  this->rdmaWrite(kExcaliburAsicLfsrReg, (u32) aMode);
 }
 
 void ExcaliburFemClient::asicControlDataReorderModeSet(asicDataReorderMode aMode)
 {
-	// Set ASIC data reordering mode
-	this->rdmaWrite(kExcaliburDataReorderMode, aMode);
+  // Set ASIC data reordering mode
+  this->rdmaWrite(kExcaliburDataReorderMode, aMode);
 }
+
+void ExcaliburFemClient::asicControlFarmModeNumDestinationsSet(const unsigned int aNumDestinations)
+{
+  this->rdmaWrite(kExcaliburFarmModeLutCount, aNumDestinations-1);
+}
+
+void ExcaliburFemClient::asicControlFarmModeLutReset(void)
+{
+  this->rdmaWrite(kExcaliburFarmModeLutReset, 0);
+  this->rdmaWrite(kExcaliburFarmModeLutReset, 1);
+  this->rdmaWrite(kExcaliburFarmModeLutReset, 0);
+}
+
+void ExcaliburFemClient::asicControlUdpCounterReset(void)
+{
+  this->rdmaWrite(kExcaliburUdpCounterReset, 0);
+  this->rdmaWrite(kExcaliburUdpCounterReset, 1);
+  this->rdmaWrite(kExcaliburUdpCounterReset, 0);
+}
+

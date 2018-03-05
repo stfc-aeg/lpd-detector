@@ -10,7 +10,7 @@ import logging
 import os
 import re
 
-from excalibur import ExcaliburDefinitions
+from .client import ExcaliburDefinitions
     
 class ExcaliburDacConfiguration(OrderedDict):
     

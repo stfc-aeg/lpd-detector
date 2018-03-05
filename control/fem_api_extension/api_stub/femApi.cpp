@@ -59,6 +59,11 @@ int femInitialise(void* ctlHandle, const CtlCallbacks* callbacks, const CtlConfi
     return rc;
 }
 
+void femSetLogFunction(logFunc log_func)
+{
+    // Do nothing in stub API as no output needs to be logged
+}
+
 int femGetId(void* handle)
 {
 	FemHandle* femHandle = reinterpret_cast<FemHandle*>(handle);
@@ -78,7 +83,7 @@ void femClose(void* handle)
 	delete femHandle;
 }
 
-int femSetInt(void* handle, int chipId, int id, size_t size, int* value)
+int femSetInt(void* handle, int chipId, int id, size_t size, size_t offset, int* value)
 {
     int rc = FEM_RTN_OK;
 
@@ -87,7 +92,7 @@ int femSetInt(void* handle, int chipId, int id, size_t size, int* value)
     return rc;
 }
 
-int femSetShort(void* handle, int chipId, int id, std::size_t size, short* value)
+int femSetShort(void* handle, int chipId, int id, std::size_t size, size_t offset, short* value)
 {
 	int rc = FEM_RTN_OK;
 
@@ -97,7 +102,7 @@ int femSetShort(void* handle, int chipId, int id, std::size_t size, short* value
 }
 
 
-int femSetFloat(void* handle, int chipId, int id, std::size_t size, double* value)
+int femSetFloat(void* handle, int chipId, int id, std::size_t size, size_t offset, double* value)
 {
 	int rc = FEM_RTN_OK;
 
@@ -107,7 +112,7 @@ int femSetFloat(void* handle, int chipId, int id, std::size_t size, double* valu
 }
 
 
-int femSetString(void* handle, int chipId, int id, size_t size, char** values)
+int femSetString(void* handle, int chipId, int id, size_t size, size_t offset, char** values)
 {
 	int rc = FEM_RTN_OK;
 

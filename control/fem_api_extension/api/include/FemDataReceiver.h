@@ -21,24 +21,23 @@
 
 typedef struct bufferInfo_t
 {
-	u8*          addr;
-	unsigned int length;
+  u8* addr;
+  unsigned int length;
 } BufferInfo;
 
 typedef struct packetHeader_t
 {
-	u32			frameNumber;
-	u32			packetNumberFlags;
+  u32 frameNumber;
+  u32 packetNumberFlags;
 } PacketHeader;
 
 const u32 kStartOfFrameMarker = 1 << 31;
-const u32 kEndOfFrameMarker   = 1 << 30;
-const u32 kPacketNumberMask   = 0x3FFFFFFF;
+const u32 kEndOfFrameMarker = 1 << 30;
+const u32 kPacketNumberMask = 0x3FFFFFFF;
 
 typedef enum
 {
-	headerAtStart,
-	headerAtEnd
+  headerAtStart, headerAtEnd
 } FemDataReceiverHeaderPosition;
 
 typedef u64 FrameNumber;
@@ -50,93 +49,94 @@ typedef boost::function<void(int)> signalCallback_t;
 
 typedef struct callbackBundle_t
 {
-	allocateCallback_t allocate;
-	freeCallback_t     free;
-	receiveCallback_t  receive;
-	signalCallback_t   signal;
+  allocateCallback_t allocate;
+  freeCallback_t free;
+  receiveCallback_t receive;
+  signalCallback_t signal;
 
 } CallbackBundle;
 
-namespace FemDataReceiverSignal {
-	typedef enum {
-		femAcquisitionNullSignal,
-		femAcquisitionComplete,
-		femAcquisitionCorruptImage
-	} FemDataReceiverSignals;
+namespace FemDataReceiverSignal
+{
+  typedef enum
+  {
+    femAcquisitionNullSignal, femAcquisitionComplete, femAcquisitionCorruptImage
+  } FemDataReceiverSignals;
 }
 
 const unsigned int kWatchdogHandlerIntervalMs = 1000;
 
-class FemDataReceiver {
+class FemDataReceiver
+{
 public:
 
-	FemDataReceiver(unsigned int aRecvPort);
-	virtual ~FemDataReceiver();
+  FemDataReceiver(unsigned int aRecvPort);
+  virtual ~FemDataReceiver();
 
-	void startAcquisition(void);
-	void stopAcquisition(unsigned int framesRead);
+  void startAcquisition(void);
+  void stopAcquisition(unsigned int framesRead);
 
-	void registerCallbacks(CallbackBundle* aBundle);
+  void registerCallbacks(CallbackBundle* aBundle);
 
-	void setNumFrames(unsigned int aNumFrames);
-	void setFrameLength(unsigned int mFrameLength);
-	void setFrameHeaderLength(unsigned int aHeaderLength);
-	void setFrameHeaderPosition(FemDataReceiverHeaderPosition aPosition);
-	void setNumSubFrames(unsigned int aNumSubFrames);
+  void setNumFrames(unsigned int aNumFrames);
+  void setFrameLength(unsigned int mFrameLength);
+  void setFrameHeaderLength(unsigned int aHeaderLength);
+  void setFrameHeaderPosition(FemDataReceiverHeaderPosition aPosition);
+  void setNumSubFrames(unsigned int aNumSubFrames);
 
-	void setAcquisitionPeriod(unsigned int aPeriodMs);
-	void setAcquisitionTime(unsigned int aTimeMs);
-	void enableFrameCounter(bool aEnable);
-	void enableFrameCounterCheck(bool aEnable);
+  void setAcquisitionPeriod(unsigned int aPeriodMs);
+  void setAcquisitionTime(unsigned int aTimeMs);
+  void enableFrameCounter(bool aEnable);
+  void enableFrameCounterCheck(bool aEnable);
 
-	bool acqusitionActive(void);
+  bool acqusitionActive(void);
 
 private:
 
-	boost::asio::io_service   	      mIoService;
-	boost::asio::ip::udp::endpoint	  mRemoteEndpoint;
-	boost::asio::ip::udp::socket      mRecvSocket;
-	boost::asio::deadline_timer       mWatchdogTimer;
-	boost::shared_ptr<boost::thread>  mReceiverThread;
+  boost::asio::io_service mIoService;
+  boost::asio::ip::udp::endpoint mRemoteEndpoint;
+  boost::asio::ip::udp::socket mRecvSocket;
+  boost::asio::deadline_timer mWatchdogTimer;
+  boost::shared_ptr<boost::thread> mReceiverThread;
 
-	unsigned int                      mRecvWatchdogCounter;
+  unsigned int mRecvWatchdogCounter;
 
-	CallbackBundle     				  mCallbacks;
+  CallbackBundle mCallbacks;
 
-	bool							  mAcquiring;
-	unsigned int                      mRemainingFrames;
-	unsigned int				      mCompleteAfterNumFrames;
+  bool mAcquiring;
+  unsigned int mRemainingFrames;
+  unsigned int mCompleteAfterNumFrames;
 
-	unsigned int                      mNumFrames;
-	unsigned int                      mFrameLength;
-	unsigned int                      mFrameHeaderLength;
-	FemDataReceiverHeaderPosition     mHeaderPosition;
-	unsigned int                      mAcquisitionPeriod;
-	unsigned int                      mAcquisitionTime;
-	unsigned int                      mNumSubFrames;
-	unsigned int                      mSubFrameLength;
-	bool							  mHasFrameCounter;
-	bool                              mEnableFrameCounterCheck;
+  unsigned int mNumFrames;
+  unsigned int mFrameLength;
+  unsigned int mFrameHeaderLength;
+  FemDataReceiverHeaderPosition mHeaderPosition;
+  unsigned int mAcquisitionPeriod;
+  unsigned int mAcquisitionTime;
+  unsigned int mNumSubFrames;
+  unsigned int mSubFrameLength;
+  bool mHasFrameCounter;
+  bool mEnableFrameCounterCheck;
 
-	PacketHeader                      mPacketHeader;
-	BufferInfo                        mCurrentBuffer;
-	FrameNumber			    		  mCurrentFrameNumber;
-	FrameNumber                       mLatchedFrameNumber;
+  PacketHeader mPacketHeader;
+  BufferInfo mCurrentBuffer;
+  FrameNumber mCurrentFrameNumber;
+  FrameNumber mLatchedFrameNumber;
 
-	unsigned int                      mFrameTotalBytesReceived;
-	unsigned int                      mFramePayloadBytesReceived;
-	unsigned int                      mSubFramePacketsReceived;
-	unsigned int                      mSubFramesReceived;
-	unsigned int                      mSubFrameBytesReceived;
-	unsigned int                      mFramesReceived;
+  unsigned int mFrameTotalBytesReceived;
+  unsigned int mFramePayloadBytesReceived;
+  unsigned int mSubFramePacketsReceived;
+  unsigned int mSubFramesReceived;
+  unsigned int mSubFrameBytesReceived;
+  unsigned int mFramesReceived;
 
-	FemDataReceiverSignal::FemDataReceiverSignals mLatchedErrorSignal;
+  FemDataReceiverSignal::FemDataReceiverSignals mLatchedErrorSignal;
 
-	void*                               lScratchBuffer;
+  void* lScratchBuffer;
 
-	void handleReceive(const boost::system::error_code& errorCode, std::size_t bytesReceived);
-	void simulateReceive(BufferInfo aBuffer);
-	void watchdogHandler(void);
+  void handleReceive(const boost::system::error_code& errorCode, std::size_t bytesReceived);
+  void simulateReceive(BufferInfo aBuffer);
+  void watchdogHandler(void);
 };
 
 #endif /* FEMDATARECEIVER_H_ */

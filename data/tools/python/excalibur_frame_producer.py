@@ -12,6 +12,7 @@ import socket
 import time
 import random
 import dpkt
+import threading
 
 class ExcaliburFrame(object):
     """
@@ -81,7 +82,7 @@ class ExcaliburFrameProducerDefaults(object):
     def __init__(self):
 
         self.ip_addr = 'localhost'
-        self.port = 61649
+        self.port_list = '61649'
         self.num_frames = 0
         self.tx_interval = 0
         self.drop_frac = 0
@@ -116,6 +117,23 @@ class Range(argparse.Action):
         setattr(namespace, self.dest, value)
 
 
+class CsvAction(argparse.Action):
+    """
+    Comma separated list of values action for argument parser.
+    """
+    def __init__(self, val_type=None, *args, **kwargs):
+        self.val_type =val_type
+        super(CsvAction, self).__init__(*args, **kwargs)
+        
+    def __call__(self, parser, namespace, value, option_string=None):
+        item_list=[]
+        try:
+            for item_str in value.split(','):
+                item_list.append(self.val_type(item_str))
+        except ValueError as e:
+            raise argparse.ArgumentError(self, e)
+        setattr(namespace, self.dest, item_list)
+            
 class ExcaliburFrameProducer(object):
     """
     EXCALIBUR frame procducer - loads frame packets data from capture file and replays it to
@@ -158,9 +176,9 @@ class ExcaliburFrameProducer(object):
             help='Hostname or IP address to transmit UDP frame data to'
         )
         parser.add_argument(
-            '--port', '-p', type=int, dest='port',
-            default=self.defaults.port, metavar='PORT',
-            help='Port number to transmit UDP frame data to'
+            '--port', '-p', type=str, val_type=int, dest='ports', action=CsvAction,
+            default=self.defaults.port_list, metavar='PORT[,PORT,...]',
+            help='Comma separatied list of port numbers to transmit UDP frame data to'
         )
         parser.add_argument(
             '--frames', '-n', type=int, dest='num_frames',
@@ -206,7 +224,7 @@ class ExcaliburFrameProducer(object):
             level=log_level, format='%(levelname)1.1s %(message)s',
             datefmt='%y%m%d %H:%M:%S'
         )
-
+            
         # Initialise the packet capture file reader
         self.pcap = dpkt.pcap.Reader(self.args.pcap_file)
 
@@ -216,7 +234,7 @@ class ExcaliburFrameProducer(object):
         """
         self.load_pcap()
         self.send_frames()
-
+        
     def load_pcap(self):
         """
         Load frame packets from a packet capture file.
@@ -315,6 +333,18 @@ class ExcaliburFrameProducer(object):
         )
 
     def send_frames(self):
+        
+        logging.info("Launching threads to send frames to {} destination ports".format(
+            len(self.args.ports)
+        ))
+        
+        send_threads = []
+        for port in self.args.ports:
+            send_thread = threading.Thread(target=self._send_frames, args=(port,))
+            send_threads.append(send_thread)
+            send_thread.start()
+            
+    def _send_frames(self, port):
         """
         Send loaded frames over UDP socket.
         """
@@ -328,7 +358,7 @@ class ExcaliburFrameProducer(object):
 
         logging.info(
             "Sending %d frames to destination %s:%d ...",
-            frames_to_send, self.args.ip_addr, self.args.port
+            frames_to_send, self.args.ip_addr, port 
         )
 
         # Create the UDP socket
@@ -375,7 +405,7 @@ class ExcaliburFrameProducer(object):
                 # Send the packet over the UDP socket
                 try:
                     frame_bytes_sent += udp_socket.sendto(
-                        packet, (self.args.ip_addr, self.args.port)
+                        packet, (self.args.ip_addr, port)
                     )
                     frame_packets_sent += 1
                     # Add brief pause if packet gap option specified

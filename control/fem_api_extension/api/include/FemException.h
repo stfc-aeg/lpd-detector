@@ -17,29 +17,29 @@
 
 typedef int FemErrorCode;
 
-class FemException: public std::exception
+class FemException : public std::exception
 {
 
 public:
 
-	FemException(const std::string aExText) throw();
-    FemException(const FemErrorCode aExCode, const std::string aExText) throw();
-    FemException(const FemErrorCode aExCode, const std::string aExText, const std::string aExFunc,
-                             const std::string aExFile, const int aExLine) throw();
+  FemException(const std::string aExText) throw ();
+  FemException(const FemErrorCode aExCode, const std::string aExText) throw ();
+  FemException(const FemErrorCode aExCode, const std::string aExText, const std::string aExFunc,
+      const std::string aExFile, const int aExLine) throw ();
 
-    virtual ~FemException(void) throw();
+  virtual ~FemException(void) throw ();
 
-    virtual const char * what() const throw();
-    virtual const char * where() const throw();
-    virtual FemErrorCode which() const throw();
+  virtual const char * what() const throw ();
+  virtual const char * where() const throw ();
+  virtual FemErrorCode which() const throw ();
 
 private:
 
-        const FemErrorCode mExCode;
-        const std::string  mExText;
-        const std::string  mExFunc;
-        const std::string  mExFile;
-        const int          mExLine;
+  const FemErrorCode mExCode;
+  const std::string mExText;
+  const std::string mExFunc;
+  const std::string mExFile;
+  const int mExLine;
 
 };
 

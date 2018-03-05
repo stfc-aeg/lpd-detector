@@ -10,6 +10,7 @@
 #include "ExcaliburFrontEndDevices.h"
 #include "asicControlParameters.h"
 #include "mpx3Parameters.h"
+#include "FemLogger.h"
 #include "time.h"
 #include <map>
 #include <iostream>
@@ -28,14 +29,14 @@
 void ExcaliburFemClient::frontEndEnableSet(unsigned int aVal)
 {
 
-	// Construct byte value to send to device. Since only bit 0 is RW,
-	// we mask this out of requested value and force other bits to 1
-	// to retain input function (which monitor supply regulator status).
+  // Construct byte value to send to device. Since only bit 0 is RW,
+  // we mask this out of requested value and force other bits to 1
+  // to retain input function (which monitor supply regulator status).
 
-	unsigned int writeVal = (aVal & 0x1) | (0xFE);
+  unsigned int writeVal = (aVal & 0x1) | (0xFE);
 
-	// Write to the IO device
-	this->frontEndPCF8574Write(writeVal);
+  // Write to the IO device
+  this->frontEndPCF8574Write(writeVal);
 
 }
 
@@ -49,13 +50,13 @@ void ExcaliburFemClient::frontEndEnableSet(unsigned int aVal)
 double ExcaliburFemClient::frontEndTemperatureRead(void)
 {
 
-	// Read raw value from the device
-	u16 rawVal = this->frontEndSht21Read(kSHT21TemperatureCmd);
+  // Read raw value from the device
+  u16 rawVal = this->frontEndSht21Read(kSHT21TemperatureCmd);
 
-	// Apply the magic conversion formula from the SHT21 datasheet
-	double temperature = -46.85 + (175.72 * ((double)rawVal / 65536.0));
+  // Apply the magic conversion formula from the SHT21 datasheet
+  double temperature = -46.85 + (175.72 * ((double) rawVal / 65536.0));
 
-	return temperature;
+  return temperature;
 }
 
 /** frontEndHumidityRead - reads the humidity of the EXCALIBUR front-end
@@ -67,13 +68,13 @@ double ExcaliburFemClient::frontEndTemperatureRead(void)
  */
 double ExcaliburFemClient::frontEndHumidityRead(void)
 {
-	// Read raw value from the device
-	u16 rawVal = this->frontEndSht21Read(kSHT21HumidityCmd);
+  // Read raw value from the device
+  u16 rawVal = this->frontEndSht21Read(kSHT21HumidityCmd);
 
-	// Apply the magic conversion formula from the SHT21 datasheet
-	double humidity = -6.0 + (125.0 * ((double)rawVal / 65536.0));
+  // Apply the magic conversion formula from the SHT21 datasheet
+  double humidity = -6.0 + (125.0 * ((double) rawVal / 65536.0));
 
-	return humidity;
+  return humidity;
 }
 
 /** frontEndDacOutRead - read the ASIC DAC output value
@@ -88,20 +89,20 @@ double ExcaliburFemClient::frontEndHumidityRead(void)
 double ExcaliburFemClient::frontEndDacOutRead(unsigned int aChipId)
 {
 
-	// Chip index starts from 0
-	unsigned int chipIdx = aChipId - 1;
+  // Chip index starts from 0
+  unsigned int chipIdx = aChipId - 1;
 
-	// Map chipId into ADC device channel
-	unsigned int device = chipIdx / 4;
-	unsigned int chan = kAD7994ChipMap[chipIdx % 4];
+  // Map chipId into ADC device channel
+  unsigned int device = chipIdx / 4;
+  unsigned int chan = kAD7994ChipMap[chipIdx % 4];
 
-	// Acquire ADC value
-	u16 rawAdcValue = this->frontEndAD7994Read(device, chan);
+  // Acquire ADC value
+  u16 rawAdcValue = this->frontEndAD7994Read(device, chan);
 
-	// Convert ADC units to volts (2V reference) and return
-	double dacOutVolts = 2.0 * ((double)rawAdcValue / 4096.0);
+  // Convert ADC units to volts (2V reference) and return
+  double dacOutVolts = 2.0 * ((double) rawAdcValue / 4096.0);
 
-	return dacOutVolts;
+  return dacOutVolts;
 }
 
 /** frontEndSupplyStatusRead - read the status bit for the front-end supply regulators
@@ -115,13 +116,13 @@ double ExcaliburFemClient::frontEndDacOutRead(unsigned int aChipId)
 int ExcaliburFemClient::frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply)
 {
 
-	// Read IO values from PCF
-	u8 pcfValue = this->frontEndPCF8574Read();
+  // Read IO values from PCF
+  u8 pcfValue = this->frontEndPCF8574Read();
 
-	// Extract appropriate bit from the value and return;
-	int status = (pcfValue >> aSupply) & 0x1;
+  // Extract appropriate bit from the value and return;
+  int status = (pcfValue >> aSupply) & 0x1;
 
-	return status;
+  return status;
 }
 
 /** frontEndDacInWrite - set the front-end input DAC value
@@ -135,18 +136,18 @@ int ExcaliburFemClient::frontEndSupplyStatusRead(excaliburFrontEndSupply aSupply
 void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, unsigned int aDacCode)
 {
 
-	// Chip index starts from 0
-	unsigned int chipIdx = aChipId - 1;
+  // Chip index starts from 0
+  unsigned int chipIdx = aChipId - 1;
 
-	// Map chipId onto DAC device and channel. Chips 4,3,2,1 on DAC0, 8,7,6,5 on DAC1
-	unsigned int device = chipIdx / 4;
-	unsigned int chan   = kAD5625ChipMap[chipIdx % 4];
+  // Map chipId onto DAC device and channel. Chips 4,3,2,1 on DAC0, 8,7,6,5 on DAC1
+  unsigned int device = chipIdx / 4;
+  unsigned int chan = kAD5625ChipMap[chipIdx % 4];
 
-	// Write the DAC value
-	this->frontEndAD5625Write(device, chan, aDacCode);
+  // Write the DAC value
+  this->frontEndAD5625Write(device, chan, aDacCode);
 
-	std::cout << "Setting FE DAC for chip " << aChipId << " (dev=" << device << " chan=" << chan
-			  << ") value: " << aDacCode << std::endl;
+  FEMLOG(mFemId, logDEBUG) << "Setting FE DAC for chip " << aChipId << " (dev="
+          << device << " chan=" << chan << ") value: " << aDacCode;
 
 }
 
@@ -161,22 +162,22 @@ void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, unsigned int a
 void ExcaliburFemClient::frontEndDacInWrite(unsigned int aChipId, double aDacVolts)
 {
 
-	std::cout << "DAC volts: " << aDacVolts << std::endl;
+    FEMLOG(mFemId, logDEBUG) << "DAC volts: " << aDacVolts;
 
-	unsigned int aDacCode = (unsigned int)((aDacVolts / kAD5625FullScale ) * 4096) & 0xFFF;
+  unsigned int aDacCode = (unsigned int) ((aDacVolts / kAD5625FullScale) * 4096) & 0xFFF;
 
-	// Write the DAC value
-	this->frontEndDacInWrite(aChipId, aDacCode);
+  // Write the DAC value
+  this->frontEndDacInWrite(aChipId, aDacCode);
 
 }
 
 void ExcaliburFemClient::frontEndDacInitialise(void)
 {
 
-	for (unsigned int iChip = 0; iChip < kAD5626NumDevices; iChip++)
-	{
-		this->frontEndAD5625InternalReferenceEnable(iChip, true);
-	}
+  for (unsigned int iChip = 0; iChip < kAD5626NumDevices; iChip++)
+  {
+    this->frontEndAD5625InternalReferenceEnable(iChip, true);
+  }
 
 }
 /// --------- Private methods ---------
@@ -193,23 +194,23 @@ void ExcaliburFemClient::frontEndDacInitialise(void)
 u16 ExcaliburFemClient::frontEndSht21Read(u8 aCmdByte)
 {
 
-	// Send conversion command to device
-	std::vector<u8>cmd(1, aCmdByte);
-	this->i2cWrite(kSHT21Address, cmd);
+  // Send conversion command to device
+  std::vector<u8> cmd(1, aCmdByte);
+  this->i2cWrite(kSHT21Address, cmd);
 
-	// Wait 100ms
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 100000000;
-	nanosleep(&sleep, NULL);
+  // Wait 100ms
+  struct timespec sleep;
+  sleep.tv_sec = 0;
+  sleep.tv_nsec = 100000000;
+  nanosleep(&sleep, NULL);
 
-	// Read three bytes back
-	std::vector<u8> response = this->i2cRead(kSHT21Address, 3);
+  // Read three bytes back
+  std::vector<u8> response = this->i2cRead(kSHT21Address, 3);
 
-	// Pack bytes into raw value to be returned
-	u16 rawVal = (((u16)response[0]) << 8) | response[1];
+  // Pack bytes into raw value to be returned
+  u16 rawVal = (((u16) response[0]) << 8) | response[1];
 
-	return rawVal;
+  return rawVal;
 }
 
 /** frontEndAD7994Read - low level read access to AD7994 ADC devices
@@ -226,33 +227,33 @@ u16 ExcaliburFemClient::frontEndSht21Read(u8 aCmdByte)
 u16 ExcaliburFemClient::frontEndAD7994Read(unsigned int aDevice, unsigned int aChan)
 {
 
-	// Calculate address pointer to send to ADC
-	u8 addrPtr = 1 << (aChan+4);
+  // Calculate address pointer to send to ADC
+  u8 addrPtr = 1 << (aChan + 4);
 
-	// Send channel select command to AD
-	std::vector<u8>cmd(2);
-	cmd[0] = 0;
-	cmd[1] = addrPtr;
+  // Send channel select command to AD
+  std::vector<u8> cmd(2);
+  cmd[0] = 0;
+  cmd[1] = addrPtr;
 
-	this->i2cWrite(kAD7994Address[aDevice], cmd);
+  this->i2cWrite(kAD7994Address[aDevice], cmd);
 
-	// Wait 100ms
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 100000000;
-	nanosleep(&sleep, NULL);
+  // Wait 100ms
+  struct timespec sleep;
+  sleep.tv_sec = 0;
+  sleep.tv_nsec = 100000000;
+  nanosleep(&sleep, NULL);
 
-	// Read two bytes back
-	std::vector<u8> response = this->i2cRead(kAD7994Address[aDevice], 2);
+  // Read two bytes back
+  std::vector<u8> response = this->i2cRead(kAD7994Address[aDevice], 2);
 
-	// Decode ADC value to return
-	u16 adcVal = ((((u16)response[0]) << 8) | response[1]) & 0xFFF;
+  // Decode ADC value to return
+  u16 adcVal = ((((u16) response[0]) << 8) | response[1]) & 0xFFF;
 
-//	std::cout << "AD7994 read: dev=" << aDevice << " chan=" << aChan
+//	FEMLOG(mFemId, logDEBUG) << "AD7994 read: dev=" << aDevice << " chan=" << aChan
 //			  << " addr=0x" << std::hex << kAD7994Address[aDevice] << std::dec
-//			  << " val=" << adcVal << std::endl;
+//			  << " val=" << adcVal;
 
-	return adcVal;
+  return adcVal;
 }
 
 /** frontEndPCF8574Read - reads the front-end PCF8574 IO register
@@ -264,11 +265,11 @@ u16 ExcaliburFemClient::frontEndAD7994Read(unsigned int aDevice, unsigned int aC
  */
 u8 ExcaliburFemClient::frontEndPCF8574Read(void)
 {
-	// Read a single byte from the device
-	std::vector<u8> response = this->i2cRead(kPCF8574Address, 1);
+  // Read a single byte from the device
+  std::vector<u8> response = this->i2cRead(kPCF8574Address, 1);
 
-	// Return value
-	return response[0];
+  // Return value
+  return response[0];
 
 }
 
@@ -284,13 +285,13 @@ u8 ExcaliburFemClient::frontEndPCF8574Read(void)
 void ExcaliburFemClient::frontEndPCF8574Write(unsigned int aVal)
 {
 
-	std::vector<u8> cmd(1);
+  std::vector<u8> cmd(1);
 
-	// Construct single byte to write to device
-	cmd[0] = (u8)(aVal & 0xFF);
+  // Construct single byte to write to device
+  cmd[0] = (u8) (aVal & 0xFF);
 
-	// Send command
-	this->i2cWrite(kPCF8574Address, cmd);
+  // Send command
+  this->i2cWrite(kPCF8574Address, cmd);
 
 }
 
@@ -304,37 +305,37 @@ void ExcaliburFemClient::frontEndPCF8574Write(unsigned int aVal)
  * @param aChan channel to write to
  * @param aVal DAC value to write
  */
-void ExcaliburFemClient::frontEndAD5625Write(unsigned int aDevice, unsigned int aChan, unsigned int aVal)
+void ExcaliburFemClient::frontEndAD5625Write(unsigned int aDevice, unsigned int aChan,
+    unsigned int aVal)
 {
 
-	std::vector<u8>cmd(3); // 3 byte write transaction to DAC
+  std::vector<u8> cmd(3); // 3 byte write transaction to DAC
 
-	// Assemble command byte from command and DAC channel
-	cmd[0] = (kAD5626CmdMode << kAD5625CmdShift) | (aChan & 0x7);
+  // Assemble command byte from command and DAC channel
+  cmd[0] = (kAD5626CmdMode << kAD5625CmdShift) | (aChan & 0x7);
 
-	// Assemble two bytes of DAC value shifted up
-	u16 dacWord = aVal << kAD5625DacShift;
-	cmd[1] = (dacWord & 0xFF00) >> 8;
-	cmd[2] = (dacWord & 0x00FF);
+  // Assemble two bytes of DAC value shifted up
+  u16 dacWord = aVal << kAD5625DacShift;
+  cmd[1] = (dacWord & 0xFF00) >> 8;
+  cmd[2] = (dacWord & 0x00FF);
 
-//	std::cout << "AD5625 write: cmd=0x" << std::hex << (int)cmd[0] << " MSB=0x" << (int)cmd[1]
-//	          << " LSB=0x" << (int)cmd[2] << std::dec << std::endl;
-	// Send transaction to DAC
-	this->i2cWrite(kAD5625Address[aDevice], cmd);
+//	FEMLOG(mFemId, logDEBUG) << "AD5625 write: cmd=0x" << std::hex << (int)cmd[0] << " MSB=0x"
+//	          << (int)cmd[1]<< " LSB=0x" << (int)cmd[2] << std::dec;
+  // Send transaction to DAC
+  this->i2cWrite(kAD5625Address[aDevice], cmd);
 
 }
 
 void ExcaliburFemClient::frontEndAD5625InternalReferenceEnable(unsigned int aDevice, bool aEnable)
 {
-	std::vector<u8>cmd(3); // 3 byte write transaction to DAC
+  std::vector<u8> cmd(3); // 3 byte write transaction to DAC
 
-	// Assemble command byte for internal reference setup, and LSB of data bytes to enable
-	cmd[0] = (kAD5626RefSetup << kAD5625CmdShift);
-	cmd[1] = 0;
-	cmd[2] = aEnable ? 1 : 0;
+  // Assemble command byte for internal reference setup, and LSB of data bytes to enable
+  cmd[0] = (kAD5626RefSetup << kAD5625CmdShift);
+  cmd[1] = 0;
+  cmd[2] = aEnable ? 1 : 0;
 
-	// Send transaction to DAC
-	this->i2cWrite(kAD5625Address[aDevice], cmd);
+  // Send transaction to DAC
+  this->i2cWrite(kAD5625Address[aDevice], cmd);
 }
-
 

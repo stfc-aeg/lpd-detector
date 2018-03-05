@@ -1,9 +1,10 @@
-from excalibur import ExcaliburClient, ExcaliburParameter, ExcaliburDefinitions
-from config_parser import *
+from excalibur.client import *
 import logging
 import argparse
 import os
 import time
+import json
+import sys
 
 class ExcaliburTestAppDefaults(object):
     
@@ -13,12 +14,15 @@ class ExcaliburTestAppDefaults(object):
         self.port = 8888
         self.log_level = 'info'
 
-        self.source_data_addr = ['10.0.2.2']
+        self.source_data_addr = ['10.1.0.100']
         self.source_data_mac = ['62:00:00:00:00:01']
         self.source_data_port = [8]
-        self.dest_data_addr = ['10.0.2.1']
-        self.dest_data_mac = ['00:07:43:06:31:A7']
+        self.dest_data_addr = ['10.1.0.1']
+        self.dest_data_mac = ['00:07:43:10:63:00']
         self.dest_data_port = [61649]
+        self.dest_data_port_offset = [0]
+        self.farm_mode_enable = 0
+        self.farm_mode_num_dests = 1
         
         self.log_levels = {
             'error': logging.ERROR,
@@ -46,7 +50,24 @@ class ExcaliburTestAppDefaults(object):
         self.operation_mode = ExcaliburDefinitions.FEM_OPERATION_MODE_NORMAL
         
         self.sense_dac = 0
+        self.powercard_fem_id = 0
         
+class CsvArgparseAction(argparse.Action):
+    """
+    Comma separated list of values action for argument parser.
+    """
+    def __init__(self, val_type=None, *args, **kwargs):
+        self.val_type =val_type
+        super(CsvArgparseAction, self).__init__(*args, **kwargs)
+        
+    def __call__(self, parser, namespace, value, option_string=None):
+        item_list=[]
+        try:
+            for item_str in value.split(','):
+                item_list.append(self.val_type(item_str))
+        except ValueError as e:
+            raise argparse.ArgumentError(self, e)
+        setattr(namespace, self.dest, item_list)
         
 class ExcaliburTestApp(object):
     
@@ -58,9 +79,9 @@ class ExcaliburTestApp(object):
             term_columns = int(os.environ['COLUMNS']) - 2
         except:
             term_columns = 100
-            
+        
         parser = argparse.ArgumentParser(
-            prog='excalibur_test.py', description='EXCALIBUR test application',
+            prog= os.path.basename(sys.argv[0]), description='EXCALIBUR test application',
             formatter_class=lambda prog : argparse.ArgumentDefaultsHelpFormatter(
                 prog, max_help_position=40, width=term_columns)
         )
@@ -71,7 +92,7 @@ class ExcaliburTestApp(object):
             help='Hostname or IP address of EXCALIBUR control server to connect to')
         config_group.add_argument('--port', '-p', type=int, dest='port',
             default=self.defaults.port, 
-            help='Port number of EXCALIBUBR control server to connect to')
+            help='Port number of EXCALIBUR control server to connect to')
         config_group.add_argument('--logging', type=str, dest='log_level',
             default=self.defaults.log_level,
             choices=['error', 'warning', 'info', 'debug'],
@@ -85,12 +106,25 @@ class ExcaliburTestApp(object):
             help='Dump the state of the control server')
         cmd_group.add_argument('--reset', '-r', action='store_true', 
             help='Issue front-end reset/init')
+        cmd_group.add_argument('--lvenable', type=int, dest='lv_enable',
+            choices=[0, 1], 
+            help='Set power card LV enable: 0=off (default), 1=on')
+        cmd_group.add_argument('--hvenable', type=int, dest='hv_enable',
+            choices=[0, 1], 
+            help='Set power card HV enable: 0=off (default), 1=on')
+        cmd_group.add_argument('--hvbias', type=int, dest='hv_bias', metavar='VOLTS',
+            help='Set power card HV bias in volts')
         cmd_group.add_argument('--efuse', '-e', action='store_true',
             help='Read and diplay MPX3 eFuse IDs')
         cmd_group.add_argument('--slow', '-s', action='store_true',
             help='Display front-end slow control parameters')
+        cmd_group.add_argument('--pwrcard', action='store_true',
+            help='Display power card status')
         cmd_group.add_argument('--acquire', '-a', action='store_true',
             help='Execute image acquisition sequence')
+        cmd_group.add_argument('--dacscan', type=str, val_type=int, dest='dac_scan', 
+           action=CsvArgparseAction, metavar='DAC,START,STOP_STEP',
+           help='Execute DAC scan, params format is comma separated DAC,START,STOP,STEP')
         cmd_group.add_argument('--stop', action='store_true',
             help='Stop acquisition execution')
         cmd_group.add_argument('--disconnect', action='store_true',
@@ -99,6 +133,11 @@ class ExcaliburTestApp(object):
             help='Load MPX3 DAC values from a filename if given, otherwise use default values')
         cmd_group.add_argument('--config', action='store_true',
             help='Load MPX3 pixel configuration')
+        cmd_group.add_argument('--udpconfig', nargs='?', metavar='FILE',
+            default=None, const='-',
+            help='Load 10GigE UDP data interface parameters from file, otherwise use default values')
+        cmd_group.add_argument('--fwversion', action='store_true',
+            help='Display firmware version information for connected FEMs')
         
         dataif_group = parser.add_argument_group('10GigE UDP data interface parameters')
         dataif_group.add_argument('--sourceaddr', metavar='IP', dest='source_data_addr',
@@ -119,6 +158,15 @@ class ExcaliburTestApp(object):
         dataif_group.add_argument('--destport', metavar='PORT', dest='dest_data_port',
             nargs='+', type=int, default=self.defaults.dest_data_port,
             help='Set the data destination port(s)')
+        dataif_group.add_argument('--destportoffset', metavar='OFFSET', dest='dest_data_port_offset',
+            nargs='+', type=int, default=self.defaults.dest_data_port_offset,
+            help='Set the FEM data destination port offset')
+        dataif_group.add_argument('--farmenable', metavar='ENABLE', dest='farm_mode_enable',
+            type=int, default=self.defaults.farm_mode_enable,
+            help='Enable UDP farm mode')
+        dataif_group.add_argument('--farmdests', metavar='NUM_DESTS', dest='farm_mode_num_dests',
+            type=int, default=self.defaults.farm_mode_num_dests,
+            help='Set the number of destination nodes in UDP farm mode')
         
         config_group = parser.add_argument_group('DAC and pixel configuration mode parameters')
         config_group.add_argument('--fem', metavar='FEM', dest='config_fem',
@@ -204,7 +252,7 @@ class ExcaliburTestApp(object):
             
         logging.basicConfig(level=log_level, format='%(levelname)1.1s %(asctime)s.%(msecs)03d %(message)s', datefmt='%y%m%d %H:%M:%S')
         self.client = ExcaliburClient(address=self.args.ip_addr, port=self.args.port, log_level=log_level)
-    
+        
     def run(self):
         
         if self.args.dump:
@@ -212,6 +260,12 @@ class ExcaliburTestApp(object):
             self.client.print_all(logging.INFO)
             return
         
+        self.powercard_fem_id = self.client.get_powercard_fem_idx() + 1
+        if self.powercard_fem_id > 0:
+            logging.debug("Server reports power card is on FEM {}".format(self.powercard_fem_id))
+        else:
+            logging.debug("Server reports no power card present in system")
+
         self.client.connect()
 
         if self.args.api_trace:
@@ -226,7 +280,19 @@ class ExcaliburTestApp(object):
             self.num_fems, ('' if self.num_fems == 1 else 's'), 
             ','.join([str(fem_id) for fem_id in self.fem_ids])
         ))
-                    
+        
+        if self.args.fwversion:
+            self.do_fw_version_read()
+                      
+        if self.args.lv_enable is not None:
+            self.do_lv_enable()
+
+        if self.args.hv_enable:
+            self.do_hv_enable()
+
+        if self.args.hv_bias:
+            self.do_hv_bias_set()
+
         if self.args.reset:
             self.do_frontend_init()
             
@@ -236,12 +302,21 @@ class ExcaliburTestApp(object):
         if self.args.slow:
             self.do_slow_control_read()
         
+        if self.args.pwrcard:
+            self.do_powercard_read()
+            
         if self.args.dacs is not None:
             self.do_dac_load()
          
         if self.args.config:
             self.do_pixel_config_load()
-                  
+        
+        if self.args.udpconfig:
+            self.do_udp_config()
+
+        if self.args.dac_scan:
+            self.do_dac_scan()
+            
         if self.args.acquire:
             self.do_acquisition()
             
@@ -251,8 +326,73 @@ class ExcaliburTestApp(object):
         if self.args.disconnect:    
             self.client.disconnect()
     
+    def do_fw_version_read(self):
+        
+        (read_ok, response) = self.client.fe_param_read('firmware_version')
+        if read_ok:
+            firmware_versions = response['firmware_version']
+            for fem_idx in range(len(firmware_versions)):
+                logging.info('FEM {} firmware versions:'.format(fem_idx+1))
+                logging.info('  Config SP3 : 0x{:08x}'.format(firmware_versions[fem_idx][0]))
+                logging.info('  Top IO SP3 : 0x{:08x}'.format(firmware_versions[fem_idx][1]))
+                logging.info('  Bot IO SP3 : 0x{:08x}'.format(firmware_versions[fem_idx][2]))
+                logging.info('  Virtex5    : 0x{:08x}'.format(firmware_versions[fem_idx][3]))
+                
+        else:
+            logging.error('Firmware version read failed')
+       
+       
+    def do_lv_enable(self):
+
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set LV enable as server reports no power card")
+            return
+        
+        params = []
+        params.append(ExcaliburParameter('fe_lv_enable', [[self.args.lv_enable]], 
+                      fem=self.powercard_fem_id))
+                
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to write LV enable parameter to system: {}'.format(self.client.error_msg))
+
+    def do_hv_enable(self):
+
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set HV enable as server reports no power card")
+            return
+        
+        params = []
+        params.append(ExcaliburParameter('fe_hv_enable', [[self.args.hv_enable]], 
+                      fem=self.powercard_fem_id))
+                
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to write HV enable parameter to system: {}'.format(self.client.error_msg))
+
+    def do_hv_bias_set(self):
+
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set HV bias as server reports no power card")
+            return
+        
+        params = []
+        params.append(ExcaliburParameter('fe_hv_bias', [[self.args.hv_bias]], 
+                      fem=self.powercard_fem_id))
+                
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to write HV bias parameter to system: {}'.format(self.client.error_msg))
+
     def do_frontend_init(self):
         
+        params = []
+        params.append(ExcaliburParameter('fe_vdd_enable', [[1]]))
+        
+        write_ok = self.client.fe_param_write(params)
+        if not write_ok:
+            logging.error('Failed to enable FE VDD on system: {}'.format(self.client.error_msg))
+            
         self.client.fe_init()
         
     def do_efuseid_read(self):
@@ -264,7 +404,7 @@ class ExcaliburTestApp(object):
                 fem_efuse_ids = efuse_ids[fem_idx]
                 if not isinstance(fem_efuse_ids, list):
                     fem_efuse_ids = [fem_efuse_ids]
-                logging.info('FEM {} : efuse IDs: {}'.format(fem_idx, ' '.join([hex(efuse_id) for efuse_id in fem_efuse_ids])))
+                logging.info('FEM {} : efuse IDs: {}'.format(fem_idx+1, ' '.join([hex(efuse_id) for efuse_id in fem_efuse_ids])))
         else:
             logging.error('eFuse ID read command failed')
     
@@ -297,6 +437,43 @@ class ExcaliburTestApp(object):
         else:
             logging.error('Slow control read command failed')
     
+    def do_powercard_read(self):
+        
+        if self.powercard_fem_id <= 0:
+            logging.warning("Unable to set LV enable as server reports no power card")
+            return
+        
+        status_params = [
+            'pwr_coolant_temp_status', 'pwr_humidity_status',
+            'pwr_coolant_flow_status', 'pwr_air_temp_status',
+            'pwr_fan_fault'
+        ]
+        
+        supply_params = [
+            'pwr_p5va_vmon', 'pwr_p5vb_vmon', 
+            'pwr_p5v_fem00_imon', 'pwr_p5v_fem01_imon', 'pwr_p5v_fem02_imon', 
+            'pwr_p5v_fem03_imon', 'pwr_p5v_fem04_imon', 'pwr_p5v_fem05_imon',
+            'pwr_p48v_vmon', 'pwr_p48v_imon', 
+            'pwr_p5vsup_vmon', 'pwr_p5vsup_imon',
+            'pwr_humidity_mon', 'pwr_air_temp_mon', 
+            'pwr_coolant_temp_mon', 'pwr_coolant_flow_mon',
+            'pwr_p3v3_imon', 'pwr_p1v8_imonA', 'pwr_bias_imon', 'pwr_p3v3_vmon',
+            'pwr_p1v8_vmon', 'pwr_bias_vmon', 'pwr_p1v8_imonB', 'pwr_p1v8_vmonB'
+        ]
+        
+        power_params = status_params + supply_params
+        
+        (read_ok, param_vals) = self.client.fe_param_read(
+            power_params, fem=self.powercard_fem_id
+        )
+        
+        if read_ok:
+            logging.info("Power card parameters read OK:")
+            for param in sorted(param_vals.iterkeys()):
+                logging.info("   {} : {}".format(param, param_vals[param][0]))
+        else:
+            logging.error("Power card read command failed")
+        
     def do_dac_load(self):
 
         try:
@@ -307,7 +484,6 @@ class ExcaliburTestApp(object):
         except ValueError as e:
             logging.error('Error in FEM IDs specified for DAC loading: {}'.format(e))
             return
-        
         
         self.dac_config = ExcaliburDacConfigParser(
             self.args.dacs, fem_ids, self.args.config_chip)
@@ -332,17 +508,17 @@ class ExcaliburTestApp(object):
                 dac_vals.append(fem_vals)
             
             dac_params.append(ExcaliburParameter(dac_param, dac_vals, 
-                              fem=self.args.config_fem, chip=self.args.config_chip))
+                              fem=fem_ids, chip=chip_ids))
         
         dac_params.append(ExcaliburParameter('mpx3_dacsense', [[self.args.sense_dac]],
-                          fem=self.args.config_fem, chip=self.args.config_chip))
+                          fem=fem_ids, chip=chip_ids))
         
         write_ok = self.client.fe_param_write(dac_params)
         if not write_ok:
             logging.error('Failed to write DAC parameters for FEM ID {}, chip ID {}'.format(fem_id, chip_id))
             return
         
-        load_ok = self.client.do_command('load_dacconfig', self.args.config_fem, self.args.config_chip)
+        load_ok = self.client.do_command('load_dacconfig', fem=fem_ids, chip=chip_ids)
         if load_ok:
             logging.info('DAC load completed OK')
         else:
@@ -392,7 +568,241 @@ class ExcaliburTestApp(object):
             logging.info('Pixel configuration load completed OK')
         else:
             logging.error('Failed to execute pixel config load command: {}'.format(self.client.error_msg))
+
+    def do_udp_config(self):
+        
+        if self.args.udpconfig != '-':
+            logging.info("Loading UDP configuration from file {}".format(self.args.udpconfig))
+            
+            try:
+                with open(self.args.udpconfig) as config_file:
+                    udp_config = json.load(config_file)
+            except IOError as io_error:
+                logging.error("Failed to open UDP configuration file: {}".format(io_error))
+                return
+            except ValueError as value_error:
+                logging.error("Failed to parse UDP json config: {}".format(value_error))
+                return
     
+            source_data_addr = []
+            source_data_mac = []
+            source_data_port = []
+            dest_data_port_offset = []
+            
+            for idx, fem in enumerate(udp_config['fems']):
+                
+                source_data_addr.append(fem['ipaddr'])
+                source_data_mac.append(fem['mac'])
+                source_data_port.append(fem['port'])
+                dest_data_port_offset.append(fem['dest_port_offset']
+                                                       )
+                logging.debug('    FEM  {:d} : ip {:16s} mac: {:s} port: {:5d} offset: {:d}'.format(
+                    idx, source_data_addr[-1], source_data_mac[-1], 
+                    source_data_port[-1], dest_data_port_offset[-1]
+                ))
+                
+            dest_data_addr = []
+            dest_data_mac = []
+            dest_data_port = []
+            
+            for idx, node in enumerate(udp_config['nodes']):
+                
+                dest_data_addr.append(node['ipaddr'])
+                dest_data_mac.append(node['mac'])
+                dest_data_port.append(int(node['port']))
+                    
+                logging.debug('    Node {:d} : ip {:16s} mac: {:s} port: {:5d}'.format(
+                    idx, dest_data_addr[-1], dest_data_mac[-1],
+                    dest_data_port[-1]
+                ))
+    
+            farm_mode_enable = udp_config['farm_mode']['enable']
+            farm_mode_num_dests = udp_config['farm_mode']['num_dests']
+        
+        else:
+            
+            logging.info("Using default UDP configuration")
+            
+            source_data_addr = self.args.source_data_addr
+            source_data_mac = self.args.source_data_mac
+            source_data_port = self.args.source_data_port
+            dest_data_port_offset = self.args.dest_data_port_offset
+
+            dest_data_addr = self.args.dest_data_addr
+            dest_data_mac = self.args.dest_data_mac
+            dest_data_port = self.args.dest_data_port
+            
+            farm_mode_enable = self.args.farm_mode_enable
+            farm_mode_num_dests  = self.args.farm_mode_num_dests
+            
+        udp_params = []
+        
+        # Append per-FEM UDP source parameters, truncating to number of FEMs present in system
+        udp_params.append(ExcaliburParameter(
+            'source_data_addr', [[addr] for addr in source_data_addr[:self.num_fems]],
+        ))
+        udp_params.append(ExcaliburParameter(
+            'source_data_mac', [[mac] for mac in source_data_mac[:self.num_fems]],
+        ))
+        udp_params.append(ExcaliburParameter(
+            'source_data_port', [[port] for port in source_data_port[:self.num_fems]]
+        ))
+        udp_params.append(ExcaliburParameter(
+            'dest_data_port_offset', 
+            [[offset] for offset in dest_data_port_offset[:self.num_fems]]
+        ))
+          
+        # Append the UDP destination parameters, noting [[[ ]]] indexing as they are common for
+        # all FEMs and chips - there must be a better way to do this 
+        udp_params.append(ExcaliburParameter(
+            'dest_data_addr', [[[addr for addr in dest_data_addr]]]
+        ))
+        udp_params.append(ExcaliburParameter(
+            'dest_data_mac', [[[mac for mac in dest_data_mac]]]
+        ))
+        udp_params.append(ExcaliburParameter(
+            'dest_data_port', [[[port for port in dest_data_port]]]
+        ))
+          
+        # Append the farm mode configuration parameters
+        udp_params.append(ExcaliburParameter('farm_mode_enable', [[farm_mode_enable]]))
+        udp_params.append(ExcaliburParameter('farm_mode_num_dests', [[farm_mode_num_dests]]))
+  
+        # Write all the parameters to system
+        logging.info('Writing UDP configuration parameters to system')
+        write_ok = self.client.fe_param_write(udp_params)
+        if not write_ok:
+            logging.error('Failed to write UDP configuration parameters to system: {}'.format(self.client.error_msg))
+        
+    def do_dac_scan(self):
+        
+        try:
+            (scan_dac, scan_start, scan_stop, scan_step) = self.args.dac_scan
+        except ValueError:
+            logging.error("DAC scan requires four parameters (dac, start, stop, step)")
+            return
+        
+        logging.info("Executing DAC scan ...")
+
+        # Build a list of parameters to be written toset up the DAC scan
+        scan_params = []
+        
+        logging.info('  Setting scan DAC to {}'.format(scan_dac))
+        scan_params.append(ExcaliburParameter('dac_scan_dac', [[scan_dac]]))
+        
+        logging.info('  Setting scan start value to {}'.format(scan_start))
+        scan_params.append(ExcaliburParameter('dac_scan_start', [[scan_start]]))
+        
+        logging.info('  Setting scan stop value to {}'.format(scan_stop))
+        scan_params.append(ExcaliburParameter('dac_scan_stop', [[scan_stop]]))
+        
+        logging.info('  Setting scan step size to {}'.format(scan_step))
+        scan_params.append(ExcaliburParameter('dac_scan_step', [[scan_step]]))
+        
+        logging.info('  Setting acquisition time to {} ms'.format(self.args.acquisition_time))
+        scan_params.append(ExcaliburParameter('acquisition_time', [[self.args.acquisition_time]]))
+        
+        readout_mode = ExcaliburDefinitions.FEM_READOUT_MODE_SEQUENTIAL
+        logging.info('  Setting ASIC readout mode to {}'.format(
+            ExcaliburDefinitions.readout_mode_name(readout_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_readwritemode', [[readout_mode]]))
+        
+        logging.info('  Setting ASIC colour mode to {} '.format(
+            ExcaliburDefinitions.colour_mode_name(self.args.colour_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_colourmode', [[self.args.colour_mode]]))
+
+        logging.info('  Setting ASIC pixel mode to {} '.format(
+            ExcaliburDefinitions.csmspm_mode_name(self.args.csmspm_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_csmspmmode', [[self.args.csmspm_mode]]))
+
+        logging.info('  Setting ASIC discriminator output mode to {} '.format(
+            ExcaliburDefinitions.disccsmspm_name(self.args.disccsmspm)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_disccsmspm', [[self.args.disccsmspm]]))
+
+        logging.info('  Setting ASIC equalization mode to {} '.format(
+            ExcaliburDefinitions.equalisation_mode_name(self.args.equalization_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_equalizationmode', [[self.args.equalization_mode]]))
+        
+        logging.info('  Setting ASIC gain mode to {} '.format(
+            ExcaliburDefinitions.gain_mode_name(self.args.gain_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_gainmode', [[self.args.gain_mode]]))
+
+        logging.info('  Setting ASIC counter select to {} '.format(self.args.counter_select))
+        scan_params.append(ExcaliburParameter('mpx3_counterselect', [[self.args.counter_select]]))
+        
+        counter_depth=12
+        logging.info('  Setting ASIC counter depth to {} bits'.format(counter_depth))
+        counter_depth_val = ExcaliburDefinitions.counter_depth(counter_depth)
+        scan_params.append(ExcaliburParameter('mpx3_counterdepth', [[counter_depth_val]]))
+        
+        operation_mode = ExcaliburDefinitions.FEM_OPERATION_MODE_DACSCAN
+        logging.info('  Setting operation mode to {}'.format(
+            ExcaliburDefinitions.operation_mode_name(operation_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_operationmode', [[operation_mode]]))
+
+        lfsr_bypass_mode = ExcaliburDefinitions.FEM_LFSR_BYPASS_MODE_DISABLED
+        logging.info('  Setting LFSR bypass mode to {}'.format(
+            ExcaliburDefinitions.lfsr_bypass_mode_name(lfsr_bypass_mode)
+        ))
+        scan_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[lfsr_bypass_mode]]))
+
+        logging.info('  Disabling local data receiver thread')
+        scan_params.append(ExcaliburParameter('datareceiver_enable', [[0]]))
+
+        # Write all the parameters to system
+        logging.info('Writing configuration parameters to system')
+        write_ok = self.client.fe_param_write(scan_params)
+        if not write_ok:
+            logging.error('Failed to write configuration parameters to system: {}'.format(self.client.error_msg))
+            return
+        
+        # Send start acquisition command
+        logging.info('Sending start acquisition command')
+        cmd_ok = self.client.do_command('start_acquisition')
+        if not cmd_ok:
+            logging.error('start_acquisition command failed: {}'.format(self.client.error_msg))
+            return
+
+        # If the nowait arguments wasn't given, monitor the scan state until all requested steps
+        # have been completed
+        if not self.args.no_wait:
+
+            wait_count = 0
+            scan_steps_completed = 0
+            
+            while True:
+
+                (_, vals) = self.client.fe_param_read(['dac_scan_steps_complete', 'dac_scan_state'])
+                scan_steps_completed = min(vals['dac_scan_steps_complete'])                
+                scan_completed = all(
+                    [(scan_state == 0) for scan_state in vals['dac_scan_state']]
+                )
+                
+                if scan_completed:
+                    break
+                
+                wait_count += 1
+                if wait_count % 5 == 0:
+                    logging.info('  {:d} scan steps completed  ...'.format(scan_steps_completed))
+
+
+            (_, vals) = self.client.fe_param_read(['dac_scan_steps_complete'])
+            scan_steps_completed = min(vals['dac_scan_steps_complete'])
+                            
+            self.do_stop()
+
+            logging.info('DAC scan with {} steps completed'.format(scan_steps_completed))
+        else:
+            logging.info('Acquisition of DAC scan started, not waiting for completion, will not send stop command')
+
+
     def do_acquisition(self):
         
         # Resolve the acquisition operating mode appropriately, handling burst and matrix read if necessary
@@ -406,7 +816,9 @@ class ExcaliburTestApp(object):
                 logging.warning('Cannot select burst mode and matrix read simultaneously, ignoring burst option')
             operation_mode =  ExcaliburDefinitions.FEM_OPERATION_MODE_MAXTRIXREAD
            
-        # TODO - handle 24 bit readout here - needs to check frame count etc and execute C0 read 
+        # Force counter select to C1 for 24 bit read. C0 is read manually afterwards
+        if self.args.counter_depth == 24:
+            self.args.counter_select = 1 
         
         logging.info('Executing acquisition ...')
         
@@ -480,14 +892,7 @@ class ExcaliburTestApp(object):
         ))
         write_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[lfsr_bypass_mode]]))
 
-        logging.info('  Setting data interface address and port parameters')
-        write_params.append(ExcaliburParameter('source_data_addr', [[addr] for addr in self.args.source_data_addr]))
-        write_params.append(ExcaliburParameter('source_data_mac', [[mac] for mac in self.args.source_data_mac]))
-        write_params.append(ExcaliburParameter('source_data_port', [[port] for port in self.args.source_data_port]))
-        write_params.append(ExcaliburParameter('dest_data_addr', [[addr] for addr in self.args.dest_data_addr]))
-        write_params.append(ExcaliburParameter('dest_data_mac', [[mac] for mac in self.args.dest_data_mac]))
-        write_params.append(ExcaliburParameter('dest_data_port', [[port] for port in self.args.dest_data_port]))
-        
+        # Disable local receiver thread
         logging.info('  Disabling local data receiver thread')
         write_params.append(ExcaliburParameter('datareceiver_enable', [[0]]))
 
@@ -497,7 +902,7 @@ class ExcaliburTestApp(object):
         if not write_ok:
             logging.error('Failed to write configuration parameters to system: {}'.format(self.client.error_msg))
             return
-        
+
         # Send start acquisition command
         logging.info('Sending start acquisition command')
         cmd_ok = self.client.do_command('start_acquisition')
@@ -509,35 +914,78 @@ class ExcaliburTestApp(object):
         # have been read out by the system
         if not self.args.no_wait:
 
-            wait_count = 0
-            acq_completion_state_mask = 0x40000000
-            frames_acquired = 0
-                    
-            while True:
-                
-                (read_ok, vals) = self.client.fe_param_read(['frames_acquired','control_state'])
-                frames_acquired = min(vals['frames_acquired'])                
-                acq_completed = all(
-                    [((state & acq_completion_state_mask) == acq_completion_state_mask) for state in vals['control_state']]
-                )
-                if acq_completed:
-                    break
-                
-                wait_count += 1
-                if wait_count % 5 == 0:
-                    logging.info('  {:d} frames read out  ...'.format(frames_acquired))
+            frames_acquired = self.await_acquistion_completion(0x40000000)
             
-            logging.info('Completed readout of {} frames'.format(frames_acquired))
-            self.do_stop()    
-            logging.info('Acquisition complete')
+            if self.args.counter_depth == 24:
+                self.client.do_command('stop_acquisition')
+                self.do_c0_matrix_read()
+            
+            self.do_stop()
+
+            logging.info('Acquistion of {} frames completed'.format(frames_acquired))
         else:
             logging.info('Acquisition started, not waiting for completion, will not send stop command')
+    
+    def do_c0_matrix_read(self):
+
+        logging.info('Performing a C0 matrix read for 24 bit mode')
+
+        c0_read_params = []
+        c0_read_params.append(ExcaliburParameter(
+            'mpx3_operationmode', [[ExcaliburDefinitions.FEM_OPERATION_MODE_MAXTRIXREAD]]
+        ))
+        c0_read_params.append(ExcaliburParameter('mpx3_counterselect', [[0]]))
+        c0_read_params.append(ExcaliburParameter('num_frames_to_acquire', [[1]]))
+        c0_read_params.append(ExcaliburParameter('mpx3_lfsrbypass', [[0]]))
         
+        logging.info("Sending configuration parameters for C0 matrix read")
+        write_ok = self.client.fe_param_write(c0_read_params)
+        if not write_ok:
+            logging.error("Failed to write C0 matix read configuration parameters: {}".format(
+                self.client.error_msg)
+            )
+            return
+        
+        logging.info("Sending matrix read acquisition command")
+        cmd_ok = self.client.do_command('start_acquisition')
+        if not cmd_ok:
+            logging.error("start_acqusition command failed: {}".format(self.client.error_msg))
+            return
+
+        self.await_acquistion_completion(0x1f)
+        self.client.do_command('stop_acquisition')
+    
+    def await_acquistion_completion(self, acq_completion_state_mask):
+        
+        wait_count = 0
+        frames_acquired = 0
+                
+        while True:
+            
+            (read_ok, vals) = self.client.fe_param_read(['frames_acquired','control_state'])
+            frames_acquired = min(vals['frames_acquired'])
+            acq_completed = all(
+                [((state & acq_completion_state_mask) == acq_completion_state_mask) for state in vals['control_state']]
+            )
+            if acq_completed:
+                break
+            
+            wait_count += 1
+            if wait_count % 5 == 0:
+                logging.info('  {:d} frames read out  ...'.format(frames_acquired))
+        
+        return frames_acquired        
+
     def do_stop(self):
         
         logging.info('Sending stop acquisition command')
         self.client.do_command('stop_acquisition')
         
-if __name__ == '__main__':
+        
+def main():
     
     ExcaliburTestApp().run()
+
+if __name__ == '__main__':
+    
+    main()
