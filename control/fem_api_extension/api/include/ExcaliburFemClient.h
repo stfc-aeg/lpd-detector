@@ -202,6 +202,7 @@ public:
   void dataDestPortOffsetSet(unsigned int aDestPortOffset);
   void dataFarmModeNumDestinationsSet(unsigned int aNumDestinations);
   void dataFarmModeEnableSet(unsigned int aEnable);
+  void firmwareVersionGet(int* versionValues);
 
   // EXCALIBUR detector front-end functions in ExcaliburFemClientFrontEndDevices.cpp
   void frontEndEnableSet(unsigned int aVal);
@@ -285,6 +286,10 @@ private:
   void asicControlAsicReset(void);
   void asicControlFastMatrixClear(void);
 
+  void asicControlFarmModeNumDestinationsSet(const unsigned int aNumDestinations);
+  void asicControlFarmModeLutReset(void);
+  void asicControlUdpCounterReset(void);
+
   // Private functions in ExcaliburFemClientFrontEndDevices.cpp
   u16 frontEndSht21Read(u8 cmdByte);
   u16 frontEndAD7994Read(unsigned int device, unsigned int aChan);
@@ -305,10 +310,6 @@ private:
   mpx3Omr mpx3OMRBuild(unsigned int aChipId, mpx3OMRMode aMode);
   unsigned int mpx3CounterBitDepth(mpx3CounterDepth aCounterDepth);
   unsigned int mpx3ReadoutBitWidth(mpx3ReadoutWidth aReadoutWidth);
-
-  void asicControlFarmModeNumDestinationsSet(const unsigned int aNumDestinations);
-  void asicControlFarmModeLutReset(void);
-  void asicControlUdpCounterReset(void);
 
   mpx3OMRParameters mMpx3OmrParams[kNumAsicsPerFem];
   unsigned int mMpx3DacCache[kNumAsicsPerFem][numExcaliburDacs];

@@ -43,6 +43,8 @@ const u32 kExcaliburAsicPixelCounterDepth = kExcaliburAsicControlAddr + 9;
 const u32 kExcaliburAsicShutterResolution = kExcaliburAsicControlAddr + 10;
 const u32 kExcaliburAsicReadoutLength = kExcaliburAsicControlAddr + 11;
 const u32 kExcaliburAsicTestPulseCount = kExcaliburAsicControlAddr + 12;
+
+const u32 KExcaliburV5FirmwareVersion = kExcaliburAsicControlAddr + 16;
 const u32 kExcaliburAsicCtrlState1 = kExcaliburAsicControlAddr + 17;
 const u32 kExcaliburAsicCtrlFrameCount = kExcaliburAsicControlAddr + 20;
 
@@ -57,6 +59,14 @@ const unsigned int kPixelConfigBaseAddr = 0x30000000;
 #else
 const unsigned int kPixelConfigBaseAddr = 0x70000000;
 #endif
+
+const unsigned int kExcaliburSp3ConfigAddr = 0x10000000;
+const unsigned int kExcaliburSp3ConfigFirmwareVersion = kExcaliburSp3ConfigAddr + 16;
+const unsigned int kExcaliburSp3TopAddr = 0x20000000;
+const unsigned int kExcaliburSp3TopFirmwareVersion = kExcaliburSp3TopAddr + 16;
+const unsigned int kExcaliburSp3BotAddr = 0x20000000;
+const unsigned int kExcaliburSp3BotFirmwareVersion = kExcaliburSp3BotAddr + 16;
+
 
 typedef enum
 {

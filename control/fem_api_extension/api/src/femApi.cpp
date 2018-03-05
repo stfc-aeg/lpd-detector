@@ -685,6 +685,17 @@ int femGetInt(void* handle, int chipId, int id, size_t size,int* value)
           *value = (femHandle->client)->dacScanStepsCompleteGet();
           break;
 
+        case FEM_OP_FIRMWARE_VERSION:
+          if (size == 4)
+          {
+            (femHandle->client)->firmwareVersionGet(value);
+          }
+          else
+          {
+            rc = FEM_RTN_BADSIZE;
+          }
+          break;
+
         default:
           (femHandle->error).set() << "Illegal parameter ID (" << id << ") specified";
           rc = FEM_RTN_UNKNOWNOPID;

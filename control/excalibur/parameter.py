@@ -188,6 +188,7 @@ class ExcaliburFrontEndParameterMap(ParameterMap):
         self['dest_data_port_offset'] = ParameterSpec(FEM_OP_DEST_DATA_PORT_OFFSET, 'int', 1, ParamPerFem)
         self['farm_mode_num_dests'] = ParameterSpec(FEM_OP_FARM_MODE_NUM_DESTS, 'int', 1, ParamPerFem)
         self['farm_mode_enable'] = ParameterSpec(FEM_OP_FARM_MODE_ENABLE, 'int', 1, ParamPerFem)
+        self['firmware_version'] = ParameterSpec(FEM_OP_FIRMWARE_VERSION, 'int', 4, ParamPerFem)
         
         
 class ExcaliburFrontEndCommandMap(OrderedDict):

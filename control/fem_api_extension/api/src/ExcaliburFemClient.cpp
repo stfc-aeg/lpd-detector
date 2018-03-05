@@ -1280,3 +1280,13 @@ void ExcaliburFemClient::dataFarmModeEnableSet(unsigned int aEnable)
 {
     mDataFarmModeEnable = (aEnable > 0) ? true : false;
 }
+
+
+
+void ExcaliburFemClient::firmwareVersionGet(int* versionValues)
+{
+  *(versionValues++) = (int)this->rdmaRead(kExcaliburSp3ConfigFirmwareVersion);
+  *(versionValues++) = (int)this->rdmaRead(kExcaliburSp3TopFirmwareVersion);
+  *(versionValues++) = (int)this->rdmaRead(kExcaliburSp3BotFirmwareVersion);
+  *(versionValues++) = (int)this->rdmaRead(KExcaliburV5FirmwareVersion);
+}

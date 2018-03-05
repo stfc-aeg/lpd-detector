@@ -136,6 +136,8 @@ class ExcaliburTestApp(object):
         cmd_group.add_argument('--udpconfig', nargs='?', metavar='FILE',
             default=None, const='-',
             help='Load 10GigE UDP data interface parameters from file, otherwise use default values')
+        cmd_group.add_argument('--fwversion', action='store_true',
+            help='Display firmware version information for connected FEMs')
         
         dataif_group = parser.add_argument_group('10GigE UDP data interface parameters')
         dataif_group.add_argument('--sourceaddr', metavar='IP', dest='source_data_addr',
@@ -278,7 +280,10 @@ class ExcaliburTestApp(object):
             self.num_fems, ('' if self.num_fems == 1 else 's'), 
             ','.join([str(fem_id) for fem_id in self.fem_ids])
         ))
-                  
+        
+        if self.args.fwversion:
+            self.do_fw_version_read()
+                      
         if self.args.lv_enable is not None:
             self.do_lv_enable()
 
@@ -320,7 +325,23 @@ class ExcaliburTestApp(object):
         
         if self.args.disconnect:    
             self.client.disconnect()
-            
+    
+    def do_fw_version_read(self):
+        
+        (read_ok, response) = self.client.fe_param_read('firmware_version')
+        if read_ok:
+            firmware_versions = response['firmware_version']
+            for fem_idx in range(len(firmware_versions)):
+                logging.info('FEM {} firmware versions:'.format(fem_idx+1))
+                logging.info('  Config SP3 : 0x{:08x}'.format(firmware_versions[fem_idx][0]))
+                logging.info('  Top IO SP3 : 0x{:08x}'.format(firmware_versions[fem_idx][1]))
+                logging.info('  Bot IO SP3 : 0x{:08x}'.format(firmware_versions[fem_idx][2]))
+                logging.info('  Virtex5    : 0x{:08x}'.format(firmware_versions[fem_idx][3]))
+                
+        else:
+            logging.error('Firmware version read failed')
+       
+       
     def do_lv_enable(self):
 
         if self.powercard_fem_id <= 0:

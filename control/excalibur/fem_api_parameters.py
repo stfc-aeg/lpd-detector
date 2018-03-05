@@ -1,6 +1,6 @@
 """fem_api_parameters.py - EXCALIBUR FEM API parameter definitions
 
-Automatically generated on: Fri Feb  9 09:38:30 2018 by generate_fem_api_parameters.py - do not edit manually!
+Automatically generated on: Mon Mar  5 13:29:32 2018 by generate_fem_api_parameters.py - do not edit manually!
 
 """
 
@@ -166,5 +166,6 @@ FEM_OP_DEST_DATA_PORT = 4064
 FEM_OP_DEST_DATA_PORT_OFFSET = 4065
 FEM_OP_FARM_MODE_NUM_DESTS = 4066
 FEM_OP_FARM_MODE_ENABLE = 4067
+FEM_OP_FIRMWARE_VERSION = 4068
 FEM_OP_ACQUISITIONCOMPLETE = 5000
 FEM_OP_CORRUPTIMAGE = 5001

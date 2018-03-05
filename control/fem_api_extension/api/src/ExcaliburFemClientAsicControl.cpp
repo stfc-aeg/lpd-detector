@@ -228,3 +228,4 @@ void ExcaliburFemClient::asicControlUdpCounterReset(void)
   this->rdmaWrite(kExcaliburUdpCounterReset, 1);
   this->rdmaWrite(kExcaliburUdpCounterReset, 0);
 }
+
