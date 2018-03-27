@@ -21,6 +21,9 @@ using namespace FrameReceiver;
 const std::string ExcaliburFrameDecoder::asic_bit_depth_str_[Excalibur::num_bit_depths] =
     {"1-bit", "6-bit", "12-bit", "24-bit"};
 
+const std::string ExcaliburFrameDecoder::CONFIG_FEM_PORT_MAP = "fem_port_map";
+const std::string ExcaliburFrameDecoder::CONFIG_BITDEPTH = "bitdepth";
+
 #define MAX_IGNORED_PACKET_REPORTS 10
 
 //! Constructor for ExcaliburFrameDecoder
@@ -67,7 +70,7 @@ ExcaliburFrameDecoder::~ExcaliburFrameDecoder()
 void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
 {
 
-  // Pass the configuratin message to the base class decoder
+  // Pass the configuration message to the base class decoder
   FrameDecoder::init(logger, config_msg);
 
   LOG4CXX_DEBUG_LEVEL(2, logger_, "Got decoder config message: " << config_msg.encode());
@@ -76,21 +79,20 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   // present, use the default. If the map cannot be parsed correctly, thrown an exception to signal
   // an error to the app controller. Set the current number of active FEMs based on the output
   // of the map parsing.
-  std::string fem_port_map_config_str;
-  if (config_msg.has_param("fem_port_map"))
+  if (config_msg.has_param(CONFIG_FEM_PORT_MAP))
   {
+      fem_port_map_str_ = config_msg.get_param<std::string>(CONFIG_FEM_PORT_MAP);
       LOG4CXX_DEBUG_LEVEL(1, logger_, "Parsing FEM to port map found in config: "
-                          << config_msg.get_param<std::string>("fem_port_map"));
-      fem_port_map_config_str = config_msg.get_param<std::string>("fem_port_map");
+                          << fem_port_map_str_);
   }
   else
   {
       LOG4CXX_DEBUG_LEVEL(1,logger_, "No FEM to port map found in config, using default: "
                           << default_fem_port_map);
-      fem_port_map_config_str = default_fem_port_map;
+      fem_port_map_str_ = default_fem_port_map;
   }
 
-  num_active_fems_ = parse_fem_port_map(fem_port_map_config_str);
+  num_active_fems_ = parse_fem_port_map(fem_port_map_str_);
   if (num_active_fems_)  {
       LOG4CXX_DEBUG_LEVEL(1, logger_, "Parsed " << num_active_fems_
                           << " entries from port map configuration");
@@ -101,9 +103,9 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   }
 
   // Extract the ASIC counter bit depth from the config message
-  if (config_msg.has_param("bitdepth"))
+  if (config_msg.has_param(CONFIG_BITDEPTH))
   {
-    std::string bit_depth_str = config_msg.get_param<std::string>("bitdepth");
+    std::string bit_depth_str = config_msg.get_param<std::string>(CONFIG_BITDEPTH);
 
     Excalibur::AsicCounterBitDepth bit_depth =
         parse_bit_depth(bit_depth_str);
@@ -152,6 +154,19 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
 
   // Reset the scratched packet counter
   packets_ignored_ = 0;
+}
+
+void ExcaliburFrameDecoder::request_configuration(const std::string param_prefix,
+    OdinData::IpcMessage& config_reply)
+{
+
+  // Call the base class method to populate parameters
+  FrameDecoder::request_configuration(param_prefix, config_reply);
+
+  // Add current configuration parameters to reply
+  config_reply.set_param(param_prefix + CONFIG_FEM_PORT_MAP, fem_port_map_str_);
+  config_reply.set_param(param_prefix + CONFIG_BITDEPTH, asic_bit_depth_str_[asic_counter_bit_depth_]);
+
 }
 
 //! Get the size of the frame buffers required for current operation mode.

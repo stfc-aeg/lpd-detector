@@ -42,6 +42,7 @@ namespace FrameReceiver
     ~ExcaliburFrameDecoder();
 
     void init(LoggerPtr& logger, OdinData::IpcMessage& config_msg);
+    void request_configuration(const std::string param_prefix, OdinData::IpcMessage& config_reply);
 
     const size_t get_frame_buffer_size(void) const;
     const size_t get_frame_header_size(void) const;
@@ -77,6 +78,7 @@ namespace FrameReceiver
 
     Excalibur::AsicCounterBitDepth asic_counter_bit_depth_;
     std::size_t num_subframes_;
+    std::string fem_port_map_str_;
     ExcaliburDecoderFemMap fem_port_map_;
     boost::shared_ptr<void> current_packet_header_;
     boost::shared_ptr<void> dropped_frame_buffer_;
@@ -94,6 +96,10 @@ namespace FrameReceiver
     bool has_subframe_trailer_;
 
     static const std::string asic_bit_depth_str_[Excalibur::num_bit_depths];
+
+    static const std::string CONFIG_FEM_PORT_MAP;
+    static const std::string CONFIG_BITDEPTH;
+
 
   };
 
