@@ -30,11 +30,13 @@
     "pwrAutoUpdate":false,
     "pwrUpdateInterval":2,
     "readoutParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/readoutConfiguration_John.xml",
+    "receiveDataInternally":true,
     "runNumber":1557,
     "setupParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/LPD_SetupParams_XFEL_test.xml",
     "testingLongExposureFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/LPD_cmdSeq_NormalOperation.xml",
     "testingReadoutParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/readoutConfiguration_John.xml",
     "testingSetupParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/Setup_LowPower.xml",
     "testingShortExposureFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/LPD_cmdSeq_NormalOperation.xml",
-    "triggerDelay":68
+    "triggerDelay":68,
+    "triggerDelayIncrement":0
 }

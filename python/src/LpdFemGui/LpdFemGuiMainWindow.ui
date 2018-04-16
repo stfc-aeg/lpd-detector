@@ -50,19 +50,37 @@
         <rect>
          <x>0</x>
          <y>10</y>
-         <width>763</width>
-         <height>171</height>
+         <width>761</width>
+         <height>263</height>
         </rect>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout_3">
+       <layout class="QVBoxLayout" name="verticalLayout_3" stretch="10,10">
+        <property name="sizeConstraint">
+         <enum>QLayout::SetMinAndMaxSize</enum>
+        </property>
         <property name="leftMargin">
-         <number>6</number>
+         <number>4</number>
+        </property>
+        <property name="topMargin">
+         <number>4</number>
         </property>
         <property name="rightMargin">
-         <number>6</number>
+         <number>0</number>
         </property>
         <item>
          <layout class="QGridLayout" name="gridLayout">
+          <property name="sizeConstraint">
+           <enum>QLayout::SetMinAndMaxSize</enum>
+          </property>
+          <property name="leftMargin">
+           <number>10</number>
+          </property>
+          <property name="rightMargin">
+           <number>60</number>
+          </property>
+          <property name="bottomMargin">
+           <number>4</number>
+          </property>
           <property name="horizontalSpacing">
            <number>6</number>
           </property>
@@ -202,7 +220,7 @@
         </item>
         <item>
          <layout class="QGridLayout" name="gridLayout_12">
-          <item row="1" column="12">
+          <item row="1" column="13">
            <widget class="QRadioButton" name="gainModeAutoSel">
             <property name="text">
              <string>Auto</string>
@@ -212,7 +230,7 @@
             </attribute>
            </widget>
           </item>
-          <item row="1" column="8">
+          <item row="1" column="10">
            <widget class="QRadioButton" name="pixelFbk5Sel">
             <property name="text">
              <string>5pF</string>
@@ -222,14 +240,14 @@
             </attribute>
            </widget>
           </item>
-          <item row="1" column="11">
+          <item row="1" column="12">
            <widget class="QLabel" name="label_82">
             <property name="text">
              <string>Gain</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="7">
+          <item row="1" column="9">
            <widget class="QLabel" name="label_30">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -261,22 +279,9 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>40</width>
+              <width>35</width>
               <height>16777215</height>
              </size>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
-           <widget class="QCheckBox" name="externalTriggerSel">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-            <property name="tristate">
-             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -293,7 +298,7 @@
             </property>
            </spacer>
           </item>
-          <item row="1" column="4">
+          <item row="1" column="2" colspan="3">
            <widget class="QLabel" name="label_27">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -337,28 +342,6 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="2">
-           <widget class="QLabel" name="label_24">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>100</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>Ext Trigger:</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="1">
            <widget class="QLineEdit" name="numTrainsEdit">
             <property name="sizePolicy">
@@ -369,13 +352,13 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>40</width>
+              <width>35</width>
               <height>16777215</height>
              </size>
             </property>
            </widget>
           </item>
-          <item row="1" column="15">
+          <item row="1" column="16">
            <widget class="QRadioButton" name="gainModex100Sel">
             <property name="text">
              <string>x100</string>
@@ -385,7 +368,7 @@
             </attribute>
            </widget>
           </item>
-          <item row="1" column="13">
+          <item row="1" column="14">
            <widget class="QRadioButton" name="gainModex1Sel">
             <property name="text">
              <string>x1</string>
@@ -395,7 +378,7 @@
             </attribute>
            </widget>
           </item>
-          <item row="1" column="14">
+          <item row="1" column="15">
            <widget class="QRadioButton" name="gainModex10Sel">
             <property name="text">
              <string>x10</string>
@@ -405,7 +388,7 @@
             </attribute>
            </widget>
           </item>
-          <item row="1" column="16">
+          <item row="1" column="17">
            <spacer name="horizontalSpacer_18">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -418,7 +401,7 @@
             </property>
            </spacer>
           </item>
-          <item row="1" column="9">
+          <item row="1" column="11">
            <widget class="QRadioButton" name="pixelFbk50Sel">
             <property name="text">
              <string>50pF</string>
@@ -428,21 +411,8 @@
             </attribute>
            </widget>
           </item>
-          <item row="1" column="10">
-           <spacer name="horizontalSpacer_22">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
           <item row="1" column="6">
-           <spacer name="horizontalSpacer_23">
+           <spacer name="horizontalSpacer_22">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -479,7 +449,7 @@
         <rect>
          <x>0</x>
          <y>20</y>
-         <width>413</width>
+         <width>381</width>
          <height>71</height>
         </rect>
        </property>
@@ -619,7 +589,7 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>40</width>
+              <width>30</width>
               <height>16777215</height>
              </size>
             </property>
@@ -642,7 +612,7 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>40</width>
+              <width>30</width>
               <height>16777215</height>
              </size>
             </property>
@@ -699,11 +669,14 @@
         <rect>
          <x>0</x>
          <y>90</y>
-         <width>371</width>
-         <height>29</height>
+         <width>388</width>
+         <height>38</height>
         </rect>
        </property>
        <layout class="QHBoxLayout" name="horizontalLayout_14">
+        <property name="bottomMargin">
+         <number>10</number>
+        </property>
         <item>
          <spacer name="horizontalSpacer_24">
           <property name="orientation">
@@ -720,7 +693,7 @@
         <item>
          <widget class="QLabel" name="label_83">
           <property name="text">
-           <string>Multiple Runs:</string>
+           <string>Multi Runs:</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -737,7 +710,7 @@
         <item>
          <widget class="QLabel" name="label_85">
           <property name="text">
-           <string>Number of runs:</string>
+           <string>Num of Runs:</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -755,6 +728,44 @@
           <property name="maximumSize">
            <size>
             <width>40</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_24">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Dly Step:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="triggerDelayIncrementEdit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>35</width>
             <height>16777215</height>
            </size>
           </property>
@@ -839,34 +850,6 @@
         <property name="verticalSpacing">
          <number>0</number>
         </property>
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_28">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>80</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>80</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Run Number:</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
         <item row="0" column="1">
          <widget class="QLabel" name="runNumber">
           <property name="sizePolicy">
@@ -1038,7 +1021,7 @@
            </size>
           </property>
           <property name="text">
-           <string>Image Proc:</string>
+           <string>Img Proc:</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1127,9 +1110,42 @@
           </property>
          </widget>
         </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_28">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>80</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Run Num:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
+     <zorder>setupGroupBox</zorder>
+     <zorder>operateGroupBox</zorder>
+     <zorder>messageGroupBox</zorder>
+     <zorder>runGroupBox</zorder>
+     <zorder>horizontalSpacer_27</zorder>
     </widget>
     <widget class="QWidget" name="pwrTab">
      <attribute name="title">

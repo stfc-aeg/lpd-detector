@@ -62,6 +62,8 @@ class LpdFemGui:
 
         # Show/hide (ASIC) Testing tab?
         self.asicTestingEnabled = self.getCachedParam('asicTesting')
+        # Should GUI itself receive fem data?
+        self.receiveDataInternally = self.getCachedParam('receiveDataInternally')
         
         # Create the main window GUI and show it
         self.mainWindow= LpdFemGuiMainWindow(self)
@@ -137,6 +139,7 @@ class LpdFemGui:
                           'asicModuleType'      : 0,
                           'multiRunEnable'    : True,
                           'multiRunNumRuns'   : 123,
+                          'receiveDataInternally': True,
                          }
 
         # List of parameter names that don't need to force a system reconfigure
@@ -273,45 +276,11 @@ class LpdFemGui:
             except Exception as e:
                 print("%s" % e, file=sys.stderr)
 
-        # Set up number of frames based on cached parameter value of number of trains
-        self.numFrames = currentParams['numTrains']
-        self.loadedConfig['numTrains'] = self.numFrames
-        rc = self.device.paramSet('numberTrains', self.numFrames)
-        if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter numberTrains failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
-            return
-        
-        # Set up trigger source (internal vs external)
-        externalTrigger = currentParams['externalTrigger']
-        beamTriggerSource = 1 if externalTrigger == False else 0
-        rc = self.device.paramSet('femStartTrainSource', beamTriggerSource)
-        if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femStartTrainSource failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
-            return
-        
-        # Set up external trigger delay
-        triggerDelay = currentParams['triggerDelay']
-        rc = self.device.paramSet('femStartTrainDelay', triggerDelay)
-        if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femStartTrainDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
-            return
-
         # Set up pixel feedback override
         pixelFeedbackOverride = currentParams['femAsicPixelFeedbackOverride']
         rc = self.device.paramSet('femAsicPixelFeedbackOverride', pixelFeedbackOverride)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femAsicPixelFeedbackOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
-            return
-
-        # Set up ASIC gain mode override
-        gainOverride = currentParams['femAsicGainOverride']
-        rc = self.device.paramSet('femAsicGain', gainOverride)
-        if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femAsicGainOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
             return
 
@@ -351,8 +320,49 @@ class LpdFemGui:
         # Set device state as ready for acquisition        
         self.deviceState = LpdFemGui.DeviceReady
     
+    def deviceQuickConfigure(self, triggerDelayIncrementModifier):
+
+        self.deviceState = LpdFemGui.DeviceConfiguring
+        self.runStateUpdate()
+
+        # Set up external trigger delay
+        triggerDelay = self.cachedParams['triggerDelay'] + triggerDelayIncrementModifier
+        rc = self.device.paramSet('femStartTrainDelay', triggerDelay)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter femStartTrainDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+
+        # Set up ASIC gain mode override
+        gainOverride = self.cachedParams['femAsicGainOverride']
+        rc = self.device.paramSet('femAsicGain', gainOverride)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter femAsicGainOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+
+        # Set up number of frames based on cached parameter value of number of trains
+        self.numFrames = self.cachedParams['numTrains']
+        self.loadedConfig['numTrains'] = self.numFrames
+        rc = self.device.paramSet('numberTrains', self.numFrames)
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Setting parameter numberTrains failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+            
+        # Do quick configure on FEM    
+        self.msgPrint("Doing quick configuration...")
+        rc = self.device.quick_configure()
+        if rc != LpdDevice.ERROR_OK:
+            self.msgPrint("Quick configure failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
+            self.deviceState = LpdFemGui.DeviceIdle
+            return
+
+        # Set device state as ready for acquisition        
+        self.deviceState = LpdFemGui.DeviceReady
+    
     def deviceRun(self, currentParams=None):
-        
+
         # Open shutter - if selected
         if self.shutterEnabled:
             # Check shutter defined
@@ -388,6 +398,13 @@ class LpdFemGui:
             # Increment the run number
             currentParams['runNumber'] = currentParams['runNumber'] + 1
         
+            # Enable multi-run, scanning through range of trigger delays
+            triggerDelayIncrement = self.cachedParams['triggerDelayIncrement']
+            triggerDelayIncrementModifier = triggerDelayIncrement * run
+
+            # Do quick configure before run
+            self.deviceQuickConfigure(triggerDelayIncrementModifier)
+
             # Launch LCLS EVR timestamp recorder thread if selected
             if currentParams['evrRecordEnable'] == True:
                 try:
@@ -397,15 +414,16 @@ class LpdFemGui:
                     self.deviceState = LpdFemGui.DevicdeIdle
                     return
 
-            # Create an LpdFemDataReceiver instance to launch readout threads
-            try:
-                dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
-                                                  self.dataListenAddr, self.dataListenPort, self.numFrames, currentParams, self)
-            except Exception as e:
-                self.msgPrint("ERROR: failed to create data receiver: %s" % e)
-                self.deviceState = LpdFemGui.DeviceIdle
-                return
-
+            if self.receiveDataInternally:
+                # Create an LpdFemDataReceiver instance to launch readout threads
+                try:
+                    dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
+                                                      self.dataListenAddr, self.dataListenPort, self.numFrames, currentParams, self)
+                except Exception as e:
+                    self.msgPrint("ERROR: failed to create data receiver: %s" % e)
+                    self.deviceState = LpdFemGui.DeviceIdle
+                    return
+                
             # Set device state as running and trigger update of run state in GUI    
             self.deviceState = LpdFemGui.DeviceRunning
             self.runStateUpdate()        
@@ -433,20 +451,22 @@ class LpdFemGui:
             if currentParams['evrRecordEnable'] == True:
                 try:
                     timestampRecorder.awaitCompletion()
-                    dataReceiver.injectTimestampData(timestampRecorder.evrData)
+                    if self.receiveDataInternally:
+                        dataReceiver.injectTimestampData(timestampRecorder.evrData)
     
                 except Exception as e:
                     self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)
-    
-            # Wait for the data receiver threads to complete
-            try:
-                dataReceiver.awaitCompletion()
-                self.lastDataFile = dataReceiver.lastDataFile()
-            except Exception as e:
-                self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
 
-            # Delete dataReceiver or multi-run produces no data for even runs
-            del dataReceiver
+            if self.receiveDataInternally:    
+                # Wait for the data receiver threads to complete
+                try:
+                    dataReceiver.awaitCompletion()
+                    self.lastDataFile = dataReceiver.lastDataFile()
+                except Exception as e:
+                    self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
+    
+                # Delete dataReceiver or multi-run produces no data for even runs
+                del dataReceiver
 
         # Closing Shutter code just to sit here (it's now in the above loop)
 

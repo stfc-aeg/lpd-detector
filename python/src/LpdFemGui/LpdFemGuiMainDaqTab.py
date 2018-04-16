@@ -32,10 +32,10 @@ class LpdFemGuiMainDaqTab(object):
         self.ui.slowParamEdit.setText(self.appMain.getCachedParam('setupParamFile'))
         self.ui.dataPathEdit.setText(self.appMain.getCachedParam('dataFilePath'))
         self.ui.numTrainsEdit.setText(str(self.appMain.getCachedParam('numTrains')))
-        if self.appMain.getCachedParam('externalTrigger') == True:
-            self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Checked)
-        else:
-            self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Unchecked)
+#         if self.appMain.getCachedParam('externalTrigger') == True:
+#             self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Checked)
+#         else:
+#             self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Unchecked)
         self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
         
         self.ui.fileWriteSel.setCheckState(checkButtonState(self.appMain.getCachedParam('fileWriteEnable')))         
@@ -45,6 +45,8 @@ class LpdFemGuiMainDaqTab(object):
         self.ui.shutterSel.setCheckState(checkButtonState(self.appMain.getCachedParam('arduinoShutterEnable')))
         self.ui.multiRunSel.setCheckState(checkButtonState(self.appMain.getCachedParam('multiRunEnable')))
         self.ui.multiRunEdit.setText(str(self.appMain.getCachedParam('multiRunNumRuns')))
+        # Support scanning a range of trigger delays
+        self.ui.triggerDelayIncrementEdit.setText(str(self.appMain.getCachedParam('triggerDelayIncrement')))
 
         serialPort = self.appMain.getCachedParam('arduinoShutterPort')
 
@@ -59,9 +61,9 @@ class LpdFemGuiMainDaqTab(object):
         gainOverride = self.appMain.getCachedParam('femAsicGainOverride')
         if gainOverride == 0:
             self.ui.gainModeAutoSel.setChecked(True)
-        elif gainOverride == 3:
+        elif gainOverride == 100:
             self.ui.gainModex100Sel.setChecked(True)
-        elif gainOverride == 2:
+        elif gainOverride == 10:
             self.ui.gainModex10Sel.setChecked(True)
         elif gainOverride == 1:
             self.ui.gainModex1Sel.setChecked(True)
@@ -79,7 +81,7 @@ class LpdFemGuiMainDaqTab(object):
         QtCore.QObject.connect(self.ui.runBtn,          QtCore.SIGNAL("clicked()"), self.deviceRun)
         QtCore.QObject.connect(self.ui.stopBtn,         QtCore.SIGNAL("clicked()"), self.deviceStop)
         QtCore.QObject.connect(self.ui.numTrainsEdit,   QtCore.SIGNAL("editingFinished()"), self.numTrainsUpdate)
-        QtCore.QObject.connect(self.ui.externalTriggerSel, QtCore.SIGNAL("toggled(bool)"), self.externalTriggerSelect)
+#         QtCore.QObject.connect(self.ui.externalTriggerSel, QtCore.SIGNAL("toggled(bool)"), self.externalTriggerSelect)
         QtCore.QObject.connect(self.ui.triggerDelayEdit, QtCore.SIGNAL("editingFinished()"), self.triggerDelayUpdate)
         QtCore.QObject.connect(self.ui.fileWriteSel,    QtCore.SIGNAL("toggled(bool)"), self.fileWriteSelect)
         QtCore.QObject.connect(self.ui.liveViewSel,     QtCore.SIGNAL("toggled(bool)"), self.liveViewSelect)
@@ -92,6 +94,9 @@ class LpdFemGuiMainDaqTab(object):
         # Multi-run parameters
         QtCore.QObject.connect(self.ui.multiRunSel,   QtCore.SIGNAL("toggled(bool)"), self.multiRunSelect)
         QtCore.QObject.connect(self.ui.multiRunEdit,  QtCore.SIGNAL("editingFinished()"), self.multiRunNumRunsUpdate)
+        QtCore.QObject.connect(self.ui.triggerDelayIncrementEdit, QtCore.SIGNAL("editingFinished()"), self.triggerDelayIncrementUpdate)
+        # LCLS mod: Disable external triggering - Do not allow user to change external trigger source
+#         self.ui.externalTriggerSel.setEnabled(False)
 
     def updateEnabledWidgets(self):
         
@@ -132,24 +137,27 @@ class LpdFemGuiMainDaqTab(object):
         try:
             numTrainsVal = int(numTrains)
             self.appMain.setCachedParam('numTrains', numTrainsVal)
-            self.mainWindow.updateEnabledWidgets()
         except ValueError:
             self.ui.numTrainsEdit.setText(str(self.appMain.getCachedParam('numTrains')))
-            
-    def externalTriggerSelect(self, state):
-        self.msgPrint("External trigger select is %d" % int(state))
-        self.appMain.setCachedParam('externalTrigger', state)
-        self.mainWindow.updateEnabledWidgets()
-        
+ 
     def triggerDelayUpdate(self):
+
         delay = self.ui.triggerDelayEdit.text()
         try:
             delayVal = int(delay)
             self.appMain.setCachedParam('triggerDelay', delayVal) 
-            self.mainWindow.updateEnabledWidgets()
         except ValueError:
             self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
         
+    def triggerDelayIncrementUpdate(self):
+
+        delayIncrement = self.ui.triggerDelayIncrementEdit.text()
+        try:
+            delayIncrementVal = int(delayIncrement)
+            self.appMain.setCachedParam('triggerDelayIncrement', delayIncrementVal) 
+        except ValueError:
+            self.ui.triggerDelayIncrementEdit.setText(str(self.appMain.getCachedParam('triggerDelayIncrement')))
+
     def pixelFbkOverrideUpdate(self):
 
         fbkOverride = -1
@@ -170,19 +178,17 @@ class LpdFemGuiMainDaqTab(object):
         if self.ui.gainModeAutoSel.isChecked():
             gainOverride = 0
         elif self.ui.gainModex100Sel.isChecked():
-            gainOverride = 100  #3
+            gainOverride = 100
         elif self.ui.gainModex10Sel.isChecked():
-            gainOverride = 10   #2
+            gainOverride = 10
         elif self.ui.gainModex1Sel.isChecked():
             gainOverride = 1
         else:
             self.msgPrint("Illegal gain override selection - should not happen")
             return
 
-        #self.msgPrint("  DEBUGGING - GUI selection femAsicGain: %d " % gainOverride)
         self.appMain.setCachedParam('femAsicGainOverride', gainOverride)
-        self.mainWindow.updateEnabledWidgets()
-
+    
     def fileWriteSelect(self, state):
         self.appMain.setCachedParam('fileWriteEnable', state)
         self.mainWindow.updateEnabledWidgets()
@@ -258,9 +264,10 @@ class LpdFemGuiMainDaqTab(object):
         
     def deviceRun(self):
         
-        # Show live view window if live view enabled
-        if self.appMain.cachedParams['liveViewEnable']:
-            self.appMain.liveViewWindow.show()
+        if (self.appMain.receiveDataInternally):
+            # Show live view window if live view enabled
+            if self.appMain.cachedParams['liveViewEnable']:
+                self.appMain.liveViewWindow.show()
         
         self.mainWindow.executeAsyncCmd('Running acquisition ...', self.appMain.deviceRun, self.runDone)
         self.mainWindow.updateEnabledWidgets()
