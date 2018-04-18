@@ -162,14 +162,14 @@ class LpdAsicSetupParams(object):
                            'spare_bits'                     : [5,  3820,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 5 bits cover everything
                            'filter_control'                 : [20, 3825,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 20 bits cover everything
                            'adc_clock_delay'                : [20, 3845,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 20 bits cover everything
-                           'digital_control'                : [40, 3865,   self.perAsicParam(),    0, [False, False, False]],      # Superseded by individual keys
+                           #'digital_control'                : [40, 3865,   self.perAsicParam(),    0, [False, False, False]],      # Superseded by individual keys
                            # Making (most of) Digital Control keyword accessible
                            'digital_reserved'               : [4, 3865,   self.perAsicParam(),     0, [False, False, False]],
                            'digital_reset3'                 : [7, 3869,   self.perAsicParam(),     0, [False, False, False]],
                            'digital_reset2'                 : [7, 3876,   self.perAsicParam(),     0, [False, False, False]],
                            'digital_reset1'                 : [7, 3883,   self.perAsicParam(),     0, [False, False, False]],
                            'digital_clock_counter_offset'   : [7, 3890,   self.perAsicParam(),     0, [False, False, False]],
-                           # clock_select configurable elsewhere - therefore NOT made accessible here
+                           # Clock Select configurable elsewhere - therefore NOT made accessible here
                            }
 
         # Variables used to override feedback_select_default, self_test_decoder_default, if different value(s) supplied by setOverrideValues() function

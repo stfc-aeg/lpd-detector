@@ -67,6 +67,12 @@
    <filter_control value="0"/>
    <adc_clock_delay value="4"/>
 
+  <digital_reserved value="0"/>
+  <digital_reset3 value="70"/>
+  <digital_reset2 value="65"/>
+  <digital_reset1 value="60"/>
+  <digital_clock_counter_offset value="100"/>
+
    <!--clockcounteroffset=0 resets=10,9,7 clock=2
    <digital_control value="5406687234"/> -->
 
@@ -103,9 +109,31 @@ ClockCounterOffset:   4
 ClockSelect:          2
 
  -->
+<!--
    <digital_control value="7029883906"/>
+-->
+<!-- CONFIRM old was ok:
+  <digital_control value="7029883904"/> 
+-->
+<!--  <digital_control value="68186767360"/> --> <!-- reset 3 and 1 = 127 (max) -->
+<!--
+  <digital_reset3 value="127"/>
+  <digital_reset1 value="127"/>
+-->
+
+<!--  <digital_control value="1031324860160"/>  --><!-- reserved=15 ; reset2, clockCntrOfft = 127 -->
+<!--
+  <digital_reserved value="15"/>
+  <digital_reset2 value="127"/>
+  <digital_clock_counter_offset value="127"/>
 
 
+  <digital_reserved value="0"/>
+  <digital_reset3 value="70"/>
+  <digital_reset2 value="65"/>
+  <digital_reset1 value="60"/>
+  <digital_clock_counter_offset value="100"/>
+-->
   <!--Reset duration trials at CLF-->
   <!--clockcounteroffset=4 resets=11,10,8 clock=2
   <digital_control value="5947786242"/> -->
