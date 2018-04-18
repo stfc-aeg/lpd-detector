@@ -248,5 +248,11 @@ class FemClient(object):
         self.femSocket.close()
         self.femSocket = None
         
+    # jac aug 2017
+    def directWrite(self, theAddr, thePayload):
+                
+        bus   = FemTransaction.BUS_RAW_REG
+        width = FemTransaction.WIDTH_BYTE
+        self.write(bus, width, theAddr, thePayload)
     
     

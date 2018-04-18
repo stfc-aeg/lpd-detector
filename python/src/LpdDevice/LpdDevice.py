@@ -139,7 +139,30 @@ class LpdDevice(object):
             time.sleep(5)
         
         return rc
-    
+        
+    def quick_configure(self):
+        '''
+        Commands the API to upload a subset of parameters to the FEM and ASICS and configure
+        the system for running.
+        Provides a means of quickly reconfiguring frequently used params.
+        
+        @return LpdDevice error code, ERROR_OK or other error condition
+
+        '''
+        rc = LpdDevice.ERROR_OK
+        
+        if not self.simulateFemClient:
+            try:
+                self.femClient.quick_configure()
+            except FemClientError as e:
+                rc = LpdDevice.ERROR_FEM_CLIENT_EXCEPTION
+                self.errorString = 'Error during FEM Quick configuration: %s' % e.msg
+                
+        else:
+            time.sleep(5)
+        
+        return rc        
+            
     def start(self, no_wait=False):
         '''
         Starts an acquisition sequence - prepares the FEM and ASICs to receive

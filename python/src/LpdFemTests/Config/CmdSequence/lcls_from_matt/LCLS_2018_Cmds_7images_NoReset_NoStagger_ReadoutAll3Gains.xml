@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="Command_LongExposure_V2.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+    <!-- Rules for lpd command sequence  jac 
+         
+         There MUST be a single <nop/> immediately before <sync_reset/>, <read_out_data/> and <asic_slow_readout_start/> 
+         There MUST be exactly 1 <nop/> between <sync_reset/> and <read_out_data/> 
+         
+         The LAST command in the file must NOT be a <nop count="xx"/> as this causes state machine to loop the command sequence repeatedly
+         
+         For the readout phase add at least enough clock cycles (nops) to ensure all data is clocked out of the ASICs before <stop_read_out> or <reset_state_machine/> 
+             
+             Number clocks per Image = 512 pixels x 3 gain x 12 bits = 18,432        
+             22 [4.5 MHz] => 837 nops per image approx    XFEL @ 99 MHz
+             25 [4.0 MHz] => 737
+             30 [3.3 MHz] => 614
+             40 [2.5 MHz] => 460
+             50 [2.0 MHz] => 368
+             
+             Also add ~805 clocks FIXED offset to account for delay between <read_out_data> and arrival of first bit of data
+                 22 [4.5 MHz] => 36 nops 
+                 25 [4.0 MHz] => 32
+                 30 [3.3 MHz] => 26
+                 40 [2.5 MHz] => 20
+                 50 [2.0 MHz] => 16
+                 
+    -->
+                 
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<on_chip_reset_disable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<nop/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<start_write_pointer/>
+	<start_write_pointer/>
+	<start_trigger_pointer/> 
+	<remove_reset_pre_amp/>
+	<remove_reset_gain_stage1/>
+	<remove_reset_gain_stage2/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<nop/>
+	<nop/>
+          
+    <trigger_section>
+    </trigger_section>
+
+	<nop/>
+	<sync_reset/>
+    
+    <!-- Number of Images in readout loops per Gain should match the number of <trigger_flag_set> sent  -->
+    
+    <!-- 
+         1st Readout Gain x100
+         -->
+    <nop/>    
+    <force_gain_x100/>   <!-- need a single nop before this command -->
+    <nop/>  
+    <sync_reset/>   <!-- need a single nop before this command -->
+    <nop/>  
+    <read_out_data/>   <!-- need a single nop before this command -->
+    
+    <nop count="36"/>  <!-- Fixed offset to account for delay between sending of read_out_data command and arrival of serial data from asic ~ 805 clocks -->  
+    
+    <loop count="8">     <!-- 1 loop per image to readout -->
+        <nop count="837"/>
+    </loop>
+    <!-- 
+         2nd Readout Gain x10
+         -->
+    <nop/>    
+    <force_gain_x10/>    <!-- need a single nop before this command -->
+    <loop count="8">  <!-- 1 loop per image to readout -->
+        <nop count="837"/>
+    </loop>
+    <!-- 
+         3rd Readout Gain x1
+         -->
+    <nop/>   
+    <force_gain_x1/>   <!-- need a single nop before this command -->
+    <loop count="8">   <!-- 1 loop per image to readout -->
+        <nop/>
+        <nop count="837"/>
+    </loop>
+    <nop/>    
+    <stop_read_out/>   <!-- need a single nop before this command -->
+    
+    <nop/>  <!-- LAST command in the file must NOT be a <nop count="xx"/> -->
+    
+    <!-- 
+         End
+    -->    
+    
+    
+</lpd_command_sequence>
+	

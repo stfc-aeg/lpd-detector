@@ -50,10 +50,12 @@ class LpdFrameObject(object):
 
 class ReceiveThread(QtCore.QThread):
     
-    def __init__(self, rxSignal, femHost='10.0.0.1', femPort=61649):
+    def __init__(self, rxSignal, femHost='10.0.0.1', femPort=61649, debugLevel=0):
         
         # Initialising variable used by processData
         self.first_frm_num = -1
+        
+        self.debugLevel = debugLevel
         
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
@@ -110,7 +112,7 @@ class ReceiveThread(QtCore.QThread):
             eof = (trailerInfo[1] >> (30)) & 0x1
  
             # Debug - Display XFEL Header (64 bytes)
-            if debugLevel  > 1:
+            if self.debugLevel  > 1:
                 if sof == 1:
                     print("processData() XFEL Header:")
                     initialData = np.zeros(64, dtype=np.uint32)
@@ -121,7 +123,7 @@ class ReceiveThread(QtCore.QThread):
                         print("%X "  % initialData[index], end=' ')
                     print("")
                     
-            if debugLevel > 1:
+            if self.debugLevel > 1:
                 if sof == 1:
                     print("-=-=-=-=- FrameNumber PacketNumber")
                 if (trailerInfo[1] < 3) or (eof == 1):
@@ -180,19 +182,22 @@ class ImageDisplay(FigureCanvas):
     dataRxSignal = QtCore.pyqtSignal(object)
 
     #def __init__(self, femHost, femPort, asicModuleType):
-    def __init__(self, femhost, femport, asicmodule, canvasrows, canvascols, colorbar, debuglevel, timeinfo, writedata, lpdheadertrailer, subtractPedestals):
+    def __init__(self, femhost, femport, asicmodule, canvasrows, canvascols, colorbar, debuglevel, timeinfo, writedata, lpdheadertrailer, subtractpedestals, femgainbits):
         
-        self.host           = femhost
-        self.port           = femport
-        self.asicModuleType = asicmodule
-        self.plotRows       = canvasrows
-        self.plotCols       = canvascols
-        self.bColorbarVisible = False if colorbar == 0 else True
-        self.debugLevel     = debuglevel
-        self.bTimeStamp     = False if timeinfo == 0 else True
-        self.bHDF5          = False if writedata == 0 else True
-        self.lpdheadertrailer = lpdheadertrailer
-        self.subtractPedestals = subtractPedestals
+        self.host               = femhost
+        self.port               = femport
+        self.asicModuleType     = asicmodule
+        self.plotRows           = canvasrows
+        self.plotCols           = canvascols
+        self.bColorbarVisible   = False if colorbar == 0 else True
+        self.debugLevel         = debuglevel
+        self.bTimeStamp         = False if timeinfo == 0 else True
+        self.bHDF5              = False if writedata == 0 else True
+        self.numberPlotsPerFile = writedata
+        self.lpdheadertrailer   = lpdheadertrailer
+        self.subtractpedestals  = subtractpedestals
+        self.bFemGainBits       = False if femgainbits == 0 else True
+
         # Remember number of plots in figure in case future train contain too many images
         self.plotsInFigure = canvasrows * canvascols
 
@@ -295,7 +300,7 @@ class ImageDisplay(FigureCanvas):
             self.cnt = 0
             self.data = np.zeros((self.nrows, self.ncols), dtype=np.uint16)
 
-            imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin=0, vmax=4095)
+            imgObject = self.ax[idx].imshow(self.data, interpolation='nearest', vmin=0, vmax=4095, cmap='jet')
             self.img.extend([imgObject])
 
             if self.bColorbarVisible:
@@ -319,7 +324,7 @@ class ImageDisplay(FigureCanvas):
                 
         self.tstart = time.time()
 
-        self.rxThread = ReceiveThread(self.dataRxSignal, femHost, femPort)
+        self.rxThread = ReceiveThread(self.dataRxSignal, femHost, femPort, self.debugLevel)
         self.rxThread.start()
 
 
@@ -347,39 +352,6 @@ class ImageDisplay(FigureCanvas):
             print("Extracted 16 bit words: ", len(self.pixelData), ". Array contents:")
             self.display16BitArrayInHex()
             print(" -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-
-        if self.debugLevel > 7:
-            if self.bTimeStamp:
-                time2 = time.time()
-            # Check the Gain bits (Bits 12-13);
-            # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
-            gainCounter = [0, 0, 0, 0]
-
-            for idx in range( len(self.pixelData) ):
-
-                # Check bits 12-13: 
-                gainBits = self.pixelData[idx] & 0x3000
-                if gainBits > 0:
-                    # Gain isn't x100, determine its type
-                    gain = gainBits >> 12
-                    if gain == 1:
-                        # x10
-                        gainCounter[1] += 1
-                    elif gain == 2:
-                        # x1
-                        gainCounter[2] += 1
-                    else:
-                        # Invalid gain setting detected
-                        gainCounter[3] += 1
-                else:
-                    # Gain is x100
-                    gainCounter[0] += 1
-            if self.bTimeStamp:
-                time1 = time.time()
-                self.timeStampGainCounter = time1 - time2
-
-            print("\nGain:      x100       x10        x1  (invalid)")
-            print("      %9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3]))
 
         # Define variables that increase with each loop iteration
         currentImage = 0
@@ -477,8 +449,8 @@ class ImageDisplay(FigureCanvas):
 
                     if self.debugLevel > 0:
                         print("_______________________________________________________________________________________________")
-                        print(" * plot: %d dataBegin: %7d (0x%X) of %d S-ModSize: %d (0x%X) LPD hdr offset = %d." % \
-                        (currentImage, imageOffset, imageOffset, len(self.pixelData), self.imageFullLpdSize, self.imageFullLpdSize, (LPD_HEADER_SIZE/2)))
+                        print(" * plot: %d dataBegin: %7d (0x%X) [Pxls] of %d S-ModSize: %d (0x%X) [Pxls] LPD hdr offset = %d [Bytes]." % \
+                        (currentImage, imageOffset, imageOffset, len(self.pixelData), self.imageFullLpdSize, self.imageFullLpdSize, (LPD_HEADER_SIZE)))
                         for index in range(32):
                             if (index!= 0) and (index % 16 == 0):
                                 print("")
@@ -498,7 +470,36 @@ class ImageDisplay(FigureCanvas):
                 print("handleFrame() failed to reshape imageArray: ", e, "\nExiting..")
                 print("len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols)
                 exit()
-            
+
+            if self.bFemGainBits:
+                # Check the Gain bits (Bits 12-13);
+                # [0] = x100, [1] = x10, [2] = x1, [3] = invalid
+                gainCounter = [0, 0, 0, 0]
+
+                for row in range( len(self.data) ):
+                    for col in range(len(self.data[0]) ):
+
+                        # Check bits 12-13: 
+                        gainBits = self.data[row][col] & 0x3000
+                        if gainBits > 0:
+                            # Gain isn't x100, determine its type
+                            gain = gainBits >> 12
+                            if gain == 1:
+                                # x10
+                                gainCounter[1] += 1
+                            elif gain == 2:
+                                # x1
+                                gainCounter[2] += 1
+                            else:
+                                # Invalid gain setting detected
+                                gainCounter[3] += 1
+                                print("Invalid gain setting! row: {} col: {}".format(row, col)) 
+                        else:
+                            # Gain is x100
+                            gainCounter[0] += 1
+
+                print("\nGain:      x100       x10        x1  (invalid)")
+                print("Count:%9i %9i %9i %9i" % (gainCounter[0], gainCounter[1], gainCounter[2], gainCounter[3]))
                            
             # Mask out gain bits from data
             self.data = self.data & 0xfff
@@ -507,7 +508,7 @@ class ImageDisplay(FigureCanvas):
             # jac ; dec 2015
             #subtractPedestals = 0;
             
-            if self.subtractPedestals == 1:
+            if self.subtractpedestals == 1:
                 
                 #print "\nBefore test print 0"
                 #print self.data[0]
@@ -555,7 +556,7 @@ class ImageDisplay(FigureCanvas):
             if self.bHDF5:
 
                 # index within the opened file
-                fileIndex = self.imageCounter % numberPlotsPerFile
+                fileIndex = self.imageCounter % self.numberPlotsPerFile
 
                 # Check if file opened
                 try:
@@ -600,9 +601,9 @@ class ImageDisplay(FigureCanvas):
                 self.imageNumberDs[fileIndex] = currentImage
 
                 # Close file if specified number of images written
-                if fileIndex == (numberPlotsPerFile-1):
+                if fileIndex == (self.numberPlotsPerFile-1):
                     # Add numTrains to file before closing
-                    self.metaGroup.attrs['numTrains'] = numberPlotsPerFile
+                    self.metaGroup.attrs['numTrains'] = self.numberPlotsPerFile
                     # Close old file
                     self.hdfFile.flush()
                     self.hdfFile.close()
@@ -779,74 +780,53 @@ if __name__ == "__main__":
     asicModule          = 0
     femHost             = '10.0.0.1'
     femPort             = 61649
-    bTimeStamp          = False
-    bColorbarVisible    = True
-    bHDF5               = False
-    debugLevel          = 0
     plotRows            = 2
     plotCols            = 2
-    numberPlotsPerFile  = 1
     lpdheadertrailer    = 0
-    subtract_pedestals  = 0
 
     # Create parser object and arguments
     parser = argparse.ArgumentParser(description="LpdReceiver.py - Receive data from an LPD detector. ",
                                      epilog="Default: femhost=10.0.0.1, femport=61649 and asicModule=0, all other flags' default values denoted by 'D: x'.")
 
-    parser.add_argument("--femhost",        help="Set fem host IP (e.g 10.0.0.1)",                                      type=str, default=femHost)
-    parser.add_argument("--femport",        help="Set fem port (eg 61649)",                                             type=int, default=femPort)
-    parser.add_argument("--asicmodule",     help="Set ASIC Module (0=Supermodule, 2=2-Tile, 4=Raw data; D: 0)",         type=int, choices=[0, 2, 4], default=asicModule)
-    parser.add_argument("--canvasrows",     help="Set rows of plots (D: 2)",                                            type=int, default=plotRows)
-    parser.add_argument("--canvascols",     help="Set columns of plots (D: 2)",                                         type=int, default=plotCols)
-    parser.add_argument("--colorbar",       help="Enable colorbar (0=Disable, 1=Enable; D: 1)",                         type=int, default=1)
-    parser.add_argument("--debuglevel",     help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=list(range(9)), default=0)
-    parser.add_argument("--timeinfo",       help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
-    parser.add_argument("--writedata",      help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
-    parser.add_argument("--lpdheadertrailer",help="Process LPD Data with headers & trailers (0=None, 1=32 byte header, 2=64 byte hdr, 3=64b fields little-endian (f/w vers $0298); D: 0)",type=int, default=0)
-    parser.add_argument("--subtractPedestals",       help="Subtract pedestals (0=Disable, 1=Enable; D: 0)",      type=int, choices=[0, 1], default=0)   
+    parser.add_argument("--femhost",            help="Set fem host IP (e.g 10.0.0.1)",                                      type=str, default=femHost)
+    parser.add_argument("--femport",            help="Set fem port (eg 61649)",                                             type=int, default=femPort)
+    parser.add_argument("--asicmodule",         help="Set ASIC Module (0=Supermodule, 2=2-Tile, 4=Raw data; D: 0)",         type=int, choices=[0, 2, 4], default=asicModule)
+    parser.add_argument("--canvasrows",         help="Set rows of plots (D: 2)",                                            type=int, default=plotRows)
+    parser.add_argument("--canvascols",         help="Set columns of plots (D: 2)",                                         type=int, default=plotCols)
+    parser.add_argument("--colorbar",           help="Enable colorbar (0=Disable, 1=Enable; D: 1)",                         type=int, default=1)
+    parser.add_argument("--debuglevel",         help="Enable debug level (0=Disable, 1-8=level; D: 0)",                     type=int, choices=list(range(9)), default=0)
+    parser.add_argument("--timeinfo",           help="Display timing info (0=Disable, 1=Enable; D: 0)",                     type=int, choices=[0, 1], default=0)
+    parser.add_argument("--writedata",          help="Write data to hdf5 file (0=Disable, 0> = number images/file; D: 0)",  type=int, default=0)
+    parser.add_argument("--lpdheadertrailer",   help="Process LPD Data with headers & trailers (0=None, 1=32 byte header, \
+                                                        2=64 byte hdr, 3=64b fields little-endian (f/w vers $0298); D: 3)", type=int, default=3)
+    parser.add_argument("--subtractpedestals",  help="Subtract pedestals (0=Disable, 1=Enable; D: 0)",                      type=int, choices=[0, 1], default=0)
+    parser.add_argument("--femgainbits",        help="Show fem gain bit stats (0=Disable, 1=Enable; D: 0)",                 type=int, choices=[0, 1], default=0)
+
     args = parser.parse_args()
 
     asicModule  = args.asicmodule
     femHost     = args.femhost
     femPort     = args.femport
 
-    if args.timeinfo:
-        bTimeStamp = True
-        
     # Only allow file write if HDF5 library installed
     if bNoHdf5Library:
-        bHDF5 = False
-    else:
-        if args.writedata == 0:
-            bHDF5 = False
-        else:
-            bHDF5 = True
-            numberPlotsPerFile = args.writedata
+        args.writedata = 0
 
-    debugLevel = args.debuglevel
-    plotRows = args.canvasrows
-    plotCols = args.canvascols
-        
-    if args.colorbar == 0:
-        bColorbarVisible = False
 
-#    if args.lpdheadertrailer == 1:
-#        lpdheadertrailer = True
-
-#    # Calculate number of plots to draw
-#    plotMaxPlots = plotRows * plotCols
-
-    if debugLevel > 0:
+    if args.debuglevel > 0:
         print("module: ", asicModule)
         print("host: ", femHost)
         print("port: ", femPort)
-        print("time: ", bTimeStamp)
-        print("color: ", bColorbarVisible)
-        print("file: ", bHDF5)
-        print("debugLevel(%i)" % debugLevel)
+        print("time: ", args.timeinfo)
+        print("color: ", args.colorbar)
+        print("file: ", args.writedata)
+        print("debuglevel(%i)" % args.debuglevel)
         print("plotCols(%i)" % args.canvascols)
         print("plotRows(%i)" % args.canvasrows)
-        print("subtractPedestals: ", subtractPedestals)
+        print("lpdheadertrailer(%i)" % args.lpdheadertrailer)
+        print("subtractpedestals: ", args.subtractpedestals)
+        print("femgainbits: ", args.femgainbits)
+
     #print vars(args), "\n\n"
     app = QtGui.QApplication(sys.argv)
     widget = ImageDisplay(**vars(args)) #femHost, femPort, asicModule)

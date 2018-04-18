@@ -124,7 +124,7 @@ class LpdDeviceParameters(object):
                                                                     AccessWrite, AssignmentOptional, InternalParam,
                                                                     'AllOk.Disconnected')
         self.expectedParameters['femAsicModuleType'] = AttributeContainer(uint32, 'FemAsicModuleType', 
-                                                                    'Selects ASIC module type 0=Supermodule, 1=Single ASIC, 2=2-tile module, 3=Stand-alone',
+                                                                    'Selects ASIC module type 0=Supermodule/Quadrant/Megapixel, 1=Single ASIC, 2=2-tile module, 3=Stand-alone',
                                                                     0, 3, 0,
                                                                     AccessWrite, AssignmentOptional, InternalParam, 
                                                                     'AllOk.Disconnected')
@@ -210,11 +210,11 @@ class LpdDeviceParameters(object):
         #
         
         self.expectedParameters['femEnableTenGig']              = AttributeContainer(bool, 'FemEnableTenGig', 'Enables transmission of image data via 10GigE UDP interface',
-                                                                      (True, False), None, True,
+                                                                      (True, True), None, True,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['femDataSource']                = AttributeContainer(uint32, 'FemDataSource', 'Source of data sent to 10GigE: 0=ASIC (via PPC), 1=ASIC (bypassing PPC), 2=Frame Generator, 3=PPC (pattern data)',
-                                                                      0, 3, 0,
+                                                                      0, 0, 0,
                                                                       AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['femAsicEnableMask']            = AttributeContainer([uint32]*4, 'FemAsicEnableMask', 'ASIC RX channel enable mask (4*32 bits)',
@@ -261,10 +261,10 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femAsicLocalClock']            = AttributeContainer(uint32, 'FemAsicLocalClock', 'ASIC clock scaling 0=100 MHz (no scaling), 1=Scaled down clock (10 MHz)',
-                                                                          0, 1, 0,
+                                                                          0, 0, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
-        self.expectedParameters['femAsicSetupLoadMode']         = AttributeContainer(uint32, 'FemAsicSetupLoadMode', 'ASIC control load mode 0=parallel, 1=serial (being tested)',
+        self.expectedParameters['femAsicSetupLoadMode']         = AttributeContainer(uint32, 'FemAsicSetupLoadMode', 'ASIC control load mode 0=parallel, 1=daisy chain (being tested)',
                                                                           0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
@@ -277,7 +277,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femAsicSetupClockPhase']       = AttributeContainer(uint32, 'FemAsicSetupClockPhase', 'ASIC Setup Params additional phase adjustment of clock rsync wrt ASIC reset',
-                                                                          0, 65535, 0,
+                                                                          0, 0, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femPpcMode']                   = AttributeContainer(uint32, 'FemPpcMode', 'Fem PPC mode 0=single train shot with PPC reset, 1=Continuous readout',
@@ -289,19 +289,19 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['tenGigFarmMode']               = AttributeContainer(uint32, 'TenGigFarmMode', '10GigE farm mode 1=Disabled, 2=Fixed IP, multi port, 3=Farm mode with nic lists',
-                                                                          1, 3, 1,
+                                                                          1, 1, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femAsicVersion']               = AttributeContainer(uint32, 'FemAsicVersion', 'ASIC Version 1=version 1, 2=version 2',
-                                                                          1, 2, 2,
+                                                                          2, 2, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
         
         self.expectedParameters['femAsicClockSource']           = AttributeContainer(uint32, 'FemAsicClockSource', 'ASIC clock source 0=Fem local oscillator (100MHz), 1=XFEL synched clock (99 MHz), 2=PETRAIII synched clock (~114 MHz), 3=Diamond',
-                                                                          0, 3, 0,
+                                                                          0, 1, 0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['femStartTrainSource']          = AttributeContainer(uint32, 'FemStartTrainSource', 'Train start signal source 0=XFEL Clock & Ctrl command/reset, 1=Software, 2=LCLS, 3=Petra (derived from PETRAIII clock), 4=Diamond',
-                                                                          0, 4, 1,
+                                                                          0, 2, 1,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
                                                                           
         self.expectedParameters['femStartTrainDelay']           = AttributeContainer(uint32, 'FemStartTrainDelay', 'Delay between trigger arrival and start of train (in FEM clock cycles)',
@@ -309,7 +309,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['femStartTrainInhibit']         = AttributeContainer(uint32, 'FemStartTrainInhibit', 'Inhibit period after each trigger (in FEM clock cycles) which holds off further triggers to allow data to be readout',
-                                                                          0, 4294967295, 0,
+                                                                          0, 4294967295, 1000,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femAsicGainOverride']          = AttributeContainer(bool, 'FemAsicGainOverride', 'Enable Fem gain selection override False=Gain set by femAsicGain, True=Gain set by Asic Command Sequence XML tag(s)',
@@ -317,7 +317,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femDebugLevel']                = AttributeContainer(uint32, 'FemDebugLevel', 'Set the debug level',
-                                                                          0, 6, 0,
+                                                                          0, 6, 2,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['tenGig0DataGenerator']         = AttributeContainer(uint32, 'TenGig0DataGenerator', '10GigE 0 Data generator 1=Data Generator 2=PPC DDR2; Only relevant if femDataSource=2 [Frame Generator]',
@@ -337,11 +337,11 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femStartTrainPolarity']        = AttributeContainer(uint32, 'FemStartTrainPolarity', 'Set polarity of the external signal indicating start of train 0=No inversion, 1=Invert signal',
-                                                                          (0, 1), None, True,
+                                                                          (0, 0), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femVetoPolarity']              = AttributeContainer(uint32, 'FemVetoPolarity', 'Set polarity of the external veto signal 0=No inversion, 1=Invert signal',
-                                                                          (0, 1), None, True,
+                                                                          (0, 0), None, True,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['femModuleId']                  = AttributeContainer(uint32, 'FemModuleId', 'ID for FEM to differentiate from which FEM data is coming from  0 - 15',
@@ -357,7 +357,7 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['cccEmulationMode']               = AttributeContainer(bool, 'cccEmulationMode', 'Enable to emulate Clock & Control commands (for testing in absence of C&C)',
-                                                                          (True, False), None, False,
+                                                                          (False, False), None, False,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['cccProvideNumberImages']         = AttributeContainer(bool, 'cccProvideNumberImages', 'ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages',
@@ -365,15 +365,15 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['cccVetoStartDelay']              = AttributeContainer(uint32, 'cccVetoStartDelay', 'Adjust timing of veto arrival (in steps of clock cycles)',
-                                                                          0, 4294967295,  0,
+                                                                          0, 4294967295,  1000,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['cccStopDelay']                   = AttributeContainer(uint32, 'cccStopDelay', 'Adjust timing of the stop (in steps of clock cycles)',
-                                                                          0, 4294967295,  0,
+                                                                          0, 0,  0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['cccResetDelay']                  = AttributeContainer(uint32, 'cccResetDelay', 'Adjust timing of reset (in steps of clock cycles)',
-                                                                          0, 4294967295,  0,
+                                                                          0, 0,  0,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
 
         self.expectedParameters['cccVetoPatternFile']             = AttributeContainer(str, 'cccVetoPatternFile', 'Filename containing the veto bunch pattern (10 patterns, 3072 bits each)',
@@ -409,12 +409,33 @@ class LpdDeviceParameters(object):
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         self.expectedParameters['numPulsesInTrainOverride']       = AttributeContainer(uint32, 'numPulsesInTrainOverride', 'Length of XRay Pulse Train (number pulses)',
-                                                                          0, 4294967295,  1536,
+                                                                          0, 2700,  1500,
                                                                           AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
 
         #self.expectedParameters['pipelineLatency']                = AttributeContainer(uint32, 'pipelineLatency', 'Latency of Asic pipeline. Separation in number of pulses between pipeline write and trigger pointers ;  NB Must be set by user to match contents of asic command file. Min = 2. Max = 511.',
-        #                                                                  0, 511, 2,
+                                                                          #0, 511, 2,
+                                                                          #AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+        
+        #self.expectedParameters['cccIoDelayNumberTaps']           = AttributeContainer(uint32, 'cccIoDelayNumberTaps', 'Fractional timing delay wrt clock applied to C&C Cmd and Veto input data. Adjusted for cable length. (taps are 5/64 nsec)',
+        #                                                                  0, 63,  0,
         #                                                                  AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set")
+
+        self.expectedParameters['femAsicCommandLength']           = AttributeContainer(uint32, 'femAsicCommandLength', 'ASIC length of command word in clock periods which determines ASIC sampling period; valid values are:  20 => 5 MHz ;  22 => 4.5 MHz (default XFEL 99MHz clock) ; 25 => 4.0 MHz ; 30 => 3.33 MHz ; 40 => 2.5 MHz ; 50 => 2.0 MHz ; 100 => 1.0 MHz',
+                                                                          (20, 22, 25, 30, 40, 50, 100),  22, True,
+                                                                          AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['asicRxGainAlgorithmType']        = AttributeContainer(uint32, 'asicRxGainAlgorithmType', 'Set the ASIC gain selection algorithm type (0=Original with Fixed Thresholds at Full Scale, 1=Variable Thresholds using 64 levels; 2,3 reserved)',
+                                                                         0, 3, 0,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['asicRxGainThresholdx100']        = AttributeContainer(uint32, 'asicRxGainThresholdx100', 'Set AsicRx Gain Select Threshold for x100 (same value for all 128 asics); 1 (MIN) to 64 (FULL SCALE SIGNAL) ; used when asicRxGainAlgorithmType = 1',
+                                                                         1, 64, 64,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
+        self.expectedParameters['asicRxGainThresholdx10']         = AttributeContainer(uint32, 'asicRxGainThresholdx100', 'Set AsicRx Gain Select Threshold for x10 (same value for all 128 asics); 1 (MIN) to 64 (FULL SCALE SIGNAL) ; used when asicRxGainAlgorithmType = 1',
+                                                                         1, 64, 64,
+                                                                         AccessWrite, AssignmentOptional, ExternalParam, 'AllOk.Idle', "once, set, composite")
+
 
 
         #

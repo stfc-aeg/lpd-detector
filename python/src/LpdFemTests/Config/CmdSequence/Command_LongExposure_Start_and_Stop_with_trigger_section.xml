@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<lpd_command_sequence name="Command_LongExposure_Start.xml"
+<lpd_command_sequence name="Command_LongExposure_Start_and_Stop_with_trigger_section.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 

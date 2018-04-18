@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-<lpd_setup_params name="Setup_RandomData.xml"
+<lpd_setup_params name="Command_RandomData.xml"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:noNamespaceSchemaLocation="lpdAsicSetupParams.xsd">
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
 
     <!-- Rules for lpd command sequence  jac 
 

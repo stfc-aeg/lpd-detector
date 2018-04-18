@@ -173,27 +173,39 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp, legacyPower
 #            asicSetupParams = "Config/SetupParams/Setup_Serial_XFEL.xml"
 #            asicSetupParams = "Config/SetupParams/Setup_Serial_KLASSE.xml"
 
-    #configFilename = 'Config/readoutConfiguration.xml'
+    basePath = '/u/ckd27546/workspace/lpdSoftware-feb18/LpdFemTests/'
+
+#     # Testing using the same configurations file as on John's branch:
+#      asicCmdSequence = basePath + 'Config/CmdSequence/Command_LongExposure_Start_and_Stop_with_trigger_section.xml'
+#      configFilename  = basePath + 'Config/readoutConfiguration_John.xml'
+#      vetoFilename    = basePath + 'Config/VetoPatterns/veto_pattern_test2.xml'    # Same as from John's readoutConfiguration file entry
+#      asicCmdSequence = basePath +  'Config/CmdSequence/Command_ShortExposure_V2.xml'
+#     # Hard code NOT to use low power xml file:
+#      asicSetupParams = basePath + 'Config/SetupParams/DiamondSlowParam.xml'
+# 
+#      asicSetupParams = basePath + 'Config/SetupParams/Setup_LowPower.xml'    # Writes upside down 'L' shape in each ASIC
+# 
+#     # Test LpdFemClient S/W: 0x100..1e
+#      configFilename  = basePath + 'Config/readoutConfigurationRev001e.xml'
+#      asicCmdSequence = basePath + 'Config/CmdSequence/Command_LongExposure_legacy_using_trigger_flags_multiple_gain_readout.xml'
+# 
+#     # Test JAC's latest F/W #..
+#     configFilename  = basePath + 'Config/LCLS_new_readoutConfig.xml'
+#     asicSetupParams = basePath + 'Config/SetupParams/Setup_LowPower.xml'
+#     asicCmdSequence = basePath + 'Config/CmdSequence/lcls_from_matt/LCLS_2018_Cmds_7images_NoReset_80uSecStagger_ReadoutAll3Gains.xml'
+#     vetoFilename    = basePath + 'Config/VetoPatterns/veto_pattern_test2.xml'
+#     
+#     # 20 March 2018 LCLS testing modifications:
+#     configFilename  = basePath + 'Config/LCLS_2018_readoutConfiguration.xml'
+#     asicSetupParams = basePath + 'Config/SetupParams/Setup_LowPower.xml'
+#     asicCmdSequence = basePath + 'Config/CmdSequence/LPD_cmdSeq_NormalOperation.xml'
+
+    # ckd27546
+    asicCmdSequence = basePath + 'Config/CmdSequence/ckd27546_Sequence.xml'
+    configFilename  = basePath + 'Config/ckd27546_readoutConfiguration.xml'
+    asicSetupParams = basePath + 'Config/SetupParams/ckd27546_Params.xml'
+    vetoFilename    = basePath + 'Config/VetoPatterns/veto_pattern_test2.xml'
     
-    # Testing using the same configurations file as on John's branch:
-    asicSetupParams = "Config/SetupParams/Setup_LowPower.xml"
-    asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_Start_and_Stop_with_trigger_section.xml'
-    configFilename = 'Config/readoutConfiguration_John.xml'
-    vetoFilename   = 'Config/VetoPatterns/veto_pattern_test2.xml'    # Same as from John's readoutConfiguration file entry
-    asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'
-    # Hard code NOT to use low power xml file:
-    asicSetupParams = 'Config/SetupParams/DiamondSlowParam.xml'
-#     asicSetupParams = '/u/ckd27546/workspace/lpdSoftware/LpdFemTests/Config/SetupParams/DiamondSlowParam.xml'
-#     asicCmdSequence = 'Config/CmdSequence/Command_LongExposure_legacy_using_trigger_flags_modified.xml'
-#     asicCmdSequence = 'Config/CmdSequence/SuperModuleNormalOperation_PLtest_jac.xml'
-
-    configFilename = 'Config/readoutConfiguration_John.xml'
-    vetoFilename   = 'Config/VetoPatterns/veto_pattern_test2_jac.xml'
-    asicCmdSequence = 'Config/CmdSequence/LPD_cmdSeq_NormalOperation.xml' # JAC's
-    #asicCmdSequence = 'Config/CmdSequence/Command_ShortExposure_V2.xml'   # LpdFemGui file..
-    #asicSetupParams = 'Config/SetupParams/LPD_SetupParams_XFEL_test.xml'
-    asicSetupParams = 'Config/SetupParams/Setup_LowPower.xml'    # Writes upside down 'L' shape in each ASIC
-
     print("================    XML Filenames   ================")
     print(asicSetupParams)
     print(asicCmdSequence)
@@ -285,7 +297,8 @@ def LpdReadoutTest(tenGig, femHost, femPort, destIp, destMac, srcIp, legacyPower
                                     'cccSystemMode', 'cccEmulationMode', 'cccProvideNumberImages', 'cccVetoStartDelay', 'cccStopDelay', 'cccResetDelay',
                                     'trainGenInterval', 
                                     'femAsicTestDataPatternType', 'femPpcEmulatePipeline', 'femPpcImageReordering',
-                                    'femTrainIdInitLsw', 'femTrainIdInitMsw', 'timeoutTrain', 'numPulsesInTrainOverride', 'trainGenInterval']
+                                    'femTrainIdInitLsw', 'femTrainIdInitMsw', 'timeoutTrain', 'numPulsesInTrainOverride', 'trainGenInterval',
+                                    'femAsicCommandLength', 'asicRxGainAlgorithmType', 'asicRxGainThresholdx10', 'asicRxGainThresholdx100']
 
         for param in paramExpertVariables:
             (rc, value) = theDevice.paramGet(param)

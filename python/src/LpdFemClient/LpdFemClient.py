@@ -10,6 +10,111 @@ LINUX
 
 ##################################################################
 #
+# vers 0x10000022  29/03/18   John Coughlan
+#
+# Corrected bug in asicrx_override_gain() which was not clearing previous gain setting bits (this was only problem when using quick_configure mode)
+#
+# vers 0x10000021  28/03/18   John Coughlan
+#
+# Added quick_configure() which re-configures registers for following params at run time as required for LCLS tests:
+#   numberTrains, femStartTrainDelay, femAsicGain
+#
+# vers 0x10000020  20/03/18   John Coughlan
+#
+# Don't switch asic clock source back to Osc at run end.
+#
+# vers 0x1000001f  06/03/18   John Coughlan
+#
+# If femAsicCommandLength = 50 or 100 then skip readout of the first image which is "blank"
+#
+# vers 0x1000001e  27/02/18   John Coughlan
+#
+# Another pass to take changes from the trunk before passing on to Christian to release for LCLS test.
+#
+# vers 0x1000001d  26/02/18   John Coughlan
+#
+# Set new working measured value for asicRxPseudoRandomStart.  
+#
+# Speeded up loading of sicRxGainThreshold Bram by using block rdma write with tuple.
+#
+# vers 0x1000001c  23/02/18   John Coughlan
+#
+# Karabo params for asicRxGainAlgorithmType and common asicRxGainThresholdx100, asicRxGainThresholdx10 
+# 
+# fem_asic_rx_threshold_bram_setup() now loading asicRxGain Threshold BRAMs  
+# Compatible with asic rx logic in f/w vers 02da and above
+# 64 levels for each threshold (each level is 64 adc counts)
+# Threshold = 0 (MIN) to 63 (FULL SCALE)
+# Threshold is at TOP of each level.
+#
+# -- Need to use All 4 bits of Bram data to have threshold at max of each level.
+#-- Must only require that 6 lsb are '0' if 6 msb addr corresponds to FIRST level above threshold.
+#-- bit 0 = x100 level is above threshold
+#-- bit 1 = x100 FIRST level above threshold
+#-- bit 2 = x10 level is above threshold
+#-- bit 3 = x10 FIRST level above threshold
+#
+# vers 0x1000001b  21/02/18   John Coughlan
+#
+# Test internal params for asicRxGainAlgorithm and common asicRxGainThresholdx100, asicRxGainThresholdx10 
+#
+# Added display of 10G Tx eth packet counters 
+#
+# vers 0x1000001a  21/02/18   John Coughlan
+# Corrected FEM_ASIC_GAIN_LOOKUP
+#
+# vers 0x10000019  21/02/18   John Coughlan
+# Minor corrections to get working with changes from trunk.
+#
+# vers 0x10000018  21/02/18   John Coughlan
+# Merged with changes from trunk rev 2064
+#
+# vers 0x10000017  06/02/18   John Coughlan
+# Tesing filling the XFEL FEM ASIC RX Gain Threshold BRAM contents
+#
+# vers 0x10000016  06/02/18   John Coughlan
+#
+# Upgraded from python 2 to 3 using tool "2to3"
+#
+# vers 0x10000015  05/02/18   John Coughlan
+#
+# Added asic_rx_start_delay adjustments for operation with different asic command lengths (different asic sampling rates)  
+#   offsets measured on 2-tile with f/w 02cc
+#
+# Corrected padding value applied to command length 100.
+#   
+# vers 0x10000014  29/01/18   John Coughlan
+#
+# NR_CLOCKS_PER_FAST_CMD moved to another fem top level register
+#   starting f/w $02ca
+#
+# Implemented command length changing:
+#
+# 0. Standard Reset at start of configure puts asic in 22b asic command word length
+# 1. Change CLOCK_DIV string in slow bram to match new command word length before loading to asic  ; fem_slow_ctrl_setup()
+# 2. Send fast command sequence (sm "reset" mode) concluding with CLOCK_DIV_SEL command to asic to activate new command length  ; config_asic_ccc_fast_clock_div()
+# 3. Set new command length in fast and veto state machines
+#
+#
+# vers 0x10000013  25/01/18   John Coughlan
+#
+# Sets NR_CLOCKS_PER_FAST_CMD  to change asic fast command length via fem top level register 
+#   starting f/w version $02c9
+# 
+############### 2017 #############################################
+#
+# vers 0x10000012  30/08/17  John Coughlan
+#
+# Skipping variable ccc iodelay setup as no longer implmented in f/w.
+#
+# vers 0x10000011  03/08/17  John Coughlan
+#
+# Switching back to FEM Osc clock as Asic clock source at run end.
+#
+# vers 0x10000010  24/04/17  John Coughlan
+#
+# Added cc_veto_input memory area for ctrl and bram for debugging C&C veto signals..  f/w 0
+#
 # vers 0x1000000f  14/12/15  John Coughlan
 #
 # added debug printout to look into alexander's rdma block access problem 
@@ -184,6 +289,7 @@ class LpdFemClient(FemClient):
     fast_cmd_0          = 0x05000000    # 10
     fast_cmd_1          = 0x05800000    # 11    Tx bram
     asic_srx_0          = 0x06000000    # 12
+    asic_srx_thr_bram   = 0x06400000    # 12    asic rx threshold brams x 128
     llink_mon_asicrx    = 0x06800000    # 13
     slow_ctr_0          = 0x07000000    # 14
     slow_ctr_1          = 0x07800000    # 15
@@ -194,7 +300,7 @@ class LpdFemClient(FemClient):
     dma_gen_2           = 0x0a000000    # 20
     dma_chk_2           = 0x0a800000    # 21
     dma_gen_3           = 0x0b000000    # 22
-    dma_chk_3           = 0x0b800000    # 23
+    cc_veto_input       = 0x0b800000    # 23    # storing cc veto input bits in bram        dma_chk_3
     bram_ppc1           = 0x0c000000    # 24
     trig_strobe         = 0x0c800000    # 25
     ccc_delay_reg       = 0x0d000000    # 26
@@ -273,7 +379,8 @@ class LpdFemClient(FemClient):
 
         self.nr_asics_per_sensor = 8
 
-        self.asicRxPseudoRandomStart        = (80+50+1)         # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word), also need extra clock for sensor delay FF
+        #self.asicRxPseudoRandomStart        = (80+50+1)         # asic_rx_start_pseudo_random  ; this is now fixed wrt start asic seq (it is not using readout cmd word), also need extra clock for sensor delay FF
+        self.asicRxPseudoRandomStart        = 59          		# asic_rx_start_pseudo_random  ; using readout cmd word with read_out cmd fixed nops earlier wrt to test_mode_d command in xml file.
         self.asicRx2tileStart               = (810+1+1)         # asic_rx_start_2tile ; added 1 clock delay to compensate for new delay of sensor groups ; add another clock step after fixing clock distribution timing in sp3 io v0109
         self.asicRxSingleStart              = 0                 # asic_rx_start_single_asic
         self.asicRxHeaderBits               = 12                # asic_rx_hdr_bits - subtract this value to capture asic serial headers (0xAAA)
@@ -329,10 +436,10 @@ class LpdFemClient(FemClient):
 #
 #        self.ext_trig_strobe_inhibit  = (22*200 + self.nr_clocks_to_readout_image * self.numberImages + self.asicRx2tileStart)       # length of inhibit after ext strobe enough to read out all data (in asic clock periods) ; allow for 100 fast cmds each 22 clocks to inhibit during fast commands from file before readout starts
 # At PETRA for Trigger Rate = N Hz set ext_trig_strobe_inhibit = N x 10**7 x 22 / 192
-#        self.ext_trig_strobe_inhibit    = (100000000*22/192)  # 100 msec for 10Hz     # see comments above
+#        self.ext_trig_strobe_inhibit    = (100000000*22//192)  # 100 msec for 10Hz     # see comments above
 
 # for 10 Hz triggers rate  (with ARB asic clock period = 12 nsec)
-#        self.ext_trig_strobe_inhibit    = (100000000*22/12)  
+#        self.ext_trig_strobe_inhibit    = (100000000*22//12)  
 
 
 #############################################
@@ -351,6 +458,7 @@ class LpdFemClient(FemClient):
 
         self.femIgnorePetraShutter = 0    # 0 = use the Petra Shutter, 1 = ignore the Petra shutter
 
+        self.NUMBER_ASICS = 128 
 
 # CCC stuff for Xfel C&C
 
@@ -385,9 +493,16 @@ class LpdFemClient(FemClient):
 
         self.TRAIN_ID_LENGTH = 64   # nr bits
 
-        self.femModuleId = [0] * 16; # module ID for header
+        self.femModuleId = [0] * 16 # module ID for header
 
-        self.NR_CLOCKS_PER_FAST_CMD = 22
+        # NR_CLOCKS_PER_FAST_CMD  can be changed starting at f/w vers 010002c7   
+        # 22 => 4.5 MHz ; 30 => 3.33 MHz ; 40 => 2.5 MHz
+        #self.NR_CLOCKS_PER_FAST_CMD = 22    # 22
+        
+        self.asic_command_padding = 2       # extra padding zeros = number of clocks
+        
+        self.NR_CLOCKS_PER_FAST_CMD_XFEL = 22    
+        self.ASIC_COMMAND_ACTIVE_BITS = 20    
         
         self.CCC_PATTERN_VETO_BRAM_SIZE_BYTES = 1024
 
@@ -449,7 +564,7 @@ class LpdFemClient(FemClient):
 
         # Number of Delay Taps for IODELAY on CC cmd and veto inputs;
         # Min = 0 ; Max = 63 ; Default = 0 
-        self.cccIoDelayNumberTaps = 4   # 16  # 4            
+        #self.cccIoDelayNumberTaps = 10   # 16  # 4            
        
         # Minimum to avoid malfunction of FEM AsicRx logic and PPC Emulation = 1
         # Minimum to avoid Pipeline data corruption = 2
@@ -479,7 +594,7 @@ class LpdFemClient(FemClient):
                          
         # LpdClient Software Version  ; Read Only  
         # Default to following value     
-        self.femLpdClientVersion = 0x1000000f
+        self.femLpdClientVersion = 0x10000022
 
         # init value for train id (only used if cccSystemMode = 0)  lower 32b value 
         # Min = 0 ; Max = 0xffffffff ; Default = 1 
@@ -511,13 +626,24 @@ class LpdFemClient(FemClient):
 # latency computed from asic command file
         self.asic_command_latency = self.LPD_PIPELINE_LATENCY_MIN                  
         self.asic_command_start_write_pointers = 0                  
-        self.asic_command_start_trigger_pointers = 0                  
+        self.asic_command_start_trigger_pointers = 0     
+
+        self.femAsicCommandLength = 22
+
+        self.asicRxGainAlgorithmType = 0     # 0 = AsicRX gain select algorithm uses old style fixed at max thresholds, 1 = uses Bram programmable gain thresholds
+
+        # start with common thresholds for all 128 asics  ; 64 threshold levels (each of size 64 adc counts)
+        # adc_data is 12b with MINIMIM signal => adc_data = $fff ; FULL SCALE = $000
+        # asicRxGainThreshold = 1-64 (thresh exceeded   1 : adc_data <= $fc0; 64 : adc_data <= $000 FULL SCALE)
+        
+        self.asicRxGainThresholdx100 = 64    # x100
+        self.asicRxGainThresholdx10 = 64     # x10
 
 # Internal variables to track readout state, run wait policy and number of trains received during acquisition
         self.readout_is_enabled = False
         self.num_trains_received = 0
         self.run_no_wait = False
-        
+
 # End New Params for Karabo API
 #=========================================================================================================              
        
@@ -1042,6 +1168,13 @@ class LpdFemClient(FemClient):
         for i in range(0, nr_regs//2):
             print("reg %2d = $%08X     %2d = $%08X"   % ((i*2),   self.rdmaRead(base_addr+(i*2), 1)[0], (i*2+1), self.rdmaRead(base_addr+(i*2+1), 1)[0]))
 
+    def dump_regs_hex_decr(self, base_addr, nr_regs):
+        ''' Hex dump of registers '''
+        
+        print("rdma base addr = $%08X [COUNTING DOWN ADDRESS]:" % base_addr) 
+        for i in range(0, nr_regs//2):
+            print("reg %2d = $%08X     %2d = $%08X"   % ((i*2),   self.rdmaRead(base_addr-(i*2), 1)[0], (i*2+1), self.rdmaRead(base_addr-(i*2+1), 1)[0]))
+
     def dump_regs_hex_coe(self, base_addr, nr_regs):
         ''' Hex dump of registers in single column ; for pasting bram contents into .coe '''
         
@@ -1239,7 +1372,7 @@ class LpdFemClient(FemClient):
         print("Waiting %s seconds.." % theDelay, end=' ')
         sys.stdout.flush()
         time.sleep(theDelay)
-        print("\tDone!")
+        print("\tPPC Reset Done!")
 
     def config_data_gen(self):
         ''' Configure data generator '''                        
@@ -1257,7 +1390,7 @@ class LpdFemClient(FemClient):
 ## ASIC Parameters Setup
 #########################################################        
 
-        print("Prepare and Load ASIC Parameters")
+        print("Prepare and Load ASIC Setup Parameters")
         
         # Phase delay of sync of slow clock wrt asic reset
         self.rdmaWrite(self.fem_ctrl_0+13, self.femAsicSetupClockPhase)
@@ -1322,8 +1455,19 @@ class LpdFemClient(FemClient):
             if self.femAsicEnableMask[3] & 0xff000000 != 0:
                 module_mask[9-1] = 1
 
-        if self.femDebugLevel >= 2:
-            print("Loading Asic Setup Params in Modules : [%s] ..." %', '.join(map(str, module_mask)))
+
+            if self.femDebugLevel >= 2:
+                print("Loading Asic Setup Params in Modules : [%s] ..." %', '.join(map(str, module_mask)))
+
+        # If asic command length is not default for XFEL then change the CLOCK DIV for ASIC operating clock mode accordingly
+        # So far ONLY implemented for parallel loading of slow setup params
+        if (self.femAsicCommandLength != self.NR_CLOCKS_PER_FAST_CMD_XFEL):        
+            if self.femAsicSetupLoadMode == 0:  # Only if Parallel loading of asic setup params            
+                print(("*ATTENTION: self.femAsicCommandLength = %d ; will change CLOCK_DIV in PARALLEL load of slow bit stream to match" %(self.femAsicCommandLength)))
+            else:
+                raise FemClientError("**WARNING: Non Standard Asic Command length is NOT supported if DAISY CHAIN loading of slow bit stream is used")
+                print(("**WARNING: self.femAsicCommandLength = %d ; Non Standard Asic Command length is NOT supported if DAISY CHAIN loading of slow bit stream is used" %(self.femAsicCommandLength)))
+
 
 #        # extract the asic params from slow xml file (once only)
         t1 = datetime.now()
@@ -1380,12 +1524,48 @@ class LpdFemClient(FemClient):
 #########################################################        
 
         print("Prepare ASIC Command Sequence")
+        
+        ###################
+                
+        self.toggle_bits(self.fem_ctrl_0+11, 23)    # main reset ccc 
+                
+        padding = (self.rdmaRead(self.fem_ctrl_top2 + 7, 1)[0] & 0x7f)  
+        print(("INFO: Before Changing Asic Command Length. Fem fast state machine using asic command padding = %d clocks" %(padding)))  
+
+        if (self.femAsicCommandLength != self.NR_CLOCKS_PER_FAST_CMD_XFEL):
+        #if 0:
+            print(("*ATTENTION: ASIC COMMAND LENGTH (clocks) = %d" %(self.femAsicCommandLength)))  
+            if 1:
+                print ("*ATTENTION: config_asic_ccc_fast_clock_div() sends fast command sequence to asic to change command length ; all subseqent asic commands must have the NEW length " )  
+                self.config_asic_ccc_fast_clock_div()   # sends fast command sequence to asic to change asic clock mode ;  asic command length changes immediately afterwards
+                time.sleep(5)
+        else:
+            print(("INFO: ASIC COMMAND LENGTH (clocks) = %d" %(self.femAsicCommandLength)))    # for XFEL operation at 4.5 MHz
+        
+        #print("Dump of FEM Registers : ASIC FAST CTRL")
+        #self.dump_regs_hex(self.fast_cmd_0, 12)
+
+        #print("Dump of FEM Registers : ASIC FAST BRAM")
+        #self.dump_regs_hex(self.fast_cmd_1, 12)
+
+        # setting asic command length for fem fast and veto state machines
+        #asic_command_padding = self.femAsicCommandLength - self.ASIC_COMMAND_ACTIVE_BITS
+        if 1:
+            self.rdmaWrite(self.fem_ctrl_top2 + 7, (self.asic_command_padding & 0x7f)) 
+        else:
+            print ("****TEST: Deliberately NOT changing asic command padding. Expect not get data from asic!")  
+            
+                                   
+        padding = (self.rdmaRead(self.fem_ctrl_top2 + 7, 1)[0] & 0x7f)  
+        print(("INFO: Fem fast state machine now using asic command padding = %d clocks" %(padding)))  
+
+        #####################
 
         self.toggle_bits(self.fem_ctrl_0+11, 23)    # main reset ccc 
 
         if self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC: # For legacy f/w not using PPC readout path
             
-            print("Legacy F/W not using PPC readout path")
+            print("** WARNING: Not using PPC in readout path")
 
             if self.cccSystemMode != 0:   # if self.use_ccc_vetos == 1:
     
@@ -1454,6 +1634,7 @@ class LpdFemClient(FemClient):
 
         #  asicrx gain selection
         if self.femAsicGainOverride:
+            print("** WARNING: AsicRx Gain Selection may be OVERRIDDEN from xml command file")
             self.enable_femAsicGainOverride()    # Using fast cmd file commands 
         else:
             self.disable_femAsicGainOverride()   # Using S/W register
@@ -1627,12 +1808,12 @@ class LpdFemClient(FemClient):
             print("start_length = %d, stop_length =%d: " % (start_length, stop_length))
         
         
-        print("Number of Asic Setup Commands = %d (Nr clocks =%d): " % (start_length, start_length*self.NR_CLOCKS_PER_FAST_CMD))
+        print("Number of Asic Setup Commands = %d (Nr clocks =%d): " % (start_length, start_length*self.femAsicCommandLength))
 
         #self.asic_command_start_write_pointers  = fileCmdSeqComplete.getNumStartWritePointers()
         #self.asic_command_start_trigger_pointers  = fileCmdSeqComplete.getNumStartTriggerPointers()
         #if self.asic_command_start_write_pointers != 1 or self.asic_command_start_trigger_pointers != 1:
-            #print("*** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers))
+            #print("** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers))
 
         #self.asic_command_latency  = fileCmdSeqComplete.getLatency() + 1
         #if self.femDebugLevel >= 1:
@@ -1666,20 +1847,20 @@ class LpdFemClient(FemClient):
 # start delay to send fast cmds is then obtained from measured start veto and known nr of fast setup asic xml cmds
 # extra fixed term for internal logic delays
 # changed to (ccc_start_nwords-1) so that 1st trigger flag set goes out in xray pulse immediately after trigger pointer start
-        ccc_start_delay = self.cccVetoStartDelay - ((ccc_start_nwords-1) * self.NR_CLOCKS_PER_FAST_CMD) + 1
+        ccc_start_delay = self.cccVetoStartDelay - ((ccc_start_nwords-1) * self.femAsicCommandLength) + 1
         if ccc_start_delay < 0 :
             print("*** ERROR: ILLEGAL C&C Start Delay  ccc_start_delay =%d: " %(ccc_start_delay))
             print("Setting  ccc_start_delay to  0 ")
             ccc_start_delay = 0
         
         self.rdmaWrite(self.ccc_delay_reg + 1, ccc_start_delay)   # start delay   
-        if self.femDebugLevel >= 3:
+        if self.femDebugLevel >= 1:
             print("ccc_start_delay =%d  [$%08x]: " % (ccc_start_delay, ccc_start_delay))
 
 # TESTING veto logic
   # add a fixed delay to force a stop after some specificed nr of trigger/vetos
         #nr_bunch_cmds_before_stop = self.NR_BUNCHES_IN_TRAIN 
-        #self.cccStopDelay = self.cccVetoStartDelay + self.NR_CLOCKS_PER_FAST_CMD * nr_bunch_cmds_before_stop 
+        #self.cccStopDelay = self.cccVetoStartDelay + self.femAsicCommandLength * nr_bunch_cmds_before_stop 
           
         self.rdmaWrite(self.ccc_delay_reg + 2, self.cccStopDelay)   # stop delay now from api                
         if self.femDebugLevel >= 3:
@@ -1690,7 +1871,7 @@ class LpdFemClient(FemClient):
         fast_bram_size = self.FAST_BRAM_SIZE_BYTES;   # size in 32b words
         self.zero_regs(self.fast_cmd_1, fast_bram_size)  
 
-        if self.femDebugLevel >= 1:
+        if self.femDebugLevel >= 3:
             print("cleared the asic command bram")
 
         # Load the command BRAM with Start and Stop sequences
@@ -1698,13 +1879,13 @@ class LpdFemClient(FemClient):
         # Nb If NOT using ccc vetos the start section is loaded with COMPLETE command file  <== ***
         start_addr = self.fast_cmd_1 + start_offset
         self.fem_fast_bram_setup(start_addr, encodedSequenceStart, nr_wordsStart)
-        if self.femDebugLevel >= 1:
+        if self.femDebugLevel >= 3:
             print("Passed fem_fast_bram_setup with start_addr")
 
         # stop section will be empty when using ccc vetos
         stop_addr = self.fast_cmd_1 + stop_offset
         self.fem_fast_bram_setup(stop_addr, encodedSequenceStop, nr_wordsStop)
-        if self.femDebugLevel >= 1:
+        if self.femDebugLevel >= 3:
             print("Passed fem_fast_bram_setup with stop_addr")
 
         # for new CCC design must ensure the last word in bram is single command eg single NOP (not with nop loop)
@@ -1911,6 +2092,10 @@ class LpdFemClient(FemClient):
         # Setup the ASIC RX IP block
         self.fem_asic_rx_setup(self.asic_srx_0, self.femAsicEnableMaskRemap, no_asic_cols, no_asic_cols_per_frm)
 
+        if (self.femAsicGain == 0 and self.asicRxGainAlgorithmType == 1):    # using gain select alg version with variable thresholds
+            # Setup the ASIC RX Gain Threshold BRAMs 
+            self.fem_asic_rx_threshold_bram_setup()
+                         
         if (self.femDataSource != self.RUN_TYPE_ASIC_DATA_VIA_PPC): # for LEGACY F/W only
 
             # NEW ; use info on nr triggers coming with readout strobe from CCC to determine how many images to process
@@ -1929,11 +2114,11 @@ class LpdFemClient(FemClient):
         else:   # To support NEW F/W for PPC readout ;
             
             if self.cccProvideNumberImages == False:
-                print("**WARNING: LEGACY mode using Trigger Flags from asic command file.")
-                print("**WARNING: Number of Images to readout was set from parameter in config xml file")
+                print("* ATTENTION: Trigger Flags will be generated by asic command xml file.")
+                print("* ATTENTION: Number of Images to readout is set from parameter in readout config xml file")
                 self.register_clear_bit(self.asic_srx_0+0, 12)
             else:
-                print("INFO: Number of Images readout was according to CCC information")
+                print("INFO: Number of Images to readout is set by number of C&C novetos")
                 self.register_set_bit(self.asic_srx_0+0, 12)
             
 
@@ -2040,17 +2225,48 @@ class LpdFemClient(FemClient):
                 elif self.femAsicGainRemap == 11:
                     asic_rx_start_delay = asic_rx_start_delay + self.asicRxOffsetSlowReadout_x1
 
-# !!!!!! TESTING ONLY
         # adjust capture point start to Nth image
         #asic_rx_start_delay = asic_rx_start_delay + 0 * self.nr_clocks_to_readout_image
 
-        if self.femDebugLevel >= 2:
+        # Final adjustments needed for operation with different asic command lengths (different asic sampling rates)  
+        # offsets measured on 2-tile with f/w 02cc
+        if self.femAsicCommandLength == 20: 
+            asic_rx_start_delay -= 8
+        elif self.femAsicCommandLength == 22: 
+            asic_rx_start_delay -= 0
+        elif self.femAsicCommandLength == 25: 
+            asic_rx_start_delay -= 6
+        elif self.femAsicCommandLength == 30:
+            asic_rx_start_delay -= 4
+        elif self.femAsicCommandLength == 40:  
+            asic_rx_start_delay -= 0
+        elif self.femAsicCommandLength == 50: 
+            asic_rx_start_delay -= 8
+            asic_rx_start_delay += (1 * self.nr_clocks_to_readout_image)     # to skip the first image which is "blank"
+        elif self.femAsicCommandLength == 100: 
+            asic_rx_start_delay -= 0
+            asic_rx_start_delay += (1 * self.nr_clocks_to_readout_image)     # to skip the first image which is "blank"
+        else:  
+            print(("** WARNING: Unrecognised asic command length = %d ; No change to asic_rx_start_delay." %(self.femAsicCommandLength)))  
+
+        
+        if self.femDebugLevel >= 1:
             print("asic_rx_start_delay = %s " % asic_rx_start_delay)
         
         if self.femAsicRxCmdWordStart:
             self.rdmaWrite(self.fem_ctrl_0+14, asic_rx_start_delay) # NEW using strobe from fast command file         
         else:
-            self.rdmaWrite(self.fem_ctrl_0+4, asic_rx_start_delay)  # OLD using fixed offsets          
+            self.rdmaWrite(self.fem_ctrl_0+4, asic_rx_start_delay)  # OLD using fixed offsets  
+                    
+        # TEST of gain select algorithm with variable gain thresholds (stored in Bram)                
+        if (self.femAsicGain == 0 and self.asicRxGainAlgorithmType == 1):    # using gain select alg version with variable thresholds
+            self.register_set_bit(self.asic_srx_0+11, 0)
+            print("* ATTENTION: Using AsicRx Gain Select Algorithm with Programmable Thresholds in BRAM")
+            print("asicRxGainThresholdx100 = %d ; asicRxGainThresholdx10 = %d" %(self.asicRxGainThresholdx100, self.asicRxGainThresholdx10))
+        else:
+            self.register_clear_bit(self.asic_srx_0+11, 0)
+            
+
 
     def bitShifting(self, arg1, direction):
         ''' Bit shift "arg1" by "direction" bits (positive = left shifting, negative = right shifting) '''
@@ -2212,7 +2428,7 @@ class LpdFemClient(FemClient):
         self.dump_regs_hex(self.fast_cmd_0, 12)
 
         print("Dump of FEM Registers : ASIC FAST BRAM")
-        self.dump_regs_hex(self.fast_cmd_1, 16)
+        self.dump_regs_hex(self.fast_cmd_1, 80)
         #self.dump_regs_hex(self.fast_cmd_1+(self.FAST_BRAM_SIZE_BYTES*4)-16, 30) # deliberately looking beyond end of physical BRAM
 
         print("Dump of FEM Registers : ASIC SLOW CTRL")
@@ -2256,14 +2472,57 @@ class LpdFemClient(FemClient):
             self.register_clear_bit(base_addr_0+0, 1)  
         
         if load_mode == 0:  # parallel load same in all 8 asics (and same in all sensor modules)     
-            #print("Slow Ctrl RAM")
+            print("Slow Ctrl RAM  Parallel load")
             self.rdmaWrite(base_addr_1, dataTuple[0])
 
             # clear bram after data
             data_len = len(dataTuple[0])
             rem_len = 20 # just clear a few locations beyond last valid data
             self.zero_regs(self.slow_ctr_1+data_len, rem_len)
-            #print('slow dataTuple len = %d : rem_len = %d' %(data_len, rem_len))
+            print('slow dataTuple len = %d ($%x): rem_len = %d' %(data_len, data_len, rem_len))
+            #time.sleep(20)
+            
+            
+            if (self.femAsicCommandLength != self.NR_CLOCKS_PER_FAST_CMD_XFEL):
+            #if 1:
+
+                print(("*ATTENTION: Adjusting Slow Setup params value of CLOCK DIV to match new femAsicCommandLength = %d" %(self.femAsicCommandLength)))  
+
+                #print "Dump of FEM Registers : ASIC SLOW BRAM"
+                #self.dump_regs_hex(self.slow_ctr_1+data_len-8, 16) 
+                            
+                # clock_div is 8 bits at the very END of slow bit stream (msb is in penultimate word, but is not used in any of the values)
+                # so only need to change final word to match new clock_div
+                # as clock_div is at end of parallel load data can simply overwrite other bits in the final word
+                # nb clock_div bits are also reversed in bram
+                
+                if self.femAsicCommandLength == 20: 
+                    new_clock_div = 0x40
+                elif self.femAsicCommandLength == 22:   
+                    new_clock_div = 0x20    # xfel 4.5 MHz
+                elif self.femAsicCommandLength == 25:  
+                    new_clock_div = 0x10 
+                elif self.femAsicCommandLength == 30: 
+                    new_clock_div = 0x08
+                elif self.femAsicCommandLength == 40:   
+                    new_clock_div = 0x04 
+                elif self.femAsicCommandLength == 50: 
+                    new_clock_div = 0x02 
+                elif self.femAsicCommandLength == 100: 
+                    new_clock_div = 0x01
+                else:  
+                    print(("**WARNING: Unrecognised asic command length = %d ; Setting asic CLOCK DIV to 4.5 MHz default." %(self.femAsicCommandLength)))  
+                    new_clock_div = 0x20    # xfel 4.5 MHz
+                    
+                #new_clock_div = 0   # TEST to break  !!!!!!!!!
+                self.rdmaWrite(self.slow_ctr_1+data_len - 1, new_clock_div)
+                
+                #print "Dump of FEM Registers : ASIC SLOW BRAM"
+                #self.dump_regs_hex(self.slow_ctr_1+data_len-8, 16) 
+                
+            else:
+                print(("INFO: No change to Slow Setup params value of CLOCK DIV as femAsicCommandLength = %d" %(self.femAsicCommandLength)))  
+
 
         else:
             # TESTING daisy chain loading
@@ -2511,7 +2770,7 @@ class LpdFemClient(FemClient):
         gain_select = self.femAsicGainRemap
         reg_addr    = self.asic_srx_0+0
         prev_value  = self.rdmaRead(reg_addr, 1)[0] 
-        new_value   = prev_value | (gain_select & 0x0000000f)
+        new_value   = (prev_value & 0xfffffff0) | (gain_select & 0x0000000f)
         self.rdmaWrite(reg_addr, new_value)
 
     def soft_reset_ll_frm_gen(self, base_address):
@@ -3000,13 +3259,13 @@ class LpdFemClient(FemClient):
         print("TOP SP3 FPGA Firmware vers = %08x" % self.get_top_sp3_firmware_vers())
         print("CFG SP3 FPGA Firmware vers = %08x" % self.get_cfg_sp3_firmware_vers())
         if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
-            print("*** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different") 
+            print("** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different") 
         
         print(" Embedded PPC Software:") 
-        print("  PPC1 s/w vers = %08x" % self.ppc1_get_sw_vers()) 
-        print("  PPC2 s/w vers = %08x" % self.ppc2_get_sw_vers())
+        print("     PPC1 (Image Processing) s/w vers = %08x" % self.ppc1_get_sw_vers()) 
+        print("     PPC2 (GbE Server) s/w vers = %08x" % self.ppc2_get_sw_vers())
 
-        print(" Python LPD Client Software Vers = %08x:"  %(self.femLpdClientVersion))
+        print(" Python LPD Karabo Client s/w vers = %08x:"  %(self.femLpdClientVersion))
 
         print("=======================================================================") 
 
@@ -3055,7 +3314,7 @@ class LpdFemClient(FemClient):
 
         if self.cccSystemMode != 0 :
             if self.cccEmulationMode == True:
-                print("***WARNING: C&C Start Cmds are being EMULATED inside the FEM. Set param 'cccEmulationMode'=False to run with a REAL C&C System.")
+                print("** WARNING: C&C Start Cmds are being EMULATED inside the FEM. Set param 'cccEmulationMode'=False to run with a REAL C&C System.")
             
         print("================")
         print("OS name is %s" %(os.name))
@@ -3071,6 +3330,26 @@ class LpdFemClient(FemClient):
 
             return
             
+        # asic clock div padding for asic timing 
+        if self.femAsicCommandLength == 20:       
+            self.asic_command_padding = 0 
+        elif self.femAsicCommandLength == 22:      
+            self.asic_command_padding = 2 
+        elif self.femAsicCommandLength == 25:      
+            self.asic_command_padding = 5  
+        elif self.femAsicCommandLength == 30:      
+            self.asic_command_padding = 10 
+        elif self.femAsicCommandLength == 40:      
+            self.asic_command_padding = 20 
+        elif self.femAsicCommandLength == 50:       
+            self.asic_command_padding = 30 
+        elif self.femAsicCommandLength == 100:      
+            self.asic_command_padding = 80
+        else:    
+            print("**WARNING: self.femAsicCommandLength = %d is unrecognised value. Leaving at Asic default = %d" %(self.femAsicCommandLength))
+                        
+        print("INFO: self.femAsicCommandLength = %d ; " %(self.femAsicCommandLength))
+
         #print("RESET PPC1...")
         #self.reset_ppc(1)  
        
@@ -3080,6 +3359,11 @@ class LpdFemClient(FemClient):
 
         if 1:
             self.resetFwModulesToggleTristateIO()
+
+        if ( (self.rdmaRead(self.fem_ctrl_0+18, 1)[0] & 0x00000200) != 0 ):        
+                print("INFO: Firmware build with Fixed IO DELAY on C&C Command and Veto inputs (for XFEL C&C Fanout)") 
+        else:       
+                print("** WARNING: Firmware build WITHOUT Fixed IO DELAY on C&C Command and Veto inputs (this is test firmware for LCLS)") 
 
         # Use FEM 100 Mhz Osc as Asic clock source during first stages of configuration
         # As need 100 Mhz clock source for rdma access for SP3 IO channel selection during loading of Slow Setup Paramaters  
@@ -3093,7 +3377,6 @@ class LpdFemClient(FemClient):
             self.cccIoDelayIntervalBetweenTaps = 100
             
             self.cccIoDelayChangeEnable = True
-            self.cccIoDelayTapDirection = 0 # 0 = increase ; 1 = decrease
             
             # reset to CCC IDELAY logic  sets tap back to default value
             if self.femDebugLevel >= 0:        
@@ -3103,7 +3386,7 @@ class LpdFemClient(FemClient):
         
             print("CCC IODELAY cccIoDelayNumberTaps = %d" %(self.cccIoDelayNumberTaps))
             print("CCC IODELAY cccIoDelayIntervalBetweenTaps = %d" %(self.cccIoDelayIntervalBetweenTaps))
-            print("CCC IODELAY cccIoDelayTapDirection = %d" %(self.cccIoDelayTapDirection))
+            #print("CCC IODELAY cccIoDelayTapDirection = %d" %(self.cccIoDelayTapDirection))
             
             self.rdmaWrite(self.fem_ctrl_top2+5, self.cccIoDelayNumberTaps)
             
@@ -3122,13 +3405,13 @@ class LpdFemClient(FemClient):
             self.toggle_bits(self.fem_ctrl_top2+4, 4)   # start tap shifts
         
                      
-        # downscale factor (applied to asic clock) for clock output on CC RJ45 used for Power Card synchronisation
-        self.rdmaWrite(self.fem_ctrl_top2+0, self.cccOutputClockDownscale)
-        print("Power Card synchronisation output clock downscale factor changed to %d" %(self.cccOutputClockDownscale))
+            # downscale factor (applied to asic clock) for clock output on CC RJ45 used for Power Card synchronisation
+            self.rdmaWrite(self.fem_ctrl_top2+0, self.cccOutputClockDownscale)
+            print("Power Card synchronisation output clock downscale factor changed to %d" %(self.cccOutputClockDownscale))
         
         #TODO: Is Comment Still Relevant?
-        # send Reset to ASIC pin . Shouldn't be necessary? as short reset pulse is sent before trigger sequence.
-        self.send_long_asic_reset()
+        # send Reset to ASIC pin . (short reset pulse is also sent immediately before asic setup params are transmitted.)
+        self.send_long_asic_reset()  
         
         self.clear_ll_monitor(self.llink_mon_asicrx)
         self.clear_ll_monitor(self.llink_mon_0)
@@ -3229,7 +3512,7 @@ class LpdFemClient(FemClient):
                 self.asic_command_start_write_pointers  = fileCmdSeqComplete.getNumStartWritePointers()
                 self.asic_command_start_trigger_pointers  = fileCmdSeqComplete.getNumStartTriggerPointers()
                 if self.asic_command_start_write_pointers != 1 or self.asic_command_start_trigger_pointers != 1:
-                    print("*** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers))
+                    print("** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers))
         
                 self.asic_command_latency  = fileCmdSeqComplete.getLatency() + 1
                 if self.femDebugLevel >= 1:
@@ -3237,13 +3520,13 @@ class LpdFemClient(FemClient):
 
                 if self.pipelineLatency != 0:
                     pPipelineLatency = self.pipelineLatency    # override asic command file and use Karabo parameter
-                    print("*** WARNING: Overriding Asic PipeLine Latency using Karabo parameter = %d" %(pPipelineLatency))
+                    print("** WARNING: Overriding Asic PipeLine Latency using Karabo parameter = %d" %(pPipelineLatency))
                 else:
                     pPipelineLatency = self.asic_command_latency    # use computed value from asic command file
                     print("Use PipeLine Latency value computed from Asic Command File contents = %d" %(pPipelineLatency))
                 
                 if pPipelineLatency < self.LPD_PIPELINE_LATENCY_MIN:
-                    print("*** WARNING Asic PipeLine Latency was %d LESS THAN Minumum value = %d" %(pPipelineLatency, self.LPD_PIPELINE_LATENCY_MIN))
+                    print("** WARNING Asic PipeLine Latency was %d LESS THAN Minumum value = %d" %(pPipelineLatency, self.LPD_PIPELINE_LATENCY_MIN))
                     print("Setting PipeLine Latency = %d" %(pPipelineLatency))
                     pPipelineLatency = self.LPD_PIPELINE_LATENCY_MIN
                     
@@ -3278,7 +3561,7 @@ class LpdFemClient(FemClient):
                 ##AcqMode = FemTransaction.ACQ_MODE_TX_ONLY
                 AcqMode = FemTransaction.ACQ_MODE_NORMAL
                 if (AcqMode == FemTransaction.ACQ_MODE_TX_ONLY):
-                    print("*** WARNING TESTING  FemTransaction.ACQ_MODE_TX_ONLY ") 
+                    print("** WARNING TESTING  FemTransaction.ACQ_MODE_TX_ONLY ") 
                 self.acquireSend(FemTransaction.CMD_ACQ_CONFIG, AcqMode, BufSize, BufCount, NumAcqs, Coalesce)
                 
                 # init buffer memory takes a while
@@ -3327,6 +3610,18 @@ class LpdFemClient(FemClient):
                 print("INFO config_asic_modules  ")
             self.config_asic_modules()
             
+        
+        # Test of C&C veto bits capture
+        print("config_ccc_veto_input_bram")
+        self.config_ccc_veto_input_bram()
+        
+        #print("Dump of FEM Registers : ASIC FAST CTRL")
+        #self.dump_regs_hex(self.fast_cmd_0, 12)
+        
+        #print("Dump of FEM Registers : ASIC FAST BRAM")
+        #self.dump_regs_hex(self.fast_cmd_1, 256)          
+
+        
         # Configure PPC AFTER asic modules as get pipeline latency from Asic Command file configuration
         
         
@@ -3411,15 +3706,54 @@ class LpdFemClient(FemClient):
         
         self.toggle_bits(self.lpd_checker+0, 0)  # reset to load these new reg values to h/w
 
+    '''
+        --------------------------------------------------------
+        --------------------------------------------------------
+    '''
+    
+    def quick_configure(self):
+        '''
+            Load configuration registers for a selected set of params into Fem as required for LCLS tests:
+        '''
+        # Requires selected params to have been updated with their set() function beforehand
+        
+        # All settings will be overridden by subsequent "full" configuration()
+        # so can load registers such as Fixed Rate Trigger module even if not currently running with software triggers
+        
+        # ONLY supports standard system operating mode which has PPC1 controlling the data readout
+
+        print("=============== Quick Configure for LCLS Beam Test =========================") 
+        
+
+        # 1) numberTrains
+        
+        # NB don't need to reconfigure PPC1 buffers as it doesn't need to know number of trains (ti simply responds to run start and stop commands).
+        
+        if self.numberTrains == 0:
+            self.set_ext_trig_strobe_max(0xffffffff)   # NB if 0 trains requested actually want to run forever so no limit to strobe number
+        else:
+            self.set_ext_trig_strobe_max(self.numberTrains)   # max nr of strobes allowed to trigger train readout (i.e. terminal train count)
+        
+        # set up Fixed Rate Trigger module
+        self.rdmaWrite(self.fem_ctrl_top2+2, self.numberTrains)   
+             
+
+        # 2) femStartTrainDelay
+        self.set_ext_trig_strobe_delay(self.ext_trig_strobe_delay)    
+
+        # 3) femAsicGain
+        self.femAsicGainRemap = self.FEM_ASIC_GAIN_LOOKUP[self.femAsicGain]
+        self.asicrx_override_gain(self.femAsicGainRemap)
+        print("femAsicGain = %d ; femAsicGainRemap = %d" %(self.femAsicGain, self.femAsicGainRemap) )
+
+
+
+
     def run(self, no_wait=False):
         '''
             Execute run
         '''
         try:
-
-            #return 1       # TEST 
-
-
             print("--")           
             print("Starting DAQ Run ...")
 
@@ -3525,10 +3859,10 @@ class LpdFemClient(FemClient):
                         else:
                             petra_shutter_open = self.get_petra_shutter_status()
                             if petra_shutter_open == 0:
-                                print("*** WARNING: Petra Shutter is Closed; Status = %d" %petra_shutter_open)
-                                print("*** Triggers will not be accepted whilst Shutter is Closed.")
-                                print("*** Please either open shutter...")
-                                print("*** ... or abort this run and invert shutter polarity or ignore shutter")
+                                print("** WARNING: Petra Shutter is Closed; Status = %d" %petra_shutter_open)
+                                print("** Triggers will not be accepted whilst Shutter is Closed.")
+                                print("** Please either open shutter...")
+                                print("** ... or abort this run and invert shutter polarity or ignore shutter")
                         
                     nr_trains = 0
     
@@ -3666,6 +4000,25 @@ class LpdFemClient(FemClient):
                     self.run_no_wait = True                    
                     return
 
+               
+            # Run Summary printout
+            #self.print_run_summary()
+
+            # Switch back to FEM Osc clock as Asic clock source for run end       
+            print("---------------")
+            #print("Switching back to FEM Osc clock as Asic clock source at run end")       
+            #self.config_asic_clock_source_from_osc()
+            
+            print("No change to source of Asic clock at run end")  
+    
+            print("--")           
+            print("======== Run Completed ===========")
+            print("--")           
+        
+        
+            #print "Stopping PPC1 Readout CMD_ACQ_STOP. "
+            #self.acquireSend(FemTransaction.CMD_ACQ_STOP)
+
         except FemClientError as e:
             raise e
         except Exception as e:
@@ -3736,7 +4089,7 @@ class LpdFemClient(FemClient):
                 print("=======================================================================") 
 
                 if self.get_top_sp3_firmware_vers() != self.get_bot_sp3_firmware_vers() :
-                    print("*** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different") 
+                    print("** WARNING:  Firmware Versions in SP3 IO TOP and BOTTOM are Different") 
             
             
             if self.femDebugLevel >= 0:
@@ -3748,6 +4101,10 @@ class LpdFemClient(FemClient):
                 print("Dump of FEM Registers : ASIC DATA RX")
                 self.dump_regs_hex(self.asic_srx_0, 32)
                 
+            if self.femDebugLevel >= 2:
+                print("Dump of FEM Registers : ASIC DATA RX: GAIN THRESHOLD BRAM")
+                self.dump_regs_hex_decr(self.asic_srx_thr_bram + 63 * 64 + 63, 2*64) 
+
             if self.femDebugLevel >= 3:
                 print("Dump of FEM Registers : XAUI link 1")
                 self.dump_regs_hex(self.udp_10g_0, 16)
@@ -3783,13 +4140,16 @@ class LpdFemClient(FemClient):
                 self.dump_regs_hex(self.fast_cmd_0, 12)
                 
                 print("Dump of FEM Registers : ASIC FAST BRAM")
-                self.dump_regs_hex(self.fast_cmd_1, 64)          
+                self.dump_regs_hex(self.fast_cmd_1, 80)          
                 
                 print("Dump of FEM Registers : ASIC SLOW CTRL")
                 self.dump_regs_hex(self.slow_ctr_0, 12)
         
-                print("Dump of FEM Registers : ASIC SLOW BRAM")
-                self.dump_regs_hex(self.slow_ctr_1+16, 8)   # 1024
+                print("Dump of FEM Registers : ASIC SLOW BRAM (start)")
+                self.dump_regs_hex(self.slow_ctr_1+16, 16)   # 1024 , 8
+
+                print("Dump of FEM Registers : ASIC SLOW BRAM (end)")
+                self.dump_regs_hex(self.slow_ctr_1+0x7b-8, 16) 
 
                 #print("Dump of FEM Registers : ASIC FAST BRAM COE")
                 #self.dump_regs_hex_coe(self.fast_cmd_1, 1024)
@@ -3819,6 +4179,11 @@ class LpdFemClient(FemClient):
                 print("Dump of FEM Registers :LPD CHECKER")
                 self.dump_regs_hex(self.lpd_checker, 24)
 
+            if self.femDebugLevel >= 1:
+                print("Dump of FEM Registers : CC VETO INPUT CTRL")
+                self.dump_regs_hex(self.cc_veto_input, 4)
+                print("Dump of FEM Registers : CC VETO INPUT BRAM")
+                self.dump_regs_hex(self.cc_veto_input+0x10000, 8*4+1)
 
             if self.femDebugLevel >= 5:
                 print("Register Settings")
@@ -3863,7 +4228,7 @@ class LpdFemClient(FemClient):
                     if self.cccSystemMode == 2:  
                         print(" Number Triggers sent to Asic = %d" %(cccNumTriggers))
                         if self.cccProvideNumberImages == False: 
-                            print("*** WARNING: Overiding Number of Images to readout = %d" %(self.numberImages))
+                            print("* ATTENTION: Overiding Number of Images to readout = %d" %(self.numberImages))
     
                 else:
                     cccTrainId = 0
@@ -3932,7 +4297,7 @@ class LpdFemClient(FemClient):
                 print("---------------")
                 print("Dump of PPC Shared BRAM:")
                 if self.femDebugLevel >= 3:
-                    self.dump_raw_memory_hex(self.ppc_shared_bram_base, 40)
+                    self.dump_raw_memory_hex(self.ppc_shared_bram_base, 110)
                     self.dump_raw_memory_hex(self.ppc_shared_bram_base+128*4, 8)
                 self.ppc1_status_dump(self.ppc_shared_bram_base)
 
@@ -3974,7 +4339,10 @@ class LpdFemClient(FemClient):
                 print("Extra counters:")
                 print(" Num AsicRx Starts Received = %d" %(start_asic_rx_count))
                 print(" Num CC Resets Received = %d" %(ccc_reset_count))
-                print(" Num AsicRx Fifo Full counts = %d" %(asic_fifo_full_count))
+                if asic_fifo_full_count > 0:
+                    print("** WARNING: Num AsicRx Fifo Full counts = %d" %(asic_fifo_full_count))
+                else:
+                    print(" Num AsicRx Fifo Full counts = %d" %(asic_fifo_full_count))
                 if self.cccSystemMode == 0:
                     print(" Num Train Gen Strobes = %d" %(self.get_ext_trig_strobe_count()))
                     print(" Num Train Gen Strobes Accepted = %d" %(self.get_ext_trig_strobe_accepted_count()))
@@ -3991,12 +4359,31 @@ class LpdFemClient(FemClient):
                 print("\tNum STOP_READ_OUT Cmds sent to Asic = %d" %(stop_read_out_count))
     
             if self.cccProvideNumberImages == False:
-                print("**WARNING: LEGACY mode using Trigger Flags from asic command file.")
-                print("**WARNING: Number of Images to readout was set from parameter in config xml file")
-
+                print("* ATTENTION: Trigger Flags were generated by asic command xml file.")
+                print("* ATTENTION: Number of Images to readout was set from parameter in readout config xml file")
+                
             print(">>> Asic Command File Latency = %d pulses" %(self.asic_command_latency))
             if self.asic_command_start_write_pointers != 1 or self.asic_command_start_trigger_pointers != 1:
-                print("*** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers))
+                print("** WARNING: Asic Command File had = %d StartWritePointers and %d StartTriggerPointers" %(self.asic_command_start_write_pointers, self.asic_command_start_trigger_pointers))
+
+            #print("")
+            ppc1_throttle_count = self.rdmaRead(self.fem_ctrl_top2+25, 1)[0]
+            if (ppc1_throttle_count > 0):
+                print("** WARNING: PPC1 Throttle assert count = \t %d " %(ppc1_throttle_count))
+            else:
+                print("PPC1 Throttle assert count = \t %d " %(ppc1_throttle_count))
+    
+            # Tx eth packet counters 
+            eth_pkt_tx_sof_count = self.rdmaRead(self.udp_10g_0+28, 1)[0]
+            eth_pkt_tx_eof_count = self.rdmaRead(self.udp_10g_0+29, 1)[0]
+            #print("")
+            print("10G Eth Packet Counters:")
+            if (eth_pkt_tx_sof_count == eth_pkt_tx_eof_count):
+                print("Number of 10GbE Pkts Transmitted = \t %10d " %(eth_pkt_tx_sof_count))
+            else:
+                print("** WARNING: 10GbE Pkts transmitted (sof)  = \t %10d " %(eth_pkt_tx_sof_count))
+                print("** WARNING: 10GbE Pkts transmitted (eof) = \t %10d " %(eth_pkt_tx_eof_count))
+
 
             print("--")           
             print("======== Summary End ===========")
@@ -4766,6 +5153,46 @@ class LpdFemClient(FemClient):
         '''
         return self.cccOutputClockDownscale
 
+    def femAsicCommandLengthSet(self, aValue):
+        ''' Set asic command length which determines asic sampling rate
+        '''
+        self.femAsicCommandLength = aValue
+
+    def femAsicCommandLengthGet(self):
+        ''' Get asic command length which determines asic sampling rate
+        '''
+        return self.femAsicCommandLength
+
+    def asicRxGainAlgorithmTypeSet(self, aValue):
+        ''' Set AsicRx Gain Select Algorithm type (will be used if femAsicGain = 0)
+        '''
+        self.asicRxGainAlgorithmType = aValue
+
+    def asicRxGainAlgorithmTypeGet(self):
+        ''' Get AsicRx Gain Select Algorithm type
+        '''
+        return self.asicRxGainAlgorithmType
+
+    def asicRxGainThresholdx100Set(self, aValue):
+        ''' Set AsicRx Gain Select Threshold for x100 (same value for all 128 asics) ; used when AsicRxGainAlgorithmType = 1
+        '''
+        self.asicRxGainThresholdx100 = aValue
+
+    def asicRxGainThresholdx100Get(self):
+        ''' Get AsicRx Gain Select Threshold for x100 (same value for all 128 asics) 
+        '''
+        return self.asicRxGainThresholdx100
+
+    def asicRxGainThresholdx10Set(self, aValue):
+        ''' Set AsicRx Gain Select Threshold for x10 (same value for all 128 asics) ; used when AsicRxGainAlgorithmType = 1
+        '''
+        self.asicRxGainThresholdx10 = aValue
+
+    def asicRxGainThresholdx10Get(self):
+        ''' Get AsicRx Gain Select Threshold for x10 (same value for all 128 asics)
+        '''
+        return self.asicRxGainThresholdx10
+
     def femReadoutActiveGet(self):
         ''' Get the readout active state
         '''
@@ -4880,13 +5307,14 @@ class LpdFemClient(FemClient):
         print("Recycle Buffer Tx = %d" %(nrErrorsRecycleBufferTx))          
         print("Committing BDRingToHW Rx = %d" %(nrErrorsRingToHWRx))          
         print("Committing BDRingToHW Tx = %d" %(nrErrorsRingToHWTx))        
-        print("Asic PipeLine Overflow = %d" %(nrErrorsPipelineOverflow))          
+        print("Asic PipeLine Pulses Overflow = %d" %(nrErrorsPipelineOverflow))  
+                
         #print("Pipeline Skips FULL= %d" %(nrErrorsPipelineSkipFull))
         if totalErrors == 0:         
             print("OK TOTAL PPC1 Errors = %d" %(totalErrors)) 
         else:                  
             print("***")
-            print("*** TOTAL PPC1 Errors = %d" %(totalErrors))
+            print("*** ERROR: TOTAL PPC1 Errors = %d" %(totalErrors))
             print("***")
         
              
@@ -4945,9 +5373,11 @@ class LpdFemClient(FemClient):
         return self.rawRead(addr, 1)[0]
 
     def ppc2_get_sw_vers(self):
-        ''' Get ppc1 code vers shared memory directly using raw memory mapped space (not rdma reg space) '''
+        ''' Get ppc2 code vers shared memory directly using raw memory mapped space (not rdma reg space) '''
         
-        addr = self.ppc_shared_bram_base + 13*4
+        # This location in shared bram (used by ppc1 for counters) is reserved for storing ppc2 s/w version
+        
+        addr = self.ppc_shared_bram_base + 22*4
         return self.rawRead(addr, 1)[0]
 
     def ppc_enable_pipeline_emulation(self):
@@ -5022,3 +5452,136 @@ class LpdFemClient(FemClient):
         
         return reg   
     
+    def config_ccc_veto_input_bram(self):
+        ''' Configure CC veto input bram capture  '''
+    
+        # clear previous values
+        
+        #self.zero_regs(self.cc_veto_input+0x10000, 64)     # bram for veto bits readback
+        self.fill_regs(self.cc_veto_input+0x10000, 80, 0xbeefface)     # bram for veto bits readback
+        
+        
+        self.rdmaWrite(self.cc_veto_input + 0, 4)       # number of trains to capture               
+        self.rdmaWrite(self.cc_veto_input + 1, 32)      # number of words (32b) per train to capture               
+
+    def config_asic_ccc_fast_clock_div(self):
+        ''' changes asic clock div mode ; asic command length changes immediately afterwards '''
+        
+        # Setup the fast command block bram with command sequence for clock_div_sel
+        
+        # Load command sequence pattern memory
+        self.rdmaWrite(self.fast_cmd_1+0, 0x00200000)  
+        self.rdmaWrite(self.fast_cmd_1+1, 0x00169694)  
+        self.rdmaWrite(self.fast_cmd_1+2, 0x00200000)  
+        self.rdmaWrite(self.fast_cmd_1+3, 0x00218000)  
+        self.rdmaWrite(self.fast_cmd_1+4, 0x00200000)   
+        self.rdmaWrite(self.fast_cmd_1+5, 0x00169694)   
+        self.rdmaWrite(self.fast_cmd_1+6, 0x00200000)   
+        self.rdmaWrite(self.fast_cmd_1+7, 0x00215000)  # clock_div_sel
+
+        # setup RESET offset and length for fast statemachine coresponding to  bram contents above
+        self.rdmaWrite(self.fast_cmd_0+6, 0)      
+        self.rdmaWrite(self.fast_cmd_0+7, 8)    # nwords (including nops)
+        
+        # send fast sm "reset" to load bram content to asics
+        # asic will immediately switch to clock_div value already loaded by asic slow setup params                 
+        self.toggle_bits(self.fast_cmd_0+1, 0)   # NB control reg is at addr offset +1 (not 0)
+
+
+    def fem_asic_rx_threshold_bram_setup(self):
+        ''' Setup the XFEL FEM ASIC RX Gain Threshold BRAM contents '''
+         
+        # 128 BRAMs each 2**15 address locations deep (only 2**12 locations are used)
+        
+        #print("fem_asic_rx_threshold_bram_setup()")
+                
+        if 0:   # TEST only
+            if (self.asicRxGainThresholdx100 == 0 and self.asicRxGainThresholdx10 == 0):
+                print(" asicRxGainThresholdx100 = %d ;  asicRxGainThresholdx10 = %d" %(self.asicRxGainThresholdx100, self.asicRxGainThresholdx10))
+                print("Reuse Gain Threshold BRAM contents from previous configuration.") 
+                return 0                       
+                
+        base_addr = self.asic_srx_thr_bram
+        asic_rx_bram_size = 0x10000
+
+        # convert threshold level to threshold on bram address
+        thr_x100 = 64 - self.asicRxGainThresholdx100
+        thr_x10 = 64 - self.asicRxGainThresholdx10
+        #print(" thr_x100 = %d ;  thr_x10 = %d" %(thr_x100, thr_x10))
+        print(" asicRxGainThresholdx100 = %d ; => x100 Gain Threshold exceeded if asic data adc count <= $%03x [<= %d dec]" %(self.asicRxGainThresholdx100, thr_x100 * 64, thr_x100 * 64))
+        print("  asicRxGainThresholdx10 = %d ; => x10  Gain Threshold exceeded if asic data adc count <= $%03x [<= %d dec]" %(self.asicRxGainThresholdx10, thr_x10 * 64, thr_x10 * 64))
+                            
+        asicrx_bram_thr_data = [0]*4096
+        bram_index = 0xfff
+                    
+        # Proper thresholds in first asic only (same value is now BROADCAST written to all 128 asic brams)
+        
+        for asic_nr in range (0, 1):    # NB data from chip 0 is BROADCAST to ALL 128 chips
+            
+            asic_rx_bram_base = base_addr | (asic_nr<<15 & 0x003f8000)
+            #print("asic_nr = %d ; asic_rx_bram_base = $%08x " %(asic_nr, asic_rx_bram_base))
+            
+            for addr_x100 in range (63, -1, -1):
+                
+                #print("addr_x100 = %d " %(addr_x100))
+
+                if addr_x100 == thr_x100:
+                    data_x100 = 0x3   # use spare bit to mark first level above threshold
+                elif addr_x100 < thr_x100:
+                    data_x100 = 0x1
+                else:
+                    data_x100 = 0x0
+                    
+                for addr_x10 in range (63, -1, -1):
+                                            
+                    if addr_x10 == thr_x10:
+                        data_x10 = 0x3   # use spare bit to mark first level above threshold
+                    elif addr_x10 < thr_x10:
+                        data_x10 = 0x1
+                    else:
+                        data_x10 = 0x0
+                        
+                    addr = addr_x100 * 64 + addr_x10
+                    data = (data_x100<<2 | data_x10)
+                                                                
+                    # replacing multiple rdmaWrite with block write of tuple 
+                    #self.rdmaWrite(asic_rx_bram_base+addr, data)  
+                    # get data for ntuple to block write to rdma
+                    asicrx_bram_thr_data[bram_index] = data                  
+                    #read_data = self.rdmaRead(asic_rx_bram_base+addr, 1)[0]
+                    
+                    bram_index = bram_index-1
+
+                    #if (addr_x100 >= 62):
+                        #print("Write: addr = $%08x (%d) ; data = $%01x" %(asic_rx_bram_base+addr, addr, data))
+                        #print("Readback : addr = $%08x (%d) ; data = $%01x" %(asic_rx_bram_base+addr, addr, read_data))
+
+
+            # get data for ntuple to block write to rdma
+            asicrx_bram_thr_data_tuple = tuple([asicrx_bram_thr_data[i] for i in range(4096)])
+            # Block write to BRAM
+            self.rdmaWrite(asic_rx_bram_base, asicrx_bram_thr_data_tuple)    # Assumes using later PPC GbE server code which can handle large dataTuples
+
+        
+        if 0:
+            #for asic_nr in range (0, self.NUMBER_ASICS):  
+            for asic_nr in range (0, 1):  
+                #asic_rx_bram_base = base_addr + asic_nr*asic_rx_bram_size 
+                asic_rx_bram_base = base_addr | (asic_nr<<15 & 0x003f8000)
+                for addr_x100 in range (63, -1, -1):
+                    
+                    if 0:
+                        for addr_x10 in range (63, -1, -1):
+                            #addr_x10 = 63
+                            addr = addr_x100 * 64 + addr_x10
+                            
+                            if (addr_x100 >= 63):
+                                data = self.rdmaRead(asic_rx_bram_base+addr, 1)[0]
+                                print("Readback : addr = $%08x (%d) ; data = $%01x" %(asic_rx_bram_base+addr, addr, data))
+                        
+                    else:
+                        addr_x10 = 63
+                        addr = addr_x100 * 64 + addr_x10                    
+                        if (addr_x100 >= 63):                    
+                            self.dump_regs_hex_decr(asic_rx_bram_base + addr, 2*64) 
+

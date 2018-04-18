@@ -149,20 +149,27 @@ class LpdAsicSetupParams(object):
             if self.loadMode:   print("*** Serial (Daisy chain) load mode")
             else:               print("*** Parallel load mode")
         
-        #    paramsDict = {'dictKey'                     : [width, posn, values, skip, tags[bPixelTagRequired, bIndexTagRequired, bNestedList]]}
-        self.paramsDict = {'mux_decoder_default'         : [3,  -1,     self.perAsicParam(),    0, [False, False, False]],
-                           'mux_decoder'                 : [3,  0,      self.perPixelParam(),   0, [True,  False, True]],
-                           'feedback_select_default'     : [1,  -1,     self.perAsicParam(),    0, [False, False, False]],
-                           'feedback_select'             : [1,  1536,   self.perPixelParam(),   3, [True,  False, True]],
-                           'self_test_decoder_default'   : [3,  -1,     self.perAsicParam(),    0, [False, False, False]],
-                           'self_test_decoder'           : [3,  1537,   self.perPixelParam(),   1, [True,  False, True]],
-                           'self_test_enable'            : [1,  3584,   self.perAsicParam(),    0, [False, False, False]],
-                           'daq_bias_default'            : [5,  -1,     self.perAsicParam(),    0, [False, False, False]],
-                           'daq_bias'                    : [5,  3585,   self.perDaqParam(),     0, [False, True,  True]],
-                           'spare_bits'                  : [5,  3820,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 5 bits cover everything
-                           'filter_control'              : [20, 3825,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 20 bits cover everything
-                           'adc_clock_delay'             : [20, 3845,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 20 bits cover everything
-                           'digital_control'             : [40, 3865,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 40 bits cover everything
+        #    paramsDict = {'dictKey'                        : [width, posn, values, skip, tags[bPixelTagRequired, bIndexTagRequired, bNestedList]]}
+        self.paramsDict = {'mux_decoder_default'            : [3,  -1,     self.perAsicParam(),    0, [False, False, False]],
+                           'mux_decoder'                    : [3,  0,      self.perPixelParam(),   0, [True,  False, True]],
+                           'feedback_select_default'        : [1,  -1,     self.perAsicParam(),    0, [False, False, False]],
+                           'feedback_select'                : [1,  1536,   self.perPixelParam(),   3, [True,  False, True]],
+                           'self_test_decoder_default'      : [3,  -1,     self.perAsicParam(),    0, [False, False, False]],
+                           'self_test_decoder'              : [3,  1537,   self.perPixelParam(),   1, [True,  False, True]],
+                           'self_test_enable'               : [1,  3584,   self.perAsicParam(),    0, [False, False, False]],
+                           'daq_bias_default'               : [5,  -1,     self.perAsicParam(),    0, [False, False, False]],
+                           'daq_bias'                       : [5,  3585,   self.perDaqParam(),     0, [False, True,  True]],
+                           'spare_bits'                     : [5,  3820,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 5 bits cover everything
+                           'filter_control'                 : [20, 3825,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 20 bits cover everything
+                           'adc_clock_delay'                : [20, 3845,   self.perAsicParam(),    0, [False, False, False]],       # Special Case: 20 bits cover everything
+                           'digital_control'                : [40, 3865,   self.perAsicParam(),    0, [False, False, False]],      # Superseded by individual keys
+                           # Making (most of) Digital Control keyword accessible
+                           'digital_reserved'               : [4, 3865,   self.perAsicParam(),     0, [False, False, False]],
+                           'digital_reset3'                 : [7, 3869,   self.perAsicParam(),     0, [False, False, False]],
+                           'digital_reset2'                 : [7, 3876,   self.perAsicParam(),     0, [False, False, False]],
+                           'digital_reset1'                 : [7, 3883,   self.perAsicParam(),     0, [False, False, False]],
+                           'digital_clock_counter_offset'   : [7, 3890,   self.perAsicParam(),     0, [False, False, False]],
+                           # clock_select configurable elsewhere - therefore NOT made accessible here
                            }
 
         # Variables used to override feedback_select_default, self_test_decoder_default, if different value(s) supplied by setOverrideValues() function
@@ -775,14 +782,14 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             daqBiasDefault = 31
             selfTestDecoderDefault = 7
             digitalControlIdx3 = 18
-    
+
             stringCmdXml = '''<?xml version="1.0"?>
                                 <lpd_setup_params name="TestString">
                                     <self_test_decoder pixel="%i" value="5"/>
                                     <self_test_decoder_default value="%i"/>
                                     <mux_decoder pixel="2" value="0"/>
                                     <mux_decoder_default value="3"/>
-                                    
+
                                     <daq_bias index="46" value="%i"/>
                                     <daq_bias_default value="%i"/>
                                     <daq_bias index="2" value="0"/>
@@ -795,7 +802,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             bDebug = False
             # Parse XML and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
-#                                           bDebug=True, debugKey="daq_bias",
+                                           #bDebug=True, debugKey="daq_bias",
                                            loadMode=LpdAsicSetupParamsTest.PARALLEL)
             paramsObj.encode()
             
@@ -877,7 +884,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         
             # Parse XML and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
-#                                           bDebug=True,
+                                           #bDebug=True,
                                            loadMode=LpdAsicSetupParamsTest.PARALLEL)
 
             with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
@@ -987,10 +994,10 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         
             # Parse XML and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
-#                                           bDebug=True, debugKey="self_test_decoder",
+                                           #bDebug=True, debugKey="self_test_decoder",
                                            loadMode=LpdAsicSetupParamsTest.PARALLEL)
             encodedSequence = paramsObj.encode()
-    
+
             # Display an excerp of each dictionary key's value:
             paramsObj.displayDictionaryValues()        
     
@@ -1021,7 +1028,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
         
             # Parse XML and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
-#                                           bDebug=True, debugKey="feedback_select",
+                                           #bDebug=True, debugKey="feedback_select",
                                            loadMode=LpdAsicSetupParamsTest.PARALLEL)
             encodedSequence = paramsObj.encode()
     
@@ -1130,30 +1137,30 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             expectedSequence[117] = 0x42108421
             expectedSequence[118] = 0x10842108
             expectedSequence[119] = 0x842
-    
+
             # Bit shift expected sequence by 6 bits
             expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-            
+
             # Toggle display debug information
             if False:
                 self.furtherInformation('testDaqBiasDefault() (value = 1)', encodedSequence[0], expectedSequence)
             else:
                 self.assertEqual(encodedSequence[0], expectedSequence, 'testDaqBiasDefault() (value = 1) failed !')
-    
-    
+
+
             stringCmdXml = '''<?xml version="1.0"?>
                                 <lpd_setup_params name="testsDaqBiasDefault_2">
                                     <daq_bias_default value="31"/>
                                 </lpd_setup_params>
             '''
-    
+
             # Parse XML and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=LpdAsicSetupParamsTest.PARALLEL)
             encodedSequence = paramsObj.encode()
-                
+
             # How the sequence should end up looking
             expectedSequence = [0] * LpdAsicSetupParams.SEQLENGTH
-    
+
             expectedSequence[112] = 0xFFFFFFFE
             expectedSequence[113] = 0xFFFFFFFF
             expectedSequence[114] = 0xFFFFFFFF
@@ -1162,10 +1169,10 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             expectedSequence[117] = 0xFFFFFFFF
             expectedSequence[118] = 0xFFFFFFFF
             expectedSequence[119] = 0xFFF
-    
+
             # Bit shift expected sequence by 6 bits
             expectedSequence = self.bitshiftSlowControlArray(expectedSequence, 6)
-    
+
             # Toggle display debug information
             if False:
                 self.furtherInformation('testDaqBiasDefault() (value = 31)', encodedSequence[0], expectedSequence)
@@ -1208,7 +1215,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                     <spare_bits value="31"/>
                                 </lpd_setup_params>
             '''
-        
+
             # Parse XML and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=LpdAsicSetupParamsTest.PARALLEL)
             encodedSequence = paramsObj.encode()
@@ -1227,8 +1234,8 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                 self.furtherInformation('testSpareBits()', encodedSequence[0], expectedSequence)
             else:
                 self.assertEqual(encodedSequence[0], expectedSequence, 'testSpareBits() failed !')
-        
-            
+
+
         def testFilterControl(self):
             '''
                 Test that the key filter_control works
@@ -1263,8 +1270,8 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                 self.furtherInformation('testFilterControl()', encodedSequence[0], expectedSequence)
             else:
                 self.assertEqual(encodedSequence[0], expectedSequence, 'testFilterControl() failed !')
-    
-            
+
+
         def testSpecificMuxDecoderValues(self):
             '''
                 Test a set of specific mux_decoder key values
@@ -1301,7 +1308,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             expectedSequence[2] =  0x100
             expectedSequence[47] = 0x22080000
             expectedSequence[48] = 0x10
-            
+
             # Toggle display debug information
             if False:
                 self.furtherInformation('testSpecificMuxDecoderValues()', encodedSequence[0], expectedSequence)
@@ -1369,9 +1376,8 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
     
             # Parse XML, apply external override values and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, pixelFeedbackOverride=1, pixelSelfTestOverride=4, 
-                                           preambleBit=6, loadMode=LpdAsicSetupParamsTest.SERIAL, 
-    #                                       bDebug=True
-                                           )
+                                           #bDebug=True
+                                           preambleBit=6, loadMode=LpdAsicSetupParamsTest.SERIAL) 
             encodedSequence = paramsObj.encode()
             
             # How the sequence should end up looking
@@ -1418,9 +1424,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
     
             # Parse XML and encode
-            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=0, 
-    #                                       bDebug=True
-                                           )
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
+                                           #bDebug=True
+                                           loadMode=0)
             encodedSequence = paramsObj.encode()
     
             # How the sequence should end up looking
@@ -1537,37 +1543,323 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                 self.furtherInformation('testNewSyntaxPartTwo()', encodedSequence, expectedSequence)
             else:
                 self.assertEqual(encodedSequence, expectedSequence, 'testNewSyntaxPartTwo() failed !')
-
-    def testNewSyntaxPartThree(self):
-        '''
-            Test the new serial loading mode syntax works
-        '''
-        stringCmdXml = '''<?xml version="1.0"?>
-                            <lpd_setup_params name="testNewSyntaxPartThree">
-                               <mux_decoder pixel="491" value="4"/>
-                            </lpd_setup_params>
-        '''
-        # Parse XML and encode
-        paramsObj = LpdAsicSetupParams(stringCmdXml, 
-                                       #pixelFeedbackOverride=1, pixelSelfTestOverride=2, 
-                                       preambleBit=6, loadMode=LpdAsicSetupParamsTest.SERIAL,
-#                                       bDebug=True#, debugKey="mux_decoder"
-                                       )
-        encodedSequence = paramsObj.encode()
-
-        # How the sequence should end up looking
-        expectedSequence = [[0 for sequence in xrange(LpdAsicSetupParams.SEQLENGTH)] for totalAsics in xrange( 16*8)]
-
-        for idx in range(len(expectedSequence)):
-            expectedSequence[idx][12] = expectedSequence[idx][12] + 0x200 # <mux_decoder pixel="491" value="4"/>
+ 
+        def testNewSyntaxPartThree(self):
+            '''
+                Test the new serial loading mode syntax works
+            '''
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="testNewSyntaxPartThree">
+                                   <mux_decoder pixel="491" value="4"/>
+                                </lpd_setup_params>
+            '''
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, 
+                                           #pixelFeedbackOverride=1, pixelSelfTestOverride=2, 
+                                           #bDebug=True#, debugKey="mux_decoder",
+                                           preambleBit=6, loadMode=LpdAsicSetupParamsTest.SERIAL)
+            encodedSequence = paramsObj.encode()
+     
+            # How the sequence should end up looking
+            expectedSequence = [[0 for sequence in xrange(LpdAsicSetupParams.SEQLENGTH)] for totalAsics in xrange( 16*8)]
+     
+            for idx in range(len(expectedSequence)):
+                expectedSequence[idx][12] = expectedSequence[idx][12] + 0x200 # <mux_decoder pixel="491" value="4"/>
+             
+            # Toggle display debug information
+            if True:#False: #
+                self.furtherInformation('testNewSyntaxPartThree()', encodedSequence, expectedSequence)
+            else:
+                self.assertEqual(encodedSequence, expectedSequence, 'testNewSyntaxPartThree() failed !')
+     
         
-        # Toggle display debug information
-        if True:#False: #
-            self.furtherInformation('testNewSyntaxPartThree()', encodedSequence, expectedSequence)
-        else:
-            self.assertEqual(encodedSequence, expectedSequence, 'testNewSyntaxPartThree() failed !')
+        def testDigitalReserved(self):
+            '''
+                Tests that updating a parameter works as expected
+            '''
+            digitalReserved = 8
+            dictKey = "digital_reserved"    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <%s value="%i"/>
+                                </lpd_setup_params>
+            ''' % (dictKey, digitalReserved)
+    
+            bDebug = False
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6,
+                                           #bDebug=True, debugKey="digital_reserved",
+                                           loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            paramsObj.encode()
+            
+            # Display an excerp of each dictionary key's value:
+            paramsObj.displayDictionaryValues()
+      
+            # Expected encoded values
+            expectedVals = paramsObj.fetchParamsDictionary()[dictKey]
+            # The actual values
+            digitalReservedVals = paramsObj.getParamValue(dictKey)
 
+            if bDebug: print("digital_reserved:\n", digitalReservedVals[2][0], "expectedVals:\n", expectedVals[2][0])
+            self.assertEqual(digitalReservedVals[2][0], expectedVals[2][0], 'testDigitalReserved() failed to update key \"%s\" as expected' % dictKey)
+            
+            expectedVals = [4, 3865, [digitalReserved]*8, 0, [False, False, False]]
+            digitalControlVals = paramsObj.getParamValue(dictKey)
+            
+            if bDebug: print("Encoded: \n", digitalControlVals, "\n", expectedVals)
+            # Compare width, posn, values, skip, tags each agree
+            self.assertEqual(digitalControlVals[0],     expectedVals[0], "testDigitalReserved() key \"%s\", 'width' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[1],     expectedVals[1], "testDigitalReserved() key \"%s\", 'posn' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[2][0],  expectedVals[2], "testDigitalReserved() key \"%s\", 'value' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[3],     expectedVals[3], "testDigitalReserved() key \"%s\", 'skip' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[4],     expectedVals[4], "testDigitalReserved() key \"%s\", 'tags' disagree" % dictKey)
 
+        def testDigitalReservedExcessiveValue(self):
+            '''
+                Tests updating digital_reserved beyond valid range throws exception
+            '''
+            digitalReserved = 16
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestString">
+                                    <digital_reserved value="%i"/>
+                                </lpd_setup_params>
+            ''' % digitalReserved
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            self.assertRaises(LpdAsicSetupParamsInvalidRangeError, paramsObj.encode)
+        
+        def testDigitalReset3(self):
+            '''
+                Tests that updating a parameter works as expected
+            '''
+            digitalReset3 = 8
+            dictKey = "digital_reset3"
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalReset3">
+                                    <%s value="%i"/>
+                                </lpd_setup_params>
+            ''' % (dictKey, digitalReset3)
+            
+            bDebug = False
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6,
+                                           #bDebug=True, debugKey="digital_reset3",
+                                           loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            paramsObj.encode()
+            
+            # Display an excerp of each dictionary key's value:
+            paramsObj.displayDictionaryValues()
+            
+            # Expected encoded values
+            expectedVals = paramsObj.fetchParamsDictionary()[dictKey]
+            # The actual values
+            digitalReset3Vals = paramsObj.getParamValue(dictKey)
+            
+            if bDebug: print("digital_reset3:\n", digitalReset3Vals[2][0], "expectedVals:\n", expectedVals[2][0])
+            self.assertEqual(digitalReset3Vals[2][0], expectedVals[2][0], 'testDigitalReset3() failed to update key \"%s\" as expected' % dictKey)
+
+            expectedVals = [7, 3869, [digitalReset3]*8, 0, [False, False, False]]
+            digitalControlVals = paramsObj.getParamValue(dictKey)
+            
+            if bDebug: print("Encoded: \n", digitalControlVals, "\n", expectedVals)
+            # Compare width, posn, values, skip, tags each agree
+            self.assertEqual(digitalControlVals[0],     expectedVals[0], "testDigitalReset3() key \"%s\", 'width' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[1],     expectedVals[1], "testDigitalReset3() key \"%s\", 'posn' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[2][0],  expectedVals[2], "testDigitalReset3() key \"%s\", 'value' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[3],     expectedVals[3], "testDigitalReset3() key \"%s\", 'skip' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[4],     expectedVals[4], "testDigitalReset3() key \"%s\", 'tags' disagree" % dictKey)
+ 
+        def testDigitalReset3ExcessiveValue(self):
+            '''
+                Tests updating digital_reset3 beyond valid range throws exception
+            '''
+            digitalReset3 = 128
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalReset3">
+                                    <digital_reset3 value="%i"/>
+                                </lpd_setup_params>
+            ''' % digitalReset3
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            self.assertRaises(LpdAsicSetupParamsInvalidRangeError, paramsObj.encode)
+        
+        def testDigitalReset2(self):
+            '''
+                Tests that updating a parameter works as expected
+            '''
+            digitalReset3 = 8
+            dictKey = "digital_reset2"
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalReset2">
+                                    <%s value="%i"/>
+                                </lpd_setup_params>
+            ''' % (dictKey, digitalReset3)
+    
+            bDebug = False
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
+                                           #bDebug=True, debugKey="digital_reset2",
+                                           loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            paramsObj.encode()
+            
+            # Display an excerp of each dictionary key's value:
+            paramsObj.displayDictionaryValues()
+            
+            # Expected encoded values
+            expectedVals = paramsObj.fetchParamsDictionary()[dictKey]
+            # The actual values
+            digitalReset2Vals = paramsObj.getParamValue(dictKey)
+
+            if bDebug: print("digital_reset2:\n", digitalReset2Vals[2][0], "expectedVals:\n", expectedVals[2][0])
+            self.assertEqual(digitalReset2Vals[2][0], expectedVals[2][0], 'testDigitalReset2() failed to update key \"%s\" as expected' % dictKey)
+
+            expectedVals = [7, 3876, [digitalReset3]*8, 0, [False, False, False]]
+            digitalControlVals = paramsObj.getParamValue(dictKey)
+            
+            if bDebug: print("Encoded: \n", digitalControlVals, "\n", expectedVals)
+            # Compare width, posn, values, skip, tags each agree
+            self.assertEqual(digitalControlVals[0],     expectedVals[0], "testDigitalReset2() key \"%s\", 'width' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[1],     expectedVals[1], "testDigitalReset2() key \"%s\", 'posn' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[2][0],  expectedVals[2], "testDigitalReset2() key \"%s\", 'value' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[3],     expectedVals[3], "testDigitalReset2() key \"%s\", 'skip' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[4],     expectedVals[4], "testDigitalReset2() key \"%s\", 'tags' disagree" % dictKey)
+ 
+        def testDigitalReset2ExcessiveValue(self):
+            '''
+                Tests updating digital_reset2 beyond valid range throws exception
+            '''
+            digitalReset3 = 128
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalReset2">
+                                    <digital_reset2 value="%i"/>
+                                </lpd_setup_params>
+            ''' % digitalReset3
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            self.assertRaises(LpdAsicSetupParamsInvalidRangeError, paramsObj.encode)
+    
+    
+        def testDigitalReset1(self):
+            '''
+                Tests that updating a parameter works as expected
+            '''
+            digitalReset1 = 8
+            dictKey = "digital_reset1"
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalReset1">
+                                    <%s value="%i"/>
+                                </lpd_setup_params>
+            ''' % (dictKey, digitalReset1)
+    
+            bDebug = False #True
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
+                                           #bDebug=True, debugKey="digital_reset2",
+                                           loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            paramsObj.encode()
+            
+            # Display an excerp of each dictionary key's value:
+            paramsObj.displayDictionaryValues()
+            
+            # Expected encoded values
+            expectedVals = paramsObj.fetchParamsDictionary()[dictKey]
+            # The actual values
+            digitalReset1Vals = paramsObj.getParamValue(dictKey)
+
+            if bDebug: print("digital_reset2:\n", digitalReset1Vals[2][0], "expectedVals:\n", expectedVals[2][0])
+            self.assertEqual(digitalReset1Vals[2][0], expectedVals[2][0], 'testDigitalReset1() failed to update key \"%s\" as expected' % dictKey)
+    
+            expectedVals = [7, 3883, [digitalReset1]*8, 0, [False, False, False]]
+    
+            digitalControlVals = paramsObj.getParamValue(dictKey)
+            
+            if bDebug: print("Encoded: \n", digitalControlVals, "\n", expectedVals)
+            # Compare width, posn, values, skip, tags each agree
+            self.assertEqual(digitalControlVals[0],     expectedVals[0], "testDigitalReset1() key \"%s\", 'width' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[1],     expectedVals[1], "testDigitalReset1() key \"%s\", 'posn' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[2][0],  expectedVals[2], "testDigitalReset1() key \"%s\", 'value' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[3],     expectedVals[3], "testDigitalReset1() key \"%s\", 'skip' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[4],     expectedVals[4], "testDigitalReset1() key \"%s\", 'tags' disagree" % dictKey)
+ 
+        def testDigitalReset1ExcessiveValue(self):
+            '''
+                Tests updating digital_reset2 beyond valid range throws exception
+            '''
+            digitalReset3 = 128
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalReset1">
+                                    <digital_reset2 value="%i"/>
+                                </lpd_setup_params>
+            ''' % digitalReset3
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            self.assertRaises(LpdAsicSetupParamsInvalidRangeError, paramsObj.encode)
+    
+        def testDigitalClockCounterOffset(self):
+            '''
+                Tests that updating a parameter works as expected
+            '''
+            digitalClockCounterOffset = 8
+            dictKey = "digital_clock_counter_offset"
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalClockCounterOffset">
+                                    <%s value="%i"/>
+                                </lpd_setup_params>
+            ''' % (dictKey, digitalClockCounterOffset)
+    
+            bDebug = False
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
+                                           #bDebug=True, debugKey="digital_clock_counter_offset",
+                                           loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            paramsObj.encode()
+            
+            # Display an excerp of each dictionary key's value:
+            paramsObj.displayDictionaryValues()
+      
+            # Expected encoded values
+            expectedVals = paramsObj.fetchParamsDictionary()[dictKey]
+            # The actual values
+            digitalCCOVals = paramsObj.getParamValue(dictKey)
+
+            if bDebug: print("digital_clock_counter_offset:\n", digitalCCOVals[2][0], "expectedVals:\n", expectedVals[2][0])
+            self.assertEqual(digitalCCOVals[2][0], expectedVals[2][0], 'testDigitalClockCounterOffset() failed to update key \"%s\" as expected' % dictKey)
+
+            expectedVals = [7, 3890, [digitalClockCounterOffset]*8, 0, [False, False, False]]
+            digitalControlVals = paramsObj.getParamValue(dictKey)
+            
+            if bDebug: print("Encoded: \n", digitalControlVals, "\n", expectedVals)
+            # Compare width, posn, values, skip, tags each agree
+            self.assertEqual(digitalControlVals[0],     expectedVals[0], "testDigitalClockCounterOffset() key \"%s\", 'width' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[1],     expectedVals[1], "testDigitalClockCounterOffset() key \"%s\", 'posn' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[2][0],  expectedVals[2], "testDigitalClockCounterOffset() key \"%s\", 'value' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[3],     expectedVals[3], "testDigitalClockCounterOffset() key \"%s\", 'skip' disagree" % dictKey)
+            self.assertEqual(digitalControlVals[4],     expectedVals[4], "testDigitalClockCounterOffset() key \"%s\", 'tags' disagree" % dictKey)
+ 
+        def testDigitalClockCounterOffsetExcessiveValue(self):
+            '''
+                Tests updating digital_clock_counter_offset beyond valid range throws exception
+            '''
+            digitalClockCounterOffset = 128
+    
+            stringCmdXml = '''<?xml version="1.0"?>
+                                <lpd_setup_params name="TestDigitalClockCounterOffset">
+                                    <digital_clock_counter_offset value="%i"/>
+                                </lpd_setup_params>
+            ''' % digitalClockCounterOffset
+    
+            # Parse XML and encode
+            paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, loadMode=LpdAsicSetupParamsTest.PARALLEL)
+            self.assertRaises(LpdAsicSetupParamsInvalidRangeError, paramsObj.encode)
+    
     def furtherInformation (self, parent, encoded, expected):
         '''
             Provide further debug information when a unit test fails

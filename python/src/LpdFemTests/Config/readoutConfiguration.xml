@@ -15,11 +15,11 @@
     <femStartTrainInhibit 	type="int" val="10168"/>        <!-- Inhibit period after each trigger [in ASIC clock cycles] MINIMUM: Duration of Cmd Seq XML file (!) -->
 															<!-- At PETRA for Trigger Rate = N Hz set ext_trig_strobe_inhibit = N x 10**7 x 22 / 192 -->
     <femStartTrainPolarity 	type="int" val="0"/>            <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
-    <femVetoPolarity 		type="int" val="1"/>            <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
+    <femVetoPolarity 		type="int" val="0"/>            <!-- External veto signal polarity 0=No inversion, 1=Invert signal -->
 
 	<!-- CCC Configuration commands -->
 	<cccSystemMode 			   type="int" val="0"/>			  	<!-- Clock & Control System Mode 0=Without C&C, 1=C&C without vetoes [ CRASHES!], 2=With C&C and vetoes -->
-    <cccEmulationMode          type="bool" val="True"/>        	<!--  Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
+    <cccEmulationMode          type="bool" val="False"/>        	<!--  Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
     <cccProvideNumberImages    type="bool" val="True"/>         <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) True=C&C decides, False=Use numberImages -->
     <cccVetoStartDelay         type="int" val="0"/>             <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
     <cccStopDelay              type="int" val="0"/>             <!-- Adjust timing of the stop (in steps of clock cycles) -->
@@ -56,7 +56,7 @@
     <tenGigUdpPacketLen 	type="int" val="8000"/>
 
     <femEnableTenGig 				type="bool" val="True"/>    <!-- Enables transmission of image data via 10GigE UDP interface -->
-    <femDataSource 					type="int"  val="1"/>       <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
+    <femDataSource 					type="int"  val="0"/>       <!-- 0=ASIC [via PPC], 1=ASIC [bypassing PPC], 2=Frame generator, 3=PPC [pattern data] -->
 
     <femAsicPixelFeedbackOverride	type="int"  val="1"/>   	<!-- Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
     <femAsicPixelSelfTestOverride	type="int"  val="-1"/>   	<!-- Override self-test enable:   0=disabled, 1-5=test pattern -->
