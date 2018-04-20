@@ -67,6 +67,10 @@
    <!--filter_control value="0"/-->
    <filter_control value="1"/>
    <adc_clock_delay value="0"/>
-   <digital_control value="4861427970"/>
+   <digital_reserved value="0"/>
+   <digital_reset3 value="9"/>
+   <digital_reset2 value="7"/>
+   <digital_reset1 value="7"/>
+   <digital_clock_counter_offset value="1"/>
 
 </lpd_setup_params> 

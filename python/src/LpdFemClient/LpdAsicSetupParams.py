@@ -536,7 +536,8 @@ class LpdAsicSetupParams(object):
 
             if key.endswith("_default") is False:
                 # All keys that does not end with "_default", and that does not contain a list of values
-                #    eg:     self_test_enable, spare_bits, filter_control, adc_clock_delay, digital_control
+                #    eg:     self_test_enable, spare_bits, filter_control, adc_clock_delay, digital_reserved, digital_reset3,
+                #             .., digital_clock_counter_offset
                 
                 keyValue = self.getParamValue(key)
 
@@ -781,8 +782,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             daqBiasIdx47Value = 11
             daqBiasDefault = 31
             selfTestDecoderDefault = 7
-            digitalControlIdx3 = 18
-
+            spareBitsValue = 18
             stringCmdXml = '''<?xml version="1.0"?>
                                 <lpd_setup_params name="TestString">
                                     <self_test_decoder pixel="%i" value="5"/>
@@ -794,10 +794,9 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                     <daq_bias_default value="%i"/>
                                     <daq_bias index="2" value="0"/>
                                     
-                                    <digital_control value="18"/>
                                     <spare_bits value="%i"/>
                                 </lpd_setup_params>
-            ''' % (selfTestPixelIndex, selfTestDecoderDefault, daqBiasIdx47Value, daqBiasDefault, digitalControlIdx3)
+            ''' % (selfTestPixelIndex, selfTestDecoderDefault, daqBiasIdx47Value, daqBiasDefault, spareBitsValue)
     
             bDebug = False
             # Parse XML and encode
@@ -856,16 +855,6 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             if bDebug: print("\nEnc: ", daq_biasVals[2][0][0], "\nExp: ", expectedVals[2])
             self.assertEqual(daq_biasVals[2][0][0], expectedVals[2], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
     
-            dictKey = 'digital_control'
-            index = 3
-            value = digitalControlIdx3
-            
-            expectedVals = [40, 3865, [value]*8, 0, [False, True, False]]
-    
-            digitalControlVals = paramsObj.getParamValue(dictKey)
-            
-            if bDebug: print("Encoded: \n", digitalControlVals[2][0], "\n", expectedVals[2])
-            self.assertEqual(digitalControlVals[2][0], expectedVals[2], 'testStringParse() failed to update key \"%s\" as expected' % dictKey)
 
         def testOutOfRangeKeyValueFails(self):
             '''
@@ -940,12 +929,36 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
                 paramsObj.setParamValue(dictKey, index, value)
     
-            # Test 40 bit width
-            dictKey = "digital_control"
-            value = 1099511627776
+            # Test 4 bit width
+            dictKey = "digital_reserved"
+            value = 2**4
             with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
                 paramsObj.setParamValue(dictKey, index, value)
         
+            # Test 7 bit width
+            dictKey = "digital_reset3"
+            value = 2**7
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+        
+            # Test 7 bit width
+            dictKey = "digital_reset2"
+            value = 2**7
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+
+            # Test 7 bit width
+            dictKey = "digital_reset1"
+            value = 2**7
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+
+            # Test 7 bit width
+            dictKey = "digital_clock_counter_offset"
+            value = 2**7
+            with self.assertRaises(LpdAsicSetupParamsInvalidRangeError):
+                paramsObj.setParamValue(dictKey, index, value)
+
         def testInvalidAttributeFails(self):
             '''
                 Tests that providing a tag with an attribute that isn't required will raise an exception
@@ -1331,7 +1344,7 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             
             # How the sequence should end up looking
             expectedSequence = [0x00000000] * LpdAsicSetupParams.SEQLENGTH
-            expectedSequence[LpdAsicSetupParams.SEQLENGTH-1] =  0x20
+            expectedSequence[LpdAsicSetupParams.SEQLENGTH-1] =  0
     
             expectedSequence[112] = 0x4B7B9EB0
             expectedSequence[113] = 0xBB3687A6
@@ -1408,7 +1421,6 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
             daq_biasValue = 31
             filterValue = 0xFFFFF
             adcValue = filterValue
-            digitalControlValue = 0xFFFFFFFFFF
             stringCmdXml = '''<?xml version="1.0"?>
                                 <lpd_setup_params name="testAllKeysAllValues">
                                     <mux_decoder_default value="7"/>
@@ -1419,20 +1431,26 @@ class LpdAsicSetupParamsTest(unittest.TestCase):
                                     <spare_bits value="31"/>
                                     <filter_control value="%i"/>
                                     <adc_clock_delay value="%i"/>
-                                    <digital_control value="%i"/>
+                                    <digital_reserved value="15"/>
+                                    <digital_reset3 value="127"/>
+                                    <digital_reset2 value="127"/>
+                                    <digital_reset1 value="127"/>
+                                    <digital_clock_counter_offset value="127"/>
                                 </lpd_setup_params>
-            ''' % (daq_biasValue, filterValue, adcValue, digitalControlValue)
-    
+            ''' % (daq_biasValue, filterValue, adcValue)
+            
             # Parse XML and encode
             paramsObj = LpdAsicSetupParams(stringCmdXml, preambleBit=6, 
-                                           #bDebug=True
-                                           loadMode=0)
+                                                       #bDebug=True
+                                                       loadMode=0)
             encodedSequence = paramsObj.encode()
-    
+                
+            
             # How the sequence should end up looking
             expectedSequence = [0xFFFFFFFF] * LpdAsicSetupParams.SEQLENGTH
             expectedSequence[0]= 0xFFFFFFC0
-            expectedSequence[ LpdAsicSetupParams.SEQLENGTH-1] = 0x7F
+            expectedSequence[ LpdAsicSetupParams.SEQLENGTH-1] = 0
+            expectedSequence[ LpdAsicSetupParams.SEQLENGTH-2] = 0x7fffffff
             
             # Toggle display debug information
             if False:
