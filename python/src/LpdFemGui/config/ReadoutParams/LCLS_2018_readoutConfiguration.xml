@@ -6,7 +6,7 @@
     
     <!-- Readout PC -->
     
-	<tenGig0DestMac type="str" val="00-07-43-13-ED-80"/>          <!-- te7grenadier's MAC address -->
+	<tenGig0DestMac type="str" val="00-07-43-13-ED-60"/>          <!-- te7garland 10GigE MAC address -->
     <!-- <tenGig0DestMac type="str" val="00-07-43-10-61-90"/>   -->
     <tenGig0DestIp type="str" val="10.0.0.1"/>
 	<!-- <tenGig0DestIp type="str" val="192.168.8.1"/>  -->
@@ -70,7 +70,7 @@ ch number of <trigger_flag_set/> in asic command xml ; Multiply by 3 for MULTIPL
     <cccProvideNumberImages type="bool" val="False"/>     <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
     
     <!-- 'User' Variables: -->
-    <femAsicEnableMask type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>
+    <femAsicEnableMask type="int"  val="0xFFFF0FF0, 0xFFFF03C0, 0xFF000240, 0x00FFFF00"/>
     <!--femAsicEnableMask type="int"  val="0x00000000, 0x00000000, 0x00000000, 0x000000ff"/-->            <!-- For just 2-Tile in Supermodule display -->
         
     
@@ -113,7 +113,7 @@ ch number of <trigger_flag_set/> in asic command xml ; Multiply by 3 for MULTIPL
     <!--cccIoDelayNumberTaps type="int" val="10"/-->                  <!-- Fractional timing delay wrt clock applied to C&C Cmd and Veto input data. Adjusted for cable length. (taps are 5/64 nsec) -->
     
     <!-- commented out to use filename set in LpdReadoutTest.py -->
-    <cccVetoPatternFile type="str" val="/home/lpduser/lpdSoftware/LpdFemTests/Config/VetoPatterns/veto_pattern_test2.xml"/>
+    <cccVetoPatternFile type="str" val="/home/lpduser/lpdSoftware/LpdFemGui/config/VetoPatterns/veto_pattern_test2.xml"/>
     
     
     <timeoutTrain type="int" val="20"/>                  <!-- Timeout in seconds on waiting for next Train during run -->

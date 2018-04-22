@@ -66,6 +66,12 @@
    <!--filter_control value="0"/-->
    <filter_control value="0"/>
    <adc_clock_delay value="4"/>
+   
+   <digital_reserved value="0"/>
+   <digital_reset3 value="70"/>
+   <digital_reset2 value="65"/>
+   <digital_reset1 value="60"/>
+   <digital_clock_counter_offset value="100"/>
 
    <!--clockcounteroffset=0 resets=10,9,7 clock=2
    <digital_control value="5406687234"/> -->
@@ -104,7 +110,7 @@ ClockSelect:          2
 
 value="7029883906
  -->
-   <digital_control value="27033601026"/>
+   <!-- <digital_control value="27033601026"/> -->
 
 
   <!--Reset duration trials at CLF-->
