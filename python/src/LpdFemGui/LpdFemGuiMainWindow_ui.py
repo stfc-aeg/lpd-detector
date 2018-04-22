@@ -346,7 +346,7 @@ class Ui_MainWindow(object):
         self.messageBox = QtGui.QPlainTextEdit(self.messageGroupBox)
         self.messageBox.setGeometry(QtCore.QRect(0, 20, 761, 311))
         font = QtGui.QFont()
-        font.setFamily(_fromUtf8("MiscFixed"))
+        font.setFamily(_fromUtf8("Fixed"))
         font.setPointSize(10)
         self.messageBox.setFont(font)
         self.messageBox.setLineWrapMode(QtGui.QPlainTextEdit.NoWrap)
