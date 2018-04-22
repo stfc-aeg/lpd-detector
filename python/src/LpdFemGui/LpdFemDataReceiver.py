@@ -318,8 +318,8 @@ class FrameProcessor(QtCore.QObject):
             except Exception as e:
                 print("Got exception trying to create metadata for %s XML file %s : %s " % (paramFile, cachedParams[paramFile], e))
                 raise(e)
-                
-
+     
+     
     def processFrame(self, lpdFrame):
         
         #print >> sys.stderr, "Frame processor thread receiver frame number", lpdFrame.frameNumber, 'raw data length', len(lpdFrame.rawImageData)
@@ -328,7 +328,7 @@ class FrameProcessor(QtCore.QObject):
         
         # Capture time of starting processing
         startTime = time.time()
-        
+          
         # Simultaneously extract 16 bit pixel data from raw 32 bit words and swap the byte order
         #     eg: ABCD => DCBA
         self.pixelData = np.fromstring(lpdFrame.rawImageData, dtype=np.dtype('<i2'))
@@ -379,7 +379,7 @@ class FrameProcessor(QtCore.QObject):
     # previous code also had wrong offsets 
     
                         magicMsb = self.pixelData[2+0] + (self.pixelData[3+0] << 16)  
-                        print("MAGIC Word Msw = $%08x " % magicMsb)
+                        #print("MAGIC Word Msw = $%08x " % magicMsb)
                         
                         trainLsb = self.pixelData[0+8] + (self.pixelData[1+8] << 16)
                         trainMsb = self.pixelData[2+8] + (self.pixelData[3+8] << 16)
@@ -402,7 +402,7 @@ class FrameProcessor(QtCore.QObject):
                         # corrected offsets 
     
                         magicMsb = self.pixelData[0+0] + (self.pixelData[1+0] << 16)  
-                        print("MAGIC Word Msw = $%08x " % magicMsb)
+                        #print("MAGIC Word Msw = $%08x " % magicMsb)
                         
                         trainLsb = self.pixelData[2+8] + (self.pixelData[3+8] << 8)
                         trainMsb = self.pixelData[0+8] + (self.pixelData[1+8] << 8)
@@ -421,7 +421,7 @@ class FrameProcessor(QtCore.QObject):
                     # Overwrite maximum plots with image number extracted from XFEL header
                     plotMaxPlots = imgCountId
 
-                    print("trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X} ({4:})".format(trainId, dataId, linkId, imgCountId, imgCountId))
+                    #print("trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X} ({4:})".format(trainId, dataId, linkId, imgCountId, imgCountId))
 
 #################################################################
 
