@@ -62,7 +62,7 @@
          <enum>QLayout::SetMinAndMaxSize</enum>
         </property>
         <property name="leftMargin">
-         <number>4</number>
+         <number>0</number>
         </property>
         <property name="topMargin">
          <number>4</number>
@@ -72,14 +72,11 @@
         </property>
         <item>
          <layout class="QGridLayout" name="gridLayout">
-          <property name="sizeConstraint">
-           <enum>QLayout::SetMinAndMaxSize</enum>
-          </property>
-          <property name="leftMargin">
-           <number>10</number>
+          <property name="topMargin">
+           <number>4</number>
           </property>
           <property name="rightMargin">
-           <number>60</number>
+           <number>0</number>
           </property>
           <property name="bottomMargin">
            <number>4</number>
@@ -89,6 +86,11 @@
           </property>
           <item row="2" column="1">
            <widget class="QLineEdit" name="fastParamEdit">
+            <property name="font">
+             <font>
+              <family>Fixed</family>
+             </font>
+            </property>
             <property name="readOnly">
              <bool>true</bool>
             </property>
@@ -115,6 +117,11 @@
           </item>
           <item row="1" column="1">
            <widget class="QLineEdit" name="slowParamEdit">
+            <property name="font">
+             <font>
+              <family>Fixed</family>
+             </font>
+            </property>
             <property name="readOnly">
              <bool>true</bool>
             </property>
@@ -148,6 +155,11 @@
           </item>
           <item row="3" column="1">
            <widget class="QLineEdit" name="dataPathEdit">
+            <property name="font">
+             <font>
+              <family>Fixed</family>
+             </font>
+            </property>
             <property name="readOnly">
              <bool>true</bool>
             </property>
@@ -182,6 +194,12 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="minimumSize">
+             <size>
+              <width>110</width>
+              <height>0</height>
+             </size>
+            </property>
             <property name="maximumSize">
              <size>
               <width>100</width>
@@ -195,6 +213,11 @@
           </item>
           <item row="0" column="1">
            <widget class="QLineEdit" name="readoutParamEdit">
+            <property name="font">
+             <font>
+              <family>Fixed</family>
+             </font>
+            </property>
             <property name="readOnly">
              <bool>true</bool>
             </property>
