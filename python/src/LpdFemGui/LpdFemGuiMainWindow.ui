@@ -30,6 +30,9 @@
      <number>0</number>
     </property>
     <widget class="QWidget" name="daqTab">
+     <property name="autoFillBackground">
+      <bool>true</bool>
+     </property>
      <attribute name="title">
       <string>DAQ</string>
      </attribute>
@@ -226,7 +229,7 @@
              <string>Auto</string>
             </property>
             <attribute name="buttonGroup">
-             <string>gainOverrideButtonGroup</string>
+             <string notr="true">gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -236,7 +239,7 @@
              <string>5pF</string>
             </property>
             <attribute name="buttonGroup">
-             <string>pixelFbkButtonGroup</string>
+             <string notr="true">pixelFbkButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -364,7 +367,7 @@
              <string>x100</string>
             </property>
             <attribute name="buttonGroup">
-             <string>gainOverrideButtonGroup</string>
+             <string notr="true">gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -374,7 +377,7 @@
              <string>x1</string>
             </property>
             <attribute name="buttonGroup">
-             <string>gainOverrideButtonGroup</string>
+             <string notr="true">gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -384,7 +387,7 @@
              <string>x10</string>
             </property>
             <attribute name="buttonGroup">
-             <string>gainOverrideButtonGroup</string>
+             <string notr="true">gainOverrideButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -407,7 +410,7 @@
              <string>50pF</string>
             </property>
             <attribute name="buttonGroup">
-             <string>pixelFbkButtonGroup</string>
+             <string notr="true">pixelFbkButtonGroup</string>
             </attribute>
            </widget>
           </item>
@@ -449,7 +452,7 @@
         <rect>
          <x>0</x>
          <y>20</y>
-         <width>381</width>
+         <width>382</width>
          <height>71</height>
         </rect>
        </property>
@@ -1141,13 +1144,11 @@
        </layout>
       </widget>
      </widget>
-     <zorder>setupGroupBox</zorder>
-     <zorder>operateGroupBox</zorder>
-     <zorder>messageGroupBox</zorder>
-     <zorder>runGroupBox</zorder>
-     <zorder>horizontalSpacer_27</zorder>
     </widget>
     <widget class="QWidget" name="pwrTab">
+     <property name="autoFillBackground">
+      <bool>true</bool>
+     </property>
      <attribute name="title">
       <string>PWR</string>
      </attribute>
@@ -3953,6 +3954,9 @@
      </widget>
     </widget>
     <widget class="QWidget" name="configTab">
+     <property name="autoFillBackground">
+      <bool>true</bool>
+     </property>
      <attribute name="title">
       <string>FEM</string>
      </attribute>
@@ -3983,7 +3987,7 @@
            <x>0</x>
            <y>20</y>
            <width>751</width>
-           <height>209</height>
+           <height>219</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2">
@@ -4370,6 +4374,9 @@
      </layout>
     </widget>
     <widget class="QWidget" name="evrTab">
+     <property name="autoFillBackground">
+      <bool>true</bool>
+     </property>
      <attribute name="title">
       <string>EVR</string>
      </attribute>
@@ -4450,6 +4457,9 @@
      </widget>
     </widget>
     <widget class="QWidget" name="testTab">
+     <property name="autoFillBackground">
+      <bool>true</bool>
+     </property>
      <attribute name="title">
       <string>TEST</string>
      </attribute>
@@ -4540,7 +4550,7 @@
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
-      <property name="placeholderText" stdset="0">
+      <property name="placeholderText">
        <string/>
       </property>
      </widget>
@@ -4583,7 +4593,7 @@
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
-      <property name="placeholderText" stdset="0">
+      <property name="placeholderText">
        <string/>
       </property>
      </widget>
@@ -4652,7 +4662,7 @@
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
-      <property name="placeholderText" stdset="0">
+      <property name="placeholderText">
        <string/>
       </property>
      </widget>
@@ -4672,7 +4682,7 @@
        <bool>true</bool>
       </property>
       <attribute name="buttonGroup">
-       <string>moduleTypeButtonGroup</string>
+       <string notr="true">moduleTypeButtonGroup</string>
       </attribute>
      </widget>
      <widget class="QLabel" name="moduleTypeLabel">
@@ -4701,7 +4711,7 @@
        <string>RHS</string>
       </property>
       <attribute name="buttonGroup">
-       <string>moduleTypeButtonGroup</string>
+       <string notr="true">moduleTypeButtonGroup</string>
       </attribute>
      </widget>
      <widget class="QPushButton" name="asicBondingBtn">
@@ -4835,7 +4845,7 @@
            <property name="alignment">
             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
            </property>
-           <property name="placeholderText" stdset="0">
+           <property name="placeholderText">
             <string/>
            </property>
           </widget>
@@ -4867,7 +4877,7 @@
            <property name="alignment">
             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
            </property>
-           <property name="placeholderText" stdset="0">
+           <property name="placeholderText">
             <string/>
            </property>
           </widget>
@@ -4893,7 +4903,7 @@
          <rect>
           <x>0</x>
           <y>10</y>
-          <width>391</width>
+          <width>395</width>
           <height>41</height>
          </rect>
         </property>
