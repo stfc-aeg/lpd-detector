@@ -195,10 +195,9 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.appMain.femConfigGet()
             self.configTab.showConfig()
 
-            #TODO: Uncomment when PowerCard available
-            #self.appMain.pwrCard.statusUpdate()
-            #self.pwrTab.lvEnableToggleDone()            
-            #self.pwrTab.hvEnableToggleDone()
+            self.appMain.pwrCard.statusUpdate()
+            self.pwrTab.lvEnableToggleDone()            
+            self.pwrTab.hvEnableToggleDone()
                         
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
