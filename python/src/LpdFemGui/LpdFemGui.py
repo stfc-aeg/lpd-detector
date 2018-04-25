@@ -468,6 +468,10 @@ class LpdFemGui:
                 # Delete dataReceiver or multi-run produces no data for even runs
                 del dataReceiver
 
+            if numRuns > 1 and self.abortRun:
+                self.msgPrint("Aborting multi-run sequence after {} runs".format(run+1))
+                break
+            
         # Closing Shutter code just to sit here (it's now in the above loop)
 
         # Signal device state as ready
