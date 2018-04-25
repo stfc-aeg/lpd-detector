@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-   <lpd_setup_params name="GaAsSlowParam.xml"
+   <lpd_setup_params name="LCLS_SiliconASICParams.xml"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
    xsi:noNamespaceSchemaLocation="lpdAsicCommandSequence.xsd">
    <!-- This file is hand edited by Matt -->
-   <!--File created in March 2014 for measurements with the CLF laser system, 100x filter disabled -->
+   <!--File created in April 2018 for measurements with the CLF laser system, 100x filter disabled -->
 
    <mux_decoder_default value="0"/>
    <feedback_select_default value="0"/>
@@ -33,7 +33,7 @@
    <daq_bias index="18" value="16"/><!--100x Default=16 CLFmax=22-->
    <daq_bias index="19" value="22"/>
    <daq_bias index="20" value="23"/>
-   <daq_bias index="21" value="18"/><!--100x Output Ref Norm~19 if Pre Vcas=21 Vref=22--><!--GaAs setting=31 was=~19  -->
+   <daq_bias index="21" value="17"/><!--100x Output Ref Norm~19 if Pre Vcas=21 Vref=22--><!--GaAs setting=31 Midpoint=22 1MHzSilicon=17-->
    <daq_bias index="22" value="22"/>
    <daq_bias index="23" value="24"/>
    <daq_bias index="24" value="23"/><!-- Default=23 GainTest1=21 GainTest2=24 -->
@@ -71,7 +71,7 @@
    <digital_reset3 value="70"/>
    <digital_reset2 value="65"/>
    <digital_reset1 value="60"/>
-   <digital_clock_counter_offset value="100"/>
+   <digital_clock_counter_offset value="3"/>
 
    <!--clockcounteroffset=0 resets=10,9,7 clock=2
    <digital_control value="5406687234"/> -->

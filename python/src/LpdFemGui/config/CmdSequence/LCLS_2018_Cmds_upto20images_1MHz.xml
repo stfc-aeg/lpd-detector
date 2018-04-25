@@ -18,14 +18,15 @@
              30 [3.3 MHz] => 614
              40 [2.5 MHz] => 460
              50 [2.0 MHz] => 368
-             
+ 		     100 [1.0MZ ] => 184
+ 		                 
              Also add ~805 clocks FIXED offset to account for delay between <read_out_data> and arrival of first bit of data
                  22 [4.5 MHz] => 36 nops 
                  25 [4.0 MHz] => 32
                  30 [3.3 MHz] => 26
                  40 [2.5 MHz] => 20
                  50 [2.0 MHz] => 16
-                 
+       		     100 [1.0MZ ] => 8         
     -->
 
 	<nop/>
@@ -49,8 +50,8 @@
 	<start_trigger_pointer/> 
 	<nop/>
 	<nop/>
-        <nop/>
-        <nop/>
+    <nop/>
+    <nop/>
 	<trigger_flag_set/>
 	<trigger_flag_set/>
 	<trigger_flag_set/>

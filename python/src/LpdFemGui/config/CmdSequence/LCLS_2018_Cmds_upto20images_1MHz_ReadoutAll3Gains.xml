@@ -18,6 +18,7 @@
              30 [3.3 MHz] => 614
              40 [2.5 MHz] => 460
              50 [2.0 MHz] => 368
+		     100 [1.0MZ ] => 184
              
              Also add ~805 clocks FIXED offset to account for delay between <read_out_data> and arrival of first bit of data
                  22 [4.5 MHz] => 36 nops 
@@ -25,8 +26,8 @@
                  30 [3.3 MHz] => 26
                  40 [2.5 MHz] => 20
                  50 [2.0 MHz] => 16
-                 
-    -->
+				 100 [1.0MHz] => 8
+                 -->
                  
 	<nop/>
 	<sync_reset/>
@@ -49,8 +50,8 @@
 	<start_trigger_pointer/> 
 	<nop/>
 	<nop/>
-        <nop/>
-        <nop/>
+    <nop/>
+    <nop/>
 	<trigger_flag_set/>
 	<trigger_flag_set/>
 	<trigger_flag_set/>
@@ -98,10 +99,10 @@
     <nop/>  
     <read_out_data/>   <!-- need a single nop before this command -->
     
-    <nop count="36"/>  <!-- Fixed offset to account for delay between sending of read_out_data command and arrival of serial data from asic ~ 805 clocks -->  
+    <nop count="8"/>  <!-- Fixed offset to account for delay between sending of read_out_data command and arrival of serial data from asic ~ 805 clocks -->  
     
     <loop count="20">     <!-- 1 loop per image to readout -->
-        <nop count="837"/>
+        <nop count="184"/>
     </loop>
     <!-- 
          2nd Readout Gain x10
@@ -109,7 +110,7 @@
     <nop/>    
     <force_gain_x10/>    <!-- need a single nop before this command -->
     <loop count="20">  <!-- 1 loop per image to readout -->
-        <nop count="837"/>
+        <nop count="184"/>
     </loop>
     <!-- 
          3rd Readout Gain x1
@@ -118,7 +119,7 @@
     <force_gain_x1/>   <!-- need a single nop before this command -->
     <loop count="20">   <!-- 1 loop per image to readout -->
         <nop/>
-        <nop count="837"/>
+        <nop count="184"/>
     </loop>
     <nop/>    
     <stop_read_out/>   <!-- need a single nop before this command -->

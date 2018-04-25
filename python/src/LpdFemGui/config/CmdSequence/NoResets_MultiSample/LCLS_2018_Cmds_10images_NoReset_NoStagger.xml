@@ -18,14 +18,15 @@
              30 [3.3 MHz] => 614
              40 [2.5 MHz] => 460
              50 [2.0 MHz] => 368
-             
+   	   	  	100 [1.0MZ ] => 184
+   	   	  	          
              Also add ~805 clocks FIXED offset to account for delay between <read_out_data> and arrival of first bit of data
                  22 [4.5 MHz] => 36 nops 
                  25 [4.0 MHz] => 32
                  30 [3.3 MHz] => 26
                  40 [2.5 MHz] => 20
                  50 [2.0 MHz] => 16
-                 
+		 		100 [1.0MHz] => 8                   
     -->
                  
 	<nop/>
@@ -49,6 +50,9 @@
 	<remove_reset_pre_amp/>
 	<remove_reset_gain_stage1/>
 	<remove_reset_gain_stage2/>
+	<nop/>	
+	<trigger_flag_set/>
+	<trigger_flag_set/>
 	<trigger_flag_set/>
 	<trigger_flag_set/>
 	<trigger_flag_set/>
@@ -73,10 +77,10 @@
     <nop/>
     <read_out_data/>
     <!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> -->
-    <nop count="36"/>  <!-- Fixed offset to account for delay between sending of read_out_data command and arrival of serial data from asic ~ 805 clocks -->  
-    <loop count="8">
+    <nop count="8"/>  <!-- Fixed offset to account for delay between sending of read_out_data command and arrival of serial data from asic ~ 805 clocks -->  
+    <loop count="10">
         <nop/>
-        <nop count="210"/>  <!-- typical value for div 22 = 837 -->
+        <nop count="184"/>  <!-- typical value for div 22 = 837 -->
     </loop>
     <nop count="10"/>
     <nop/>

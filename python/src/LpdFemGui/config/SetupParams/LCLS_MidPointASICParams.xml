@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-   <lpd_setup_params name="GaAsSlowParam.xml"
+   <lpd_setup_params name="LCLS_MidPointASICParams.xml"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
    xsi:noNamespaceSchemaLocation="lpdAsicCommandSequence.xsd">
    <!-- This file is hand edited by Matt -->
-   <!--File created in March 2014 for measurements with the CLF laser system, 100x filter disabled -->
+   <!--File created in April 2018 for measurements with the CLF laser system, 100x filter disabled -->
 
    <mux_decoder_default value="0"/>
    <feedback_select_default value="0"/>
@@ -33,7 +33,7 @@
    <daq_bias index="18" value="16"/><!--100x Default=16 CLFmax=22-->
    <daq_bias index="19" value="22"/>
    <daq_bias index="20" value="23"/>
-   <daq_bias index="21" value="22"/><!--100x Output Ref Norm~19 if Pre Vcas=21 Vref=22--><!--GaAs setting=31 was=~19  -->
+   <daq_bias index="21" value="24"/><!--100x Output Ref Norm~19 if Pre Vcas=21 Vref=22--><!--GaAs setting=31 Midpoint=24 1MHzSilicon=16-->
    <daq_bias index="22" value="22"/>
    <daq_bias index="23" value="24"/>
    <daq_bias index="24" value="23"/><!-- Default=23 GainTest1=21 GainTest2=24 -->
@@ -42,8 +42,8 @@
    <daq_bias index="27" value="15"/><!--RstTh High=20 Norm=22 Low=24 --><!-- V high=15 -->
    <daq_bias index="28" value="27"/><!--SlwN High=27 Norm=23 Low=19 -->
    <daq_bias index="29" value="25"/><!--SlwP High=25 Norm=23 Low=21 -->
-   <daq_bias index="30" value="22"/><!-- GaAs setting = 31 was:15 -->
-   <daq_bias index="31" value="22"/><!--10x and 1x Output Ref Manual:15 --><!-- GaAs setting= 31 was=16 -->
+   <daq_bias index="30" value="23"/><!-- GaAs setting=31 Midpoint=23 Silicon=15 -->
+   <daq_bias index="31" value="23"/><!--10x and 1x Output Ref Manual:15 --><!-- GaAs setting= 31 MidPoint=23 was=16 -->
    <daq_bias index="32" value="21"/><!--Pre Vcas Values of LCLS:18, Old file:25 and Manual:21 -->
    <daq_bias index="33" value="23"/>
    <daq_bias index="34" value="10"/><!-- ADC VL Manual:12 wide:10 -->
@@ -66,6 +66,12 @@
    <!--filter_control value="0"/-->
    <filter_control value="0"/>
    <adc_clock_delay value="4"/>
+   
+   <digital_reserved value="0"/>
+   <digital_reset3 value="70"/>
+   <digital_reset2 value="65"/>
+   <digital_reset1 value="60"/>
+   <digital_clock_counter_offset value="3"/>
 
    <!--clockcounteroffset=0 resets=10,9,7 clock=2
    <digital_control value="5406687234"/> -->
@@ -102,9 +108,9 @@ Reset1:               7
 ClockCounterOffset:   4
 ClockSelect:          2
 
- -->
-   <digital_control value="7029883906"/>
 
+   <digital_control value="7029883906"/>
+ -->
 
   <!--Reset duration trials at CLF-->
   <!--clockcounteroffset=4 resets=11,10,8 clock=2
