@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+
+<lpd_readout_config name="readoutConfiguration.xml">
+    
+    <!-- ###################################################    LCLS params begin    #################################################################################### -->
+    
+    <!-- Readout PC -->
+    
+	<tenGig0DestMac type="str" val="00-07-43-13-ED-60"/>          <!-- te7garland 10GigE MAC address -->
+    <!-- <tenGig0DestMac type="str" val="00-07-43-10-61-90"/>   -->
+    <tenGig0DestIp type="str" val="10.0.0.1"/>
+	<!-- <tenGig0DestIp type="str" val="192.168.8.1"/>  -->
+    <tenGig0DestPort type="int" val="61649"/>
+
+    <tenGigInterframeGap type="int" val="0"/>             <!-- Reduce 10GbE pkt rate to PC.   0 = Full 10GbE rate ;  1000 => 50% rate   -->
+    
+    
+    <!-- Run options -->
+    
+    <numberTrains type="int" val="4"/>                    <!-- number of trains [if LL Data Generator / PPC Data Direct selected] -->
+        
+    <!-- Set number of images to mat
+ch number of <trigger_flag_set/> in asic command xml ; Multiply by 3 for MULTIPLE GAIN readout -->
+    <numberImages type="int" val="30"/>                    
+        
+    <femAsicGain type="int" val="10"/>                    <!-- 0= use algorithm, force gain: 100=100x, 10=10x, 1=1x -->
+    
+    <femAsicGainOverride type="bool" val="True"/>        <!-- FEM Gain Selection Mode; False=use femAsicGain, True= OVERRIDE from xml file for MULTIPLE GAIN readout -->
+        
+    <!-- ASIC length of command word in clock periods which determines ASIC sampling period; 
+         valid  20 => 5 MHz ;  22 => 4.5 MHz (default XFEL 99MHz clock) ; 25 => 4.0 MHz ; 30 => 3.33 MHz ; 40 => 2.5 MHz ; 50 => 2.0 MHz ; 100 => 1.0 MHz -->
+    <femAsicCommandLength type="int" val="100"/>
+        
+    
+    <!-- Clock and Trigger -->
+    
+    <femAsicClockSource type="int" val="1"/>              <!-- 0=FEM local clock 1=External clock -->
+    
+    <femStartTrainSource type="int" val="2"/>             <!-- 0 = XFEL clock and controls system, 1 = Software, 2 = LCLS -->
+    
+    <femStartTrainDelay type="int" val="220"/>            <!--  Trigger strobe DELAY [in ASIC clock periods] -->
+
+        
+    
+    <!-- ###################################################    LCLS params end    #################################################################################### -->
+    
+    
+    
+    <!-- 'Expert' Variables: -->
+        
+    
+    <!-- FEM FPGA -->
+    <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
+    <tenGig0SourceIp type="str" val="10.0.0.2"/>
+    <tenGig0SourcePort type="int" val="0"/>
+    
+    
+    <tenGig0DataFormat type="int" val="0"/>         <!-- Data format type, 0=counting data - doesn't affect "normal" data" -->
+    <tenGig0DataGenerator type="int" val="1"/>      <!-- Data generator 1=DataGen 2=PPC DDR2 -->
+    <tenGig0FrameLength type="int" val="0x10000"/>  
+    <tenGig0NumberOfFrames type="int" val="1"/>     <!--  Number of frames to send in each cycle -->
+    <tenGigFarmMode type="int" val="1"/>
+    <tenGigUdpPacketLen type="int" val="8184"/>   <!--   std = 8184 ; for actual udp length need to add 8 bytes for TTP -->
+    
+    <femAsicSetupClockPhase type="int" val="0"/>    <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
+    <femAsicVersion type="int" val="2"/>
+    <femEnableTenGig type="bool" val="True"/>       <!-- Enables transmission of image data via 10GigE UDP interface -->
+    
+    
+    <cccProvideNumberImages type="bool" val="False"/>     <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
+    
+    <!-- 'User' Variables: -->
+    <femAsicEnableMask type="int"  val="0xFFFF0FF0, 0xFFFF03C0, 0xFF000240, 0x00FFFF00"/>
+    <!--femAsicEnableMask type="int"  val="0x00000000, 0x00000000, 0x00000000, 0x000000ff"/-->            <!-- For just 2-Tile in Supermodule display -->
+        
+    
+    
+    <femAsicLocalClock type="int" val="0"/>               <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
+    <femAsicModuleType type="int" val="0"/>               <!-- 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone' -->
+    <femAsicPixelFeedbackOverride type="int" val="-1"/>   <!--  Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
+    <femAsicPixelSelfTestOverride type="int" val="-1"/>   <!--  Override self-test enable: 1 = enabled -->
+    <femAsicRxCmdWordStart type="bool" val="True"/>       <!-- Enable ASIC readout started by Command Word from XML file -->
+    <femStartTrainInhibit type="int" val="100"/>            <!-- 100000  Inhibit in ASIC clock cycles.  
+                                                                    At PETRA for Trigger Rate = N Hz set ext_trig_strobe_inhibit = N x 10**7 x 22 / 192 -->
+    
+    <cccEmulationMode type="bool" val="False"/>          <!-- Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
+    
+    <!-- <femI2cBus type="int" val="0x300"/> Obsolete?--> 
+    <!-- <femPpcMode type="int" val="0"/> To be Implemented-->
+    
+    <femModuleId    type="int"  val="0"/>  <!-- ID for FEM to differentiate from which FEM data is coming from -->
+    
+    <femDebugLevel type="int" val="0"/>
+    
+    <femStartTrainPolarity type="int" val="0"/>     <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
+    <femVetoPolarity type="int" val="0"/>           <!-- External veto signal polarity 0=No inversion, 1=Invert signal (used for at Petra for shutter polarity) -->
+    <femDataSource type="int" val="0"/>                   <!-- 0=ASIC [via PPC], 1=ASIC [from Rxblock], 2=frame generator, 3=PPC [preprogrammed] -->    
+    <femAsicDataType type="int" val="0"/>                 <!-- 0=Normal Data, 1=Counting data, 2=Pseudo random -->
+    <femAsicTestDataPatternType type="int" val="0"/>                  <!-- # 0 = if test data counter increments every Pixel ; 1 = only increments every Image -->
+    <femInvertAdcData type="bool" val="False"/>
+    
+    <femAsicSetupLoadMode type="int" val="0"/>            <!-- ASIC control load mode 0=parallel, 1=daisy chain -->
+    
+    
+    <trainGenInterval type="int" val="833333"/>       <!-- gap (in asic clocks) between trains if internally generated 833333 = 120Hz-->
+    
+    <cccSystemMode type="int" val="0"/>                   <!-- 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
+    
+    <cccVetoStartDelay type="int" val="100"/>              <!-- Adjust timing of veto arrival (in steps of clock cycles)  1001  ; for ral test with c&c mezz = 352  -->
+    <cccStopDelay type="int" val="0"/>                   <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+    <cccResetDelay type="int" val="0"/>                  <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+    
+    <!--cccIoDelayNumberTaps type="int" val="10"/-->                  <!-- Fractional timing delay wrt clock applied to C&C Cmd and Veto input data. Adjusted for cable length. (taps are 5/64 nsec) -->
+    
+    <!-- commented out to use filename set in LpdReadoutTest.py -->
+    <cccVetoPatternFile type="str" val="/home/lpduser/lpdSoftware/LpdFemGui/config/VetoPatterns/veto_pattern_test2.xml"/>
+    
+    
+    <timeoutTrain type="int" val="20"/>                  <!-- Timeout in seconds on waiting for next Train during run -->
+    
+    <numPulsesInTrainOverride type="int" val="2700"/>                  <!-- Length of XRay Pulse Train (number pulses)   1536 , 1024 -->
+    
+    <femPpcEmulatePipeline type="bool" val="False"/>
+    
+    <femPpcImageReordering type="bool" val="False"/>
+    
+    
+    <!-- ASIC gain selection algorithm type (to be used if femAsicGain = 0) (0=Original with Fixed Thresholds at Full Scale, 1=Variable Thresholds using 64 levels; 2,3 reserved) -->
+    <asicRxGainAlgorithmType type="int" val="0"/>
+    
+    <!-- Set AsicRx Gain Select Threshold for x100 (same value for all 128 asics); 1 (MIN SIGNAL) to 64 (MAX SIGNAL = FULL SCALE ADC) ; used when femAsicGainAlgorithmType = 1 -->
+    <asicRxGainThresholdx100 type="int" val="64"/>
+    
+    <!-- Set AsicRx Gain Select Threshold for x10 (same value for all 128 asics); 1 (MIN SIGNAL) to 64 (MAX SIGNAL = FULL SCALE ADC) ; used when femAsicGainAlgorithmType = 1 -->
+    <asicRxGainThresholdx10 type="int" val="64"/>
+
+    
+</lpd_readout_config>
