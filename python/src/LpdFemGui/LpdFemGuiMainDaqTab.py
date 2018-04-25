@@ -311,9 +311,9 @@ class LpdFemGuiMainDaqTab(object):
         self.ui.frameProc.setText(str(runStatus.framesProcessed))
         self.ui.imageProc.setText(str(runStatus.imagesProcessed))
         
-        kB = 1024
-        MB = kB*1024
-        GB = MB*1024
+        kB = 1024.0
+        MB = kB*1024.0
+        GB = MB*1024.0
         
         dataRxText = ""
         if (runStatus.dataBytesReceived < kB):
@@ -323,7 +323,7 @@ class LpdFemGuiMainDaqTab(object):
         elif (runStatus.dataBytesReceived < GB):
             dataRxText = "{:.1f} MB".format(runStatus.dataBytesReceived / MB)
         else:
-            dataRxText = "{:.1f}G B".format(runStatus.dataBytesReceived / GB)
+            dataRxText = "{:.1f} GB".format(runStatus.dataBytesReceived / GB)
             
         self.ui.dataRx.setText(dataRxText)
 
