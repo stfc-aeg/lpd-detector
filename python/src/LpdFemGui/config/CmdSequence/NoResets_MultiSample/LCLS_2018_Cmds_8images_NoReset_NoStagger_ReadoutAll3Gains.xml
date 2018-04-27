@@ -58,9 +58,7 @@
 	<trigger_flag_set/>
 	<trigger_flag_set/>
 	<trigger_flag_set/>
-	<trigger_flag_set/>
-	<trigger_flag_set/>
-	<trigger_flag_set/>		
+	<trigger_flag_set/>	
 	<reset_pre_amp/>
 	<reset_gain_front/>
 	<reset_gain_back/>
@@ -89,7 +87,7 @@
     
     <nop count="8"/>  <!-- Fixed offset to account for delay between sending of read_out_data command and arrival of serial data from asic ~ 805 clocks -->  
     
-    <loop count="10">     <!-- 1 loop per image to readout -->
+    <loop count="8">     <!-- 1 loop per image to readout -->
         <nop count="184"/>
     </loop>
     <!-- 
@@ -97,7 +95,7 @@
          -->
     <nop/>    
     <force_gain_x10/>    <!-- need a single nop before this command -->
-    <loop count="10">  <!-- 1 loop per image to readout -->
+    <loop count="8">  <!-- 1 loop per image to readout -->
         <nop count="184"/>
     </loop>
     <!-- 
@@ -105,7 +103,7 @@
          -->
     <nop/>   
     <force_gain_x1/>   <!-- need a single nop before this command -->
-    <loop count="10">   <!-- 1 loop per image to readout -->
+    <loop count="8">   <!-- 1 loop per image to readout -->
         <nop/>
         <nop count="184"/>
     </loop>

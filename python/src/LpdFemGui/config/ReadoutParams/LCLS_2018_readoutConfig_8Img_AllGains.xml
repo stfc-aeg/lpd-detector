@@ -21,7 +21,7 @@
         
     <!-- Set number of images to mat
 ch number of <trigger_flag_set/> in asic command xml ; Multiply by 3 for MULTIPLE GAIN readout -->
-    <numberImages type="int" val="30"/>                    
+    <numberImages type="int" val="24"/>                    
         
     <femAsicGain type="int" val="10"/>                    <!-- 0= use algorithm, force gain: 100=100x, 10=10x, 1=1x -->
     
