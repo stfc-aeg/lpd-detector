@@ -112,7 +112,7 @@ class ExcaliburTestApp(object):
         cmd_group.add_argument('--hvenable', type=int, dest='hv_enable',
             choices=[0, 1], 
             help='Set power card HV enable: 0=off (default), 1=on')
-        cmd_group.add_argument('--hvbias', type=int, dest='hv_bias', metavar='VOLTS',
+        cmd_group.add_argument('--hvbias', type=float, dest='hv_bias', metavar='VOLTS',
             help='Set power card HV bias in volts')
         cmd_group.add_argument('--efuse', '-e', action='store_true',
             help='Read and diplay MPX3 eFuse IDs')

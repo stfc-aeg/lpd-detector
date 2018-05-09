@@ -496,7 +496,7 @@ static PyObject* _set_float(PyObject* self, PyObject* args)
     fem_ptr = (FemPtr) PyCapsule_GetPointer(_handle, "FemPtr");
     _validate_ptr_and_handle(fem_ptr, "set_float");
 
-    if (PyInt_Check(values_obj)) {
+    if (PyFloat_Check(values_obj)) {
         size = 1;
         single_value = 1;
     }
