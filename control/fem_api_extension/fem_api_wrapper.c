@@ -249,7 +249,10 @@ static PyObject* _get_int(PyObject* self, PyObject* args)
     }
     free(value_ptr);
 
-    return Py_BuildValue("iO", rc, values);
+    PyObject* result = Py_BuildValue("iO", rc, values);
+    Py_DECREF(values);
+
+    return result;
 }
 
 static PyObject* _set_int(PyObject* self, PyObject* args)
@@ -361,7 +364,10 @@ static PyObject* _get_short(PyObject* self, PyObject* args)
     }
     free(value_ptr);
 
-    return Py_BuildValue("iO", rc, values);
+    PyObject* result = Py_BuildValue("iO", rc, values);
+    Py_DECREF(values);
+
+    return result;
 }
 
 static PyObject* _set_short(PyObject* self, PyObject* args)
@@ -475,7 +481,10 @@ static PyObject* _get_float(PyObject* self, PyObject* args)
     }
     free(value_ptr);
 
-    return Py_BuildValue("iO", rc, values);
+    PyObject* result = Py_BuildValue("iO", rc, values);
+    Py_DECREF(values);
+
+    return result;
 }
 
 static PyObject* _set_float(PyObject* self, PyObject* args)
