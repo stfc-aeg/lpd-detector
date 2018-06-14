@@ -1,44 +1,38 @@
-# LDP Odin Integration Requirements Specification
+# LPD Odin Integration Requirements Specification
 
 Replace existing python data receiver and processor with C++ ODIN system.
 
 
-## Frame Receiver
-priority: Must
+## ODIN Frame Receiver
+Priority: Must Have
 
-Create shared object plugin for ODIN's frame receiver to accept data from LDP's FEM.
+Create shared object plugin for ODIN's frame receiver to accept data from LPD's FEM.
 
 
+## ODIN Frame Processor
+Priority: Must Have
 
-## Frame Processor
-Priority: Must
+Create shared object plugin for ODIN's frame processor to accept and process data from the frame receiver.
 
-Create shared object plugin for Odin's frame processor to accept and process data from the frame receiver.
+## Travis CI Testing
+Priority: Should Have
 
+Use Travis CI to create testing for the above.
 
 
 ## Control Integration
-Priority: Should
+Priority: Should Have
 
-Integrate existing LDP python GUI with frame receiver and processor.
+Integrate existing LPD python GUI with frame receiver and processor.
 
 
-
-#### Metadata Integration
-Priority: Should
+## Metadata Integration
+Priority: Should Have
 
 Adapt frame processor to integrate and store metadata from control GUI into HDF files.
 
 
-
-#### Live View
-Priority: Could
+## Live View
+Priority: Could Have
 
 Adapt ODIN to allow live view within GUI to still work.
-
-
-
-## Testing
-Priority: Could
-
-Use Travis CI to create testing for the above.
