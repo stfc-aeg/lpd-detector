@@ -21,7 +21,6 @@ class LpdFrame(object):
     frame_count = 0
     SOF_MARKER = 1 << 31
     EOF_MARKER = 1 << 30
-    NUM_SUBFRAMES = 1
 
     def __init__(self, frame_num):
 
@@ -37,24 +36,16 @@ class LpdFrame(object):
         """Append packet to frame packet list."""
         self.packets.append(packet)
 
-    def add_sof(self, subframe):
-        """Add subframe SOF marker to list."""
-        self.sofs.append(subframe)
+    def add_sof(self, frame):
+        """Add frame SOF marker to list."""
+        self.sofs.append(frame)
 
-    def add_eof(self, subframe):
-        """Add subframe EOF marker to list."""
-        self.eofs.append(subframe)
+    def add_eof(self, frame):
+        """Add frame EOF marker to list."""
+        self.eofs.append(frame)
 
     def set_trailer_frame_num(self, frame_num):
         """Set the trailer frame number in the frame."""
-
-        # If trailer frame number is already set, e.g. for earlier subframes, check it matches
-        if self.trailer_frame_num is not None:
-            if frame_num != self.trailer_frame_num:
-                logging.warning(
-                    "Mismatched trailer frame numbers on frame %d: %d/%d",
-                    self.frame_num, self.trailer_frame_num, frame_num
-                )
         self.trailer_frame_num = frame_num
 
     def num_packets(self):
@@ -244,7 +235,6 @@ class LpdFrameProducer(object):
         total_packets = 0
         total_bytes = 0
         current_frame_num = -1
-        current_subframe_num = -1
 
         # Initialise current frame
         current_frame = None
@@ -262,63 +252,50 @@ class LpdFrameProducer(object):
             ip_layer = eth_layer.data
             udp_layer = ip_layer.data
 
-            # Unpack the packet header
-            (subframe_ctr, pkt_ctr) = struct.unpack('<II', udp_layer.data[-8:])
+            # Unpack the packet trailer
+            (trailer_frame_num, pkt_ctr) = struct.unpack('<II', udp_layer.data[-8:])
 
-            # If there is a SOF marker in the packet header, increment the current subframe and
+            # If there is a SOF marker in the packet header, increment the current frame and
             # handle content, starting a new frame as necessary
             if pkt_ctr & LpdFrame.SOF_MARKER:
+
                 logging.debug(
-                    "Got SOF marker for subframe %d at packet %d",
-                    subframe_ctr, total_packets
+                    "Got SOF marker for frame %d at packet %d with trailer frame number %d",
+                    current_frame_num + 1, total_packets, trailer_frame_num
                 )
 
-                # Increment the current subframe index, modulo the number of subframes expected
-                current_subframe_num = (current_subframe_num + 1) % LpdFrame.NUM_SUBFRAMES
+                # Check previous frame
+                if current_frame is not None:
 
-                # If now on the first subframe of a new frame, handle accordingly
-                if current_subframe_num == 0:
+                    # Check number of EOFs in previous frame
+                    if current_frame.num_eofs_seen() != 1:
+                        logging.warning(
+                            'Frame %d had incorrect number of EOF markers: %d',
+                            current_frame_num, current_frame.num_eofs_seen()
+                       )
 
-                    # Check SOF and EOF count on previous frame before switching to new frame
-                    if current_frame is not None:
-                        if current_frame.num_sofs_seen() != LpdFrame.NUM_SUBFRAMES:
-                            logging.warning(
-                                'Frame %d had incorrect number of SOF markers: %d',
-                                current_frame_num, current_frame.num_sofs_seen()
-                            )
-                        if current_frame.num_eofs_seen() != LpdFrame.NUM_SUBFRAMES:
-                            logging.warning(
-                                'Frame %d had incorrect number of EOF markers: %d',
-                                current_frame_num, current_frame.num_eofs_seen()
-                            )
+                # Create a new frame, set it to be the current one and append to the frame list
+                current_frame_num += 1
+                logging.debug(
+                    "Creating and appending new frame %d to frame packet buffer",
+                    current_frame_num
+                )
+                current_frame = LpdFrame(current_frame_num) 
+                self.frames.append(current_frame)
 
-                    current_frame_num += 1
-                    logging.debug(
-                        "Appending new frame %d to frame packet buffer", current_frame_num
-                    )
-
-                    # Create a new frame, set it to be the current one and append to the frame list
-                    current_frame = LpdFrame(current_frame_num)
-                    self.frames.append(current_frame)
-
-                # Update the SOF tracking in the frame
-                current_frame.add_sof(subframe_ctr)
 
             # If there is an EOF marker, handle accordingly
             if pkt_ctr & LpdFrame.EOF_MARKER:
 
                 # Update the EOF tracking in the frame
-                current_frame.add_eof(subframe_ctr)
+                current_frame.add_eof(current_frame_num)
 
-                # Extract the frame number from the frame trailer in the packet data and update
-                # tracking in the current frame
-                trailer_frame_ctr = struct.unpack('<Q', udp_layer.data[-8:])[0]
                 logging.debug(
-                    "Got EOF marker for subframe %d at packet %d "
+                    "Got EOF marker for frame %d at packet %d "
                     "with trailer frame number %d",
-                    subframe_ctr, total_packets, trailer_frame_ctr
+                    current_frame_num, total_packets, trailer_frame_num
                 )
-                current_frame.set_trailer_frame_num(trailer_frame_ctr)
+
 
             # Append packet data to current frame
             current_frame.append_packet(udp_layer.data)
@@ -331,6 +308,7 @@ class LpdFrameProducer(object):
             "Found %d frames in file with a total of %d packets and %d bytes",
             len(self.frames), total_packets, total_bytes
         )
+
 
     def send_frames(self):
         
