@@ -2,6 +2,11 @@
 
 Replace existing python data receiver and processor with C++ ODIN system.
 
+## LPD Frame Producer
+Priority: Should Have
+
+Port Excalibur frame producer script to simulate LPD packet flow.
+
 
 ## ODIN Frame Receiver
 Priority: Must Have
@@ -36,3 +41,9 @@ Adapt frame processor to integrate and store metadata from control GUI into HDF 
 Priority: Could Have
 
 Adapt ODIN to allow live view within GUI to still work.
+
+
+## Port Excalibur scripts to LPD
+Priority: Could Have
+
+Rename all files, functions, classes and variables to use `LPD` where `Excalibur` is used.
