@@ -21,6 +21,9 @@ using namespace FrameReceiver;
 const std::string ExcaliburFrameDecoder::asic_bit_depth_str_[Excalibur::num_bit_depths] =
     {"1-bit", "6-bit", "12-bit", "24-bit"};
 
+const std::string ExcaliburFrameDecoder::CONFIG_FEM_PORT_MAP = "fem_port_map";
+const std::string ExcaliburFrameDecoder::CONFIG_BITDEPTH = "bitdepth";
+
 #define MAX_IGNORED_PACKET_REPORTS 10
 
 //! Constructor for ExcaliburFrameDecoder
@@ -39,6 +42,7 @@ ExcaliburFrameDecoder::ExcaliburFrameDecoder() :
     num_active_fems_(0),
     dropping_frame_data_(false),
     packets_ignored_(0),
+    packets_lost_(0),
     has_subframe_trailer_(true)
 {
 
@@ -67,7 +71,7 @@ ExcaliburFrameDecoder::~ExcaliburFrameDecoder()
 void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
 {
 
-  // Pass the configuratin message to the base class decoder
+  // Pass the configuration message to the base class decoder
   FrameDecoder::init(logger, config_msg);
 
   LOG4CXX_DEBUG_LEVEL(2, logger_, "Got decoder config message: " << config_msg.encode());
@@ -76,21 +80,20 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   // present, use the default. If the map cannot be parsed correctly, thrown an exception to signal
   // an error to the app controller. Set the current number of active FEMs based on the output
   // of the map parsing.
-  std::string fem_port_map_config_str;
-  if (config_msg.has_param("fem_port_map"))
+  if (config_msg.has_param(CONFIG_FEM_PORT_MAP))
   {
+      fem_port_map_str_ = config_msg.get_param<std::string>(CONFIG_FEM_PORT_MAP);
       LOG4CXX_DEBUG_LEVEL(1, logger_, "Parsing FEM to port map found in config: "
-                          << config_msg.get_param<std::string>("fem_port_map"));
-      fem_port_map_config_str = config_msg.get_param<std::string>("fem_port_map");
+                          << fem_port_map_str_);
   }
   else
   {
       LOG4CXX_DEBUG_LEVEL(1,logger_, "No FEM to port map found in config, using default: "
                           << default_fem_port_map);
-      fem_port_map_config_str = default_fem_port_map;
+      fem_port_map_str_ = default_fem_port_map;
   }
 
-  num_active_fems_ = parse_fem_port_map(fem_port_map_config_str);
+  num_active_fems_ = parse_fem_port_map(fem_port_map_str_);
   if (num_active_fems_)  {
       LOG4CXX_DEBUG_LEVEL(1, logger_, "Parsed " << num_active_fems_
                           << " entries from port map configuration");
@@ -101,9 +104,9 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   }
 
   // Extract the ASIC counter bit depth from the config message
-  if (config_msg.has_param("bitdepth"))
+  if (config_msg.has_param(CONFIG_BITDEPTH))
   {
-    std::string bit_depth_str = config_msg.get_param<std::string>("bitdepth");
+    std::string bit_depth_str = config_msg.get_param<std::string>(CONFIG_BITDEPTH);
 
     Excalibur::AsicCounterBitDepth bit_depth =
         parse_bit_depth(bit_depth_str);
@@ -150,8 +153,26 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
     LOG4CXX_INFO(packet_logger_, "PktHdr: |-------------- |---- |----  |---------- |----------");
   }
 
-  // Reset the scratched packet counter
+  // Reset the scratched and lost packet counters
   packets_ignored_ = 0;
+  packets_lost_ = 0 ;
+  for (int fem = 0; fem < Excalibur::max_num_fems; fem++)
+  {
+    fem_packets_lost_[fem] = 0;
+  }
+}
+
+void ExcaliburFrameDecoder::request_configuration(const std::string param_prefix,
+    OdinData::IpcMessage& config_reply)
+{
+
+  // Call the base class method to populate parameters
+  FrameDecoder::request_configuration(param_prefix, config_reply);
+
+  // Add current configuration parameters to reply
+  config_reply.set_param(param_prefix + CONFIG_FEM_PORT_MAP, fem_port_map_str_);
+  config_reply.set_param(param_prefix + CONFIG_BITDEPTH, asic_bit_depth_str_[asic_counter_bit_depth_]);
+
 }
 
 //! Get the size of the frame buffers required for current operation mode.
@@ -561,10 +582,28 @@ void ExcaliburFrameDecoder::monitor_buffers(void)
 
     if (elapsed_ms(frame_header->frame_start_time, current_time) > frame_timeout_ms_)
     {
+
+      const std::size_t num_fem_frame_packets =
+          Excalibur::num_fem_frame_packets(asic_counter_bit_depth_);
+
+      // Calculate packets lost on this frame and add to total
+      uint32_t packets_lost = (num_fem_frame_packets * num_active_fems_) -
+          frame_header->total_packets_received;
+      packets_lost_ += packets_lost;
+      if (packets_lost)
+      {
+        for (ExcaliburDecoderFemMap::iterator iter = fem_port_map_.begin();
+            iter != fem_port_map_.end(); ++iter)
+        {
+          fem_packets_lost_[(iter->second).fem_idx_] += num_fem_frame_packets -
+              (frame_header->fem_rx_state[(iter->second).buf_idx_].packets_received);
+        }
+      }
+
       LOG4CXX_DEBUG_LEVEL(1, logger_, "Frame " << frame_num << " in buffer " << buffer_id
           << " addr 0x" << std::hex
           << buffer_addr << std::dec << " timed out with " << frame_header->total_packets_received
-          << " packets received");
+          << " packets received, " << packets_lost << " packets lost");
 
       frame_header->frame_state = FrameReceiveStateTimedout;
       ready_callback_(buffer_id, frame_num);
@@ -584,8 +623,36 @@ void ExcaliburFrameDecoder::monitor_buffers(void)
   frames_timedout_ += frames_timedout;
 
   LOG4CXX_DEBUG_LEVEL(3, logger_,  get_num_mapped_buffers() << " frame buffers in use, "
-      << get_num_empty_buffers()
-      << " empty buffers available, " << frames_timedout_ << " incomplete frames timed out");
+      << get_num_empty_buffers() << " empty buffers available, "
+      << frames_timedout_ << " incomplete frames timed out, "
+      << packets_lost_ << " packets lost"
+  );
+
+}
+
+//! Get the current status of the frame decoder.
+//!
+//! This method populates the IpcMessage passed by reference as an argument with decoder-specific
+//! status information, e.g. packet loss by source.
+//!
+//! \param[in] param_prefix - path to be prefixed to each status parameter name
+//! \param[in] status_msg - reference to IpcMesssage to be populated with parameters
+//!
+void ExcaliburFrameDecoder::get_status(const std::string param_prefix,
+    OdinData::IpcMessage& status_msg)
+{
+  status_msg.set_param(param_prefix + "name", std::string("ExcaliburFrameDecoder"));
+  status_msg.set_param(param_prefix + "packets_lost", packets_lost_);
+
+  // Workaround for lack of array setters in IpcMessage
+  rapidjson::Value fem_packets_lost_array(rapidjson::kArrayType);
+  rapidjson::Value::AllocatorType allocator;
+
+  for (int fem = 0; fem < Excalibur::max_num_fems; fem++)
+  {
+    fem_packets_lost_array.PushBack(fem_packets_lost_[fem], allocator);
+  }
+  status_msg.set_param(param_prefix + "fem_packets_lost", fem_packets_lost_array);
 
 }
 
