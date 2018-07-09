@@ -1,12 +1,12 @@
 /*
-x * ExcaliburProcessPlugin.h
+x * LpdProcessPlugin.h
  *
  *  Created on: 6 Jun 2016
  *      Author: gnx91527
  */
 
-#ifndef TOOLS_FILEWRITER_EXCALIBURREORDERPLUGIN_H_
-#define TOOLS_FILEWRITER_EXCALIBURREORDERPLUGIN_H_
+#ifndef TOOLS_FILEWRITER_LPDREORDERPLUGIN_H_
+#define TOOLS_FILEWRITER_LPDREORDERPLUGIN_H_
 
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
@@ -17,7 +17,7 @@ using namespace log4cxx::helpers;
 
 
 #include "FrameProcessorPlugin.h"
-#include "ExcaliburDefinitions.h"
+#include "LpdDefinitions.h"
 #include "ClassLoader.h"
 
 #define FEM_PIXELS_PER_CHIP_X 256
@@ -49,17 +49,17 @@ using namespace log4cxx::helpers;
 namespace FrameProcessor
 {
 
-  /** Processing of Excalibur Frame objects.
+  /** Processing of Lpd Frame objects.
    *
-   * The ExcaliburProcessPlugin class is currently responsible for receiving a raw data
-   * Frame object and reordering the data into valid Excalibur frames according to the selected
+   * The LpdProcessPlugin class is currently responsible for receiving a raw data
+   * Frame object and reordering the data into valid Lpd frames according to the selected
    * bit depth.
    */
-  class ExcaliburProcessPlugin : public FrameProcessorPlugin
+  class LpdProcessPlugin : public FrameProcessorPlugin
   {
   public:
-    ExcaliburProcessPlugin();
-    virtual ~ExcaliburProcessPlugin();
+    LpdProcessPlugin();
+    virtual ~LpdProcessPlugin();
     void configure(OdinData::IpcMessage& config, OdinData::IpcMessage& reply);
     void status(OdinData::IpcMessage& status);
 
@@ -114,8 +114,8 @@ namespace FrameProcessor
    * Registration of this plugin through the ClassLoader.  This macro
    * registers the class without needing to worry about name mangling
    */
-  REGISTER(FrameProcessorPlugin, ExcaliburProcessPlugin, "ExcaliburProcessPlugin");
+  REGISTER(FrameProcessorPlugin, LpdProcessPlugin, "LpdProcessPlugin");
 
 } /* namespace FrameProcessor */
 
-#endif /* TOOLS_FILEWRITER_EXCALIBURREORDERPLUGIN_H_ */
+#endif /* TOOLS_FILEWRITER_LPDREORDERPLUGIN_H_ */

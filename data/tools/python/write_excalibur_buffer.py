@@ -12,7 +12,7 @@ from ipc_message import IpcMessage
 from frame_receiver.shared_buffer_manager import SharedBufferManager, SharedBufferManagerException
 from struct import Struct
 
-shared_mem_name = "ExcaliburSharedBuffer"
+shared_mem_name = "LpdSharedBuffer"
 #buffer_size     = 1048576
 num_buffers     = 10
 boost_mmap_mode = False
@@ -26,9 +26,9 @@ def options():
     args = parser.parse_args()
     return args
 
-class ExcaliburTestApp(npyscreen.NPSAppManaged):
+class LpdTestApp(npyscreen.NPSAppManaged):
     def __init__(self, ready_endpoint, release_endpoint, buffer, filepath):
-        super(ExcaliburTestApp, self).__init__()
+        super(LpdTestApp, self).__init__()
         self._ready_endpoint = ready_endpoint
         self._release_endpoint = release_endpoint
         self._buffer = buffer
@@ -81,7 +81,7 @@ class ExcaliburTestApp(npyscreen.NPSAppManaged):
 
 class IntroForm(npyscreen.Form):
     def create(self):
-        self.name = "Excalibur test application"
+        self.name = "Lpd test application"
 
         self.add(npyscreen.TitleText, labelColor="LABELBOLD", name="Set the frame ready endpoint for this test", value="", editable=False)
         self.ready = self.add(npyscreen.TitleText, name="Frame Notify Endpoint: ", value="")
@@ -129,7 +129,7 @@ class IntroForm(npyscreen.Form):
 class MainMenu(npyscreen.FormBaseNew):
     def create(self):
         self.keypress_timeout = 1
-        self.name = "Excalibur test application"
+        self.name = "Lpd test application"
         self.t2 = self.add(npyscreen.BoxTitle, name="Main Menu:", relx=2, max_width=24) #, max_height=20)
         self.t3 = self.add(npyscreen.BoxTitle, name="Response:", rely=2, relx=26) #, max_width=45, max_height=20)
         
@@ -172,7 +172,7 @@ class MainMenu(npyscreen.FormBaseNew):
 
 class SetupAcquisition(npyscreen.ActionForm):
     def create(self):
-        self.name = "Excalibur test application"
+        self.name = "Lpd test application"
         self.add(npyscreen.TitleText, labelColor="LABELBOLD", name="Setup acquisition parameters", value="", editable=False)
         self.ctrl1 = self.add(npyscreen.TitleText, name="Number of frames: ", value="1")
         self.ctrl2 = self.add(npyscreen.TitleText, name="Frame rate (# per second):   ", value="1.0")
@@ -191,7 +191,7 @@ class SetupAcquisition(npyscreen.ActionForm):
 def main():
     args = options()
 
-    app = ExcaliburTestApp(args.ready, args.release, args.buffer, args.path)
+    app = LpdTestApp(args.ready, args.release, args.buffer, args.path)
     app.run()
 
 

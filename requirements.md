@@ -22,7 +22,7 @@ Priority: Must Have
 Port frame receiver for LPD.
 
 | Requirement | Conditions | Status |
-|:-----------:|:----------:|:-------:|
+|:-----------:|:----------:|:------:|
 | All detector specific names use `lpd`, `Lpd` or `LPD`. | No detector specific names for files, class, functions, variables, object or keys referring to `Excalibur` or other non-LPD detectors. Script still functions with no resulting errors. | |
 | Upon startup, read config and create shared memory buffer. |
 | Listen for buffer config request from FP. Reply upon request. |

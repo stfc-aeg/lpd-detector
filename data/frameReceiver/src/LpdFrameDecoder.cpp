@@ -1,13 +1,13 @@
 /*
- * ExcaliburFrameDecoder.cpp
+ * LpdFrameDecoder.cpp
  *
- * ODIN data frame decoder plugin for EXCALIBUR detector UDP frame data.
+ * ODIN data frame decoder plugin for LPD detector UDP frame data.
  *
  *  Created on: Jan 16th, 2017
  *      Author: Tim Nicholls, STFC Application Engineering Group
  */
 
-#include "ExcaliburFrameDecoder.h"
+#include "LpdFrameDecoder.h"
 #include "gettime.h"
 #include <iostream>
 #include <iomanip>
@@ -18,25 +18,25 @@
 
 using namespace FrameReceiver;
 
-const std::string ExcaliburFrameDecoder::asic_bit_depth_str_[Excalibur::num_bit_depths] =
+const std::string LpdFrameDecoder::asic_bit_depth_str_[Lpd::num_bit_depths] =
     {"1-bit", "6-bit", "12-bit", "24-bit"};
 
-const std::string ExcaliburFrameDecoder::CONFIG_FEM_PORT_MAP = "fem_port_map";
-const std::string ExcaliburFrameDecoder::CONFIG_BITDEPTH = "bitdepth";
+const std::string LpdFrameDecoder::CONFIG_FEM_PORT_MAP = "fem_port_map";
+const std::string LpdFrameDecoder::CONFIG_BITDEPTH = "bitdepth";
 
 #define MAX_IGNORED_PACKET_REPORTS 10
 
-//! Constructor for ExcaliburFrameDecoder
+//! Constructor for LpdFrameDecoder
 //!
 //! This constructor sets up the decoder, setting default values of frame tracking information
 //! and allocating buffers for packet header, dropped frames and scratched packets
 //!
-ExcaliburFrameDecoder::ExcaliburFrameDecoder() :
+LpdFrameDecoder::LpdFrameDecoder() :
     FrameDecoderUDP(),
-    asic_counter_bit_depth_(Excalibur::bitDepth12),
-    num_subframes_(Excalibur::num_subframes[asic_counter_bit_depth_]),
-    current_frame_seen_(Excalibur::default_frame_number),
-    current_frame_buffer_id_(Excalibur::default_frame_number),
+    asic_counter_bit_depth_(Lpd::bitDepth12),
+    num_subframes_(Lpd::num_subframes[asic_counter_bit_depth_]),
+    current_frame_seen_(Lpd::default_frame_number),
+    current_frame_buffer_id_(Lpd::default_frame_number),
     current_frame_buffer_(0),
     current_frame_header_(0),
     num_active_fems_(0),
@@ -47,15 +47,15 @@ ExcaliburFrameDecoder::ExcaliburFrameDecoder() :
 {
 
   // Allocate buffers for packet header, dropped frames and scratched packets
-  current_packet_header_.reset(new uint8_t[sizeof(Excalibur::PacketHeader)]);
-  dropped_frame_buffer_.reset(new uint8_t[Excalibur::max_frame_size()]);
-  ignored_packet_buffer_.reset(new uint8_t[Excalibur::primary_packet_size]);
+  current_packet_header_.reset(new uint8_t[sizeof(Lpd::PacketHeader)]);
+  dropped_frame_buffer_.reset(new uint8_t[Lpd::max_frame_size()]);
+  ignored_packet_buffer_.reset(new uint8_t[Lpd::primary_packet_size]);
 
 }
 
-//! Destructor for ExcaliburFrameDecoder
+//! Destructor for LpdFrameDecoder
 //!
-ExcaliburFrameDecoder::~ExcaliburFrameDecoder()
+LpdFrameDecoder::~LpdFrameDecoder()
 {
 }
 
@@ -68,7 +68,7 @@ ExcaliburFrameDecoder::~ExcaliburFrameDecoder()
 //! \param[in] logger - pointer to the message logger
 //! \param[in] config_msg - configuration message
 //!
-void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
+void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
 {
 
   // Pass the configuration message to the base class decoder
@@ -108,10 +108,10 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   {
     std::string bit_depth_str = config_msg.get_param<std::string>(CONFIG_BITDEPTH);
 
-    Excalibur::AsicCounterBitDepth bit_depth =
+    Lpd::AsicCounterBitDepth bit_depth =
         parse_bit_depth(bit_depth_str);
 
-    if (bit_depth == Excalibur::bitDepthUnknown)
+    if (bit_depth == Lpd::bitDepthUnknown)
     {
       LOG4CXX_ERROR(logger_, "Unknown bit depth configuration parameter specified: "
                     << bit_depth_str << ", defaulting to "
@@ -126,12 +126,12 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
       << asic_bit_depth_str_[asic_counter_bit_depth_]);
 
   // Set the number of subframes in this readout mode, as it is used frequently
-  num_subframes_ = Excalibur::num_subframes[asic_counter_bit_depth_];
+  num_subframes_ = Lpd::num_subframes[asic_counter_bit_depth_];
   LOG4CXX_DEBUG_LEVEL(1, logger_, "Setting number of subframes for this bit depth to "
       <<num_subframes_);
 
   // Determine if this readout mode has a subframe trailer
-  if (asic_counter_bit_depth_ == Excalibur::bitDepth1)
+  if (asic_counter_bit_depth_ == Lpd::bitDepth1)
   {
     has_subframe_trailer_ = false;
   }
@@ -156,13 +156,13 @@ void ExcaliburFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config
   // Reset the scratched and lost packet counters
   packets_ignored_ = 0;
   packets_lost_ = 0 ;
-  for (int fem = 0; fem < Excalibur::max_num_fems; fem++)
+  for (int fem = 0; fem < Lpd::max_num_fems; fem++)
   {
     fem_packets_lost_[fem] = 0;
   }
 }
 
-void ExcaliburFrameDecoder::request_configuration(const std::string param_prefix,
+void LpdFrameDecoder::request_configuration(const std::string param_prefix,
     OdinData::IpcMessage& config_reply)
 {
 
@@ -182,34 +182,34 @@ void ExcaliburFrameDecoder::request_configuration(const std::string param_prefix
 //!
 //! \return size of frame buffer in bytes
 //!
-const size_t ExcaliburFrameDecoder::get_frame_buffer_size(void) const
+const size_t LpdFrameDecoder::get_frame_buffer_size(void) const
 {
   size_t frame_buffer_size = get_frame_header_size() +
-      (Excalibur::subframe_size(asic_counter_bit_depth_) * num_subframes_ * num_active_fems_);
+      (Lpd::subframe_size(asic_counter_bit_depth_) * num_subframes_ * num_active_fems_);
   return frame_buffer_size;
 }
 
 //! Get the size of the frame header.
 //!
 //! This method returns the size of the frame header used by the decoder, which in this case is the
-//! EXCALIBUR frame header.
+//! LPD frame header.
 //!
 //! \return size of the frame header in bytes
-const size_t ExcaliburFrameDecoder::get_frame_header_size(void) const
+const size_t LpdFrameDecoder::get_frame_header_size(void) const
 {
-  return sizeof(Excalibur::FrameHeader);
+  return sizeof(Lpd::FrameHeader);
 }
 
 //! Get the size of a packet header.
 //!
 //! This method returns the size of a UDP packet header for the receiver thread, which in this case
-//! is the size of the EXCALIBUR packet header.
+//! is the size of the LPD packet header.
 //!
 //! \return size of the packet header in bytes.
 //!
-const size_t ExcaliburFrameDecoder::get_packet_header_size(void) const
+const size_t LpdFrameDecoder::get_packet_header_size(void) const
 {
-  return sizeof(Excalibur::PacketHeader);
+  return sizeof(Lpd::PacketHeader);
 }
 
 //! Get a pointer to the packet header buffer.
@@ -219,7 +219,7 @@ const size_t ExcaliburFrameDecoder::get_packet_header_size(void) const
 //!
 //! \return pointer to the packet header buffer
 //!
-void* ExcaliburFrameDecoder::get_packet_header_buffer(void)
+void* LpdFrameDecoder::get_packet_header_buffer(void)
 {
   return current_packet_header_.get();
 }
@@ -237,7 +237,7 @@ void* ExcaliburFrameDecoder::get_packet_header_buffer(void)
 //! \param[in] port - UDP port packet header was received on
 //! \param[in] from_addr - socket address structure with details of source of packet
 //!
-void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int port,
+void LpdFrameDecoder::process_packet_header(size_t bytes_received, int port,
     struct sockaddr_in* from_addr)
 {
   // Dump raw header if packet logging enabled
@@ -249,7 +249,7 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
         << std::right << " " << std::setw (5) << ntohs (from_addr->sin_port) << " " << std::setw(5)
         << port << std::hex;
 
-    for (unsigned int hdr_byte = 0; hdr_byte < sizeof(Excalibur::PacketHeader); hdr_byte++)
+    for (unsigned int hdr_byte = 0; hdr_byte < sizeof(Lpd::PacketHeader); hdr_byte++)
     {
       if (hdr_byte % 8 == 0)
       {
@@ -269,7 +269,7 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
   }
   else
   {
-    current_packet_fem_map_ = ExcaliburDecoderFemMapEntry(ILLEGAL_FEM_IDX, ILLEGAL_FEM_IDX);
+    current_packet_fem_map_ = LpdDecoderFemMapEntry(ILLEGAL_FEM_IDX, ILLEGAL_FEM_IDX);
     packets_ignored_++;
     if (packets_ignored_ < MAX_IGNORED_PACKET_REPORTS)
     {
@@ -340,7 +340,7 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
         }
 
         // Initialise frame header
-        current_frame_header_ = reinterpret_cast<Excalibur::FrameHeader*>(current_frame_buffer_);
+        current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
         initialise_frame_header(current_frame_header_);
 
       }
@@ -348,12 +348,12 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
       {
         current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
         current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
-        current_frame_header_ = reinterpret_cast<Excalibur::FrameHeader*>(current_frame_buffer_);
+        current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
       }
 
     }
 
-    Excalibur::FemReceiveState* fem_rx_state =
+    Lpd::FemReceiveState* fem_rx_state =
         &(current_frame_header_->fem_rx_state[current_packet_fem_map_.buf_idx_]);
 
     // If SOF or EOF markers seen in packet header, increment appropriate field in frame header
@@ -382,7 +382,7 @@ void ExcaliburFrameDecoder::process_packet_header(size_t bytes_received, int por
 //!
 //! \param[in] header_ptr - pointer to frame header to initialise.
 //!
-void ExcaliburFrameDecoder::initialise_frame_header(Excalibur::FrameHeader* header_ptr)
+void LpdFrameDecoder::initialise_frame_header(Lpd::FrameHeader* header_ptr)
 {
 
   header_ptr->frame_number = current_frame_seen_;
@@ -392,13 +392,13 @@ void ExcaliburFrameDecoder::initialise_frame_header(Excalibur::FrameHeader* head
   header_ptr->total_eof_marker_count = 0;
 
   header_ptr->num_active_fems = num_active_fems_;
-  for (ExcaliburDecoderFemMap::iterator it = fem_port_map_.begin();
+  for (LpdDecoderFemMap::iterator it = fem_port_map_.begin();
         it != fem_port_map_.end(); ++it)
   {
     header_ptr->active_fem_idx[(it->second).buf_idx_] = (it->second).fem_idx_;
   }
   memset(header_ptr->fem_rx_state, 0,
-      sizeof(Excalibur::FemReceiveState) * Excalibur::max_num_fems);
+      sizeof(Lpd::FemReceiveState) * Lpd::max_num_fems);
 
   gettime(reinterpret_cast<struct timespec*>(&(header_ptr->frame_start_time)));
 
@@ -413,21 +413,21 @@ void ExcaliburFrameDecoder::initialise_frame_header(Excalibur::FrameHeader* head
 //!
 //! \return pointer to the next payload buffer
 //!
-void* ExcaliburFrameDecoder::get_next_payload_buffer(void) const
+void* LpdFrameDecoder::get_next_payload_buffer(void) const
 {
 
   uint8_t* next_receive_location;
 
   if (current_packet_fem_map_.fem_idx_ != ILLEGAL_FEM_IDX)
   {
-    std::size_t subframe_size = Excalibur::subframe_size(asic_counter_bit_depth_);
-    std::size_t num_subframes = Excalibur::num_subframes[asic_counter_bit_depth_];
+    std::size_t subframe_size = Lpd::subframe_size(asic_counter_bit_depth_);
+    std::size_t num_subframes = Lpd::num_subframes[asic_counter_bit_depth_];
 
     next_receive_location = reinterpret_cast<uint8_t*>(current_frame_buffer_)
           + get_frame_header_size ()
           + (subframe_size * num_subframes * current_packet_fem_map_.buf_idx_)
           + (subframe_size * (get_subframe_counter() % num_subframes))
-          + (Excalibur::primary_packet_size * get_packet_number());
+          + (Lpd::primary_packet_size * get_packet_number());
   }
   else
   {
@@ -446,17 +446,17 @@ void* ExcaliburFrameDecoder::get_next_payload_buffer(void) const
 //!
 //! \return size of next packet payload in bytes
 //!
-size_t ExcaliburFrameDecoder::get_next_payload_size(void) const
+size_t LpdFrameDecoder::get_next_payload_size(void) const
 {
   size_t next_receive_size = 0;
 
-  if (get_packet_number() < Excalibur::num_primary_packets[asic_counter_bit_depth_])
+  if (get_packet_number() < Lpd::num_primary_packets[asic_counter_bit_depth_])
   {
-    next_receive_size = Excalibur::primary_packet_size;
+    next_receive_size = Lpd::primary_packet_size;
   }
   else
   {
-    next_receive_size = Excalibur::tail_packet_size[asic_counter_bit_depth_];
+    next_receive_size = Lpd::tail_packet_size[asic_counter_bit_depth_];
   }
 
   return next_receive_size;
@@ -473,7 +473,7 @@ size_t ExcaliburFrameDecoder::get_next_payload_size(void) const
 //! \param[in] bytes_received - number of packet payload bytes received
 //! \return current frame receive state
 //!
-FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t bytes_received)
+FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_received)
 {
 
   FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
@@ -493,11 +493,11 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
         uint32_t frame_number;
         uint32_t subframe_idx = get_subframe_counter() % num_subframes_;
 
-        size_t payload_bytes_received = bytes_received - sizeof(Excalibur::PacketHeader);
+        size_t payload_bytes_received = bytes_received - sizeof(Lpd::PacketHeader);
 
-        Excalibur::SubframeTrailer* trailer =
-            reinterpret_cast<Excalibur::SubframeTrailer*>((uint8_t*) get_next_payload_buffer()
-                + payload_bytes_received - sizeof(Excalibur::SubframeTrailer));
+        Lpd::SubframeTrailer* trailer =
+            reinterpret_cast<Lpd::SubframeTrailer*>((uint8_t*) get_next_payload_buffer()
+                + payload_bytes_received - sizeof(Lpd::SubframeTrailer));
 
         frame_number = static_cast<uint32_t>((trailer->frame_number & 0xFFFFFFFF) - 1);
         LOG4CXX_DEBUG_LEVEL(3, logger_, "Subframe EOF trailer FEM: "
@@ -508,7 +508,7 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
     }
 
     // Get a convenience pointer to the FEM receive state data in the frame header
-    Excalibur::FemReceiveState* fem_rx_state =
+    Lpd::FemReceiveState* fem_rx_state =
         &(current_frame_header_->fem_rx_state[current_packet_fem_map_.buf_idx_]);
 
     // Increment the total and per-FEM packet received counters
@@ -518,7 +518,7 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
     // If we have received the expected number of packets, perform end of frame processing
     // and hand off the frame for downstream processing.
     if (current_frame_header_->total_packets_received ==
-        (Excalibur::num_fem_frame_packets(asic_counter_bit_depth_) * num_active_fems_))
+        (Lpd::num_fem_frame_packets(asic_counter_bit_depth_) * num_active_fems_))
     {
 
       // Check that the appropriate number of SOF and EOF markers (one each per subframe) have
@@ -563,7 +563,7 @@ FrameDecoder::FrameReceiveState ExcaliburFrameDecoder::process_packet(size_t byt
 //! long time that indicates packets have been lost and the frame is incomplete, the frame is
 //! flagged as such and notified to the main thread via the ready callback.
 //!
-void ExcaliburFrameDecoder::monitor_buffers(void)
+void LpdFrameDecoder::monitor_buffers(void)
 {
 
   int frames_timedout = 0;
@@ -578,13 +578,13 @@ void ExcaliburFrameDecoder::monitor_buffers(void)
     int frame_num = buffer_map_iter->first;
     int buffer_id = buffer_map_iter->second;
     void* buffer_addr = buffer_manager_->get_buffer_address(buffer_id);
-    Excalibur::FrameHeader* frame_header = reinterpret_cast<Excalibur::FrameHeader*>(buffer_addr);
+    Lpd::FrameHeader* frame_header = reinterpret_cast<Lpd::FrameHeader*>(buffer_addr);
 
     if (elapsed_ms(frame_header->frame_start_time, current_time) > frame_timeout_ms_)
     {
 
       const std::size_t num_fem_frame_packets =
-          Excalibur::num_fem_frame_packets(asic_counter_bit_depth_);
+          Lpd::num_fem_frame_packets(asic_counter_bit_depth_);
 
       // Calculate packets lost on this frame and add to total
       uint32_t packets_lost = (num_fem_frame_packets * num_active_fems_) -
@@ -592,7 +592,7 @@ void ExcaliburFrameDecoder::monitor_buffers(void)
       packets_lost_ += packets_lost;
       if (packets_lost)
       {
-        for (ExcaliburDecoderFemMap::iterator iter = fem_port_map_.begin();
+        for (LpdDecoderFemMap::iterator iter = fem_port_map_.begin();
             iter != fem_port_map_.end(); ++iter)
         {
           fem_packets_lost_[(iter->second).fem_idx_] += num_fem_frame_packets -
@@ -638,17 +638,17 @@ void ExcaliburFrameDecoder::monitor_buffers(void)
 //! \param[in] param_prefix - path to be prefixed to each status parameter name
 //! \param[in] status_msg - reference to IpcMesssage to be populated with parameters
 //!
-void ExcaliburFrameDecoder::get_status(const std::string param_prefix,
+void LpdFrameDecoder::get_status(const std::string param_prefix,
     OdinData::IpcMessage& status_msg)
 {
-  status_msg.set_param(param_prefix + "name", std::string("ExcaliburFrameDecoder"));
+  status_msg.set_param(param_prefix + "name", std::string("LpdFrameDecoder"));
   status_msg.set_param(param_prefix + "packets_lost", packets_lost_);
 
   // Workaround for lack of array setters in IpcMessage
   rapidjson::Value fem_packets_lost_array(rapidjson::kArrayType);
   rapidjson::Value::AllocatorType allocator;
 
-  for (int fem = 0; fem < Excalibur::max_num_fems; fem++)
+  for (int fem = 0; fem < Lpd::max_num_fems; fem++)
   {
     fem_packets_lost_array.PushBack(fem_packets_lost_[fem], allocator);
   }
@@ -662,9 +662,9 @@ void ExcaliburFrameDecoder::get_status(const std::string param_prefix,
 //!
 //! \return current subframe counter
 //!
-uint32_t ExcaliburFrameDecoder::get_subframe_counter(void) const
+uint32_t LpdFrameDecoder::get_subframe_counter(void) const
 {
-  return reinterpret_cast<Excalibur::PacketHeader*>(current_packet_header_.get())->subframe_counter;
+  return reinterpret_cast<Lpd::PacketHeader*>(current_packet_header_.get())->subframe_counter;
 }
 
 //! Get the current packet number.
@@ -673,10 +673,10 @@ uint32_t ExcaliburFrameDecoder::get_subframe_counter(void) const
 //!
 //! \return current packet number
 //!
-uint32_t ExcaliburFrameDecoder::get_packet_number(void) const
+uint32_t LpdFrameDecoder::get_packet_number(void) const
 {
-  return reinterpret_cast<Excalibur::PacketHeader*>(
-      current_packet_header_.get())->packet_number_flags & Excalibur::packet_number_mask;
+  return reinterpret_cast<Lpd::PacketHeader*>(
+      current_packet_header_.get())->packet_number_flags & Lpd::packet_number_mask;
 }
 
 //! Get the current packet start of frame (SOF) marker.
@@ -685,11 +685,11 @@ uint32_t ExcaliburFrameDecoder::get_packet_number(void) const
 //!
 //! \return true is SOF marker set in packet header
 //!
-bool ExcaliburFrameDecoder::get_start_of_frame_marker(void) const
+bool LpdFrameDecoder::get_start_of_frame_marker(void) const
 {
   uint32_t packet_number_flags =
-      reinterpret_cast<Excalibur::PacketHeader*>(current_packet_header_.get())->packet_number_flags;
-  return ((packet_number_flags & Excalibur::start_of_frame_mask) != 0);
+      reinterpret_cast<Lpd::PacketHeader*>(current_packet_header_.get())->packet_number_flags;
+  return ((packet_number_flags & Lpd::start_of_frame_mask) != 0);
 }
 
 //! Get the current packet end of frame (EOF) marker.
@@ -698,11 +698,11 @@ bool ExcaliburFrameDecoder::get_start_of_frame_marker(void) const
 //!
 //! \return true is EOF marker set in packet header
 //!
-bool ExcaliburFrameDecoder::get_end_of_frame_marker(void) const
+bool LpdFrameDecoder::get_end_of_frame_marker(void) const
 {
   uint32_t packet_number_flags =
-      reinterpret_cast<Excalibur::PacketHeader*>(current_packet_header_.get())->packet_number_flags;
-  return ((packet_number_flags & Excalibur::end_of_frame_mask) != 0);
+      reinterpret_cast<Lpd::PacketHeader*>(current_packet_header_.get())->packet_number_flags;
+  return ((packet_number_flags & Lpd::end_of_frame_mask) != 0);
 }
 
 //! Calculate and return an elapsed time in milliseconds.
@@ -714,7 +714,7 @@ bool ExcaliburFrameDecoder::get_end_of_frame_marker(void) const
 //! \param[in] end - end time in timespec struct format
 //! \return eclapsed time between start and end in milliseconds
 //!
-unsigned int ExcaliburFrameDecoder::elapsed_ms(struct timespec& start, struct timespec& end)
+unsigned int LpdFrameDecoder::elapsed_ms(struct timespec& start, struct timespec& end)
 {
 
   double start_ns = ((double) start.tv_sec * 1000000000) + start.tv_nsec;
@@ -732,7 +732,7 @@ unsigned int ExcaliburFrameDecoder::elapsed_ms(struct timespec& start, struct ti
 //! \param[in] fem_port_map_str - string of port to FEM index mapping configuration
 //! \return number of valid map entries parsed from string
 //!
-std::size_t ExcaliburFrameDecoder::parse_fem_port_map(const std::string fem_port_map_str)
+std::size_t LpdFrameDecoder::parse_fem_port_map(const std::string fem_port_map_str)
 {
     // Clear the current map
     fem_port_map_.clear();
@@ -751,10 +751,10 @@ std::size_t ExcaliburFrameDecoder::parse_fem_port_map(const std::string fem_port
     // Loop over entries, further splitting into port / fem index pairs
     for (std::vector<std::string>::iterator it = map_entries.begin(); it != map_entries.end(); ++it)
     {
-        if (buf_idx >= Excalibur::max_num_fems) {
+        if (buf_idx >= Lpd::max_num_fems) {
           LOG4CXX_WARN(logger_, "Decoder FEM port map configuration contains too many elements, "
                         << "truncating to maximium number of FEMs allowed ("
-                        << Excalibur::max_num_fems << ")");
+                        << Lpd::max_num_fems << ")");
           break;
         }
 
@@ -765,7 +765,7 @@ std::size_t ExcaliburFrameDecoder::parse_fem_port_map(const std::string fem_port
         if (entry_elems.size() == 2) {
             int port = static_cast<int>(strtol(entry_elems[0].c_str(), NULL, 10));
             int fem_idx = static_cast<int>(strtol(entry_elems[1].c_str(), NULL, 10));
-            fem_port_map_[port] = ExcaliburDecoderFemMapEntry(fem_idx, buf_idx);
+            fem_port_map_[port] = LpdDecoderFemMapEntry(fem_idx, buf_idx);
             buf_idx++;
         }
     }
@@ -776,27 +776,27 @@ std::size_t ExcaliburFrameDecoder::parse_fem_port_map(const std::string fem_port
 
 //! Parse the ASIC counter bit depth configuration string.
 //!
-//! This method parses a configuration string specifying the EXCALIBUR ASIC counter bit
+//! This method parses a configuration string specifying the LPD ASIC counter bit
 //! depth currently in use, returning an enumerated constant for use in the decoder.
 //!
 //! \param[in] bit_depth_str - string of the bit depth
 //! \return enumerated constant defining bit depth, or unknown if the string is not recognised
 //!
-Excalibur::AsicCounterBitDepth ExcaliburFrameDecoder::parse_bit_depth(
+Lpd::AsicCounterBitDepth LpdFrameDecoder::parse_bit_depth(
     const std::string bit_depth_str)
 {
 
   //! Set the default bit depth to return to unknown
-  Excalibur::AsicCounterBitDepth bit_depth = Excalibur::bitDepthUnknown;
+  Lpd::AsicCounterBitDepth bit_depth = Lpd::bitDepthUnknown;
 
   // Initialise a mapping of string to bit depth
-  static std::map<std::string, Excalibur::AsicCounterBitDepth>bit_depth_map;
+  static std::map<std::string, Lpd::AsicCounterBitDepth>bit_depth_map;
   if (bit_depth_map.empty())
   {
-    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth1]]  = Excalibur::bitDepth1;
-    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth6]]  = Excalibur::bitDepth6;
-    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth12]] = Excalibur::bitDepth12;
-    bit_depth_map[asic_bit_depth_str_[Excalibur::bitDepth24]] = Excalibur::bitDepth24;
+    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth1]]  = Lpd::bitDepth1;
+    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth6]]  = Lpd::bitDepth6;
+    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth12]] = Lpd::bitDepth12;
+    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth24]] = Lpd::bitDepth24;
   }
 
   // Set the bit depth value if present in the map

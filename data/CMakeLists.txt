@@ -1,5 +1,5 @@
 # Project name
-project(EXCALIBUR)
+project(LPD)
 
 # Require CMake version >=2.8
 cmake_minimum_required(VERSION 2.8)
@@ -10,17 +10,17 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_CONFIG_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/test_config)
 
 # Set the common directory
-set(COMMON_DIR ${EXCALIBUR_SOURCE_DIR}/common)
+set(COMMON_DIR ${LPD_SOURCE_DIR}/common)
 
 # Set the frameReceiver directory
-set(FRAMERECEIVER_DIR ${EXCALIBUR_SOURCE_DIR}/frameReceiver)
+set(FRAMERECEIVER_DIR ${LPD_SOURCE_DIR}/frameReceiver)
 
 # Set the frameProcessor directory
-set(FRAMEPROCESSOR_DIR ${EXCALIBUR_SOURCE_DIR}/frameProcessor)
+set(FRAMEPROCESSOR_DIR ${LPD_SOURCE_DIR}/frameProcessor)
 
 # Appends the cmake/modules path inside the MAKE_MODULE_PATH variable which stores the
 # directories of additional CMake modules (ie. MacroOutOfSourceBuild.cmake):
-set(CMAKE_MODULE_PATH ${EXCALIBUR_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${LPD_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 # Allow macOS shared (dynamic) libraries to link with undefined symbols
 if (APPLE)

@@ -1,5 +1,5 @@
 /*
- * ExcaliburDefinitions.h
+ * LpdDefinitions.h
  *
  *  Created on: Jan 16th, 2017
  *      Author: Tim Nicholls, STFC Application Engineering Group
@@ -8,7 +8,7 @@
 #ifndef INCLUDE_EXACLIBURDEFINITIONS_H_
 #define INCLUDE_EXACLIBURDEFINITIONS_H_
 
-namespace Excalibur {
+namespace Lpd {
 
     static const size_t num_bit_depths = 4;
     typedef enum {
