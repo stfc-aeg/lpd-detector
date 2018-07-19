@@ -41,7 +41,7 @@ class LpdTestApp(npyscreen.NPSAppManaged):
         self._running = False
         self._frames_sent = 0
         self._last_millis = 0
-        self._filename = "excalibur-test-12bit.raw"
+        self._filename = "lpd-test-12bit.raw"
         self._filepath = filepath
         self._frames = 1
 
@@ -112,13 +112,13 @@ class IntroForm(npyscreen.Form):
         self.parentApp._release_channel = IpcChannel(IpcChannel.CHANNEL_TYPE_SUB)
         self.parentApp._release_channel.bind(self.release.value)
         if self.datatype.value == "1bit":
-          self.parentApp.setup_buffer("excalibur-test-1bit.raw", 65536, 1)
+          self.parentApp.setup_buffer("lpd-test-1bit.raw", 65536, 1)
         elif self.datatype.value == "6bit":
-          self.parentApp.setup_buffer("excalibur-test-6bit.raw", 524288, 1)
+          self.parentApp.setup_buffer("lpd-test-6bit.raw", 524288, 1)
         elif self.datatype.value == "12bit":
-          self.parentApp.setup_buffer("excalibur-test-12bit.raw", 1048576, 1)
+          self.parentApp.setup_buffer("lpd-test-12bit.raw", 1048576, 1)
         elif self.datatype.value == "24bit":
-          self.parentApp.setup_buffer("excalibur-test-24bit.raw", 1048576, 2)
+          self.parentApp.setup_buffer("lpd-test-24bit.raw", 1048576, 2)
         else:
           self.parentApp.setNextForm(None)
 

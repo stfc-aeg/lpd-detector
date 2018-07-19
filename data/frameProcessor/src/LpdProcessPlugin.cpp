@@ -210,8 +210,7 @@ namespace FrameProcessor
       // Calculate the FEM frame size once so it can be used in the following loop
       // repeatedly
       std::size_t fem_frame_size = (
-          Lpd::num_subframes[asic_counter_depth_] *
-          Lpd::subframe_size(static_cast<Lpd::AsicCounterBitDepth>(asic_counter_depth_))
+		  Lpd::max_frame_size()
       );
 
       // Loop over active FEMs in the input frame image data, reordering pixels into the output

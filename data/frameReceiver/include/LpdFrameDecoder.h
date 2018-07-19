@@ -49,8 +49,15 @@ namespace FrameReceiver
 
     inline const bool requires_header_peek(void) const
     {
-      return true;
+//      return true;
+    	return false;
     };
+
+    inline const bool trailer_mode(void) const
+        {
+          return true;
+//          return false;
+        };
 
     const size_t get_packet_header_size(void) const;
     void process_packet_header (size_t bytes_received, int port,
@@ -58,17 +65,18 @@ namespace FrameReceiver
 
     void* get_next_payload_buffer(void) const;
     size_t get_next_payload_size(void) const;
-    FrameDecoder::FrameReceiveState process_packet (size_t bytes_received);
+    FrameDecoder::FrameReceiveState process_packet (size_t bytes_received, int port, struct sockaddr_in* from_addr);
 
     void monitor_buffers(void);
     void get_status(const std::string param_prefix, OdinData::IpcMessage& status_msg);
 
     void* get_packet_header_buffer(void);
 
-    uint32_t get_subframe_counter(void) const;
-    uint32_t get_packet_number(void) const;
-    bool get_start_of_frame_marker(void) const;
-    bool get_end_of_frame_marker(void) const;
+    uint32_t get_frame_number(uint8_t* &trlr_ptr) const;
+    uint32_t get_packet_number(uint8_t* &trlr_ptr) const;
+    bool get_start_of_frame_marker(uint8_t* &trlr_ptr) const;
+    bool get_end_of_frame_marker(uint8_t* &trlr_ptr) const;
+
 
   private:
 
@@ -78,10 +86,9 @@ namespace FrameReceiver
     Lpd::AsicCounterBitDepth parse_bit_depth(const std::string bit_depth_str);
 
     Lpd::AsicCounterBitDepth asic_counter_bit_depth_;
-    std::size_t num_subframes_;
     std::string fem_port_map_str_;
     LpdDecoderFemMap fem_port_map_;
-    boost::shared_ptr<void> current_packet_header_;
+    boost::shared_ptr<void> current_packet_trailer_;
     boost::shared_ptr<void> dropped_frame_buffer_;
     boost::shared_ptr<void> ignored_packet_buffer_;
 
@@ -96,8 +103,6 @@ namespace FrameReceiver
     uint32_t packets_ignored_;
     uint32_t packets_lost_;
     uint32_t fem_packets_lost_[Lpd::max_num_fems];
-
-    bool has_subframe_trailer_;
 
     static const std::string asic_bit_depth_str_[Lpd::num_bit_depths];
 
