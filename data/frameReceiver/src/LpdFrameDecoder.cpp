@@ -235,16 +235,10 @@ void* LpdFrameDecoder::get_next_payload_buffer(void) const
 	uint8_t* next_receive_location;
     int trailer_size = 0;
 
-    if (current_frame_header_->total_packets_received != 0)
-    {
-        trailer_size = sizeof(Lpd::PacketTrailer);
-    }
-
 	next_receive_location =
 			reinterpret_cast<uint8_t*>(current_frame_buffer_)
 			+ get_frame_header_size()
-			+ (Lpd::primary_packet_size * current_frame_header_->total_packets_received)
-		    - trailer_size;
+			+ (Lpd::primary_packet_size * current_frame_header_->total_packets_received);
 
 	return reinterpret_cast<void*>(next_receive_location);
 }
@@ -451,7 +445,7 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 //      {
 //        if ((i) % 32 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
 //        if (i == sizeof(Lpd::FrameHeader)) { ss << "Pkt 1 | ";}
-//        if (i == sizeof(Lpd::FrameHeader) + 8184 - sizeof(Lpd::PacketTrailer)) { ss << "Pkt 2 | ";}
+//        if (i == sizeof(Lpd::FrameHeader) + 8184) { ss << "Pkt 2 | ";}
 //
 //      uint8_t* pkt_ptr = reinterpret_cast<uint8_t*>(current_frame_buffer_ + i);
 //
@@ -475,9 +469,6 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
         current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
         initialise_frame_header(current_frame_header_);
 
-        // Reset current frame seen ID so that if next frame has same number (e.g. repeated
-        // sends of single frame 0), it is detected properly
-//        current_frame_seen_ = -1;
       }
     }
 
