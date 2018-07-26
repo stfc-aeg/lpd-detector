@@ -142,6 +142,13 @@ void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
   {
     fem_packets_lost_[fem] = 0;
   }
+
+  // Create buffer for first packet
+  current_frame_buffer_ = dropped_frame_buffer_.get();
+  LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating first frame buffer");
+  current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
+  current_frame_seen_ = 1;
+  initialise_frame_header(current_frame_header_);
 }
 
 void LpdFrameDecoder::request_configuration(const std::string param_prefix,
@@ -206,19 +213,12 @@ void LpdFrameDecoder::initialise_frame_header(Lpd::FrameHeader* header_ptr)
 }
 
 //---TODO: Remove/replace when feasable---------------------------------------------
-
-
 const size_t LpdFrameDecoder::get_packet_header_size(void) const
 {}
-
 void* LpdFrameDecoder::get_packet_header_buffer(void)
 {}
-
-void LpdFrameDecoder::process_packet_header(size_t bytes_received, int port,
-    struct sockaddr_in* from_addr)
+void LpdFrameDecoder::process_packet_header(size_t bytes_received, int port, struct sockaddr_in* from_addr)
 {}
-
-
 //---------------------------------------------------------------------------------
 
 // Get a pointer to the next payload buffer.
@@ -232,7 +232,21 @@ void LpdFrameDecoder::process_packet_header(size_t bytes_received, int port,
 
 void* LpdFrameDecoder::get_next_payload_buffer(void) const
 {
-	return current_packet_trailer_.get();
+	uint8_t* next_receive_location;
+    int trailer_size = 0;
+
+    if (current_frame_header_->total_packets_received != 0)
+    {
+        trailer_size = sizeof(Lpd::PacketTrailer);
+    }
+
+	next_receive_location =
+			reinterpret_cast<uint8_t*>(current_frame_buffer_)
+			+ get_frame_header_size()
+			+ (Lpd::primary_packet_size * current_frame_header_->total_packets_received)
+		    - trailer_size;
+
+	return reinterpret_cast<void*>(next_receive_location);
 }
 
 //! Get the next packet payload size to receive.
@@ -265,15 +279,15 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 {
   FrameDecoder::FrameReceiveState frame_state = FrameDecoder::FrameReceiveStateIncomplete;
 
-  // Pointer to packet trailer
-  uint8_t* trlr_ptr = reinterpret_cast<uint8_t*>(current_packet_trailer_.get () + (bytes_received - sizeof(Lpd::PacketTrailer)));
+  // Pointers to packet and trailer
+  uint8_t* pkt_ptr = reinterpret_cast<uint8_t*>(get_next_payload_buffer());
+  uint8_t* trlr_ptr = reinterpret_cast<uint8_t*>(pkt_ptr + (bytes_received - sizeof(Lpd::PacketTrailer)));
 
   // Extract fields from packet trailer
   uint32_t frame_number = get_frame_number (trlr_ptr);
   uint32_t packet_number = get_packet_number (trlr_ptr);
   bool start_of_frame_marker = get_start_of_frame_marker (trlr_ptr);
   bool end_of_frame_marker = get_end_of_frame_marker (trlr_ptr);
-
 
   // Print packet info to file
   if (enable_packet_logging_){
@@ -315,6 +329,7 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 
   }
 
+
   // Only process the packet if it is not being ignored due to an illegal port to FEM index mapping
   if (current_packet_fem_map_.fem_idx_ != ILLEGAL_FEM_IDX)
   {
@@ -328,48 +343,54 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 	  );
 
 	  if (frame_number != current_frame_seen_)
-	      {
-	        current_frame_seen_ = frame_number;
+	  {
+		  LOG4CXX_DEBUG_LEVEL(2, logger_, "Packet from frame " << frame_number << " does not match current frame " << current_frame_seen_);
+		  current_frame_seen_ = frame_number;
 
-	        if (frame_buffer_map_.count(current_frame_seen_) == 0)
-	        {
+	      if (frame_buffer_map_.count(current_frame_seen_) == 0)
+	      {
 	          if (empty_buffer_queue_.empty())
 	          {
-	            current_frame_buffer_ = dropped_frame_buffer_.get();
+	              current_frame_buffer_ = dropped_frame_buffer_.get();
 
-	            if (!dropping_frame_data_)
-	            {
-	              LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_
-	                  << " detected but no free buffers available. Dropping packet data for this frame");
-	              dropping_frame_data_ = true;
-	            }
+	              if (!dropping_frame_data_)
+	              {
+	                  LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_
+	                      << " detected but no free buffers available. Dropping packet data for this frame");
+	                  dropping_frame_data_ = true;
+	              }
 	          }
 	          else
 	          {
 
-	            current_frame_buffer_id_ = empty_buffer_queue_.front();
-	            empty_buffer_queue_.pop();
-	            frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
-	            current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
+				  current_frame_buffer_id_ = empty_buffer_queue_.front();
+			      empty_buffer_queue_.pop();
+				  frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
+				  current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
 
-	            if (!dropping_frame_data_)
-	            {
-	              LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_seen_
-	                  << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
-	            }
-	            else
-	            {
-	              dropping_frame_data_ = false;
-	              LOG4CXX_DEBUG_LEVEL(2, logger_, "Free buffer now available for frame "
-	                  << current_frame_seen_ << ", allocating frame buffer ID "
-	                  << current_frame_buffer_id_);
-	            }
+			      if (!dropping_frame_data_)
+				  {
+				      LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_seen_
+				          << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
+				  }
+				  else
+				  {
+				      dropping_frame_data_ = false;
+					  LOG4CXX_DEBUG_LEVEL(2, logger_, "Free buffer now available for frame "
+						  << current_frame_seen_ << ", allocating frame buffer ID "
+						  << current_frame_buffer_id_);
+				  }
 	          }
-
 	          // Initialise frame header
+	          LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating new buffer for frame " << current_frame_seen_);
 	          current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
 	          initialise_frame_header(current_frame_header_);
 
+	          // Copy payload into new frame buffer
+	          LOG4CXX_DEBUG_LEVEL(2, logger_, "Copying payload from packet "
+	              << packet_number << " (at " << &pkt_ptr
+			      << ") into frame " << current_frame_seen_ << " buffer at " << get_next_payload_buffer());
+	          memcpy (get_next_payload_buffer(), pkt_ptr, (bytes_received - sizeof(Lpd::PacketTrailer)));
 	        }
 	        else
 	        {
@@ -379,47 +400,26 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 	        }
 
 	      }
-
-	      Lpd::FemReceiveState* fem_rx_state =
-	          &(current_frame_header_->fem_rx_state[current_packet_fem_map_.buf_idx_]);
-
-	      // If SOF or EOF markers seen in packet trailer, increment appropriate field in frame header
-	      if (start_of_frame_marker)
-	      {
-	        (fem_rx_state->sof_marker_count)++;
-	        (current_frame_header_->total_sof_marker_count)++;
-	      }
-	      if (end_of_frame_marker)
-	      {
-	        (fem_rx_state->eof_marker_count)++;
-	        (current_frame_header_->total_eof_marker_count)++;
-	      }
-
-      uint8_t* next_receive_location;
-
-      next_receive_location = reinterpret_cast<uint8_t*>(current_frame_buffer_)
-          + get_frame_header_size ()
-	      + (Lpd::primary_packet_size * packet_number);
-
-//      if ((packet_number == 0) || (packet_number == 1) || (packet_number == 318) || (packet_number == 319) || (packet_number == 320)){
-//        LOG4CXX_DEBUG_LEVEL(3, logger_, "current_frame_buffer_: 0x" << std::hex << (unsigned long)current_frame_buffer_ << std::dec);
-//        LOG4CXX_DEBUG_LEVEL(3, logger_, "next_receive_location: 0x" << std::hex << (unsigned long)next_receive_location << std::dec);
-//        LOG4CXX_DEBUG_LEVEL(3, logger_, "Attempting memcpy");
-//      }
-
-      // Copy payload into buffer
-	  memcpy (next_receive_location, get_next_payload_buffer(), (bytes_received - sizeof(Lpd::PacketTrailer)));
-
-	  // Update packet_number state map in frame header
-	  fem_rx_state->packet_state[0][packet_number] = 1;
-
-      // Get a convenience pointer to the FEM receive state data in the frame header
-//      Lpd::FemReceiveState* fem_rx_state =
-//        &(current_frame_header_->fem_rx_state[current_packet_fem_map_.buf_idx_]);
+	  Lpd::FemReceiveState* fem_rx_state =
+	      &(current_frame_header_->fem_rx_state[current_packet_fem_map_.buf_idx_]);
+	  // If SOF or EOF markers seen in packet trailer, increment appropriate field in frame header
+	  if (start_of_frame_marker)
+	  {
+		  (fem_rx_state->sof_marker_count)++;
+	      (current_frame_header_->total_sof_marker_count)++;
+	  }
+	  if (end_of_frame_marker)
+	  {
+		  (fem_rx_state->eof_marker_count)++;
+	      (current_frame_header_->total_eof_marker_count)++;
+	  }
 
       // Increment the total and per-FEM packet received counters
       (fem_rx_state->packets_received)++;
       current_frame_header_->total_packets_received++;
+
+	  // Update packet_number state map in frame header
+	  fem_rx_state->packet_state[0][packet_number] = current_frame_header_->total_packets_received;
 
       // If we have received the expected number of packets, perform end of frame processing
       // and hand off the frame for downstream processing.
@@ -445,7 +445,21 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
       // Complete frame header
       current_frame_header_->frame_state = frame_state;
 
-//      LOG4CXX_DEBUG_LEVEL(3, logger_, frame_state);
+//---DEBUG CODE: Print out frame header and first 2 pkts
+//      std::stringstream ss;
+//      for (unsigned int i = 0; i < sizeof(Lpd::FrameHeader) + (8184 * 2); i++)
+//      {
+//        if ((i) % 32 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
+//        if (i == sizeof(Lpd::FrameHeader)) { ss << "Pkt 1 | ";}
+//        if (i == sizeof(Lpd::FrameHeader) + 8184 - sizeof(Lpd::PacketTrailer)) { ss << "Pkt 2 | ";}
+//
+//      uint8_t* pkt_ptr = reinterpret_cast<uint8_t*>(current_frame_buffer_ + i);
+//
+//      ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *pkt_ptr << " ";
+//      if ((i+1) % 8 == 0) {ss << " ";}
+//      }
+//      LOG4CXX_DEBUG_LEVEL(2, logger_, ss.str ());
+//---
 
       if (!dropping_frame_data_)
       {
@@ -455,11 +469,18 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
         // Notify main thread that frame is ready
         ready_callback_(current_frame_buffer_id_, current_frame_header_->frame_number);
 
+        // Initialise frame header
+        current_frame_seen_ += 1;
+        LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating new buffer for frame " << current_frame_seen_ );
+        current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
+        initialise_frame_header(current_frame_header_);
+
         // Reset current frame seen ID so that if next frame has same number (e.g. repeated
         // sends of single frame 0), it is detected properly
-        current_frame_seen_ = -1;
+//        current_frame_seen_ = -1;
       }
     }
+
   }
   else {
 	  LOG4CXX_DEBUG_LEVEL(3, logger_, "Illegal FEM IDX: " << current_packet_fem_map_.fem_idx_);

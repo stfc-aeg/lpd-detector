@@ -27,7 +27,7 @@ namespace Lpd {
     static const size_t tail_packet_size[num_bit_depths] = { 3464, 3464, 3464, 3464 };
     static const size_t num_tail_packets = 1;
 
-    static const size_t max_num_fems = 6;
+    static const size_t max_num_fems = 1;
 
     static const uint32_t start_of_frame_mask = 1 << 31;
     static const uint32_t end_of_frame_mask   = 1 << 30;
@@ -46,7 +46,7 @@ namespace Lpd {
       uint32_t packets_received;
       uint8_t  sof_marker_count;
       uint8_t  eof_marker_count;
-      uint8_t  packet_state[0][max_primary_packets + num_tail_packets];
+      uint16_t  packet_state[1][max_primary_packets + num_tail_packets];
     } FemReceiveState;
 
     typedef struct
@@ -64,7 +64,7 @@ namespace Lpd {
 
     inline const std::size_t max_frame_size()
     {
-      std::size_t max_frame_size = (sizeof(FrameHeader) + (primary_packet_size * num_primary_packets[bitDepth24]) + tail_packet_size[bitDepth24]);
+      std::size_t max_frame_size = (sizeof(FrameHeader) + (primary_packet_size * (num_primary_packets[0] + num_tail_packets)));
       return max_frame_size;
     }
 
