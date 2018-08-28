@@ -173,12 +173,13 @@ void LpdFrameDecoder::request_configuration(const std::string param_prefix,
 //!
 const size_t LpdFrameDecoder::get_frame_buffer_size(void) const
 {
-  size_t frame_buffer_size = get_frame_header_size() + (Lpd::max_frame_size() * num_active_fems_);
+  size_t frame_buffer_size = (Lpd::max_frame_size() * num_active_fems_);
   return frame_buffer_size;
 }
 
 const size_t LpdFrameDecoder::get_frame_header_size(void) const
 {
+
   return sizeof(Lpd::FrameHeader);
 }
 
@@ -205,7 +206,7 @@ void LpdFrameDecoder::initialise_frame_header(Lpd::FrameHeader* header_ptr)
   {
     header_ptr->active_fem_idx[(it->second).buf_idx_] = (it->second).fem_idx_;
   }
-  memset(header_ptr->fem_rx_state, 0,
+  memset(header_ptr->fem_rx_state, UINT_MAX,
       sizeof(Lpd::FemReceiveState) * Lpd::max_num_fems);
 
   gettime(reinterpret_cast<struct timespec*>(&(header_ptr->frame_start_time)));
@@ -356,7 +357,6 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 	          }
 	          else
 	          {
-
 				  current_frame_buffer_id_ = empty_buffer_queue_.front();
 			      empty_buffer_queue_.pop();
 				  frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
@@ -384,11 +384,13 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 	          LOG4CXX_DEBUG_LEVEL(2, logger_, "Copying payload from packet "
 	              << packet_number << " (at " << &pkt_ptr
 			      << ") into frame " << current_frame_seen_ << " buffer at " << get_next_payload_buffer());
+
 	          memcpy (get_next_payload_buffer(), pkt_ptr, (bytes_received - sizeof(Lpd::PacketTrailer)));
 	        }
 	        else
 	        {
 	          current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
+	          current_frame_buffer_id_ = empty_buffer_queue_.front();
 	          current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
 	          current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
 	        }
@@ -408,18 +410,20 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 	      (current_frame_header_->total_eof_marker_count)++;
 	  }
 
+	  // Update packet_number state map in frame header
+	  fem_rx_state->packet_state[0][packet_number] = current_frame_header_->total_packets_received;
+
       // Increment the total and per-FEM packet received counters
       (fem_rx_state->packets_received)++;
       current_frame_header_->total_packets_received++;
 
-	  // Update packet_number state map in frame header
-	  fem_rx_state->packet_state[0][packet_number] = current_frame_header_->total_packets_received;
 
       // If we have received the expected number of packets, perform end of frame processing
       // and hand off the frame for downstream processing.
       if (current_frame_header_->total_packets_received ==
         (Lpd::num_fem_frame_packets(asic_counter_bit_depth_) * num_active_fems_))
       {
+    	 LOG4CXX_DEBUG_LEVEL(2, logger_,(Lpd::num_fem_frame_packets(asic_counter_bit_depth_) * num_active_fems_));
 
       // Check that the appropriate number of SOF and EOF markers (one each per frame) have
       // been seen, otherwise log a warning
@@ -439,20 +443,18 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
       // Complete frame header
       current_frame_header_->frame_state = frame_state;
 
-//---DEBUG CODE: Print out frame header and first 2 pkts
-//      std::stringstream ss;
-//      for (unsigned int i = 0; i < sizeof(Lpd::FrameHeader) + (8184 * 2); i++)
-//      {
-//        if ((i) % 32 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
-//        if (i == sizeof(Lpd::FrameHeader)) { ss << "Pkt 1 | ";}
-//        if (i == sizeof(Lpd::FrameHeader) + 8184) { ss << "Pkt 2 | ";}
-//
-//      uint8_t* pkt_ptr = reinterpret_cast<uint8_t*>(current_frame_buffer_ + i);
-//
-//      ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *pkt_ptr << " ";
-//      if ((i+1) % 8 == 0) {ss << " ";}
-//      }
-//      LOG4CXX_DEBUG_LEVEL(2, logger_, ss.str ());
+//---DEBUG CODE: Print out frame header
+      std::stringstream ss;
+      for (unsigned int i = 0; i < sizeof(Lpd::FrameHeader); i++)
+      {
+        if ((i) % 32 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
+
+        uint8_t* pkt_ptr = reinterpret_cast<uint8_t*>(current_frame_buffer_ + i);
+
+        ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *pkt_ptr << " ";
+        if ((i+1) % 8 == 0) {ss << " ";}
+      }
+      LOG4CXX_DEBUG_LEVEL(2, logger_, ss.str ());
 //---
 
       if (!dropping_frame_data_)
@@ -464,11 +466,16 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
         ready_callback_(current_frame_buffer_id_, current_frame_header_->frame_number);
 
         // Initialise frame header
+        current_frame_buffer_id_ = empty_buffer_queue_.front();
+        empty_buffer_queue_.pop();
+        current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
         current_frame_seen_ += 1;
-        LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating new buffer for frame " << current_frame_seen_ );
+	    frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
+
+        LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating new buffer for frame "
+        		<< current_frame_seen_ << " in buffer " << current_frame_buffer_id_);
         current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
         initialise_frame_header(current_frame_header_);
-
       }
     }
 
@@ -523,13 +530,26 @@ void LpdFrameDecoder::monitor_buffers(void)
         }
       }
 
-      LOG4CXX_DEBUG_LEVEL(1, logger_, "Frame " << frame_num << " in buffer " << buffer_id
-          << " addr 0x" << std::hex
-          << buffer_addr << std::dec << " timed out with " << frame_header->total_packets_received
-          << " packets received, " << packets_lost << " packets lost");
 
-      frame_header->frame_state = FrameReceiveStateTimedout;
-      ready_callback_(buffer_id, frame_num);
+      if (frame_header->total_packets_received >= 1)
+      {
+    	  LOG4CXX_DEBUG_LEVEL(1, logger_, "Frame " << frame_num << " in buffer " << buffer_id
+    	            << " addr 0x" << std::hex
+    	            << buffer_addr << std::dec << " timed out with " << frame_header->total_packets_received
+    	            << " packets received, " << packets_lost << " packets lost");
+
+    	  frame_header->frame_state = FrameReceiveStateTimedout;
+    	  ready_callback_(buffer_id, frame_num);
+      }
+      else
+      {
+    	  LOG4CXX_DEBUG_LEVEL(1, logger_, "Frame " << frame_num << " in buffer " << buffer_id
+    	      	    << " addr 0x" << std::hex
+    	      	    << buffer_addr << std::dec
+					<< " timed out with no packets received. Dropping frame");
+    	  // drop frame
+    	  dropping_frame_data_ = true;
+      }
       frames_timedout++;
 
       frame_buffer_map_.erase(buffer_map_iter++);

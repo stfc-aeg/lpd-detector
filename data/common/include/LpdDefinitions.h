@@ -33,7 +33,13 @@ namespace Lpd {
     static const uint32_t end_of_frame_mask   = 1 << 30;
     static const uint32_t packet_number_mask  = 0x3FFFFFFF;
 
-    static const int32_t default_frame_number = -1;
+    static const uint32_t default_frame_number = -1;
+
+    static const int num_asic_rows = 8;
+    static const int num_asic_cols = 16;
+
+	static const int num_pixel_rows_per_asic = 32;
+	static const int num_pixel_cols_per_asic = 16;
 
     typedef struct
     {

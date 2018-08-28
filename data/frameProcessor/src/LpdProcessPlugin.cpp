@@ -14,17 +14,20 @@ namespace FrameProcessor
   const std::string LpdProcessPlugin::CONFIG_ASIC_COUNTER_DEPTH = "bitdepth";
   const std::string LpdProcessPlugin::CONFIG_IMAGE_WIDTH = "width";
   const std::string LpdProcessPlugin::CONFIG_IMAGE_HEIGHT = "height";
-  const std::string LpdProcessPlugin::BIT_DEPTH[4] = {"1-bit", "6-bit", "12-bit", "24-bit"};
+  const std::string LpdProcessPlugin::CONFIG_NUM_IMAGES = "num_images";
+//  const std::string LpdProcessPlugin::BIT_DEPTH[4] = {"1-bit", "6-bit", "12-bit", "24-bit"};
 
   /**
    * The constructor sets up logging used within the class.
    */
   LpdProcessPlugin::LpdProcessPlugin() :
-      asic_counter_depth_(DEPTH_12_BIT),
-      image_width_(2048),
+//      asic_counter_depth_(DEPTH_12_BIT),
+      image_width_(256),
       image_height_(256),
       image_pixels_(image_width_ * image_height_),
-      packets_lost_(0)
+	  num_images_(20),
+      packets_lost_(0),
+  	  image_counter_(0)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FW.LpdProcessPlugin");
@@ -56,37 +59,7 @@ namespace FrameProcessor
       packets_lost_ = config.get_param<int>(LpdProcessPlugin::CONFIG_DROPPED_PACKETS);
     }
 
-    if (config.has_param(LpdProcessPlugin::CONFIG_ASIC_COUNTER_DEPTH))
-    {
-      std::string bit_depth_str =
-          config.get_param<std::string>(LpdProcessPlugin::CONFIG_ASIC_COUNTER_DEPTH);
-
-      if (bit_depth_str == BIT_DEPTH[DEPTH_1_BIT])
-      {
-        asic_counter_depth_ = DEPTH_1_BIT;
-      }
-      else if (bit_depth_str == BIT_DEPTH[DEPTH_6_BIT])
-      {
-        asic_counter_depth_ = DEPTH_6_BIT;
-      }
-      else if (bit_depth_str == BIT_DEPTH[DEPTH_12_BIT])
-      {
-        asic_counter_depth_ = DEPTH_12_BIT;
-      }
-      else if (bit_depth_str == BIT_DEPTH[DEPTH_24_BIT])
-      {
-        asic_counter_depth_ = DEPTH_24_BIT;
-      }
-      else
-      {
-        std::stringstream ss;
-        ss << "Invalid bit depth requested: " << bit_depth_str;
-        LOG4CXX_ERROR(logger_, "Invalid bit depth requested: " << bit_depth_str);
-        throw std::runtime_error("Invalid bit depth requested");
-      }
-    }
-
-    if (config.has_param(LpdProcessPlugin::CONFIG_IMAGE_WIDTH))
+     if (config.has_param(LpdProcessPlugin::CONFIG_IMAGE_WIDTH))
     {
       image_width_ = config.get_param<int>(LpdProcessPlugin::CONFIG_IMAGE_WIDTH);
     }
@@ -94,6 +67,11 @@ namespace FrameProcessor
     if (config.has_param(LpdProcessPlugin::CONFIG_IMAGE_HEIGHT))
     {
       image_height_ = config.get_param<int>(LpdProcessPlugin::CONFIG_IMAGE_HEIGHT);
+    }
+
+    if (config.has_param(LpdProcessPlugin::CONFIG_NUM_IMAGES))
+    {
+      num_images_ = config.get_param<int>(LpdProcessPlugin::CONFIG_NUM_IMAGES);
     }
 
     image_pixels_ = image_width_ * image_height_;
@@ -109,7 +87,7 @@ namespace FrameProcessor
   {
     // Record the plugin's status items
     LOG4CXX_DEBUG(logger_, "Status requested for Lpd plugin");
-    status.set_param(get_name() + "/bitdepth", BIT_DEPTH[asic_counter_depth_]);
+//    status.set_param(get_name() + "/bitdepth", BIT_DEPTH[asic_counter_depth_]);
     status.set_param(get_name() + "/packets_lost", packets_lost_);
   }
 
@@ -134,6 +112,8 @@ namespace FrameProcessor
     }
   }
 
+
+
   /**
    * Perform processing on the frame.  Depending on the selected bit depth
    * the corresponding pixel re-ordering algorithm is executed.
@@ -143,12 +123,29 @@ namespace FrameProcessor
   void LpdProcessPlugin::process_frame(boost::shared_ptr<Frame> frame)
   {
     LOG4CXX_TRACE(logger_, "Reordering frame.");
-    LOG4CXX_TRACE(logger_, "Frame size: " << frame->get_data_size());
+    unsigned int frame_size = frame->get_data_size();
+    LOG4CXX_TRACE(logger_, "Frame size: " << frame_size);
 
     this->process_lost_packets(frame);
 
     const Lpd::FrameHeader* hdr_ptr =
         static_cast<const Lpd::FrameHeader*>(frame->get_data());
+
+//---DEBUG---------------------------------------------------------------------------------------------
+//          std::stringstream ss;
+//          for (int i = 0; i < sizeof(Lpd::FrameHeader); i++)
+//          {
+//            if ((i) % 32 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
+//
+//            uint8_t* frame_ptr = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(frame->get_data() + i));
+//
+//
+//            ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *frame_ptr << " ";
+//            if ((i+1) % 8 == 0) {ss << " ";}
+//            if (i+1 == 38) {ss << "|";}
+//          }
+//          LOG4CXX_TRACE(logger_, ss.str ());
+//------------------------------------------------------------------------------------------------------
 
     LOG4CXX_TRACE(logger_, "Raw frame number: " << hdr_ptr->frame_number);
     LOG4CXX_TRACE(logger_, "Frame state: " << hdr_ptr->frame_state);
@@ -173,9 +170,11 @@ namespace FrameProcessor
       LOG4CXX_TRACE(logger_, msg.str());
     }
 
-    // Determine the size of the output reordered image based on current bit depth
-    const std::size_t output_image_size = reordered_image_size(asic_counter_depth_);
-    LOG4CXX_TRACE(logger_, "Output image size: " << output_image_size);
+    // Determine the size of the output reordered images
+    unsigned int image_size = image_width_ * image_height_ * 2;
+    const std::size_t output_data_size = image_size * num_images_;
+
+    LOG4CXX_TRACE(logger_, "Output data size: " << output_data_size);
 
     // Obtain a pointer to the start of the data in the frame
     const void* data_ptr = static_cast<const void*>(
@@ -190,22 +189,23 @@ namespace FrameProcessor
 
       // Check that the pixels from all active FEMs are contained within the dimensions of the
       // specified output image, otherwise throw an error
-      if (((max_active_fem_idx +1) * FEM_TOTAL_PIXELS) > image_pixels_)
-      {
-        std::stringstream msg;
-        msg << "Pixel count inferred from active FEMs ("
-            << ((max_active_fem_idx + 1) * FEM_TOTAL_PIXELS)
-            << ", max FEM idx: " << max_active_fem_idx
-            << ") will exceed dimensions of output image (" << image_pixels_ << ")";
-        throw std::runtime_error(msg.str());
-      }
+//      if (((max_active_fem_idx +1) * FEM_TOTAL_PIXELS) > image_pixels_)
+//      {
+//        std::stringstream msg;
+//        msg << "Pixel count inferred from active FEMs ("
+//            << ((max_active_fem_idx + 1) * FEM_TOTAL_PIXELS)
+//            << ", max FEM idx: " << max_active_fem_idx
+//            << ") will exceed dimensions of output image (" << image_pixels_ << ")";
+//        throw std::runtime_error(msg.str());
+//      }
 
       // Allocate buffer to receive reordered image.
-      reordered_image = (void*)malloc(output_image_size);
+      reordered_image = (void*)malloc(output_data_size);
       if (reordered_image == NULL)
       {
         throw std::runtime_error("Failed to allocate temporary buffer for reordered image");
       }
+
 
       // Calculate the FEM frame size once so it can be used in the following loop
       // repeatedly
@@ -218,86 +218,223 @@ namespace FrameProcessor
 
       for (uint8_t idx = 0; idx < hdr_ptr->num_active_fems; idx++)
       {
-        uint8_t fem_idx = hdr_ptr->active_fem_idx[idx];
 
-        // Calculate pointer into the input image data based on loop index
-        void* input_ptr = static_cast<void *>(
-            static_cast<char *>(const_cast<void *>(data_ptr)) + (fem_frame_size * idx)
-        );
+    	  uint8_t fem_idx = hdr_ptr->active_fem_idx[idx];
 
-        // Calculate output image pixel offset based on active FEM index
-        std::size_t output_offset = fem_idx * FEM_TOTAL_PIXELS;
+    	  // Calculate pointer into the input image data based on loop index
+		  void* input_ptr = static_cast<void *>(
+			  static_cast<char *>(const_cast<void *>(data_ptr)) + (fem_frame_size * idx)
+		  );
 
-        // Determine stripe orientation based on FEM index
-        bool stripe_is_even = ((fem_idx & 1) == 0);
-        LOG4CXX_TRACE(logger_, "Active FEM idx=" << static_cast<int>(fem_idx)
-            << ": stripe orientation is " << (stripe_is_even ? "even" : "odd"));
+		  // Calculate output image pixel offset based on active FEM index
+		  std::size_t output_offset = fem_idx * (image_height_ * image_width_ * num_images_);
 
-        // Reorder strip according to counter depth
-        switch (asic_counter_depth_)
-        {
-          case DEPTH_1_BIT: // 1-bit counter depth
-            reorder_1bit_stripe(static_cast<unsigned int *>(input_ptr),
-                                static_cast<unsigned char *>(reordered_image) + output_offset,
-                                stripe_is_even);
-            break;
 
-          case DEPTH_6_BIT: // 6-bit counter depth
-            reorder_6bit_stripe(static_cast<unsigned char *>(input_ptr),
-                                static_cast<unsigned char *>(reordered_image) + output_offset,
-                                stripe_is_even);
-            break;
+	      // Determine stripe orientation based on FEM index
+		  bool stripe_is_even = ((fem_idx & 1) == 0);
+		  LOG4CXX_TRACE(logger_, "Active FEM idx=" << static_cast<int>(fem_idx)
+				<< ": stripe orientation is " << (stripe_is_even ? "even" : "odd"));
 
-          case DEPTH_12_BIT: // 12-bit counter depth
-            reorder_12bit_stripe(static_cast<unsigned short *>(input_ptr),
-                                 static_cast<unsigned short *>(reordered_image) + output_offset,
-                                 stripe_is_even);
-            break;
+//-------------------------------------------------------------------------------------------------------------------------------------
 
-          case DEPTH_24_BIT: // 24-bit counter depth needs special handling to merge two counters
+		  unsigned int image_data_header = 64;
+		  unsigned int image_data_trailer = 32;
 
-            void* c1_input_ptr = input_ptr;
-            void* c0_input_ptr =  static_cast<void *>(static_cast<char *>(input_ptr) + fem_frame_size / 2);
+		  unsigned int pkt_num = 0;
+		  unsigned int pkt_slot = hdr_ptr->fem_rx_state->packet_state[0][pkt_num];
+		  unsigned int pkt_offset = pkt_slot * (Lpd::primary_packet_size / 2);
 
-            reorder_24bit_stripe(
-                static_cast<unsigned short *>(c0_input_ptr),
-                static_cast<unsigned short *>(c1_input_ptr),
-                static_cast<unsigned int *>(reordered_image) + output_offset,
-                stripe_is_even);
+		  unsigned int pixel_offset = 0;
+		  unsigned int input_offset = 0;
 
-            break;
-        }
+		  unsigned int num_pixels_per_row = Lpd::num_asic_cols * Lpd::num_pixel_cols_per_asic;
+
+		  // Loop over input pixel stream and re-order image to supermodule mapping (i.e. scatter
+		  // semantics). Note that row loops (pixel and ASIC) are reversed to recover correct image
+		  // orientation for supermodule
+		  for (unsigned int image = 0; image < num_images_; image++) //For each image
+		  {
+
+			  unsigned int image_offset = (image * image_height_ * image_width_);
+			  LOG4CXX_TRACE(logger_, "Reading Image: " << image << " Image offset: " << image_offset);
+
+			  for (int pixel_row = Lpd::num_pixel_rows_per_asic - 1; pixel_row >= 0; pixel_row--)  // For each pixel row per asic, starting from last
+			  {
+				  for (unsigned int pixel_col = 0; pixel_col < Lpd::num_pixel_cols_per_asic; pixel_col++) //For each pixel col per asic
+				  {
+					  for (int asic_row = Lpd::num_asic_rows - 1; asic_row >= 0; asic_row--) // For each asic row
+					  {
+						  unsigned int image_row = (asic_row * Lpd::num_pixel_rows_per_asic) + pixel_row; // Current row
+
+						  for (unsigned int asic_col = 0; asic_col < Lpd::num_asic_cols; asic_col++) // For each asic col
+						  {
+							  // Find next packet if reaches the end of the current one
+							  if (pixel_offset >= Lpd::primary_packet_size / 2)
+							  {
+								  uint16_t * input_data_ptr  = reinterpret_cast<uint16_t*>(input_ptr) + pkt_offset + (pixel_offset - 1);
+								  pkt_num++;
+								  pkt_slot = hdr_ptr->fem_rx_state->packet_state[0][pkt_num];
+								  pkt_offset = pkt_slot * (Lpd::primary_packet_size / 2);
+								  pixel_offset = 0;
+							  }
+							  unsigned int input_offset = (image_data_header / 2) + pkt_offset + pixel_offset;
+
+							  unsigned int image_col = (asic_col * Lpd::num_pixel_cols_per_asic) + pixel_col; // curent col
+							  unsigned int output_offset = image_offset + (image_row * num_pixels_per_row) + image_col;
+
+							  // Copy Input to Output if packet is not missing
+							  if (pkt_slot < 65535)
+							  {
+//								  if (pixel_offset == 0)// Only log if first pixel
+//								  {
+//									  LOG4CXX_TRACE(logger_, "Reading pkt " << pkt_num << " from slot " << pkt_slot);
+//								  }
+								  uint16_t * input_data_ptr  = reinterpret_cast<uint16_t*>(input_ptr) + input_offset;
+								  uint16_t * output_data_ptr = reinterpret_cast<uint16_t*>(reordered_image) + output_offset;
+								  *output_data_ptr = *input_data_ptr;
+							  }
+							  else // If pkt missing
+							  {
+								  if (pixel_offset == 0) // Only log if first pixel
+								  {
+									  LOG4CXX_TRACE(logger_, "Pkt " << pkt_num << " missing, filling with 0");
+								  }
+								  uint16_t * output_data_ptr = reinterpret_cast<uint16_t*>(reordered_image) + output_offset;
+								  *output_data_ptr = 0;
+							  }
+
+							  pixel_offset++;
+						  }
+					  }
+				  }
+			  }
+		      // Set the frame image to the reordered image buffer if appropriate
+		      if (reordered_image)
+		      {
+		        // Setup the frame dimensions
+		        dimensions_t dims(2);
+		        dims[0] = image_height_;
+		        dims[1] = image_width_;
+//		        dims[2] = image;
+
+		        boost::shared_ptr<Frame> data_frame;
+		        data_frame = boost::shared_ptr<Frame>(new Frame("data"));
+
+//		        data_frame->set_frame_number(hdr_ptr->frame_number);
+		        data_frame->set_frame_number(image_counter_);
+
+		        data_frame->set_dimensions("data", dims);
+
+		        void * output_data_ptr = static_cast<void*>(reordered_image) + (image_offset * 2);
+		        data_frame->copy_data(output_data_ptr, image_size);
+
+		        LOG4CXX_TRACE(logger_, "Pushing data frame.");
+		        this->push(data_frame);
+
+
+		        dimensions_t extra(1);
+		        extra[0] = 1;
+//		        extra[1] = image_width_;
+
+		        boost::shared_ptr<Frame> test_frame;
+		        test_frame = boost::shared_ptr<Frame>(new Frame("test"));
+
+		        test_frame->set_frame_number(image_counter_);
+		        test_frame->set_dimensions("test", extra);
+		        test_frame->copy_data(output_data_ptr, 1);
+
+		        LOG4CXX_TRACE(logger_, "Pushing test frame.");
+		        this->push(test_frame);
+
+
+//		        free(reordered_image);
+//		        reordered_image = NULL;
+
+		      }
+		      image_counter_++;
+		  }
+
+//---DEBUG--------------------------------------------------------------------------
+		  unsigned int x = 19 * 256 * 256;
+		  unsigned int y = 1 * 256 * 256 - 256;
+
+		  std::stringstream ss;
+//
+//		  // First row
+//		  for (int i = x; i < x + 256; i++)
+//		  {
+//			if ((i) % 16 == 0) {ss << "\n" << std::dec << i * 2 << std::hex << ": ";}
+//
+//			uint16_t* debug_ptr = reinterpret_cast<uint16_t*>(reordered_image) + i;
+//			ss << std::hex << std::setw (4) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
+//		  }
+//		  ss << "\n";
+//
+//		  // Last row
+//		  for (int i = y; i < y + 256; i++)
+//		  {
+//			if ((i) % 16 == 0) {ss << "\n" << std::dec << i * 2 << std::hex << ": ";}
+//
+//			uint16_t* debug_ptr = reinterpret_cast<uint16_t*>(reordered_image) + i;
+//			ss << std::hex << std::setw (4) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
+//
+//		  }
+//		  ss << "\n";
+//
+		  // Images header
+		  for (int i = 0; i < image_data_header; i++)
+		  {
+		  	if ((i) % 16 == 0) {ss << "\n" << std::dec << std::setw (2) << i << std::hex << ": ";}
+		  	if ((i) % 4 == 0) {ss << " ";}
+
+		  	uint8_t* debug_ptr = reinterpret_cast<uint8_t*>(input_ptr) + i;
+		  	ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
+
+
+		  }
+		  ss << "\n";
+
+		  uint32_t magic = *(reinterpret_cast<uint32_t*>(input_ptr));
+		  ss << std::setfill (' ') << std::setw (7) << "Magic: "
+				  << std::hex << std::setw (8) << std::setfill ('0') << magic
+				  << "\n";
+
+		  uint64_t train = *(reinterpret_cast<uint64_t*>(input_ptr) + 2);;
+		  ss << std::setfill (' ') << std::setw (7) << "Train: "
+				  << std::hex << std::setw (16) << std::setfill ('0') << train
+				  << " | " << std::dec << train << "\n";
+
+		  uint64_t data = *(reinterpret_cast<uint64_t*>(input_ptr) + 3);
+		  ss << std::setfill (' ') << std::setw (7) << "Data: "
+				  << std::hex << std::setw (16) << std::setfill ('0') << data
+				  << " | " << std::dec << data << "\n";
+
+		  uint64_t link = *(reinterpret_cast<uint64_t*>(input_ptr) + 4);
+		  ss << std::setfill (' ') << std::setw (7) << "Link: "
+				  << std::hex << std::setw (16) << std::setfill ('0') << link
+				  << " | " << std::dec << link << "\n";
+
+		  uint64_t imgC = *(reinterpret_cast<uint64_t*>(input_ptr) + 5);
+		  ss << std::setfill (' ') << std::setw (7) << "imgC: "
+				  << std::hex << std::setw (16) << std::setfill ('0') << imgC
+				  << " | " << std::dec << imgC << "\n";
+
+//
+//		  // Images trailer
+//		  for (int i = 0; i < image_data_trailer; i++)
+//		  {
+//		  	if ((i) % 8 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
+//
+//		  	uint8_t* debug_ptr = reinterpret_cast<uint8_t*>(input_ptr) + (primary_packet_size * 320) + (3456 - image_data_trailer) + i;
+//		  	ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
+//
+//		  }
+//		  ss << "\n";
+//
+		  LOG4CXX_TRACE(logger_, ss.str ());
+//--------------------------------------------------------------------------------------------------
       }
 
-      // Set the frame image to the reordered image buffer if appropriate
-      if (reordered_image)
-      {
-        // Setup the frame dimensions
-        dimensions_t dims(2);
-        dims[0] = image_height_;
-        dims[1] = image_width_;
-
-        boost::shared_ptr<Frame> data_frame;
-        data_frame = boost::shared_ptr<Frame>(new Frame("data"));
-
-        if (asic_counter_depth_ == DEPTH_24_BIT)
-        {
-          // Only every other incoming frame results in a new frame
-          data_frame->set_frame_number(hdr_ptr->frame_number/2);
-        }
-        else
-        {
-          data_frame->set_frame_number(hdr_ptr->frame_number);
-        }
-        data_frame->set_dimensions("data", dims);
-        data_frame->copy_data(reordered_image, output_image_size);
-
-        LOG4CXX_TRACE(logger_, "Pushing data frame.");
-        this->push(data_frame);
-
-        free(reordered_image);
-        reordered_image = NULL;
-      }
     }
     catch (const std::exception& e)
     {
@@ -306,255 +443,5 @@ namespace FrameProcessor
       LOG4CXX_ERROR(logger_, ss.str());
     }
   }
-
-  /**
-   * Determine the size of a reordered image size based on the counter depth.
-   *
-   * \param[in] asic_counter_depth
-   * \return size of the reordered image in bytes
-   */
-  std::size_t LpdProcessPlugin::reordered_image_size(int asic_counter_depth) {
-
-    std::size_t slice_size = 0;
-
-    switch (asic_counter_depth)
-    {
-      case DEPTH_1_BIT:
-      case DEPTH_6_BIT:
-        slice_size = image_width_ * image_height_ * sizeof(unsigned char);
-        break;
-
-      case DEPTH_12_BIT:
-        slice_size = image_width_ * image_height_ * sizeof(unsigned short);
-        break;
-
-      case DEPTH_24_BIT:
-        slice_size = image_width_ * image_height_ * sizeof(unsigned int);
-        break;
-
-      default:
-      {
-        std::stringstream msg;
-        msg << "Invalid bit depth specified for reordered slice size: " << asic_counter_depth;
-        throw std::runtime_error(msg.str());
-      }
-      break;
-    }
-
-    return slice_size;
-
-  }
-
-  /**
-   * Reorder an image stripe using 1 bit re-ordering.
-   * 1 bit images are captured in raw data mode, i.e. without reordering. In this mode, each
-   * 32-bit word contains the current pixel being output on each data line of the group of
-   * 4 ASICs, i.e. a supercolumn
-   *
-   * \param[in] in - Pointer to the incoming image data.
-   * \param[out] out - Pointer to the allocated memory where the reordered image is written.
-   * \param[in] stripe_is_even - boolean indicating if stripe has even orientation
-   */
-  void LpdProcessPlugin::reorder_1bit_stripe(unsigned int* in, unsigned char* out,
-      bool stripe_is_even)
-  {
-    int block, y, x, x2, chip, pixel_x, pixel_y, pixel_addr, bit_posn;
-    int raw_addr = 0;
-
-    // Loop over two blocks of data
-    for (block = 0; block < FEM_BLOCKS_PER_STRIPE_X; block++)
-    {
-      // Loop over Y axis (rows)
-      for (y = 0; y < FEM_PIXELS_PER_CHIP_Y; y++)
-      {
-        pixel_y = stripe_is_even ? (255 - y) : y;
-
-        // Loop over pixels in a supercolumn
-        for (x = 0; x < FEM_PIXELS_PER_SUPERCOLUMN_X; x++)
-        {
-          // Loop over chips in x per block
-          for (chip = 0; chip < FEM_CHIPS_PER_BLOCK_X; chip++)
-          {
-            // Loop over supercolumns per chip
-            for (x2 = 0; x2 < FEM_SUPERCOLUMNS_PER_CHIP; x2++)
-            {
-              if (stripe_is_even)
-              {
-                pixel_x = (block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2)) +
-                     (chip * FEM_PIXELS_PER_CHIP_X) +
-                     (255 - ((x2 * FEM_PIXELS_PER_SUPERCOLUMN_X) + x));
-              }
-              else
-              {
-                pixel_x = (FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X - 1) -
-                    ((block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2)) +
-                     (chip * FEM_PIXELS_PER_CHIP_X) +
-                     (255 - ((x2 * FEM_PIXELS_PER_SUPERCOLUMN_X) + x)));
-              }
-              pixel_addr = pixel_x + pixel_y*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X);
-              bit_posn = (chip * 8) + x2;
-              out[pixel_addr] = (in[raw_addr] >> bit_posn) & 0x1;
-            }
-          }
-          raw_addr++;
-        }
-      }
-    }
-  }
-
-  /**
-   * Reorder an image stripe using 6 bit re-ordering.
-   *
-   * \param[in] in - Pointer to the incoming image data.
-   * \param[out] out - Pointer to the allocated memory where the reordered image is written.
-   * \param[in] stripe_is_even - boolean indicating if stripe has even orientation
-   */
-  void LpdProcessPlugin::reorder_6bit_stripe(unsigned char* in, unsigned char* out,
-      bool stripe_is_even)
-  {
-    int block, y, x, chip, x2, pixel_x, pixel_y, pixel_addr;
-    int raw_addr = 0;
-
-    for (block=0; block<FEM_BLOCKS_PER_STRIPE_X; block++)
-    {
-      for (y=0; y<FEM_PIXELS_PER_CHIP_Y; y+=2)
-      {
-        for (x=0; x<FEM_PIXELS_PER_CHIP_X/FEM_PIXELS_IN_GROUP_6BIT; x++)
-        {
-          for (chip=0; chip<FEM_CHIPS_PER_BLOCK_X; chip++)
-          {
-            for (x2=0; x2<FEM_PIXELS_IN_GROUP_6BIT; x2++)
-            {
-              if (stripe_is_even)
-              {
-                pixel_x = (block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2) +
-                    chip*FEM_PIXELS_PER_CHIP_X + (255-(x2 + x*FEM_PIXELS_IN_GROUP_6BIT)));
-             }
-              else
-              {
-                pixel_x = (FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X - 1) -
-                    ((block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2) +
-                     chip*FEM_PIXELS_PER_CHIP_X + (255-(x2 + x*FEM_PIXELS_IN_GROUP_6BIT))));
-              }
-              pixel_y = stripe_is_even ? (254 - y) : (y+1);
-              pixel_addr = pixel_x + pixel_y*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X);
-              out[pixel_addr] = in[raw_addr];
-              raw_addr++;
-
-              pixel_y = stripe_is_even ? (255 - y) : y;
-              pixel_addr = pixel_x + pixel_y*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X);
-              out[pixel_addr] = in[raw_addr];
-              raw_addr++;
-            }
-          }
-        }
-      }
-      // Skip over the subframe trailer in the last 8 bytes (4 words) at the end of each block
-      raw_addr += 8;
-    }
-  }
-
-  /**
-   * Reorder an image stripe using 12 bit re-ordering.
-   *
-   * \param[in] in - Pointer to the incoming image data.
-   * \param[out] out - Pointer to the allocated memory where the reordered image is written.
-   * \param[in] stripe_is_even - boolean indicating if stripe has even orientation
-   *
-   */
-  void LpdProcessPlugin::reorder_12bit_stripe(unsigned short* in, unsigned short* out,
-      bool stripe_is_even)
-  {
-    int block, y, x, chip, x2, pixel_x, pixel_y, pixel_addr;
-    int raw_addr = 0;
-
-    for (block=0; block<FEM_BLOCKS_PER_STRIPE_X; block++)
-    {
-      for (y=0; y<FEM_PIXELS_PER_CHIP_Y; y++)
-      {
-        pixel_y = stripe_is_even ? (255 - y) : y;
-
-        for (x=0; x<FEM_PIXELS_PER_CHIP_X/FEM_PIXELS_IN_GROUP_12BIT; x++)
-        {
-          for (chip=0; chip<FEM_CHIPS_PER_BLOCK_X; chip++)
-          {
-            for (x2=0; x2<FEM_PIXELS_IN_GROUP_12BIT; x2++)
-            {
-              if (stripe_is_even)
-              {
-                pixel_x = (block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2) +
-                       chip*FEM_PIXELS_PER_CHIP_X + (255-(x2 + x*FEM_PIXELS_IN_GROUP_12BIT)));
-              }
-              else
-              {
-                pixel_x = (FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X - 1) -
-                    (block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2) +
-                     chip*FEM_PIXELS_PER_CHIP_X + (255-(x2 + x*FEM_PIXELS_IN_GROUP_12BIT)));
-              }
-              pixel_addr = pixel_x + pixel_y*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X);
-              out[pixel_addr] = in[raw_addr];
-              raw_addr++;
-            }
-          }
-        }
-      }
-      // Skip over the subframe trailer in the last 8 bytes (4 words) at the end of each block
-      raw_addr += 4;
-    }
-  }
-
-  /**
-     * Reorder an image stripe using 24 bit re-ordering.
-     *
-     * This method uses the same reordering algorithm as for 12-bit images, but reorders
-     * both counters in parallel and builds into the output image.
-     *
-     * \param[in] in_c0 - Pointer to the incoming counter 0 data.
-     * \param[in] in_c1 - Pointer to the incoming counter 1 data.
-     * \param[out] out - Pointer to the allocated memory where the reordered image is written.
-     * \param[in] stripe_is_even - boolean indicating if stripe has even orientation
-     */
-    void LpdProcessPlugin::reorder_24bit_stripe(unsigned short* in_c0,
-        unsigned short* in_c1, unsigned int* out, bool stripe_is_even)
-    {
-      int block, y, x, chip, x2, pixel_x, pixel_y, pixel_addr;
-      int raw_addr = 0;
-
-      for (block=0; block<FEM_BLOCKS_PER_STRIPE_X; block++)
-      {
-        for (y=0; y<FEM_PIXELS_PER_CHIP_Y; y++)
-        {
-          pixel_y = stripe_is_even ? (255 - y) : y;
-
-          for (x=0; x<FEM_PIXELS_PER_CHIP_X/FEM_PIXELS_IN_GROUP_12BIT; x++)
-          {
-            for (chip=0; chip<FEM_CHIPS_PER_BLOCK_X; chip++)
-            {
-              for (x2=0; x2<FEM_PIXELS_IN_GROUP_12BIT; x2++)
-              {
-                if (stripe_is_even)
-                {
-                  pixel_x = (block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2) +
-                         chip*FEM_PIXELS_PER_CHIP_X + (255-(x2 + x*FEM_PIXELS_IN_GROUP_12BIT)));
-                }
-                else
-                {
-                  pixel_x = (FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X - 1) -
-                      (block*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X/2) +
-                       chip*FEM_PIXELS_PER_CHIP_X + (255-(x2 + x*FEM_PIXELS_IN_GROUP_12BIT)));
-                }
-                pixel_addr = pixel_x + pixel_y*(FEM_PIXELS_PER_CHIP_X*FEM_CHIPS_PER_STRIPE_X);
-                out[pixel_addr] =
-                    (((unsigned int)(in_c1[raw_addr] & 0xFFF)) << 12) | (in_c0[raw_addr] & 0xFFF);
-                raw_addr++;
-              }
-            }
-          }
-        }
-        // Skip over the subframe trailer in the last 8 bytes (4 words) at the end of each block
-        raw_addr += 4;
-      }
-    }
-
 } /* namespace FrameProcessor */
 
