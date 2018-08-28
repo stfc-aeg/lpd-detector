@@ -25,23 +25,23 @@ Port frame receiver for LPD.
 
 | Requirement | Conditions | Status |
 |:-----------:|:----------:|:------:|
-| All detector specific names use `lpd`, `Lpd` or `LPD`. | No detector specific names for files, class, functions, variables, object or keys referring to `Excalibur` or other non-LPD detectors. Script still functions with no resulting errors. | 29/06/18: Functional with Excalibur pcap & producer after rename. Functionality with LPD pcap & producer not yet functional. |
-| Upon startup, read config and create shared memory buffer. | Shared memory buffer created with name specified in config. | 29/06/18: Still functional from original Excalibur script |
-| Listen for buffer config request from FP. Reply upon request. | Receive request for buffer config from any FP on ZeroMQ address specified in config. | 29/06/18: Still functional from original Excalibur script |
-| Listen for incoming UDP packets. Upon detection, trigger decoder. | Packets sent to specified port are received and read. | 29/06/18: Still functional from original Excalibur script |
-| Add packet payload to shared memory buffer. | Add packet to frame buffer. Packets should be added to correct frame. Create new frame for packets not matching existing frames in buffer. | 29/06/18: Appears to remain functional from original Excalibur script. Contents of buffer not examined. |
-| Handle packet loss. | Timeout frame after specified time. Send frame-ready with empty buffers in frame making note of how many packets were dropped. | 29/06/18: Still functional from original Excalibur script. |
-| Handle out-of-order packets. | Packet payload position in buffer recorded in frame buffer header. | 29/06/18: Original Excalibur system still in place. This should be replaced with LPD compatible system. |
-| Upon filled/timed out frame. FR control thread sends frame-ready message to FP. | Frame-ready message sent from RX thread to control thread then sent to FP. | 29/06/18: Still functional from original Excalibur script |
-| When FR control thread receives frame-release message from FP, FR RX thread empties and opens buffer for re-use. | Frame-release message received from FP. Buffer emptied and made available for new frame. | 29/06/18: Still functional from original Excalibur script. Frame-release received, buffer repurposing not properly tested. |
+| All detector specific names use `lpd`, `Lpd` or `LPD`. | No detector specific names for files, class, functions, variables, object or keys referring to `Excalibur` or other non-LPD detectors. Script still functions with no resulting errors. | 26/07/18: Complete |
+| Upon startup, read config and create shared memory buffer. | Shared memory buffer created with name specified in config. | 29/06/18: Complete |
+| Listen for buffer config request from FP. Reply upon request. | Receive request for buffer config from any FP on ZeroMQ address specified in config. | 29/06/18: Complete |
+| Listen for incoming UDP packets. Upon detection, trigger decoder. | Packets sent to specified port are received and read. | 29/06/18: Complete |
+| Add packet payload to shared memory buffer. | Add packet to frame buffer. Packets should be added to correct frame. Create new frame for packets not matching existing frames in buffer. | 26/07/18: Method C complete |
+| Handle packet loss. | Timeout frame after specified time. Send frame-ready with empty buffers in frame making note of how many packets were dropped. | 29/06/18: Complete |
+| Handle out-of-order packets. | Packet payload position in buffer recorded in frame buffer header. | 26/07/18: Method C complete, not yet properly tested |
+| Upon filled/timed out frame. FR control thread sends frame-ready message to FP. | Frame-ready message sent from RX thread to control thread then sent to FP. | 29/06/18: Complete |
+| When FR control thread receives frame-release message from FP, FR RX thread empties and opens buffer for re-use. | Frame-release message received from FP. Buffer emptied and made available for new frame. | 29/06/18: Complete, buffer repurposing not yet properly tested. |
 
 The major change for the FR will be switching to reading the trailer of incoming packets rather than the header as Excalibur does. This is shown below with two possible methods of handling trailers.
 
-Method A is simpler and retains the handling for out-of-order and lost packets however it requires copying the entire packet twice for every packet. With hundreds of packets every second this very resource intensive and likely too slow.
+Method A is simpler and retains the handling for out-of-order and lost packets however it requires copying the entire packet twice for every packet. With hundreds of packets every second this very resource intensive and likely too slow. (Complete)
 
-Method B is more complex but packets are only copied more than once if it belongs to a different frame. Packets may be stored in the wrong order though this information is stored in the buffer and can be used to rearrange the data when needed.
+Method B is more complex but packets are only copied more than once if it belongs to a different frame. Packets may be stored in the wrong order though this information is stored in the buffer and can be used to rearrange the data when needed. (Tested, not functional)
 
-Both methods should be tested but if method B is effective then it should take priority over method A.
+Method C involves copying the entire packet into the next available position then it reads the trailer. The next packet then overlaps the trailer of the previous one. The position of the payload is stored in the frame header. (Complete, this method is the one chosen after testing all three)
 
 ![](Diagrams.png)
 
@@ -80,4 +80,3 @@ Priority: Could Have
 Adapt ODIN to allow live view within GUI to still work.
 
 *NOTE: Exact requirements yet to be decided.*
-
