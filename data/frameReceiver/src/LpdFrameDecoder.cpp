@@ -200,8 +200,7 @@ void LpdFrameDecoder::initialise_frame_header(Lpd::FrameHeader* header_ptr)
   header_ptr->total_eof_marker_count = 0;
 
   header_ptr->num_active_fems = num_active_fems_;
-  for (LpdDecoderFemMap::iterator it = fem_port_map_.begin();
-    it != fem_port_map_.end(); ++it)
+  for (LpdDecoderFemMap::iterator it = fem_port_map_.begin(); it != fem_port_map_.end(); ++it)
   {
     header_ptr->active_fem_idx[(it->second).buf_idx_] = (it->second).fem_idx_;
   }

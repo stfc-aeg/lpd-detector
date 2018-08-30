@@ -319,7 +319,7 @@ namespace FrameProcessor
            this->push(frame_num_frame);
          }
          image_counter_++;
-       }
+        }
         if(reordered_image)
         {
           free(reordered_image);
