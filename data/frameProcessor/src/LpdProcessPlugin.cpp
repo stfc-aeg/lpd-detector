@@ -312,18 +312,17 @@ namespace FrameProcessor
 		      if (reordered_image)
 		      {
 		        // Setup the frame dimensions
-		        dimensions_t dims(2);
-		        dims[0] = image_height_;
-		        dims[1] = image_width_;
-//		        dims[2] = image;
+
+		    	// Data Frame
+		        dimensions_t dims_data(2);
+		        dims_data[0] = image_height_;
+		        dims_data[1] = image_width_;
 
 		        boost::shared_ptr<Frame> data_frame;
 		        data_frame = boost::shared_ptr<Frame>(new Frame("data"));
 
-//		        data_frame->set_frame_number(hdr_ptr->frame_number);
 		        data_frame->set_frame_number(image_counter_);
-
-		        data_frame->set_dimensions("data", dims);
+		        data_frame->set_dimensions("data", dims_data);
 
 		        void * output_data_ptr = static_cast<void*>(reordered_image) + (image_offset * 2);
 		        data_frame->copy_data(output_data_ptr, image_size);
@@ -332,19 +331,36 @@ namespace FrameProcessor
 		        this->push(data_frame);
 
 
-		        dimensions_t extra(1);
-		        extra[0] = 1;
-//		        extra[1] = image_width_;
+		        // Image Frame
+		        dimensions_t dims_img(1);
+		        dims_img[0] = 1;
 
-		        boost::shared_ptr<Frame> test_frame;
-		        test_frame = boost::shared_ptr<Frame>(new Frame("test"));
+		        boost::shared_ptr<Frame> img_num_frame;
+		        img_num_frame = boost::shared_ptr<Frame>(new Frame("img_num"));
 
-		        test_frame->set_frame_number(image_counter_);
-		        test_frame->set_dimensions("test", extra);
-		        test_frame->copy_data(output_data_ptr, 1);
+		        img_num_frame->set_frame_number(image_counter_);
+		        img_num_frame->set_dimensions("img_num", dims_img);
 
-		        LOG4CXX_TRACE(logger_, "Pushing test frame.");
-		        this->push(test_frame);
+		        img_num_frame->copy_data(&image, 4);
+
+		        LOG4CXX_TRACE(logger_, "Pushing img_num frame." << image);
+		        this->push(img_num_frame);
+
+
+		        // Frame Number Frame
+		        dimensions_t dims_frame(1);
+		        dims_frame[0] = 1;
+
+		        boost::shared_ptr<Frame> frame_num_frame;
+		        frame_num_frame = boost::shared_ptr<Frame>(new Frame("frame_num"));
+
+		        frame_num_frame->set_frame_number(image_counter_);
+		        frame_num_frame->set_dimensions("frame_num", dims_frame);
+
+		        frame_num_frame->copy_data(&(hdr_ptr->frame_number), 4);
+
+		        LOG4CXX_TRACE(logger_, "Pushing frame_num frame." << hdr_ptr->frame_number);
+		        this->push(frame_num_frame);
 
 
 //		        free(reordered_image);
@@ -355,83 +371,83 @@ namespace FrameProcessor
 		  }
 
 //---DEBUG--------------------------------------------------------------------------
-		  unsigned int x = 19 * 256 * 256;
-		  unsigned int y = 1 * 256 * 256 - 256;
-
-		  std::stringstream ss;
+//		  unsigned int x = 19 * 256 * 256;
+//		  unsigned int y = 1 * 256 * 256 - 256;
 //
-//		  // First row
-//		  for (int i = x; i < x + 256; i++)
+//		  std::stringstream ss;
+////
+////		  // First row
+////		  for (int i = x; i < x + 256; i++)
+////		  {
+////			if ((i) % 16 == 0) {ss << "\n" << std::dec << i * 2 << std::hex << ": ";}
+////
+////			uint16_t* debug_ptr = reinterpret_cast<uint16_t*>(reordered_image) + i;
+////			ss << std::hex << std::setw (4) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
+////		  }
+////		  ss << "\n";
+////
+////		  // Last row
+////		  for (int i = y; i < y + 256; i++)
+////		  {
+////			if ((i) % 16 == 0) {ss << "\n" << std::dec << i * 2 << std::hex << ": ";}
+////
+////			uint16_t* debug_ptr = reinterpret_cast<uint16_t*>(reordered_image) + i;
+////			ss << std::hex << std::setw (4) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
+////
+////		  }
+////		  ss << "\n";
+////
+//		  // Images header
+//		  for (int i = 0; i < image_data_header; i++)
 //		  {
-//			if ((i) % 16 == 0) {ss << "\n" << std::dec << i * 2 << std::hex << ": ";}
+//		  	if ((i) % 16 == 0) {ss << "\n" << std::dec << std::setw (2) << i << std::hex << ": ";}
+//		  	if ((i) % 4 == 0) {ss << " ";}
 //
-//			uint16_t* debug_ptr = reinterpret_cast<uint16_t*>(reordered_image) + i;
-//			ss << std::hex << std::setw (4) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
-//		  }
-//		  ss << "\n";
-//
-//		  // Last row
-//		  for (int i = y; i < y + 256; i++)
-//		  {
-//			if ((i) % 16 == 0) {ss << "\n" << std::dec << i * 2 << std::hex << ": ";}
-//
-//			uint16_t* debug_ptr = reinterpret_cast<uint16_t*>(reordered_image) + i;
-//			ss << std::hex << std::setw (4) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
-//
-//		  }
-//		  ss << "\n";
-//
-		  // Images header
-		  for (int i = 0; i < image_data_header; i++)
-		  {
-		  	if ((i) % 16 == 0) {ss << "\n" << std::dec << std::setw (2) << i << std::hex << ": ";}
-		  	if ((i) % 4 == 0) {ss << " ";}
-
-		  	uint8_t* debug_ptr = reinterpret_cast<uint8_t*>(input_ptr) + i;
-		  	ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
-
-
-		  }
-		  ss << "\n";
-
-		  uint32_t magic = *(reinterpret_cast<uint32_t*>(input_ptr));
-		  ss << std::setfill (' ') << std::setw (7) << "Magic: "
-				  << std::hex << std::setw (8) << std::setfill ('0') << magic
-				  << "\n";
-
-		  uint64_t train = *(reinterpret_cast<uint64_t*>(input_ptr) + 2);;
-		  ss << std::setfill (' ') << std::setw (7) << "Train: "
-				  << std::hex << std::setw (16) << std::setfill ('0') << train
-				  << " | " << std::dec << train << "\n";
-
-		  uint64_t data = *(reinterpret_cast<uint64_t*>(input_ptr) + 3);
-		  ss << std::setfill (' ') << std::setw (7) << "Data: "
-				  << std::hex << std::setw (16) << std::setfill ('0') << data
-				  << " | " << std::dec << data << "\n";
-
-		  uint64_t link = *(reinterpret_cast<uint64_t*>(input_ptr) + 4);
-		  ss << std::setfill (' ') << std::setw (7) << "Link: "
-				  << std::hex << std::setw (16) << std::setfill ('0') << link
-				  << " | " << std::dec << link << "\n";
-
-		  uint64_t imgC = *(reinterpret_cast<uint64_t*>(input_ptr) + 5);
-		  ss << std::setfill (' ') << std::setw (7) << "imgC: "
-				  << std::hex << std::setw (16) << std::setfill ('0') << imgC
-				  << " | " << std::dec << imgC << "\n";
-
-//
-//		  // Images trailer
-//		  for (int i = 0; i < image_data_trailer; i++)
-//		  {
-//		  	if ((i) % 8 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
-//
-//		  	uint8_t* debug_ptr = reinterpret_cast<uint8_t*>(input_ptr) + (primary_packet_size * 320) + (3456 - image_data_trailer) + i;
+//		  	uint8_t* debug_ptr = reinterpret_cast<uint8_t*>(input_ptr) + i;
 //		  	ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
 //
+//
 //		  }
 //		  ss << "\n";
 //
-		  LOG4CXX_TRACE(logger_, ss.str ());
+//		  uint32_t magic = *(reinterpret_cast<uint32_t*>(input_ptr));
+//		  ss << std::setfill (' ') << std::setw (7) << "Magic: "
+//				  << std::hex << std::setw (8) << std::setfill ('0') << magic
+//				  << "\n";
+//
+//		  uint64_t train = *(reinterpret_cast<uint64_t*>(input_ptr) + 2);;
+//		  ss << std::setfill (' ') << std::setw (7) << "Train: "
+//				  << std::hex << std::setw (16) << std::setfill ('0') << train
+//				  << " | " << std::dec << train << "\n";
+//
+//		  uint64_t data = *(reinterpret_cast<uint64_t*>(input_ptr) + 3);
+//		  ss << std::setfill (' ') << std::setw (7) << "Data: "
+//				  << std::hex << std::setw (16) << std::setfill ('0') << data
+//				  << " | " << std::dec << data << "\n";
+//
+//		  uint64_t link = *(reinterpret_cast<uint64_t*>(input_ptr) + 4);
+//		  ss << std::setfill (' ') << std::setw (7) << "Link: "
+//				  << std::hex << std::setw (16) << std::setfill ('0') << link
+//				  << " | " << std::dec << link << "\n";
+//
+//		  uint64_t imgC = *(reinterpret_cast<uint64_t*>(input_ptr) + 5);
+//		  ss << std::setfill (' ') << std::setw (7) << "imgC: "
+//				  << std::hex << std::setw (16) << std::setfill ('0') << imgC
+//				  << " | " << std::dec << imgC << "\n";
+//
+////
+////		  // Images trailer
+////		  for (int i = 0; i < image_data_trailer; i++)
+////		  {
+////		  	if ((i) % 8 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
+////
+////		  	uint8_t* debug_ptr = reinterpret_cast<uint8_t*>(input_ptr) + (primary_packet_size * 320) + (3456 - image_data_trailer) + i;
+////		  	ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *debug_ptr << " ";
+////
+////		  }
+////		  ss << "\n";
+////
+//		  LOG4CXX_TRACE(logger_, ss.str ());
 //--------------------------------------------------------------------------------------------------
       }
 
