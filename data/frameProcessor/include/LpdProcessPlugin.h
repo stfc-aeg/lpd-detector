@@ -20,16 +20,6 @@ using namespace log4cxx::helpers;
 #include "LpdDefinitions.h"
 #include "ClassLoader.h"
 
-//--------------------------------
-//#define num_asic_rows 8
-//#define num_pixel_rows_per_asic 32
-//#define image_height 256
-//
-//#define num_asic_cols 16
-//#define num_pixel_cols_per_asic 16
-//#define image_width 256
-//----------------------------------
-
 namespace FrameProcessor
 {
 
@@ -62,23 +52,10 @@ namespace FrameProcessor
     /** Configuration constant for reset of 24bit image counter **/
     static const std::string CONFIG_RESET_24_BIT;
 
-//    /** Configuration constant for 1 bit asic counter depth */
-//    static const int DEPTH_1_BIT  = 0;
-//    /** Configuration constant for 6 bit asic counter depth */
-//    static const int DEPTH_6_BIT  = 1;
-//    /** Configuration constant for 12 bit asic counter depth */
-//    static const int DEPTH_12_BIT = 2;
-//    /** Configuration constant for 24 bit asic counter depth */
-//    static const int DEPTH_24_BIT = 3;
-//    /** Configuration string representations for the bit depths */
-//    static const std::string BIT_DEPTH[4];
 
     void process_lost_packets(boost::shared_ptr<Frame> frame);
     void process_frame(boost::shared_ptr<Frame> frame);
-//    void reorder_1bit_stripe(unsigned int* in, unsigned char* out, bool stripe_is_even);
-//    void reorder_6bit_stripe(unsigned char* in, unsigned char* out, bool stripe_is_even);
-//    void reorder_12bit_stripe(unsigned short* in, unsigned short* out, bool stripe_is_even);
-//    void reorder_24bit_stripe(unsigned short* in_c0, unsigned short* in_c1, unsigned int* out, bool stripe_is_even);
+
     std::size_t reordered_image_size(int asic_counter_depth_);
 
     /** Pointer to logger **/
