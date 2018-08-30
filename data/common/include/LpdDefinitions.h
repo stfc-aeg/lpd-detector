@@ -41,6 +41,9 @@ namespace Lpd {
 	static const int num_pixel_rows_per_asic = 32;
 	static const int num_pixel_cols_per_asic = 16;
 
+	static const int image_data_header = 64;
+	static const int image_data_trailer = 32;
+
     typedef struct
     {
     	uint32_t frame_number;

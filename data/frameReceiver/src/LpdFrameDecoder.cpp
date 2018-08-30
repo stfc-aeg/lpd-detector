@@ -443,20 +443,6 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
       // Complete frame header
       current_frame_header_->frame_state = frame_state;
 
-//---DEBUG CODE: Print out frame header
-      std::stringstream ss;
-      for (unsigned int i = 0; i < sizeof(Lpd::FrameHeader); i++)
-      {
-        if ((i) % 32 == 0) {ss << "\n" << std::dec << i << std::hex << ": ";}
-
-        uint8_t* pkt_ptr = reinterpret_cast<uint8_t*>(current_frame_buffer_ + i);
-
-        ss << std::hex << std::setw (2) << std::setfill ('0') << (unsigned int) *pkt_ptr << " ";
-        if ((i+1) % 8 == 0) {ss << " ";}
-      }
-      LOG4CXX_DEBUG_LEVEL(2, logger_, ss.str ());
-//---
-
       if (!dropping_frame_data_)
       {
         // Erase frame from buffer map
@@ -478,7 +464,6 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
         initialise_frame_header(current_frame_header_);
       }
     }
-
   }
   else {
 	  LOG4CXX_DEBUG_LEVEL(3, logger_, "Illegal FEM IDX: " << current_packet_fem_map_.fem_idx_);
