@@ -18,11 +18,7 @@
 
 using namespace FrameReceiver;
 
-const std::string LpdFrameDecoder::asic_bit_depth_str_[Lpd::num_bit_depths] =
-    {"1-bit", "6-bit", "12-bit", "24-bit"};
-
 const std::string LpdFrameDecoder::CONFIG_FEM_PORT_MAP = "fem_port_map";
-const std::string LpdFrameDecoder::CONFIG_BITDEPTH = "bitdepth";
 
 #define MAX_IGNORED_PACKET_REPORTS 10
 
@@ -33,7 +29,6 @@ const std::string LpdFrameDecoder::CONFIG_BITDEPTH = "bitdepth";
 //!
 LpdFrameDecoder::LpdFrameDecoder() :
     FrameDecoderUDP(),
-    asic_counter_bit_depth_(Lpd::bitDepth12),
     current_frame_seen_(Lpd::default_frame_number),
     current_frame_buffer_id_(Lpd::default_frame_number),
     current_frame_buffer_(0),
@@ -46,7 +41,7 @@ LpdFrameDecoder::LpdFrameDecoder() :
 
   // Allocate buffers for packet trailer, dropped frames and scratched packets
   current_packet_trailer_.reset(new uint8_t[Lpd::primary_packet_size + sizeof(Lpd::PacketTrailer)]);
-  dropped_frame_buffer_.reset(new uint8_t[Lpd::max_frame_size()]);
+  dropped_frame_buffer_.reset(new uint8_t[Lpd::max_frame_size]);
   ignored_packet_buffer_.reset(new uint8_t[Lpd::primary_packet_size]);
 }
 
@@ -100,27 +95,6 @@ void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
       throw OdinData::OdinDataException("Failed to parse FEM to port map entries from configuration");
   }
 
-  // Extract the ASIC counter bit depth from the config message
-  if (config_msg.has_param(CONFIG_BITDEPTH))
-  {
-    std::string bit_depth_str = config_msg.get_param<std::string>(CONFIG_BITDEPTH);
-
-    Lpd::AsicCounterBitDepth bit_depth = parse_bit_depth(bit_depth_str);
-
-    if (bit_depth == Lpd::bitDepthUnknown)
-    {
-      LOG4CXX_ERROR(logger_, "Unknown bit depth configuration parameter specified: "
-          << bit_depth_str << ", defaulting to "
-          << asic_bit_depth_str_[asic_counter_bit_depth_]);
-    }
-    else
-    {
-      asic_counter_bit_depth_ = bit_depth;
-    }
-  }
-  LOG4CXX_DEBUG_LEVEL(1, logger_, "Setting ASIC counter bit depth to "
-      << asic_bit_depth_str_[asic_counter_bit_depth_]);
-
   // Print a packet logger trailer to the appropriate logger if enabled
   if (enable_packet_logging_)
   {
@@ -159,20 +133,12 @@ void LpdFrameDecoder::request_configuration(const std::string param_prefix,
 
   // Add current configuration parameters to reply
   config_reply.set_param(param_prefix + CONFIG_FEM_PORT_MAP, fem_port_map_str_);
-  config_reply.set_param(param_prefix + CONFIG_BITDEPTH, asic_bit_depth_str_[asic_counter_bit_depth_]);
-
 }
 
-//! Get the size of the frame buffers required for current operation mode.
-//!
-//! This method returns the frame buffer size required for the current operation mode, which is
-//! determined by frame size based on bit depth and number of active FEMs.
-//!
-//! \return size of frame buffer in bytes
-//!
+// Get the size of the frame buffers required for current operation mode.
 const size_t LpdFrameDecoder::get_frame_buffer_size(void) const
 {
-  size_t frame_buffer_size = (Lpd::max_frame_size() * num_active_fems_);
+  size_t frame_buffer_size = (Lpd::max_frame_size * num_active_fems_);
   return frame_buffer_size;
 }
 
@@ -246,8 +212,7 @@ void* LpdFrameDecoder::get_next_payload_buffer(void) const
 //!
 //! This method returns the payload size to receive for the next incoming packet, based on state
 //! information set during processing of the trailer. The receive size may vary depending on
-//! whether a primary or tail packet is being received, the size of both of which is dependent
-//! on the current bit depth.
+//! whether a primary or tail packet is being received.
 //!
 //! \return size of next packet payload in bytes
 //!
@@ -417,9 +382,9 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
 
     // If we have received the expected number of packets, perform end of frame processing
     // and hand off the frame for downstream processing.
-    if (current_frame_header_->total_packets_received == (Lpd::num_fem_frame_packets(asic_counter_bit_depth_) * num_active_fems_))
+    if (current_frame_header_->total_packets_received == (Lpd::num_packets * num_active_fems_))
     {
-      LOG4CXX_DEBUG_LEVEL(2, logger_,(Lpd::num_fem_frame_packets(asic_counter_bit_depth_) * num_active_fems_));
+      LOG4CXX_DEBUG_LEVEL(2, logger_,(Lpd::num_packets * num_active_fems_));
 
       // Check that the appropriate number of SOF and EOF markers (one each per frame) have been seen, otherwise log a warning
       if ((current_frame_header_->total_sof_marker_count != 1) ||
@@ -492,10 +457,8 @@ void LpdFrameDecoder::monitor_buffers(void)
 
     if (elapsed_ms(frame_header->frame_start_time, current_time) > frame_timeout_ms_)
     {
-      const std::size_t num_fem_frame_packets = Lpd::num_fem_frame_packets(asic_counter_bit_depth_);
-
       // Calculate packets lost on this frame and add to total
-      uint32_t packets_lost = (num_fem_frame_packets * num_active_fems_) -
+      uint32_t packets_lost = (Lpd::num_packets * num_active_fems_) -
           frame_header->total_packets_received;
       packets_lost_ += packets_lost;
       if (packets_lost)
@@ -503,7 +466,7 @@ void LpdFrameDecoder::monitor_buffers(void)
         for (LpdDecoderFemMap::iterator iter = fem_port_map_.begin();
           iter != fem_port_map_.end(); ++iter)
         {
-          fem_packets_lost_[(iter->second).fem_idx_] += num_fem_frame_packets -
+          fem_packets_lost_[(iter->second).fem_idx_] += Lpd::num_packets -
               (frame_header->fem_rx_state[(iter->second).buf_idx_].packets_received);
         }
       }
@@ -688,38 +651,4 @@ std::size_t LpdFrameDecoder::parse_fem_port_map(const std::string fem_port_map_s
 
     // Return the number of valid entries parsed
     return fem_port_map_.size();
-}
-
-//! Parse the ASIC counter bit depth configuration string.
-//!
-//! This method parses a configuration string specifying the LPD ASIC counter bit
-//! depth currently in use, returning an enumerated constant for use in the decoder.
-//!
-//! \param[in] bit_depth_str - string of the bit depth
-//! \return enumerated constant defining bit depth, or unknown if the string is not recognised
-//!
-Lpd::AsicCounterBitDepth LpdFrameDecoder::parse_bit_depth(
-    const std::string bit_depth_str)
-{
-
-  //! Set the default bit depth to return to unknown
-  Lpd::AsicCounterBitDepth bit_depth = Lpd::bitDepthUnknown;
-
-  // Initialise a mapping of string to bit depth
-  static std::map<std::string, Lpd::AsicCounterBitDepth>bit_depth_map;
-  if (bit_depth_map.empty())
-  {
-    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth1]]  = Lpd::bitDepth1;
-    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth6]]  = Lpd::bitDepth6;
-    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth12]] = Lpd::bitDepth12;
-    bit_depth_map[asic_bit_depth_str_[Lpd::bitDepth24]] = Lpd::bitDepth24;
-  }
-
-  // Set the bit depth value if present in the map
-  if (bit_depth_map.count(bit_depth_str))
-  {
-    bit_depth = bit_depth_map[bit_depth_str];
-  }
-
-  return bit_depth;
 }

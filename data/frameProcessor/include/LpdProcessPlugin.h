@@ -26,8 +26,7 @@ namespace FrameProcessor
   /** Processing of Lpd Frame objects.
    *
    * The LpdProcessPlugin class is currently responsible for receiving a raw data
-   * Frame object and reordering the data into valid Lpd frames according to the selected
-   * bit depth.
+   * Frame object and reordering the data into valid Lpd frames.
    */
   class LpdProcessPlugin : public FrameProcessorPlugin
   {
@@ -40,7 +39,6 @@ namespace FrameProcessor
   private:
     /** Configuration constant for clearing out dropped packet counters **/
     static const std::string CONFIG_DROPPED_PACKETS;
-
     /** Configuration constant for asic counter depth **/
     static const std::string CONFIG_ASIC_COUNTER_DEPTH;
     /** Configuration constant for image width **/
@@ -49,9 +47,6 @@ namespace FrameProcessor
     static const std::string CONFIG_IMAGE_HEIGHT;
     /** Configuration constant for number of images in frame **/
     static const std::string CONFIG_NUM_IMAGES;
-    /** Configuration constant for reset of 24bit image counter **/
-    static const std::string CONFIG_RESET_24_BIT;
-
 
     void process_lost_packets(boost::shared_ptr<Frame> frame);
     void process_frame(boost::shared_ptr<Frame> frame);
@@ -60,8 +55,6 @@ namespace FrameProcessor
 
     /** Pointer to logger **/
     LoggerPtr logger_;
-    /** Bit depth of the incoming frames **/
-    int asic_counter_depth_;
     /** Image width **/
     int image_width_;
     /** Image height **/

@@ -83,9 +83,7 @@ namespace FrameReceiver
     void initialise_frame_header(Lpd::FrameHeader* header_ptr);
     unsigned int elapsed_ms(struct timespec& start, struct timespec& end);
     std::size_t parse_fem_port_map(const std::string fem_port_map_str);
-    Lpd::AsicCounterBitDepth parse_bit_depth(const std::string bit_depth_str);
 
-    Lpd::AsicCounterBitDepth asic_counter_bit_depth_;
     std::string fem_port_map_str_;
     LpdDecoderFemMap fem_port_map_;
     boost::shared_ptr<void> current_packet_trailer_;
@@ -104,11 +102,7 @@ namespace FrameReceiver
     uint32_t packets_lost_;
     uint32_t fem_packets_lost_[Lpd::max_num_fems];
 
-    static const std::string asic_bit_depth_str_[Lpd::num_bit_depths];
-
     static const std::string CONFIG_FEM_PORT_MAP;
-    static const std::string CONFIG_BITDEPTH;
-
 
   };
 

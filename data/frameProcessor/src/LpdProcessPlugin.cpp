@@ -11,7 +11,6 @@ namespace FrameProcessor
 {
 
   const std::string LpdProcessPlugin::CONFIG_DROPPED_PACKETS = "packets_lost";
-  const std::string LpdProcessPlugin::CONFIG_ASIC_COUNTER_DEPTH = "bitdepth";
   const std::string LpdProcessPlugin::CONFIG_IMAGE_WIDTH = "width";
   const std::string LpdProcessPlugin::CONFIG_IMAGE_HEIGHT = "height";
   const std::string LpdProcessPlugin::CONFIG_NUM_IMAGES = "num_images";
@@ -45,8 +44,6 @@ namespace FrameProcessor
    * Configure the Lpd plugin.  This receives an IpcMessage which should be processed
    * to configure the plugin, and any response can be added to the reply IpcMessage.  This
    * plugin supports the following configuration parameters:
-   * - bitdepth
-   *
    * \param[in] config - Reference to the configuration IpcMessage object.
    * \param[out] reply - Reference to the reply IpcMessage object.
    */
@@ -96,13 +93,12 @@ namespace FrameProcessor
   void LpdProcessPlugin::process_lost_packets(boost::shared_ptr<Frame> frame)
   {
     const Lpd::FrameHeader* hdr_ptr = static_cast<const Lpd::FrameHeader*>(frame->get_data());
-    Lpd::AsicCounterBitDepth depth = static_cast<Lpd::AsicCounterBitDepth>(asic_counter_depth_);
     LOG4CXX_DEBUG(logger_, "Processing lost packets for frame " << hdr_ptr->frame_number);
     LOG4CXX_DEBUG(logger_, "Packets received: " << hdr_ptr->total_packets_received
         << " out of a maximum "
-        << Lpd::num_fem_frame_packets(depth) * hdr_ptr->num_active_fems);
-    if (hdr_ptr->total_packets_received < (Lpd::num_fem_frame_packets(depth) * hdr_ptr->num_active_fems)){
-      int packets_lost = (Lpd::num_fem_frame_packets(depth) * hdr_ptr->num_active_fems) - hdr_ptr->total_packets_received;
+        << Lpd::num_packets * hdr_ptr->num_active_fems);
+    if (hdr_ptr->total_packets_received < Lpd::num_packets * hdr_ptr->num_active_fems){
+      int packets_lost = (Lpd::num_packets * hdr_ptr->num_active_fems) - hdr_ptr->total_packets_received;
       LOG4CXX_ERROR(logger_, "Frame number " << hdr_ptr->frame_number << " has dropped " << packets_lost << " packets");
       packets_lost_ += packets_lost;
       LOG4CXX_ERROR(logger_, "Total packets lost since startup " << packets_lost_);
@@ -112,8 +108,7 @@ namespace FrameProcessor
 
 
   /**
-   * Perform processing on the frame.  Depending on the selected bit depth
-   * the corresponding pixel re-ordering algorithm is executed.
+   * Perform processing on the frame.
    *
    * \param[in] frame - Pointer to a Frame object.
    */
@@ -175,9 +170,7 @@ namespace FrameProcessor
 
       // Calculate the FEM frame size once so it can be used in the following loop
       // repeatedly
-      std::size_t fem_frame_size = (
-        Lpd::max_frame_size()
-      );
+      std::size_t fem_frame_size = Lpd::max_frame_size;
 
       // Loop over active FEMs in the input frame image data, reordering pixels into the output
       // images
