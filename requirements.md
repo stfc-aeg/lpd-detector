@@ -30,10 +30,13 @@ Port frame receiver for LPD.
 | Listen for buffer config request from FP. Reply upon request. | Receive request for buffer config from any FP on ZeroMQ address specified in config. | 29/06/18: Complete |
 | Listen for incoming UDP packets. Upon detection, trigger decoder. | Packets sent to specified port are received and read. | 29/06/18: Complete |
 | Add packet payload to shared memory buffer. | Add packet to frame buffer. Packets should be added to correct frame. Create new frame for packets not matching existing frames in buffer. | 26/07/18: Method C complete |
-| Handle packet loss. | Timeout frame after specified time. Send frame-ready with empty buffers in frame making note of how many packets were dropped. | 29/06/18: Complete |
-| Handle out-of-order packets. | Packet payload position in buffer recorded in frame buffer header. | 26/07/18: Method C complete, not yet properly tested |
+| Handle packet loss. | Timeout frame after specified time. Send frame-ready with empty buffers in frame making note of how many packets were dropped. | 29/06/18: Method C Complete |
+| Handle out-of-order packets. | Packet payload position in buffer recorded in frame buffer header. | 26/07/18: Method C Complete |
 | Upon filled/timed out frame. FR control thread sends frame-ready message to FP. | Frame-ready message sent from RX thread to control thread then sent to FP. | 29/06/18: Complete |
-| When FR control thread receives frame-release message from FP, FR RX thread empties and opens buffer for re-use. | Frame-release message received from FP. Buffer emptied and made available for new frame. | 29/06/18: Complete, buffer repurposing not yet properly tested. |
+| When FR control thread receives frame-release message from FP, FR RX thread empties and opens buffer for re-use. | Frame-release message received from FP. Buffer emptied and made available for new frame. | 29/06/18: Complete |
+| Remove multiple FEM handling. | Remove all unnecessary code relating to FEM mapping and indexing. LPD should only use one FEM. | 03/09/18: Complete |
+| Remove bit depth handling. | Remove all unnecessary code relating to possible bit depth settings. LPD does not use them. | 31/08/18: Complete |
+| Remove sub-frame handling. | Remove all unnecessary code relating sub-frames within frames. LPD does not use sub-frames. | 29/06/18: Complete |
 
 The major change for the FR will be switching to reading the trailer of incoming packets rather than the header as Excalibur does. This is shown below with two possible methods of handling trailers.
 
@@ -53,10 +56,14 @@ Port frame processor for LPD.
 
 | Requirement | Conditions | Status |
 |:-----------:|:----------:|:------:|
-| All detector specific names use `lpd`, `Lpd` or `LPD`. | No detector specific names for files, class, functions, variables, object or keys referring to `Excalibur` or other non-LPD detectors. Script still functions with no resulting errors. | 29/06/18: Functional with Excalibur pcap & producer after rename. Functionality with LPD pcap & producer not yet functional. |
-| Upon startup, request shared memory configuration from FR. | Send request for buffer config to any FR on ZeroMQ address specifed in config. | 29/06/18: Still functional from original Excalibur script |
-| Listen for frame-ready notification from FR. Upon receiving, trigger file writer. | Upon receiving frame-ready, read buffer, make note of missing packets, trigger writer. | 29/06/18: Still functional from original Excalibur script |
-| Write frame to HDF5 file. Send frame-release to FR upon completion. | File must contain all data from frame including information about missing packets and appropriate metadata. | 29/06/18: Still functional from original Excalibur script |
+| All detector specific names use `lpd`, `Lpd` or `LPD`. | No detector specific names for files, class, functions, variables, object or keys referring to `Excalibur` or other non-LPD detectors. Script still functions with no resulting errors. | 29/06/18: Complete |
+| Upon startup, request shared memory configuration from FR. | Send request for buffer config to any FR on ZeroMQ address specifed in config. | 29/06/18: Complete |
+| Listen for frame-ready notification from FR. Upon receiving, trigger proccessing. | Upon receiving frame-ready, read buffer, make note of missing packets, trigger frame process plugin. | 29/06/18: Complete |
+| Reorder incoming frame data into images with the correct pixel data order. | 20 images per frame each in correct order. Skip frame header and train header. | 31/08/18: Complete |
+| Write frame to HDF5 file. Send frame-release to FR upon completion. | File must contain all data from frame including 20 separate images per frame, the frame numbers and image numbers. Send frame-release to FR upon completion.  | 29/06/18: Complete |
+| Remove multiple FEM handling. | Remove all unnecessary code relating to FEM mapping and indexing. LPD should only use one FEM. | 03/09/18: Complete |
+| Remove bit depth handling. | Remove all unnecessary code relating to possible bit depth settings. LPD does not use them. | 31/08/18: Complete |
+| Remove sub-frame handling. | Remove all unnecessary code relating sub-frames within frames. LPD does not use sub-frames. | 10/08/18: Complete |
 
 
 ## Travis CI Testing
