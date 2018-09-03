@@ -15,25 +15,8 @@
 #include <stdint.h>
 #include <time.h>
 
-#define ILLEGAL_FEM_IDX -1
-
-const std::string default_fem_port_map = "61649:0";
-
 namespace FrameReceiver
 {
-  typedef struct LpdDecoderFemMapEntry
-  {
-    int fem_idx_;
-    unsigned int buf_idx_;
-
-    LpdDecoderFemMapEntry(int fem_idx=ILLEGAL_FEM_IDX, int buf_idx=ILLEGAL_FEM_IDX) :
-      fem_idx_(fem_idx),
-      buf_idx_(buf_idx)
-    {};
-  } LpdDecoderFemMapEntry;
-
-  typedef std::map<int, LpdDecoderFemMapEntry> LpdDecoderFemMap;
-
   class LpdFrameDecoder : public FrameDecoderUDP
   {
   public:
@@ -49,15 +32,8 @@ namespace FrameReceiver
 
     inline const bool requires_header_peek(void) const
     {
-//      return true;
     	return false;
     };
-
-    inline const bool trailer_mode(void) const
-        {
-          return true;
-//          return false;
-        };
 
     const size_t get_packet_header_size(void) const;
     void process_packet_header (size_t bytes_received, int port,
@@ -77,15 +53,11 @@ namespace FrameReceiver
     bool get_start_of_frame_marker(uint8_t* &trlr_ptr) const;
     bool get_end_of_frame_marker(uint8_t* &trlr_ptr) const;
 
-
   private:
 
     void initialise_frame_header(Lpd::FrameHeader* header_ptr);
     unsigned int elapsed_ms(struct timespec& start, struct timespec& end);
-    std::size_t parse_fem_port_map(const std::string fem_port_map_str);
 
-    std::string fem_port_map_str_;
-    LpdDecoderFemMap fem_port_map_;
     boost::shared_ptr<void> current_packet_trailer_;
     boost::shared_ptr<void> dropped_frame_buffer_;
     boost::shared_ptr<void> ignored_packet_buffer_;
@@ -94,15 +66,14 @@ namespace FrameReceiver
     int current_frame_buffer_id_;
     void* current_frame_buffer_;
     Lpd::FrameHeader* current_frame_header_;
-    LpdDecoderFemMapEntry current_packet_fem_map_;
-    std::size_t num_active_fems_;
 
     bool dropping_frame_data_;
     uint32_t packets_ignored_;
     uint32_t packets_lost_;
-    uint32_t fem_packets_lost_[Lpd::max_num_fems];
 
-    static const std::string CONFIG_FEM_PORT_MAP;
+    static const std::string CONFIG_PORT;
+    const int default_port = 61649;
+    int fem_port;
 
   };
 

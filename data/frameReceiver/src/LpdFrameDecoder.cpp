@@ -18,7 +18,7 @@
 
 using namespace FrameReceiver;
 
-const std::string LpdFrameDecoder::CONFIG_FEM_PORT_MAP = "fem_port_map";
+const std::string LpdFrameDecoder::CONFIG_PORT = "port";
 
 #define MAX_IGNORED_PACKET_REPORTS 10
 
@@ -33,10 +33,10 @@ LpdFrameDecoder::LpdFrameDecoder() :
     current_frame_buffer_id_(Lpd::default_frame_number),
     current_frame_buffer_(0),
     current_frame_header_(0),
-    num_active_fems_(0),
     dropping_frame_data_(false),
     packets_ignored_(0),
-    packets_lost_(0)
+    packets_lost_(0),
+	fem_port(-1)
 {
 
   // Allocate buffers for packet trailer, dropped frames and scratched packets
@@ -68,31 +68,14 @@ void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
 
   LOG4CXX_DEBUG_LEVEL(2, logger_, "Got decoder config message: " << config_msg.encode());
 
-  // Extract the FEM to port map from the config message and pass to the parser. If no map is
-  // present, use the default. If the map cannot be parsed correctly, thrown an exception to signal
-  // an error to the app controller. Set the current number of active FEMs based on the output
-  // of the map parsing.
-  if (config_msg.has_param(CONFIG_FEM_PORT_MAP))
+  if (config_msg.has_param(CONFIG_PORT))
   {
-      fem_port_map_str_ = config_msg.get_param<std::string>(CONFIG_FEM_PORT_MAP);
-      LOG4CXX_DEBUG_LEVEL(1, logger_, "Parsing FEM to port map found in config: "
-                          << fem_port_map_str_);
+    fem_port = config_msg.get_param<int>(CONFIG_PORT);
   }
   else
   {
-      LOG4CXX_DEBUG_LEVEL(1,logger_, "No FEM to port map found in config, using default: "
-                          << default_fem_port_map);
-      fem_port_map_str_ = default_fem_port_map;
-  }
-
-  num_active_fems_ = parse_fem_port_map(fem_port_map_str_);
-  if (num_active_fems_)  {
-      LOG4CXX_DEBUG_LEVEL(1, logger_, "Parsed " << num_active_fems_
-                          << " entries from port map configuration");
-  }
-  else
-  {
-      throw OdinData::OdinDataException("Failed to parse FEM to port map entries from configuration");
+	  fem_port = default_port;
+	  LOG4CXX_DEBUG_LEVEL(2, logger_, "No port in config, using default (" << default_port << ")");
   }
 
   // Print a packet logger trailer to the appropriate logger if enabled
@@ -111,10 +94,6 @@ void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
   // Reset the scratched and lost packet counters
   packets_ignored_ = 0;
   packets_lost_ = 0 ;
-  for (int fem = 0; fem < Lpd::max_num_fems; fem++)
-  {
-    fem_packets_lost_[fem] = 0;
-  }
 
   // Create buffer for first packet
   current_frame_buffer_ = dropped_frame_buffer_.get();
@@ -127,32 +106,27 @@ void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
 void LpdFrameDecoder::request_configuration(const std::string param_prefix,
     OdinData::IpcMessage& config_reply)
 {
-
   // Call the base class method to populate parameters
   FrameDecoder::request_configuration(param_prefix, config_reply);
-
-  // Add current configuration parameters to reply
-  config_reply.set_param(param_prefix + CONFIG_FEM_PORT_MAP, fem_port_map_str_);
 }
 
 // Get the size of the frame buffers required for current operation mode.
 const size_t LpdFrameDecoder::get_frame_buffer_size(void) const
 {
-  size_t frame_buffer_size = (Lpd::max_frame_size * num_active_fems_);
+  size_t frame_buffer_size = Lpd::max_frame_size;
   return frame_buffer_size;
 }
 
+// Get the size of the frame header
 const size_t LpdFrameDecoder::get_frame_header_size(void) const
 {
-
   return sizeof(Lpd::FrameHeader);
 }
 
 //! Initialise a frame header
 //!
 //! This method initialises the frame header specified by the pointer argument, setting
-//! fields to their default values, clearing packet counters and setting the active FEM
-//! fields as appropriate.
+//! fields to their default values, clearing packet counters
 //!
 //! \param[in] header_ptr - pointer to frame header to initialise.
 //!
@@ -165,19 +139,14 @@ void LpdFrameDecoder::initialise_frame_header(Lpd::FrameHeader* header_ptr)
   header_ptr->total_sof_marker_count = 0;
   header_ptr->total_eof_marker_count = 0;
 
-  header_ptr->num_active_fems = num_active_fems_;
-  for (LpdDecoderFemMap::iterator it = fem_port_map_.begin(); it != fem_port_map_.end(); ++it)
-  {
-    header_ptr->active_fem_idx[(it->second).buf_idx_] = (it->second).fem_idx_;
-  }
-  memset(header_ptr->fem_rx_state, UINT_MAX,
-      sizeof(Lpd::FemReceiveState) * Lpd::max_num_fems);
+  memset(header_ptr->packet_state, Lpd::pkt_missing_flag,
+      sizeof(header_ptr->packet_state));
 
   gettime(reinterpret_cast<struct timespec*>(&(header_ptr->frame_start_time)));
 
 }
 
-//---TODO: Remove/replace when feasable---------------------------------------------
+//---TODO: Remove/replace when feasible---------------------------------------------
 const size_t LpdFrameDecoder::get_packet_header_size(void) const
 {}
 void* LpdFrameDecoder::get_packet_header_buffer(void)
@@ -190,15 +159,13 @@ void LpdFrameDecoder::process_packet_header(size_t bytes_received, int port, str
 //
 // This method returns a pointer to the next packet payload buffer within the appropriate frame.
 // The location of this is determined by state information set during the processing of the packet
-// trailer. If thepacket is not from a recognised FEM, a pointer to the ignored packet buffer will
-// be returned instead.
+// trailer.
 //
 // \return pointer to the next payload buffer
 
 void* LpdFrameDecoder::get_next_payload_buffer(void) const
 {
   uint8_t* next_receive_location;
-  int trailer_size = 0;
 
   next_receive_location =
       reinterpret_cast<uint8_t*>(current_frame_buffer_)
@@ -210,9 +177,7 @@ void* LpdFrameDecoder::get_next_payload_buffer(void) const
 
 //! Get the next packet payload size to receive.
 //!
-//! This method returns the payload size to receive for the next incoming packet, based on state
-//! information set during processing of the trailer. The receive size may vary depending on
-//! whether a primary or tail packet is being received.
+//! This method returns the payload size to receive for the next incoming packet.
 //!
 //! \return size of next packet payload in bytes
 //!
@@ -280,16 +245,8 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
     LOG4CXX_INFO(packet_logger_, ss.str ());
   }
 
-
-  // Resolve the FEM index from the port the packet arrived on
-  if (fem_port_map_.count(port)) {
-    current_packet_fem_map_ =  fem_port_map_[port];
-
-  }
-
-
-  // Only process the packet if it is not being ignored due to an illegal port to FEM index mapping
-  if (current_packet_fem_map_.fem_idx_ != ILLEGAL_FEM_IDX)
+  // Only process the packet if it is not being ignored due to an illegal port
+  if (fem_port == port)
   {
 
     LOG4CXX_DEBUG_LEVEL(3, logger_, "Got packet trailer:"
@@ -297,7 +254,6 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
         << " packet number: " << packet_number
         << " EOF: " << (int) end_of_frame_marker
         << " port: " << port
-        << " fem idx: " << current_packet_fem_map_.fem_idx_
     );
 
     if (frame_number != current_frame_seen_)
@@ -357,35 +313,28 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
         current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
         current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
       }
-
     }
-    Lpd::FemReceiveState* fem_rx_state = &(current_frame_header_->fem_rx_state[current_packet_fem_map_.buf_idx_]);
 
     // If SOF or EOF markers seen in packet trailer, increment appropriate field in frame header
     if (start_of_frame_marker)
     {
-      (fem_rx_state->sof_marker_count)++;
       (current_frame_header_->total_sof_marker_count)++;
     }
     if (end_of_frame_marker)
     {
-      (fem_rx_state->eof_marker_count)++;
       (current_frame_header_->total_eof_marker_count)++;
     }
 
     // Update packet_number state map in frame header
-    fem_rx_state->packet_state[0][packet_number] = current_frame_header_->total_packets_received;
+    current_frame_header_->packet_state[0][packet_number] = current_frame_header_->total_packets_received;
 
-    // Increment the total and per-FEM packet received counters
-    (fem_rx_state->packets_received)++;
+    // Increment the total packet received counter
     current_frame_header_->total_packets_received++;
 
     // If we have received the expected number of packets, perform end of frame processing
     // and hand off the frame for downstream processing.
-    if (current_frame_header_->total_packets_received == (Lpd::num_packets * num_active_fems_))
+    if (current_frame_header_->total_packets_received == Lpd::num_packets)
     {
-      LOG4CXX_DEBUG_LEVEL(2, logger_,(Lpd::num_packets * num_active_fems_));
-
       // Check that the appropriate number of SOF and EOF markers (one each per frame) have been seen, otherwise log a warning
       if ((current_frame_header_->total_sof_marker_count != 1) ||
           (current_frame_header_->total_eof_marker_count != 1))
@@ -410,23 +359,20 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
         // Notify main thread that frame is ready
         ready_callback_(current_frame_buffer_id_, current_frame_header_->frame_number);
 
-        // Initialise frame header
+        // Initialise frame buffer for next frame
         current_frame_buffer_id_ = empty_buffer_queue_.front();
         empty_buffer_queue_.pop();
         current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
         current_frame_seen_ += 1;
 	    frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
 
+	    // Initialise next frame header
         LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating new buffer for frame "
             << current_frame_seen_ << " in buffer " << current_frame_buffer_id_);
         current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
         initialise_frame_header(current_frame_header_);
       }
     }
-  }
-  else
-  {
-    LOG4CXX_DEBUG_LEVEL(3, logger_, "Illegal FEM IDX: " << current_packet_fem_map_.fem_idx_);
   }
   return frame_state;
 }
@@ -458,19 +404,8 @@ void LpdFrameDecoder::monitor_buffers(void)
     if (elapsed_ms(frame_header->frame_start_time, current_time) > frame_timeout_ms_)
     {
       // Calculate packets lost on this frame and add to total
-      uint32_t packets_lost = (Lpd::num_packets * num_active_fems_) -
-          frame_header->total_packets_received;
+      uint32_t packets_lost = Lpd::num_packets - frame_header->total_packets_received;
       packets_lost_ += packets_lost;
-      if (packets_lost)
-      {
-        for (LpdDecoderFemMap::iterator iter = fem_port_map_.begin();
-          iter != fem_port_map_.end(); ++iter)
-        {
-          fem_packets_lost_[(iter->second).fem_idx_] += Lpd::num_packets -
-              (frame_header->fem_rx_state[(iter->second).buf_idx_].packets_received);
-        }
-      }
-
 
       if (frame_header->total_packets_received >= 1)
       {
@@ -527,17 +462,6 @@ void LpdFrameDecoder::get_status(const std::string param_prefix,
 {
   status_msg.set_param(param_prefix + "name", std::string("LpdFrameDecoder"));
   status_msg.set_param(param_prefix + "packets_lost", packets_lost_);
-
-  // Workaround for lack of array setters in IpcMessage
-  rapidjson::Value fem_packets_lost_array(rapidjson::kArrayType);
-  rapidjson::Value::AllocatorType allocator;
-
-  for (int fem = 0; fem < Lpd::max_num_fems; fem++)
-  {
-    fem_packets_lost_array.PushBack(fem_packets_lost_[fem], allocator);
-  }
-  status_msg.set_param(param_prefix + "fem_packets_lost", fem_packets_lost_array);
-
 }
 
 uint32_t LpdFrameDecoder::get_frame_number(uint8_t* &trlr_ptr) const
@@ -598,57 +522,4 @@ unsigned int LpdFrameDecoder::elapsed_ms(struct timespec& start, struct timespec
   double end_ns = ((double) end.tv_sec * 1000000000) + end.tv_nsec;
 
   return (unsigned int)((end_ns - start_ns) / 1000000);
-}
-
-//! Parse the port to FEM index map configuration string.
-//!
-//! This method parses a configuration string containing port to FEM index mapping information,
-//! which is expected to be of the format "port:idx,port:idx" etc. The map is saved in a member
-//! variable for use in packet handling.
-//!
-//! \param[in] fem_port_map_str - string of port to FEM index mapping configuration
-//! \return number of valid map entries parsed from string
-//!
-std::size_t LpdFrameDecoder::parse_fem_port_map(const std::string fem_port_map_str)
-{
-    // Clear the current map
-    fem_port_map_.clear();
-
-    // Define entry and port:idx delimiters
-    const std::string entry_delimiter(",");
-    const std::string elem_delimiter(":");
-
-    // Vector to hold entries split from map
-    std::vector<std::string> map_entries;
-
-    // Split into entries
-    boost::split(map_entries, fem_port_map_str, boost::is_any_of(entry_delimiter));
-
-    unsigned int buf_idx = 0;
-    // Loop over entries, further splitting into port / fem index pairs
-    for (std::vector<std::string>::iterator it = map_entries.begin(); it != map_entries.end(); ++it)
-    {
-      if (buf_idx >= Lpd::max_num_fems)
-      {
-        LOG4CXX_WARN(logger_, "Decoder FEM port map configuration contains too many elements, "
-            << "truncating to maximium number of FEMs allowed ("
-            << Lpd::max_num_fems << ")");
-        break;
-      }
-
-      std::vector<std::string> entry_elems;
-      boost::split(entry_elems, *it, boost::is_any_of(elem_delimiter));
-
-      // If a valid entry is found, save into the map
-      if (entry_elems.size() == 2)
-      {
-        int port = static_cast<int>(strtol(entry_elems[0].c_str(), NULL, 10));
-        int fem_idx = static_cast<int>(strtol(entry_elems[1].c_str(), NULL, 10));
-        fem_port_map_[port] = LpdDecoderFemMapEntry(fem_idx, buf_idx);
-        buf_idx++;
-      }
-    }
-
-    // Return the number of valid entries parsed
-    return fem_port_map_.size();
 }

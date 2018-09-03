@@ -17,9 +17,6 @@ namespace Lpd {
   static const size_t num_tail_packets = 1;
 
   static const size_t num_packets = num_primary_packets + num_tail_packets;
-  static const size_t max_frame_size = num_packets * primary_packet_size;
-
-  static const size_t max_num_fems = 1;
 
   static const uint32_t start_of_frame_mask = 1 << 31;
   static const uint32_t end_of_frame_mask   = 1 << 30;
@@ -36,19 +33,13 @@ namespace Lpd {
   static const int image_data_header = 64;
   static const int image_data_trailer = 32;
 
+  static const uint16_t pkt_missing_flag = 65535;
+
   typedef struct
   {
     uint32_t frame_number;
     uint32_t packet_number_flags;
   } PacketTrailer;
-
-  typedef struct
-  {
-    uint32_t packets_received;
-    uint8_t  sof_marker_count;
-    uint8_t  eof_marker_count;
-    uint16_t  packet_state[1][num_primary_packets + num_tail_packets];
-  } FemReceiveState;
 
   typedef struct
   {
@@ -58,11 +49,10 @@ namespace Lpd {
     uint32_t total_packets_received;
     uint8_t total_sof_marker_count;
     uint8_t total_eof_marker_count;
-    uint8_t num_active_fems;
-    uint8_t active_fem_idx[max_num_fems];
-    FemReceiveState fem_rx_state[max_num_fems];
+    uint16_t packet_state[1][num_packets];
   } FrameHeader;
 
+  static const size_t max_frame_size = sizeof(FrameHeader) + (num_packets * primary_packet_size);
 }
 
 #endif /* INCLUDE_LPDDEFINITIONS_H_ */
