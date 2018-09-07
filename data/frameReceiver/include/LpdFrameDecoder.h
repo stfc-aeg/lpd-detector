@@ -1,8 +1,8 @@
 /*
  * LpdEmulatorFrameDecoder.h
  *
- *  Created on: Jan 16, 2017
- *      Author: Tim Nicholls, STFC Application Engineering Group
+ *  Created on: July 9th, 2018
+ *      Author: Jack Haydock, STFC Application Engineering Group
  */
 
 #ifndef INCLUDE_LPDFRAMEDECODER_H_
@@ -75,6 +75,7 @@ namespace FrameReceiver
     uint32_t packets_lost_;
 
     int num_images_;
+    int incoming_frame_size_;
     int num_packets_;
 
   };

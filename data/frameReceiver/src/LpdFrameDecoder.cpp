@@ -3,8 +3,8 @@
  *
  * ODIN data frame decoder plugin for LPD detector UDP frame data.
  *
- *  Created on: Jan 16th, 2017
- *      Author: Tim Nicholls, STFC Application Engineering Group
+ *  Created on: July 9th, 2018
+ *      Author: Jack Haydock, STFC Application Engineering Group
  */
 
 #include "LpdFrameDecoder.h"
@@ -36,13 +36,12 @@ LpdFrameDecoder::LpdFrameDecoder() :
     dropping_frame_data_(false),
     packets_ignored_(0),
     packets_lost_(0),
-    num_images_(20),
+    num_images_(Lpd::default_num_images),
+    incoming_frame_size_(calculate_frame_size()),
     num_packets_(0)
 {
   // Allocate buffers for packet trailer, dropped frames and scratched packets
-  current_packet_trailer_.reset(new uint8_t[Lpd::primary_packet_size]);
-  dropped_frame_buffer_.reset(new uint8_t[Lpd::image_size * num_images_]);
-  ignored_packet_buffer_.reset(new uint8_t[Lpd::primary_packet_size]);
+  dropped_frame_buffer_.reset(new uint8_t[incoming_frame_size_]);
 }
 
 //! Destructor for LpdFrameDecoder
@@ -72,8 +71,14 @@ void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
   if (config_msg.has_param(CONFIG_NUM_IMAGES))
   {
     num_images_ = config_msg.get_param<int>(CONFIG_NUM_IMAGES);
-    dropped_frame_buffer_.reset(new uint8_t[Lpd::image_size * num_images_]);
+
+    // Calculate incoming frame size based on configured number of images
+    incoming_frame_size_ = calculate_frame_size();
+    dropped_frame_buffer_.reset(new uint8_t[incoming_frame_size_]);
   }
+
+  // Calculate expected number of packets based on frame size
+  num_packets_ = (incoming_frame_size_ / Lpd::primary_packet_size) + Lpd::num_trail_packets;
 
   // Print a packet logger trailer to the appropriate logger if enabled
   if (enable_packet_logging_)
@@ -176,9 +181,6 @@ void LpdFrameDecoder::initialise_frame_header(Lpd::FrameHeader* header_ptr)
   header_ptr->total_sof_marker_count = 0;
   header_ptr->total_eof_marker_count = 0;
   header_ptr->num_images = num_images_;
-
-  // Number of expected packets
-  num_packets_ = (calculate_frame_size() / Lpd::primary_packet_size) + Lpd::num_trail_packets;
   header_ptr->num_packets = num_packets_;
 
   // Packet State Flags
@@ -188,11 +190,15 @@ void LpdFrameDecoder::initialise_frame_header(Lpd::FrameHeader* header_ptr)
   gettime(reinterpret_cast<struct timespec*>(&(header_ptr->frame_start_time)));
 }
 
-//---TODO: Remove/replace when feasible---------------------------------------------
+//---NOTE: These methods are required by odin-data to avoid errors but do not serve any purpose within Lpd
 const size_t LpdFrameDecoder::get_packet_header_size(void) const
-{}
+{
+  return 0;
+}
 void* LpdFrameDecoder::get_packet_header_buffer(void)
-{}
+{
+  return NULL;
+}
 void LpdFrameDecoder::process_packet_header(size_t bytes_received, int port, struct sockaddr_in* from_addr)
 {}
 //---------------------------------------------------------------------------------

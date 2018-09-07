@@ -1,8 +1,8 @@
 /*
  * LpdDefinitions.h
  *
- *  Created on: Jan 16th, 2017
- *      Author: Tim Nicholls, STFC Application Engineering Group
+ *  Created on: July 9th 2018,
+ *      Author: Jack Haydock, STFC Application Engineering Group
  */
 
 #ifndef INCLUDE_LPDDEFINITIONS_H_
@@ -45,6 +45,7 @@ typedef struct
   static const size_t primary_payload_size = primary_packet_size - sizeof(Lpd::PacketTrailer);
   static const size_t num_trail_packets = 1;
 
+  // Xfel Train Data Format
   static const size_t xtdf_alignmnent_size = 32;
   static const size_t xtdf_header_size = 64;
   static const size_t xtdf_num_descriptor_arrays = 4;
@@ -58,6 +59,9 @@ typedef struct
   static const uint32_t packet_number_mask  = 0x3FFFFFFF;
 
   static const uint32_t default_frame_number = -1;
+  static const int default_num_images = 20;
+
+  // If a packet is missing it's slot in the frame header will be filled with this
   static const uint16_t pkt_missing_flag = 65535;
 }
 

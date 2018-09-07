@@ -1,8 +1,8 @@
 /*
 x * LpdProcessPlugin.h
  *
- *  Created on: 6 Jun 2016
- *      Author: gnx91527
+ *  Created on: July 9th 2018,
+ *      Author: Jack Haydock, STFC Application Engineering Group
  */
 
 #ifndef TOOLS_FILEWRITER_LPDREORDERPLUGIN_H_
@@ -46,8 +46,6 @@ namespace FrameProcessor
 
     void process_lost_packets(boost::shared_ptr<Frame> frame);
     void process_frame(boost::shared_ptr<Frame> frame);
-
-    std::size_t reordered_image_size(int asic_counter_depth_);
 
     /** Pointer to logger **/
     LoggerPtr logger_;

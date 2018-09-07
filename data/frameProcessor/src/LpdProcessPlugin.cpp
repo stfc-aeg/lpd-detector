@@ -1,8 +1,8 @@
 /*
  * LpdProcessPlugin.cpp
  *
- *  Created on: 6 Jun 2016
- *      Author: gnx91527
+ *  Created on: July 9th 2018,
+ *      Author: Jack Haydock, STFC Application Engineering Group
  */
 
 #include <LpdProcessPlugin.h>
@@ -204,9 +204,9 @@ namespace FrameProcessor
                 }
                 else // Fill output with zeros if packet missing
                 {
-                  if (pixel_offset == 0) // Only log if first pixel
+                  if (pixel_offset == 0) // Only log once per missing packet
                   {
-                    LOG4CXX_TRACE(logger_, "Pkt " << pkt_num << " missing, filling with 0");
+                    LOG4CXX_WARN(logger_, "Pkt " << pkt_num << " missing, filling with 0");
                   }
                   *output_data_ptr = 0;
                 }
