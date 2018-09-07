@@ -27,12 +27,13 @@ namespace FrameReceiver
     void init(LoggerPtr& logger, OdinData::IpcMessage& config_msg);
     void request_configuration(const std::string param_prefix, OdinData::IpcMessage& config_reply);
 
+    const size_t calculate_frame_size(void) const;
     const size_t get_frame_buffer_size(void) const;
     const size_t get_frame_header_size(void) const;
 
     inline const bool requires_header_peek(void) const
     {
-    	return false;
+      return false;
     };
 
     const size_t get_packet_header_size(void) const;
@@ -55,6 +56,8 @@ namespace FrameReceiver
 
   private:
 
+    static const std::string CONFIG_NUM_IMAGES;
+
     void initialise_frame_header(Lpd::FrameHeader* header_ptr);
     unsigned int elapsed_ms(struct timespec& start, struct timespec& end);
 
@@ -71,9 +74,8 @@ namespace FrameReceiver
     uint32_t packets_ignored_;
     uint32_t packets_lost_;
 
-    static const std::string CONFIG_PORT;
-    const int default_port = 61649;
-    int fem_port;
+    int num_images_;
+    int num_packets_;
 
   };
 

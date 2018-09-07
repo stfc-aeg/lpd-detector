@@ -39,14 +39,10 @@ namespace FrameProcessor
   private:
     /** Configuration constant for clearing out dropped packet counters **/
     static const std::string CONFIG_DROPPED_PACKETS;
-    /** Configuration constant for asic counter depth **/
-    static const std::string CONFIG_ASIC_COUNTER_DEPTH;
-    /** Configuration constant for image width **/
-    static const std::string CONFIG_IMAGE_WIDTH;
-    /** Configuration constant for image height **/
-    static const std::string CONFIG_IMAGE_HEIGHT;
-    /** Configuration constant for number of images in frame **/
-    static const std::string CONFIG_NUM_IMAGES;
+    /** Configuration constant for output image width **/
+    static const std::string CONFIG_DIMS_X;
+    /** Configuration constant for output image height **/
+    static const std::string CONFIG_DIMS_Y;
 
     void process_lost_packets(boost::shared_ptr<Frame> frame);
     void process_frame(boost::shared_ptr<Frame> frame);
@@ -55,14 +51,9 @@ namespace FrameProcessor
 
     /** Pointer to logger **/
     LoggerPtr logger_;
-    /** Image width **/
-    int image_width_;
-    /** Image height **/
-    int image_height_;
-    /** Number of Images **/
-    int num_images_;
-    /** Image pixel count **/
-    int image_pixels_;
+    /** Dimensions of output images **/
+    int dims_x;
+    int dims_y;
     /** Packet loss counter **/
     int packets_lost_;
     /** Image counter **/

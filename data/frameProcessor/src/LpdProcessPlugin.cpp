@@ -11,18 +11,15 @@ namespace FrameProcessor
 {
 
   const std::string LpdProcessPlugin::CONFIG_DROPPED_PACKETS = "packets_lost";
-  const std::string LpdProcessPlugin::CONFIG_IMAGE_WIDTH = "width";
-  const std::string LpdProcessPlugin::CONFIG_IMAGE_HEIGHT = "height";
-  const std::string LpdProcessPlugin::CONFIG_NUM_IMAGES = "num_images";
+  const std::string LpdProcessPlugin::CONFIG_DIMS_X = "width";
+  const std::string LpdProcessPlugin::CONFIG_DIMS_Y = "height";
 
   /**
    * The constructor sets up logging used within the class.
    */
   LpdProcessPlugin::LpdProcessPlugin() :
-    image_width_(256),
-    image_height_(256),
-    image_pixels_(image_width_ * image_height_),
-    num_images_(20),
+    dims_x(256),
+    dims_y(256),
     packets_lost_(0),
     image_counter_(0)
   {
@@ -54,23 +51,15 @@ namespace FrameProcessor
       packets_lost_ = config.get_param<int>(LpdProcessPlugin::CONFIG_DROPPED_PACKETS);
     }
 
-    if (config.has_param(LpdProcessPlugin::CONFIG_IMAGE_WIDTH))
+    if (config.has_param(LpdProcessPlugin::CONFIG_DIMS_X))
     {
-      image_width_ = config.get_param<int>(LpdProcessPlugin::CONFIG_IMAGE_WIDTH);
+      dims_x = config.get_param<int>(LpdProcessPlugin::CONFIG_DIMS_X);
     }
 
-    if (config.has_param(LpdProcessPlugin::CONFIG_IMAGE_HEIGHT))
+    if (config.has_param(LpdProcessPlugin::CONFIG_DIMS_Y))
     {
-      image_height_ = config.get_param<int>(LpdProcessPlugin::CONFIG_IMAGE_HEIGHT);
+      dims_y = config.get_param<int>(LpdProcessPlugin::CONFIG_DIMS_Y);
     }
-
-    if (config.has_param(LpdProcessPlugin::CONFIG_NUM_IMAGES))
-    {
-      num_images_ = config.get_param<int>(LpdProcessPlugin::CONFIG_NUM_IMAGES);
-    }
-
-    image_pixels_ = image_width_ * image_height_;
-
   }
 
   /**
@@ -95,18 +84,16 @@ namespace FrameProcessor
     const Lpd::FrameHeader* hdr_ptr = static_cast<const Lpd::FrameHeader*>(frame->get_data());
     LOG4CXX_DEBUG(logger_, "Processing lost packets for frame " << hdr_ptr->frame_number);
     LOG4CXX_DEBUG(logger_, "Packets received: " << hdr_ptr->total_packets_received
-        << " out of a maximum " << Lpd::num_packets);
+        << " out of a maximum " << hdr_ptr->num_packets);
 
-    if (hdr_ptr->total_packets_received < Lpd::num_packets)
+    if (hdr_ptr->total_packets_received < hdr_ptr->num_packets)
     {
-      int packets_lost = Lpd::num_packets - hdr_ptr->total_packets_received;
+      int packets_lost = hdr_ptr->num_packets - hdr_ptr->total_packets_received;
       LOG4CXX_ERROR(logger_, "Frame number " << hdr_ptr->frame_number << " has dropped " << packets_lost << " packets");
       packets_lost_ += packets_lost;
       LOG4CXX_ERROR(logger_, "Total packets lost since startup " << packets_lost_);
     }
   }
-
-
 
   /**
    * Perform processing on the frame.
@@ -125,13 +112,12 @@ namespace FrameProcessor
 
     LOG4CXX_TRACE(logger_, "Raw frame number: " << hdr_ptr->frame_number);
     LOG4CXX_TRACE(logger_, "Frame state: " << hdr_ptr->frame_state);
+    LOG4CXX_TRACE(logger_, "Images: " << hdr_ptr->num_images);
+    LOG4CXX_TRACE(logger_, "Output image size: " << Lpd::image_size);
+    LOG4CXX_TRACE(logger_, "Expected number of packets: " << hdr_ptr->num_packets);
     LOG4CXX_TRACE(logger_, "Packets received: " << hdr_ptr->total_packets_received
         << " SOF markers: "<< (int)hdr_ptr->total_sof_marker_count
         << " EOF markers: "<< (int)hdr_ptr->total_eof_marker_count);
-
-    // Determine the size of the output reordered images
-    unsigned int image_size = image_width_ * image_height_ * 2;
-    LOG4CXX_TRACE(logger_, "Output image size: " << image_size);
 
     // Obtain a pointer to the start of the data in the frame
     const void* data_ptr = static_cast<const void*>(
@@ -144,20 +130,25 @@ namespace FrameProcessor
     try
     {
       // Allocate buffer to receive reordered image.
-      reordered_image = (void*)malloc(image_pixels_ * 2);
+      reordered_image = (void*)malloc(Lpd::image_size);
       if (reordered_image == NULL)
       {
         throw std::runtime_error("Failed to allocate temporary buffer for reordered image");
       }
 
-      // Calculate pointer into the input image data based on loop index
-      void* input_ptr = static_cast<void *>(
+      // Calculate pointer into the packet state data
+      void* packet_state_ptr = static_cast<void *>(
         static_cast<char *>(const_cast<void *>(data_ptr))
       );
 
+      // Calculate pointer into the input image data
+      void* input_ptr = static_cast<void *>(
+        static_cast<char *>(const_cast<void *>(data_ptr) + (hdr_ptr->num_packets * 2))
+      );
+
       unsigned int pkt_num = 0;
-      unsigned int pkt_slot = hdr_ptr->packet_state[0][pkt_num];
-      unsigned int pkt_offset = pkt_slot * (Lpd::primary_packet_size / 2);
+      unsigned int pkt_slot = *(reinterpret_cast<uint16_t*>(packet_state_ptr) + pkt_num);
+      unsigned int pkt_offset = pkt_slot * (Lpd::primary_payload_size / 2);
 
       unsigned int pixel_offset = 0;
       unsigned int input_offset = 0;
@@ -167,7 +158,7 @@ namespace FrameProcessor
       // Loop over input pixel stream and re-order image to supermodule mapping (i.e. scatter
       // semantics). Note that row loops (pixel and ASIC) are reversed to recover correct image
       // orientation for supermodule
-      for (unsigned int image = 0; image < num_images_; image++) //For each image
+      for (unsigned int image = 0; image < hdr_ptr->num_images; image++) //For each image
       {
         LOG4CXX_TRACE(logger_, "Reading Image: " << image);
 
@@ -186,17 +177,17 @@ namespace FrameProcessor
               for (unsigned int asic_col = 0; asic_col < Lpd::num_asic_cols; asic_col++)
               {
                 // Find next packet if pixel offset reaches the end of the current one
-                if (pixel_offset >= Lpd::primary_packet_size / 2)
+                if (pixel_offset >= Lpd::primary_payload_size / 2)
                 {
                   uint16_t * input_data_ptr  = reinterpret_cast<uint16_t*>(input_ptr) + pkt_offset + (pixel_offset - 1);
                   pkt_num++;
-                  pkt_slot = hdr_ptr->packet_state[0][pkt_num];
-                  pkt_offset = pkt_slot * (Lpd::primary_packet_size / 2);
+                  pkt_slot = *(reinterpret_cast<uint16_t*>(packet_state_ptr) + pkt_num);
+                  pkt_offset = pkt_slot * (Lpd::primary_payload_size / 2);
                   pixel_offset = 0;
                 }
 
                 //Input Offset
-                unsigned int input_offset = (Lpd::image_data_header / 2) + pkt_offset + pixel_offset;
+                unsigned int input_offset = (Lpd::xtdf_header_size / 2) + pkt_offset + pixel_offset;
 
                 // Output Offset
                 unsigned int image_col = (asic_col * Lpd::num_pixel_cols_per_asic) + pixel_col;
@@ -229,8 +220,8 @@ namespace FrameProcessor
         {
           // Pixel Data Dataset
           dimensions_t dims_data(2);
-          dims_data[0] = image_height_;
-          dims_data[1] = image_width_;
+          dims_data[0] = dims_x;
+          dims_data[1] = dims_y;
 
           boost::shared_ptr<Frame> data_frame;
           data_frame = boost::shared_ptr<Frame>(new Frame("data"));
@@ -239,7 +230,7 @@ namespace FrameProcessor
           data_frame->set_dimensions("data", dims_data);
 
           void * output_data_ptr = static_cast<void*>(reordered_image);
-          data_frame->copy_data(output_data_ptr, image_size);
+          data_frame->copy_data(output_data_ptr, Lpd::image_size);
 
           LOG4CXX_TRACE(logger_, "Pushing data dataset.");
           this->push(data_frame);
