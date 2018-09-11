@@ -98,10 +98,10 @@ void LpdFrameDecoder::init(LoggerPtr& logger, OdinData::IpcMessage& config_msg)
   packets_lost_ = 0 ;
 
   // Create buffer for first packet
+  current_frame_seen_ = Lpd::default_frame_number;
   current_frame_buffer_ = dropped_frame_buffer_.get();
   LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating first frame buffer");
   current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
-  current_frame_seen_ = 1;
   initialise_frame_header(current_frame_header_);
 }
 
@@ -302,60 +302,73 @@ FrameDecoder::FrameReceiveState LpdFrameDecoder::process_packet(size_t bytes_rec
   if (frame_number != current_frame_seen_)
   {
     LOG4CXX_DEBUG_LEVEL(2, logger_, "Packet from frame " << frame_number << " does not match current frame " << current_frame_seen_);
-    current_frame_seen_ = frame_number;
 
-    if (frame_buffer_map_.count(current_frame_seen_) == 0)
+    // If current frame is left over from previous acquisition, reuse it rather than dumping it
+    if ((current_frame_header_->total_packets_received == 0) && (current_frame_buffer_id_ != -1))
     {
-      if (empty_buffer_queue_.empty())
-      {
-         current_frame_buffer_ = dropped_frame_buffer_.get();
-
-       if (!dropping_frame_data_)
-        {
-           LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_
-               << " detected but no free buffers available. Dropping packet data for this frame");
-           dropping_frame_data_ = true;
-        }
-      }
-      else
-      {
-        current_frame_buffer_id_ = empty_buffer_queue_.front();
-        empty_buffer_queue_.pop();
-        frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
-        current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
-
-        if (!dropping_frame_data_)
-        {
-          LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_seen_
-              << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
-        }
-        else
-        {
-          dropping_frame_data_ = false;
-          LOG4CXX_DEBUG_LEVEL(2, logger_, "Free buffer now available for frame "
-              << current_frame_seen_ << ", allocating frame buffer ID "
-              << current_frame_buffer_id_);
-        }
-      }
-        // Initialise frame header
-        LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating new buffer for frame " << current_frame_seen_);
-        current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
-        initialise_frame_header(current_frame_header_);
-
-        // Copy payload into new frame buffer
-        LOG4CXX_DEBUG_LEVEL(2, logger_, "Copying payload from packet "
-            << packet_number << " (at " << &pkt_ptr
-            << ") into frame " << current_frame_seen_ << " buffer at " << get_next_payload_buffer());
-
-        memcpy (get_next_payload_buffer(), pkt_ptr, (bytes_received - sizeof(Lpd::PacketTrailer)));
-        LOG4CXX_DEBUG_LEVEL(2, logger_, "memcopy complete");
+      LOG4CXX_DEBUG_LEVEL(2, logger_, "Current frame " << current_frame_seen_ << " has not received any packets, repurposing buffer for frame " << frame_number );
+      current_frame_header_->frame_number = frame_number;
+      frame_buffer_map_[frame_number] = current_frame_buffer_id_;
+      frame_buffer_map_.erase(current_frame_seen_);
+      current_frame_seen_ = frame_number;
+      gettime(reinterpret_cast<struct timespec*>(&(current_frame_header_->frame_start_time)));
     }
     else
     {
-      current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
-      current_frame_buffer_id_ = empty_buffer_queue_.front();
-      current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
-      current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
+      current_frame_seen_ = frame_number;
+
+      if (frame_buffer_map_.count(current_frame_seen_) == 0)
+      {
+        if (empty_buffer_queue_.empty())
+        {
+          current_frame_buffer_ = dropped_frame_buffer_.get();
+          if (!dropping_frame_data_)
+          {
+            LOG4CXX_ERROR(logger_, "First packet from frame " << current_frame_seen_
+                << " detected but no free buffers available. Dropping packet data for this frame");
+            dropping_frame_data_ = true;
+          }
+        }
+        else
+        {
+          current_frame_buffer_id_ = empty_buffer_queue_.front();
+          empty_buffer_queue_.pop();
+          frame_buffer_map_[current_frame_seen_] = current_frame_buffer_id_;
+          current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
+
+          if (!dropping_frame_data_)
+          {
+            LOG4CXX_DEBUG_LEVEL(2, logger_, "First packet from frame " << current_frame_seen_
+                << " detected, allocating frame buffer ID " << current_frame_buffer_id_);
+          }
+          else
+          {
+            dropping_frame_data_ = false;
+            LOG4CXX_DEBUG_LEVEL(2, logger_, "Free buffer now available for frame "
+                << current_frame_seen_ << ", allocating frame buffer ID "
+                << current_frame_buffer_id_);
+          }
+        }
+          // Initialise frame header
+          LOG4CXX_DEBUG_LEVEL(2, logger_, "Creating new buffer for frame " << current_frame_seen_);
+          current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
+          initialise_frame_header(current_frame_header_);
+
+          // Copy payload into new frame buffer
+          LOG4CXX_DEBUG_LEVEL(2, logger_, "Copying payload from packet "
+              << packet_number << " (at " << &pkt_ptr
+              << ") into frame " << current_frame_seen_ << " buffer at " << get_next_payload_buffer());
+
+          memcpy (get_next_payload_buffer(), pkt_ptr, (bytes_received - sizeof(Lpd::PacketTrailer)));
+          LOG4CXX_DEBUG_LEVEL(2, logger_, "memcopy complete");
+      }
+      else
+      {
+        current_frame_buffer_id_ = frame_buffer_map_[current_frame_seen_];
+        current_frame_buffer_id_ = empty_buffer_queue_.front();
+        current_frame_buffer_ = buffer_manager_->get_buffer_address(current_frame_buffer_id_);
+        current_frame_header_ = reinterpret_cast<Lpd::FrameHeader*>(current_frame_buffer_);
+      }
     }
   }
 
@@ -448,12 +461,13 @@ void LpdFrameDecoder::monitor_buffers(void)
 
     if (elapsed_ms(frame_header->frame_start_time, current_time) > frame_timeout_ms_)
     {
-      // Calculate packets lost on this frame and add to total
-      uint32_t packets_lost = num_packets_ - frame_header->total_packets_received;
-      packets_lost_ += packets_lost;
 
       if (frame_header->total_packets_received >= 1)
       {
+        // Calculate packets lost on this frame and add to total
+        uint32_t packets_lost = num_packets_ - frame_header->total_packets_received;
+        packets_lost_ += packets_lost;
+
         LOG4CXX_DEBUG_LEVEL(1, logger_, "Frame " << frame_num << " in buffer " << buffer_id
             << " addr 0x" << std::hex
             << buffer_addr << std::dec << " timed out with " << frame_header->total_packets_received
@@ -461,25 +475,21 @@ void LpdFrameDecoder::monitor_buffers(void)
 
         frame_header->frame_state = FrameReceiveStateTimedout;
         ready_callback_(buffer_id, frame_num);
+        frames_timedout++;
+
+        frame_buffer_map_.erase(buffer_map_iter++);
       }
       else
       {
-        LOG4CXX_DEBUG_LEVEL(1, logger_, "Frame " << frame_num << " in buffer " << buffer_id
-            << " addr 0x" << std::hex
-            << buffer_addr << std::dec
-            << " timed out with no packets received. Dropping frame");
-        // drop frame
-        dropping_frame_data_ = true;
+        buffer_map_iter++;
       }
-      frames_timedout++;
-
-      frame_buffer_map_.erase(buffer_map_iter++);
     }
     else
     {
       buffer_map_iter++;
     }
   }
+
   if (frames_timedout)
   {
     LOG4CXX_WARN(logger_, "Released " << frames_timedout << " timed out incomplete frames");

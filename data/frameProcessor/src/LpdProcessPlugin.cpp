@@ -60,6 +60,7 @@ namespace FrameProcessor
     {
       dims_y = config.get_param<int>(LpdProcessPlugin::CONFIG_DIMS_Y);
     }
+    image_counter_ = 0;
   }
 
   /**
