@@ -72,6 +72,7 @@ Priority: Should Have
 Use Travis CI to create testing for the above.
 
 *NOTE: Exact requirements yet to be decided.*
+27/09/18: Delegated to next developer on project
 
 
 ## Control Integration
@@ -79,7 +80,13 @@ Priority: Should Have
 
 Integrate existing LPD python GUI with frame receiver and processor.
 
-*NOTE: Exact requirements yet to be decided.*
+| Requirement | Conditions | Status |
+|:-----------:|:----------:|:------:|
+| Upon Run, send frames and packets to FR over configured port. | When both are running FR receives pkts without issue. | 27/09/18: Complete |
+| Upon Run, send configurations to both FR and FP over configured IPC channels. | FR & FP both acknowledge the message and correctly configure. | 27/09/18: Complete |
+| Upon Run, regularly poll FR & FP for Status and display in GUI. | Return Frames Received, Frames Processed, Bytes Received and Images Written. | 27/09/18: Complete |
+| Launch FR from Config | | 27/09/18: Delegated to next developer on project |
+| Launch FP from Config | | 27/09/18: Delegated to next developer on project |
 
 ## Live View
 Priority: Could Have
@@ -87,3 +94,4 @@ Priority: Could Have
 Adapt ODIN to allow live view within GUI to still work.
 
 *NOTE: Exact requirements yet to be decided.*
+27/09/18: Delegated to another developer on project
