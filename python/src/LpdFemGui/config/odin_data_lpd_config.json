@@ -17,12 +17,12 @@
         "fr_ready_cnxn": "tcp://127.0.0.1:5001",
         "fr_release_cnxn": "tcp://127.0.0.1:5002"
       },
-      "lpd": 
+      "lpd":
       {
         "width": 256,
         "height": 256
       },
-      "hdf": 
+      "hdf":
       {
         "frames": 0,
 	"write": true,
@@ -31,13 +31,13 @@
 	  "path": "/tmp",
 	  "name": "test.hdf5"
 	},
-        "dataset": 
+        "dataset":
         {
-          "data" : 
+          "data" :
           {
             "cmd": "create",
             "datatype": 1,
-            "dims": [256, 256]                
+            "dims": [256, 256]       
           },
           "img_num" :
           {
