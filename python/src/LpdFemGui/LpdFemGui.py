@@ -12,6 +12,12 @@ from persistentDict import *
 from ServoShutter import *
 import os
 
+#-----
+from odin_data.ipc_channel import IpcChannel, IpcChannelException
+from odin_data.ipc_message import IpcMessage, IpcMessageException
+from LpdFemOdinDataReceiver import *
+#-----
+
 class PrintRedirector():
     
     def __init__(self, printFn):
@@ -40,6 +46,10 @@ class LpdFemGui:
         # in current working directory
         self.defaultConfigPath = os.getenv('LPD_FEM_GUI_CONFIG_PATH', os.getcwd() + '/config')
         
+# #-----
+#         self.odinDataPath = os.getenv('ODIN_DATA_PATH', os.getcwd())
+# #-----
+        
         # Load default parameters from persistent file store
         self.initialiseCachedParams()
         
@@ -62,8 +72,15 @@ class LpdFemGui:
 
         # Show/hide (ASIC) Testing tab?
         self.asicTestingEnabled = self.getCachedParam('asicTesting')
+        
         # Should GUI itself receive fem data?
         self.receiveDataInternally = self.getCachedParam('receiveDataInternally')
+
+#-----        
+        # Should ODIN receive fem data?
+        self.receiveDataFromODIN = self.getCachedParam('receiveDataFromODIN')
+        
+#-----
         
         # Create the main window GUI and show it
         self.mainWindow= LpdFemGuiMainWindow(self)
@@ -139,7 +156,14 @@ class LpdFemGui:
                           'asicModuleType'      : 0,
                           'multiRunEnable'    : True,
                           'multiRunNumRuns'   : 123,
-                          'receiveDataInternally': True,
+                          'receiveDataInternally': False,
+#-----
+                        'receiveDataFromODIN': True,
+                        'odinFrCtrlChannel'  : 'tcp://127.0.0.1:5000',
+                        'odinFpCtrlChannel'  : 'tcp://127.0.0.1:5004',
+                        # TODO: Plan file structure for odinDataConfigFile
+                        'odinDataConfigFile' : self.defaultConfigPath + '/odin_data_lpd_config.json',
+#-----
                          }
 
         # List of parameter names that don't need to force a system reconfigure
@@ -258,14 +282,14 @@ class LpdFemGui:
         # Load readout parameters from file       
         self.msgPrint("Loading Readout Params from file %s" % currentParams['readoutParamFile'])
         try:
-            readoutConfig = LpdReadoutConfig(currentParams['readoutParamFile'], fromFile=True)
+            self.readoutConfig = LpdReadoutConfig(currentParams['readoutParamFile'], fromFile=True)
         except LpdReadoutConfigError as e:
             self.msgPrint("Error loading readout parameters: %s" % e)
             self.deviceState = LpdFemGui.DeviceIdle
             return
 
         # Set all parameters from file on device
-        for (param, value) in readoutConfig.parameters():
+        for (param, value) in self.readoutConfig.parameters():
             rc = self.device.paramSet(param, value)
             if rc != LpdDevice.ERROR_OK:
                 self.msgPrint('Setting parameter %s failed (rc=%d) : %s' % (param, rc, self.device.errorStringGet()))
@@ -424,6 +448,17 @@ class LpdFemGui:
                     self.deviceState = LpdFemGui.DeviceIdle
                     return
                 
+#-------------------------------------------------------------
+            if self.receiveDataFromODIN:
+                # Launch ODIN LPD Frame Receiver, Proccesor and Data Monitor
+                try:
+                    odinDataReceiver = LpdFemOdinDataReceiver(self.mainWindow.runStatusSignal,self.numFrames, self)
+                except Exception as e:
+                    self.msgPrint("ERROR: failed to create ODIN data receiver: %s" % e)
+                    self.deviceState = LpdFemGui.DeviceIdle
+                    return
+#-------------------------------------------------------------                                    
+                
             # Set device state as running and trigger update of run state in GUI    
             self.deviceState = LpdFemGui.DeviceRunning
             self.runStateUpdate()        
@@ -453,7 +488,10 @@ class LpdFemGui:
                     timestampRecorder.awaitCompletion()
                     if self.receiveDataInternally:
                         dataReceiver.injectTimestampData(timestampRecorder.evrData)
-    
+#------------------------------------------------------------------------------------
+                    if self.receiveDataFromODIN:
+                        odinDataReceiver.injectTimestampData(timestampRecorder.evrData)
+#------------------------------------------------------------------------------------
                 except Exception as e:
                     self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)
 
@@ -467,6 +505,18 @@ class LpdFemGui:
     
                 # Delete dataReceiver or multi-run produces no data for even runs
                 del dataReceiver
+
+#-------------------                
+            if self.receiveDataFromODIN:    
+                # Wait for the data receiver threads to complete
+                try:
+                    odinDataReceiver.awaitCompletion()
+                except Exception as e:
+                    self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
+    
+                # Delete odinDataReceiver
+                del odinDataReceiver
+#---------------------
 
             if numRuns > 1 and self.abortRun:
                 self.msgPrint("Aborting multi-run sequence after {} runs".format(run+1))
@@ -484,10 +534,11 @@ class LpdFemGui:
         self.mainWindow.messageSignal.emit(message)
         
     def runStateUpdate(self):
-        '''
+        '''return
         Sends a run state update to the GUI thread for display
         ''' 
         self.mainWindow.runStateSignal.emit()
+
          
 def main():
         

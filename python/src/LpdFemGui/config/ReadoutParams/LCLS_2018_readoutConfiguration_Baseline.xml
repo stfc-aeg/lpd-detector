@@ -113,7 +113,7 @@ ch number of <trigger_flag_set/> in asic command xml ; Multiply by 3 for MULTIPL
     <!--cccIoDelayNumberTaps type="int" val="10"/-->                  <!-- Fractional timing delay wrt clock applied to C&C Cmd and Veto input data. Adjusted for cable length. (taps are 5/64 nsec) -->
     
     <!-- commented out to use filename set in LpdReadoutTest.py -->
-    <cccVetoPatternFile type="str" val="/home/lpduser/lpdSoftware/LpdFemGui/config/VetoPatterns/veto_pattern_test2.xml"/>
+    <cccVetoPatternFile type="str" val="/u/uvn88637/develop/projects/lpd/lpd-fem/python/src/LpdFemGui/config/VetoPatterns/veto_pattern_test2.xml"/>
     
     
     <timeoutTrain type="int" val="20"/>                  <!-- Timeout in seconds on waiting for next Train during run -->

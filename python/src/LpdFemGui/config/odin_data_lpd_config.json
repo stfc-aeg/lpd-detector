@@ -1,0 +1,94 @@
+{
+    "receiver_default_config":
+    {
+      "max_buffer_mem": 840000000,
+      "decoder_type": "Lpd",
+      "decoder_path": "/u/uvn88637/develop/projects/lpd/install/lib",
+      "rx_ports": "61649",
+      "decoder_config": {
+        "enable_packet_logging": false,
+        "frame_timeout_ms": 1000,
+        "numimages":10
+      }
+    },
+    "processor_default_config":
+    {
+      "fr_setup": {
+        "fr_ready_cnxn": "tcp://127.0.0.1:5001",
+        "fr_release_cnxn": "tcp://127.0.0.1:5002"
+      },
+      "lpd": 
+      {
+        "width": 256,
+        "height": 256
+      },
+      "hdf": 
+      {
+        "frames": 0,
+	"write": true,
+	"file":
+	{
+	  "path": "/tmp",
+	  "name": "test.hdf5"
+	},
+        "dataset": 
+        {
+          "data" : 
+          {
+            "cmd": "create",
+            "datatype": 1,
+            "dims": [256, 256]                
+          },
+          "img_num" :
+          {
+            "cmd": "create",
+            "datatype": 2,
+            "dims": [1]
+          },
+          "frame_num" :
+          {
+            "cmd": "create",
+            "datatype": 2,
+            "dims": [1]
+          }
+        }
+      }
+    },
+    "processor_plugins":
+    [
+        {  
+            "plugin": {
+                "load": {
+                    "index": "hdf",
+                    "name": "FileWriterPlugin",
+                    "library": "/u/uvn88637/develop/projects/lpd/install/lib/libHdf5Plugin.so"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "load": {
+                    "index": "lpd",
+                    "name": "LpdProcessPlugin",
+                    "library": "/u/uvn88637/develop/projects/lpd/install/lib/libLpdProcessPlugin.so"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "connect": {
+                    "index": "lpd",
+                    "connection": "frame_receiver"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "connect": {
+                    "index": "hdf",
+                    "connection": "lpd"
+                }
+            }
+        }
+    ]
+}    
