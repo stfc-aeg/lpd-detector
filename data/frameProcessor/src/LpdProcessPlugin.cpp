@@ -21,7 +21,9 @@ namespace FrameProcessor
     dims_x(256),
     dims_y(256),
     packets_lost_(0),
-    image_counter_(0)
+    image_counter_(0),
+    data_received_(0),
+    frames_processed_(0)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FW.LpdProcessPlugin");
@@ -73,6 +75,8 @@ namespace FrameProcessor
     // Record the plugin's status items
     LOG4CXX_DEBUG(logger_, "Status requested for Lpd plugin");
     status.set_param(get_name() + "/packets_lost", packets_lost_);
+    status.set_param(get_name() + "/bytes_received", data_received_);
+    status.set_param(get_name() + "/frames_processed", frames_processed_);
   }
 
   /**
@@ -110,6 +114,8 @@ namespace FrameProcessor
 
     const Lpd::FrameHeader* hdr_ptr =
         static_cast<const Lpd::FrameHeader*>(frame->get_data());
+
+    data_received_ += frame->get_data_size() - sizeof(Lpd::FrameHeader) - (hdr_ptr->num_packets * 2);
 
     LOG4CXX_TRACE(logger_, "Raw frame number: " << hdr_ptr->frame_number);
     LOG4CXX_TRACE(logger_, "Frame state: " << hdr_ptr->frame_state);
@@ -276,6 +282,7 @@ namespace FrameProcessor
         free(reordered_image);
         reordered_image = NULL;
       }
+      frames_processed_ += 1;
     }
     catch (const std::exception& e)
     {

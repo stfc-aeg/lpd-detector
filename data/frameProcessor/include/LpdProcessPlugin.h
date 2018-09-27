@@ -56,6 +56,10 @@ namespace FrameProcessor
     int packets_lost_;
     /** Image counter **/
     int image_counter_;
+    /** Data received counter **/
+    int data_received_;
+    /** frames processed counter **/
+    int frames_processed_;
   };
 
   /**
