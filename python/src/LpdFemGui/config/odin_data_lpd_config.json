@@ -25,12 +25,12 @@
       "hdf":
       {
         "frames": 0,
-	"write": true,
-	"file":
-	{
-	  "path": "/tmp",
-	  "name": "test.hdf5"
-	},
+		"write": true,
+		"file":
+		{
+		  "path": "/tmp",
+		  "name": "test.hdf5"
+		},
         "dataset":
         {
           "data" :
