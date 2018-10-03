@@ -3,7 +3,7 @@
     {
       "max_buffer_mem": 840000000,
       "decoder_type": "Lpd",
-      "decoder_path": "/u/uvn88637/develop/projects/lpd/install/lib",
+      "decoder_path": "/u/xfu59478/develop/projects/lpd/install/lib",
       "rx_ports": "61649",
       "decoder_config": {
         "enable_packet_logging": false,
@@ -61,7 +61,7 @@
                 "load": {
                     "index": "hdf",
                     "name": "FileWriterPlugin",
-                    "library": "/u/uvn88637/develop/projects/lpd/install/lib/libHdf5Plugin.so"
+                    "library": "/u/xfu59478/develop/projects/lpd/install/lib/libHdf5Plugin.so"
                 }
             }
         },
@@ -70,7 +70,7 @@
                 "load": {
                     "index": "lpd",
                     "name": "LpdProcessPlugin",
-                    "library": "/u/uvn88637/develop/projects/lpd/install/lib/libLpdProcessPlugin.so"
+                    "library": "/u/xfu59478/develop/projects/lpd/install/lib/libLpdProcessPlugin.so"
                 }
             }
         },
