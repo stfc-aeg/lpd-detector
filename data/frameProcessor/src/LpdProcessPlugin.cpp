@@ -234,7 +234,7 @@ namespace FrameProcessor
           data_frame = boost::shared_ptr<Frame>(new Frame("data"));
 
           data_frame->set_frame_number(image_counter_);
-          data_frame->set_dimensions("data", dims_data);
+          data_frame->set_dimensions(dims_data);
 
           void * output_data_ptr = static_cast<void*>(reordered_image);
           data_frame->copy_data(output_data_ptr, Lpd::image_size);
@@ -251,7 +251,7 @@ namespace FrameProcessor
           frame_num_frame = boost::shared_ptr<Frame>(new Frame("frame_num"));
 
           frame_num_frame->set_frame_number(image_counter_);
-          frame_num_frame->set_dimensions("frame_num", dims_frame);
+          frame_num_frame->set_dimensions(dims_frame);
 
           frame_num_frame->copy_data(&(hdr_ptr->frame_number), sizeof(hdr_ptr->frame_number));
 
@@ -267,7 +267,7 @@ namespace FrameProcessor
           img_num_frame = boost::shared_ptr<Frame>(new Frame("img_num"));
 
           img_num_frame->set_frame_number(image_counter_);
-          img_num_frame->set_dimensions("img_num", dims_img);
+          img_num_frame->set_dimensions(dims_img);
 
           img_num_frame->copy_data(&image, sizeof(image));
 
