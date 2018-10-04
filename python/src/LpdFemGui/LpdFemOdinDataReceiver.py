@@ -7,6 +7,7 @@ from __future__ import print_function
 
 from LpdDataContainers import *
 from LpdFemClient.LpdFemClient import LpdFemClient
+from LpdFemGui import *
 
 import os, sys, time, socket, json
 import numpy as np
@@ -67,6 +68,11 @@ class LpdFemOdinDataReceiver():
             numImages = (self.numFrames * self.configReceiver['decoder_config']['numimages'])
             numDatasets = len(self.configProcessor['hdf']['dataset']) 
             self.configProcessor['hdf']['frames'] = ((numImages * numDatasets) + 1)
+            
+            # Set path of output file
+            print("Setting Path of Output File")
+            file_path = self.appMain.getCachedParam('dataFilePath')
+            self.configProcessor['hdf']['file']['path'] = file_path
 
             # Send Frame Receiver config
             print("Sending Frame Receiver Config")
