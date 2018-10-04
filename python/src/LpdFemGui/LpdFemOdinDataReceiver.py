@@ -69,10 +69,14 @@ class LpdFemOdinDataReceiver():
             numDatasets = len(self.configProcessor['hdf']['dataset']) 
             self.configProcessor['hdf']['frames'] = ((numImages * numDatasets) + 1)
             
-            # Set path of output file
-            print("Setting Path of Output File")
+            # Set path and filename of output file
+            print("Setting Path & Filename of Output File")
             file_path = self.appMain.getCachedParam('dataFilePath')
             self.configProcessor['hdf']['file']['path'] = file_path
+            
+            run_number = self.appMain.getCachedParam('runNumber')            
+            file_name = "lpdData-{:05d}.hdf5".format(run_number)
+            self.configProcessor['hdf']['file']['name'] = file_name
 
             # Send Frame Receiver config
             print("Sending Frame Receiver Config")
