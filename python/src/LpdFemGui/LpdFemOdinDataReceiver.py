@@ -99,8 +99,23 @@ class LpdFemOdinDataReceiver():
 
             # TODO: replace with wait for FR/FP handshake to complete
             print("Waiting for Receiver/Processor handshake to complete")
-            time.sleep(3)
-
+            
+            # Around 8 seconds before timeout
+            timeout_attempts = 40
+            request_number = 0
+            
+            while True:
+                reply = self.send_status_cmd(self.fpCtrlChannel)
+                if reply is not None:
+                    shared_memory_buffer_status = reply.attrs['params']['shared_memory']['configured']
+                    if shared_memory_buffer_status is True:
+                        break
+                    
+                request_number += 1
+                if(request_number > timeout_attempts):
+                    break 
+                time.sleep(0.2)
+      
             # Create data monitor object and thread then move object into thread
             print("Creating Data Monitor Thread")
             self.dataMonitor = OdinDataMonitor(self)
