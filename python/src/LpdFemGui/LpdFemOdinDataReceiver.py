@@ -15,7 +15,7 @@ from PyQt4 import QtCore
 
 import h5py
 
-import subprocess
+from subprocess import Popen, PIPE
 
 from odin_data.ipc_channel import IpcChannel, IpcChannelException
 from odin_data.ipc_message import IpcMessage, IpcMessageException
@@ -38,9 +38,13 @@ class LpdFemOdinDataReceiver():
             self.numFrames = numFrames
             self.appMain = appMain
 
-            # TODO: Launch FR
-
-            # TODO: Launch FP
+            print("Launching Frame Receiver and Frame Processor")
+            fr_fp_location = "../../../../install/"
+            start_frame_receiver = Popen(["./bin/frameReceiver", "--debug", "2", "--logconfig", "config/data/fr_log4cxx.xml"],
+                                         cwd=fr_fp_location)
+            
+            start_frame_processor = Popen(["./bin/frameProcessor", "--logconfig", "config/data/fp_log4cxx.xml"],
+                                          cwd=fr_fp_location)
 
             # Create the appropriate IPC channels for receiver and proccessor
             print("Connecting to Frame Receiver's IPC Control Channel")
