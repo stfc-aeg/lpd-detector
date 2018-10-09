@@ -53,8 +53,12 @@ class LpdFemOdinDataReceiver():
 
             print("Connecting to Frame Proccessor's IPC Control Channel")
             self.fpCtrlChannel = IpcChannel(IpcChannel.CHANNEL_TYPE_DEALER)
-            self.fpCtrlChannel.connect(self.appMain.getCachedParam('odinFpCtrlChannel'))
-
+            self.fpCtrlChannel.connect(self.appMain.getCachedParam('odinFpCtrlChannel'))          
+        except Exception as e:
+            print("LdpFemOdinDataReceiver got exception during initialisation: %s" % e)
+            
+    def configure(self):
+        try:
             # TODO: Set num of images based on gui's readout config
 
             # Load Odin Data config
@@ -130,9 +134,9 @@ class LpdFemOdinDataReceiver():
             print("Starting Data Monitor Thread")
             self.dataMonitorThread.started.connect(self.dataMonitor.monitorLoop)
             self.dataMonitorThread.start()
-
         except Exception as e:
-            print("LdpFemOdinDataReceiver got exception during initialisation: %s" % e)
+            print("LdpFemOdinDataReceiver got exception during configuration: %s" % e)
+    
 
     def awaitCompletion(self):
 
@@ -146,6 +150,8 @@ class LpdFemOdinDataReceiver():
             else:
                 print("Frame processor handled all frames, terminating data monitor thread")
 
+            self.set_file_writing(False)
+            
             self.dataMonitorThread.quit()
             self.dataMonitorThread.wait()
 
@@ -171,6 +177,19 @@ class LpdFemOdinDataReceiver():
         channel.send(status_msg.encode())
         reply = self.await_response(channel)
         return reply
+    
+    def set_file_writing(self, enable):
+        self.configProcessor['hdf']['frames'] = self.numFrames
+        self.configProcessor['hdf']['write'] = enable
+
+        config_msg = IpcMessage('cmd', 'configure', id=self._next_msg_id())
+        config_msg.attrs['params'] = {'hdf': self.configProcessor['hdf']}
+        
+        print('Sending file writing {} command to frame processor'.format(
+            'enable' if enable else 'disable'))
+
+        self.fpCtrlChannel.send(config_msg.encode())
+        self.await_response(self.fpCtrlChannel)
 
 class OdinDataMonitor(QtCore.QObject):
 

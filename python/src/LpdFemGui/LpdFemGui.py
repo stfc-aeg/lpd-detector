@@ -62,6 +62,8 @@ class LpdFemGui:
         self.lastDataFile = None
 
         self.loadedConfig   = {}
+        
+        self.odinDataReceiver = None
 
         # Create a power card manager instance
         self.pwrCard = LpdPowerCardManager(self, self.device)
@@ -447,9 +449,12 @@ class LpdFemGui:
             if self.receiveDataFromODIN:
                 # Launch ODIN LPD Frame Receiver, Proccesor and Data Monitor
                 try:
-                    odinDataReceiver = LpdFemOdinDataReceiver(self.mainWindow.runStatusSignal,self.numFrames, self)
+                    if self.odinDataReceiver is None:
+                        self.odinDataReceiver = LpdFemOdinDataReceiver(self.mainWindow.runStatusSignal,self.numFrames, self)
+    
+                    self.odinDataReceiver.configure()
                 except Exception as e:
-                    self.msgPrint("ERROR: failed to create ODIN data receiver: %s" % e)
+                    self.msgPrint("ERROR: failed to create/configure ODIN data receiver: %s" % e)
                     self.deviceState = LpdFemGui.DeviceIdle
                     return
 #-------------------------------------------------------------
@@ -485,7 +490,7 @@ class LpdFemGui:
                         dataReceiver.injectTimestampData(timestampRecorder.evrData)
 #------------------------------------------------------------------------------------
                     if self.receiveDataFromODIN:
-                        odinDataReceiver.injectTimestampData(timestampRecorder.evrData)
+                        self.odinDataReceiver.injectTimestampData(timestampRecorder.evrData)
 #------------------------------------------------------------------------------------
                 except Exception as e:
                     self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)
@@ -505,12 +510,9 @@ class LpdFemGui:
             if self.receiveDataFromODIN:
                 # Wait for the data receiver threads to complete
                 try:
-                    odinDataReceiver.awaitCompletion()
+                    self.odinDataReceiver.awaitCompletion()
                 except Exception as e:
                     self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
-
-                # Delete odinDataReceiver
-                del odinDataReceiver
 #---------------------
 
             if numRuns > 1 and self.abortRun:
