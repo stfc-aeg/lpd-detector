@@ -57,11 +57,9 @@ class LpdFemOdinDataReceiver():
         except Exception as e:
             print("LdpFemOdinDataReceiver got exception during initialisation: %s" % e)
             
-    def configure(self, num_frames):
+    def configure(self, num_frames, num_images):
         try:
             self.numFrames = num_frames
-            
-            # TODO: Set num of images based on gui's readout config
 
             # Load Odin Data config
             print("Loading ODIN Data config from {}".format(self.appMain.getCachedParam('odinDataConfigFile')))
@@ -75,9 +73,10 @@ class LpdFemOdinDataReceiver():
                 # (Expected number of images) * (Expected number of datasets per image) + 1
                 # The +1 is to prevent closing the file as soon as the first dataset of the last images is written,
                 # allowing the rest time to arrive before closing the file
-            numImages = (self.numFrames * self.configReceiver['decoder_config']['numimages'])
+                
+            total_num_images = (self.numFrames * num_images)
             numDatasets = len(self.configProcessor['hdf']['dataset']) 
-            self.configProcessor['hdf']['frames'] = ((numImages * numDatasets) + 1)
+            self.configProcessor['hdf']['frames'] = ((total_num_images * numDatasets) + 1)
             
             # Set path and filename of output file
             print("Setting Path & Filename of Output File")
