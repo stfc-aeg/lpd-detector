@@ -57,8 +57,10 @@ class LpdFemOdinDataReceiver():
         except Exception as e:
             print("LdpFemOdinDataReceiver got exception during initialisation: %s" % e)
             
-    def configure(self):
+    def configure(self, num_frames):
         try:
+            self.numFrames = num_frames
+            
             # TODO: Set num of images based on gui's readout config
 
             # Load Odin Data config

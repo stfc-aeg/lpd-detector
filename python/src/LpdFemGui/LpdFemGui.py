@@ -451,8 +451,9 @@ class LpdFemGui:
                 try:
                     if self.odinDataReceiver is None:
                         self.odinDataReceiver = LpdFemOdinDataReceiver(self.mainWindow.runStatusSignal,self.numFrames, self)
-    
-                    self.odinDataReceiver.configure()
+                    
+                    num_frames = self.getCachedParam('numTrains')
+                    self.odinDataReceiver.configure(num_frames)
                 except Exception as e:
                     self.msgPrint("ERROR: failed to create/configure ODIN data receiver: %s" % e)
                     self.deviceState = LpdFemGui.DeviceIdle
