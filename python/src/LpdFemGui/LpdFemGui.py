@@ -539,11 +539,14 @@ class LpdFemGui:
         self.mainWindow.runStateSignal.emit()
 
 def main():
+    try:
+        app = QtGui.QApplication(sys.argv)
+        lpdFemGui = LpdFemGui(app)
 
-    app = QtGui.QApplication(sys.argv)  
-    lpdFemGui = LpdFemGui(app)
-
-    sys.exit(app.exec_())
+        sys.exit(app.exec_())
+    finally:
+        if lpdFemGui.odinDataReceiver is not None:
+            lpdFemGui.odinDataReceiver.shutdown_frame_receiver_processor()
 
 if __name__ == '__main__':
     main()

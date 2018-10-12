@@ -179,6 +179,16 @@ class LpdFemOdinDataReceiver():
         reply = self.await_response(channel)
         return reply
     
+    def do_shutdown_cmd(self, channel):
+        shutdown_msg = IpcMessage('cmd', 'shutdown')
+        channel.send(shutdown_msg.encode())
+        self.await_response(channel)
+        
+    def shutdown_frame_receiver_processor(self):
+        print("Sending shutdown command to frame receiver and frame processor")
+        self.do_shutdown_cmd(self.frCtrlChannel)
+        self.do_shutdown_cmd(self.fpCtrlChannel)
+    
     def set_file_writing(self, enable):
         self.configProcessor['hdf']['frames'] = self.numFrames
         self.configProcessor['hdf']['write'] = enable
