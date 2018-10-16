@@ -166,8 +166,8 @@ class LpdFemOdinDataReceiver():
             
             # Create metadata group and add datasets to it
             metadata_group = self.hdf_file.create_group('metadata')
-            self.metadata = MetadataWriter(self.appMain.cachedParams)
-            self.metadata.write_metadata(metadata_group)
+            self.metadata_handler = MetadataWriter(self.appMain.cachedParams)
+            self.metadata_handler.write_metadata(metadata_group)
             
             self.dataMonitorThread.quit()
             self.dataMonitorThread.wait()
