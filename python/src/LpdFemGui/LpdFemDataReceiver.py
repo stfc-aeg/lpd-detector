@@ -7,6 +7,7 @@ from __future__ import print_function
 
 from LpdDataContainers import *
 from LpdFemClient.LpdFemClient import LpdFemClient
+from LpdFemMetadataWriter import *
 
 import os, sys, time, socket
 import numpy as np
@@ -299,26 +300,9 @@ class FrameProcessor(QtCore.QObject):
         self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
         self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
-        # Build metadata attributes from cached parameters
-        for param, val in cachedParams.items():
-            self.metaGroup.attrs[param] = val
-
-        # Write the XML configuration files into the metadata group        
-        self.xmlDs = {}
-        str_type = h5py.new_vlen(str)
-        for paramFile in ('readoutParamFile', 'cmdSequenceFile', 'setupParamFile'):
-            self.xmlDs[paramFile] = self.metaGroup.create_dataset(paramFile, shape=(1,), dtype=str_type)
-            try:
-                with open(cachedParams[paramFile], 'r') as xmlFile:
-                    self.xmlDs[paramFile][:] = xmlFile.read()
-                    
-            except IOError as e:
-                print("Failed to read %s XML file %s : %s " (paramFile, cachedParams[paramFile], e))
-                raise(e)
-            except Exception as e:
-                print("Got exception trying to create metadata for %s XML file %s : %s " % (paramFile, cachedParams[paramFile], e))
-                raise(e)
-     
+        # Add metadata to metadata group
+        self.metadataHandler = MetadataWriter(cachedParams)
+        self.metaGroup.write_metadata(self.metaGroup)
      
     def processFrame(self, lpdFrame):
         
