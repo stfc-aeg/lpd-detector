@@ -38,5 +38,3 @@ class MetadataWriter(object):
             except Exception as e:
                 print("Got exception trying to create metadata for %s XML file %s : %s " % (paramFile, self.cachedParams[paramFile], e))
                 raise(e)
-            
-        print(metadata_group)
