@@ -8,6 +8,7 @@ from __future__ import print_function
 from LpdDataContainers import *
 from LpdFemClient.LpdFemClient import LpdFemClient
 from LpdFemGui import *
+from LpdFemMetadataWriter import *
 
 import os, sys, time, socket, json
 import numpy as np
@@ -152,6 +153,21 @@ class LpdFemOdinDataReceiver():
                 print("Frame processor handled all frames, terminating data monitor thread")
 
             self.set_file_writing(False)
+
+            file_path = self.configProcessor['hdf']['file']['path']
+            file_name = self.configProcessor['hdf']['file']['name']
+            hdf_file_location = file_path + "/" + file_name + "_000001.h5"  # Remove hardcoded file ending
+            
+            try:
+                self.hdf_file = h5py.File(hdf_file_location, 'r+')
+            except IOError as e:
+                print("Failed to open HDF file with error: %s" % e)
+                raise(e)
+            
+            # Create metadata group and add datasets to it
+            metadata_group = self.hdf_file.create_group('metadata')
+            self.metadata = MetadataWriter(self.appMain.cachedParams)
+            self.metadata.write_metadata(metadata_group)
             
             self.dataMonitorThread.quit()
             self.dataMonitorThread.wait()
