@@ -284,6 +284,7 @@ class FrameProcessor(QtCore.QObject):
         print("Creating HDF5 data file %s" % self.fileName)
         try:
             self.hdfFile = h5py.File(self.fileName, 'w')
+            # File closed in cleanUp()
         except IOError as e:
             print("Failed to open HDF file with error: %s" % e)
             raise(e)
@@ -303,10 +304,6 @@ class FrameProcessor(QtCore.QObject):
         # Add metadata to metadata group
         self.metadataHandler = MetadataWriter(cachedParams)
         self.metadataHandler.write_metadata(self.metaGroup)
-        
-        
-        # Close hdf file
-        self.hdfFile.close()
      
     def processFrame(self, lpdFrame):
         
