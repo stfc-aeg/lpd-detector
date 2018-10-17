@@ -154,9 +154,10 @@ class LpdFemOdinDataReceiver():
 
             self.set_file_writing(False)
 
+            # Get path of hdf file for the current run
             file_path = self.configProcessor['hdf']['file']['path']
             file_name = self.configProcessor['hdf']['file']['name']
-            hdf_file_location = file_path + "/" + file_name + "_000001.h5"  # Remove hardcoded file ending
+            hdf_file_location = file_path + "/" + file_name + "_000001.h5"  # Remove hardcoded file ending when feature disabled
             
             try:
                 self.hdf_file = h5py.File(hdf_file_location, 'r+')
