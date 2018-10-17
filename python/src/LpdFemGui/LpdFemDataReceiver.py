@@ -303,6 +303,9 @@ class FrameProcessor(QtCore.QObject):
         # Add metadata to metadata group
         self.metadataHandler = MetadataWriter(cachedParams)
         self.metaGroup.write_metadata(self.metaGroup)
+        
+        # Close hdf file
+        self.hdfFile.close()
      
     def processFrame(self, lpdFrame):
         

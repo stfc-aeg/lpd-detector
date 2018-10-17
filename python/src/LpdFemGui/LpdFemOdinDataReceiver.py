@@ -169,6 +169,9 @@ class LpdFemOdinDataReceiver():
             self.metadata_handler = MetadataWriter(self.appMain.cachedParams)
             self.metadata_handler.write_metadata(metadata_group)
             
+            # Close hdf file
+            self.hdf_file.close()
+            
             self.dataMonitorThread.quit()
             self.dataMonitorThread.wait()
 
