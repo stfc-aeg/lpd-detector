@@ -16,10 +16,10 @@ class LpdUniReceiveStart():
     
     def __init__(self, app, femHost, femPort, asicModuleType, num_frames, fileName, debugLevel, viewDivisor, viewOffset):
 
-        #Serves no further function but app (QApplication) must exist before instantiating liveViewWindow
+        #Serves no further function but app (QApplication) must exist before instantiating live_view_window
         self.app = app
 
-        self.cachedParams = { 'dataFilePath'      : '/tmp',
+        self.cached_params = { 'dataFilePath'      : '/tmp',
                               'fileWriteEnable'   : True,
                               'liveViewDivisor'   : 1,
                               'liveViewOffset'    : 0,
@@ -28,26 +28,26 @@ class LpdUniReceiveStart():
                          }
         
         # Initialise variables from class arguments if provided
-        self.dataListenAddr = femHost
-        self.dataListenPort = femPort
+        self.data_listen_addr = femHost
+        self.data_listen_port = femPort
         self.num_frames = num_frames
-        self.cachedParams['asicModuleType'] = asicModuleType    # 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone, 4=raw data, supermodule
-        self.cachedParams['debugLevel'] = debugLevel
-        self.cachedParams['liveViewDivisor'] = viewDivisor
-        self.cachedParams['liveViewOffset'] = viewOffset
+        self.cached_params['asicModuleType'] = asicModuleType    # 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone, 4=raw data, supermodule
+        self.cached_params['debugLevel'] = debugLevel
+        self.cached_params['liveViewDivisor'] = viewDivisor
+        self.cached_params['liveViewOffset'] = viewOffset
         
         if fileName == None:
             # Do not write to file if no path specified
-            self.cachedParams['fileWriteEnable'] = False
+            self.cached_params['fileWriteEnable'] = False
         else:
-            self.cachedParams['dataFilePath'] = fileName
+            self.cached_params['dataFilePath'] = fileName
 
         # Abort run flag used to signal to data receiver; #TODO: Redundant? Used by LpdUniReceive but never changed anywhere..
-        self.abortRun = False
+        self.abort_run = False
         
         # Create the live view window
-        self.liveViewWindow = LpdUniPlotData(asicModuleType=self.cachedParams['asicModuleType'])
-        self.liveViewWindow.show()
+        self.live_view_window = LpdUniPlotData(asicModuleType=self.cached_params['asicModuleType'])
+        self.live_view_window.show()
         
         
 class DataReceiverThread(QtCore.QThread):
@@ -58,17 +58,17 @@ class DataReceiverThread(QtCore.QThread):
 
     def run(self):
         
-        while not self.parentObject.abortRun:
+        while not self.parentObject.abort_run:
             try:
-                dataReceiver = LpdFemDataReceiver(self.parentObject.liveViewWindow.liveViewUpdateSignal, 
-                                                  self.parentObject.dataListenAddr, self.parentObject.dataListenPort, self.parentObject.num_frames, self.parentObject.cachedParams, self.parentObject)
+                dataReceiver = LpdFemDataReceiver(self.parentObject.live_view_window.liveViewUpdateSignal, 
+                                                  self.parentObject.data_listen_addr, self.parentObject.data_listen_port, self.parentObject.num_frames, self.parentObject.cached_params, self.parentObject)
             except Exception as e:
                 print "DataReceiverThread ERROR: failed to create data receiver: %s" % e
                 sys.exit()
                 return
 
             #TODO: required for thread to shutdown once the number of frames received?
-            self.abortRun = True
+            self.abort_run = True
             
             # Wait for the data receiver threads to complete
             try:

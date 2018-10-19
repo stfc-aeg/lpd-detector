@@ -47,7 +47,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         self.ncols = 128
         
         self.moduleString = "LHS"
-        self.moduleNumber = self.app_main.asicTester.LHS_MODULE
+        self.moduleNumber = self.app_main.asic_tester.LHS_MODULE
         
         self.setWindowTitle('Plotting data from Asic Module')
 
@@ -155,8 +155,8 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         ''' Helper function '''
 
         self.moduleNumber = moduleNumber
-        if moduleNumber == self.app_main.asicTester.LHS_MODULE:    self.moduleString = "LHS"
-        elif moduleNumber == self.app_main.asicTester.RHS_MODULE:  self.moduleString = "RHS"
+        if moduleNumber == self.app_main.asic_tester.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == self.app_main.asic_tester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 
@@ -212,7 +212,7 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
             self.msgPrint("savePlot() Exception: %s" % e, bError=True)
 
         try:
-            self.hdfFile = h5py.File(fileName, 'w')
+            self.hdf_file = h5py.File(fileName, 'w')
         except IOError as e:
             self.msgPrint("Failed to open HDF file with error: %s" % e, bError=True)
             raise(e)
@@ -220,33 +220,33 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         self.nrows = 32
         self.ncols = 128
 
-        self.imagesWritten = 0
+        self.images_written = 0
         currentImage = 0
         
         # Create group structure
-        self.lpdGroup = self.hdfFile.create_group('lpd')
-        self.metaGroup = self.lpdGroup.create_group('metadata')
-        self.dataGroup = self.lpdGroup.create_group('data')
+        self.lpd_group = self.hdf_file.create_group('lpd')
+        self.meta_group = self.lpd_group.create_group('metadata')
+        self.data_group = self.lpd_group.create_group('data')
         
         # Create data group entries    
-        self.imageDs = self.dataGroup.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+        self.image_ds = self.data_group.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
                                         maxshape=(None,self.nrows, self.ncols))
-        self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
-        self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
-        self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+        self.time_stamp_ds   = self.data_group.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
+        self.train_number_ds = self.data_group.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+        self.image_number_ds = self.data_group.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         # Write data and info to file
-        self.imageDs.resize((self.imagesWritten+1, self.nrows, self.ncols))
-        self.imageDs[self.imagesWritten,...] = lpdImage
+        self.image_ds.resize((self.images_written+1, self.nrows, self.ncols))
+        self.image_ds[self.images_written,...] = lpdImage
         
-        self.trainNumberDs.resize((self.imagesWritten+1, ))
-        self.trainNumberDs[self.imagesWritten] = 0
+        self.train_number_ds.resize((self.images_written+1, ))
+        self.train_number_ds[self.images_written] = 0
         
-        self.imageNumberDs.resize((self.imagesWritten+1, ))
-        self.imageNumberDs[self.imagesWritten] = currentImage
+        self.image_number_ds.resize((self.images_written+1, ))
+        self.image_number_ds[self.images_written] = currentImage
 
         # Close the file
-        self.hdfFile.close()
+        self.hdf_file.close()
 
     def msgPrint(self, message, bError=False):
         ''' Send message to LpdFemGuiMainTestTab to be displayed there '''

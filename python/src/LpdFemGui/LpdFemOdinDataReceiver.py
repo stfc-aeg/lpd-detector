@@ -43,7 +43,7 @@ class LpdFemOdinDataReceiver():
             start_frame_receiver = Popen(["./bin/frameReceiver", "--debug", "2", "--logconfig", "config/data/fr_log4cxx.xml"],
                                          cwd=fr_fp_location)
             
-            start_frame_processor = Popen(["./bin/frameProcessor", "--logconfig", "config/data/fp_log4cxx.xml"],
+            start_frame_processor = Popen(["./bin/frame_processor", "--logconfig", "config/data/fp_log4cxx.xml"],
                                           cwd=fr_fp_location)
 
             # Create the appropriate IPC channels for receiver and proccessor
@@ -141,12 +141,12 @@ class LpdFemOdinDataReceiver():
     def awaitCompletion(self):
 
             print("Waiting for frame processing to complete")
-            while (self.data_monitor.running) and (self.app_main.abortRun == False):
+            while (self.data_monitor.running) and (self.app_main.abort_run == False):
                 time.sleep(0.1)
 
-            if self.app_main.abortRun:
+            if self.app_main.abort_run:
                 print("Run aborted by user")
-                self.data_monitor.abortRun()
+                self.data_monitor.abort_run()
             else:
                 print("Frame processor handled all frames, terminating data monitor thread")
 
@@ -166,7 +166,7 @@ class LpdFemOdinDataReceiver():
             
             # Create metadata group and add datasets to it
             metadata_group = self.hdf_file.create_group('metadata')
-            self.metadata_handler = MetadataWriter(self.app_main.cachedParams)
+            self.metadata_handler = MetadataWriter(self.app_main.cached_params)
             self.metadata_handler.write_metadata(metadata_group)
             
             # Close hdf file
@@ -237,7 +237,7 @@ class OdinDataMonitor(QtCore.QObject):
         self.abort = False
         self.running = True
 
-    def abortRun(self):
+    def abort_run(self):
         self.abort = True
         self.running = False
 

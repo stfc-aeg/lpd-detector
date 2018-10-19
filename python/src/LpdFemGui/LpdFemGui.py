@@ -20,12 +20,12 @@ from LpdFemOdinDataReceiver import *
 
 class PrintRedirector():
 
-    def __init__(self, printFn):
-        self.printFn = printFn
+    def __init__(self, print_fn):
+        self.print_fn = print_fn
 
     def write(self, text):
         if ord(text[0]) != 10:
-            self.printFn(text)
+            self.print_fn(text)
 
     def flush(self):
         print("PrintRedirector now has a flush() function..")
@@ -44,32 +44,32 @@ class LpdFemGui:
         
         # Pick up path to config file from environment, otherwise default to config directory
         # in current working directory
-        self.defaultConfigPath = os.getenv('LPD_FEM_GUI_CONFIG_PATH', os.getcwd() + '/config')
+        self.default_config_path = os.getenv('LPD_FEM_GUI_CONFIG_PATH', os.getcwd() + '/config')
 
         # Load default parameters from persistent file store
         self.initialiseCachedParams()
 
         # Initialise device and default state
         self.device = LpdDevice()
-        self.deviceState = LpdFemGui.DeviceDisconnected
-        self.deviceErrString = ""
-        self.femConfig = None
+        self.device_state = LpdFemGui.DeviceDisconnected
+        self.device_err_string = ""
+        self.fem_config = None
 
-        self.dataListenAddr = '0.0.0.0'
-        self.dataListenPort = 0
+        self.data_listen_addr = '0.0.0.0'
+        self.data_listen_port = 0
         self.num_frames      = 0
 
-        self.lastDataFile = None
+        self.last_data_file = None
 
-        self.loadedConfig   = {}
+        self.loaded_config   = {}
         
-        self.odinDataReceiver = None
+        self.odin_data_receiver = None
 
         # Create a power card manager instance
-        self.pwrCard = LpdPowerCardManager(self, self.device)
+        self.pwr_card = LpdPowerCardManager(self, self.device)
 
         # Show/hide (ASIC) Testing tab?
-        self.asicTestingEnabled = self.getCachedParam('asicTesting')
+        self.asic_testing_enabled = self.getCachedParam('asicTesting')
         
         # Should GUI itself receive fem data?
         self.receiveDataInternally = self.getCachedParam('receiveDataInternally')
@@ -80,19 +80,19 @@ class LpdFemGui:
 #-----
 
         # Create the main window GUI and show it
-        self.mainWindow= LpdFemGuiMainWindow(self)
+        self.mainWindow = LpdFemGuiMainWindow(self)
         self.mainWindow.show()
 
         # Create the live view window but don't show it
-        self.liveViewWindow = LpdFemGuiLiveViewWindow(asicModuleType=self.cachedParams['asicModuleType'])
+        self.live_view_window = LpdFemGuiLiveViewWindow(asicModuleType=self.cached_params['asicModuleType'])
 
-        if (self.asicTestingEnabled):
+        if (self.asic_testing_enabled):
             try:
                 # Create an LPD ASIC tester instance
-                self.asicTester = LpdAsicTester(self, self.device)
+                self.asic_tester = LpdAsicTester(self, self.device)
 
-                self.asicWindow = LpdFemGuiAsicWindow(self)
-                self.asicWindow.show()    # Hide window for now while testing
+                self.asic_window = LpdFemGuiAsicWindow(self)
+                self.asic_window.show()    # Hide window for now while testing
 
             except Exception as e:
                 print("LpdFemGui initialisation exception: %s" % e, file=sys.stderr)
@@ -115,23 +115,23 @@ class LpdFemGui:
                 self.msgPrint("Shutter %s" % e)
 
         # Abort run flag used to signal to data receiver
-        self.abortRun = False
+        self.abort_run = False
 
     def initialiseCachedParams(self):
         '''
         Initialises default parameters from JSON file-backed store, or creates them
         if not existing in file from coded defaults
         '''   
-        self.paramCacheFile = self.defaultConfigPath + "/lpdFemGui_config.json"
+        self.param_cache_file = self.default_config_path + "/lpdFemGui_config.json"
 
-        self.cachedParams = PersistentDict(self.paramCacheFile, 'c', format='json')
+        self.cached_params = PersistentDict(self.param_cache_file, 'c', format='json')
 
-        defaultParams = { 'connectionTimeout' : 5.0,
+        default_params = { 'connectionTimeout' : 5.0,
                           'femAddr'           : '192.168.2.2',
                           'femPort'           : 6969,
-                          'readoutParamFile'  : self.defaultConfigPath + '/superModuleReadout.xml',
-                          'cmdSequenceFile'   : self.defaultConfigPath + '/Command_LongExposure_V2.xml',
-                          'setupParamFile'    : self.defaultConfigPath + '/Setup_LowPower.xml',
+                          'readoutParamFile'  : self.default_config_path + '/superModuleReadout.xml',
+                          'cmdSequenceFile'   : self.default_config_path + '/Command_LongExposure_V2.xml',
+                          'setupParamFile'    : self.default_config_path + '/Setup_LowPower.xml',
                           'dataFilePath'      : '/tmp',
                           'hvBiasVolts'       : 50.0,
                           'numTrains'         : 8,
@@ -159,27 +159,27 @@ class LpdFemGui:
                         'odinFrCtrlChannel'  : 'tcp://127.0.0.1:5000',
                         'odinFpCtrlChannel'  : 'tcp://127.0.0.1:5004',
                         # TODO: Plan file structure for odinDataConfigFile
-                        'odinDataConfigFile' : self.defaultConfigPath + '/odin_data_lpd_config.json',
+                        'odinDataConfigFile' : self.default_config_path + '/odin_data_lpd_config.json',
 #-----
                          }
 
         # List of parameter names that don't need to force a system reconfigure
-        self.nonVolatileParams = ('fileWriteEnable', 'liveViewEnable', 'liveViewDivisor', 'liveViewOffset',
+        self.non_volatile_params = ('fileWriteEnable', 'liveViewEnable', 'liveViewDivisor', 'liveViewOffset',
                                   'pwrAutoUpdate', 'pwrUpdateInterval', 'dataFilePath', 'hvBiasBolts',
                                   'multiRunEnable', 'multiNumRuns')
 
         # Load default parameters into cache if not already existing        
-        for param in defaultParams:
-            if param not in self.cachedParams:
-                self.cachedParams[param] = defaultParams[param]
+        for param in default_params:
+            if param not in self.cached_params:
+                self.cached_params[param] = default_params[param]
 
         # Sync cached parameters back to file
-        self.cachedParams.sync()
+        self.cached_params.sync()
 
     def getCachedParam(self, param):
 
-        if param in self.cachedParams:
-            return self.cachedParams[param]
+        if param in self.cached_params:
+            return self.cached_params[param]
         else:
             return None
 
@@ -188,70 +188,70 @@ class LpdFemGui:
         Update a cached parameter with a new value and flag that the device needs
         reconfiguring if the parameter is volatile
         '''
-        if param not in self.cachedParams or self.cachedParams[param] != val:
-            self.cachedParams[param] = val
-            self.cachedParams.sync()
-            if not param in self.nonVolatileParams:
-                if self.deviceState == LpdFemGui.DeviceReady:
-                    self.deviceState = LpdFemGui.DeviceIdle
+        if param not in self.cached_params or self.cached_params[param] != val:
+            self.cached_params[param] = val
+            self.cached_params.sync()
+            if not param in self.non_volatile_params:
+                if self.device_state == LpdFemGui.DeviceReady:
+                    self.device_state = LpdFemGui.DeviceIdle
 
-    def deviceConnect(self, addressStr, portStr):
+    def deviceConnect(self, address_str, port_str):
 
-        rc = self.device.open(addressStr, int(portStr), timeout=self.cachedParams['connectionTimeout'],
-                              asicModuleType=self.cachedParams['asicModuleType'])
+        rc = self.device.open(address_str, int(port_str), timeout=self.cached_params['connectionTimeout'],
+                              asicModuleType=self.cached_params['asicModuleType'])
         if rc != LpdDevice.ERROR_OK:
-            self.deviceState = LpdFemGui.DeviceDisconnected
-            self.deviceErrString = "ERROR: connection failed: %s" % self.device.errorStringGet()
+            self.device_state = LpdFemGui.DeviceDisconnected
+            self.device_err_string = "ERROR: connection failed: %s" % self.device.errorStringGet()
         else:
-            self.deviceState = LpdFemGui.DeviceIdle
-            self.deviceErrString = ""
-            if (self.asicTestingEnabled):
+            self.device_state = LpdFemGui.DeviceIdle
+            self.device_err_string = ""
+            if (self.asic_testing_enabled):
                 self.mainWindow.testTab.femConnectionSignal.emit(True)
 
     def deviceDisconnect(self):
 
         self.device.close()
-        self.deviceState = LpdFemGui.DeviceDisconnected
-        if (self.asicTestingEnabled):
+        self.device_state = LpdFemGui.DeviceDisconnected
+        if (self.asic_testing_enabled):
             self.mainWindow.testTab.femConnectionSignal.emit(False)
 
     def cleanup(self):
 
-        self.cachedParams.sync()
+        self.cached_params.sync()
 
     def femConfigGet(self):
 
-        if self.deviceState != LpdFemGui.DeviceDisconnected:
-            self.femConfig = self.device.femClient.configRead()
+        if self.device_state != LpdFemGui.DeviceDisconnected:
+            self.fem_config = self.device.femClient.configRead()
 
     def femConfigUpdate(self, net_mac, net_ip, net_mask, 
                         net_gw, temp_high, temp_crit, 
                         sw_major, sw_minor, fw_major, fw_minor,
                         hw_major, hw_minor, board_id, board_type):
 
-        theConfig = FemConfig(net_mac, net_ip, net_mask, 
+        the_config = FemConfig(net_mac, net_ip, net_mask, 
                         net_gw, temp_high, temp_crit, 
                         sw_major, sw_minor, fw_major, fw_minor,
                         hw_major, hw_minor, board_id, board_type)
 
-        if self.deviceState != LpdFemGui.DeviceDisconnected:        
-            self.device.femClient.configWrite(theConfig)
+        if self.device_state != LpdFemGui.DeviceDisconnected:        
+            self.device.femClient.configWrite(the_config)
 
-    def deviceConfigure(self, currentParams=None):
+    def deviceConfigure(self, current_params=None):
 
-        self.deviceState = LpdFemGui.DeviceConfiguring
+        self.device_state = LpdFemGui.DeviceConfiguring
         self.runStateUpdate()
 
         try:        
-            # if currentParams not supplied, use self.cachedParams
-            if not currentParams:
-                currentParams  = self.cachedParams
+            # if current_params not supplied, use self.cached_params
+            if not current_params:
+                current_params  = self.cached_params
 
         except Exception as e:
             print("\ndeviceConfigure Exception: %s doesn't exist?" % e, file=sys.stderr)
 
         try:
-            self.shutterEnabled = currentParams['arduinoShutterEnable']
+            self.shutterEnabled = current_params['arduinoShutterEnable']
             # Connect to shutter if shutter selected in GUI but not yet set up
             if self.shutterEnabled:       
 
@@ -274,60 +274,61 @@ class LpdFemGui:
             print("configurable issues: ", e, file=sys.stderr)
 
         # Clear current loaded configuration
-        self.loadedConfig= {}
+        self.loaded_config= {}
 
         # Load readout parameters from file       
-        self.msgPrint("Loading Readout Params from file %s" % currentParams['readoutParamFile'])
+        self.msgPrint("Loading Readout Params from file %s" % current_params['readoutParamFile'])
         try:
-            readoutConfig = LpdReadoutConfig(currentParams['readoutParamFile'], fromFile=True)
+            readout_config = LpdReadoutConfig(current_params['readoutParamFile'], fromFile=True)
         except LpdReadoutConfigError as e:
             self.msgPrint("Error loading readout parameters: %s" % e)
-            self.deviceState = LpdFemGui.DeviceIdle
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Set all parameters from file on device
-        for (param, value) in readoutConfig.parameters():
+        for (param, value) in readout_config.parameters():
             rc = self.device.paramSet(param, value)
             if rc != LpdDevice.ERROR_OK:
                 self.msgPrint('Setting parameter %s failed (rc=%d) : %s' % (param, rc, self.device.errorStringGet()))
-                self.deviceState = LpdFemGui.DeviceIdle
+                self.device_state = LpdFemGui.DeviceIdle
                 return
             try:
-                self.loadedConfig[param] = value
+                self.loaded_config[param] = value
             except Exception as e:
                 print("%s" % e, file=sys.stderr)
 
         # Set up pixel feedback override
-        pixelFeedbackOverride = currentParams['femAsicPixelFeedbackOverride']
-        rc = self.device.paramSet('femAsicPixelFeedbackOverride', pixelFeedbackOverride)
+        pixel_feedback_override = current_params['femAsicPixelFeedbackOverride']
+        rc = self.device.paramSet('femAsicPixelFeedbackOverride', pixel_feedback_override)
         if rc != LpdDevice.ERROR_OK:
-            self.msgPrint("Setting parameter femAsicPixelFeedbackOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+            self.msgPrint("Setting parameter femAsicPixelFeedbackOverride failed (rc=%d) %s" % 
+                          (rc, self.device.errorStringGet()))
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Store values of data receiver address, port and number of frames
         try:
-            self.dataListenAddr = self.loadedConfig['tenGig0DestIp']
-            self.dataListenPort = self.loadedConfig['tenGig0DestPort']
+            self.data_listen_addr = self.loaded_config['tenGig0DestIp']
+            self.data_listen_port = self.loaded_config['tenGig0DestPort']
         except Exception as e:
             print("Got exception, missing XML config variable", e, file=sys.stderr) 
 
         # Set ASIC setup parameters file
-        self.msgPrint("Loading Setup Params from file %s" % currentParams['setupParamFile'])
-        rc = self.device.paramSet('femAsicSetupParams', currentParams['setupParamFile'])
+        self.msgPrint("Loading Setup Params from file %s" % current_params['setupParamFile'])
+        rc = self.device.paramSet('femAsicSetupParams', current_params['setupParamFile'])
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting ASIC setup parameter file to %s failed (rc=%d) : %s" % 
-                          (currentParams['setupParamFile'], rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+                          (current_params['setupParamFile'], rc, self.device.errorStringGet()))
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Set ASIC command word sequence file
-        self.msgPrint("Loading Command Seq from file %s" % currentParams['cmdSequenceFile'])
-        rc = self.device.paramSet('femAsicCmdSequence', currentParams['cmdSequenceFile'])
+        self.msgPrint("Loading Command Seq from file %s" % current_params['cmdSequenceFile'])
+        rc = self.device.paramSet('femAsicCmdSequence', current_params['cmdSequenceFile'])
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting ASIC command word sequence file to %s failed (rc=%d) : %s" % 
-                          (currentParams['cmdSequenceFile'], rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+                          (current_params['cmdSequenceFile'], rc, self.device.errorStringGet()))
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Upload configuration parameters to device and configure system for acquisition
@@ -335,40 +336,40 @@ class LpdFemGui:
         rc = self.device.configure()
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Configuration upload failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Set device state as ready for acquisition
-        self.deviceState = LpdFemGui.DeviceReady
+        self.device_state = LpdFemGui.DeviceReady
 
-    def deviceQuickConfigure(self, triggerDelayIncrementModifier):
+    def deviceQuickConfigure(self, trigger_delay_increment_modifier):
 
-        self.deviceState = LpdFemGui.DeviceConfiguring
+        self.device_state = LpdFemGui.DeviceConfiguring
         self.runStateUpdate()
 
         # Set up external trigger delay
-        triggerDelay = self.cachedParams['triggerDelay'] + triggerDelayIncrementModifier
+        triggerDelay = self.cached_params['triggerDelay'] + trigger_delay_increment_modifier
         rc = self.device.paramSet('femStartTrainDelay', triggerDelay)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femStartTrainDelay failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Set up ASIC gain mode override
-        gainOverride = self.cachedParams['femAsicGainOverride']
+        gainOverride = self.cached_params['femAsicGainOverride']
         rc = self.device.paramSet('femAsicGain', gainOverride)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter femAsicGainOverride failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Set up number of frames based on cached parameter value of number of trains
-        self.num_frames = self.cachedParams['numTrains']
-        self.loadedConfig['numTrains'] = self.num_frames
+        self.num_frames = self.cached_params['numTrains']
+        self.loaded_config['numTrains'] = self.num_frames
         rc = self.device.paramSet('numberTrains', self.num_frames)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter numberTrains failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Do quick configure on FEM    
@@ -376,13 +377,13 @@ class LpdFemGui:
         rc = self.device.quick_configure()
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Quick configure failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
-            self.deviceState = LpdFemGui.DeviceIdle
+            self.device_state = LpdFemGui.DeviceIdle
             return
 
         # Set device state as ready for acquisition        
-        self.deviceState = LpdFemGui.DeviceReady
+        self.device_state = LpdFemGui.DeviceReady
 
-    def deviceRun(self, currentParams=None):
+    def deviceRun(self, current_params=None):
 
         # Open shutter - if selected
         if self.shutterEnabled:
@@ -398,81 +399,81 @@ class LpdFemGui:
                 self.msgPrint("Error: Shutter undefined, check configurations file?")
 
 
-        # if currentParams not supplied, use self.cachedParams
-        if not currentParams:
-            currentParams  = self.cachedParams
+        # if current_params not supplied, use self.cached_params
+        if not current_params:
+            current_params  = self.cached_params
 
         # Clear abort run flag
-        self.abortRun = False
+        self.abort_run = False
 
         # Set up number of runs based on multi-run enable flag
-        numRuns = 1
-        if currentParams['multiRunEnable']:
-            numRuns = currentParams['multiRunNumRuns']
-            self.msgPrint("Multiple runs enabled: executing %d runs" % numRuns)
+        num_runs = 1
+        if current_params['multiRunEnable']:
+            num_runs = current_params['multiRunNumRuns']
+            self.msgPrint("Multiple runs enabled: executing %d runs" % num_runs)
 
-        for run in range(numRuns):
+        for run in range(num_runs):
 
-            if numRuns > 1:
-                self.msgPrint("Starting run %d of %d ..." % (run+1, numRuns))
+            if num_runs > 1:
+                self.msgPrint("Starting run %d of %d ..." % (run+1, num_runs))
 
             # Increment the run number
-            currentParams['runNumber'] = currentParams['runNumber'] + 1
+            current_params['runNumber'] = current_params['runNumber'] + 1
         
             # Enable multi-run, scanning through range of trigger delays
-            triggerDelayIncrement = self.cachedParams['triggerDelayIncrement']
-            triggerDelayIncrementModifier = triggerDelayIncrement * run
+            triggerDelayIncrement = self.cached_params['triggerDelayIncrement']
+            trigger_delay_increment_modifier = triggerDelayIncrement * run
 
             # Do quick configure before run
-            self.deviceQuickConfigure(triggerDelayIncrementModifier)
+            self.deviceQuickConfigure(trigger_delay_increment_modifier)
 
             # Launch LCLS EVR timestamp recorder thread if selected
-            if currentParams['evrRecordEnable'] == True:
+            if current_params['evrRecordEnable'] == True:
                 try:
-                    timestampRecorder = LpdEvrTimestampRecorder(currentParams, self)
+                    timestamp_recorder = LpdEvrTimestampRecorder(current_params, self)
                 except Exception as e:
                     self.msgPrint("ERROR: failed to create timestamp recorder: %s" % e)
-                    self.deviceState = LpdFemGui.DevicdeIdle
+                    self.device_state = LpdFemGui.DevicdeIdle
                     return
 
             if self.receiveDataInternally:
                 # Create an LpdFemDataReceiver instance to launch readout threads
                 try:
-                    dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.run_status_signal,
-                                                      self.dataListenAddr, self.dataListenPort, self.num_frames, currentParams, self)
+                    data_receiver = LpdFemDataReceiver(self.live_view_window.liveViewUpdateSignal, self.mainWindow.run_status_signal,
+                                                      self.data_listen_addr, self.data_listen_port, self.num_frames, current_params, self)
                 except Exception as e:
                     self.msgPrint("ERROR: failed to create data receiver: %s" % e)
-                    self.deviceState = LpdFemGui.DeviceIdle
+                    self.device_state = LpdFemGui.DeviceIdle
                     return
 
 #-------------------------------------------------------------
             if self.receiveDataFromODIN:
                 # Launch ODIN LPD Frame Receiver, Proccesor and Data Monitor
                 try:
-                    if self.odinDataReceiver is None:
-                        self.odinDataReceiver = LpdFemOdinDataReceiver(self.mainWindow.run_status_signal,self.num_frames, self)
+                    if self.odin_data_receiver is None:
+                        self.odin_data_receiver = LpdFemOdinDataReceiver(self.mainWindow.run_status_signal, self.num_frames, self)
                     
                     num_frames = self.getCachedParam('numTrains')
-                    num_images = self.loadedConfig['numberImages']
-                    self.odinDataReceiver.configure(num_frames, num_images)
+                    num_images = self.loaded_config['numberImages']
+                    self.odin_data_receiver.configure(num_frames, num_images)
                 except Exception as e:
                     self.msgPrint("ERROR: failed to create/configure ODIN data receiver: %s" % e)
-                    self.deviceState = LpdFemGui.DeviceIdle
+                    self.device_state = LpdFemGui.DeviceIdle
                     return
 #-------------------------------------------------------------
 
             # Set device state as running and trigger update of run state in GUI
-            self.deviceState = LpdFemGui.DeviceRunning
+            self.device_state = LpdFemGui.DeviceRunning
             self.runStateUpdate()
 
             # Execute the run on the device
             rc = self.device.start()
             if rc != LpdDevice.ERROR_OK:
                 self.msgPrint("Acquisition start failed (rc=%d) : %s" % (rc, self.device.errorStringGet()))
-                self.deviceState = LpdFemGui.DeviceIdle
+                self.device_state = LpdFemGui.DeviceIdle
 
             # Last iteration of loop? Close shutter as all runs now completed
-            if run == (numRuns-1):
+            if run == (num_runs -1):
                 # Close the shutter - if selected
                 if self.shutterEnabled:
                     # Check shutter defined
@@ -485,14 +486,14 @@ class LpdFemGui:
                         self.msgPrint("Error: Shutter undefined, check configurations file?")
 
             # Wait for timestamp recorder thread to complete
-            if currentParams['evrRecordEnable'] == True:
+            if current_params['evrRecordEnable'] == True:
                 try:
-                    timestampRecorder.awaitCompletion()
+                    timestamp_recorder.awaitCompletion()
                     if self.receiveDataInternally:
-                        dataReceiver.injectTimestampData(timestampRecorder.evr_data)
+                        data_receiver.injectTimestampData(timestamp_recorder.evr_data)
 #------------------------------------------------------------------------------------
                     if self.receiveDataFromODIN:
-                        self.odinDataReceiver.injectTimestampData(timestampRecorder.evr_data)
+                        self.odin_data_receiver.injectTimestampData(timestamp_recorder.evr_data)
 #------------------------------------------------------------------------------------
                 except Exception as e:
                     self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)
@@ -500,31 +501,31 @@ class LpdFemGui:
             if self.receiveDataInternally:
                 # Wait for the data receiver threads to complete
                 try:
-                    dataReceiver.awaitCompletion()
-                    self.lastDataFile = dataReceiver.lastDataFile()
+                    data_receiver.awaitCompletion()
+                    self.last_data_file = data_receiver.last_data_file()
                 except Exception as e:
                     self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
 
                 # Delete dataReceiver or multi-run produces no data for even runs
-                del dataReceiver
+                del data_receiver
 
 #------------------
             if self.receiveDataFromODIN:
                 # Wait for the data receiver threads to complete
                 try:
-                    self.odinDataReceiver.awaitCompletion()
+                    self.odin_data_receiver.awaitCompletion()
                 except Exception as e:
                     self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
 #---------------------
 
-            if numRuns > 1 and self.abortRun:
+            if num_runs > 1 and self.abort_run:
                 self.msgPrint("Aborting multi-run sequence after {} runs".format(run+1))
                 break
 
         # Closing Shutter code just to sit here (it's now in the above loop)
 
         # Signal device state as ready
-        self.deviceState = LpdFemGui.DeviceReady
+        self.device_state = LpdFemGui.DeviceReady
         
     def msgPrint(self, message):
         '''
@@ -541,12 +542,12 @@ class LpdFemGui:
 def main():
     try:
         app = QtGui.QApplication(sys.argv)
-        lpdFemGui = LpdFemGui(app)
+        lpd_fem_gui = LpdFemGui(app)
 
         sys.exit(app.exec_())
     finally:
-        if lpdFemGui.odinDataReceiver is not None:
-            lpdFemGui.odinDataReceiver.shutdown_frame_receiver_processor()
+        if lpd_fem_gui.odin_data_receiver is not None:
+            lpd_fem_gui.odin_data_receiver.shutdown_frame_receiver_processor()
 
 if __name__ == '__main__':
     main()

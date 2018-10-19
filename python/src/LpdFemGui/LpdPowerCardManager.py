@@ -25,17 +25,17 @@ class LpdPowerCardManager(object):
         self.hvBias = 0.0
 
         # Specify number of power cards, sensors present
-        if self.app_main.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
+        if self.app_main.cached_params['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
             self.numPowerCards = 2
             self.numSensorsPerCard = 8
-        elif self.app_main.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
+        elif self.app_main.cached_params['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
             self.numPowerCards = 1
             self.numSensorsPerCard = 2
-        elif self.app_main.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
+        elif self.app_main.cached_params['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             self.numPowerCards = 2
             self.numSensorsPerCard = 8
         else:
-            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.app_main.cachedParams['asicModuleType']
+            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.app_main.cached_params['asicModuleType']
             
         self.numSensors = self.numSensorsPerCard * self.numPowerCards
         
@@ -124,7 +124,7 @@ class LpdPowerCardManager(object):
 
         try:        
             self.powerState = {}
-            if self.app_main.deviceState != self.app_main.DeviceDisconnected:
+            if self.app_main.device_state != self.app_main.DeviceDisconnected:
             
                 # Loop over card parameters for each card and load into results
                 for powerCard in range(self.numPowerCards):

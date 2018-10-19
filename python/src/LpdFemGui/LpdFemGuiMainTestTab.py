@@ -97,9 +97,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.msgPrint("Executing Sensor Bonding Tests..")
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
-        self.app_main.asicTester.setModuleDescription(moduleDescription)
+        self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
-                                        partial(self.app_main.asicTester.executeSensorBondingTest, self.moduleNumber),
+                                        partial(self.app_main.asic_tester.executeSensorBondingTest, self.moduleNumber),
                                         self.sensorBondingTestDone)
 
     def sensorBondingTestDone(self):
@@ -136,9 +136,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
-        self.app_main.asicTester.setModuleDescription(moduleDescription)
+        self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
-                                        partial(self.app_main.asicTester.executeAsicBondingTest, self.moduleNumber),
+                                        partial(self.app_main.asic_tester.executeAsicBondingTest, self.moduleNumber),
                                         self.asicBondingTestDone)
     
     def asicBondingTestDone(self):
@@ -216,7 +216,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.logger.addHandler(self.hdl)
         self.logger.setLevel(logging.DEBUG)
         # Signal new file path
-        self.app_main.asicWindow.logPathSignal.emit(filePath)
+        self.app_main.asic_window.logPathSignal.emit(filePath)
 
     def operatorUpdate(self):
 
@@ -255,7 +255,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             self.moduleNumber = LpdAsicTester.RHS_MODULE
             
         self.setModuleType(self.moduleNumber)
-        self.app_main.asicWindow.moduleSignal.emit(self.moduleNumber)
+        self.app_main.asic_window.moduleSignal.emit(self.moduleNumber)
             
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''

@@ -35,7 +35,7 @@
     "readoutParamFile":"/u/xfu59478/develop/projects/lpd/lpd-fem/python/src/LpdFemGui/config/ReadoutParams/LCLS_2018_readoutConfiguration_Baseline.xml",
     "receiveDataFromODIN":false,
     "receiveDataInternally":true,
-    "runNumber":4096,
+    "runNumber":4129,
     "setupParamFile":"/u/xfu59478/develop/projects/lpd/lpd-fem/python/src/LpdFemGui/config/SetupParams/LCLS_MidPointASICParams.xml",
     "testingLongExposureFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/LPD_cmdSeq_NormalOperation.xml",
     "testingReadoutParamFile":"/u/ckd27546/workspace/lpdSoftware/LpdFemGui/config/readoutConfiguration_John.xml",

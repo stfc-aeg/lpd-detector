@@ -70,7 +70,7 @@ class LpdFemGuiMainDaqTab(object):
         else:
             pass
 
-        self.runStateUpdate(self.app_main.deviceState)
+        self.runStateUpdate(self.app_main.device_state)
 
         # Connect signals and slots
         QtCore.QObject.connect(self.ui.readoutParamBtn, QtCore.SIGNAL("clicked()"), self.readoutParamFileSelect)
@@ -101,25 +101,25 @@ class LpdFemGuiMainDaqTab(object):
     def updateEnabledWidgets(self):
         
         self.ui.run_number.setText(str(self.app_main.getCachedParam('runNumber')))
-        self.runStateUpdate(self.app_main.deviceState)        
+        self.runStateUpdate(self.app_main.device_state)        
         
     def readoutParamFileSelect(self):
 
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select readout parameter file', self.app_main.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select readout parameter file', self.app_main.default_config_path, "XML Files (*.xml)")
         if fileName != "":
             self.app_main.setCachedParam('readoutParamFile', str(fileName))
             self.ui.readoutParamEdit.setText(fileName)
             self.mainWindow.updateEnabledWidgets()
 
     def slowParamFileSelect(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select setup parameter file', self.app_main.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select setup parameter file', self.app_main.default_config_path, "XML Files (*.xml)")
         if fileName != "":
             self.app_main.setCachedParam('setupParamFile', str(fileName))
             self.ui.slowParamEdit.setText(fileName)
             self.mainWindow.updateEnabledWidgets()
         
     def fastParamFileSelect(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select command sequence file', self.app_main.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select command sequence file', self.app_main.default_config_path, "XML Files (*.xml)")
         if fileName != "":
             self.app_main.setCachedParam('cmdSequenceFile', str(fileName))
             self.ui.fastParamEdit.setText(fileName)
@@ -201,7 +201,7 @@ class LpdFemGuiMainDaqTab(object):
         
         self.app_main.setCachedParam('arduinoShutterEnable', state)
         # Hack, force user to hit configure before next run:
-        self.app_main.deviceState = LpdFemGui.DeviceIdle
+        self.app_main.device_state = LpdFemGui.DeviceIdle
         self.mainWindow.updateEnabledWidgets()
 
     def multiRunSelect(self, state):
@@ -251,13 +251,13 @@ class LpdFemGuiMainDaqTab(object):
 
     def configureDone(self):
 
-        if self.app_main.deviceState == LpdFemGui.DeviceReady:
+        if self.app_main.device_state == LpdFemGui.DeviceReady:
             self.msgPrint("Device configured OK")
-            if (self.app_main.asicTestingEnabled):
+            if (self.app_main.asic_testing_enabled):
                 self.app_main.mainWindow.testTab.configDeviceSignal.emit("Device configured OK")
         else:
             self.msgPrint("Failed to configure device")
-            if (self.app_main.asicTestingEnabled):
+            if (self.app_main.asic_testing_enabled):
                 self.app_main.mainWindow.testTab.configDeviceSignal.emit("Failed to configure device")
             
         self.mainWindow.updateEnabledWidgets()
@@ -266,15 +266,15 @@ class LpdFemGuiMainDaqTab(object):
         
         if (self.app_main.receiveDataInternally):
             # Show live view window if live view enabled
-            if self.app_main.cachedParams['liveViewEnable']:
-                self.app_main.liveViewWindow.show()
+            if self.app_main.cached_params['liveViewEnable']:
+                self.app_main.live_view_window.show()
         
         self.mainWindow.executeAsyncCmd('Running acquisition ...', self.app_main.deviceRun, self.runDone)
         self.mainWindow.updateEnabledWidgets()
                 
     def runDone(self):
         
-        if self.app_main.deviceState == LpdFemGui.DeviceReady:
+        if self.app_main.device_state == LpdFemGui.DeviceReady:
             self.msgPrint("Acquisition completed")
         else:
             self.msgPrint("Acquisition failed")
@@ -284,7 +284,7 @@ class LpdFemGuiMainDaqTab(object):
     def deviceStop(self):
         
         self.msgPrint("Aborting acquisition ...")
-        self.app_main.abortRun = True
+        self.app_main.abort_run = True
         
     def runStateUpdate(self, deviceState):
 

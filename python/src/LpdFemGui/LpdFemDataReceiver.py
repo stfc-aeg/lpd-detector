@@ -73,13 +73,13 @@ class LpdFemDataReceiver():
     def awaitCompletion(self):
 
             print("Waiting for frame processing to complete")
-            while self.frame_processor.framesHandled < self.num_frames and self.app_main.abortRun == False:
+            while self.frame_processor.frames_handled < self.num_frames and self.app_main.abort_run == False:
                 time.sleep(0.1)
             
-            if self.app_main.abortRun:
+            if self.app_main.abort_run:
                 print("Run aborted by user")
-                self.udp_receiver.abortRun()
-                self.data_monitor.abortRun()
+                self.udp_receiver.abort_run()
+                self.data_monitor.abort_run()
             else:
                 print("Frame processor handled all frames, terminating data receiver threads")
                 
@@ -94,16 +94,16 @@ class LpdFemDataReceiver():
             try:
                 if self.udp_receiver.frame_count > 0:            
                     print("Average frame UDP receive time : %f secs" % (self.udp_receiver.total_receive_time / self.udp_receiver.frame_count))
-                if self.frame_processor.framesHandled > 0:
-                    print("Average frame processing time  : %f secs" % (self.frame_processor.totalProcessingTime / self.frame_processor.framesHandled))
+                if self.frame_processor.frames_handled > 0:
+                    print("Average frame processing time  : %f secs" % (self.frame_processor.total_processing_time / self.frame_processor.frames_handled))
             except Exception as e:
                 print("Got exception%s" % e, file=sys.stderr)
                 
             self.frame_processor.cleanUp()
 
-    def lastDataFile(self):
+    def last_data_file(self):
         
-        return self.frame_processor.fileName
+        return self.frame_processor.file_name
     
 #    def abortReceived(self):
 #        
@@ -132,7 +132,7 @@ class UdpReceiver(QtCore.QObject):
         
         print("UDP Receiver thread listening on address %s port %s" % (listen_addr, listen_port))
 
-    def abortRun(self):
+    def abort_run(self):
         self.abort = True
         
     def receiveLoop(self):
@@ -236,16 +236,16 @@ class FrameProcessor(QtCore.QObject):
         self.headersVersion  = cached_params['headersVersion']
         self.liveViewSignal  = live_view_signal
         
-        self.fileName = None
+        self.file_name = None
         
         # Run start time
         self.tstart = time.time()
 
         # Initialise counters
-        self.framesHandled = 0
-        self.imagesWritten = 0
+        self.frames_handled = 0
+        self.images_written = 0
         self.data_bytes_received = 0
-        self.totalProcessingTime = 0.0
+        self.total_processing_time = 0.0
 
         # Define plotted image dimensions: 
         if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
@@ -261,71 +261,71 @@ class FrameProcessor(QtCore.QObject):
             print("Error: Unsupported asicModuleType selected: %r" % self.asicModuleType, file=sys.stderr)
             
         # Define Module and Full Lpd size (Module differs if 2-tile, SuperMod, Fem, etc)
-        self.imageModuleSize = self.nrows * self.ncols
-        self.imageFullLpdSize = 256 * 256
+        self.image_module_size = self.nrows * self.ncols
+        self.image_full_lpd_size = 256 * 256
 
         # Create an image array to contain the elements of the module type 
         # Super Module = (32 x 8 x 16 x 16) = 65536 elements
         # 2Tile System = (32 * 16 * 16)     = 8192 elements
-        self.imageArray = np.zeros(self.imageModuleSize, dtype=np.uint16)
+        self.image_array = np.zeros(self.image_module_size, dtype=np.uint16)
         
         # Create HDF file if requested
         if self.fileWriteEnable:            
             self.createDataFile(cached_params)           
         
    
-    def createDataFile(self, cachedParams):
+    def createDataFile(self, cached_params):
         '''
         Creates and HDF5 data file and internal structure, sets up metadata in file
         '''
 
-        self.fileName = "{:s}/lpdData-{:05d}.hdf5".format(self.dataFilePath, self.runNumber)
+        self.file_name = "{:s}/lpdData-{:05d}.hdf5".format(self.dataFilePath, self.runNumber)
         
-        print("Creating HDF5 data file %s" % self.fileName)
+        print("Creating HDF5 data file %s" % self.file_name)
         try:
-            self.hdfFile = h5py.File(self.fileName, 'w')
+            self.hdf_file = h5py.File(self.file_name, 'w')
             # File closed in cleanUp()
         except IOError as e:
             print("Failed to open HDF file with error: %s" % e)
             raise(e)
         
         # Create group structure
-        self.lpdGroup = self.hdfFile.create_group('lpd')
-        self.metaGroup = self.lpdGroup.create_group('metadata')
-        self.dataGroup = self.lpdGroup.create_group('data')
+        self.lpd_group = self.hdf_file.create_group('lpd')
+        self.meta_group = self.lpd_group.create_group('metadata')
+        self.data_group = self.lpd_group.create_group('data')
         
         # Create data group entries    
-        self.imageDs = self.dataGroup.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+        self.image_ds = self.data_group.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
                                         maxshape=(None,self.nrows, self.ncols))
-        self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
-        self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
-        self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+        self.time_stamp_ds   = self.data_group.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
+        self.train_number_ds = self.data_group.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+        self.image_number_ds = self.data_group.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         # Add metadata to metadata group
-        self.metadataHandler = MetadataWriter(cachedParams)
-        self.metadataHandler.write_metadata(self.metaGroup)
+        self.metadata_handler = MetadataWriter(cached_params)
+        self.metadata_handler.write_metadata(self.meta_group)
      
-    def processFrame(self, lpdFrame):
+    def processFrame(self, lpd_frame):
         
-        #print >> sys.stderr, "Frame processor thread receiver frame number", lpdFrame.frameNumber, 'raw data length', len(lpdFrame.rawImageData)
+        #print >> sys.stderr, "Frame processor thread receiver frame number", lpd_frame.frameNumber, 'raw data length', len(lpd_frame.rawImageData)
 
-        self.data_bytes_received += len(lpdFrame.rawImageData)
+        self.data_bytes_received += len(lpd_frame.rawImageData)
         
         # Capture time of starting processing
-        startTime = time.time()
+        start_time = time.time()
           
         # Simultaneously extract 16 bit pixel data from raw 32 bit words and swap the byte order
         #     eg: ABCD => DCBA
-        self.pixelData = np.fromstring(lpdFrame.rawImageData, dtype=np.dtype('<i2'))
+        self.pixel_data = np.fromstring(lpd_frame.rawImageData, dtype=np.dtype('<i2'))
             
         # Define variables that increase with each loop iteration
-        currentImage = 0
-        bNextImageAvailable = True
+        current_image = 0
+        b_next_image_available = True
         # Assume at least one image in train to begin with
-        plotMaxPlots = 1
+        plot_max_plots = 1
 
         # Loop over the specified number of plots
-        while bNextImageAvailable and currentImage < plotMaxPlots:
+        while b_next_image_available and current_image < plot_max_plots:
 
 #################################################################
 # For readout with LPD Data Formatting ; 
@@ -339,117 +339,117 @@ class FrameProcessor(QtCore.QObject):
             # 3) status (2 bytes)
             # 4) length (4 bytes)
             LPD_IMAGE_DESCRIPTOR_SIZE = 0  # 8192
-            LPD_DETECTOR_DEPENDENT_SIZE = (13*32); # fixed with trigger information from C&C module
+            LPD_DETECTOR_DEPENDENT_SIZE = 13 * 32 # fixed with trigger information from C&C module
             LPD_TRAILER_SIZE = 32 # includes crc
 
             LPD_FORMATTING_SIZE = LPD_HEADER_SIZE + LPD_IMAGE_DESCRIPTOR_SIZE + LPD_DETECTOR_DEPENDENT_SIZE + LPD_TRAILER_SIZE
 
             if self.headersVersion == 0:           
-                imageOffset = self.imageFullLpdSize*currentImage
+                image_offset = self.image_full_lpd_size * current_image
                 # Change maximum plots to be 512 (effectively size of incoming image data) for old header format
-                #plotMaxPlots = 511  # (0-511 = 512 plots)
+                #plot_max_plots = 511  # (0-511 = 512 plots)
             else:
                 # Differentiate between XFEL format revisions
                 if self.headersVersion == 2 or self.headersVersion == 3:
                     LPD_HEADER_SIZE = 64
                 
-                imageOffset = (self.imageFullLpdSize)*currentImage + int(LPD_HEADER_SIZE/2) # Prevent Python3 creating float type
+                image_offset = (self.image_full_lpd_size) * current_image + int(LPD_HEADER_SIZE/2) # Prevent Python3 creating float type
                 
                 # Print XFEL header information
-                if currentImage == 0:
+                if current_image == 0:
 
                     if self.headersVersion == 3:
                         
     # Corrections to match f/w from vers $0298 which made all 64b fields Little Endian    John C Oct 2015
     # previous code also had wrong offsets 
     
-                        magicMsb = self.pixelData[2+0] + (self.pixelData[3+0] << 16)  
-                        #print("MAGIC Word Msw = $%08x " % magicMsb)
+                        magic_msb = self.pixel_data[2+0] + (self.pixel_data[3+0] << 16)  
+                        #print("MAGIC Word Msw = $%08x " % magic_msb)
                         
-                        trainLsb = self.pixelData[0+8] + (self.pixelData[1+8] << 16)
-                        trainMsb = self.pixelData[2+8] + (self.pixelData[3+8] << 16)
-                        trainId  = (trainMsb << 32) + trainLsb
+                        train_lsb = self.pixel_data[0+8] + (self.pixel_data[1+8] << 16)
+                        train_msb = self.pixel_data[2+8] + (self.pixel_data[3+8] << 16)
+                        train_id  = (train_msb << 32) + train_lsb
 
-                        dataLsb = self.pixelData[0+12] + (self.pixelData[1+12] << 16)
-                        dataMsb = self.pixelData[2+12] + (self.pixelData[3+12] << 16)
-                        dataId  = (dataMsb << 32) + dataLsb
+                        data_lsb = self.pixel_data[0+12] + (self.pixel_data[1+12] << 16)
+                        data_msb = self.pixel_data[2+12] + (self.pixel_data[3+12] << 16)
+                        data_id  = (data_msb << 32) + data_lsb
 
-                        linkLsb = self.pixelData[0+16] + (self.pixelData[1+16] << 16)
-                        linkMsb = self.pixelData[2+16] + (self.pixelData[3+16] << 16)
-                        linkId  = (linkMsb << 32) + linkLsb
+                        link_lsb = self.pixel_data[0+16] + (self.pixel_data[1+16] << 16)
+                        link_msb = self.pixel_data[2+16] + (self.pixel_data[3+16] << 16)
+                        link_id  = (link_msb << 32) + link_lsb
 
-                        imgCountIdLsb = self.pixelData[0+20] + (self.pixelData[1+20] << 16)
-                        imgCountIdMsb = self.pixelData[2+20] + (self.pixelData[3+20] << 16)
-                        imgCountId  = (imgCountIdMsb << 32) + imgCountIdLsb
+                        img_count_id_lsb = self.pixel_data[0+20] + (self.pixel_data[1+20] << 16)
+                        img_count_id_msb = self.pixel_data[2+20] + (self.pixel_data[3+20] << 16)
+                        img_count_id  = (img_count_id_msb << 32) + img_count_id_lsb
 
                     else:
                     
                         # corrected offsets 
     
-                        magicMsb = self.pixelData[0+0] + (self.pixelData[1+0] << 16)  
-                        #print("MAGIC Word Msw = $%08x " % magicMsb)
+                        magic_msb = self.pixel_data[0+0] + (self.pixel_data[1+0] << 16)  
+                        #print("MAGIC Word Msw = $%08x " % magic_msb)
                         
-                        trainLsb = self.pixelData[2+8] + (self.pixelData[3+8] << 8)
-                        trainMsb = self.pixelData[0+8] + (self.pixelData[1+8] << 8)
-                        trainId  = (trainMsb << 16) + trainLsb
+                        train_lsb = self.pixel_data[2+8] + (self.pixel_data[3+8] << 8)
+                        train_msb = self.pixel_data[0+8] + (self.pixel_data[1+8] << 8)
+                        train_id  = (train_msb << 16) + train_lsb
     
-                        dataLsb = self.pixelData[2+12] + (self.pixelData[3+12] << 8)
-                        dataMsb = self.pixelData[0+12] + (self.pixelData[1+12] << 8)
-                        dataId  = (dataMsb << 16) + dataLsb
+                        data_lsb = self.pixel_data[2+12] + (self.pixel_data[3+12] << 8)
+                        data_msb = self.pixel_data[0+12] + (self.pixel_data[1+12] << 8)
+                        data_id  = (data_msb << 16) + data_lsb
     
-                        linkLsb = self.pixelData[2+16] + (self.pixelData[3+16] << 8)
-                        linkMsb = self.pixelData[0+16] + (self.pixelData[1+16] << 8)
-                        linkId  = (linkMsb << 16) + linkLsb
+                        link_lsb = self.pixel_data[2+16] + (self.pixel_data[3+16] << 8)
+                        link_msb = self.pixel_data[0+16] + (self.pixel_data[1+16] << 8)
+                        link_id  = (link_msb << 16) + link_lsb
     
-                        imgCountId  = self.pixelData[22] #[13] # Previous XFEL header version or older??
+                        img_count_id  = self.pixel_data[22] #[13] # Previous XFEL header version or older??
 
                     # Overwrite maximum plots with image number extracted from XFEL header
-                    plotMaxPlots = imgCountId
+                    plot_max_plots = img_count_id
 
-                    #print("trainID: {0:>3} dataID: 0x{1:X} linkId: 0x{2:X} imageCount: 0x{3:X} ({4:})".format(trainId, dataId, linkId, imgCountId, imgCountId))
+                    #print("trainID: {0:>3} dataID: 0x{1:X} link_id: 0x{2:X} imageCount: 0x{3:X} ({4:})".format(train_id, data_id, link_id, img_count_id, img_count_id))
 
 #################################################################
 
             # Get the first image of the image
-            bNextImageAvailable = self.unpackImage(imageOffset)
+            b_next_image_available = self.unpackImage(image_offset)
             
             # Write image to file if selected
             if self.fileWriteEnable:
-                self.imageDs.resize((self.imagesWritten+1, self.nrows, self.ncols))
-                self.imageDs[self.imagesWritten,...] = self.imageArray
+                self.image_ds.resize((self.images_written+1, self.nrows, self.ncols))
+                self.image_ds[self.images_written,...] = self.image_array
                 
-                self.timeStampDs.resize((self.imagesWritten+1, ))
-                self.timeStampDs[self.imagesWritten] = lpdFrame.timeStampSof
+                self.time_stamp_ds.resize((self.images_written+1, ))
+                self.time_stamp_ds[self.images_written] = lpd_frame.timeStampSof
                 
-                self.trainNumberDs.resize((self.imagesWritten+1, ))
-                self.trainNumberDs[self.imagesWritten] = lpdFrame.frameNumber
+                self.train_number_ds.resize((self.images_written+1, ))
+                self.train_number_ds[self.images_written] = lpd_frame.frameNumber
                 
-                self.imageNumberDs.resize((self.imagesWritten+1, ))
-                self.imageNumberDs[self.imagesWritten] = currentImage
+                self.image_number_ds.resize((self.images_written+1, ))
+                self.image_number_ds[self.images_written] = current_image
 
             # Signal live view update at appropriate rate if enabled
             if self.liveViewEnable:
-                if (self.imagesWritten - self.liveViewOffset) % self.liveViewDivisor == 0:
-                    lpdImage = LpdImageContainer(self.runNumber, lpdFrame.frameNumber, currentImage)
-                    lpdImage.imageArray = self.imageArray.copy()
-                    self.liveViewSignal.emit(lpdImage)
+                if (self.images_written - self.liveViewOffset) % self.liveViewDivisor == 0:
+                    lpd_image = LpdImageContainer(self.runNumber, lpd_frame.frameNumber, current_image)
+                    lpd_image.image_array = self.image_array.copy()
+                    self.liveViewSignal.emit(lpd_image)
                     
             # Clear data before next iteration (but after data written to file)
-            self.imageArray.fill(0)
+            self.image_array.fill(0)
             
             # Increment current image
-            currentImage += 1
-            self.imagesWritten += 1
+            current_image += 1
+            self.images_written += 1
             
         # 'Reset' rawImageData variable - WHY??
-        lpdFrame.rawImageData = lpdFrame.rawImageData[0:0]
+        lpd_frame.rawImageData = lpd_frame.rawImageData[0:0]
 
-        endTime = time.time()
-        self.totalProcessingTime += (endTime - startTime)
-        #print "Total frame processing time = %f secs" % (endTime - startTime)
+        end_time = time.time()
+        self.total_processing_time += (end_time - start_time)
+        #print "Total frame processing time = %f secs" % (end_time - start_time)
 
-        self.framesHandled += 1
-        #if self.framesHandled >= self.num_frames:
+        self.frames_handled += 1
+        #if self.frames_handled >= self.num_frames:
         #    print >> sys.stderr, "Frame processor thread processed all frames, quitting"
         
 
@@ -459,129 +459,129 @@ class FrameProcessor(QtCore.QObject):
         if self.evr_data != None:
             if len(self.evr_data.event) > 0:
                 print("Injecting EVR timestamp data into HDF file structure")
-                evrGroup          = self.lpdGroup.create_group('evr')
-                self.evrEvent     = evrGroup.create_dataset('event', (len(self.evr_data.event),), 'uint32')
-                self.evrFiducial  = evrGroup.create_dataset('fiducial', (len(self.evr_data.fiducial),), 'uint32')
-                self.evrTimestamp = evrGroup.create_dataset('timeStamp', (len(self.evr_data.timestamp),), 'float64')
+                evr_group          = self.lpd_group.create_group('evr')
+                self.evr_event     = evr_group.create_dataset('event', (len(self.evr_data.event),), 'uint32')
+                self.evr_fiducial  = evr_group.create_dataset('fiducial', (len(self.evr_data.fiducial),), 'uint32')
+                self.evr_timestamp = evr_group.create_dataset('timeStamp', (len(self.evr_data.timestamp),), 'float64')
 
-                self.evrEvent[...] = np.array(self.evr_data.event)
-                self.evrFiducial[...] = np.array(self.evr_data.fiducial)
-                self.evrTimestamp[...] = np.array(self.evr_data.timestamp)
+                self.evr_event[...] = np.array(self.evr_data.event)
+                self.evr_fiducial[...] = np.array(self.evr_data.fiducial)
+                self.evr_timestamp[...] = np.array(self.evr_data.timestamp)
             else:
                 print("No EVR timestamp data received during run")
 
         # Close file if enabled
         if self.fileWriteEnable:
-            self.hdfFile.close()
+            self.hdf_file.close()
 
     
-    def unpackImage(self, imageOffset):
-        """ Extracts one image beginning at argument imageOffset in the member array 
-            self.pixelData array. Returns boolean bImageAvailable indicating whether
+    def unpackImage(self, image_offset):
+        """ Extracts one image beginning at argument image_offset in the member array 
+            self.pixel_data array. Returns boolean bImageAvailable indicating whether
             the current image is the last image in the data
         """
         # Boolean variable to track whether there is a image after this one in the data
-        bNextImageAvailable = False
+        b_next_image_available = False
         
         # Check Asic Module type to determine how to process data
         if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             # Raw data - no not re-order
-            self.imageArray = self.pixelData[imageOffset:imageOffset + self.imageFullLpdSize].reshape(256, 256)
+            self.image_array = self.pixel_data[image_offset:image_offset + self.image_full_lpd_size].reshape(256, 256)
         else:
             # Not raw data, proceed to reorder data
-            numAsicCols = 16
-            numAsicRows = 8
-            numAsics = numAsicCols * numAsicRows
-            numColsPerAsic = 16
-            numRowsPerAsic = 32
+            num_asic_cols = 16
+            num_asic_rows = 8
+            num_asics = num_asic_cols * num_asic_rows
+            num_cols_per_asic = 16
+            num_rows_per_asic = 32
     
-            numPixelsPerAsic = numColsPerAsic * numRowsPerAsic
-            numPixels = numAsics * numPixelsPerAsic
+            num_pixels_per_asic = num_cols_per_asic * num_rows_per_asic
+            num_pixels = num_asics * num_pixels_per_asic
     
             # Create linear array for unpacked pixel data
-            self.imageLpdFullArray = np.zeros(numPixels, dtype=np.uint16)
-            self.imageLpdFullArray = np.reshape(self.imageLpdFullArray, (numAsicRows * numRowsPerAsic, numAsicCols * numColsPerAsic))
+            self.image_lpd_full_array = np.zeros(num_pixels, dtype=np.uint16)
+            self.image_lpd_full_array = np.reshape(self.image_lpd_full_array, (num_asic_rows * num_rows_per_asic, num_asic_cols * num_cols_per_asic))
     
-            rawOffset = imageOffset
+            raw_offset = image_offset
     
             try:
-                for asicRow in range(numRowsPerAsic):
-                    for asicCol in range(numColsPerAsic):
+                for asic_row in range(num_rows_per_asic):
+                    for asic_col in range(num_cols_per_asic):
                         
-                        self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelData[rawOffset:(rawOffset + numAsics)].reshape(8,16)
-                        rawOffset += numAsics
+                        self.image_lpd_full_array[asic_row::num_rows_per_asic, asic_col::num_cols_per_asic] = self.pixel_data[raw_offset:(raw_offset + num_asics)].reshape(8,16)
+                        raw_offset += num_asics
             
             except IndexError:
-                print("Image Processing Error @ %6i %6i %6i %6i %6i %6i " % (asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics))
+                print("Image Processing Error @ %6i %6i %6i %6i %6i %6i " % (asic_row, num_rows_per_asic, asic_col, num_cols_per_asic, raw_offset, num_asics))
             except Exception as e:
-                print("Error extracting image at %i Bytes, need %i but only %i Bytes available" % (imageOffset, self.imageFullLpdSize, self.pixelData.shape[0] - imageOffset))
+                print("Error extracting image at %i Bytes, need %i but only %i Bytes available" % (image_offset, self.image_full_lpd_size, self.pixel_data.shape[0] - image_offset))
                 print("(Error: %s)" % e)
 
             # Module specific data processing
             if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
                 
                 # Super Module - Image now upside down, reverse the order
-                self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
-                self.imageArray = self.imageLpdFullArray.copy()
+                self.image_lpd_full_array[:,:] = self.image_lpd_full_array[::-1,:]
+                self.image_array = self.image_lpd_full_array.copy()
             elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
                 
                 #Two Tile
                 # Create array for 2 Tile data; reshape into two dimensional array
-                self.imageArray = np.zeros(self.imageModuleSize, dtype=np.uint16)
-                self.imageArray = self.imageArray.reshape(32, 256)
+                self.image_array = np.zeros(self.image_module_size, dtype=np.uint16)
+                self.image_array = self.image_array.reshape(32, 256)
         
                 # Copy the two Tiles that exists in the two tile system
                 try:
                     # LHS Tile located in the second ASIC row, second ASIC column
-                    self.imageArray[0:32, 0:128]   = self.imageLpdFullArray[32:32+32, 256-1:128-1:-1]
+                    self.image_array[0:32, 0:128]   = self.image_lpd_full_array[32:32+32, 256-1:128-1:-1]
                     # RHS Tile located in the seventh ASIC row, second ASIC column
-                    self.imageArray[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
+                    self.image_array[0:32, 128:256] = self.image_lpd_full_array[192:192+32, 256-1:128-1:-1]
                 except Exception as e:
                     print("Error accessing 2 Tile data: %s" % e)
-                    print("imageOffset: ", imageOffset)
+                    print("image_offset: ", image_offset)
                     sys.exit()
 
         # Last image in the data?
         try:
-            # Increment imageOffset to start of next image
-            imageOffset += self.imageFullLpdSize
-            self.pixelData[imageOffset + self.imageFullLpdSize]
+            # Increment image_offset to start of next image
+            image_offset += self.image_full_lpd_size
+            self.pixel_data[image_offset + self.image_full_lpd_size]
             # Will only get here if there is a next image available..
-            bNextImageAvailable = True
+            b_next_image_available = True
         except IndexError:
             pass   # Last Image in this train detected
-        return bNextImageAvailable
+        return b_next_image_available
         
         
 
 class DataMonitor(QtCore.QObject):
     
-    def __init__(self, udpReceiver, frameProcessor, updateSignal, numFrames):
+    def __init__(self, udp_receiver, frame_processor, update_signal, num_frames):
         
         QtCore.QObject.__init__(self)
         
-        self.udp_receiver = udpReceiver
-        self.frame_processor = frameProcessor
-        self.updateSignal = updateSignal
-        self.num_frames = numFrames
+        self.udp_receiver = udp_receiver
+        self.frame_processor = frame_processor
+        self.update_signal = update_signal
+        self.num_frames = num_frames
         self.abort = False
         
-    def abortRun(self):
+    def abort_run(self):
         self.abort = True
         
     def monitorLoop(self):
         
         try:
-            while self.frame_processor.framesHandled < self.num_frames and self.abort == False:
+            while self.frame_processor.frames_handled < self.num_frames and self.abort == False:
                 
-                runStatus = LpdRunStatusContainer(self.udp_receiver.frame_count, self.frame_processor.framesHandled, 
-                                                self.frame_processor.imagesWritten, self.frame_processor.data_bytes_received)
-                self.updateSignal.emit(runStatus)
+                run_status = LpdRunStatusContainer(self.udp_receiver.frame_count, self.frame_processor.frames_handled, 
+                                                self.frame_processor.images_written, self.frame_processor.data_bytes_received)
+                self.update_signal.emit(run_status)
                 time.sleep(0.5)
 
-            runStatus = LpdRunStatusContainer(self.udp_receiver.frame_count, self.frame_processor.framesHandled, 
-                                            self.frame_processor.imagesWritten, self.frame_processor.data_bytes_received)
-            self.updateSignal.emit(runStatus)
+            run_status = LpdRunStatusContainer(self.udp_receiver.frame_count, self.frame_processor.frames_handled, 
+                                            self.frame_processor.images_written, self.frame_processor.data_bytes_received)
+            self.update_signal.emit(run_status)
             
         except Exception as e:
             print("Got exception in data monitor loop:%s" % e, file=sys.stderr)

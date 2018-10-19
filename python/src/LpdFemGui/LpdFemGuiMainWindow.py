@@ -39,7 +39,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.testTab = LpdFemGuiMainTestTab(app_main, self)
         self.ui.operatorEdit.text()
         
-        if (self.app_main.asicTestingEnabled):
+        if (self.app_main.asic_testing_enabled):
             pass
         else:
             # ASIC testing disabled, remove test tab
@@ -75,7 +75,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         
     def runStateUpdate(self):
         
-        self.daqTab.runStateUpdate(self.app_main.deviceState)
+        self.daqTab.runStateUpdate(self.app_main.device_state)
         self.updateEnabledWidgets()
                 
     def executeAsyncCmd(self, message, cmdHandler, completionHandler):
@@ -101,12 +101,12 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         
     def updateEnabledWidgets(self):
 
-        if self.app_main.deviceState == LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state == LpdFemGui.DeviceDisconnected:
 
             self.ui.configGroupBox.setEnabled(False)
             self.ui.operateGroupBox.setEnabled(False)
             
-        elif self.app_main.deviceState == LpdFemGui.DeviceIdle:
+        elif self.app_main.device_state == LpdFemGui.DeviceIdle:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -114,7 +114,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.runBtn.setEnabled(False)
             self.ui.stopBtn.setEnabled(False)
             
-        elif self.app_main.deviceState == LpdFemGui.DeviceConfiguring:
+        elif self.app_main.device_state == LpdFemGui.DeviceConfiguring:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -122,7 +122,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.runBtn.setEnabled(False)
             self.ui.stopBtn.setEnabled(False)
             
-        elif self.app_main.deviceState == LpdFemGui.DeviceReady:
+        elif self.app_main.device_state == LpdFemGui.DeviceReady:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -130,7 +130,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.runBtn.setEnabled(True)
             self.ui.stopBtn.setEnabled(False)
             
-        elif self.app_main.deviceState == LpdFemGui.DeviceRunning:
+        elif self.app_main.device_state == LpdFemGui.DeviceRunning:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -154,7 +154,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
                             
     def deviceConnectToggle(self):
 
-        if self.app_main.deviceState == LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state == LpdFemGui.DeviceDisconnected:
 
             # Extract address and port from GUI fields and validate
             deviceAddress = str(self.ui.connectAddr.text())
@@ -186,7 +186,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.progressBar.hide()
         self.ui.connectButton.setEnabled(True)
         # Toggle button text according to state
-        if self.app_main.deviceState != LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state != LpdFemGui.DeviceDisconnected:
             
             self.msgPrint("Connected to device OK")
             self.statusBar().showMessage(self.tr("Connected to device"))
@@ -195,7 +195,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.app_main.femConfigGet()
             self.configTab.showConfig()
 
-            self.app_main.pwrCard.statusUpdate()
+            self.app_main.pwr_card.statusUpdate()
             self.pwrTab.lvEnableToggleDone()            
             self.pwrTab.hvEnableToggleDone()
                         
@@ -204,7 +204,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
 
         else:
             self.statusBar().showMessage(self.tr("Not connected"))
-            self.msgPrint(self.app_main.deviceErrString)
+            self.msgPrint(self.app_main.device_err_string)
             
             self.ui.connectButton.setText("Connect")
             self.ui.connectStatus.setText("NO")
@@ -226,7 +226,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
                  
     def quitApplication(self):
             
-        if self.app_main.deviceState != LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state != LpdFemGui.DeviceDisconnected:
             self.app_main.deviceDisconnect()
 
         self.app_main.cleanup()            
@@ -234,7 +234,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         
     def closeEvent(self, theCloseEvent):
         
-        if self.app_main.deviceState != LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state != LpdFemGui.DeviceDisconnected:
             self.app_main.deviceDisconnect()
             
         self.app_main.cleanup()    
