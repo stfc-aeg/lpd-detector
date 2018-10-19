@@ -90,10 +90,10 @@ class LpdUniPlotData(QMainWindow):
 
         try:
             # Mask off gain bits
-            lpdImage.imageArray = lpdImage.imageArray & 0xfff
-            self.imgObject.set_data(lpdImage.imageArray)
+            lpdImage.image_array = lpdImage.image_array & 0xfff
+            self.imgObject.set_data(lpdImage.image_array)
             self.axes.draw_artist(self.imgObject)
-            self.axes.set_title("Train %d Image %d" % ( lpdImage.frameNumber, lpdImage.imageNumber))
+            self.axes.set_title("Train %d Image %d" % ( lpdImage.frame_number, lpdImage.image_number))
             self.canvas.draw()
         except Exception as e:
             print "liveViewUpdate() Error: ", e

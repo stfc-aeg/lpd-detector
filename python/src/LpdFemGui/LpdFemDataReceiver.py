@@ -27,7 +27,7 @@ class LpdFemDataReceiver():
         
         try:
                 
-            self.numFrames = numFrames
+            self.num_frames = numFrames
             self.appMain = appMain
 
             # Create UDP recevier, frame processor and data monitor objects
@@ -73,7 +73,7 @@ class LpdFemDataReceiver():
     def awaitCompletion(self):
 
             print("Waiting for frame processing to complete")
-            while self.frameProcessor.framesHandled < self.numFrames and self.appMain.abortRun == False:
+            while self.frameProcessor.framesHandled < self.num_frames and self.appMain.abortRun == False:
                 time.sleep(0.1)
             
             if self.appMain.abortRun:
@@ -119,7 +119,7 @@ class UdpReceiver(QtCore.QObject):
         self.first_frm_num = -1       
         self.packetNumber = -1
         self.frameCount = 0
-        self.numFrames = numFrames
+        self.num_frames = numFrames
         self.totalReceiveTime = 0.0
         self.abort = False
         
@@ -138,7 +138,7 @@ class UdpReceiver(QtCore.QObject):
     def receiveLoop(self):
                     
         try:
-            while self.frameCount < self.numFrames and self.abort == False:
+            while self.frameCount < self.num_frames and self.abort == False:
                 
                 foundEof = 0
                 lpdFrame = LpdFrameContainer(self.frameCount)
@@ -223,7 +223,7 @@ class FrameProcessor(QtCore.QObject):
 
         QtCore.QObject.__init__(self)
         
-        self.numFrames = numFrames
+        self.num_frames = numFrames
         self.evrData = None
         
         self.runNumber       = cachedParams['runNumber']
@@ -244,7 +244,7 @@ class FrameProcessor(QtCore.QObject):
         # Initialise counters
         self.framesHandled = 0
         self.imagesWritten = 0
-        self.dataBytesReceived = 0
+        self.data_bytes_received = 0
         self.totalProcessingTime = 0.0
 
         # Define plotted image dimensions: 
@@ -309,7 +309,7 @@ class FrameProcessor(QtCore.QObject):
         
         #print >> sys.stderr, "Frame processor thread receiver frame number", lpdFrame.frameNumber, 'raw data length', len(lpdFrame.rawImageData)
 
-        self.dataBytesReceived += len(lpdFrame.rawImageData)
+        self.data_bytes_received += len(lpdFrame.rawImageData)
         
         # Capture time of starting processing
         startTime = time.time()
@@ -449,7 +449,7 @@ class FrameProcessor(QtCore.QObject):
         #print "Total frame processing time = %f secs" % (endTime - startTime)
 
         self.framesHandled += 1
-        #if self.framesHandled >= self.numFrames:
+        #if self.framesHandled >= self.num_frames:
         #    print >> sys.stderr, "Frame processor thread processed all frames, quitting"
         
 
@@ -563,7 +563,7 @@ class DataMonitor(QtCore.QObject):
         self.udpReceiver = udpReceiver
         self.frameProcessor = frameProcessor
         self.updateSignal = updateSignal
-        self.numFrames = numFrames
+        self.num_frames = numFrames
         self.abort = False
         
     def abortRun(self):
@@ -572,15 +572,15 @@ class DataMonitor(QtCore.QObject):
     def monitorLoop(self):
         
         try:
-            while self.frameProcessor.framesHandled < self.numFrames and self.abort == False:
+            while self.frameProcessor.framesHandled < self.num_frames and self.abort == False:
                 
                 runStatus = LpdRunStatusContainer(self.udpReceiver.frameCount, self.frameProcessor.framesHandled, 
-                                                self.frameProcessor.imagesWritten, self.frameProcessor.dataBytesReceived)
+                                                self.frameProcessor.imagesWritten, self.frameProcessor.data_bytes_received)
                 self.updateSignal.emit(runStatus)
                 time.sleep(0.5)
 
             runStatus = LpdRunStatusContainer(self.udpReceiver.frameCount, self.frameProcessor.framesHandled, 
-                                            self.frameProcessor.imagesWritten, self.frameProcessor.dataBytesReceived)
+                                            self.frameProcessor.imagesWritten, self.frameProcessor.data_bytes_received)
             self.updateSignal.emit(runStatus)
             
         except Exception as e:

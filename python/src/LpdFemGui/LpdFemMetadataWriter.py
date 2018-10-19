@@ -12,8 +12,8 @@ class MetadataWriter(object):
     '''
 
 
-    def __init__(self, cachedParams):
-        self.cachedParams = cachedParams 
+    def __init__(self, cached_params):
+        self.cachedParams = cached_params 
         
     def write_metadata(self, metadata_group):
         print("Adding metadata to file")

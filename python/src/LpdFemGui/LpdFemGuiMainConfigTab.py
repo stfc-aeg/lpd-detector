@@ -17,11 +17,11 @@ class LpdFemGuiMainConfigTab(object):
     '''
 
 
-    def __init__(self, appMain, mainWindow):
+    def __init__(self, app_main, mainWindow):
         '''
         Constructor
         '''
-        self.appMain = appMain
+        self.app_main = app_main
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
         self.msgPrint = self.mainWindow.msgPrint
@@ -32,22 +32,22 @@ class LpdFemGuiMainConfigTab(object):
         
     def showConfig(self):
         
-        self.ui.magicNumber.setText('0x%X' % self.appMain.femConfig.magicWord)
-        self.ui.checksum.setText('0x%X' % self.appMain.femConfig.checksum)
-        self.ui.macAddress.setText(self.appMain.femConfig.net_mac_str())
-        self.ui.ipAddress.setText(self.appMain.femConfig.net_ip_addr_str())
-        self.ui.netMask.setText(self.appMain.femConfig.net_ip_mask_str())
-        self.ui.gateway.setText(self.appMain.femConfig.net_ip_gw_str())
-        self.ui.highTempThreshold.setText(str(self.appMain.femConfig.temp_high))
-        self.ui.critTempTreshold.setText(str(self.appMain.femConfig.temp_crit))
-        self.ui.boardId.setText(str(self.appMain.femConfig.board_id))
-        self.ui.boardType.setText(str(self.appMain.femConfig.board_type))
-        self.ui.hwVersionMajor.setText(str(self.appMain.femConfig.hw_major_version))
-        self.ui.hwVersionMinor.setText(str(self.appMain.femConfig.hw_minor_version))
-        self.ui.fwVersionMajor.setText(str(self.appMain.femConfig.fw_major_version))
-        self.ui.fwVersionMinor.setText(str(self.appMain.femConfig.fw_minor_version))
-        self.ui.swVersionMajor.setText(str(self.appMain.femConfig.sw_major_version))
-        self.ui.swVersionMinor.setText(str(self.appMain.femConfig.sw_minor_version))
+        self.ui.magicNumber.setText('0x%X' % self.app_main.femConfig.magicWord)
+        self.ui.checksum.setText('0x%X' % self.app_main.femConfig.checksum)
+        self.ui.macAddress.setText(self.app_main.femConfig.net_mac_str())
+        self.ui.ipAddress.setText(self.app_main.femConfig.net_ip_addr_str())
+        self.ui.netMask.setText(self.app_main.femConfig.net_ip_mask_str())
+        self.ui.gateway.setText(self.app_main.femConfig.net_ip_gw_str())
+        self.ui.highTempThreshold.setText(str(self.app_main.femConfig.temp_high))
+        self.ui.critTempTreshold.setText(str(self.app_main.femConfig.temp_crit))
+        self.ui.boardId.setText(str(self.app_main.femConfig.board_id))
+        self.ui.boardType.setText(str(self.app_main.femConfig.board_type))
+        self.ui.hwVersionMajor.setText(str(self.app_main.femConfig.hw_major_version))
+        self.ui.hwVersionMinor.setText(str(self.app_main.femConfig.hw_minor_version))
+        self.ui.fwVersionMajor.setText(str(self.app_main.femConfig.fw_major_version))
+        self.ui.fwVersionMinor.setText(str(self.app_main.femConfig.fw_minor_version))
+        self.ui.swVersionMajor.setText(str(self.app_main.femConfig.sw_major_version))
+        self.ui.swVersionMinor.setText(str(self.app_main.femConfig.sw_minor_version))
         
     def updateConfig(self):
         
@@ -72,12 +72,12 @@ class LpdFemGuiMainConfigTab(object):
         board_id     = int(self.ui.boardId.text())
         board_type   = int(self.ui.boardType.text())
         
-        self.appMain.femConfigUpdate(net_mac, net_ip, net_mask, 
+        self.app_main.femConfigUpdate(net_mac, net_ip, net_mask, 
                         net_gw, temp_high, temp_crit, 
                         sw_major, sw_minor, fw_major, fw_minor,
                         hw_major, hw_minor, board_id, board_type)
         
         self.msgPrint("Reading configuration back")
-        self.appMain.femConfigGet()
+        self.app_main.femConfigGet()
         self.showConfig()
         

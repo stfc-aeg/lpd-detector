@@ -57,7 +57,7 @@ class LpdFemGui:
 
         self.dataListenAddr = '0.0.0.0'
         self.dataListenPort = 0
-        self.numFrames      = 0
+        self.num_frames      = 0
 
         self.lastDataFile = None
 
@@ -153,9 +153,9 @@ class LpdFemGui:
                           'asicModuleType'      : 0,
                           'multiRunEnable'    : True,
                           'multiRunNumRuns'   : 123,
-                          'receiveDataInternally': False,   # This should be set to false when receiveDataFromODIN is true
+                          'receiveDataInternally': True,   # This should be set to false when receiveDataFromODIN is true
 #-----
-                        'receiveDataFromODIN': True,
+                        'receiveDataFromODIN': False,
                         'odinFrCtrlChannel'  : 'tcp://127.0.0.1:5000',
                         'odinFpCtrlChannel'  : 'tcp://127.0.0.1:5004',
                         # TODO: Plan file structure for odinDataConfigFile
@@ -363,9 +363,9 @@ class LpdFemGui:
             return
 
         # Set up number of frames based on cached parameter value of number of trains
-        self.numFrames = self.cachedParams['numTrains']
-        self.loadedConfig['numTrains'] = self.numFrames
-        rc = self.device.paramSet('numberTrains', self.numFrames)
+        self.num_frames = self.cachedParams['numTrains']
+        self.loadedConfig['numTrains'] = self.num_frames
+        rc = self.device.paramSet('numberTrains', self.num_frames)
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Setting parameter numberTrains failed (rc=%d) %s" % (rc, self.device.errorStringGet()))
             self.deviceState = LpdFemGui.DeviceIdle
@@ -438,8 +438,8 @@ class LpdFemGui:
             if self.receiveDataInternally:
                 # Create an LpdFemDataReceiver instance to launch readout threads
                 try:
-                    dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.runStatusSignal,
-                                                      self.dataListenAddr, self.dataListenPort, self.numFrames, currentParams, self)
+                    dataReceiver = LpdFemDataReceiver(self.liveViewWindow.liveViewUpdateSignal, self.mainWindow.run_status_signal,
+                                                      self.dataListenAddr, self.dataListenPort, self.num_frames, currentParams, self)
                 except Exception as e:
                     self.msgPrint("ERROR: failed to create data receiver: %s" % e)
                     self.deviceState = LpdFemGui.DeviceIdle
@@ -450,7 +450,7 @@ class LpdFemGui:
                 # Launch ODIN LPD Frame Receiver, Proccesor and Data Monitor
                 try:
                     if self.odinDataReceiver is None:
-                        self.odinDataReceiver = LpdFemOdinDataReceiver(self.mainWindow.runStatusSignal,self.numFrames, self)
+                        self.odinDataReceiver = LpdFemOdinDataReceiver(self.mainWindow.run_status_signal,self.num_frames, self)
                     
                     num_frames = self.getCachedParam('numTrains')
                     num_images = self.loadedConfig['numberImages']
@@ -489,10 +489,10 @@ class LpdFemGui:
                 try:
                     timestampRecorder.awaitCompletion()
                     if self.receiveDataInternally:
-                        dataReceiver.injectTimestampData(timestampRecorder.evrData)
+                        dataReceiver.injectTimestampData(timestampRecorder.evr_data)
 #------------------------------------------------------------------------------------
                     if self.receiveDataFromODIN:
-                        self.odinDataReceiver.injectTimestampData(timestampRecorder.evrData)
+                        self.odinDataReceiver.injectTimestampData(timestampRecorder.evr_data)
 #------------------------------------------------------------------------------------
                 except Exception as e:
                     self.msgPrint("ERROR: failed to complete EVR timestamp recorder: %s" % e)

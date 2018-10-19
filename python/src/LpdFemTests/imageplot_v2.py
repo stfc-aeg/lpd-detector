@@ -17,7 +17,7 @@ class imagePlot():
         # Ask the user for data file, image, train..
         self.args = parseArgs()
     
-        (imgOffset, timeStamp, runNumber, trainNumber, imageNumber, imageData) = self.obtainImageWithInfo()
+        (imgOffset, timeStamp, run_number, trainNumber, image_number, imageData) = self.obtainImageWithInfo()
 
         # Create the figure and title
         self.fig = plt.figure(1)
@@ -67,7 +67,7 @@ class imagePlot():
         self.img = self.ax.imshow(imageData, interpolation='nearest', vmin='0', vmax='4095')
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(timeStamp))
-        titleText = 'Run %d Train %d Image %d : %s' % (runNumber, trainNumber, imageNumber, dateStr)
+        titleText = 'Run %d Train %d Image %d : %s' % (run_number, trainNumber, image_number, dateStr)
         self.mainTitle.set_text(titleText)
 
         # Add a colour bar

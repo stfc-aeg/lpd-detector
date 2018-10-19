@@ -11,14 +11,14 @@ class LpdEvrData(object):
         
 class LpdEvrTimestampRecorder():
 
-    def __init__(self, cachedParams, appMain):
+    def __init__(self, cached_params, app_main):
 
         try:
-            self.appMain = appMain
+            self.app_main = app_main
 
-            self.evrData = LpdEvrData()
-            self.timestampReceiver = TimestampMcastReceiver(cachedParams['evrMcastGroup'], cachedParams['evrMcastPort'],
-                                                            cachedParams['evrMcastInterface'], self.evrData)
+            self.evr_data = LpdEvrData()
+            self.timestampReceiver = TimestampMcastReceiver(cached_params['evrMcastGroup'], cached_params['evrMcastPort'],
+                                                            cached_params['evrMcastInterface'], self.evr_data)
             self.timestampReceiverThread = QtCore.QThread()
             self.timestampReceiver.moveToThread(self.timestampReceiverThread)
 
@@ -47,7 +47,7 @@ class TimestampMcastReceiver(QtCore.QObject):
         self.runReceiver = True
         self.running = False
         self.daqEventsReceived = 0
-        self.evrData = evrData
+        self.evr_data = evrData
 
         # Create the socket
         self.mcastSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -90,9 +90,9 @@ class TimestampMcastReceiver(QtCore.QObject):
                     self.daqEventsReceived += 1
                     #is_eventStr = '*' if is_event else ' '
                     #print >> sys.stderr, '{:06d}  {:06d}  {:09d}.{:09d}  {:.09f}   {:s}'.format(evr, fiducial, secs, nsecs, timestamp, is_eventStr)
-                    self.evrData.event.append(evr)
-                    self.evrData.fiducial.append(fiducial)
-                    self.evrData.timestamp.append(timestamp)
+                    self.evr_data.event.append(evr)
+                    self.evr_data.fiducial.append(fiducial)
+                    self.evr_data.timestamp.append(timestamp)
 
             except socket.timeout:
                 pass

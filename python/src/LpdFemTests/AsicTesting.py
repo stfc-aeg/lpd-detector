@@ -68,11 +68,11 @@ class AsicTesting():
         self.fig = plt.figure(1)
         self.ax = self.fig.add_subplot(111)
 
-        (imgOffset, timeStamp, runNumber, trainNumber, imageNumber) = self.obtainAsic()
+        (imgOffset, timeStamp, run_number, trainNumber, image_number) = self.obtainAsic()
         
         self.img = self.ax.imshow(self.moduleData, interpolation='nearest', vmin='0', vmax='4095')
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(timeStamp))
-        self.titleText = 'Run %d Train %d Image %d%sModule %d: %s' % (runNumber, trainNumber, imageNumber, "\n", self.module, dateStr)
+        self.titleText = 'Run %d Train %d Image %d%sModule %d: %s' % (run_number, trainNumber, image_number, "\n", self.module, dateStr)
         self.mainTitle = plt.title(self.titleText)
         
         # Add a colour bar

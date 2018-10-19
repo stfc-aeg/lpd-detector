@@ -36,18 +36,18 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
     
     matplotlib.rcParams.update({'font.size': 8})
     
-    def __init__(self, appMain): #, parent=None):
+    def __init__(self, app_main): #, parent=None):
  
         QtGui.QDialog.__init__(self) #, parent)
         
-        self.appMain = appMain
-        self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
+        self.app_main = app_main
+        self.messageSignal = self.app_main.mainWindow.testTab.messageSignal
         
         self.nrows = 32
         self.ncols = 128
         
         self.moduleString = "LHS"
-        self.moduleNumber = self.appMain.asicTester.LHS_MODULE
+        self.moduleNumber = self.app_main.asicTester.LHS_MODULE
         
         self.setWindowTitle('Plotting data from Asic Module')
 
@@ -155,8 +155,8 @@ class LpdFemGuiAsicWindow(QtGui.QDialog):
         ''' Helper function '''
 
         self.moduleNumber = moduleNumber
-        if moduleNumber == self.appMain.asicTester.LHS_MODULE:    self.moduleString = "LHS"
-        elif moduleNumber == self.appMain.asicTester.RHS_MODULE:  self.moduleString = "RHS"
+        if moduleNumber == self.app_main.asicTester.LHS_MODULE:    self.moduleString = "LHS"
+        elif moduleNumber == self.app_main.asicTester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
 

@@ -33,8 +33,8 @@ class LpdRunStatusContainer(object):
     
     def __init__(self, framesReceived, framesProcessed, imagesProcessed, dataBytesReceived):
         
-        self.framesReceived  = framesReceived
-        self.framesProcessed = framesProcessed
-        self.imagesProcessed = imagesProcessed
-        self.dataBytesReceived = dataBytesReceived
+        self.frames_received  = framesReceived
+        self.frames_processed = framesProcessed
+        self.images_processed = imagesProcessed
+        self.data_bytes_received = dataBytesReceived
     

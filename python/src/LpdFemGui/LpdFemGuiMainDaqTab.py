@@ -17,40 +17,40 @@ class LpdFemGuiMainDaqTab(object):
     Helper class to manager DAQ tab in main window
     '''
 
-    def __init__(self, appMain, mainWindow):
+    def __init__(self, app_main, mainWindow):
         '''
         Constructor
         '''
-        self.appMain = appMain
+        self.app_main = app_main
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
         self.msgPrint = self.mainWindow.msgPrint
         
-        # Initialise default fields based on appMain object cached parameters
-        self.ui.readoutParamEdit.setText(self.appMain.getCachedParam('readoutParamFile'))
-        self.ui.fastParamEdit.setText(self.appMain.getCachedParam('cmdSequenceFile'))
-        self.ui.slowParamEdit.setText(self.appMain.getCachedParam('setupParamFile'))
-        self.ui.dataPathEdit.setText(self.appMain.getCachedParam('dataFilePath'))
-        self.ui.numTrainsEdit.setText(str(self.appMain.getCachedParam('numTrains')))
-#         if self.appMain.getCachedParam('externalTrigger') == True:
+        # Initialise default fields based on app_main object cached parameters
+        self.ui.readoutParamEdit.setText(self.app_main.getCachedParam('readoutParamFile'))
+        self.ui.fastParamEdit.setText(self.app_main.getCachedParam('cmdSequenceFile'))
+        self.ui.slowParamEdit.setText(self.app_main.getCachedParam('setupParamFile'))
+        self.ui.dataPathEdit.setText(self.app_main.getCachedParam('dataFilePath'))
+        self.ui.numTrainsEdit.setText(str(self.app_main.getCachedParam('numTrains')))
+#         if self.app_main.getCachedParam('externalTrigger') == True:
 #             self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Checked)
 #         else:
 #             self.ui.externalTriggerSel.setCheckState(QtCore.Qt.Unchecked)
-        self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
+        self.ui.triggerDelayEdit.setText(str(self.app_main.getCachedParam('triggerDelay')))
         
-        self.ui.fileWriteSel.setCheckState(checkButtonState(self.appMain.getCachedParam('fileWriteEnable')))         
-        self.ui.liveViewSel.setCheckState(checkButtonState(self.appMain.getCachedParam('liveViewEnable')))
-        self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
-        self.ui.liveViewOffsetEdit.setText(str(self.appMain.getCachedParam('liveViewOffset')))
-        self.ui.shutterSel.setCheckState(checkButtonState(self.appMain.getCachedParam('arduinoShutterEnable')))
-        self.ui.multiRunSel.setCheckState(checkButtonState(self.appMain.getCachedParam('multiRunEnable')))
-        self.ui.multiRunEdit.setText(str(self.appMain.getCachedParam('multiRunNumRuns')))
+        self.ui.fileWriteSel.setCheckState(checkButtonState(self.app_main.getCachedParam('fileWriteEnable')))         
+        self.ui.liveViewSel.setCheckState(checkButtonState(self.app_main.getCachedParam('liveViewEnable')))
+        self.ui.liveViewDivisorEdit.setText(str(self.app_main.getCachedParam('liveViewDivisor')))
+        self.ui.liveViewOffsetEdit.setText(str(self.app_main.getCachedParam('liveViewOffset')))
+        self.ui.shutterSel.setCheckState(checkButtonState(self.app_main.getCachedParam('arduinoShutterEnable')))
+        self.ui.multiRunSel.setCheckState(checkButtonState(self.app_main.getCachedParam('multiRunEnable')))
+        self.ui.multiRunEdit.setText(str(self.app_main.getCachedParam('multiRunNumRuns')))
         # Support scanning a range of trigger delays
-        self.ui.triggerDelayIncrementEdit.setText(str(self.appMain.getCachedParam('triggerDelayIncrement')))
+        self.ui.triggerDelayIncrementEdit.setText(str(self.app_main.getCachedParam('triggerDelayIncrement')))
 
-        serialPort = self.appMain.getCachedParam('arduinoShutterPort')
+        serialPort = self.app_main.getCachedParam('arduinoShutterPort')
 
-        fbkOverride = self.appMain.getCachedParam('femAsicPixelFeedbackOverride')
+        fbkOverride = self.app_main.getCachedParam('femAsicPixelFeedbackOverride')
         if fbkOverride == 1:
             self.ui.pixelFbk5Sel.setChecked(True)
         elif fbkOverride == 0:
@@ -58,7 +58,7 @@ class LpdFemGuiMainDaqTab(object):
         else:
             pass
             
-        gainOverride = self.appMain.getCachedParam('femAsicGainOverride')
+        gainOverride = self.app_main.getCachedParam('femAsicGainOverride')
         if gainOverride == 0:
             self.ui.gainModeAutoSel.setChecked(True)
         elif gainOverride == 100:
@@ -70,7 +70,7 @@ class LpdFemGuiMainDaqTab(object):
         else:
             pass
 
-        self.runStateUpdate(self.appMain.deviceState)
+        self.runStateUpdate(self.app_main.deviceState)
 
         # Connect signals and slots
         QtCore.QObject.connect(self.ui.readoutParamBtn, QtCore.SIGNAL("clicked()"), self.readoutParamFileSelect)
@@ -100,35 +100,35 @@ class LpdFemGuiMainDaqTab(object):
 
     def updateEnabledWidgets(self):
         
-        self.ui.runNumber.setText(str(self.appMain.getCachedParam('runNumber')))
-        self.runStateUpdate(self.appMain.deviceState)        
+        self.ui.run_number.setText(str(self.app_main.getCachedParam('run_number')))
+        self.runStateUpdate(self.app_main.deviceState)        
         
     def readoutParamFileSelect(self):
 
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select readout parameter file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select readout parameter file', self.app_main.defaultConfigPath, "XML Files (*.xml)")
         if fileName != "":
-            self.appMain.setCachedParam('readoutParamFile', str(fileName))
+            self.app_main.setCachedParam('readoutParamFile', str(fileName))
             self.ui.readoutParamEdit.setText(fileName)
             self.mainWindow.updateEnabledWidgets()
 
     def slowParamFileSelect(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select setup parameter file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select setup parameter file', self.app_main.defaultConfigPath, "XML Files (*.xml)")
         if fileName != "":
-            self.appMain.setCachedParam('setupParamFile', str(fileName))
+            self.app_main.setCachedParam('setupParamFile', str(fileName))
             self.ui.slowParamEdit.setText(fileName)
             self.mainWindow.updateEnabledWidgets()
         
     def fastParamFileSelect(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select command sequence file', self.appMain.defaultConfigPath, "XML Files (*.xml)")
+        fileName = QtGui.QFileDialog.getOpenFileName(self.mainWindow, 'Select command sequence file', self.app_main.defaultConfigPath, "XML Files (*.xml)")
         if fileName != "":
-            self.appMain.setCachedParam('cmdSequenceFile', str(fileName))
+            self.app_main.setCachedParam('cmdSequenceFile', str(fileName))
             self.ui.fastParamEdit.setText(fileName)
             self.mainWindow.updateEnabledWidgets()
         
     def dataPathSelect(self):
-        dirName = QtGui.QFileDialog.getExistingDirectory(self.mainWindow, "Select data directory", self.appMain.getCachedParam('dataFilePath'))
+        dirName = QtGui.QFileDialog.getExistingDirectory(self.mainWindow, "Select data directory", self.app_main.getCachedParam('dataFilePath'))
         if dirName != "":
-            self.appMain.setCachedParam('dataFilePath', str(dirName))
+            self.app_main.setCachedParam('dataFilePath', str(dirName))
             self.ui.dataPathEdit.setText(dirName)
             self.mainWindow.updateEnabledWidgets()
 
@@ -136,27 +136,27 @@ class LpdFemGuiMainDaqTab(object):
         numTrains = self.ui.numTrainsEdit.text()
         try:
             numTrainsVal = int(numTrains)
-            self.appMain.setCachedParam('numTrains', numTrainsVal)
+            self.app_main.setCachedParam('numTrains', numTrainsVal)
         except ValueError:
-            self.ui.numTrainsEdit.setText(str(self.appMain.getCachedParam('numTrains')))
+            self.ui.numTrainsEdit.setText(str(self.app_main.getCachedParam('numTrains')))
  
     def triggerDelayUpdate(self):
 
         delay = self.ui.triggerDelayEdit.text()
         try:
             delayVal = int(delay)
-            self.appMain.setCachedParam('triggerDelay', delayVal) 
+            self.app_main.setCachedParam('triggerDelay', delayVal) 
         except ValueError:
-            self.ui.triggerDelayEdit.setText(str(self.appMain.getCachedParam('triggerDelay')))
+            self.ui.triggerDelayEdit.setText(str(self.app_main.getCachedParam('triggerDelay')))
         
     def triggerDelayIncrementUpdate(self):
 
         delayIncrement = self.ui.triggerDelayIncrementEdit.text()
         try:
             delayIncrementVal = int(delayIncrement)
-            self.appMain.setCachedParam('triggerDelayIncrement', delayIncrementVal) 
+            self.app_main.setCachedParam('triggerDelayIncrement', delayIncrementVal) 
         except ValueError:
-            self.ui.triggerDelayIncrementEdit.setText(str(self.appMain.getCachedParam('triggerDelayIncrement')))
+            self.ui.triggerDelayIncrementEdit.setText(str(self.app_main.getCachedParam('triggerDelayIncrement')))
 
     def pixelFbkOverrideUpdate(self):
 
@@ -169,7 +169,7 @@ class LpdFemGuiMainDaqTab(object):
             self.msgPrint("Illegal pixel feedback override selection - should not happen")
             return
 
-        self.appMain.setCachedParam('femAsicPixelFeedbackOverride', fbkOverride)
+        self.app_main.setCachedParam('femAsicPixelFeedbackOverride', fbkOverride)
         self.mainWindow.updateEnabledWidgets()
 
     def gainOverrideUpdate(self):
@@ -187,26 +187,26 @@ class LpdFemGuiMainDaqTab(object):
             self.msgPrint("Illegal gain override selection - should not happen")
             return
 
-        self.appMain.setCachedParam('femAsicGainOverride', gainOverride)
+        self.app_main.setCachedParam('femAsicGainOverride', gainOverride)
     
     def fileWriteSelect(self, state):
-        self.appMain.setCachedParam('fileWriteEnable', state)
+        self.app_main.setCachedParam('fileWriteEnable', state)
         self.mainWindow.updateEnabledWidgets()
         
     def liveViewSelect(self, state):
-        self.appMain.setCachedParam('liveViewEnable', state)
+        self.app_main.setCachedParam('liveViewEnable', state)
         self.mainWindow.updateEnabledWidgets()
         
     def shutterSelect(self, state):
         
-        self.appMain.setCachedParam('arduinoShutterEnable', state)
+        self.app_main.setCachedParam('arduinoShutterEnable', state)
         # Hack, force user to hit configure before next run:
-        self.appMain.deviceState = LpdFemGui.DeviceIdle
+        self.app_main.deviceState = LpdFemGui.DeviceIdle
         self.mainWindow.updateEnabledWidgets()
 
     def multiRunSelect(self, state):
 
-        self.appMain.setCachedParam('multiRunEnable', state)
+        self.app_main.setCachedParam('multiRunEnable', state)
         self.mainWindow.updateEnabledWidgets()
 
     def multiRunNumRunsUpdate(self):
@@ -214,10 +214,10 @@ class LpdFemGuiMainDaqTab(object):
         try:
             multiRunNumRunsVal = int(multiRunNumRuns)
 
-            self.appMain.setCachedParam('multiRunNumRuns', multiRunNumRunsVal)
+            self.app_main.setCachedParam('multiRunNumRuns', multiRunNumRunsVal)
             self.mainWindow.updateEnabledWidgets()
         except ValueError:
-            self.ui.multiRunEdit.setText(str(self.appMain.getCachedParam('multiRunNumRuns')))
+            self.ui.multiRunEdit.setText(str(self.app_main.getCachedParam('multiRunNumRuns')))
 
     def liveViewDivisorUpdate(self):
         liveViewDivisor = self.ui.liveViewDivisorEdit.text()
@@ -226,55 +226,55 @@ class LpdFemGuiMainDaqTab(object):
             
             if liveViewDivisorVal < 1:
                 QtGui.QMessageBox.critical(self.mainWindow, "Illegal value", "The value of the live view divisor must be greater than zero")
-                self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
+                self.ui.liveViewDivisorEdit.setText(str(self.app_main.getCachedParam('liveViewDivisor')))
             else:
-                self.appMain.setCachedParam('liveViewDivisor', liveViewDivisorVal)
+                self.app_main.setCachedParam('liveViewDivisor', liveViewDivisorVal)
                 self.mainWindow.updateEnabledWidgets()
             
         except ValueError:
-            self.ui.liveViewDivisorEdit.setText(str(self.appMain.getCachedParam('liveViewDivisor')))
+            self.ui.liveViewDivisorEdit.setText(str(self.app_main.getCachedParam('liveViewDivisor')))
 
     def liveViewOffsetUpdate(self):
         liveViewOffset = self.ui.liveViewOffsetEdit.text()
         try:
             liveViewOffsetVal = int(liveViewOffset)
-            self.appMain.setCachedParam('liveViewOffset', liveViewOffsetVal)
+            self.app_main.setCachedParam('liveViewOffset', liveViewOffsetVal)
             self.mainWindow.updateEnabledWidgets()
 
         except ValueError:
-            self.ui.liveViewOffsetEdit.setText(str(self.appMain.getCachedParam('liveViewOffset')))
+            self.ui.liveViewOffsetEdit.setText(str(self.app_main.getCachedParam('liveViewOffset')))
         
     def deviceConfigure(self):
 
-        self.mainWindow.executeAsyncCmd('Configuring device ...', self.appMain.deviceConfigure, self.configureDone)
+        self.mainWindow.executeAsyncCmd('Configuring device ...', self.app_main.deviceConfigure, self.configureDone)
         self.mainWindow.updateEnabledWidgets()
 
     def configureDone(self):
 
-        if self.appMain.deviceState == LpdFemGui.DeviceReady:
+        if self.app_main.deviceState == LpdFemGui.DeviceReady:
             self.msgPrint("Device configured OK")
-            if (self.appMain.asicTestingEnabled):
-                self.appMain.mainWindow.testTab.configDeviceSignal.emit("Device configured OK")
+            if (self.app_main.asicTestingEnabled):
+                self.app_main.mainWindow.testTab.configDeviceSignal.emit("Device configured OK")
         else:
             self.msgPrint("Failed to configure device")
-            if (self.appMain.asicTestingEnabled):
-                self.appMain.mainWindow.testTab.configDeviceSignal.emit("Failed to configure device")
+            if (self.app_main.asicTestingEnabled):
+                self.app_main.mainWindow.testTab.configDeviceSignal.emit("Failed to configure device")
             
         self.mainWindow.updateEnabledWidgets()
         
     def deviceRun(self):
         
-        if (self.appMain.receiveDataInternally):
+        if (self.app_main.receiveDataInternally):
             # Show live view window if live view enabled
-            if self.appMain.cachedParams['liveViewEnable']:
-                self.appMain.liveViewWindow.show()
+            if self.app_main.cachedParams['liveViewEnable']:
+                self.app_main.liveViewWindow.show()
         
-        self.mainWindow.executeAsyncCmd('Running acquisition ...', self.appMain.deviceRun, self.runDone)
+        self.mainWindow.executeAsyncCmd('Running acquisition ...', self.app_main.deviceRun, self.runDone)
         self.mainWindow.updateEnabledWidgets()
                 
     def runDone(self):
         
-        if self.appMain.deviceState == LpdFemGui.DeviceReady:
+        if self.app_main.deviceState == LpdFemGui.DeviceReady:
             self.msgPrint("Acquisition completed")
         else:
             self.msgPrint("Acquisition failed")
@@ -284,11 +284,11 @@ class LpdFemGuiMainDaqTab(object):
     def deviceStop(self):
         
         self.msgPrint("Aborting acquisition ...")
-        self.appMain.abortRun = True
+        self.app_main.abortRun = True
         
     def runStateUpdate(self, deviceState):
 
-        self.ui.runNumber.setText(str(self.appMain.getCachedParam('runNumber')))
+        self.ui.run_number.setText(str(self.app_main.getCachedParam('run_number')))
         
         deviceStateMapping = {  LpdFemGui.DeviceDisconnected : 'Disconn',
                                 LpdFemGui.DeviceIdle         : 'Idle',
@@ -307,23 +307,23 @@ class LpdFemGuiMainDaqTab(object):
         
     def runStatusUpdate(self, runStatus):
         
-        self.ui.frameRx.setText(str(runStatus.framesReceived))
-        self.ui.frameProc.setText(str(runStatus.framesProcessed))
-        self.ui.imageProc.setText(str(runStatus.imagesProcessed))
+        self.ui.frameRx.setText(str(runStatus.frames_received))
+        self.ui.frameProc.setText(str(runStatus.frames_processed))
+        self.ui.imageProc.setText(str(runStatus.images_processed))
         
         kB = 1024.0
         MB = kB*1024.0
         GB = MB*1024.0
         
         dataRxText = ""
-        if (runStatus.dataBytesReceived < kB):
-            dataRxText = "{:d} B".format(runStatus.dataBytesReceived)
-        elif (runStatus.dataBytesReceived < MB):
-            dataRxText = "{:.1f} kB".format(runStatus.dataBytesReceived / kB)
-        elif (runStatus.dataBytesReceived < GB):
-            dataRxText = "{:.1f} MB".format(runStatus.dataBytesReceived / MB)
+        if (runStatus.data_bytes_received < kB):
+            dataRxText = "{:d} B".format(runStatus.data_bytes_received)
+        elif (runStatus.data_bytes_received < MB):
+            dataRxText = "{:.1f} kB".format(runStatus.data_bytes_received / kB)
+        elif (runStatus.data_bytes_received < GB):
+            dataRxText = "{:.1f} MB".format(runStatus.data_bytes_received / MB)
         else:
-            dataRxText = "{:.1f} GB".format(runStatus.dataBytesReceived / GB)
+            dataRxText = "{:.1f} GB".format(runStatus.data_bytes_received / GB)
             
         self.ui.dataRx.setText(dataRxText)
 

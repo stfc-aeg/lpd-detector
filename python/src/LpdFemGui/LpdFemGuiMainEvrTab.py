@@ -12,20 +12,20 @@ class LpdFemGuiMainEvrTab(object):
     Helper class to manage EVR tab in main window
     '''
 
-    def __init__(self, appMain, mainWindow):
+    def __init__(self, app_main, mainWindow):
         '''
         Constructor
         '''
-        self.appMain = appMain
+        self.app_main = app_main
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
         self.msgPrint = self.mainWindow.msgPrint
 
-        # Initialise default fields based on appMain object cached parameters
-        self.ui.evrMcastGroupEdit.setText(self.appMain.getCachedParam('evrMcastGroup'))
-        self.ui.evrMcastPortEdit.setText(str(self.appMain.getCachedParam('evrMcastPort')))
-        self.ui.evrMcastInterfaceEdit.setText(self.appMain.getCachedParam('evrMcastInterface'))
-        if self.appMain.getCachedParam('evrRecordEnable') == True:
+        # Initialise default fields based on app_main object cached parameters
+        self.ui.evrMcastGroupEdit.setText(self.app_main.getCachedParam('evrMcastGroup'))
+        self.ui.evrMcastPortEdit.setText(str(self.app_main.getCachedParam('evrMcastPort')))
+        self.ui.evrMcastInterfaceEdit.setText(self.app_main.getCachedParam('evrMcastInterface'))
+        if self.app_main.getCachedParam('evrRecordEnable') == True:
             self.ui.evrRecordEnableSel.setCheckState(QtCore.Qt.Checked)
         else:
             self.ui.evrRecordEnableSel.setCheckState(QtCore.Qt.Unchecked)
@@ -44,31 +44,31 @@ class LpdFemGuiMainEvrTab(object):
         evrMcastGroup = self.ui.evrMcastGroupEdit.text()
         try:
             evrMcastGroupStr = str(evrMcastGroup)
-            self.appMain.setCachedParam('evrMcastGroup', evrMcastGroupStr)
+            self.app_main.setCachedParam('evrMcastGroup', evrMcastGroupStr)
             self.mainWindow.updateEnabledWidgets()
         except ValueError:
-            self.ui.evrMcastGroupEdit.setText(self.appMain.getCachedParam('evrMcastGroup'))
+            self.ui.evrMcastGroupEdit.setText(self.app_main.getCachedParam('evrMcastGroup'))
 
     def evrMcastPortUpdate(self):
         evrMcastPort = self.ui.evrMcastPortEdit.text()
         try:
             evrMcastPortVal = int(evrMcastPort)
-            self.appMain.setCachedParam('evrMcastPort', evrMcastPortVal)
+            self.app_main.setCachedParam('evrMcastPort', evrMcastPortVal)
             self.mainWindow.updateEnabledWidgets()
         except ValueError:
-            self.ui.evrMcastPortEdit.setText(str(self.appMain.getCachedParam('evrMcastPort')))
+            self.ui.evrMcastPortEdit.setText(str(self.app_main.getCachedParam('evrMcastPort')))
 
     def evrMcastInterfaceUpdate(self):
         evrMcastInterface = self.ui.evrMcastInterfaceEdit.text()
         try:
             evrMcastInterfaceStr = str(evrMcastInterface)
-            self.appMain.setCachedParam('evrMcastInterface', evrMcastInterfaceStr)
+            self.app_main.setCachedParam('evrMcastInterface', evrMcastInterfaceStr)
             self.mainWindow.updateEnabledWidgets()
         except ValueError:
-            self.ui.evrMcastInterfaceEdit.setText(self.appMain.getCachedParam('evrMcastInterface'))
+            self.ui.evrMcastInterfaceEdit.setText(self.app_main.getCachedParam('evrMcastInterface'))
 
     def evrRecordSelect(self, state):
-        self.appMain.setCachedParam('evrRecordEnable', state)
+        self.app_main.setCachedParam('evrRecordEnable', state)
         self.mainWindow.updateEnabledWidgets()
 
 

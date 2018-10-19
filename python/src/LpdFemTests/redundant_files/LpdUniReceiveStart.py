@@ -14,7 +14,7 @@ from PyQt4 import QtGui
 
 class LpdUniReceiveStart():
     
-    def __init__(self, app, femHost, femPort, asicModuleType, numFrames, fileName, debugLevel, viewDivisor, viewOffset):
+    def __init__(self, app, femHost, femPort, asicModuleType, num_frames, fileName, debugLevel, viewDivisor, viewOffset):
 
         #Serves no further function but app (QApplication) must exist before instantiating liveViewWindow
         self.app = app
@@ -30,7 +30,7 @@ class LpdUniReceiveStart():
         # Initialise variables from class arguments if provided
         self.dataListenAddr = femHost
         self.dataListenPort = femPort
-        self.numFrames = numFrames
+        self.num_frames = num_frames
         self.cachedParams['asicModuleType'] = asicModuleType    # 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone, 4=raw data, supermodule
         self.cachedParams['debugLevel'] = debugLevel
         self.cachedParams['liveViewDivisor'] = viewDivisor
@@ -61,7 +61,7 @@ class DataReceiverThread(QtCore.QThread):
         while not self.parentObject.abortRun:
             try:
                 dataReceiver = LpdFemDataReceiver(self.parentObject.liveViewWindow.liveViewUpdateSignal, 
-                                                  self.parentObject.dataListenAddr, self.parentObject.dataListenPort, self.parentObject.numFrames, self.parentObject.cachedParams, self.parentObject)
+                                                  self.parentObject.dataListenAddr, self.parentObject.dataListenPort, self.parentObject.num_frames, self.parentObject.cachedParams, self.parentObject)
             except Exception as e:
                 print "DataReceiverThread ERROR: failed to create data receiver: %s" % e
                 sys.exit()

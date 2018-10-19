@@ -31,7 +31,7 @@ class imagePlot():
         for i in range(yStart, yStop, yStep):
             self.ylist.append(i)
 
-        (imgOffset, timeStamp, runNumber, trainNumber, imageNumber, imageData) = self.obtainImageWithInfo()
+        (imgOffset, timeStamp, run_number, trainNumber, image_number, imageData) = self.obtainImageWithInfo()
 
         # Create the figure and title
         self.fig = plt.figure(1)
@@ -71,7 +71,7 @@ class imagePlot():
         self.ax.set_yticks(self.ylist)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(timeStamp))
-        titleText = 'Run %d Train %d Image %d Module %d : %s' % (runNumber, trainNumber, imageNumber, self.args.module, dateStr)
+        titleText = 'Run %d Train %d Image %d Module %d : %s' % (run_number, trainNumber, image_number, self.args.module, dateStr)
         self.mainTitle.set_text(titleText)
 
         # Add a colour bar

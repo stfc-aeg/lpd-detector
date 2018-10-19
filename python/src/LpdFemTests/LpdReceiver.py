@@ -40,12 +40,12 @@ class LpdFrameObject(object):
         LpdFrameObject - data container class to contain UDP payload and meta data
         (such as timestamps)
     '''
-    def __init__(self, frameNumber):
+    def __init__(self, frame_number):
         # Create an empty byte array (PY3) or string to contain payload of all UDP packets
-        self.rawImageData = b'' if is_python3 else ''
-        self.frameNumber = frameNumber
-        self.timeStampSof = 0.0
-        self.timeStampEof = 0.0
+        self.raw_image_data = b'' if is_python3 else ''
+        self.frame_number = frame_number
+        self.time_stamp_sof = 0.0
+        self.time_stamp_eof = 0.0
         self.processingTime = 0.0
 
 class ReceiveThread(QtCore.QThread):
@@ -60,7 +60,7 @@ class ReceiveThread(QtCore.QThread):
         QtCore.QThread.__init__(self)
         self.rxSignal = rxSignal
 
-        self.packetNumber = -1
+        self.packet_number = -1
         print("Listening to host: %s port: %s.." % (femHost, femPort))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((femHost, femPort))
@@ -134,8 +134,8 @@ class ReceiveThread(QtCore.QThread):
                     print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-") 
                         
             #TODO: Restore this link if frame number coming from fem before absolute?          
-            # frameNumber = train number relative to execution of this software
-            #lpdFrame.frameNumber = frameNumber
+            # frame_number = train number relative to execution of this software
+            #lpdFrame.frame_number = frame_number
             
             if self.first_frm_num == -1:
                 self.first_frm_num = frameNumber
@@ -143,30 +143,30 @@ class ReceiveThread(QtCore.QThread):
             frameNumber = frameNumber - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packetNumber != (self.packetNumber +1):
+            if packetNumber != (self.packet_number +1):
                 
                 # packet numbering not consecutive
-                if packetNumber > self.packetNumber:
+                if packetNumber > self.packet_number:
                     
                     # this packet lost between this packet and the last packet received
-                    print("Warning: Previous packet number: %3i while current packet number: %3i" % (self.packetNumber, packetNumber))
+                    print("Warning: Previous packet number: %3i while current packet number: %3i" % (self.packet_number, packetNumber))
                     #raise Exception
 
             # Update current packet number
-            self.packetNumber = packetNumber
+            self.packet_number = packetNumber
 
             # Timestamp start of frame (when we received first data of train)
             if sof == 1:
 
-                lpdFrame.timeStampSof = time.time()
+                lpdFrame.time_stamp_sof = time.time()
                 # It's the start of a new train, clear any data left from previous train..
-                lpdFrame.rawImageData = b'' if is_python3 else ''                
+                lpdFrame.raw_image_data = b'' if is_python3 else ''                
 
             if eof == 1:
-                lpdFrame.timeStampEof = time.time()
+                lpdFrame.time_stamp_eof = time.time()
             
             # Append current packet data onto raw image omitting trailer info
-            lpdFrame.rawImageData += data[0:-8] 
+            lpdFrame.raw_image_data += data[0:-8] 
             
             lpdFrame.processingTime += time.time() - processingStart
             return eof
@@ -243,7 +243,7 @@ class ImageDisplay(FigureCanvas):
         self.moduleImageSize = self.nrows * self.ncols
 
         # Create an array to contain module's elements
-        self.imageArray = np.zeros(self.moduleImageSize, dtype=np.uint16)
+        self.image_array = np.zeros(self.moduleImageSize, dtype=np.uint16)
         
         # Create hdf file - if HDF5 Library present
         if self.bHDF5:
@@ -261,7 +261,7 @@ class ImageDisplay(FigureCanvas):
                                             maxshape=(None,self.nrows, self.ncols))
             self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
             self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
-            self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+            self.imageNumberDs = self.dataGroup.create_dataset('image_number', (1,), 'uint32', maxshape=(None,))
 
         FigureCanvas.__init__(self, Figure())
     
@@ -330,11 +330,11 @@ class ImageDisplay(FigureCanvas):
 
     def handleFrame(self, lpdFrame):
 
-        # End Of File found, self.rawImageData now contain every pixel of every ASIC (of the complete Quadrant!)
+        # End Of File found, self.raw_image_data now contain every pixel of every ASIC (of the complete Quadrant!)
         if self.bTimeStamp:
             timeX1 = time.time()
         
-        print("Raw Image Data Received: %16i ($%08x)" %(len(lpdFrame.rawImageData), len(lpdFrame.rawImageData)), "(bytes, @%s)" % str( datetime.now())[11:-4], end=' ')
+        print("Raw Image Data Received: %16i ($%08x)" %(len(lpdFrame.raw_image_data), len(lpdFrame.raw_image_data)), "(bytes, @%s)" % str( datetime.now())[11:-4], end=' ')
         if self.bTimeStamp:
             print("Rx time: ", lpdFrame.processingTime)
         else:
@@ -346,7 +346,7 @@ class ImageDisplay(FigureCanvas):
 
         # Simultaneously extract 16 bit words and swap the byte order
         #     eg: ABCD => DCBA
-        self.pixelData = np.fromstring(lpdFrame.rawImageData, dtype=pixelDataType)
+        self.pixelData = np.fromstring(lpdFrame.raw_image_data, dtype=pixelDataType)
     
         if (self.debugLevel > 2) and (self.debugLevel < 8):
             print("Extracted 16 bit words: ", len(self.pixelData), ". Array contents:")
@@ -462,12 +462,12 @@ class ImageDisplay(FigureCanvas):
             # Get the first image of the train
             bNextImageAvailable = self.retrieveImage(imageOffset)
             
-            # The first image, imageArray, has now been stripped from the image
+            # The first image, image_array, has now been stripped from the image
             # Reshape image into pixel array according to module geometry
             try:
-                self.data = self.imageArray.reshape(self.nrows, self.ncols)
+                self.data = self.image_array.reshape(self.nrows, self.ncols)
             except Exception as e:
-                print("handleFrame() failed to reshape imageArray: ", e, "\nExiting..")
+                print("handleFrame() failed to reshape image_array: ", e, "\nExiting..")
                 print("len(self.data),  self.nrows, self.ncols = ", len(self.data),  self.nrows, self.ncols)
                 exit()
 
@@ -592,7 +592,7 @@ class ImageDisplay(FigureCanvas):
                 self.imageDs[fileIndex,...] = self.data
                 
                 self.timeStampDs.resize((fileIndex+1, ))
-                self.timeStampDs[fileIndex] = lpdFrame.timeStampSof
+                self.timeStampDs[fileIndex] = lpdFrame.time_stamp_sof
                 
                 self.trainNumberDs.resize((fileIndex+1, ))
                 self.trainNumberDs[fileIndex] = self.trainNumber
@@ -626,8 +626,8 @@ class ImageDisplay(FigureCanvas):
             # Dummy counter
             self.trainNumber += 1
 
-        # 'Reset' rawImageData variable
-        lpdFrame.rawImageData = lpdFrame.rawImageData[0:0]
+        # 'Reset' raw_image_data variable
+        lpdFrame.raw_image_data = lpdFrame.raw_image_data[0:0]
         if self.bTimeStamp:
             timeX2 = time.time()
             print("Data ordering & displaying time = ",(timeX2 - timeX1))
@@ -699,7 +699,7 @@ class ImageDisplay(FigureCanvas):
         # Check Asic Module type to determine how to process data
         if self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             # Raw data - no not re-order
-            self.imageArray = self.pixelData[imageOffset:imageOffset + self.imageFullLpdSize].reshape(256, 256)
+            self.image_array = self.pixelData[imageOffset:imageOffset + self.imageFullLpdSize].reshape(256, 256)
         else:
             # Not raw data, proceed to reorder data
             numAsicCols = 16
@@ -741,21 +741,21 @@ class ImageDisplay(FigureCanvas):
                 # Super Module - Image now upside down, reverse the order
 #                self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
                 self.imageLpdFullArray[:,:] = self.imageLpdFullArray[:,::-1]
-                self.imageArray = self.imageLpdFullArray.copy()
+                self.image_array = self.imageLpdFullArray.copy()
                 
             elif self.asicModuleType == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
                 
                 #Two Tile
                 # Create array for 2 Tile data; reshape into two dimensional array
-                self.imageArray = np.zeros(self.moduleImageSize, dtype=np.uint16)
-                self.imageArray = self.imageArray.reshape(32, 256)
+                self.image_array = np.zeros(self.moduleImageSize, dtype=np.uint16)
+                self.image_array = self.image_array.reshape(32, 256)
         
                 # Copy the two Tiles that exists in the two tile system
                 try:
                     # LHS Tile located in the second ASIC row, second ASIC column
-                    self.imageArray[0:32, 0:128]   = self.imageLpdFullArray[32:32+32, 256-1:128-1:-1]
+                    self.image_array[0:32, 0:128]   = self.imageLpdFullArray[32:32+32, 256-1:128-1:-1]
                     # RHS Tile located in the seventh ASIC row, second ASIC column
-                    self.imageArray[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
+                    self.image_array[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
                 except Exception as e:
                     print("Error accessing 2 Tile data: ", e)
                     print("imageOffset: ", imageOffset)
