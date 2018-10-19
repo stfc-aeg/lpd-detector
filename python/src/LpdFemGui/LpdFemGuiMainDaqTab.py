@@ -100,7 +100,7 @@ class LpdFemGuiMainDaqTab(object):
 
     def updateEnabledWidgets(self):
         
-        self.ui.run_number.setText(str(self.app_main.getCachedParam('run_number')))
+        self.ui.run_number.setText(str(self.app_main.getCachedParam('runNumber')))
         self.runStateUpdate(self.app_main.deviceState)        
         
     def readoutParamFileSelect(self):
@@ -288,7 +288,7 @@ class LpdFemGuiMainDaqTab(object):
         
     def runStateUpdate(self, deviceState):
 
-        self.ui.run_number.setText(str(self.app_main.getCachedParam('run_number')))
+        self.ui.run_number.setText(str(self.app_main.getCachedParam('runNumber')))
         
         deviceStateMapping = {  LpdFemGui.DeviceDisconnected : 'Disconn',
                                 LpdFemGui.DeviceIdle         : 'Idle',

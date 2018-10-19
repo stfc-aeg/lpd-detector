@@ -23,87 +23,87 @@ bDisplayPlotData = True
 
 class LpdFemDataReceiver():
     
-    def __init__(self, liveViewSignal, runStatusSignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
+    def __init__(self, live_view_signal, run_status_signal, listen_addr, listen_port, num_frames, cached_params, app_main):
         
         try:
                 
-            self.num_frames = numFrames
-            self.appMain = appMain
+            self.num_frames = num_frames
+            self.app_main = app_main
 
             # Create UDP recevier, frame processor and data monitor objects
-            self.udpReceiver = UdpReceiver(listenAddr, listenPort, numFrames)
-            self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal)
-            self.dataMonitor = DataMonitor(self.udpReceiver, self.frameProcessor, runStatusSignal, numFrames)
+            self.udp_receiver = UdpReceiver(listen_addr, listen_port, num_frames)
+            self.frame_processor = FrameProcessor(num_frames, cached_params, live_view_signal)
+            self.data_monitor = DataMonitor(self.udp_receiver, self.frame_processor, run_status_signal, num_frames)
             
             # Create threads to run them in
-            self.udpReceiverThread = QtCore.QThread() 
-            self.frameProcessorThread = QtCore.QThread()
-            self.dataMonitorThread = QtCore.QThread()
+            self.udp_receiver_thread = QtCore.QThread() 
+            self.frame_processor_thread = QtCore.QThread()
+            self.data_monitor_thread = QtCore.QThread()
             
             # Move objects into threads
-            self.udpReceiver.moveToThread(self.udpReceiverThread)
-            self.frameProcessor.moveToThread(self.frameProcessorThread)
-            self.dataMonitor.moveToThread(self.dataMonitorThread)
+            self.udp_receiver.moveToThread(self.udp_receiver_thread)
+            self.frame_processor.moveToThread(self.frame_processor_thread)
+            self.data_monitor.moveToThread(self.data_monitor_thread)
             
             # Connect thread start signal of UDP receiver to receive loop function
-            self.udpReceiverThread.started.connect(self.udpReceiver.receiveLoop)
+            self.udp_receiver_thread.started.connect(self.udp_receiver.receiveLoop)
             
             # Connect data RX signal from UDP receiver to handleDataRx slot in frame processor
-            self.udpReceiver.connect(self.udpReceiver, QtCore.SIGNAL("dataRxSignal"), self.frameProcessor.processFrame)
+            self.udp_receiver.connect(self.udp_receiver, QtCore.SIGNAL("dataRxSignal"), self.frame_processor.processFrame)
                         
             # Connect monitor loop start singal to monitor loop function
-            self.dataMonitorThread.started.connect(self.dataMonitor.monitorLoop)
+            self.data_monitor_thread.started.connect(self.data_monitor.monitorLoop)
             
             # Start data monitor up
-            self.dataMonitorThread.start()
+            self.data_monitor_thread.start()
             
             # Start the frame processor thread up
-            self.frameProcessorThread.start()
+            self.frame_processor_thread.start()
 
             # Start the UDP receiver thread up            
-            self.udpReceiverThread.start()
+            self.udp_receiver_thread.start()
             
         except Exception as e:
             print("LdpFemDataReceiver got exception during initialisation: %s" % e)
         
     def injectTimestampData(self, evrData):
 
-        self.frameProcessor.evrData = evrData
+        self.frame_processor.evr_data = evrData
 
     def awaitCompletion(self):
 
             print("Waiting for frame processing to complete")
-            while self.frameProcessor.framesHandled < self.num_frames and self.appMain.abortRun == False:
+            while self.frame_processor.framesHandled < self.num_frames and self.app_main.abortRun == False:
                 time.sleep(0.1)
             
-            if self.appMain.abortRun:
+            if self.app_main.abortRun:
                 print("Run aborted by user")
-                self.udpReceiver.abortRun()
-                self.dataMonitor.abortRun()
+                self.udp_receiver.abortRun()
+                self.data_monitor.abortRun()
             else:
                 print("Frame processor handled all frames, terminating data receiver threads")
                 
-            self.frameProcessorThread.quit()
-            self.udpReceiverThread.quit()
-            self.dataMonitorThread.quit()
+            self.frame_processor_thread.quit()
+            self.udp_receiver_thread.quit()
+            self.data_monitor_thread.quit()
             
-            self.frameProcessorThread.wait()
-            self.udpReceiverThread.wait()
-            self.dataMonitorThread.wait()
+            self.frame_processor_thread.wait()
+            self.udp_receiver_thread.wait()
+            self.data_monitor_thread.wait()
             
             try:
-                if self.udpReceiver.frameCount > 0:            
-                    print("Average frame UDP receive time : %f secs" % (self.udpReceiver.totalReceiveTime / self.udpReceiver.frameCount))
-                if self.frameProcessor.framesHandled > 0:
-                    print("Average frame processing time  : %f secs" % (self.frameProcessor.totalProcessingTime / self.frameProcessor.framesHandled))
+                if self.udp_receiver.frame_count > 0:            
+                    print("Average frame UDP receive time : %f secs" % (self.udp_receiver.total_receive_time / self.udp_receiver.frame_count))
+                if self.frame_processor.framesHandled > 0:
+                    print("Average frame processing time  : %f secs" % (self.frame_processor.totalProcessingTime / self.frame_processor.framesHandled))
             except Exception as e:
                 print("Got exception%s" % e, file=sys.stderr)
                 
-            self.frameProcessor.cleanUp()
+            self.frame_processor.cleanUp()
 
     def lastDataFile(self):
         
-        return self.frameProcessor.fileName
+        return self.frame_processor.fileName
     
 #    def abortReceived(self):
 #        
@@ -111,26 +111,26 @@ class LpdFemDataReceiver():
         
 class UdpReceiver(QtCore.QObject):
         
-    def __init__(self, listenAddr, listenPort, numFrames):
+    def __init__(self, listen_addr, listen_port, num_frames):
 
         super(UdpReceiver, self).__init__()
         
         # Initialise variables used by processRxData
         self.first_frm_num = -1       
-        self.packetNumber = -1
-        self.frameCount = 0
-        self.num_frames = numFrames
-        self.totalReceiveTime = 0.0
+        self.packet_number = -1
+        self.frame_count = 0
+        self.num_frames = num_frames
+        self.total_receive_time = 0.0
         self.abort = False
         
         # Bind to UDP receive socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((listenAddr, listenPort))
+        self.sock.bind((listen_addr, listen_port))
 
         # Set socket timeout to allow receiver loop to tick and remain responsive to aborts
         self.sock.settimeout(0.5)
         
-        print("UDP Receiver thread listening on address %s port %s" % (listenAddr, listenPort))
+        print("UDP Receiver thread listening on address %s port %s" % (listen_addr, listen_port))
 
     def abortRun(self):
         self.abort = True
@@ -138,21 +138,21 @@ class UdpReceiver(QtCore.QObject):
     def receiveLoop(self):
                     
         try:
-            while self.frameCount < self.num_frames and self.abort == False:
+            while self.frame_count < self.num_frames and self.abort == False:
                 
-                foundEof = 0
-                lpdFrame = LpdFrameContainer(self.frameCount)
+                found_eof = 0
+                lpd_frame = LpdFrameContainer(self.frame_count)
                 
-                while foundEof == 0 and self.abort == False:
+                while found_eof == 0 and self.abort == False:
                     try:
                         stream = self.sock.recv(9000)
-                        foundEof  = self.processRxData(lpdFrame, stream)
-                        if foundEof:
+                        found_eof  = self.processRxData(lpd_frame, stream)
+                        if found_eof:
                             # Complete frame received, transmit frame along with meta data saved in LpdFrameContainer object
-                            #print >> sys.stderr, "Frame %d receive complete" % lpdFrame.frameNumber
-                            self.emit(QtCore.SIGNAL("dataRxSignal"), lpdFrame)
-                            self.frameCount += 1
-                            self.totalReceiveTime += (lpdFrame.timeStampEof - lpdFrame.timeStampSof)
+                            #print >> sys.stderr, "Frame %d receive complete" % lpd_frame.frameNumber
+                            self.emit(QtCore.SIGNAL("dataRxSignal"), lpd_frame)
+                            self.frame_count += 1
+                            self.total_receive_time += (lpd_frame.timeStampEof - lpd_frame.timeStampSof)
                     except socket.timeout:
                         pass
                     
@@ -162,7 +162,7 @@ class UdpReceiver(QtCore.QObject):
             
         #print >> sys.stderr, "Receiver thread completed"
 
-    def processRxData(self, lpdFrame, data):
+    def processRxData(self, lpd_frame, data):
         ''' 
         Processes received data packets, decoding the Train Transfer Protocol information
         to construct completed frames (trains) 
@@ -170,46 +170,46 @@ class UdpReceiver(QtCore.QObject):
 
         try:
             # Extract Trailer information
-            trailerInfo = np.zeros(2, dtype=np.uint32)
-            trailerInfo = np.fromstring(data[-8:], dtype=np.uint32)
+            trailer_info = np.zeros(2, dtype=np.uint32)
+            trailer_info = np.fromstring(data[-8:], dtype=np.uint32)
             
             # Extract train/frame number (the second last 32 bit word from the raw data)
-            frameNumber = trailerInfo[0]
+            frame_number = trailer_info[0]
             # Extract packet number (last 32 bit word)
-            packetNumber = trailerInfo[1] & 0x3FFFFFFF
+            packet_number = trailer_info[1] & 0x3FFFFFFF
             
             # Extract Start Of Frame, End of Frame
-            sof = (trailerInfo[1] >> (31)) & 0x1
-            eof = (trailerInfo[1] >> (30)) & 0x1
+            sof = (trailer_info[1] >> (31)) & 0x1
+            eof = (trailer_info[1] >> (30)) & 0x1
 
             if self.first_frm_num == -1:
-                self.first_frm_num = frameNumber
+                self.first_frm_num = frame_number
                 
-            frameNumber = frameNumber - self.first_frm_num
+            frame_number = frame_number - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packetNumber != (self.packetNumber +1):
+            if packet_number != (self.packet_number +1):
                 # packet numbering not consecutive
-                if packetNumber > self.packetNumber:
+                if packet_number > self.packet_number:
                     # this packet lost between this packet and the last packet received
-                    print("Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packetNumber, packetNumber))
+                    print("Warning: Previous packet number: %3i versus this packet number: %3i" % (self.packet_number, packet_number))
 
             # Update current packet number
-            self.packetNumber = packetNumber
+            self.packet_number = packet_number
 
             # Timestamp start of frame (when we received first data of train)
             if sof == 1:
 
-                lpdFrame.timeStampSof = time.time()
+                lpd_frame.timeStampSof = time.time()
         
                 # It's the start of a new train, clear any data left from previous train..
-                lpdFrame.rawImageData = b'' if is_python3 else ''
+                lpd_frame.rawImageData = b'' if is_python3 else ''
 
             if eof == 1:
-                lpdFrame.timeStampEof = time.time()
+                lpd_frame.timeStampEof = time.time()
             
             # Append current packet data onto raw image omitting trailer info
-            lpdFrame.rawImageData += data[0:-8]
+            lpd_frame.rawImageData += data[0:-8]
             
             return eof
         except Exception as e:
@@ -219,22 +219,22 @@ class UdpReceiver(QtCore.QObject):
 
 class FrameProcessor(QtCore.QObject):
 
-    def __init__(self, numFrames, cachedParams, liveViewSignal):
+    def __init__(self, num_frames, cached_params, live_view_signal):
 
         QtCore.QObject.__init__(self)
         
-        self.num_frames = numFrames
-        self.evrData = None
+        self.num_frames = num_frames
+        self.evr_data = None
         
-        self.runNumber       = cachedParams['runNumber']
-        self.fileWriteEnable = cachedParams['fileWriteEnable']
-        self.dataFilePath    = cachedParams['dataFilePath']
-        self.liveViewEnable  = cachedParams['liveViewEnable']
-        self.liveViewDivisor = cachedParams['liveViewDivisor']
-        self.liveViewOffset  = cachedParams['liveViewOffset']
-        self.asicModuleType  = cachedParams['asicModuleType']
-        self.headersVersion  = cachedParams['headersVersion']
-        self.liveViewSignal  = liveViewSignal
+        self.runNumber       = cached_params['runNumber']
+        self.fileWriteEnable = cached_params['fileWriteEnable']
+        self.dataFilePath    = cached_params['dataFilePath']
+        self.liveViewEnable  = cached_params['liveViewEnable']
+        self.liveViewDivisor = cached_params['liveViewDivisor']
+        self.liveViewOffset  = cached_params['liveViewOffset']
+        self.asicModuleType  = cached_params['asicModuleType']
+        self.headersVersion  = cached_params['headersVersion']
+        self.liveViewSignal  = live_view_signal
         
         self.fileName = None
         
@@ -271,7 +271,7 @@ class FrameProcessor(QtCore.QObject):
         
         # Create HDF file if requested
         if self.fileWriteEnable:            
-            self.createDataFile(cachedParams)           
+            self.createDataFile(cached_params)           
         
    
     def createDataFile(self, cachedParams):
@@ -456,17 +456,17 @@ class FrameProcessor(QtCore.QObject):
     def cleanUp(self):
         
         # If timestamp data has been injected, add to the HDF file structure
-        if self.evrData != None:
-            if len(self.evrData.event) > 0:
+        if self.evr_data != None:
+            if len(self.evr_data.event) > 0:
                 print("Injecting EVR timestamp data into HDF file structure")
                 evrGroup          = self.lpdGroup.create_group('evr')
-                self.evrEvent     = evrGroup.create_dataset('event', (len(self.evrData.event),), 'uint32')
-                self.evrFiducial  = evrGroup.create_dataset('fiducial', (len(self.evrData.fiducial),), 'uint32')
-                self.evrTimestamp = evrGroup.create_dataset('timeStamp', (len(self.evrData.timestamp),), 'float64')
+                self.evrEvent     = evrGroup.create_dataset('event', (len(self.evr_data.event),), 'uint32')
+                self.evrFiducial  = evrGroup.create_dataset('fiducial', (len(self.evr_data.fiducial),), 'uint32')
+                self.evrTimestamp = evrGroup.create_dataset('timeStamp', (len(self.evr_data.timestamp),), 'float64')
 
-                self.evrEvent[...] = np.array(self.evrData.event)
-                self.evrFiducial[...] = np.array(self.evrData.fiducial)
-                self.evrTimestamp[...] = np.array(self.evrData.timestamp)
+                self.evrEvent[...] = np.array(self.evr_data.event)
+                self.evrFiducial[...] = np.array(self.evr_data.fiducial)
+                self.evrTimestamp[...] = np.array(self.evr_data.timestamp)
             else:
                 print("No EVR timestamp data received during run")
 
@@ -560,8 +560,8 @@ class DataMonitor(QtCore.QObject):
         
         QtCore.QObject.__init__(self)
         
-        self.udpReceiver = udpReceiver
-        self.frameProcessor = frameProcessor
+        self.udp_receiver = udpReceiver
+        self.frame_processor = frameProcessor
         self.updateSignal = updateSignal
         self.num_frames = numFrames
         self.abort = False
@@ -572,15 +572,15 @@ class DataMonitor(QtCore.QObject):
     def monitorLoop(self):
         
         try:
-            while self.frameProcessor.framesHandled < self.num_frames and self.abort == False:
+            while self.frame_processor.framesHandled < self.num_frames and self.abort == False:
                 
-                runStatus = LpdRunStatusContainer(self.udpReceiver.frameCount, self.frameProcessor.framesHandled, 
-                                                self.frameProcessor.imagesWritten, self.frameProcessor.data_bytes_received)
+                runStatus = LpdRunStatusContainer(self.udp_receiver.frame_count, self.frame_processor.framesHandled, 
+                                                self.frame_processor.imagesWritten, self.frame_processor.data_bytes_received)
                 self.updateSignal.emit(runStatus)
                 time.sleep(0.5)
 
-            runStatus = LpdRunStatusContainer(self.udpReceiver.frameCount, self.frameProcessor.framesHandled, 
-                                            self.frameProcessor.imagesWritten, self.frameProcessor.data_bytes_received)
+            runStatus = LpdRunStatusContainer(self.udp_receiver.frame_count, self.frame_processor.framesHandled, 
+                                            self.frame_processor.imagesWritten, self.frame_processor.data_bytes_received)
             self.updateSignal.emit(runStatus)
             
         except Exception as e:
