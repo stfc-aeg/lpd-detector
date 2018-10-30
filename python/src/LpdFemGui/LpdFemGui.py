@@ -74,11 +74,6 @@ class LpdFemGui:
         # Should GUI itself receive fem data?
         self.receiveDataInternally = self.getCachedParam('receiveDataInternally')
 
-#-----
-        # Should ODIN receive fem data?
-        self.receiveDataFromODIN = self.getCachedParam('receiveDataFromODIN')
-#-----
-
         # Create the main window GUI and show it
         self.mainWindow = LpdFemGuiMainWindow(self)
         self.mainWindow.show()
@@ -153,14 +148,12 @@ class LpdFemGui:
                           'asicModuleType'      : 0,
                           'multiRunEnable'    : True,
                           'multiRunNumRuns'   : 123,
-                          'receiveDataInternally': True,   # This should be set to false when receiveDataFromODIN is true
-#-----
-                        'receiveDataFromODIN': False,
+                          'receiveDataInternally': False,   # Data received either internally or from ODIN
+
                         'odinFrCtrlChannel'  : 'tcp://127.0.0.1:5000',
                         'odinFpCtrlChannel'  : 'tcp://127.0.0.1:5004',
                         # TODO: Plan file structure for odinDataConfigFile
                         'odinDataConfigFile' : self.default_config_path + '/odin_data_lpd_config.json',
-#-----
                          }
 
         # List of parameter names that don't need to force a system reconfigure
@@ -436,6 +429,7 @@ class LpdFemGui:
                     self.device_state = LpdFemGui.DevicdeIdle
                     return
 
+#-------------------------------------------------------------
             if self.receiveDataInternally:
                 # Create an LpdFemDataReceiver instance to launch readout threads
                 try:
@@ -445,16 +439,17 @@ class LpdFemGui:
                     self.msgPrint("ERROR: failed to create data receiver: %s" % e)
                     self.device_state = LpdFemGui.DeviceIdle
                     return
-
-#-------------------------------------------------------------
-            if self.receiveDataFromODIN:
-                # Launch ODIN LPD Frame Receiver, Proccesor and Data Monitor
+            else:
+                # Launch ODIN LPD Frame Receiver, Proccesor and Data Monitor using ODIN data
                 try:
+                    # One-off configuration per session
                     if self.odin_data_receiver is None:
                         self.odin_data_receiver = LpdFemOdinDataReceiver(self.mainWindow.run_status_signal, self.num_frames, self)
                     
                     num_frames = self.getCachedParam('numTrains')
                     num_images = self.loaded_config['numberImages']
+                    
+                    # Configuration for every run
                     self.odin_data_receiver.configure(num_frames, num_images)
                 except Exception as e:
                     self.msgPrint("ERROR: failed to create/configure ODIN data receiver: %s" % e)
@@ -491,8 +486,7 @@ class LpdFemGui:
                     timestamp_recorder.awaitCompletion()
                     if self.receiveDataInternally:
                         data_receiver.injectTimestampData(timestamp_recorder.evr_data)
-#------------------------------------------------------------------------------------
-                    if self.receiveDataFromODIN:
+                    else:   # Receiving data from ODIN
                         self.odin_data_receiver.injectTimestampData(timestamp_recorder.evr_data)
 #------------------------------------------------------------------------------------
                 except Exception as e:
@@ -508,9 +502,7 @@ class LpdFemGui:
 
                 # Delete dataReceiver or multi-run produces no data for even runs
                 del data_receiver
-
-#------------------
-            if self.receiveDataFromODIN:
+            else:
                 # Wait for the data receiver threads to complete
                 try:
                     self.odin_data_receiver.awaitCompletion()
