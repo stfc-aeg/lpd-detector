@@ -18,6 +18,8 @@
     "femAsicPixelFeedbackOverride":1,
     "femPort":"6969",
     "fileWriteEnable":true,
+    "frameProcessorConfigFile":"/u/xfu59478/develop/projects/lpd/install/config/data/fp_log4cxx.xml",
+    "frameReceiverConfigFile":"/u/xfu59478/develop/projects/lpd/install/config/data/fr_log4cxx.xml",
     "frameReceiverProcessorLocation":"/u/xfu59478/develop/projects/lpd/install/bin",
     "headersVersion":3,
     "hvBiasVolts":250.0,

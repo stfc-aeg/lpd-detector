@@ -153,8 +153,7 @@ class LpdFemGui:
                         'odinFrCtrlChannel'  : 'tcp://127.0.0.1:5000',
                         'odinFpCtrlChannel'  : 'tcp://127.0.0.1:5004',
                         # TODO: Plan file structure for odinDataConfigFile
-                        'odinDataConfigFile' : self.default_config_path + '/odin_data_lpd_config.json',
-                        'frameReceiverProcessorLocation' : '/u/xfu59478/develop/projects/lpd/install/bin'
+                        'odinDataConfigFile' : self.default_config_path + '/odin_data_lpd_config.json'
                          }
 
         # List of parameter names that don't need to force a system reconfigure

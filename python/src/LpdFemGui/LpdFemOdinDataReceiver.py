@@ -46,13 +46,16 @@ class LpdFemOdinDataReceiver():
             self.app_main = app_main
 
             print("Launching Frame Receiver and Frame Processor")
-            # For this to work, pwd when opening GUI must be lpd-fem/LpdFemGui/
-            fr_fp_location = "../../../../install/"
-            start_frame_receiver = Popen(["./bin/frameReceiver", "--debug", "2", "--logconfig", "config/data/fr_log4cxx.xml"],
-                                         cwd=fr_fp_location)
-            
-            start_frame_processor = Popen(["./bin/frameProcessor", "--logconfig", "config/data/fp_log4cxx.xml"],
-                                          cwd=fr_fp_location)
+            # Getting location of FR & FP and paths of their config files
+            fr_fp_location = self.app_main.getCachedParam("frameReceiverProcessorLocation")
+            frame_receiver_config_path = self.app_main.getCachedParam("frameReceiverConfigFile")
+            frame_processor_config_path = self.app_main.getCachedParam("frameProcessorConfigFile")
+
+            # Using Subprocess to launch the frame receiver and frame processor
+            start_frame_receiver = Popen(["./frameReceiver", "--debug", "2", "--logconfig", 
+                                          frame_receiver_config_path], cwd=fr_fp_location)
+            start_frame_processor = Popen(["./frameProcessor", "--logconfig", 
+                                           frame_processor_config_path], cwd=fr_fp_location)
 
             # Create the appropriate IPC channels for receiver and proccessor
             print("Connecting to Frame Receiver's IPC Control Channel")
