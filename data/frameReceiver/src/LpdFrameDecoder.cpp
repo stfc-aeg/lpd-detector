@@ -8,6 +8,8 @@
  */
 
 #include "LpdFrameDecoder.h"
+#include "logging.h"
+#include "version.h"
 #include "gettime.h"
 #include <iostream>
 #include <iomanip>
@@ -42,6 +44,10 @@ LpdFrameDecoder::LpdFrameDecoder() :
 {
   // Allocate buffers for packet trailer, dropped frames and scratched packets
   dropped_frame_buffer_.reset(new uint8_t[incoming_frame_size_]);
+
+  this->logger_ = Logger::getLogger("FR.LpdDecoderPlugin");
+  LOG4CXX_INFO(logger_, "LpdFrameDecoder version " << this->get_version_long() << " loaded");
+
 }
 
 //! Destructor for LpdFrameDecoder
@@ -49,6 +55,32 @@ LpdFrameDecoder::LpdFrameDecoder() :
 LpdFrameDecoder::~LpdFrameDecoder()
 {
 }
+
+int LpdFrameDecoder::get_version_major()
+{
+  return ODIN_DATA_VERSION_MAJOR;
+}
+
+int LpdFrameDecoder::get_version_minor()
+{
+  return ODIN_DATA_VERSION_MINOR;
+}
+
+int LpdFrameDecoder::get_version_patch()
+{
+  return ODIN_DATA_VERSION_PATCH;
+}
+
+std::string LpdFrameDecoder::get_version_short()
+{
+  return ODIN_DATA_VERSION_STR_SHORT;
+}
+
+std::string LpdFrameDecoder::get_version_long()
+{
+  return ODIN_DATA_VERSION_STR;
+}
+
 
 //! Initialise the frame decoder.
 //!
