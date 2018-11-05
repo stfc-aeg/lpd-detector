@@ -27,11 +27,18 @@ b_display_plot_data = True
 
 
 class LpdFemOdinDataReceiver():
+    """
+    This object is used when the data is coming from ODIN (as opposed to internally). This object 
+    is recycled throughout the lifecycle of the GUI session (everything in __init__() )
+    """
 
     MESSAGE_ID_MAX = 2**32
     _msg_id = 0
 
     def __init__(self, run_status_signal, num_frames, app_main):
+        """ This is executed on the first run of each GUI session - this object is retained 
+        throughout the lifecycle of the session.
+        """
 
         try:
             self.run_status_signal = run_status_signal
@@ -59,6 +66,9 @@ class LpdFemOdinDataReceiver():
             print("LdpFemOdinDataReceiver got exception during initialisation: %s" % e)
             
     def configure(self, num_frames, num_images):
+        ''' Executed at the start of every run to do a number of things including creating and 
+            starting the data monitor thread.
+        '''
         try:
             self.num_frames = num_frames
 
@@ -200,17 +210,22 @@ class LpdFemOdinDataReceiver():
         return reply
     
     def do_shutdown_cmd(self, channel):
+        ''' Sends a shutdown command to the channel that's passed
+        '''
         shutdown_msg = IpcMessage('cmd', 'shutdown')
         channel.send(shutdown_msg.encode())
         self.await_response(channel)
         
     def shutdown_frame_receiver_processor(self):
-        # Used when GUI is closed to stop FR & FP processes 
+        ''' Used when GUI is closed to stop FR & FP processes
+        ''' 
         print("Sending shutdown command to frame receiver and frame processor")
         self.do_shutdown_cmd(self.fr_ctrl_channel)
         self.do_shutdown_cmd(self.fp_ctrl_channel)
     
     def set_file_writing(self, enable):
+        ''' Enables or disables file writing (typically once a run has finished)
+        '''
         self.config_processor['hdf']['frames'] = self.num_frames
         self.config_processor['hdf']['write'] = enable
 
