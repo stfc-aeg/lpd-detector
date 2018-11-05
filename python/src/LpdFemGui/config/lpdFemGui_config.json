@@ -18,6 +18,7 @@
     "femAsicPixelFeedbackOverride":1,
     "femPort":"6969",
     "fileWriteEnable":true,
+    "frameReceiverProcessorLocation":"/u/xfu59478/develop/projects/lpd/install/bin",
     "headersVersion":3,
     "hvBiasVolts":250.0,
     "liveViewDivisor":180,
