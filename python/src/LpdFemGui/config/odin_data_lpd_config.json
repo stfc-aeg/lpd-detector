@@ -24,6 +24,7 @@
       },
       "hdf":
       {
+      	"master": "data",
         "frames": 0,
 		"write": true,
 		"file":

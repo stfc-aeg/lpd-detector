@@ -82,15 +82,10 @@ class LpdFemOdinDataReceiver():
                 self.config_receiver = self.odin_data_config['receiver_default_config']
                 self.config_processor = self.odin_data_config['processor_default_config']
                 self.config_processor_plugins = self.odin_data_config['processor_plugins']
-
-            # Set number of expected number of datasets to:
-                # (Expected number of images) * (Expected number of datasets per image) + 1
-                # The +1 is to prevent closing the file as soon as the first dataset of the last images is written,
-                # allowing the rest time to arrive before closing the file
-                
-            total_num_images = (self.num_frames * num_images)
-            num_datasets = len(self.config_processor['hdf']['dataset']) 
-            self.config_processor['hdf']['frames'] = ((total_num_images * num_datasets) + 1)
+            
+            # Set number of expected frames based on the master dataset (dataset containing the data)
+            # +1 is required to ensure all data is written
+            self.config_processor['hdf']['frames'] = (self.num_frames * num_images) + 1
             
             # Set path and filename of output file
             print("Setting Path & Filename of Output File")
