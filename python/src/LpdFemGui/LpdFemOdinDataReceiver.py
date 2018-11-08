@@ -217,10 +217,12 @@ class LpdFemOdinDataReceiver():
     def shutdown_frame_receiver_processor(self):
         ''' Used when GUI is closed to stop FR & FP processes
         ''' 
-        print("Sending shutdown command to frame receiver and frame processor")
+        print("Shutting down frame receiver and frame processor")
         self.do_shutdown_cmd(self.fr_ctrl_channel)
-        self.do_shutdown_cmd(self.fp_ctrl_channel)
-    
+
+        # Frame processor requires a shutdown config request to be sent
+        self.send_config_msg(self.fp_ctrl_channel, {'shutdown': True})
+        
     def set_file_writing(self, enable):
         ''' Enables or disables file writing (typically once a run has finished)
         '''
