@@ -53,11 +53,18 @@
             "dims": [1]
           }
         }
+      },
+      "live_view":
+      {
+        "frame_frequency": 1,
+        "per_second": 0,
+        "live_view_socket_addr": "tcp://127.0.0.1:5020",
+        "dataset_name": "data"
       }
     },
     "processor_plugins":
     [
-        {  
+        {
             "plugin": {
                 "load": {
                     "index": "hdf",
@@ -76,6 +83,15 @@
             }
         },
         {
+        	"plugin": {
+                "load": {
+                    "index": "live_view",
+                    "name": "LiveViewPlugin",
+                    "library": "/u/xfu59478/develop/projects/lpd/install/lib/libLiveViewPlugin.so"
+                }
+            }
+        },
+        {
             "plugin": {
                 "connect": {
                     "index": "lpd",
@@ -87,6 +103,14 @@
             "plugin": {
                 "connect": {
                     "index": "hdf",
+                    "connection": "lpd"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "connect": {
+                    "index": "live_view",
                     "connection": "lpd"
                 }
             }
