@@ -33,12 +33,12 @@
 		  "name": "test.hdf5"
 		},
         "dataset":
-        {
-          "data" :
+        {  
+          "frame_num" :
           {
             "cmd": "create",
-            "datatype": 1,
-            "dims": [256, 256]       
+            "datatype": 2,
+            "dims": [1]
           },
           "img_num" :
           {
@@ -46,11 +46,11 @@
             "datatype": 2,
             "dims": [1]
           },
-          "frame_num" :
+          "data" :
           {
             "cmd": "create",
-            "datatype": 2,
-            "dims": [1]
+            "datatype": 1,
+            "dims": [256, 256]       
           }
         }
       },

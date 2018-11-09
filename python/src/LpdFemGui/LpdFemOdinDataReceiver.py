@@ -83,9 +83,9 @@ class LpdFemOdinDataReceiver():
                 self.config_processor = self.odin_data_config['processor_default_config']
                 self.config_processor_plugins = self.odin_data_config['processor_plugins']
             
-            # Set number of expected frames based on the master dataset (dataset containing the data)
-            # +1 is required to ensure all data is written
-            self.config_processor['hdf']['frames'] = (self.num_frames * num_images) + 1
+            # Set number of expected frames based on the master dataset (dataset containing the data, 
+            # as defined in odin_data_lpd_config.json)
+            self.config_processor['hdf']['frames'] = (self.num_frames * num_images)
             
             # Set path and filename of output file
             print("Setting Path & Filename of Output File")
