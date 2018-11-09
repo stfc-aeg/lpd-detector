@@ -276,24 +276,6 @@ namespace FrameProcessor
         // Set the frame image to the reordered image buffer if appropriate
         if (reordered_image)
         {
-          // Pixel Data Dataset
-          dimensions_t dims_data(2);
-          dims_data[0] = dims_x;
-          dims_data[1] = dims_y;
-
-          boost::shared_ptr<Frame> data_frame;
-          data_frame = boost::shared_ptr<Frame>(new Frame("data"));
-
-          data_frame->set_frame_number(image_counter_);
-          data_frame->set_dimensions(dims_data);
-
-          void * output_data_ptr = static_cast<void*>(reordered_image);
-          data_frame->copy_data(output_data_ptr, Lpd::image_size);
-
-          LOG4CXX_TRACE(logger_, "Pushing data dataset.");
-          this->push(data_frame);
-
-
           // Frame Number Dataset
           dimensions_t dims_frame(1);
           dims_frame[0] = 1;
@@ -303,6 +285,7 @@ namespace FrameProcessor
 
           frame_num_frame->set_frame_number(image_counter_);
           frame_num_frame->set_dimensions(dims_frame);
+          frame_num_frame->set_data_type(raw_32bit);
 
           frame_num_frame->copy_data(&(hdr_ptr->frame_number), sizeof(hdr_ptr->frame_number));
 
@@ -319,11 +302,30 @@ namespace FrameProcessor
 
           img_num_frame->set_frame_number(image_counter_);
           img_num_frame->set_dimensions(dims_img);
+          img_num_frame->set_data_type(raw_32bit);
 
           img_num_frame->copy_data(&image, sizeof(image));
 
           LOG4CXX_TRACE(logger_, "Pushing img_num dataset - " << image);
           this->push(img_num_frame);
+
+          // Pixel Data Dataset
+          dimensions_t dims_data(2);
+          dims_data[0] = dims_x;
+          dims_data[1] = dims_y;
+
+          boost::shared_ptr<Frame> data_frame;
+          data_frame = boost::shared_ptr<Frame>(new Frame("data"));
+
+          data_frame->set_frame_number(image_counter_);
+          data_frame->set_dimensions(dims_data);
+          data_frame->set_data_type(raw_16bit);
+
+          void * output_data_ptr = static_cast<void*>(reordered_image);
+          data_frame->copy_data(output_data_ptr, Lpd::image_size);
+
+          LOG4CXX_TRACE(logger_, "Pushing data dataset.");
+          this->push(data_frame);
 
         }
         image_counter_++;
