@@ -10,7 +10,7 @@ from FemApi.FemConfig import *
 from LpdReadoutConfig import *
 from persistentDict import *
 from ServoShutter import *
-import os
+import os, time
 
 #-----
 from odin_data.ipc_channel import IpcChannel, IpcChannelException
@@ -540,6 +540,7 @@ def main():
     finally:
         if lpd_fem_gui.odin_data_receiver is not None:
             lpd_fem_gui.odin_data_receiver.shutdown_frame_receiver_processor()
+            time.sleep(1.5)
 
 if __name__ == '__main__':
     main()
