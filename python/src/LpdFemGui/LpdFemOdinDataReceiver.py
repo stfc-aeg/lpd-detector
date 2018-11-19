@@ -10,7 +10,7 @@ from LpdFemClient.LpdFemClient import LpdFemClient
 from LpdFemGui import *
 from LpdFemMetadataWriter import *
 
-import os, sys, time, socket, json, h5py
+import os, sys, time, socket, json, h5py, zmq
 import numpy as np
 from PyQt4 import QtCore
 
@@ -144,6 +144,18 @@ class LpdFemOdinDataReceiver():
             print("Starting Data Monitor Thread")
             self.data_monitor_thread.started.connect(self.data_monitor.monitorLoop)
             self.data_monitor_thread.start()
+            
+            # Create live view receiver object and thread, then move object into thread
+            print("Creating Live View Receiver Thread")
+            self.live_view_receiver = LiveViewReceiver(self)
+            self.live_view_receiver_thread = QtCore.QThread()
+            self.live_view_receiver.moveToThread(self.live_view_receiver_thread)
+            
+            # Start the thread and connect start signal to receive_data()
+            print("Starting Live View Receiver Thread")
+            self.live_view_receiver_thread.started.connect(self.live_view_receiver.receive_data)
+            self.live_view_receiver_thread.start()
+            
         except Exception as e:
             print("LdpFemOdinDataReceiver got exception during configuration: %s" % e)
 
@@ -318,3 +330,44 @@ class OdinDataMonitor(QtCore.QObject):
 
         except Exception as e:
             print("Got exception in odin data monitor loop:%s" % e, file=sys.stderr)
+            
+class LiveViewReceiver(QtCore.QObject):
+
+    def __init__(self, parent):
+        QtCore.QObject.__init__(self)
+        self.parent = parent
+        self.app_main = parent.app_main
+    
+    def receive_data(self):
+        try:
+            # Variables with preset values for later in the function
+            endpoint_url = "tcp://127.0.0.1:5020"
+            timeout = 1000
+            data_polling = True
+            
+            context = zmq.Context()
+            socket = context.socket(zmq.SUB)
+            socket.setsockopt(zmq.SUBSCRIBE, "")
+            socket.connect(endpoint_url)
+            
+            # Create poller and register socket with the poller
+            poller = zmq.Poller()
+            poller.register(socket)
+            
+            while data_polling is True:
+                socks = dict(poller.poll(timeout))
+                
+                if socket in socks and socks[socket] == zmq.POLLIN:
+                    header = socket.recv_json()
+                    msg = socket.recv()
+                    
+                    if header['frame_num'] % 20 == 0:
+                        print("[Socket] received header: " + repr(header))
+                        print("Received body of length: {}".format(len(msg)))
+                else:
+                    # Timed out, break out of loop
+                    data_polling = False
+                    
+            print("Left polling loop")
+        except Exception as e:
+            print("Got exception when receiving data using ZeroMQ:%s" % e)
