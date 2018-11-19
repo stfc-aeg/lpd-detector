@@ -263,11 +263,9 @@ class LpdFemGuiMainDaqTab(object):
         self.mainWindow.updateEnabledWidgets()
         
     def deviceRun(self):
-        
-        if (self.app_main.receiveDataInternally):
-            # Show live view window if live view enabled
-            if self.app_main.cached_params['liveViewEnable']:
-                self.app_main.live_view_window.show()
+        # Show live view window if live view enabled
+        if self.app_main.cached_params['liveViewEnable']:
+            self.app_main.live_view_window.show()
         
         self.mainWindow.executeAsyncCmd('Running acquisition ...', self.app_main.deviceRun, self.runDone)
         self.mainWindow.updateEnabledWidgets()
