@@ -360,10 +360,13 @@ class LiveViewReceiver(QtCore.QObject):
                 if socket in socks and socks[socket] == zmq.POLLIN:
                     header = socket.recv_json()
                     msg = socket.recv()
+                    array = np.fromstring(msg, dtype=header['dtype'])
+                    frame_data = array.reshape([int(header["shape"][0]), int(header["shape"][1])])
                     
                     if header['frame_num'] % 20 == 0:
                         print("[Socket] received header: " + repr(header))
                         print("Received body of length: {}".format(len(msg)))
+                        print(frame_data)
                 else:
                     # Timed out, break out of loop
                     data_polling = False
@@ -371,3 +374,8 @@ class LiveViewReceiver(QtCore.QObject):
             print("Left polling loop")
         except Exception as e:
             print("Got exception when receiving data using ZeroMQ:%s" % e)
+            
+            
+            
+            
+            
