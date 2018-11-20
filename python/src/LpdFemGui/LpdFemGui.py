@@ -444,7 +444,7 @@ class LpdFemGui:
                 try:
                     # One-off configuration per session
                     if self.odin_data_receiver is None:
-                        self.odin_data_receiver = LpdFemOdinDataReceiver(self.mainWindow.run_status_signal, self.num_frames, self)
+                        self.odin_data_receiver = LpdFemOdinDataReceiver(self.mainWindow.run_status_signal, self.num_frames, self, self.live_view_window.liveViewUpdateSignal)
                     
                     num_frames = self.getCachedParam('numTrains')
                     num_images = self.loaded_config['numberImages']

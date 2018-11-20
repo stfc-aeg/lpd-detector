@@ -35,7 +35,7 @@ class LpdFemOdinDataReceiver():
     MESSAGE_ID_MAX = 2**32
     _msg_id = 0
 
-    def __init__(self, run_status_signal, num_frames, app_main):
+    def __init__(self, run_status_signal, num_frames, app_main, live_view_signal):
         """ This is executed on the first run of each GUI session - this object is retained 
         throughout the lifecycle of the session.
         """
@@ -44,6 +44,7 @@ class LpdFemOdinDataReceiver():
             self.run_status_signal = run_status_signal
             self.num_frames = num_frames
             self.app_main = app_main
+            self.live_view_signal = live_view_signal
 
             print("Launching Frame Receiver and Frame Processor")
             # Getting location of FR & FP and paths of their config files
@@ -145,16 +146,17 @@ class LpdFemOdinDataReceiver():
             self.data_monitor_thread.started.connect(self.data_monitor.monitorLoop)
             self.data_monitor_thread.start()
             
-            # Create live view receiver object and thread, then move object into thread
-            print("Creating Live View Receiver Thread")
-            self.live_view_receiver = LiveViewReceiver(self)
-            self.live_view_receiver_thread = QtCore.QThread()
-            self.live_view_receiver.moveToThread(self.live_view_receiver_thread)
-            
-            # Start the thread and connect start signal to receive_data()
-            print("Starting Live View Receiver Thread")
-            self.live_view_receiver_thread.started.connect(self.live_view_receiver.receive_data)
-            self.live_view_receiver_thread.start()
+            if self.app_main.getCachedParam("liveViewEnable"):
+                # Create live view receiver object and thread, then move object into thread
+                print("Creating Live View Receiver Thread")
+                self.live_view_receiver = LiveViewReceiver(self, self.live_view_signal)
+                self.live_view_receiver_thread = QtCore.QThread()
+                self.live_view_receiver.moveToThread(self.live_view_receiver_thread)
+                
+                # Start the thread and connect start signal to receive_data()
+                print("Starting Live View Receiver Thread")
+                self.live_view_receiver_thread.started.connect(self.live_view_receiver.receive_data)
+                self.live_view_receiver_thread.start()
             
         except Exception as e:
             print("LdpFemOdinDataReceiver got exception during configuration: %s" % e)
@@ -333,10 +335,19 @@ class OdinDataMonitor(QtCore.QObject):
             
 class LiveViewReceiver(QtCore.QObject):
 
-    def __init__(self, parent):
+    def __init__(self, parent, live_view_signal):
         QtCore.QObject.__init__(self)
+                
         self.parent = parent
         self.app_main = parent.app_main
+        self.live_view_signal = live_view_signal
+        
+        self.live_view_divisor = parent.app_main.getCachedParam("liveViewDivisor")
+        self.live_view_offset = parent.app_main.getCachedParam("liveViewOffset")
+        self.run_number = parent.app_main.getCachedParam("runNumber")
+        self.num_trains = parent.app_main.getCachedParam("numTrains")
+        
+        self.fp_ctrl_channel = parent.fp_ctrl_channel
     
     def receive_data(self):
         try:
@@ -344,6 +355,7 @@ class LiveViewReceiver(QtCore.QObject):
             endpoint_url = "tcp://127.0.0.1:5020"
             timeout = 1000
             data_polling = True
+            current_image = 0
             
             context = zmq.Context()
             socket = context.socket(zmq.SUB)
@@ -354,6 +366,7 @@ class LiveViewReceiver(QtCore.QObject):
             poller = zmq.Poller()
             poller.register(socket)
             
+            # Polling loop - active while data is being sent via ZMQ
             while data_polling is True:
                 socks = dict(poller.poll(timeout))
                 
@@ -361,12 +374,30 @@ class LiveViewReceiver(QtCore.QObject):
                     header = socket.recv_json()
                     msg = socket.recv()
                     array = np.fromstring(msg, dtype=header['dtype'])
-                    frame_data = array.reshape([int(header["shape"][0]), int(header["shape"][1])])
+                    frame_data = array.reshape([int(header['shape'][0]), int(header['shape'][1])])
                     
+                    # 10 needs to be changed for a variable containing number of images in a frame
+                    if header['frame_num'] % 10 == 0:
+                        current_image = 0
+
+                    # Signal live view update at appropriate rate if enabled
+                    if (header['frame_num'] - self.live_view_offset) % self.live_view_divisor == 0:
+                        try:
+                            reply = self.parent.send_status_cmd(self.fp_ctrl_channel)
+                            if reply is not None:
+                                frames_processed = reply.attrs['params']['lpd']['frames_processed']
+                        except Exception as e:
+                            print("Got exception requesting status from frame proccessor: %s" % e, file=sys.stderr)
+                        
+                        lpd_image = LpdImageContainer(self.run_number, frames_processed, current_image)
+                        lpd_image.image_array = frame_data.copy()
+                        self.live_view_signal.emit(lpd_image)
+                        
                     if header['frame_num'] % 20 == 0:
-                        print("[Socket] received header: " + repr(header))
+                        print("[Socket] received header of frame number: {}".format(header['frame_num']))
                         print("Received body of length: {}".format(len(msg)))
-                        print(frame_data)
+                    
+                    current_image += 1     
                 else:
                     # Timed out, break out of loop
                     data_polling = False
