@@ -132,7 +132,8 @@ class LpdFemOdinDataReceiver():
                     
                 request_number += 1
                 if(request_number > timeout_attempts):
-                    break 
+                    raise Exception("Handshake between frame receiver and frame processor has timed out")
+                    break
                 time.sleep(0.2)
       
             # Create data monitor object and thread then move object into thread
