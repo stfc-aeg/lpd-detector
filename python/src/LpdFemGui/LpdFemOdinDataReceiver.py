@@ -358,6 +358,15 @@ class LiveViewReceiver(QtCore.QObject):
             data_polling = True
             current_image = 0
             
+            try:
+                # Get value from previous runs in order to subtract them from current
+                reply = self.parent.send_status_cmd(self.fp_ctrl_channel)
+                
+                if reply is not None:
+                    frames_already_processed = reply.attrs['params']['lpd']['frames_processed']
+            except Exception as e:
+                print("Got exception requesting status from frame processor: %s" % e, file=sys.stderr)
+            
             context = zmq.Context()
             socket = context.socket(zmq.SUB)
             socket.setsockopt(zmq.SUBSCRIBE, "")
@@ -386,7 +395,8 @@ class LiveViewReceiver(QtCore.QObject):
                         try:
                             reply = self.parent.send_status_cmd(self.fp_ctrl_channel)
                             if reply is not None:
-                                frames_processed = reply.attrs['params']['lpd']['frames_processed']
+                                # Calculation - amount prior to this run to give total for this run only
+                                frames_processed = reply.attrs['params']['lpd']['frames_processed'] - frames_already_processed
                         except Exception as e:
                             print("Got exception requesting status from frame proccessor: %s" % e, file=sys.stderr)
                         
