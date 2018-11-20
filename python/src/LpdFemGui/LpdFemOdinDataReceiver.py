@@ -404,7 +404,7 @@ class LiveViewReceiver(QtCore.QObject):
                         lpd_image.image_array = frame_data.copy()
                         self.live_view_signal.emit(lpd_image)
                         
-                    if header['frame_num'] % 20 == 0:
+                    if header['frame_num'] % 40 == 0:
                         print("[Socket] received header of frame number: {}".format(header['frame_num']))
                         print("Received body of length: {}".format(len(msg)))
                     
