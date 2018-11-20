@@ -150,7 +150,7 @@ class LpdFemOdinDataReceiver():
             if self.app_main.getCachedParam("liveViewEnable"):
                 # Create live view receiver object and thread, then move object into thread
                 print("Creating Live View Receiver Thread")
-                self.live_view_receiver = LiveViewReceiver(self, self.live_view_signal)
+                self.live_view_receiver = LiveViewReceiver(self, self.live_view_signal, num_images)
                 self.live_view_receiver_thread = QtCore.QThread()
                 self.live_view_receiver.moveToThread(self.live_view_receiver_thread)
                 
@@ -336,12 +336,13 @@ class OdinDataMonitor(QtCore.QObject):
             
 class LiveViewReceiver(QtCore.QObject):
 
-    def __init__(self, parent, live_view_signal):
+    def __init__(self, parent, live_view_signal, num_images):
         QtCore.QObject.__init__(self)
                 
         self.parent = parent
         self.app_main = parent.app_main
         self.live_view_signal = live_view_signal
+        self.num_images = num_images
         
         self.live_view_divisor = parent.app_main.getCachedParam("liveViewDivisor")
         self.live_view_offset = parent.app_main.getCachedParam("liveViewOffset")
@@ -386,8 +387,7 @@ class LiveViewReceiver(QtCore.QObject):
                     array = np.fromstring(msg, dtype=header['dtype'])
                     frame_data = array.reshape([int(header['shape'][0]), int(header['shape'][1])])
                     
-                    # 10 needs to be changed for a variable containing number of images in a frame
-                    if header['frame_num'] % 10 == 0:
+                    if header['frame_num'] % self.num_images == 0:
                         current_image = 0
 
                     # Signal live view update at appropriate rate if enabled
