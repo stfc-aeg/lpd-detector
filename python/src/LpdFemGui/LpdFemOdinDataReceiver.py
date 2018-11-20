@@ -395,7 +395,6 @@ class LiveViewReceiver(QtCore.QObject):
                         try:
                             reply = self.parent.send_status_cmd(self.fp_ctrl_channel)
                             if reply is not None:
-                                # Calculation - amount prior to this run to give total for this run only
                                 frames_processed = reply.attrs['params']['lpd']['frames_processed'] - frames_already_processed
                         except Exception as e:
                             print("Got exception requesting status from frame proccessor: %s" % e, file=sys.stderr)
