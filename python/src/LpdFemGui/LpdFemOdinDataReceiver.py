@@ -360,14 +360,14 @@ class LiveViewReceiver(QtCore.QObject):
             current_image = 0
             
             try:
-                # Get value from previous runs in order to subtract them from current
-                reply = self.parent.send_status_cmd(self.fp_ctrl_channel)
-                
+                reply = self.parent.send_status_cmd(self.fp_ctrl_channel)    
                 if reply is not None:
+                    # Get value from previous runs in order to subtract them from current
                     frames_already_processed = reply.attrs['params']['lpd']['frames_processed']
             except Exception as e:
                 print("Got exception requesting status from frame processor: %s" % e, file=sys.stderr)
             
+            # Create context, socket, subscriber and connects to endpoint
             context = zmq.Context()
             socket = context.socket(zmq.SUB)
             socket.setsockopt(zmq.SUBSCRIBE, "")
@@ -383,10 +383,14 @@ class LiveViewReceiver(QtCore.QObject):
                 
                 if socket in socks and socks[socket] == zmq.POLLIN:
                     header = socket.recv_json()
+                    # Raw data received from socket
                     msg = socket.recv()
+                    
+                    # Convert raw data into numpy array and reshape based on header
                     array = np.fromstring(msg, dtype=header['dtype'])
                     frame_data = array.reshape([int(header['shape'][0]), int(header['shape'][1])])
                     
+                    # Reset when new frame occurs
                     if header['frame_num'] % self.num_images == 0:
                         current_image = 0
 
@@ -399,17 +403,15 @@ class LiveViewReceiver(QtCore.QObject):
                         except Exception as e:
                             print("Got exception requesting status from frame proccessor: %s" % e, file=sys.stderr)
                         
+                        # Create container containing image array and other data and
+                        # emit these to the live view window
                         lpd_image = LpdImageContainer(self.run_number, frames_processed, current_image)
                         lpd_image.image_array = frame_data.copy()
                         self.live_view_signal.emit(lpd_image)
-                        
-                    if header['frame_num'] % 40 == 0:
-                        print("[Socket] received header of frame number: {}".format(header['frame_num']))
-                        print("Received body of length: {}".format(len(msg)))
                     
                     current_image += 1     
                 else:
-                    # Timed out, break out of loop
+                    # Timed out as there's no more data from the socket, break out of loop
                     data_polling = False
                     
             print("Left polling loop")
