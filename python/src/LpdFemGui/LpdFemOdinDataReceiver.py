@@ -175,6 +175,7 @@ class LpdFemOdinDataReceiver():
                 print("Frame processor handled all frames, terminating data monitor thread")
 
             self.set_file_writing(False)
+            self.live_view_receiver.set_data_polling(False)
 
             # Get path of hdf file for the current run
             file_path = self.config_processor['hdf']['file']['path']
@@ -352,13 +353,22 @@ class LiveViewReceiver(QtCore.QObject):
         self.fp_ctrl_channel = parent.fp_ctrl_channel
         
         self.data_polling = True
+        
+        self.endpoint_url = "tcp://127.0.0.1:5020"
+        # Create context, socket, subscriber and connects to endpoint
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.SUB)
+        self.socket.setsockopt(zmq.SUBSCRIBE, "")
+        self.socket.connect(self.endpoint_url)
+        
+        # Create poller and register socket with the poller
+        self.poller = zmq.Poller()
+        self.poller.register(self.socket)
     
     def receive_data(self):
         try:
             # Variables with preset values for later in the function
-            endpoint_url = "tcp://127.0.0.1:5020"
             timeout = 1000
-            data_polling = True
             current_image = 0
             
             try:
@@ -369,25 +379,15 @@ class LiveViewReceiver(QtCore.QObject):
             except Exception as e:
                 print("Got exception requesting status from frame processor: %s" % e, file=sys.stderr)
             
-            # Create context, socket, subscriber and connects to endpoint
-            context = zmq.Context()
-            socket = context.socket(zmq.SUB)
-            socket.setsockopt(zmq.SUBSCRIBE, "")
-            socket.connect(endpoint_url)
-            
-            # Create poller and register socket with the poller
-            poller = zmq.Poller()
-            poller.register(socket)
-            
             frames_emitted = 0
             # Polling loop - active while data is being sent via ZMQ
             while self.data_polling is True:
-                socks = dict(poller.poll(timeout))
+                socks = dict(self.poller.poll(timeout))
                 
-                if socket in socks and socks[socket] == zmq.POLLIN:
-                    header = socket.recv_json()
+                if socket in socks and socks[self.socket] == zmq.POLLIN:
+                    header = self.socket.recv_json()
                     # Raw data received from socket
-                    msg = socket.recv()
+                    msg = self.socket.recv()
                     
                     # Convert raw data into numpy array and reshape based on header
                     array = np.fromstring(msg, dtype=header['dtype'])
@@ -413,11 +413,10 @@ class LiveViewReceiver(QtCore.QObject):
                         self.live_view_signal.emit(lpd_image)
                         
                         frames_emitted += 1
-                    
+                        
                     current_image += 1
-                else:
-                    # Timed out as there's no more data from the socket, break out of loop
-                    set_data_polling(False)
+            
+            self.socket.close()
                     
             print("Left polling loop")
             print("Frames emitted: {}".format(frames_emitted))
@@ -425,8 +424,9 @@ class LiveViewReceiver(QtCore.QObject):
             print("Got exception when receiving data using ZeroMQ:%s" % e)
             
             
-        def set_data_polling(self, value):
-            self.data_polling = value
+    def set_data_polling(self, value):
+        print("Setting data polling")
+        self.data_polling = value
             
             
             
