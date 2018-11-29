@@ -350,6 +350,8 @@ class LiveViewReceiver(QtCore.QObject):
         self.num_trains = parent.app_main.getCachedParam("numTrains")
         
         self.fp_ctrl_channel = parent.fp_ctrl_channel
+        
+        self.data_polling = True
     
     def receive_data(self):
         try:
@@ -377,8 +379,9 @@ class LiveViewReceiver(QtCore.QObject):
             poller = zmq.Poller()
             poller.register(socket)
             
+            frames_emitted = 0
             # Polling loop - active while data is being sent via ZMQ
-            while data_polling is True:
+            while self.data_polling is True:
                 socks = dict(poller.poll(timeout))
                 
                 if socket in socks and socks[socket] == zmq.POLLIN:
@@ -408,16 +411,22 @@ class LiveViewReceiver(QtCore.QObject):
                         lpd_image = LpdImageContainer(self.run_number, frames_processed, current_image)
                         lpd_image.image_array = frame_data.copy()
                         self.live_view_signal.emit(lpd_image)
+                        
+                        frames_emitted += 1
                     
-                    current_image += 1     
+                    current_image += 1
                 else:
                     # Timed out as there's no more data from the socket, break out of loop
-                    data_polling = False
+                    set_data_polling(False)
                     
             print("Left polling loop")
+            print("Frames emitted: {}".format(frames_emitted))
         except Exception as e:
             print("Got exception when receiving data using ZeroMQ:%s" % e)
             
+            
+        def set_data_polling(self, value):
+            self.data_polling = value
             
             
             
