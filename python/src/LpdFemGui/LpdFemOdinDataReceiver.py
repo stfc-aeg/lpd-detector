@@ -175,7 +175,8 @@ class LpdFemOdinDataReceiver():
                 print("Frame processor handled all frames, terminating data monitor thread")
 
             self.set_file_writing(False)
-            self.live_view_receiver.set_data_polling(False)
+            if self.app_main.getCachedParam("liveViewEnable"):
+                self.live_view_receiver.set_data_polling(False)
 
             # Get path of hdf file for the current run
             file_path = self.config_processor['hdf']['file']['path']
