@@ -423,11 +423,6 @@ class LiveViewReceiver(QtCore.QObject):
         except Exception as e:
             print("Got exception when receiving data using ZeroMQ:%s" % e)
             
-            
     def set_data_polling(self, value):
         print("Setting data polling")
         self.data_polling = value
-            
-            
-            
-            
