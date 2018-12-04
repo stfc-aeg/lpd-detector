@@ -321,6 +321,11 @@ namespace FrameProcessor
           data_frame->set_dimensions(dims_data);
           data_frame->set_data_type(raw_16bit);
 
+          if(image_counter_ % 2 == 0)
+          {
+        	  data_frame->set_parameter("live_view_tag", (uint8_t) 1);
+          }
+
           void * output_data_ptr = static_cast<void*>(reordered_image);
           data_frame->copy_data(output_data_ptr, Lpd::image_size);
 
