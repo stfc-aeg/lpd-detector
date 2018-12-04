@@ -370,6 +370,8 @@ class LiveViewReceiver(QtCore.QObject):
             # Variables with preset values for later in the function
             timeout = 100
             current_image = 0
+            images_received = 0
+            #images_emitted = 0
             
             # Polling loop - active while data is being sent via ZMQ
             while self.data_polling is True:
@@ -388,17 +390,15 @@ class LiveViewReceiver(QtCore.QObject):
                     if header['frame_num'] % self.num_images == 0:
                         current_image = 0
 
-                    # Signal live view update at appropriate rate if enabled
-                    if (header['frame_num'] - self.live_view_offset) % self.live_view_divisor == 0: 
-                        # Create container containing image array and other data and
-                        # emit these to the live view window
-                        current_frame_number = header['frame_num'] / self.num_images
-                        lpd_image = LpdImageContainer(self.run_number, current_frame_number, current_image)
-                        lpd_image.image_array = frame_data.copy()
-                        self.live_view_signal.emit(lpd_image)
-                        
+                    current_frame_number = header['frame_num'] / self.num_images
+                    lpd_image = LpdImageContainer(self.run_number, current_frame_number, current_image)
+                    lpd_image.image_array = frame_data.copy()
+                    self.live_view_signal.emit(lpd_image)
+                    
                     current_image += 1
+                    images_received += 1
             
+            print(images_received)
             self.socket.close()
         except Exception as e:
             print("Got exception when receiving data using ZeroMQ:%s" % e)

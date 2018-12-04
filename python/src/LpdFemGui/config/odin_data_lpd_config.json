@@ -59,7 +59,8 @@
         "frame_frequency": 1,
         "per_second": 0,
         "live_view_socket_addr": "tcp://127.0.0.1:5020",
-        "dataset_name": "data"
+        "dataset_name": "data",
+        "filter_tagged": true
       }
     },
     "processor_plugins":
