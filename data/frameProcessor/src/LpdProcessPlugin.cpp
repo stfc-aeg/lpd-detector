@@ -14,6 +14,8 @@ namespace FrameProcessor
   const std::string LpdProcessPlugin::CONFIG_DROPPED_PACKETS = "packets_lost";
   const std::string LpdProcessPlugin::CONFIG_DIMS_X = "width";
   const std::string LpdProcessPlugin::CONFIG_DIMS_Y = "height";
+  const std::string LpdProcessPlugin::CONFIG_DIVISOR = "divisor";
+  const std::string LpdProcessPlugin::CONFIG_OFFSET = "offset";
 
   /**
    * The constructor sets up logging used within the class.
@@ -24,7 +26,9 @@ namespace FrameProcessor
     packets_lost_(0),
     image_counter_(0),
     data_received_(0),
-    frames_processed_(0)
+    frames_processed_(0),
+	divisor_(100),
+	offset_(0)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FW.LpdProcessPlugin");
@@ -112,6 +116,14 @@ namespace FrameProcessor
     if (config.has_param(LpdProcessPlugin::CONFIG_DIMS_Y))
     {
       dims_y = config.get_param<int>(LpdProcessPlugin::CONFIG_DIMS_Y);
+    }
+    if (config.has_param(LpdProcessPlugin::CONFIG_DIVISOR))
+    {
+    	divisor_ = config.get_param<int>(LpdProcessPlugin::CONFIG_DIVISOR);
+    }
+    if (config.has_param(LpdProcessPlugin::CONFIG_OFFSET))
+    {
+    	offset_ = config.get_param<int>(LpdProcessPlugin::CONFIG_OFFSET);
     }
     image_counter_ = 0;
   }
@@ -321,7 +333,7 @@ namespace FrameProcessor
           data_frame->set_dimensions(dims_data);
           data_frame->set_data_type(raw_16bit);
 
-          if(image_counter_ % 2 == 0)
+          if( (image_counter_ - offset_) % divisor_ == 0)
           {
         	  data_frame->set_parameter("live_view_tag", (uint8_t) 1);
           }

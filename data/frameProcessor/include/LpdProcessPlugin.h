@@ -12,6 +12,8 @@ x * LpdProcessPlugin.h
 #include <log4cxx/basicconfigurator.h>
 #include <log4cxx/propertyconfigurator.h>
 #include <log4cxx/helpers/exception.h>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 using namespace log4cxx;
 using namespace log4cxx::helpers;
 
@@ -50,6 +52,10 @@ namespace FrameProcessor
     static const std::string CONFIG_DIMS_X;
     /** Configuration constant for output image height **/
     static const std::string CONFIG_DIMS_Y;
+    /** Configuration constant for live view divisor **/
+    static const std::string CONFIG_DIVISOR;
+    /** Configuration constant for live view offset **/
+    static const std::string CONFIG_OFFSET;
 
     void process_lost_packets(boost::shared_ptr<Frame> frame);
     void process_frame(boost::shared_ptr<Frame> frame);
@@ -67,6 +73,10 @@ namespace FrameProcessor
     int data_received_;
     /** frames processed counter **/
     int frames_processed_;
+    /** divisor value for live viewer **/
+    int divisor_;
+    /** offset value for live viewer **/
+    int offset_;
   };
 
   /**
