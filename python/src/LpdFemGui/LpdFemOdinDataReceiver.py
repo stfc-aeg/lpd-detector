@@ -14,7 +14,7 @@ import os, sys, time, socket, json, h5py, zmq
 import numpy as np
 from PyQt4 import QtCore
 
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, check_output
 
 from odin_data.ipc_channel import IpcChannel, IpcChannelException
 from odin_data.ipc_message import IpcMessage, IpcMessageException
@@ -242,9 +242,11 @@ class LpdFemOdinDataReceiver():
         ''' 
         print("Shutting down frame receiver and frame processor")
         self.do_shutdown_cmd(self.fr_ctrl_channel)
-
-        # Frame processor requires a shutdown config request to be sent
-        self.send_config_msg(self.fp_ctrl_channel, {'shutdown': True})
+        
+        # Kill processes on FP port - TEMP SOLUTION
+        time.sleep(2)
+        lsof = Popen(['lsof', '-ti', ':5004'], stdout=PIPE)
+        kill = check_output(['xargs', 'kill', '-9'], stdin=lsof.stdout)
         
     def set_file_writing(self, enable):
         ''' Enables or disables file writing (typically once a run has finished)
