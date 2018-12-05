@@ -20,7 +20,9 @@
       "lpd":
       {
         "width": 256,
-        "height": 256
+        "height": 256,
+        "divisor": 100,
+        "offset": 2
       },
       "hdf":
       {
@@ -60,7 +62,7 @@
         "per_second": 0,
         "live_view_socket_addr": "tcp://127.0.0.1:5020",
         "dataset_name": "data",
-        "filter_tagged": true
+        "filter_tagged": "live_view_tag"
       }
     },
     "processor_plugins":

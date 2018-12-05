@@ -148,6 +148,12 @@ class LpdFemOdinDataReceiver():
             self.data_monitor_thread.start()
             
             if self.app_main.getCachedParam("liveViewEnable"):
+                # Set offset and divisor in config to be used in process plugin
+                # Process plugin can handle these values not being in the config, hence only set
+                # when they'll actually be used
+                self.config_processor['lpd']['divisor'] = self.app_main.getCachedParam('liveViewDivisor')
+                self.config_processor['lpd']['offset'] = self.app_main.getCachedParam('liveViewOffset')
+                
                 # Create live view receiver object and thread, then move object into thread
                 print("Creating Live View Receiver Thread")
                 self.live_view_receiver = LiveViewReceiver(self, self.live_view_signal, num_images)
@@ -367,11 +373,7 @@ class LiveViewReceiver(QtCore.QObject):
     
     def receive_data(self):
         try:
-            # Variables with preset values for later in the function
             timeout = 100
-            current_image = 0
-            images_received = 0
-            #images_emitted = 0
             
             # Polling loop - active while data is being sent via ZMQ
             while self.data_polling is True:
@@ -386,19 +388,13 @@ class LiveViewReceiver(QtCore.QObject):
                     array = np.fromstring(msg, dtype=header['dtype'])
                     frame_data = array.reshape([int(header['shape'][0]), int(header['shape'][1])])
                     
-                    # Reset when new frame occurs
-                    if header['frame_num'] % self.num_images == 0:
-                        current_image = 0
-
+                    current_image = header['frame_num'] % self.num_images
                     current_frame_number = header['frame_num'] / self.num_images
+                    
                     lpd_image = LpdImageContainer(self.run_number, current_frame_number, current_image)
                     lpd_image.image_array = frame_data.copy()
                     self.live_view_signal.emit(lpd_image)
-                    
-                    current_image += 1
-                    images_received += 1
-            
-            print(images_received)
+
             self.socket.close()
         except Exception as e:
             print("Got exception when receiving data using ZeroMQ:%s" % e)
