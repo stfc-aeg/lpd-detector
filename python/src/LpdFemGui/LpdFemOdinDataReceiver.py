@@ -97,6 +97,10 @@ class LpdFemOdinDataReceiver():
             run_number = self.app_main.getCachedParam('runNumber')            
             file_name = "lpdData-{:05d}.hdf5".format(run_number)
             self.config_processor['hdf']['file']['name'] = file_name
+            
+            # Set offset and divisor in config to be used in process plugin
+            self.config_processor['lpd']['divisor'] = self.app_main.getCachedParam('liveViewDivisor')
+            self.config_processor['lpd']['offset'] = self.app_main.getCachedParam('liveViewOffset')
 
             # Send Frame Receiver config
             print("Sending Frame Receiver Config")
@@ -148,12 +152,6 @@ class LpdFemOdinDataReceiver():
             self.data_monitor_thread.start()
             
             if self.app_main.getCachedParam("liveViewEnable"):
-                # Set offset and divisor in config to be used in process plugin
-                # Process plugin can handle these values not being in the config, hence only set
-                # when they'll actually be used
-                self.config_processor['lpd']['divisor'] = self.app_main.getCachedParam('liveViewDivisor')
-                self.config_processor['lpd']['offset'] = self.app_main.getCachedParam('liveViewOffset')
-                
                 # Create live view receiver object and thread, then move object into thread
                 print("Creating Live View Receiver Thread")
                 self.live_view_receiver = LiveViewReceiver(self, self.live_view_signal, num_images)
