@@ -236,7 +236,7 @@ class LpdFemOdinDataReceiver():
     def do_shutdown_cmd(self, channel):
         ''' Sends a shutdown command to the channel that's passed
         '''
-        shutdown_msg = IpcMessage('cmd', 'shutdown')
+        shutdown_msg = IpcMessage('cmd', 'shutdown', id=self._next_msg_id())
         channel.send(shutdown_msg.encode())
         self.await_response(channel)
         
@@ -245,11 +245,7 @@ class LpdFemOdinDataReceiver():
         ''' 
         print("Shutting down frame receiver and frame processor")
         self.do_shutdown_cmd(self.fr_ctrl_channel)
-        
-        # Kill processes on FP port - TEMP SOLUTION
-        time.sleep(2)
-        lsof = Popen(['lsof', '-ti', ':5004'], stdout=PIPE)
-        kill = check_output(['xargs', 'kill', '-9'], stdin=lsof.stdout)
+        self.do_shutdown_cmd(self.fp_ctrl_channel)
         
     def set_file_writing(self, enable):
         ''' Enables or disables file writing (typically once a run has finished)
