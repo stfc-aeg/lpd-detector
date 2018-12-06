@@ -1,6 +1,7 @@
 {
     "receiver_default_config":
     {
+      "debug_level": 0,
       "max_buffer_mem": 840000000,
       "decoder_type": "Lpd",
       "decoder_path": "/u/xfu59478/develop/projects/lpd/install/lib",
@@ -13,6 +14,7 @@
     },
     "processor_default_config":
     {
+      "debug_level": 0,
       "fr_setup": {
         "fr_ready_cnxn": "tcp://127.0.0.1:5001",
         "fr_release_cnxn": "tcp://127.0.0.1:5002"

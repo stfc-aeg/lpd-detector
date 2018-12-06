@@ -53,10 +53,10 @@ class LpdFemOdinDataReceiver():
             frame_processor_config_path = self.app_main.getCachedParam("frameProcessorConfigFile")
 
             # Using Subprocess to launch the frame receiver and frame processor
-            start_frame_receiver = Popen(["./frameReceiver", "--debug", "2", "--logconfig", 
-                                          frame_receiver_config_path], cwd=fr_fp_location)
-            start_frame_processor = Popen(["./frameProcessor", "--logconfig", 
-                                           frame_processor_config_path], cwd=fr_fp_location)
+            self.frame_receiver = Popen(["./frameReceiver", "--logconfig",
+                                         frame_receiver_config_path], cwd=fr_fp_location)
+            self.frame_processor = Popen(["./frameProcessor", "--logconfig",
+                                         frame_processor_config_path], cwd=fr_fp_location)
 
             # Create the appropriate IPC channels for receiver and proccessor
             print("Connecting to Frame Receiver's IPC Control Channel")
@@ -101,6 +101,11 @@ class LpdFemOdinDataReceiver():
             # Set offset and divisor in config to be used in process plugin
             self.config_processor['lpd']['divisor'] = self.app_main.getCachedParam('liveViewDivisor')
             self.config_processor['lpd']['offset'] = self.app_main.getCachedParam('liveViewOffset')
+            
+            print("Setting debug level for frame receiver and frame processor")
+            debug_level = self.app_main.getCachedParam('odinDataDebugLevel')
+            self.config_receiver['debug_level'] = debug_level
+            self.config_processor['debug_level'] = debug_level
 
             # Send Frame Receiver config
             print("Sending Frame Receiver Config")

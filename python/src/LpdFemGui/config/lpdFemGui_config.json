@@ -30,6 +30,7 @@
     "multiRunNumRuns":100,
     "numTrains":50,
     "odinDataConfigFile":"/u/xfu59478/develop/projects/lpd/lpd-fem/python/src/LpdFemGui/config/odin_data_lpd_config.json",
+    "odinDataDebugLevel":0,
     "odinFpCtrlChannel":"tcp://127.0.0.1:5004",
     "odinFrCtrlChannel":"tcp://127.0.0.1:5000",
     "pixelGain":0,
