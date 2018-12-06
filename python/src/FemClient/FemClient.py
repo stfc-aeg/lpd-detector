@@ -66,7 +66,7 @@ class FemClient(object):
         except socket.error as e:
             if self.femSocket:
                 self.femSocket.close()
-            raise FemClientError("Socket error: %s" % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
+            raise FemClientError("Socket error on send: %s" % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
         
     def recv(self):
         initRecvLen = FemTransaction.headerSize()
@@ -75,7 +75,7 @@ class FemClient(object):
         except socket.error as e:
             if self.femSocket:
                 self.femSocket.close()
-            raise FemClientError("Socket error : %s"  % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
+            raise FemClientError("Socket error on recv: %s"  % (str(e)), FemClientError.ERRNO_SOCK_ERROR)
         
         if not data:
             raise FemClientError("FEM has closed socket connection", FemClientError.ERRNO_SOCK_CLOSED)
