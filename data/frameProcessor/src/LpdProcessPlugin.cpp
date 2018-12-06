@@ -27,8 +27,8 @@ namespace FrameProcessor
     image_counter_(0),
     data_received_(0),
     frames_processed_(0),
-	divisor_(100),
-	offset_(0)
+    divisor_(100),
+    offset_(0)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FW.LpdProcessPlugin");
