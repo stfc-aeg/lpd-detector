@@ -135,9 +135,13 @@ class LpdFemOdinDataReceiver():
             while True:
                 reply = self.send_status_cmd(self.fp_ctrl_channel)
                 if reply is not None:
-                    shared_memory_buffer_status = reply.attrs['params']['shared_memory']['configured']
-                    if shared_memory_buffer_status is True:
-                        break
+                    try:
+                        shared_memory_buffer_status = reply.attrs['params']['shared_memory']['configured']
+                        if shared_memory_buffer_status is True:
+                            print("Shared memory is now configured in FP")
+                            break
+                    except KeyError as e:
+                        print("LdpFemOdinDataReceiver got KeyError while accessing shared buffer status parameter: %s" % e)
                     
                 request_number += 1
                 if(request_number > timeout_attempts):
