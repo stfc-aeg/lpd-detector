@@ -78,6 +78,8 @@ namespace FrameProcessor
     int divisor_;
     /** offset value for live viewer **/
     int offset_;
+    /** Sets to value from end of previous run**/
+    int last_frame_number_;
   };
 
   /**

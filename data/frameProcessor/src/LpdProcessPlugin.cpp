@@ -28,7 +28,8 @@ namespace FrameProcessor
     data_received_(0),
     frames_processed_(0),
     divisor_(100),
-    offset_(0)
+    offset_(0),
+    last_frame_number_(-1)
   {
     // Setup logging for the class
     logger_ = Logger::getLogger("FW.LpdProcessPlugin");
@@ -125,6 +126,8 @@ namespace FrameProcessor
     {
     	offset_ = config.get_param<int>(LpdProcessPlugin::CONFIG_OFFSET);
     }
+
+    last_frame_number_ = -1;
     image_counter_ = 0;
   }
 
@@ -149,7 +152,6 @@ namespace FrameProcessor
   {
     FrameProcessorPlugin::reset_statistics();
     LOG4CXX_DEBUG(logger_, "Statistics reset requested for LPD Process plugin");
-    image_counter_ = 0;
     data_received_ = 0;
     frames_processed_ = 0;
     return true;
@@ -201,6 +203,16 @@ namespace FrameProcessor
     LOG4CXX_TRACE(logger_, "Packets received: " << hdr_ptr->total_packets_received
         << " SOF markers: "<< (int)hdr_ptr->total_sof_marker_count
         << " EOF markers: "<< (int)hdr_ptr->total_eof_marker_count);
+
+    // Value from end of previous run used to have a correct value for current run
+    uint32_t frame_number = hdr_ptr->frame_number;
+
+    if (last_frame_number_ == -1)
+    {
+      last_frame_number_ = frame_number;
+    }  
+
+    frame_number = frame_number - last_frame_number_;
 
     // Obtain a pointer to the start of the data in the frame
     const void* data_ptr = static_cast<const void*>(
@@ -312,9 +324,9 @@ namespace FrameProcessor
           frame_num_frame->set_dimensions(dims_frame);
           frame_num_frame->set_data_type(raw_32bit);
 
-          frame_num_frame->copy_data(&(hdr_ptr->frame_number), sizeof(hdr_ptr->frame_number));
+          frame_num_frame->copy_data(&(frame_number), sizeof(frame_number));
 
-          LOG4CXX_TRACE(logger_, "Pushing frame_num dataset - " << hdr_ptr->frame_number);
+          LOG4CXX_TRACE(logger_, "Pushing frame_num dataset - " << frame_number);
           this->push(frame_num_frame);
 
 
