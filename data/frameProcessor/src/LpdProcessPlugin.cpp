@@ -143,6 +143,19 @@ namespace FrameProcessor
   }
 
   /**
+   * Reset process plugin statistics
+   */
+  bool LpdProcessPlugin::reset_statistics(void)
+  {
+    FrameProcessorPlugin::reset_statistics();
+    LOG4CXX_DEBUG(logger_, "Statistics reset requested for LPD Process plugin");
+    image_counter_ = 0;
+    data_received_ = 0;
+    frames_processed_ = 0;
+    return true;
+  }
+
+  /**
    * Process and report lost UDP packets for the frame
    *
    * \param[in] frame - Pointer to a Frame object.
