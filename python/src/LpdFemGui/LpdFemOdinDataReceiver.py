@@ -152,6 +152,9 @@ class LpdFemOdinDataReceiver():
             print("Sleeping like a baby...")
             time.sleep(5.0)
 
+            print("Resetting statistics in LPD Process Plugin")
+            self.reset_stats_cmd(self.fp_ctrl_channel)
+
             # Create data monitor object and thread then move object into thread
             print("Creating Data Monitor Thread")
             self.data_monitor = OdinDataMonitor(self)
@@ -238,6 +241,12 @@ class LpdFemOdinDataReceiver():
         status_msg =  IpcMessage('cmd', 'status', id=self._next_msg_id())
         channel.send(status_msg.encode())
         reply = self.await_response(channel)
+        return reply
+
+    def reset_stats_cmd(self, channel):
+        reset = IpcMessage('cmd', 'reset_statistics', id=self._next_msg_id())
+        self.channel.send(reset.encode())
+        reply = self.await_response(self.channel)
         return reply
     
     def do_shutdown_cmd(self, channel):
