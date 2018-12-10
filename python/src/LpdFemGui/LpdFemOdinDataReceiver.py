@@ -149,6 +149,9 @@ class LpdFemOdinDataReceiver():
                     break
                 time.sleep(0.2)
       
+            print("Sleeping like a baby...")
+            time.sleep(5.0)
+
             # Create data monitor object and thread then move object into thread
             print("Creating Data Monitor Thread")
             self.data_monitor = OdinDataMonitor(self)
