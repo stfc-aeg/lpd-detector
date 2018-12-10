@@ -10,7 +10,7 @@ from LpdFemClient.LpdFemClient import LpdFemClient
 from LpdFemGui import *
 from LpdFemMetadataWriter import *
 
-import os, sys, time, socket, json, h5py, zmq
+import sys, time, json, h5py, zmq
 import numpy as np
 from PyQt4 import QtCore
 
@@ -22,23 +22,22 @@ from odin_data.ipc_message import IpcMessage, IpcMessageException
 # Test if running python 3
 is_python3 = sys.version_info > (3,)
 
-#Display received data in plots
+# Display received data in plots
 b_display_plot_data = True
 
 
 class LpdFemOdinDataReceiver():
-    """
-    This object is used when the data is coming from ODIN (as opposed to internally). This object 
-    is recycled throughout the lifecycle of the GUI session (everything in __init__() )
-    """
+    ''' This object is used when the data is coming from ODIN (as opposed to internally). This
+        object is recycled throughout the lifecycle of the GUI session
+    '''
 
     MESSAGE_ID_MAX = 2**32
     _msg_id = 0
 
     def __init__(self, run_status_signal, num_frames, app_main, live_view_signal):
-        """ This is executed on the first run of each GUI session - this object is retained 
-        throughout the lifecycle of the session.
-        """
+        ''' This is executed on the first run of each GUI session - this object is retained
+            throughout the lifecycle of the session.
+        '''
 
         try:
             self.run_status_signal = run_status_signal
@@ -65,13 +64,13 @@ class LpdFemOdinDataReceiver():
 
             print("Connecting to Frame Proccessor's IPC Control Channel")
             self.fp_ctrl_channel = IpcChannel(IpcChannel.CHANNEL_TYPE_DEALER)
-            self.fp_ctrl_channel.connect(self.app_main.getCachedParam('odinFpCtrlChannel'))          
+            self.fp_ctrl_channel.connect(self.app_main.getCachedParam('odinFpCtrlChannel'))
         except Exception as e:
             print("LdpFemOdinDataReceiver got exception during initialisation: %s" % e)
-            
+
     def configure(self, num_frames, num_images):
-        ''' Executed at the start of every run to do a number of things including creating and 
-            starting the data monitor thread.
+        ''' Executed at the start of every run to do a number of things including creating and
+            starting the data monitor & live view threads
         '''
         try:
             self.num_frames = num_frames
@@ -83,25 +82,25 @@ class LpdFemOdinDataReceiver():
                 self.config_receiver = self.odin_data_config['receiver_default_config']
                 self.config_processor = self.odin_data_config['processor_default_config']
                 self.config_processor_plugins = self.odin_data_config['processor_plugins']
-            
-            # Set number of expected frames based on the master dataset (dataset containing the data, 
-            # as defined in odin_data_lpd_config.json)
+
+            # Set number of expected frames based on the master dataset (dataset containing the
+            # data, as defined in odin_data_lpd_config.json)
             self.config_processor['hdf']['frames'] = (self.num_frames * num_images)
-            
+
             # Set path and filename of output file
             print("Setting Path & Filename of Output File")
             file_path = self.app_main.getCachedParam('dataFilePath')
             self.config_processor['hdf']['file']['path'] = file_path
-            
+
             # Set file name based on current run number
             run_number = self.app_main.getCachedParam('runNumber')            
             file_name = "lpdData-{:05d}.hdf5".format(run_number)
             self.config_processor['hdf']['file']['name'] = file_name
-            
+
             # Set offset and divisor in config to be used in process plugin
             self.config_processor['lpd']['divisor'] = self.app_main.getCachedParam('liveViewDivisor')
             self.config_processor['lpd']['offset'] = self.app_main.getCachedParam('liveViewOffset')
-            
+
             print("Setting debug level for frame receiver and frame processor")
             debug_level = self.app_main.getCachedParam('odinDataDebugLevel')
             self.config_receiver['debug_level'] = debug_level
@@ -110,12 +109,12 @@ class LpdFemOdinDataReceiver():
             # Send Frame Receiver config
             print("Sending Frame Receiver Config")
             self.send_config_msg(self.fr_ctrl_channel, self.config_receiver)
-            
+
             # Send Frame Receiver info to Frame Processor
             print("Sending Receiver connection info to Frame Processor")
-            params = {'fr_setup' : self.config_processor['fr_setup']}
+            params = {'fr_setup': self.config_processor['fr_setup']}
             self.send_config_msg(self.fp_ctrl_channel, params)
-            
+
             # Sending Processor plugin configs
             if len(self.config_processor_plugins):
                 print("Sending Processor plugin chain config to Frame Processor")
@@ -130,7 +129,7 @@ class LpdFemOdinDataReceiver():
             # Around 8 seconds before timeout
             timeout_attempts = 40
             request_number = 0
-            
+
             # Checking status of FR/FP handshake
             while True:
                 reply = self.send_status_cmd(self.fp_ctrl_channel)
@@ -141,14 +140,17 @@ class LpdFemOdinDataReceiver():
                             print("Shared memory is now configured in FP")
                             break
                     except KeyError as e:
-                        print("LdpFemOdinDataReceiver got KeyError while accessing shared buffer status parameter: %s" % e)
-                    
+                        print("LdpFemOdinDataReceiver got KeyError accessing shared buffer ",
+                              "status parameter: %s" % e)
+
                 request_number += 1
                 if(request_number > timeout_attempts):
-                    raise Exception("Handshake between frame receiver and frame processor has timed out")
+                    raise Exception("Handshake between frame receiver and frame processor has ",
+                                    "timed out")
                     break
                 time.sleep(0.2)
-      
+
+            # Temporary solution until buffer memory configure is resolved
             print("Sleeping like a baby...")
             time.sleep(5.0)
 
@@ -165,19 +167,19 @@ class LpdFemOdinDataReceiver():
             print("Starting Data Monitor Thread")
             self.data_monitor_thread.started.connect(self.data_monitor.monitorLoop)
             self.data_monitor_thread.start()
-            
+
             if self.app_main.getCachedParam("liveViewEnable"):
                 # Create live view receiver object and thread, then move object into thread
                 print("Creating Live View Receiver Thread")
                 self.live_view_receiver = LiveViewReceiver(self, self.live_view_signal, num_images)
                 self.live_view_receiver_thread = QtCore.QThread()
                 self.live_view_receiver.moveToThread(self.live_view_receiver_thread)
-                
+
                 # Start the thread and connect start signal to receive_data()
                 print("Starting Live View Receiver Thread")
                 self.live_view_receiver_thread.started.connect(self.live_view_receiver.receive_data)
                 self.live_view_receiver_thread.start()
-            
+
         except Exception as e:
             print("LdpFemOdinDataReceiver got exception during configuration: %s" % e)
 
@@ -193,76 +195,89 @@ class LpdFemOdinDataReceiver():
             else:
                 print("Frame processor handled all frames, terminating data monitor thread")
 
+            # Set file writing and data now the run has finished
             self.set_file_writing(False)
             if self.app_main.getCachedParam("liveViewEnable"):
+                # Subscriber in receive_data() will no longer look for data off the socket
                 self.live_view_receiver.set_data_polling(False)
 
             # Get path of hdf file for the current run
             file_path = self.config_processor['hdf']['file']['path']
             file_name = self.config_processor['hdf']['file']['name']
-            hdf_file_location = file_path + "/" + file_name + "_000001.h5"  # Remove hardcoded file ending when feature disabled
-      
+            # Remove hardcoded file ending when feature disabled
+            hdf_file_location = file_path + "/" + file_name + "_000001.h5"
+
             # Open hdf file for metadata to be written to it      
             try:
                 self.hdf_file = h5py.File(hdf_file_location, 'r+')
             except IOError as e:
                 print("Failed to open HDF file with error: %s" % e)
                 raise(e)
-            
+
             # Create metadata group and add datasets to it
             metadata_group = self.hdf_file.create_group('metadata')
             self.metadata_handler = MetadataWriter(self.app_main.cached_params)
             self.metadata_handler.write_metadata(metadata_group)
-            
+
             # Close hdf file
             self.hdf_file.close()
-            
+
             self.data_monitor_thread.quit()
             self.data_monitor_thread.wait()
 
     def await_response(self, channel, timeout_ms=1000):
+        ''' Polls the passed channel for any data to be received, used in various functions below
+        '''
         reply = None
-        pollevts = channel.poll(1000)
+        pollevts = channel.poll(timeout_ms)
         if pollevts == IpcChannel.POLLIN:
             reply = IpcMessage(from_str=channel.recv())
         return reply
 
     def _next_msg_id(self):
+        ''' Increments message ID for the IPC messages
+        '''
         self._msg_id = (self._msg_id + 1) % self.MESSAGE_ID_MAX
         return self._msg_id
 
     def send_config_msg(self, channel, config):
-        config_msg =  IpcMessage('cmd', 'configure', id=self._next_msg_id())
+        ''' Sends a configuration command to the channel that's passed
+        '''
+        config_msg = IpcMessage('cmd', 'configure', id=self._next_msg_id())
         config_msg.attrs['params'] = config
         channel.send(config_msg.encode())
         reply = self.await_response(channel)
-  
+
     def send_status_cmd(self, channel):
-        status_msg =  IpcMessage('cmd', 'status', id=self._next_msg_id())
+        ''' Sends a status command to the channel that's passed
+        '''
+        status_msg = IpcMessage('cmd', 'status', id=self._next_msg_id())
         channel.send(status_msg.encode())
         reply = self.await_response(channel)
         return reply
 
     def reset_stats_cmd(self, channel):
+        ''' Used to reset statistics in LPD Process Plugin
+        '''
         reset = IpcMessage('cmd', 'reset_statistics', id=self._next_msg_id())
         channel.send(reset.encode())
         reply = self.await_response(channel)
         return reply
-    
+
     def do_shutdown_cmd(self, channel):
         ''' Sends a shutdown command to the channel that's passed
         '''
         shutdown_msg = IpcMessage('cmd', 'shutdown', id=self._next_msg_id())
         channel.send(shutdown_msg.encode())
         self.await_response(channel)
-        
+
     def shutdown_frame_receiver_processor(self):
         ''' Used when GUI is closed to stop FR & FP processes
-        ''' 
+        '''
         print("Shutting down frame receiver and frame processor")
         self.do_shutdown_cmd(self.fr_ctrl_channel)
         self.do_shutdown_cmd(self.fp_ctrl_channel)
-        
+
     def set_file_writing(self, enable):
         ''' Enables or disables file writing (typically once a run has finished)
         '''
@@ -271,7 +286,7 @@ class LpdFemOdinDataReceiver():
 
         config_msg = IpcMessage('cmd', 'configure', id=self._next_msg_id())
         config_msg.attrs['params'] = {'hdf': self.config_processor['hdf']}
-        
+
         print('Sending file writing {} command to frame processor'.format(
               'enable' if enable else 'disable'))
 
@@ -294,6 +309,8 @@ class OdinDataMonitor(QtCore.QObject):
         self.running = True
 
     def abort_run(self):
+        ''' Sets parameters to abort and stop the current run
+        '''
         self.abort = True
         self.running = False
 
@@ -317,7 +334,8 @@ class OdinDataMonitor(QtCore.QObject):
                 if reply is not None:
                     frames_already_received = reply.attrs['params']['frames']['received']
             except Exception as e:
-                print("Got exception requesting status from frame receiver: %s" % e, file=sys.stderr)
+                print("Got exception requesting status from frame receiver: %s" % e,
+                      file=sys.stderr)
 
             try:
                 # Get values from previous runs in order to subtract them from current
@@ -328,70 +346,87 @@ class OdinDataMonitor(QtCore.QObject):
                     data_already_recieved = reply.attrs['params']['lpd']['bytes_received']
                     images_already_written = reply.attrs['params']['hdf']['frames_written']
             except Exception as e:
-                print("Got exception requesting status from frame proccessor: %s" % e, file=sys.stderr)
+                print("Got exception requesting status from frame proccessor: %s" % e,
+                      file=sys.stderr)
 
             # Update UI values at regular intervals until all expected frames processed
-            while frames_processed < self.num_frames and self.abort == False:
+            while frames_processed < self.num_frames and self.abort is False:
                 # Status request for Frame Receiver
                 reply = self.parent.send_status_cmd(self.fr_ctrl_channel)
 
+                # Sets a correct value for frames_received for the current run
                 if reply is not None:
-                    frames_received = (reply.attrs['params']['frames']['received'] - frames_already_received)
+                    frames_received = (reply.attrs['params']['frames']['received'] -
+                                       frames_already_received)
 
-                # Status request for Frame Processor 
+                # Status request for Frame Processor
                 reply = self.parent.send_status_cmd(self.fp_ctrl_channel)
 
                 if reply is not None:
-                    frames_processed = (reply.attrs['params']['lpd']['frames_processed'] - frames_already_processed)
-                    data_recieved = (reply.attrs['params']['lpd']['bytes_received'] - data_already_recieved)
-                    images_written = (reply.attrs['params']['hdf']['frames_written'] - images_already_written)
+                    frames_processed = (reply.attrs['params']['lpd']['frames_processed'] -
+                                        frames_already_processed)
+                    data_recieved = (reply.attrs['params']['lpd']['bytes_received'] -
+                                     data_already_recieved)
+                    images_written = (reply.attrs['params']['hdf']['frames_written'] -
+                                      images_already_written)
 
-                print("Status message received: Rx: %s, Proc: %s, Data: %s, Images: %s" %(frames_received, frames_processed, data_recieved, images_written))
+                print("Status message received: Rx: %s, Proc: %s, Data: %s, Images: %s" %
+                      (frames_received, frames_processed, data_recieved, images_written))
 
-                run_status = LpdRunStatusContainer(frames_received, frames_processed, images_written, data_recieved)
+                run_status = LpdRunStatusContainer(frames_received, frames_processed,
+                                                   images_written, data_recieved)
                 self.update_signal.emit(run_status)
                 time.sleep(0.5)
 
-            run_status = LpdRunStatusContainer(frames_received, frames_processed, images_written, data_recieved)
+            run_status = LpdRunStatusContainer(frames_received, frames_processed, images_written,
+                                               data_recieved)
             self.update_signal.emit(run_status)
             self.running = False
 
         except Exception as e:
             print("Got exception in odin data monitor loop:%s" % e, file=sys.stderr)
-            
+
+
 class LiveViewReceiver(QtCore.QObject):
+    ''' Responsible for monitoring the data sent to the live view window. Each image sent to the
+        live view plugin is emitted to the live view window to be displayed
+    '''
 
     def __init__(self, parent, live_view_signal, num_images):
         QtCore.QObject.__init__(self)
-                
+
         self.parent = parent
         self.app_main = parent.app_main
         self.live_view_signal = live_view_signal
         self.num_images = num_images
         self.fp_ctrl_channel = parent.fp_ctrl_channel
-        
+
         self.live_view_divisor = parent.app_main.getCachedParam("liveViewDivisor")
         self.live_view_offset = parent.app_main.getCachedParam("liveViewOffset")
         self.run_number = parent.app_main.getCachedParam("runNumber")
         self.num_trains = parent.app_main.getCachedParam("numTrains")
-        
+
         self.data_polling = True
         self.endpoint_url = "tcp://127.0.0.1:5020"
-        
+
         # Create context, socket, subscriber and connects to endpoint
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.SUB)
         self.socket.setsockopt(zmq.SUBSCRIBE, "")
         self.socket.connect(self.endpoint_url)
-        
+
         # Create poller and register socket with the poller
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
-    
+
     def receive_data(self):
+        ''' Get raw data from ZMQ socket (PUB/SUB pattern), convert image data into a numpy array
+            and use data from the header to emit everything necessary to be displayed in the live
+            view window
+        '''
         try:
             timeout = 100
-            
+
             # Polling loop - active while data is being sent via ZMQ
             while self.data_polling is True:
                 socks = dict(self.poller.poll(timeout))
@@ -400,22 +435,27 @@ class LiveViewReceiver(QtCore.QObject):
                     header = self.socket.recv_json()
                     # Raw data received from socket
                     msg = self.socket.recv()
-                    
+
                     # Convert raw data into numpy array and reshape based on header
                     array = np.fromstring(msg, dtype=header['dtype'])
                     frame_data = array.reshape([int(header['shape'][0]), int(header['shape'][1])])
-                    
+
+                    # Calculate current image and frame number of the image received
                     current_image = header['frame_num'] % self.num_images
                     current_frame_number = header['frame_num'] / self.num_images
-                    
-                    lpd_image = LpdImageContainer(self.run_number, current_frame_number, current_image)
+
+                    # Put necessary data into an image container & emit it to the live view window
+                    lpd_image = LpdImageContainer(self.run_number, current_frame_number, 
+                                                  current_image)
                     lpd_image.image_array = frame_data.copy()
                     self.live_view_signal.emit(lpd_image)
 
             self.socket.close()
         except Exception as e:
             print("Got exception when receiving data using ZeroMQ:%s" % e)
-            
+
     def set_data_polling(self, value):
+        ''' Set whether to poll for data based on value passed to it
+        '''
         print("Setting data polling")
         self.data_polling = value
