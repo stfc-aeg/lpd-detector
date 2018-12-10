@@ -70,7 +70,7 @@ namespace FrameProcessor
     /** Image counter **/
     int image_counter_;
     /** Data received counter **/
-    int data_received_;
+    unsigned int data_received_;
     /** frames processed counter **/
     int frames_processed_;
     /** divisor value for live viewer **/
