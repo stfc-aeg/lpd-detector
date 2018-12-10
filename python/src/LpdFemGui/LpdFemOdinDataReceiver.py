@@ -245,8 +245,8 @@ class LpdFemOdinDataReceiver():
 
     def reset_stats_cmd(self, channel):
         reset = IpcMessage('cmd', 'reset_statistics', id=self._next_msg_id())
-        self.channel.send(reset.encode())
-        reply = self.await_response(self.channel)
+        channel.send(reset.encode())
+        reply = self.await_response(channel)
         return reply
     
     def do_shutdown_cmd(self, channel):
