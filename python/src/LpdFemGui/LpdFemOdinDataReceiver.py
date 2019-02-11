@@ -150,10 +150,6 @@ class LpdFemOdinDataReceiver():
                     break
                 time.sleep(0.2)
 
-            # Temporary solution until buffer memory configure is resolved
-            print("Sleeping like a baby...")
-            time.sleep(5.0)
-
             print("Resetting statistics in LPD Process Plugin")
             self.reset_stats_cmd(self.fp_ctrl_channel)
 
