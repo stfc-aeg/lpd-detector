@@ -1,5 +1,5 @@
 # Project name
-project(EXCALIBUR)
+project(LPD)
 
 # Require CMake version >=2.8
 cmake_minimum_required(VERSION 2.8)
@@ -10,17 +10,17 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_CONFIG_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/test_config)
 
 # Set the common directory
-set(COMMON_DIR ${EXCALIBUR_SOURCE_DIR}/common)
+set(COMMON_DIR ${LPD_SOURCE_DIR}/common)
 
 # Set the frameReceiver directory
-set(FRAMERECEIVER_DIR ${EXCALIBUR_SOURCE_DIR}/frameReceiver)
+set(FRAMERECEIVER_DIR ${LPD_SOURCE_DIR}/frameReceiver)
 
 # Set the frameProcessor directory
-set(FRAMEPROCESSOR_DIR ${EXCALIBUR_SOURCE_DIR}/frameProcessor)
+set(FRAMEPROCESSOR_DIR ${LPD_SOURCE_DIR}/frameProcessor)
 
 # Appends the cmake/modules path inside the MAKE_MODULE_PATH variable which stores the
 # directories of additional CMake modules (ie. MacroOutOfSourceBuild.cmake):
-set(CMAKE_MODULE_PATH ${EXCALIBUR_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${LPD_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 # Allow macOS shared (dynamic) libraries to link with undefined symbols
 if (APPLE)
@@ -36,6 +36,24 @@ find_package(Log4CXX 0.10.0 REQUIRED)
 find_package(ZeroMQ 3.2.4 REQUIRED)
 find_package(OdinData REQUIRED)
 
+message("Determining lpd-detector version")
+include(GetGitRevisionDescription)
+git_describe(GIT_DESC_STR)
+
+string(REGEX REPLACE "^([0-9]+)[\\.-].*" "\\1" VERSION_MAJOR "${GIT_DESC_STR}")
+string(REGEX REPLACE "^[0-9]+[\\.-]([0-9]+).*" "\\1" VERSION_MINOR "${GIT_DESC_STR}")
+string(REGEX REPLACE "^[0-9]+[\\.-][0-9]+[\\.-]([0-9]+).*" "\\1" VERSION_PATCH "${GIT_DESC_STR}")
+string(REGEX REPLACE "^[0-9]+[\\.-][0-9]+[\\.-][0-9]+-[0-9]+-(.*)" "\\1" VERSION_SHA1 "${GIT_DESC_STR}")
+
+set(VERSION_SHORT "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+set(VERSION_STR ${GIT_DESC_STR})
+message("-- Git describe version: ${GIT_DESC_STR}")
+message("-- major:${VERSION_MAJOR} minor:${VERSION_MINOR} patch:${VERSION_PATCH} sha1:${VERSION_SHA1}")
+message("-- short version: ${VERSION_SHORT}")
+
+configure_file(${COMMON_DIR}/include/version.h.in "${CMAKE_BINARY_DIR}/include/version.h")
+include_directories(${CMAKE_BINARY_DIR}/include)
+
 # Add common/include directory to include path
 include_directories(${COMMON_DIR}/include)
 
@@ -49,5 +67,5 @@ add_subdirectory(${FRAMEPROCESSOR_DIR})
 #add_subdirectory(doc)
 
 # Add the config subdirectory (config files used for integration testing)
-#add_subdirectory(config)
+add_subdirectory(config)
 

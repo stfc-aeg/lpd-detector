@@ -1,5 +1,5 @@
 """
-ExcaliburFrameProducer - load EXCALIBUR frames from packet capture file and send via UDP.
+LpdFrameProducer - load Lpd frames from packet capture file and send via UDP.
 
 Tim Nicholls, STFC Application Engineering Group.
 """
@@ -14,18 +14,17 @@ import random
 import dpkt
 import threading
 
-class ExcaliburFrame(object):
+class LpdFrame(object):
     """
-    Container class for EXCALIBUR frame packet data
+    Container class for Lpd frame packet data
     """
     frame_count = 0
     SOF_MARKER = 1 << 31
     EOF_MARKER = 1 << 30
-    NUM_SUBFRAMES = 2
 
     def __init__(self, frame_num):
 
-        ExcaliburFrame.frame_count += 1
+        LpdFrame.frame_count += 1
 
         self.frame_num = frame_num
         self.trailer_frame_num = None
@@ -37,24 +36,16 @@ class ExcaliburFrame(object):
         """Append packet to frame packet list."""
         self.packets.append(packet)
 
-    def add_sof(self, subframe):
-        """Add subframe SOF marker to list."""
-        self.sofs.append(subframe)
+    def add_sof(self, frame):
+        """Add frame SOF marker to list."""
+        self.sofs.append(frame)
 
-    def add_eof(self, subframe):
-        """Add subframe EOF marker to list."""
-        self.eofs.append(subframe)
+    def add_eof(self, frame):
+        """Add frame EOF marker to list."""
+        self.eofs.append(frame)
 
     def set_trailer_frame_num(self, frame_num):
         """Set the trailer frame number in the frame."""
-
-        # If trailer frame number is already set, e.g. for earlier subframes, check it matches
-        if self.trailer_frame_num is not None:
-            if frame_num != self.trailer_frame_num:
-                logging.warning(
-                    "Mismatched trailer frame numbers on frame %d: %d/%d",
-                    self.frame_num, self.trailer_frame_num, frame_num
-                )
         self.trailer_frame_num = frame_num
 
     def num_packets(self):
@@ -74,7 +65,7 @@ class ExcaliburFrame(object):
         return len(self.eofs)
 
 
-class ExcaliburFrameProducerDefaults(object):
+class LpdFrameProducerDefaults(object):
     """
     Holds default values for frame producer parameters.
     """
@@ -82,7 +73,7 @@ class ExcaliburFrameProducerDefaults(object):
     def __init__(self):
 
         self.ip_addr = 'localhost'
-        self.port_list = '61649'
+        self.port_list = [61649]
         self.num_frames = 0
         self.tx_interval = 0
         self.drop_frac = 0
@@ -96,7 +87,7 @@ class ExcaliburFrameProducerDefaults(object):
             'debug': logging.DEBUG,
         }
 
-        self.pcap_file = 'excalibur.pcap'
+        self.pcap_file = 'Lpd.pcap'
 
 
 class Range(argparse.Action):
@@ -134,9 +125,9 @@ class CsvAction(argparse.Action):
             raise argparse.ArgumentError(self, e)
         setattr(namespace, self.dest, item_list)
             
-class ExcaliburFrameProducer(object):
+class LpdFrameProducer(object):
     """
-    EXCALIBUR frame procducer - loads frame packets data from capture file and replays it to
+    Lpd frame procducer - loads frame packets data from capture file and replays it to
     a receiver via a UDP socket.
     """
 
@@ -149,7 +140,7 @@ class ExcaliburFrameProducer(object):
         self.frames = []
 
         # Load default parameters
-        self.defaults = ExcaliburFrameProducerDefaults()
+        self.defaults = LpdFrameProducerDefaults()
 
         # Set the terminal width for argument help formatting
         try:
@@ -159,7 +150,7 @@ class ExcaliburFrameProducer(object):
 
         # Build options for the argument parser
         parser = argparse.ArgumentParser(
-            prog='excalibur_frame_producer.py', description='EXCALIBUR frame producer',
+            prog='Lpd_frame_producer.py', description='Lpd frame producer',
             formatter_class=lambda prog: argparse.ArgumentDefaultsHelpFormatter(
                 prog, max_help_position=40, width=term_columns)
         )
@@ -212,7 +203,7 @@ class ExcaliburFrameProducer(object):
 
         # Parse arguments
         self.args = parser.parse_args()
-
+	
         # Map logging level option onto real level
         if self.args.log_level in self.defaults.log_levels:
             log_level = self.defaults.log_levels[self.args.log_level]
@@ -244,13 +235,12 @@ class ExcaliburFrameProducer(object):
         total_packets = 0
         total_bytes = 0
         current_frame_num = -1
-        current_subframe_num = -1
 
         # Initialise current frame
         current_frame = None
 
         logging.info(
-            "Extracting EXCALIBUR frame packets from PCAP file %s",
+            "Extracting Lpd frame packets from PCAP file %s",
             self.args.pcap_file.name
         )
 
@@ -262,63 +252,50 @@ class ExcaliburFrameProducer(object):
             ip_layer = eth_layer.data
             udp_layer = ip_layer.data
 
-            # Unpack the packet header
-            (subframe_ctr, pkt_ctr) = struct.unpack('<II', udp_layer.data[:8])
+            # Unpack the packet trailer
+            (trailer_frame_num, pkt_ctr) = struct.unpack('<II', udp_layer.data[-8:])
 
-            # If there is a SOF marker in the packet header, increment the current subframe and
+            # If there is a SOF marker in the packet header, increment the current frame and
             # handle content, starting a new frame as necessary
-            if pkt_ctr & ExcaliburFrame.SOF_MARKER:
+            if pkt_ctr & LpdFrame.SOF_MARKER:
+
                 logging.debug(
-                    "Got SOF marker for subframe %d at packet %d",
-                    subframe_ctr, total_packets
+                    "Got SOF marker for frame %d at packet %d with trailer frame number %d",
+                    current_frame_num + 1, total_packets, trailer_frame_num
                 )
 
-                # Increment the current subframe index, modulo the number of subframes expected
-                current_subframe_num = (current_subframe_num + 1) % ExcaliburFrame.NUM_SUBFRAMES
+                # Check previous frame
+                if current_frame is not None:
 
-                # If now on the first subframe of a new frame, handle accordingly
-                if current_subframe_num == 0:
+                    # Check number of EOFs in previous frame
+                    if current_frame.num_eofs_seen() != 1:
+                        logging.warning(
+                            'Frame %d had incorrect number of EOF markers: %d',
+                            current_frame_num, current_frame.num_eofs_seen()
+                       )
 
-                    # Check SOF and EOF count on previous frame before switching to new frame
-                    if current_frame is not None:
-                        if current_frame.num_sofs_seen() != ExcaliburFrame.NUM_SUBFRAMES:
-                            logging.warning(
-                                'Frame %d had incorrect number of SOF markers: %d',
-                                current_frame_num, current_frame.num_sofs_seen()
-                            )
-                        if current_frame.num_eofs_seen() != ExcaliburFrame.NUM_SUBFRAMES:
-                            logging.warning(
-                                'Frame %d had incorrect number of EOF markers: %d',
-                                current_frame_num, current_frame.num_eofs_seen()
-                            )
+                # Create a new frame, set it to be the current one and append to the frame list
+                current_frame_num += 1
+                logging.debug(
+                    "Creating and appending new frame %d to frame packet buffer",
+                    current_frame_num
+                )
+                current_frame = LpdFrame(current_frame_num) 
+                self.frames.append(current_frame)
 
-                    current_frame_num += 1
-                    logging.debug(
-                        "Appending new frame %d to frame packet buffer", current_frame_num
-                    )
-
-                    # Create a new frame, set it to be the current one and append to the frame list
-                    current_frame = ExcaliburFrame(current_frame_num)
-                    self.frames.append(current_frame)
-
-                # Update the SOF tracking in the frame
-                current_frame.add_sof(subframe_ctr)
 
             # If there is an EOF marker, handle accordingly
-            if pkt_ctr & ExcaliburFrame.EOF_MARKER:
+            if pkt_ctr & LpdFrame.EOF_MARKER:
 
                 # Update the EOF tracking in the frame
-                current_frame.add_eof(subframe_ctr)
+                current_frame.add_eof(current_frame_num)
 
-                # Extract the frame number from the frame trailer in the packet data and update
-                # tracking in the current frame
-                trailer_frame_ctr = struct.unpack('<Q', udp_layer.data[-8:])[0]
                 logging.debug(
-                    "Got EOF marker for subframe %d at packet %d "
+                    "Got EOF marker for frame %d at packet %d "
                     "with trailer frame number %d",
-                    subframe_ctr, total_packets, trailer_frame_ctr
+                    current_frame_num, total_packets, trailer_frame_num
                 )
-                current_frame.set_trailer_frame_num(trailer_frame_ctr)
+
 
             # Append packet data to current frame
             current_frame.append_packet(udp_layer.data)
@@ -331,6 +308,7 @@ class ExcaliburFrameProducer(object):
             "Found %d frames in file with a total of %d packets and %d bytes",
             len(self.frames), total_packets, total_bytes
         )
+
 
     def send_frames(self):
         
@@ -443,4 +421,4 @@ class ExcaliburFrameProducer(object):
 
 if __name__ == '__main__':
 
-    ExcaliburFrameProducer().run()
+    LpdFrameProducer().run()
