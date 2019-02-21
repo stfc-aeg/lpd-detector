@@ -37,7 +37,7 @@ class AsicTesting():
         print "kwargs", kwargs
         self.bDebug   = False
         self.module   = -1
-        self.fileName = ""
+        self.file_name = ""
         self.image    = -1
         self.train    = -1
 
@@ -48,7 +48,7 @@ class AsicTesting():
             self.args = parseArgs()
             self.bDebug   = self.args.debug
             self.module   = self.args.module
-            self.fileName = self.args.fileName
+            self.file_name = self.args.file_name
             self.image    = self.args.image
             self.train    = self.args.train
         else:
@@ -68,11 +68,11 @@ class AsicTesting():
         self.fig = plt.figure(1)
         self.ax = self.fig.add_subplot(111)
 
-        (imgOffset, timeStamp, runNumber, trainNumber, imageNumber) = self.obtainAsic()
+        (imgOffset, timeStamp, run_number, trainNumber, image_number) = self.obtainAsic()
         
         self.img = self.ax.imshow(self.moduleData, interpolation='nearest', vmin='0', vmax='4095')
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(timeStamp))
-        self.titleText = 'Run %d Train %d Image %d%sModule %d: %s' % (runNumber, trainNumber, imageNumber, "\n", self.module, dateStr)
+        self.titleText = 'Run %d Train %d Image %d%sModule %d: %s' % (run_number, trainNumber, image_number, "\n", self.module, dateStr)
         self.mainTitle = plt.title(self.titleText)
         
         # Add a colour bar
@@ -112,9 +112,9 @@ class AsicTesting():
 
     def validateArguments(self, kwargs):
         ''' Check that the supplied dictionary contains the mandatory keys:
-            fileName, train, image, module '''
+            file_name, train, image, module '''
 
-        if not kwargs.has_key('fileName'):
+        if not kwargs.has_key('file_name'):
             return False
         if not kwargs.has_key('train'):
             return False
@@ -125,14 +125,14 @@ class AsicTesting():
         # All four arguments fine
 #        self.bDebug   = kwargs['']
         self.module   = kwargs['module']
-        self.fileName = kwargs['fileName']
+        self.file_name = kwargs['file_name']
         self.image    = kwargs['image']
         self.train    = kwargs['train']
         return True
 
     def obtainAsic(self):
 
-        with h5py.File(self.fileName, 'r') as hdfFile:
+        with h5py.File(self.file_name, 'r') as hdfFile:
 
             try:            
                 # Read in the train, image counter and timestamp arrays
@@ -331,7 +331,7 @@ def parseArgs():
 
     parser = argparse.ArgumentParser(description="Various ASIC testing - Work in Progress.")
 
-    parser.add_argument("fileName", help='Name of HDF5 data file to open')
+    parser.add_argument("file_name", help='Name of HDF5 data file to open')
     parser.add_argument("-t", "--train", type=int, default=0,
                         help="Select train number to plot")
     parser.add_argument("-i", "--image", type=int, default=0,
@@ -350,7 +350,7 @@ if __name__ == "__main__":
 
     print "#=========================================================#"
     print "# Data Title:", asicTesting.titleText.replace("\n", " ")
-    print "# File Name:", asicTesting.args.fileName
+    print "# File Name:", asicTesting.args.file_name
     print "#=========================================================#"
     
     ## Look for dead column(s)

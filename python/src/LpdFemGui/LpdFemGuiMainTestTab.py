@@ -29,13 +29,13 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     configDeviceSignal   = QtCore.pyqtSignal(str)
     femConnectionSignal  = QtCore.pyqtSignal(bool)
 
-    def __init__(self, appMain, mainWindow):
+    def __init__(self, app_main, mainWindow):
 
         super(LpdFemGuiMainTestTab, self).__init__()    # Required for pyqtSignal
         '''
         Constructor
         '''
-        self.appMain = appMain
+        self.app_main = app_main
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
         # Disable GUI components from start
@@ -84,8 +84,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.femConnectionStatus(False)
         try:
             # Also lock DAQ tab during text execution..
-            self.appMain.mainWindow.ui.runGroupBox.setEnabled(False)
-            self.appMain.mainWindow.ui.daqTab.setEnabled(False)
+            self.app_main.mainWindow.ui.runGroupBox.setEnabled(False)
+            self.app_main.mainWindow.ui.daqTab.setEnabled(False)
         except Exception as e:
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
@@ -97,9 +97,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.msgPrint("Executing Sensor Bonding Tests..")
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
-        self.appMain.asicTester.setModuleDescription(moduleDescription)
+        self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
-                                        partial(self.appMain.asicTester.executeSensorBondingTest, self.moduleNumber),
+                                        partial(self.app_main.asic_tester.executeSensorBondingTest, self.moduleNumber),
                                         self.sensorBondingTestDone)
 
     def sensorBondingTestDone(self):
@@ -111,8 +111,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.femConnectionStatus(True)
         try:
             # Also unlock DAQ tab during text execution..
-            self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
-            self.appMain.mainWindow.ui.daqTab.setEnabled(True)
+            self.app_main.mainWindow.ui.runGroupBox.setEnabled(True)
+            self.app_main.mainWindow.ui.daqTab.setEnabled(True)
         except Exception as e:
             print >> sys.stderr, "sensorBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
@@ -122,8 +122,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.femConnectionStatus(False)
         try:
             # Also lock DAQ tab during text execution..
-            self.appMain.mainWindow.ui.runGroupBox.setEnabled(False)
-            self.appMain.mainWindow.ui.daqTab.setEnabled(False)
+            self.app_main.mainWindow.ui.runGroupBox.setEnabled(False)
+            self.app_main.mainWindow.ui.daqTab.setEnabled(False)
         except Exception as e:
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
@@ -136,9 +136,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
-        self.appMain.asicTester.setModuleDescription(moduleDescription)
+        self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
-                                        partial(self.appMain.asicTester.executeAsicBondingTest, self.moduleNumber),
+                                        partial(self.app_main.asic_tester.executeAsicBondingTest, self.moduleNumber),
                                         self.asicBondingTestDone)
     
     def asicBondingTestDone(self):
@@ -150,8 +150,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.femConnectionStatus(True)
         try:
             # Also unlock DAQ tab during text execution..
-            self.appMain.mainWindow.ui.runGroupBox.setEnabled(True)
-            self.appMain.mainWindow.ui.daqTab.setEnabled(True)
+            self.app_main.mainWindow.ui.runGroupBox.setEnabled(True)
+            self.app_main.mainWindow.ui.daqTab.setEnabled(True)
         except Exception as e:
             print >> sys.stderr, "asicBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
@@ -216,7 +216,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.logger.addHandler(self.hdl)
         self.logger.setLevel(logging.DEBUG)
         # Signal new file path
-        self.appMain.asicWindow.logPathSignal.emit(filePath)
+        self.app_main.asic_window.logPathSignal.emit(filePath)
 
     def operatorUpdate(self):
 
@@ -255,7 +255,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             self.moduleNumber = LpdAsicTester.RHS_MODULE
             
         self.setModuleType(self.moduleNumber)
-        self.appMain.asicWindow.moduleSignal.emit(self.moduleNumber)
+        self.app_main.asic_window.moduleSignal.emit(self.moduleNumber)
             
     def testMsgPrint(self, msg, bError=False):
         ''' Print message to this tab's message box, NOT main tab's '''
@@ -273,7 +273,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.ui.testMessageBox.appendPlainText(constructedMessage)
         self.ui.testMessageBox.verticalScrollBar().setValue(self.ui.testMessageBox.verticalScrollBar().maximum())
         self.ui.testMessageBox.repaint()
-        self.appMain.app.processEvents()
+        self.app_main.app.processEvents()
 
     def dumpGuiFieldsToLog(self):
         ''' Using testMsgPrint() also logs the message to file '''

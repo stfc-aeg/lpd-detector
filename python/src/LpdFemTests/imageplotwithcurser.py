@@ -14,7 +14,7 @@ def imagePlot():
 
     args = parseArgs()
 
-    with h5py.File(args.fileName, 'r') as hdfFile:
+    with h5py.File(args.file_name, 'r') as hdfFile:
 
         # Read in the train, image counter and timestamp arrays
         trainNumber = hdfFile['/lpd/data/trainNumber'][...]
@@ -103,7 +103,7 @@ def parseArgs():
 
     parser = argparse.ArgumentParser(description="Read and Plot one specific LPD image from an HDF file, into a figure where clicking inside the image will produce pixel coordinates and value.")
 
-    parser.add_argument("fileName", help='Name of HDF5 data file to open')
+    parser.add_argument("file_name", help='Name of HDF5 data file to open')
     parser.add_argument("-t", "--train", type=int, default=0,
         help="Select train number to plot")
     parser.add_argument("-i", "--image", type=int, default=0,

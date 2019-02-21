@@ -50,7 +50,7 @@ class LpdFemUdpProducer(object):
         self.numAsics     = self.numAsicRows * self.numAsicCols
 
         # Initialise an array representing a single image in the system
-        self.imageArray = np.empty((self.numPixelRows, self.numPixelCols), dtype=np.uint16)
+        self.image_array = np.empty((self.numPixelRows, self.numPixelCols), dtype=np.uint16)
                 
         if self.module == LpdFemUdpProducer.ModuleTypeSuperModule:
             
@@ -67,7 +67,7 @@ class LpdFemUdpProducer(object):
                         pixelRowEnd   = pixelRowStart + self.numPixelRowsPerAsic
                         pixelColStart = aCol * self.numPixelColsPerAsic
                         pixelColEnd   = pixelColStart + self.numPixelColsPerAsic
-                        self.imageArray[pixelRowStart:pixelRowEnd, pixelColStart:pixelColEnd] = asicVal
+                        self.image_array[pixelRowStart:pixelRowEnd, pixelColStart:pixelColEnd] = asicVal
                         asicVal += asicValOffset
             elif self.pattern == LpdFemUdpProducer.PatternTypePerPixel:
                 
@@ -77,19 +77,19 @@ class LpdFemUdpProducer(object):
                 pixelValOffset = 8
                 for pRow in range(self.numPixelRowsPerAsic):
                     for pCol in range(self.numPixelColsPerAsic):
-                        self.imageArray[pRow::self.numPixelRowsPerAsic, pCol::self.numPixelColsPerAsic] = pixelVal
+                        self.image_array[pRow::self.numPixelRowsPerAsic, pCol::self.numPixelColsPerAsic] = pixelVal
                         pixelVal += pixelValOffset
             
             else:
                 raise LpdFemUdpProducerError("Illegal pattern type %d specified" % self.pattern)
             
             # Transpose rows of image array to get correct vertical orientation
-            self.imageArray[:,:] = self.imageArray[::-1,:]
+            self.image_array[:,:] = self.image_array[::-1,:]
             
         elif self.module == LpdFemUdpProducer.ModuleTypeTwoTile:
 
             # For two-tile system, zero out array for unused tiles
-            self.imageArray[:] = 0
+            self.image_array[:] = 0
 
             if self.pattern == LpdFemUdpProducer.PatternTypePerAsic:
 
@@ -103,7 +103,7 @@ class LpdFemUdpProducer(object):
                         pixelRowEnd   = pixelRowStart + self.numPixelRowsPerAsic
                         pixelColStart = aCol * self.numPixelColsPerAsic
                         pixelColEnd   = pixelColStart + self.numPixelColsPerAsic
-                        self.imageArray[pixelRowStart:pixelRowEnd, pixelColStart:pixelColEnd] = asicVal
+                        self.image_array[pixelRowStart:pixelRowEnd, pixelColStart:pixelColEnd] = asicVal
                         asicVal += asicValOffset
                         
             elif self.pattern == LpdFemUdpProducer.PatternTypePerPixel:
@@ -116,8 +116,8 @@ class LpdFemUdpProducer(object):
                     for pCol in range(self.numPixelColsPerAsic):
                         pixelColStart = pCol+(self.numPixelColsPerAsic*8)
                         pixelColEnd   = pCol+(self.numPixelColsPerAsic*16)
-                        self.imageArray[pRow+32, pixelColStart:pixelColEnd:self.numPixelColsPerAsic] = pixelVal
-                        self.imageArray[pRow+192, pixelColStart:pixelColEnd:self.numPixelColsPerAsic] = pixelVal
+                        self.image_array[pRow+32, pixelColStart:pixelColEnd:self.numPixelColsPerAsic] = pixelVal
+                        self.image_array[pRow+192, pixelColStart:pixelColEnd:self.numPixelColsPerAsic] = pixelVal
                         pixelVal += pixelValOffset
             
             else:
@@ -132,7 +132,7 @@ class LpdFemUdpProducer(object):
         for row in range(self.numPixelRowsPerAsic):
             for col in range(self.numPixelColsPerAsic):
                 pixelStream[streamOffset:(streamOffset + self.numAsics)] = \
-                    self.imageArray[row::self.numPixelRowsPerAsic, col::self.numPixelColsPerAsic].reshape(self.numAsics)
+                    self.image_array[row::self.numPixelRowsPerAsic, col::self.numPixelColsPerAsic].reshape(self.numAsics)
                 streamOffset += self.numAsics
         
         # Copy transformed data stream to repeat for number of images per train
@@ -241,7 +241,7 @@ class LpdFemUdpProducer(object):
  
         fig = plt.figure(1)
         ax = fig.add_subplot(111)
-        img = ax.imshow(self.imageArray)
+        img = ax.imshow(self.image_array)
         plt.show()       
         
     

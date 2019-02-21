@@ -87,22 +87,22 @@ class FemGuiMainWindow(QtGui.QMainWindow):
         
     def showConfig(self):
         
-        self.ui.magicNumber.setText('0x%X' % self.guiMain.femConfig.magicWord)
-        self.ui.checksum.setText('0x%X' % self.guiMain.femConfig.checksum)
-        self.ui.macAddress.setText(self.guiMain.femConfig.net_mac_str())
-        self.ui.ipAddress.setText(self.guiMain.femConfig.net_ip_addr_str())
-        self.ui.netMask.setText(self.guiMain.femConfig.net_ip_mask_str())
-        self.ui.gateway.setText(self.guiMain.femConfig.net_ip_gw_str())
-        self.ui.highTempThreshold.setText(str(self.guiMain.femConfig.temp_high))
-        self.ui.critTempTreshold.setText(str(self.guiMain.femConfig.temp_crit))
-        self.ui.boardId.setText(str(self.guiMain.femConfig.board_id))
-        self.ui.boardType.setText(str(self.guiMain.femConfig.board_type))
-        self.ui.hwVersionMajor.setText(str(self.guiMain.femConfig.hw_major_version))
-        self.ui.hwVersionMinor.setText(str(self.guiMain.femConfig.hw_minor_version))
-        self.ui.fwVersionMajor.setText(str(self.guiMain.femConfig.fw_major_version))
-        self.ui.fwVersionMinor.setText(str(self.guiMain.femConfig.fw_minor_version))
-        self.ui.swVersionMajor.setText(str(self.guiMain.femConfig.sw_major_version))
-        self.ui.swVersionMinor.setText(str(self.guiMain.femConfig.sw_minor_version))
+        self.ui.magicNumber.setText('0x%X' % self.guiMain.fem_config.magicWord)
+        self.ui.checksum.setText('0x%X' % self.guiMain.fem_config.checksum)
+        self.ui.macAddress.setText(self.guiMain.fem_config.net_mac_str())
+        self.ui.ipAddress.setText(self.guiMain.fem_config.net_ip_addr_str())
+        self.ui.netMask.setText(self.guiMain.fem_config.net_ip_mask_str())
+        self.ui.gateway.setText(self.guiMain.fem_config.net_ip_gw_str())
+        self.ui.highTempThreshold.setText(str(self.guiMain.fem_config.temp_high))
+        self.ui.critTempTreshold.setText(str(self.guiMain.fem_config.temp_crit))
+        self.ui.boardId.setText(str(self.guiMain.fem_config.board_id))
+        self.ui.boardType.setText(str(self.guiMain.fem_config.board_type))
+        self.ui.hwVersionMajor.setText(str(self.guiMain.fem_config.hw_major_version))
+        self.ui.hwVersionMinor.setText(str(self.guiMain.fem_config.hw_minor_version))
+        self.ui.fwVersionMajor.setText(str(self.guiMain.fem_config.fw_major_version))
+        self.ui.fwVersionMinor.setText(str(self.guiMain.fem_config.fw_minor_version))
+        self.ui.swVersionMajor.setText(str(self.guiMain.fem_config.sw_major_version))
+        self.ui.swVersionMinor.setText(str(self.guiMain.fem_config.sw_minor_version))
         
     def updateConfig(self):
         

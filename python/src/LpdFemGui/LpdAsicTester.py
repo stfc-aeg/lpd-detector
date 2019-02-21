@@ -33,20 +33,20 @@ class LpdAsicTester(object):
     RHS_MODULE = 10 #15
     LHS_MODULE = 12 #0 # 0 is the REAL LHS module !
     
-    def __init__(self, appMain, device):
+    def __init__(self, app_main, device):
         
         super(LpdAsicTester, self).__init__()    # Required for pyqtSignal
-        self.appMain = appMain
+        self.app_main = app_main
         self.device = device
         
         # Established signals (and slots)
-        self.messageSignal = self.appMain.mainWindow.testTab.messageSignal
+        self.messageSignal = self.app_main.mainWindow.testTab.messageSignal
 
         # Test session parameters
         self.currentParams = {}
 
         # Copy defaults from file (via LpdFemGui class)
-        self.currentParams = self.appMain.cachedParams.copy()
+        self.currentParams = self.app_main.cached_params.copy()
         # Ensure a set of known defaults (common to all tests)
         self.currentParams['liveViewEnable']                = False
         self.currentParams['femAsicGainOverride']           = 100   # Copied into femAsicGain by LpdFemGui.deviceConfigure() !
@@ -57,7 +57,7 @@ class LpdAsicTester(object):
         self.currentParams['arduinoShutterEnable']          = False
         self.currentParams['readoutParamFile']              = self.currentParams['testingReadoutParamFile']
         self.currentParams['setupParamFile']                = self.currentParams['testingSetupParamFile']
-        self.currentParams['runNumber']                     = 9000
+        self.currentParams['run_number']                     = 9000
 
         self.moduleString = "-1"
         self.moduleDescription = ""
@@ -68,7 +68,7 @@ class LpdAsicTester(object):
 
         self.hardwareDelay  = 3
         self.moduleNumber   = 0
-        self.fileName       = ""
+        self.file_name       = ""
         self.image          = 0
         self.train          = 0
         self.maxImageNumber = 0
@@ -121,7 +121,7 @@ class LpdAsicTester(object):
 #            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
             
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
-            self.obtainPowerSuppliesState(self.appMain.pwrCard.powerStateGet())
+            self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
 
             numFailedSections = 0
             
@@ -168,14 +168,14 @@ class LpdAsicTester(object):
             self.msgPrint("3. Take data with long exposure command sequence")
             # Set long exposure XML file, configure device
             self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']
-            self.appMain.deviceConfigure(self.currentParams)
+            self.app_main.deviceConfigure(self.currentParams)
             
             # Readout Data
-            self.appMain.deviceRun(self.currentParams)
-            self.fileName = self.appMain.lastDataFile
-            self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
+            self.app_main.deviceRun(self.currentParams)
+            self.file_name = self.app_main.last_data_file
+            self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
 
-            if self.fileName == None:
+            if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("4. Check/record unconnected pixels - Using leakage current check.")
@@ -218,8 +218,8 @@ class LpdAsicTester(object):
                             self.msgPrint("     Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
 
             # Hack DAQ tab to restore it to ready state
-            self.appMain.deviceState = LpdFemGui.DeviceReady
-            self.appMain.runStateUpdate()
+            self.app_main.device_state = LpdFemGui.DeviceReady
+            self.app_main.runStateUpdate()
 
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
@@ -243,7 +243,7 @@ class LpdAsicTester(object):
             self.setModuleType(moduleNumber)
 
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
-            self.obtainPowerSuppliesState(self.appMain.pwrCard.powerStateGet())
+            self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
             
             # Assume both supplies switched off initially
             (bSwitchLvOn, bSwitchHvOn) = (True, True)
@@ -300,7 +300,7 @@ class LpdAsicTester(object):
 
             # 3. Serial Load
             self.msgPrint("3. Serial Load")
-            self.appMain.deviceConfigure(self.currentParams)
+            self.app_main.deviceConfigure(self.currentParams)
             
             # Ensure XML file loaded in serial
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
@@ -317,16 +317,16 @@ class LpdAsicTester(object):
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
             time.sleep(1)
             
-            self.appMain.deviceConfigure(self.currentParams)
+            self.app_main.deviceConfigure(self.currentParams)
 
             # 5. Readout Data
             self.msgPrint("5. Readout Data")
-            self.appMain.deviceRun(self.currentParams)
-            self.fileName = self.appMain.lastDataFile
-            self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
+            self.app_main.deviceRun(self.currentParams)
+            self.file_name = self.app_main.last_data_file
+            self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
 
             # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
-            if self.fileName == None:
+            if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("6. Check for out of range pixels")
@@ -367,7 +367,7 @@ class LpdAsicTester(object):
             
             # 10. Parallel load
             self.msgPrint("10. Parallel Load")
-            self.appMain.deviceConfigure(self.currentParams)
+            self.app_main.deviceConfigure(self.currentParams)
             # Ensure XML file load in parallel:
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
             self.setApiValue(paramName, 0)
@@ -385,13 +385,13 @@ class LpdAsicTester(object):
 
             # 12.Readout data
             self.msgPrint("12. Readout Data")
-            self.appMain.deviceRun(self.currentParams)
+            self.app_main.deviceRun(self.currentParams)
 
-            self.fileName = self.appMain.lastDataFile
-            self.msgPrint("Produced HDF5 file: '%s'" % self.fileName)
+            self.file_name = self.app_main.last_data_file
+            self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             
             # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
-            if self.fileName == None:
+            if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("13. Check for out of range pixels")
@@ -412,8 +412,8 @@ class LpdAsicTester(object):
                     self.msgPrint("* %s." % errorLine)
 
             # Hack DAQ tab to restore it to ready state
-            self.appMain.deviceState = LpdFemGui.DeviceReady
-            self.appMain.runStateUpdate()
+            self.app_main.device_state = LpdFemGui.DeviceReady
+            self.app_main.runStateUpdate()
 
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
@@ -489,8 +489,8 @@ class LpdAsicTester(object):
         ''' Change HV bias '''        
         try:
             hvBias = float(biasStr)
-            self.appMain.pwrCard.hvBiasSet(hvBias)
-            self.appMain.mainWindow.pwrTab.powerStatusUpdateDone()
+            self.app_main.pwr_card.hvBiasSet(hvBias)
+            self.app_main.mainWindow.pwrTab.powerStatusUpdateDone()
             
         except ValueError:
             self.msgPrint("Exception setting HV bias: %s" % biasStr, bError=True)
@@ -500,36 +500,36 @@ class LpdAsicTester(object):
     
     def toggleLvSupplies(self):
 
-        currentState = self.appMain.pwrCard.lvEnableGet()        
+        currentState = self.app_main.pwr_card.lvEnableGet()        
         nextState = not currentState
-        self.appMain.pwrCard.lvEnableSet(nextState)
+        self.app_main.pwr_card.lvEnableSet(nextState)
 
-        stateNow = self.appMain.pwrCard.lvEnableGet()
+        stateNow = self.app_main.pwr_card.lvEnableGet()
         if nextState != None and stateNow != nextState:
             self.msgPrint("ERROR: failed to switch LV enable to %d" % nextState, bError=True)
         else:
-            self.appMain.mainWindow.pwrTab.powerBtnStateUpdate('lv', stateNow)
-        self.appMain.mainWindow.pwrTab.powerStatusUpdateDone()
+            self.app_main.mainWindow.pwrTab.powerBtnStateUpdate('lv', stateNow)
+        self.app_main.mainWindow.pwrTab.powerStatusUpdateDone()
         time.sleep(self.hardwareDelay)
         
     def toggleHvSupplies(self):
         
-        currentState = self.appMain.pwrCard.hvEnableGet()        
+        currentState = self.app_main.pwr_card.hvEnableGet()        
         nextState = not currentState
-        self.appMain.pwrCard.hvEnableSet(nextState)
+        self.app_main.pwr_card.hvEnableSet(nextState)
 
-        stateNow = self.appMain.pwrCard.hvEnableGet()
+        stateNow = self.app_main.pwr_card.hvEnableGet()
         if nextState != None and  stateNow != nextState:
             self.msgPrint("ERROR: failed to switch HV enable to %d" % nextState, bError=True)
         else:
-            self.appMain.mainWindow.pwrTab.powerBtnStateUpdate('hv', stateNow)
-        self.appMain.mainWindow.pwrTab.powerStatusUpdateDone()
+            self.app_main.mainWindow.pwrTab.powerBtnStateUpdate('hv', stateNow)
+        self.app_main.mainWindow.pwrTab.powerStatusUpdateDone()
         time.sleep(self.hardwareDelay)
         
     def obtainPowerSuppliesState(self, powerState):
 
         # Loop over LHS and RHS power cards and update display
-        for powerCard in range(self.appMain.pwrCard.numPowerCards):
+        for powerCard in range(self.app_main.pwr_card.numPowerCards):
 
             #paramName = 'asicPowerEnable' + str(powerCard)
             #self.lvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
@@ -555,9 +555,9 @@ class LpdAsicTester(object):
         self.train = 0
         self.image = 0
         # Check hdf5 filename exist before opening it
-        if os.path.isfile(self.fileName):
+        if os.path.isfile(self.file_name):
             if not self.analyseFile():
-                self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
+                self.msgPrint("Error opening captured file: %s" % self.file_name, bError=True)
                 return -1
 
             # Open again looking for the very last image (of the last train)
@@ -565,7 +565,7 @@ class LpdAsicTester(object):
             self.image = self.maxImageNumber
             self.analyseFile()
         else:
-            self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
+            self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.file_name, bError=True)
             return -1
 
         # Note unconnected in an array (to fill the second plot)
@@ -581,7 +581,7 @@ class LpdAsicTester(object):
         (rowStart, colStart) = self.asicStartingRowColumn(self.moduleNumber)
         
         # Open the current data file, reading in the data but skipping the first train
-        leakageFile = h5py.File(self.fileName, 'r')
+        leakageFile = h5py.File(self.file_name, 'r')
         leakageData = (leakageFile['/lpd/data/image'][numImagesPerTrain:,rowStart:rowStart+self.numRows, colStart:colStart+self.numCols] & 0xFFF)
         resultArray = np.zeros((numImagesPerTrain, self.numRows, self.numCols))
 
@@ -614,22 +614,22 @@ class LpdAsicTester(object):
 #        print >> sys.stderr, "positive versus negative: %d versus %d" % (posCount, negCount)
 
         # Signal hdf5 image (data)
-        self.appMain.asicWindow.dataSignal.emit(self.moduleData, unconnectedPixelsArray, thresholdPixelsArray, self.moduleDescription, self.moduleNumber, threshold, "Leakage Current")
+        self.app_main.asic_window.dataSignal.emit(self.moduleData, unconnectedPixelsArray, thresholdPixelsArray, self.moduleDescription, self.moduleNumber, threshold, "Leakage Current")
         return numUnconnectedPixels
         
     def checkOutOfRangePixels(self, train, image, miscDescription="", bSuppressPixelInfo=False):
-        ''' Check self.fileName's pixels, image 0 for out of range pixels 
+        ''' Check self.file_name's pixels, image 0 for out of range pixels 
             out of range being described as greater than 2 standard deviations '''
         self.train  = train
         self.image  = image
 
         # Check hdf5 filename exist before opening it
-        if os.path.isfile(self.fileName):
+        if os.path.isfile(self.file_name):
             if not self.analyseFile():
-                self.msgPrint("Error opening captured file: %s" % self.fileName, bError=True)
+                self.msgPrint("Error opening captured file: %s" % self.file_name, bError=True)
                 return -1
         else:
-            self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.fileName, bError=True)
+            self.msgPrint("Analysis Error: File (%s) doesn't exist" % self.file_name, bError=True)
             return -1
 
         # Check for bad pixel(s)
@@ -667,12 +667,12 @@ class LpdAsicTester(object):
             faultyPixelsArray[row][column] = 1
 
         # Signal hdf5 image (data)
-        self.appMain.asicWindow.dataSignal.emit(self.moduleData, faultyPixelsArray, faultyPixelsArray, self.moduleDescription, self.moduleNumber, -1, miscDescription)
+        self.app_main.asic_window.dataSignal.emit(self.moduleData, faultyPixelsArray, faultyPixelsArray, self.moduleDescription, self.moduleNumber, -1, miscDescription)
 
     def analyseFile(self):
         ''' Open file, extracting one image along with meta data and calculate standard deviation and average '''
 
-        with h5py.File(self.fileName, 'r') as hdfFile:
+        with h5py.File(self.file_name, 'r') as hdfFile:
 
             try:            
                 # Read in the train, image counter and timestamp arrays
@@ -712,9 +712,9 @@ class LpdAsicTester(object):
             except Exception as e:
                 self.msgPrint("Analysis Error while processing file: %s" % e, bError=True)
                 return False
-            self.appMain.asicWindow.timeStampSignal.emit(timeStamp[imgOffset])
-            self.appMain.asicWindow.trainSignal.emit(trainNumber[imgOffset])
-            self.appMain.asicWindow.imageSignal.emit(imageNumber[imgOffset])
+            self.app_main.asic_window.timeStampSignal.emit(timeStamp[imgOffset])
+            self.app_main.asic_window.trainSignal.emit(trainNumber[imgOffset])
+            self.app_main.asic_window.imageSignal.emit(imageNumber[imgOffset])
             return True 
 
     def checkTheColumns(self):

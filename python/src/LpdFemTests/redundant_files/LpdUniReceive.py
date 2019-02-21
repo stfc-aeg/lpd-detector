@@ -23,45 +23,45 @@ else:
     bHDF5 = True
 
 #Display received data in plots
-bDisplayPlotData = True
+b_display_plot_data = True
 
 # Debugging enabled if set above 0
 bDebug = 0
         
 class LpdFemDataReceiver(QtCore.QObject):
 
-    def __init__(self, liveViewSignal, listenAddr, listenPort, numFrames, cachedParams, appMain):
+    def __init__(self, live_view_signal, listen_addr, listen_port, num_frames, cached_params, app_main):
         
         try:
             super(LpdFemDataReceiver, self).__init__()
                 
-            self.numFrames = numFrames
-            self.appMain = appMain
-            self.debugLevel = cachedParams['debugLevel']
+            self.num_frames = num_frames
+            self.app_main = app_main
+            self.debugLevel = cached_params['debugLevel']
             
             # Create UDP recevier, frame processor and data monitor objects
-            self.udpReceiver = UdpReceiver(listenAddr, listenPort, numFrames)
-            self.frameProcessor = FrameProcessor(numFrames, cachedParams, liveViewSignal)
+            self.udp_receiver = UdpReceiver(listen_addr, listen_port, num_frames)
+            self.frame_processor = FrameProcessor(num_frames, cached_params, live_view_signal)
             
             # Create threads to run them in
-            self.udpReceiverThread = QtCore.QThread() 
-            self.frameProcessorThread = QtCore.QThread()
+            self.udp_receiver_thread = QtCore.QThread() 
+            self.frame_processor_thread = QtCore.QThread()
             
             # Move objects into threads
-            self.udpReceiver.moveToThread(self.udpReceiverThread)
-            self.frameProcessor.moveToThread(self.frameProcessorThread)
+            self.udp_receiver.moveToThread(self.udp_receiver_thread)
+            self.frame_processor.moveToThread(self.frame_processor_thread)
             
             # Connect thread start signal of UDP receiver to receive loop function
-            self.udpReceiverThread.started.connect(self.udpReceiver.receiveLoop)
+            self.udp_receiver_thread.started.connect(self.udp_receiver.receiveLoop)
             
             # Connect data RX signal from UDP receiver to handleDataRx slot in frame processor
-            self.udpReceiver.connect(self.udpReceiver, QtCore.SIGNAL("dataRxSignal"), self.frameProcessor.processFrame)
+            self.udp_receiver.connect(self.udp_receiver, QtCore.SIGNAL("dataRxSignal"), self.frame_processor.processFrame)
             
             # Start the frame processor thread up
-            self.frameProcessorThread.start()
+            self.frame_processor_thread.start()
 
             # Start the UDP receiver thread up            
-            self.udpReceiverThread.start()
+            self.udp_receiver_thread.start()
             
         except Exception as e:
             print "LpdFemDataReceiver got exception during initialisation: %s" % e
@@ -71,27 +71,27 @@ class LpdFemDataReceiver(QtCore.QObject):
 
             if self.debugLevel > 0:
                 print "Waiting for frame processing to complete"
-            while self.frameProcessor.framesHandled < self.numFrames and self.appMain.abortRun == False:
+            while self.frame_processor.frames_handled < self.num_frames and self.app_main.abort_run == False:
                 time.sleep(0.1)
             
-            if self.appMain.abortRun:
+            if self.app_main.abort_run:
                 print "Run aborted by user"
             
             if self.debugLevel > 0:
                 print "Frame processor handled all frames, terminating data receiver threads"
 
-            #TODO: Close udpReceiver's socket? - Success
-            self.udpReceiver.closeConnection()
+            #TODO: Close udp_receiver's socket? - Success
+            self.udp_receiver.closeConnection()
             
-            self.frameProcessorThread.quit()
-            self.udpReceiverThread.quit()
+            self.frame_processor_thread.quit()
+            self.udp_receiver_thread.quit()
             
-            self.frameProcessorThread.wait()
-            self.udpReceiverThread.wait()
+            self.frame_processor_thread.wait()
+            self.udp_receiver_thread.wait()
             
             try:
-                print "Average frame UDP receive time : %f secs" % (self.udpReceiver.totalReceiveTime / self.udpReceiver.frameCount)
-                print "Average frame processing time  : %f secs" % (self.frameProcessor.totalProcessingTime / self.frameProcessor.framesHandled)
+                print "Average frame UDP receive time : %f secs" % (self.udp_receiver.total_receive_time / self.udp_receiver.frame_count)
+                print "Average frame processing time  : %f secs" % (self.frame_processor.total_processing_time / self.frame_processor.frames_handled)
             except Exception as e:
                 print >> sys.stderr, "Got exception", e
             if self.debugLevel > 0:
@@ -99,23 +99,23 @@ class LpdFemDataReceiver(QtCore.QObject):
         
 class UdpReceiver(QtCore.QObject):
         
-    def __init__(self, listenAddr, listenPort, numFrames):
+    def __init__(self, listen_addr, listen_port, num_frames):
 
         super(UdpReceiver, self).__init__()
         
         # Initialise variables used by processRxData
         self.first_frm_num = -1       
-        self.packetNumber = -1
-        self.frameCount = 0
-        self.numFrames = numFrames
-        self.totalReceiveTime = 0.0
+        self.packet_number = -1
+        self.frame_count = 0
+        self.num_frames = num_frames
+        self.total_receive_time = 0.0
         
         # Bind to UDP receive socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((listenAddr, listenPort))
+        self.sock.bind((listen_addr, listen_port))
 
         print "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-        print "UDP Receiver thread listening on address %s port %s  (%i frame(s)/file)" % (listenAddr, listenPort, numFrames)
+        print "UDP Receiver thread listening on address %s port %s  (%i frame(s)/file)" % (listen_addr, listen_port, num_frames)
 
     def closeConnection(self):
 
@@ -125,20 +125,20 @@ class UdpReceiver(QtCore.QObject):
     def receiveLoop(self):
                     
         try:
-            while self.frameCount < self.numFrames:
+            while self.frame_count < self.num_frames:
                 
                 foundEof = 0
-                lpdFrame = LpdFrameContainer(self.frameCount)
+                lpdFrame = LpdFrameContainer(self.frame_count)
                 
                 while foundEof == 0:
                     stream = self.sock.recv(9000)
                     foundEof  = self.processRxData(lpdFrame, stream)
                     if foundEof:
                         # Complete frame received, transmit frame along with meta data saved in LpdFrameContainer object
-                        #print >> sys.stderr, "Frame %d receive complete" % lpdFrame.frameNumber
+                        #print >> sys.stderr, "Frame %d receive complete" % lpdFrame.frame_number
                         self.emit(QtCore.SIGNAL("dataRxSignal"), lpdFrame)
-                        self.frameCount += 1
-                        self.totalReceiveTime += (lpdFrame.timeStampEof - lpdFrame.timeStampSof)
+                        self.frame_count += 1
+                        self.total_receive_time += (lpdFrame.time_stamp_eof - lpdFrame.time_stamp_sof)
                         
         except Exception as e:
             print "UDP receiver event loop got an exception: %s" % e
@@ -146,7 +146,7 @@ class UdpReceiver(QtCore.QObject):
             
         #print >> sys.stderr, "Receiver thread completed"
 
-    def processRxData(self, lpdFrame, data):
+    def processRxData(self, lpd_frame, data):
         ''' 
         Processes received data packets, decoding the Train Transfer Protocol information
         to construct completed frames (trains) 
@@ -167,8 +167,8 @@ class UdpReceiver(QtCore.QObject):
             eof = (trailerInfo[1] >> (30)) & 0x1
             
             #TODO: Restore this link if frame number coming from fem before absolute?          
-            # frameNumber = train number relative to execution of this software
-            #lpdFrame.frameNumber = frameNumber
+            # frame_number = train number relative to execution of this software
+            #lpd_frame.frame_number = frame_number
             
             if self.first_frm_num == -1:
                 self.first_frm_num = frameNumber
@@ -176,30 +176,30 @@ class UdpReceiver(QtCore.QObject):
             frameNumber = frameNumber - self.first_frm_num
             
             # Compare this packet number against the previous packet number
-            if packetNumber != (self.packetNumber +1):
+            if packetNumber != (self.packet_number +1):
                 
                 # packet numbering not consecutive
-                if packetNumber > self.packetNumber:
+                if packetNumber > self.packet_number:
                     
                     # this packet lost between this packet and the last packet received
-                    print "Warning: Previous packet number: %3i while current packet number: %3i" % (self.packetNumber, packetNumber)
+                    print "Warning: Previous packet number: %3i while current packet number: %3i" % (self.packet_number, packetNumber)
 
             # Update current packet number
-            self.packetNumber = packetNumber
+            self.packet_number = packetNumber
 
             # Timestamp start of frame (when we received first data of train)
             if sof == 1:
 
-                lpdFrame.timeStampSof = time.time()
+                lpd_frame.time_stamp_sof = time.time()
         
                 # It's the start of a new train, clear any data left from previous train..
-                lpdFrame.rawImageData = ""                
+                lpd_frame.raw_image_data = ""                
 
             if eof == 1:
-                lpdFrame.timeStampEof = time.time()
+                lpd_frame.time_stamp_eof = time.time()
             
             # Append current packet data onto raw image omitting trailer info
-            lpdFrame.rawImageData += data[0:-8]
+            lpd_frame.raw_image_data += data[0:-8]
             
             return eof
         except Exception as e:
@@ -215,26 +215,26 @@ class FrameProcessor(QtCore.QObject):
     AsicTypeAloneFem    = 3
     AsicTypeRawData     = 4
     
-    def __init__(self, numFrames, cachedParams, liveViewSignal):
+    def __init__(self, num_frames, cached_params, live_view_signal):
 
         QtCore.QObject.__init__(self)
         
-        self.numFrames = numFrames
-        self.evrData = None
+        self.num_frames = num_frames
+        self.evr_data = None
         
         #Only allow writing of HDF5 files if h5py library installed..
         if bHDF5:
-            self.fileWriteEnable = cachedParams['fileWriteEnable']
+            self.fileWriteEnable = cached_params['fileWriteEnable']
         else:
             self.fileWriteEnable = False
-        self.dataFilePath = cachedParams['dataFilePath']
-        self.liveViewDivisor = cachedParams['liveViewDivisor']
-        self.liveViewOffset  = cachedParams['liveViewOffset']
+        self.dataFilePath = cached_params['dataFilePath']
+        self.liveViewDivisor = cached_params['liveViewDivisor']
+        self.liveViewOffset  = cached_params['liveViewOffset']
         #asicModuleType:     0: super module    1: single ASIC    (redundant?)    2: 2-tile module    3: stand-alone fem    (4: raw data ?)
-        self.asicModuleType = cachedParams['asicModuleType']
-        self.debugLevel = cachedParams['debugLevel']
+        self.asicModuleType = cached_params['asicModuleType']
+        self.debugLevel = cached_params['debugLevel']
         if self.debugLevel > 1:
-            print "numFrames:       ", self.numFrames
+            print "num_frames:       ", self.num_frames
             print "fileWrite:       ", self.fileWriteEnable
             print "dataFilePath:    ", self.dataFilePath
             print "liveViewDivisor: ", self.liveViewDivisor
@@ -242,16 +242,16 @@ class FrameProcessor(QtCore.QObject):
             print "asicModuleType:  ", self.asicModuleType
             print "debugLevel:      ", self.debugLevel
         
-        self.liveViewSignal = liveViewSignal
+        self.liveViewSignal = live_view_signal
 
         # Run start time
         self.tstart = time.time()
 
         # Initialise counters
-        self.framesHandled = 0
-        self.imagesWritten = 0
-        self.dataBytesReceived = 0
-        self.totalProcessingTime = 0.0
+        self.frames_handled = 0
+        self.images_written = 0
+        self.data_bytes_received = 0
+        self.total_processing_time = 0.0
 
         # Define plotted image dimensions: 
         if self.asicModuleType == FrameProcessor.AsicTypeSuperModule:
@@ -272,20 +272,20 @@ class FrameProcessor(QtCore.QObject):
             
 
         # Define Module and Full Lpd size (Module differs if 2-tile, SuperMod, Fem, etc)
-        self.imageModuleSize = self.nrows * self.ncols
-        self.imageFullLpdSize = 256 * 256
+        self.image_module_size = self.nrows * self.ncols
+        self.image_full_lpd_size = 256 * 256
 
         # Create an image array to contain the elements of the module type 
         # Super Module = (32 x 8 x 16 x 16) = 65536 elements
         # 2Tile System = (32 * 16 * 16)     = 8192 elements
-        self.imageArray = np.zeros(self.imageModuleSize, dtype=np.uint16)
+        self.image_array = np.zeros(self.image_module_size, dtype=np.uint16)
         
         # Create HDF file if requested
         if self.fileWriteEnable:            
-            self.createDataFile(cachedParams)           
+            self.createDataFile(cached_params)           
         
    
-    def createDataFile(self, cachedParams):
+    def createDataFile(self, cached_params):
         '''
         Creates and HDF5 data file and internal structure, sets up metadata in file
         '''
@@ -299,7 +299,7 @@ class FrameProcessor(QtCore.QObject):
             postFix += 1
         
         try:
-            self.hdfFile = h5py.File(fileName, 'w')
+            self.hdf_file = h5py.File(fileName, 'w')
         except Exception as e:
             print "Failed to open HDF file with error: %s" % e
             raise(e)
@@ -309,34 +309,34 @@ class FrameProcessor(QtCore.QObject):
         
 
         # Create group structure
-        self.lpdGroup = self.hdfFile.create_group('lpd')
-        self.metaGroup = self.lpdGroup.create_group('metadata')
-        self.dataGroup = self.lpdGroup.create_group('data')
+        self.lpd_group = self.hdf_file.create_group('lpd')
+        self.meta_group = self.lpd_group.create_group('metadata')
+        self.data_group = self.lpd_group.create_group('data')
         
         # Create data group entries    
-        self.imageDs = self.dataGroup.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
+        self.image_ds = self.data_group.create_dataset('image', (1, self.nrows, self.ncols), 'uint16', chunks=(1, self.nrows, self.ncols), 
                                         maxshape=(None,self.nrows, self.ncols))
-        self.timeStampDs   = self.dataGroup.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
-        self.trainNumberDs = self.dataGroup.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
-        self.imageNumberDs = self.dataGroup.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
+        self.time_stamp_ds   = self.data_group.create_dataset('timeStamp',   (1,), 'float64', maxshape=(None,))
+        self.train_number_ds = self.data_group.create_dataset('trainNumber', (1,), 'uint32', maxshape=(None,))
+        self.image_number_ds = self.data_group.create_dataset('imageNumber', (1,), 'uint32', maxshape=(None,))
 
         # Build metadata attributes from cached parameters
-        for param, val in cachedParams.iteritems():
-            self.metaGroup.attrs[param] = val
+        for param, val in cached_params.iteritems():
+            self.meta_group.attrs[param] = val
 
          
-    def processFrame(self, lpdFrame):
+    def processFrame(self, lpd_frame):
         
-        #print >> sys.stderr, "Frame processor thread receiver frame number", lpdFrame.frameNumber, 'raw data length', len(lpdFrame.rawImageData)
+        #print >> sys.stderr, "Frame processor thread receiver frame number", lpd_frame.frame_number, 'raw data length', len(lpd_frame.raw_image_data)
 
-        self.dataBytesReceived += len(lpdFrame.rawImageData)
+        self.data_bytes_received += len(lpd_frame.raw_image_data)
         
         # Capture time of starting processing
         startTime = time.time()
         
         # Simultaneously extract 16 bit pixel data from raw 32 bit words and swap the byte order
         #     eg: ABCD => DCBA
-        self.pixelData = np.fromstring(lpdFrame.rawImageData, dtype=np.dtype('<i2'))
+        self.pixel_data = np.fromstring(lpd_frame.raw_image_data, dtype=np.dtype('<i2'))
             
         # Define variables that increase with each loop iteration
         currentImage = 0
@@ -345,57 +345,57 @@ class FrameProcessor(QtCore.QObject):
         # Loop over the specified number of plots
         while bNextImageAvailable:
 
-            imageOffset = self.imageFullLpdSize * currentImage
+            imageOffset = self.image_full_lpd_size * currentImage
 
             # Get the first image of the image
             bNextImageAvailable = self.unpackImage(imageOffset)
 
             # Mask out gain bits from data
             # TODO REMOVE THIS
-            #self.imageArray = self.imageArray & 0xfff
+            #self.image_array = self.image_array & 0xfff
             
             # Write image to file if selected
             if self.fileWriteEnable:
-                self.imageDs.resize((self.imagesWritten+1, self.nrows, self.ncols))
-                self.imageDs[self.imagesWritten,...] = self.imageArray
+                self.image_ds.resize((self.images_written+1, self.nrows, self.ncols))
+                self.image_ds[self.images_written,...] = self.image_array
                 
-                self.timeStampDs.resize((self.imagesWritten+1, ))
-                self.timeStampDs[self.imagesWritten] = lpdFrame.timeStampSof
+                self.time_stamp_ds.resize((self.images_written+1, ))
+                self.time_stamp_ds[self.images_written] = lpd_frame.time_stamp_sof
                 
-                self.trainNumberDs.resize((self.imagesWritten+1, ))
-                self.trainNumberDs[self.imagesWritten] = lpdFrame.frameNumber
+                self.train_number_ds.resize((self.images_written+1, ))
+                self.train_number_ds[self.images_written] = lpd_frame.frame_number
                 
-                self.imageNumberDs.resize((self.imagesWritten+1, ))
-                self.imageNumberDs[self.imagesWritten] = currentImage
+                self.image_number_ds.resize((self.images_written+1, ))
+                self.image_number_ds[self.images_written] = currentImage
 
             # Send signal to update plotted graph at appropriate rate
-            if (self.imagesWritten - self.liveViewOffset) % self.liveViewDivisor == 0:
-                lpdImage = LpdImageContainer(0, lpdFrame.frameNumber, currentImage) # 0 = runNumber, not used
-                lpdImage.imageArray = self.imageArray.copy()
+            if (self.images_written - self.liveViewOffset) % self.liveViewDivisor == 0:
+                lpdImage = LpdImageContainer(0, lpd_frame.frame_number, currentImage) # 0 = runNumber, not used
+                lpdImage.image_array = self.image_array.copy()
                 self.liveViewSignal.emit(lpdImage)
                     
             # Clear data before next iteration (but after data written to file)
-            self.imageArray.fill(0)
+            self.image_array.fill(0)
             
             # Increment current image
             currentImage += 1
-            self.imagesWritten += 1
+            self.images_written += 1
             
-        # 'Reset' rawImageData variable - WHY??
-        lpdFrame.rawImageData = lpdFrame.rawImageData[0:0]
+        # 'Reset' raw_image_data variable - WHY??
+        lpd_frame.raw_image_data = lpd_frame.raw_image_data[0:0]
 
         endTime = time.time()
-        self.totalProcessingTime += (endTime - startTime)
+        self.total_processing_time += (endTime - startTime)
         #print "Total frame processing time = %f secs" % (endTime - startTime)
 
-        self.framesHandled += 1
-        #if self.framesHandled >= self.numFrames:
+        self.frames_handled += 1
+        #if self.frames_handled >= self.num_frames:
         #    print >> sys.stderr, "Frame processor thread processed all frames, quitting"
         
 
-    def unpackImage(self, imageOffset):
-        """ Extracts one image beginning at argument imageOffset in the member array 
-            self.pixelData array. Returns boolean bImageAvailable indicating whether
+    def unpackImage(self, image_offset):
+        """ Extracts one image beginning at argument image_offset in the member array 
+            self.pixel_data array. Returns boolean bImageAvailable indicating whether
             the current image is the last image in the data
         """
         # Boolean variable to track whether there is a image after this one in the data
@@ -404,7 +404,7 @@ class FrameProcessor(QtCore.QObject):
         # Check Asic Module type to determine how to process data
         if self.asicModuleType == FrameProcessor.AsicTypeRawData:
             # Raw data - no not re-order
-            self.imageArray = self.pixelData[imageOffset:imageOffset + self.imageFullLpdSize].reshape(256, 256)
+            self.image_array = self.pixel_data[image_offset:image_offset + self.image_full_lpd_size].reshape(256, 256)
         else:
             # Not raw data, proceed to reorder data
             numAsicCols = 16
@@ -417,50 +417,50 @@ class FrameProcessor(QtCore.QObject):
             numPixels = numAsics * numPixelsPerAsic
     
             # Create linear array for unpacked pixel data
-            self.imageLpdFullArray = np.zeros(numPixels, dtype=np.uint16)
-            self.imageLpdFullArray = np.reshape(self.imageLpdFullArray, (numAsicRows * numRowsPerAsic, numAsicCols * numColsPerAsic))
+            self.image_lpd_full_array = np.zeros(numPixels, dtype=np.uint16)
+            self.image_lpd_full_array = np.reshape(self.image_lpd_full_array, (numAsicRows * numRowsPerAsic, numAsicCols * numColsPerAsic))
     
-            rawOffset = imageOffset
+            rawOffset = image_offset
     
             try:
                 for asicRow in xrange(numRowsPerAsic):
                     for asicCol in xrange(numColsPerAsic):
                         
-                        self.imageLpdFullArray[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixelData[rawOffset:(rawOffset + numAsics)].reshape(8,16)
+                        self.image_lpd_full_array[asicRow::numRowsPerAsic, asicCol::numColsPerAsic] = self.pixel_data[rawOffset:(rawOffset + numAsics)].reshape(8,16)
                         rawOffset += numAsics
             
             except IndexError:
                 print "Image Processing Error @ %6i %6i %6i %6i %6i %6i " % ( asicRow, numRowsPerAsic, asicCol, numColsPerAsic, rawOffset, numAsics )
             except Exception as e:
-                print "Error while extracting image: ", e, " -> imgOffset: ", imageOffset
+                print "Error while extracting image: ", e, " -> imgOffset: ", image_offset
     
             # Module specific data processing
             if self.asicModuleType == FrameProcessor.AsicTypeSuperModule:
                 
                 # Super Module - Image now upside down, reverse the order
-                self.imageLpdFullArray[:,:] = self.imageLpdFullArray[::-1,:]
-                self.imageArray = self.imageLpdFullArray.copy()
+                self.image_lpd_full_array[:,:] = self.image_lpd_full_array[::-1,:]
+                self.image_array = self.image_lpd_full_array.copy()
             elif self.asicModuleType == FrameProcessor.AsicTypeTwoTile:
                 
                 #Two Tile
                 # Create array for 2 Tile data; reshape into two dimensional array
-                self.imageArray = np.zeros(self.imageModuleSize, dtype=np.uint16)
-                self.imageArray = self.imageArray.reshape(32, 256)
+                self.image_array = np.zeros(self.image_module_size, dtype=np.uint16)
+                self.image_array = self.image_array.reshape(32, 256)
         
                 # Copy the two Tiles that exists in the two tile system
                 try:
                     # LHS Tile located in the second ASIC row, second ASIC column
-                    self.imageArray[0:32, 0:128]   = self.imageLpdFullArray[32:32+32, 256-1:128-1:-1]
+                    self.image_array[0:32, 0:128]   = self.image_lpd_full_array[32:32+32, 256-1:128-1:-1]
                     # RHS Tile located in the seventh ASIC row, second ASIC column
-                    self.imageArray[0:32, 128:256] = self.imageLpdFullArray[192:192+32, 256-1:128-1:-1]
+                    self.image_array[0:32, 128:256] = self.image_lpd_full_array[192:192+32, 256-1:128-1:-1]
                 except Exception as e:
                     print "Error accessing 2 Tile data: ", e
-                    print "imageOffset: ", imageOffset
+                    print "image_offset: ", image_offset
                     sys.exit()
 
         # Last image in the data?
         try:
-            self.pixelData[imageOffset + self.imageFullLpdSize]
+            self.pixel_data[image_offset + self.image_full_lpd_size]
             # Will only get here if there is a next image available..
             bNextImageAvailable = True
         except IndexError:

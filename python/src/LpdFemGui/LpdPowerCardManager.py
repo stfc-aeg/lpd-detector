@@ -13,11 +13,11 @@ class LpdPowerCardManager(object):
     classdocs
     '''
 
-    def __init__(self, appMain, device):
+    def __init__(self, app_main, device):
         '''
         Constructor
         '''
-        self.appMain = appMain
+        self.app_main = app_main
         self.device  = device
         
         self.lvEnabled = False
@@ -25,17 +25,17 @@ class LpdPowerCardManager(object):
         self.hvBias = 0.0
 
         # Specify number of power cards, sensors present
-        if self.appMain.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
+        if self.app_main.cached_params['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_SUPER_MODULE:
             self.numPowerCards = 2
             self.numSensorsPerCard = 8
-        elif self.appMain.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
+        elif self.app_main.cached_params['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_TWO_TILE:
             self.numPowerCards = 1
             self.numSensorsPerCard = 2
-        elif self.appMain.cachedParams['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
+        elif self.app_main.cached_params['asicModuleType'] == LpdFemClient.ASIC_MODULE_TYPE_RAW_DATA:
             self.numPowerCards = 2
             self.numSensorsPerCard = 8
         else:
-            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.appMain.cachedParams['asicModuleType']
+            print >> sys.stderr, "Error: Unsupported asicModuleType selected: %r" % self.app_main.cached_params['asicModuleType']
             
         self.numSensors = self.numSensorsPerCard * self.numPowerCards
         
@@ -54,7 +54,7 @@ class LpdPowerCardManager(object):
             paramName = 'asicPowerEnable' + str(powerCard)
             rc = self.device.paramSet(paramName, state)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to set LV to %d for card %d (rc=%d) : %s", int(state), powerCard, rc,
+                self.app_main.msgPrint("Unable to set LV to %d for card %d (rc=%d) : %s", int(state), powerCard, rc,
                                       self.device.errorStringGet())
         self.statusUpdate()
         
@@ -65,7 +65,7 @@ class LpdPowerCardManager(object):
             enableParamName = 'asicPowerEnable' + str(powerCard)
             (rc, enableVal) = self.device.paramGet(enableParamName)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to retrieve power card %d LV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
+                self.app_main.msgPrint("Unable to retrieve power card %d LV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
             lvEnables.append(enableVal)
         
         self.lvEnabled = False #True
@@ -81,7 +81,7 @@ class LpdPowerCardManager(object):
             paramName = 'sensorBiasEnable' + str(powerCard)
             rc = self.device.paramSet(paramName, state)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to set HV to %d for card %d (rc=%d) : %s" % (int(state), powerCard, rc,
+                self.app_main.msgPrint("Unable to set HV to %d for card %d (rc=%d) : %s" % (int(state), powerCard, rc,
                                       self.device.errorStringGet()))
                 
         self.statusUpdate()
@@ -93,7 +93,7 @@ class LpdPowerCardManager(object):
             enableParamName = 'sensorBiasEnable' + str(powerCard)
             (rc, enableVal) = self.device.paramGet(enableParamName)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to retrieve power card %d HV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
+                self.app_main.msgPrint("Unable to retrieve power card %d HV enable status (rc=%d): %s" % (powerCard, rc, self.device.errorStringGet()))
             hvEnables.append(enableVal)
         
         self.hvEnabled = False #True
@@ -110,7 +110,7 @@ class LpdPowerCardManager(object):
             paramName = 'sensorBias' + str(powerCard)
             rc = self.device.paramSet(paramName, bias)
             if rc != LpdDevice.ERROR_OK:
-                self.appMain.msgPrint("Unable to set HV bias for card %d (rc=%d) : %s" % (powerCard, rc,
+                self.app_main.msgPrint("Unable to set HV bias for card %d (rc=%d) : %s" % (powerCard, rc,
                                       self.device.errorStringGet()))
                 
         self.statusUpdate()
@@ -124,7 +124,7 @@ class LpdPowerCardManager(object):
 
         try:        
             self.powerState = {}
-            if self.appMain.deviceState != self.appMain.DeviceDisconnected:
+            if self.app_main.device_state != self.app_main.DeviceDisconnected:
             
                 # Loop over card parameters for each card and load into results
                 for powerCard in range(self.numPowerCards):
@@ -133,7 +133,7 @@ class LpdPowerCardManager(object):
                         paramName = param + str(powerCard)
                         (rc, val) = self.device.paramGet(paramName)
                         if  rc != LpdDevice.ERROR_OK:
-                            self.appMain.msgPrint("Unable to read parameter %s (rc=%d) : %s" % 
+                            self.app_main.msgPrint("Unable to read parameter %s (rc=%d) : %s" % 
                                                   (paramName, rc, self.device.errorStringGet()))
                             
                         self.powerState[paramName] = val
@@ -145,13 +145,13 @@ class LpdPowerCardManager(object):
                         paramName = 'sensor' + str(sensor) + param
                         (rc, val) = self.device.paramGet(paramName)
                         if rc != LpdDevice.ERROR_OK:
-                            self.appMain.msgPrint("Unable to read sensor parameter %s (rc=%d) : %s" %
+                            self.app_main.msgPrint("Unable to read sensor parameter %s (rc=%d) : %s" %
                                                   (paramName, rc, self.device.errorStringGet()))
                             
                         self.powerState[paramName] = val
             else:
                 pass
-                #self.appMain.msgPrint("Not updating power state as device disconnected")
+                #self.app_main.msgPrint("Not updating power state as device disconnected")
         
         except Exception as e:
             print >> sys.stderr, "Power card status update got exception:", e

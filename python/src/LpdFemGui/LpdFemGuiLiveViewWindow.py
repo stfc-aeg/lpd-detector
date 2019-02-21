@@ -143,8 +143,8 @@ class LpdFemGuiLiveViewWindow(QtGui.QDialog):
     def liveViewUpdate(self, lpdImage):
         
         # Mask off gain bits
-        lpdImage.imageArray = lpdImage.imageArray & 0xfff
-        self.imgObject.set_data(lpdImage.imageArray)
+        lpdImage.image_array = lpdImage.image_array & 0xfff
+        self.imgObject.set_data(lpdImage.image_array)
         self.axes.draw_artist(self.imgObject)
-        self.axes.set_title("Run %d Train %d Image %d" % (lpdImage.runNumber, lpdImage.frameNumber, lpdImage.imageNumber))
+        self.axes.set_title("Run %d Train %d Image %d" % (lpdImage.run_number, lpdImage.frame_number, lpdImage.image_number))
         self.canvas.draw()

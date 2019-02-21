@@ -15,7 +15,7 @@ class FemGuiMain:
         self.femErrString = ""
         self.defaultAddr = '192.168.1.10'
         self.defaultPort = 6969
-        self.femConfig = None
+        self.fem_config = None
         
         # Create the main window GUI and show it
         self.mainWindow= FemGuiMainWindow(self)
@@ -42,7 +42,7 @@ class FemGuiMain:
     def femConfigGet(self):
     
         if self.theFem != None:
-            self.femConfig = self.theFem.configRead()
+            self.fem_config = self.theFem.configRead()
             
     def femConfigUpdate(self, net_mac, net_ip, net_mask, 
                         net_gw, temp_high, temp_crit, 

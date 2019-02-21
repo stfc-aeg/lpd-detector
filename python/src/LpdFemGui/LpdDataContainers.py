@@ -23,18 +23,18 @@ class LpdFrameContainer(object):
 
 class LpdImageContainer(object): 
                         
-    def __init__(self, runNumber, frameNumber, imageNumber):
-        self.imageArray = None
-        self.runNumber = runNumber
-        self.frameNumber = frameNumber
-        self.imageNumber = imageNumber
+    def __init__(self, run_number, frame_number, image_number):
+        self.image_array = None
+        self.run_number = run_number
+        self.frame_number = frame_number
+        self.image_number = image_number
     
 class LpdRunStatusContainer(object):
     
-    def __init__(self, framesReceived, framesProcessed, imagesProcessed, dataBytesReceived):
+    def __init__(self, frames_received, frames_processed, images_processed, data_bytes_received):
         
-        self.framesReceived  = framesReceived
-        self.framesProcessed = framesProcessed
-        self.imagesProcessed = imagesProcessed
-        self.dataBytesReceived = dataBytesReceived
+        self.frames_received  = frames_received
+        self.frames_processed = frames_processed
+        self.images_processed = images_processed
+        self.data_bytes_received = data_bytes_received
     

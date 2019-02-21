@@ -31,7 +31,7 @@ class imagePlot():
         for i in range(yStart, yStop, yStep):
             self.ylist.append(i)
 
-        (imgOffset, timeStamp, runNumber, trainNumber, imageNumber, imageData) = self.obtainImageWithInfo()
+        (imgOffset, timeStamp, run_number, trainNumber, image_number, imageData) = self.obtainImageWithInfo()
 
         # Create the figure and title
         self.fig = plt.figure(1)
@@ -71,7 +71,7 @@ class imagePlot():
         self.ax.set_yticks(self.ylist)
 
         dateStr = time.strftime('%d/%m/%y %H:%M:%S', time.localtime(timeStamp))
-        titleText = 'Run %d Train %d Image %d Module %d : %s' % (runNumber, trainNumber, imageNumber, self.args.module, dateStr)
+        titleText = 'Run %d Train %d Image %d Module %d : %s' % (run_number, trainNumber, image_number, self.args.module, dateStr)
         self.mainTitle.set_text(titleText)
 
         # Add a colour bar
@@ -284,7 +284,7 @@ class imagePlot():
 
     def obtainImageWithInfo(self):
         ''' Open file specified by parser reading specified image'''
-        with h5py.File(self.args.fileName, 'r') as hdfFile:
+        with h5py.File(self.args.file_name, 'r') as hdfFile:
     
             # Read in the train, image counter and timestamp arrays
             trainNumber = hdfFile['/lpd/data/trainNumber'][...]
@@ -347,7 +347,7 @@ def parseArgs():
 
     parser = argparse.ArgumentParser(description="Read and Plot one ASIC from a specific LPD image in an HDF file, into a figure where clicking inside the image will produce pixel coordinates and value.")
 
-    parser.add_argument("fileName", help='Name of HDF5 data file to open')
+    parser.add_argument("file_name", help='Name of HDF5 data file to open')
     parser.add_argument("-t", "--train", type=int, default=0,
         help="Select train number to plot")
     parser.add_argument("-i", "--image", type=int, default=0,
