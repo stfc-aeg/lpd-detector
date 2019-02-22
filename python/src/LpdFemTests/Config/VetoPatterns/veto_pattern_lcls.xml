@@ -1,0 +1,1173 @@
+<?xml version="1.0"?>
+
+    <!-- Veto Patterns for XFEL C&C
+
+      10 patterns each of 96 x 32bit words
+      
+      For each train the Pattern is selected using information decoded from  the C&C start command
+      
+      bit = 0 means trigger if ccc sends noveto for that pulse; bit = 1 means veto pulse
+      
+      lsb of 1st word in each pattern is xray pulse nr 0
+      msb of 1st word is pulse nr 31
+      lsb of 2nd word is pulse nr 32   etc
+      
+      Eg
+          # pattern 0 : all NoVeto (trigger every bunch)
+          # pattern 1 : all Veto  (no triggers in train)
+          # pattern 2 : to be defined
+          # pattern 3 ; to be defined
+          # pattern 9 ; Tests
+
+    -->
+    
+
+    <!-- ?? TEST ONLY : ALL VETOS for LEGACY Test using <TRIGGER_FLAG_SETS> and arbitrary commands in Asic command file setup phase -->
+        <!-- Test Legacy operation sending Trigger_Flags for special tests.
+             Sends arbitrary asic commands and trigger flags during the setup phase.
+             In addition:
+             To suppress triggers from nvetos set default for Veto Pattern Mask words = $ffffffff in veto_pattern_mask.xml  
+             Set the number of images in readout by Karabo parameter "numberImages"
+             AND ignore nvetos by setting Karabo parameter  "cccProvideNumberImages" = False 
+             -->
+        <!--lpd_bunch_pattern name="testCCC_xml">
+            <veto   value="0xFFFFFFFF"/>
+        </lpd_bunch_pattern-->
+
+    <!--  If  CC MODE = 2 -->
+    <!--  normal operation with c&c accept any nveto   -->
+    <!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0x00000000"/>
+    </lpd_bunch_pattern-->
+    
+
+    <!--  0 images  -->
+    <lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    </lpd_bunch_pattern>
+
+    <!--  2 images  -->
+    <!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xffffffcf"/>
+    </lpd_bunch_pattern-->
+
+    <!--  8 images  -->
+    <!--lpd_bunch_pattern name="testCCC_xml">    
+        <veto   value="0xFFFFFFFF"/>
+        <veto word="0" value="0xffff0f0f"/>
+    </lpd_bunch_pattern-->
+
+    <!--  30 images  -->
+    <!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0x00000003"/>
+    </lpd_bunch_pattern-->
+
+    <!--  investigating Philipp's tests March 2017  -->
+    <!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xf6db6db6"/>
+    </lpd_bunch_pattern-->
+
+    
+    <!--  up to 510 images  -->
+    <!--
+    veto word="0"   32 images  
+    veto word="1"   64 images  
+    veto word="2"   96 images  
+    veto word="3"   128 images  
+    veto word="6"   160 images  
+    veto word="5"   192 images  
+    veto word="6"   224 images  
+    veto word="7"   256 images  
+    veto word="8"   288 images 
+    veto word="9"   320 images
+    veto word="10"  352 images 
+    veto word="11"  384 images
+    veto word="12"  416 images
+    veto word="13"  448 images
+    veto word="14"  480 images
+    veto word="15"  508 MAX images 
+    -->
+
+    <!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0x00000000"/>    
+    <veto word="1" value="0x00000000"/>
+    <veto word="2" value="0x00000000"/>
+    <veto word="3" value="0x00000000"/>
+    <veto word="4" value="0x00000000"/>
+    <veto word="5" value="0x00000000"/>
+    <veto word="6" value="0x00000000"/>  
+    <veto word="7" value="0x00000000"/>  
+    <veto word="8" value="0x00000000"/>  
+    <veto word="9" value="0x00000000"/>  
+    <veto word="10" value="0x00000000"/> 
+    <veto word="11" value="0x00000000"/> 
+    <veto word="12" value="0x00000000"/>  
+    <veto word="13" value="0x00000000"/> 
+    <veto word="14" value="0x00000000"/>  
+    <veto word="15" value="0xf0000000"/>  
+</lpd_bunch_pattern-->
+
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xFFFFFFFF"/>
+<veto word="0" value="0x00000000"/>
+<veto word="1" value="0x00000000"/>
+<veto word="2" value="0x00000000"/>
+<veto word="3" value="0x00000000"/>
+<veto word="4" value="0x00000000"/>
+<veto word="5" value="0x00000000"/>
+<veto word="6" value="0x00000000"/>
+<veto word="7" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto pattern="0" value="0x00000000"/>
+    <veto pattern="2" value="0x00000000"/>
+    <veto pattern="4" value="0x00000000"/>
+    <veto pattern="6" value="0x00000000"/>
+    <veto pattern="8" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+    <!--lpd_bunch_pattern name="testCCC_xml">
+        <veto   value="0xFFFFFFFF"/>
+        <veto pattern="0" word="0" value="0xaaaaaaaa"/>
+        <veto pattern="0" word="1" value="0xaaaaaaaa"/>
+        <veto pattern="0" word="2" value="0xaaaaaaaa"/>
+        <veto pattern="0" word="3" value="0xaaaaaaaa"/>
+        <veto pattern="0" word="4" value="0xaaaaaaaa"/>
+        <veto pattern="0" word="5" value="0xaaaaaaaa"/>
+        <veto pattern="0" word="6" value="0xaaaaaaaa"/>
+        <veto pattern="0" word="7" value="0xaaaaaaaa"/>
+    </lpd_bunch_pattern-->
+
+    
+    <!--  384 images ; fails @ 10 hz -->
+    <!--lpd_bunch_pattern name="testCCC_xml">
+        <<veto   value="0x00000000"/>
+        <veto pattern="0" word="0" value="0x00000001"/>
+        <veto pattern="0" word="2" value="0x00000001"/>
+        <veto pattern="1"  value="0xAAAAAAAA"/>
+        <veto pattern="2"  value="0x55555555"/>
+        
+        <veto   value="0xFFFFFFFF"/>
+        <veto word="0" value="0x00000000"/>
+        <veto word="1" value="0x00000000"/>
+        <veto word="2" value="0x00000000"/>
+        <veto word="3" value="0x00000000"/>
+        <veto word="4" value="0x00000000"/>
+        <veto word="5" value="0x00000000"/>
+        <veto word="6" value="0x00000000"/>
+        <veto word="7" value="0x00000000"/>
+        <veto word="8" value="0x00000000"/>
+        <veto word="9" value="0x00000000"/>
+        <veto word="10" value="0x00000000"/>
+        <veto word="11" value="0x00000000"/>
+        <<veto word="12" value="0x00000000"/>
+        <veto word="13" value="0x00000000"/>
+        <veto word="14" value="0x00000000"/>
+        <veto word="15" value="0xC0000000"/>
+</lpd_bunch_pattern-->
+
+
+<!--  256 images  -->
+<!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0x00000000"/>
+    <veto word="1" value="0x00000000"/>
+    <veto word="2" value="0x00000000"/>
+    <veto word="3" value="0x00000000"/>
+    <veto word="4" value="0x00000000"/>
+    <veto word="5" value="0x00000000"/>
+    <veto word="6" value="0x00000000"/>
+    <veto word="7" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+<!--  288 images  -->
+<!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0x00000000"/>
+    <veto word="1" value="0x00000000"/>
+    <veto word="2" value="0x00000000"/>
+    <veto word="3" value="0x00000000"/>
+    <veto word="4" value="0x00000000"/>
+    <veto word="5" value="0x00000000"/>
+    <veto word="6" value="0x00000000"/>
+    <veto word="7" value="0x00000000"/>
+    <veto word="8" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+
+<!--  384 images  -->
+<!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0x00000000"/>
+    <veto word="1" value="0x00000000"/>
+    <veto word="2" value="0x00000000"/>
+    <veto word="3" value="0x00000000"/>
+    <veto word="4" value="0x00000000"/>
+    <veto word="5" value="0x00000000"/>
+    <veto word="6" value="0x00000000"/>
+    <veto word="7" value="0x00000000"/>
+    <veto word="8" value="0x00000000"/>
+    <veto word="9" value="0x00000000"/>
+    <veto word="10" value="0x00000000"/>
+    <veto word="11" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+<!--  448 images  -->
+<!--lpd_bunch_pattern name="testCCC_xml">    
+<veto   value="0xFFFFFFFF"/>
+<veto word="0" value="0x00000000"/>
+<veto word="1" value="0x00000000"/>
+<veto word="2" value="0x00000000"/>
+<veto word="3" value="0x00000000"/>
+<veto word="4" value="0x00000000"/>
+<veto word="5" value="0x00000000"/>
+<veto word="6" value="0x00000000"/>
+<veto word="7" value="0x00000000"/>
+<veto word="8" value="0x00000000"/>
+<veto word="9" value="0x00000000"/>
+<veto word="10" value="0x00000000"/>
+<veto word="11" value="0x00000000"/>
+<veto word="12" value="0x00000000"/>
+<veto word="13" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+<!--  480 images  -->
+<!--lpd_bunch_pattern name="testCCC_xml">    
+<veto   value="0xFFFFFFFF"/>
+<veto word="0" value="0x00000000"/>
+<veto word="1" value="0x00000000"/>
+<veto word="2" value="0x00000000"/>
+<veto word="3" value="0x00000000"/>
+<veto word="4" value="0x00000000"/>
+<veto word="5" value="0x00000000"/>
+<veto word="6" value="0x00000000"/>
+<veto word="7" value="0x00000000"/>
+<veto word="8" value="0x00000000"/>
+<veto word="9" value="0x00000000"/>
+<veto word="10" value="0x00000000"/>
+<veto word="11" value="0x00000000"/>
+<veto word="12" value="0x00000000"/>
+<veto word="13" value="0x00000000"/>
+<veto word="14" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+<!--  510 images  -->
+<!--lpd_bunch_pattern name="testCCC_xml">    
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0x00000000"/>
+    <veto word="1" value="0x00000000"/>
+    <veto word="2" value="0x00000000"/>
+    <veto word="3" value="0x00000000"/>
+    <veto word="4" value="0x00000000"/>
+    <veto word="5" value="0x00000000"/>
+    <veto word="6" value="0x00000000"/>
+    <veto word="7" value="0x00000000"/>
+    <veto word="8" value="0x00000000"/>
+    <veto word="9" value="0x00000000"/>
+    <veto word="10" value="0x00000000"/>
+    <veto word="11" value="0x00000000"/>
+    <veto word="12" value="0x00000000"/>
+    <veto word="13" value="0x00000000"/>
+    <veto word="14" value="0x00000000"/>
+    <veto word="15" value="0xc0000000"/>
+</lpd_bunch_pattern-->
+
+<!--  510 images  -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xffffffff"/>
+    <veto word="0" value="0xaaaaaaaa"/>
+    <veto word="1" value="0xaaaaaaaa"/>
+    <veto word="2" value="0xaaaaaaaa"/>
+    <veto word="3" value="0xaaaaaaaa"/>
+    <veto word="4" value="0xaaaaaaaa"/>
+    <veto word="5" value="0xaaaaaaaa"/>
+    <veto word="6" value="0xaaaaaaaa"/>
+    <veto word="7" value="0xaaaaaaaa"/>
+    <veto word="8" value="0xaaaaaaaa"/>
+    <veto word="9" value="0xaaaaaaaa"/>
+    <veto word="10" value="0xaaaaaaaa"/>
+    <veto word="11" value="0xaaaaaaaa"/>
+    <veto word="12" value="0xaaaaaaaa"/>
+    <veto word="13" value="0xaaaaaaaa"/>
+    <veto word="14" value="0xaaaaaaaa"/>
+    <veto word="15" value="0xaaaaaaaa"/>
+    <veto word="16" value="0xaaaaaaaa"/>
+    <veto word="17" value="0xaaaaaaaa"/>
+    <veto word="18" value="0xaaaaaaaa"/>
+    <veto word="19" value="0xaaaaaaaa"/>
+    <veto word="20" value="0xaaaaaaaa"/>
+    <veto word="21" value="0xaaaaaaaa"/>
+    <veto word="22" value="0xaaaaaaaa"/>
+    <veto word="23" value="0xaaaaaaaa"/>
+    <veto word="24" value="0xaaaaaaaa"/>
+    <veto word="25" value="0xaaaaaaaa"/>
+    <veto word="26" value="0xaaaaaaaa"/>
+    <veto word="27" value="0xaaaaaaaa"/>
+    <veto word="28" value="0xaaaaaaaa"/>
+    <veto word="29" value="0xaaaaaaaa"/>
+    <veto word="30" value="0xaaaaaaaa"/>
+    <veto word="31" value="0xeeaaaaaa"/>
+</lpd_bunch_pattern-->
+
+    <!--lpd_bunch_pattern name="testCCC_xml">
+        <veto   value="0xFFFFFFFF"/>
+        <veto pattern="0" word="0" value="0xffffff00"/>
+        <veto pattern="1" word="0" value="0xffffff00"/>
+        <veto pattern="2" word="0" value="0xffffff00"/>
+        <veto pattern="3" word="0" value="0xffffff00"/>
+        <veto pattern="4" word="0" value="0xffffff00"/>
+        <veto pattern="5" word="0" value="0xffffff00"/>
+        <veto pattern="6" word="0" value="0xffffff00"/>
+        <veto pattern="7" word="0" value="0xffffff00"/>
+    </lpd_bunch_pattern-->
+
+    <!--  special test with pipeline len = 12 ; pulse len = 36 ;  7 triggers  -->
+  <!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto pattern="0" word="0" value="0xeefee7ee"/>
+    <veto pattern="0" word="1" value="0xffffffff"/>
+  </lpd_bunch_pattern-->
+
+    <!--lpd_bunch_pattern name="testCCC_xml">
+      <veto   value="0xFFFFFFFF"/>
+      <veto pattern="0" word="0" value="0xaaaaaaaa"/>
+      <veto pattern="0" word="1" value="0xaaaaaaaa"/>
+      <veto pattern="0" word="2" value="0xaaaaaaaa"/>
+      <veto pattern="0" word="3" value="0xaaaaaaaa"/>
+      <veto pattern="0" word="4" value="0xaaaaaaaa"/>
+      <veto pattern="0" word="5" value="0xaaaaaaaa"/>
+      <veto pattern="0" word="6" value="0xaaaaaaaa"/>
+      <veto pattern="0" word="7" value="0xaaaaaaaa"/>
+    </lpd_bunch_pattern-->
+
+    <!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto pattern="0" word="0" value="0xaaaaaaaa"/>
+    <veto pattern="0" word="1" value="0xaaaaaaaa"/>
+    <veto pattern="0" word="16" value="0xaaaaaaaa"/>
+    <veto pattern="0" word="17" value="0xaaaaaaaa"/>
+    <veto pattern="0" word="36" value="0xaaaaaaaa"/>
+    <veto pattern="0" word="37" value="0xaaaaaaaa"/>
+  </lpd_bunch_pattern-->
+  
+  <!--lpd_bunch_pattern name="testCCC_xml">
+  <veto   value="0xFFFFFFFF"/>
+  <veto pattern="0" word="0" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="1" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="16" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="17" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="20" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="21" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="22" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="23" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="24" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="25" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="36" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="37" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="40" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="41" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="42" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="43" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="44" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="45" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="46" value="0xaaaaaaaa"/>
+</lpd_bunch_pattern-->
+
+<!--lpd_bunch_pattern name="testCCC_xml">
+  <veto   value="0xFFFFFFFF"/>
+  <veto pattern="0" word="0" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="1" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="16" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="17" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="20" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="21" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="22" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="23" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="24" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="25" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="36" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="37" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="40" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="41" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="42" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="43" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="44" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="50" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="52" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="54" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="56" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="58" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="60" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="62" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="64" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="66" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="68" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="70" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="72" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="74" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="76" value="0xaaaaaaaa"/>
+  <veto pattern="0" word="78" value="0xfaaaaaaa"/>
+</lpd_bunch_pattern-->
+
+<!--lpd_bunch_pattern name="testCCC_xml">
+  <veto   value="0xFFFcFFF8"/>
+  <veto pattern="0" word="0" value="0xffff0000"/>
+  <veto pattern="1" word="0" value="0xffff0000"/>
+  <veto pattern="2" word="0" value="0xffff0000"/>
+  <veto pattern="3" word="0" value="0xffff0000"/>
+  <veto pattern="4" word="0" value="0xffff0000"/>
+  <veto pattern="5" word="0" value="0xffff0000"/>
+  <veto pattern="6" word="0" value="0xffff0000"/>
+  <veto pattern="7" word="0" value="0xffff0000"/>
+  <veto pattern="8" word="0" value="0xffff0000"/>
+  <veto pattern="9" word="0" value="0xffff0000"/>
+</lpd_bunch_pattern-->
+
+<!-- wrap around starts in pipeline at pattern word 16  -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+  <veto   value="0xFFFFFFFF"/>
+  <veto pattern="0" word="0" value="0xf000000f"/>
+  <veto pattern="0" word="1" value="0x00000000"/>
+  <veto pattern="0" word="2" value="0x00000000"/>
+  <veto pattern="0" word="3" value="0x00000000"/>
+  <veto pattern="0" word="4" value="0x00000000"/>
+  <veto pattern="0" word="5" value="0x00000000"/>
+  <veto pattern="0" word="6" value="0x00000000"/>
+  <veto pattern="0" word="7" value="0x00000000"/>
+  <veto pattern="0" word="8" value="0x00000000"/>
+  <veto pattern="0" word="9" value="0x00000000"/>
+  <veto pattern="0" word="10" value="0x00000000"/>
+  <veto pattern="0" word="15" value="0x00000000"/>
+  <veto pattern="0" word="16" value="0x00000000"/>  
+  
+  <veto pattern="1" word="0" value="0xf000000f"/>
+  <veto pattern="1" word="1" value="0x00000000"/>
+  <veto pattern="1" word="2" value="0x00000000"/>
+  <veto pattern="1" word="3" value="0x00000000"/>
+  <veto pattern="1" word="4" value="0x00000000"/>
+  <veto pattern="1" word="5" value="0x00000000"/>
+  <veto pattern="1" word="6" value="0x00000000"/>
+  <veto pattern="1" word="7" value="0x00000000"/>
+  <veto pattern="1" word="8" value="0x00000000"/>
+  <veto pattern="1" word="9" value="0x00000000"/>
+  <veto pattern="1" word="10" value="0x00000000"/>
+  <veto pattern="1" word="15" value="0x00000000"/>
+  <veto pattern="1" word="16" value="0x00000000"/>  
+  
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers  -->
+    <!--lpd_bunch_pattern name="testCCC_xml">
+      <veto   value="0xFFFFFFFF"/>
+      <veto pattern="0" word="0" value="0xffffffaa"/>
+      <veto pattern="1" word="0" value="0xffffffaa"/>
+      <veto pattern="2" word="0" value="0xffffffaa"/>
+      <veto pattern="3" word="0" value="0xffffffaa"/>
+      <veto pattern="4" word="0" value="0xffffffaa"/>
+      <veto pattern="5" word="0" value="0xffffffaa"/>
+      <veto pattern="6" word="0" value="0xffffffaa"/>
+      <veto pattern="7" word="0" value="0xffffffaa"/>
+      <veto pattern="8" word="0" value="0xffffffaa"/>
+      <veto pattern="9" word="0" value="0xffffffaa"/>
+    </lpd_bunch_pattern-->
+
+    <!-- Simple Pattern with a few triggers and some 0 triggers   errors in train 8-->
+    <!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto pattern="0" word="0" value="0xffffffaa"/>
+    <veto pattern="1" word="0" value="0x00000000"/>
+    <veto pattern="2" word="0" value="0xffffffaa"/>
+    <veto pattern="3" word="0" value="0x00000000"/>
+    <veto pattern="4" word="0" value="0xffffffaa"/>
+    <veto pattern="5" word="0" value="0x00000000"/>
+    <veto pattern="6" word="0" value="0xffffffff"/>
+    <veto pattern="7" word="0" value="0x00000000"/>
+    <veto pattern="7" word="1" value="0x00000000"/>
+    <veto pattern="7" word="2" value="0x00000000"/>
+    <veto pattern="7" word="3" value="0x00000000"/>
+    <veto pattern="7" word="4" value="0x00000000"/>
+    <veto pattern="8" word="0" value="0xffffffaa"/>
+    <veto pattern="9" word="0" value="0x00000000"/>
+  </lpd_bunch_pattern-->
+
+  <!-- Simple Pattern with a few triggers and some 0 triggers   -->
+  <!--lpd_bunch_pattern name="testCCC_xml">
+  <veto   value="0xFFFFFFFF"/>
+  <veto pattern="0" word="0" value="0xffffffaa"/>
+  <veto pattern="1" word="0" value="0x00000000"/>
+  <veto pattern="2" word="0" value="0xffffffaa"/>
+  <veto pattern="3" word="0" value="0x00000000"/>
+  <veto pattern="4" word="0" value="0xffffffaa"/>
+  <veto pattern="5" word="0" value="0x00000000"/>
+  <veto pattern="6" word="0" value="0xffffffff"/>
+  <veto pattern="7" word="0" value="0x00000000"/>
+  <veto pattern="7" word="1" value="0x00000000"/>
+  <veto pattern="7" word="2" value="0xfffffff0"/>
+  <veto pattern="8" word="0" value="0xfffffffe"/>
+  <veto pattern="9" word="0" value="0x00000000"/>
+  <veto pattern="9" word="0" value="0x00000000"/>
+  <veto pattern="9" word="0" value="0x00000000"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers and some 0 triggers   -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+  <veto   value="0xFFFFFFFF"/>
+  <veto word="0" value="0xffffff00"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers at start of pulse train in EVERY Pattern   -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xffffff00"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a 511 triggers per train in EVERY Pattern   -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xFFFFFFFF"/>
+<veto word="0" value="0x00000000"/>
+<veto word="4" value="0x00000000"/>
+<veto word="8" value="0x00000000"/>
+<veto word="12" value="0x00000000"/>
+<veto word="16" value="0x00000000"/>
+<veto word="20" value="0x00000000"/>
+<veto word="24" value="0x00000000"/>
+<veto word="28" value="0x00000000"/>
+<veto word="32" value="0x00000000"/>
+<veto word="36" value="0x00000000"/>
+<veto word="40" value="0x00000000"/>
+<veto word="44" value="0x00000000"/>
+<veto word="48" value="0x00000000"/>
+<veto word="52" value="0x00000000"/>
+<veto word="56" value="0x00000000"/>
+<veto word="60" value="0x80000000"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers in EVERY Pattern ; at intervals for long exposure test   -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xfffffffe"/>
+    <veto word="15" value="0x0fffffff"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers in EVERY Pattern ; at intervals for long exposure test  NO reordering needed  -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xfffffff3"/>
+    <veto word="15" value="0xffffffff"/>
+    <veto word="65" value="0xfffffffc"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers in EVERY Pattern ; at intervals for long exposure test   Expect Reordering needed -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="1" value="0xfffffff3"/>
+    <veto word="15" value="0xffffffff"/>
+    <veto word="64" value="0xfffffff3"/>
+</lpd_bunch_pattern-->
+
+<!--IMAGE REORDERING TESTS with SHORT & LONG EXPOSURES -->
+
+<!-- Simple Pattern with a few triggers in EVERY Pattern ; at intervals for long exposure test    -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xffffffcf"/>
+    <veto word="15" value="0xffffffff"/>
+    <veto word="32" value="0xfffffffc"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers in EVERY Pattern ; at intervals for long exposure test    -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xfffffffc"/>
+    <veto word="15" value="0xffffffff"/>
+    <veto word="64" value="0xfffffffc"/>
+</lpd_bunch_pattern-->
+
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xfffffff3"/>
+    <veto word="31" value="0x3fffffff"/>
+</lpd_bunch_pattern-->
+
+<!--  at intervals for long exposure test    -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto  word="0"  value="0xfffffffb"/>
+    <veto  word="8"  value="0xffffffbf"/>
+    <veto  word="16" value="0xfffffbff"/>
+    <veto  word="24" value="0xffffbfff"/>
+    <veto  word="32" value="0xfffbffff"/>
+    <veto  word="40" value="0xffbfffff"/>
+    <veto  word="48" value="0xfbffffff"/>
+    <veto  word="56" value="0xbfffffff"/>
+</lpd_bunch_pattern-->
+
+<!--  at intervals for long exposure test    -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xFFFFFFFF"/>
+<veto  word="0"  value="0xfffffffb"/>
+<veto  word="8"  value="0xfffffffb"/>
+<veto  word="16" value="0xffffffbf"/>
+<veto  word="24" value="0xffffffbf"/>
+<veto  word="32" value="0xfffffbff"/>
+<veto  word="40" value="0xfffffbff"/>
+<veto  word="48" value="0xfffbffff"/>
+<veto  word="56" value="0xfffbffff"/>
+</lpd_bunch_pattern-->
+
+<!--    no wrap around    -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xFFFFFFFF"/>
+<veto  word="0"  value="0xfffeffff"/>
+<veto  word="2"  value="0xfffeffff"/>
+<veto  word="4" value="0xfffeffff"/>
+<veto  word="6" value="0xfffeffff"/>
+<veto  word="8" value="0xfffeffff"/>
+<veto  word="10" value="0xfffeffff"/>
+<veto  word="12" value="0xfffeffff"/>
+<veto  word="14" value="0xfffeffff"/>
+</lpd_bunch_pattern-->
+
+
+<!-- Simple Pattern with a few triggers and some 0 triggers   -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xeeeeeeee"/>          pulses from 0 ->
+    <veto word="1" value="0xeeeeeeee"/>
+    <veto word="2" value="0xeeeeeeee"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers and some 0 triggers   -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xeeeeeeee"/>          pulses from 0 ->
+    <veto word="1" value="0xeeeeeeee"/>
+    <veto word="2" value="0xeeeeeeee"/>
+    <veto word="16" value="0xfffffffe"/>         pulses from 512   wraparound pipeline
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers and some 0 triggers   example in one note -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xeeeeeeee"/>          pulses from 0 ->
+    <veto word="1" value="0xeeeeeeee"/>
+    <veto word="2" value="0xeeeeeeee"/>
+    <veto word="16" value="0xeeeeeeee"/>         pulses from 512   wraparound pipeline
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers in 1st word in EVERY Pattern  EXCEPT pattern #1  -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xffffff00"/>
+    <veto pattern="1" word="0" value="0xffffffff"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers and some 0 triggers   long exposure with trigger in pulse 64 -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto word="0" value="0xffffffff"/>
+    <veto word="1" value="0x7fffffff"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern Examples -->
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xFFFFFFFF"/>
+<veto pattern="0" word="0" value="0xfffffff0"/>
+<veto pattern="1" word="0" value="0xffffff00"/>
+<veto pattern="2" word="0" value="0xfffff000"/>
+<veto pattern="3"  value="0xfffffffe"/>
+</lpd_bunch_pattern-->
+
+<!-- Simple Pattern with a few triggers and some 0 triggers   errors in train 8-->
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xFFFFFFFF"/>
+<veto word="0" value="0xeeeeeeee"/>
+<veto word="1" value="0xeeeeeeee"/>
+<veto word="2" value="0xeeeeeeee"/>
+<veto word="16" value="0xeeeeeeee"/>
+</lpd_bunch_pattern-->
+
+  <!-- Simple Pattern with a few triggers and some 0 triggers   no errors -->
+  <!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xFFFFFFFF"/>
+    <veto pattern="0" word="0" value="0xffffffaa"/>
+    <veto pattern="1" word="0" value="0x00000000"/>
+    <veto pattern="2" word="0" value="0xffffffaa"/>
+    <veto pattern="3" word="0" value="0x00000000"/>
+    <veto pattern="4" word="0" value="0xffffffaa"/>
+    <veto pattern="5" word="0" value="0x00000000"/>
+    <veto pattern="6" word="0" value="0xffffffaa"/>
+    <veto pattern="7" word="0" value="0x00000000"/>
+    <veto pattern="7" word="1" value="0x00000000"/>
+    <veto pattern="7" word="2" value="0x00000000"/>
+    <veto pattern="7" word="3" value="0x00000000"/>
+    <veto pattern="7" word="4" value="0x00000000"/>
+    <veto pattern="8" word="0" value="0xffffffaa"/>
+    <veto pattern="9" word="0" value="0x00000000"/>
+  </lpd_bunch_pattern-->
+
+      <!--lpd_bunch_pattern name="testCCC_xml">
+        <veto   value="0xFFFFFFFF"/>
+        <veto pattern="0" word="0" value="0xfffffc00"/>
+        <veto pattern="1" word="0" value="0xfffffc00"/>
+        <veto pattern="2" word="0" value="0xfffffc00"/>
+        <veto pattern="3" word="0" value="0xfffffc00"/>
+        <veto pattern="4" word="0" value="0xfffffc00"/>
+        <veto pattern="5" word="0" value="0xfffffc00"/>
+        <veto pattern="6" word="0" value="0xfffffc00"/>
+        <veto pattern="7" word="0" value="0xfffffc00"/>
+        <veto pattern="8" word="0" value="0xfffffc00"/>
+        <veto pattern="9" word="0" value="0xfffffc00"/>
+          
+      </lpd_bunch_pattern-->
+
+      <!-- Multiple Pattern IDs from 1 - 10 -->
+      <!-- 127 in each -->      
+      
+      <!--lpd_bunch_pattern name="testCCC_xml">
+        <veto   value="0xFFFFFFFF"/>
+        <veto pattern="0" word="0" value="0x00000000"/>
+        <veto pattern="0" word="1" value="0x00000000"/>
+        <veto pattern="0" word="2" value="0x00000000"/>
+        <veto pattern="0" word="3" value="0x80000000"/>
+        <veto pattern="1" word="0" value="0x00000000"/>
+        <veto pattern="1" word="1" value="0x00000000"/>
+        <veto pattern="1" word="2" value="0x00000000"/>
+        <veto pattern="1" word="3" value="0x80000000"/>
+        <veto pattern="2" word="0" value="0x00000000"/>
+        <veto pattern="2" word="1" value="0x00000000"/>
+        <veto pattern="2" word="2" value="0x00000000"/>
+        <veto pattern="2" word="3" value="0x80000000"/>
+        <veto pattern="3" word="0" value="0x00000000"/>
+        <veto pattern="3" word="1" value="0x00000000"/>
+        <veto pattern="3" word="2" value="0x00000000"/>
+        <veto pattern="3" word="3" value="0x80000000"/>
+        <veto pattern="4" word="0" value="0x00000000"/>
+        <veto pattern="4" word="1" value="0x00000000"/>
+        <veto pattern="4" word="2" value="0x00000000"/>
+        <veto pattern="4" word="3" value="0x80000000"/>
+        <veto pattern="5" word="0" value="0x00000000"/>
+        <veto pattern="5" word="1" value="0x00000000"/>
+        <veto pattern="5" word="2" value="0x00000000"/>
+        <veto pattern="5" word="3" value="0x80000000"/>
+        <veto pattern="6" word="0" value="0x00000000"/>
+        <veto pattern="6" word="1" value="0x00000000"/>
+        <veto pattern="6" word="2" value="0x00000000"/>
+        <veto pattern="6" word="3" value="0x80000000"/>
+        <veto pattern="7" word="0" value="0x00000000"/>
+        <veto pattern="7" word="1" value="0x00000000"/>
+        <veto pattern="7" word="2" value="0x00000000"/>
+        <veto pattern="7" word="3" value="0x80000000"/>
+        <veto pattern="8" word="0" value="0x00000000"/>
+        <veto pattern="8" word="1" value="0x00000000"/>
+        <veto pattern="8" word="2" value="0x00000000"/>
+        <veto pattern="8" word="3" value="0x80000000"/>
+        <veto pattern="9" word="0" value="0x00000000"/>
+        <veto pattern="9" word="1" value="0x00000000"/>
+        <veto pattern="9" word="2" value="0x00000000"/>
+        <veto pattern="9" word="3" value="0x80000000"/>
+      </lpd_bunch_pattern-->
+
+      <!-- Same triggers in every word of every pattern ; 96 words per pattern -->      
+      <!--lpd_bunch_pattern name="testCCC_xml">
+      <veto   value="0x7f7cfefe"/>
+    </lpd_bunch_pattern-->
+
+    <!-- Same triggers in every word of every pattern ;   errors start in train nr 12 -->      
+    <!--lpd_bunch_pattern name="testCCC_xml">
+      <veto   value="0x7ffffffe"/>
+      <veto pattern="8" value="0xffffffff"/>
+      <veto pattern="8" word="0" value="0x00000000"/>
+      <veto pattern="8" word="1" value="0x00000000"/>
+      <veto pattern="8" word="2" value="0x00000000"/>
+      <veto pattern="8" word="3" value="0x00000000"/>
+      <veto pattern="8" word="4" value="0x00000000"/>
+      <veto pattern="8" word="5" value="0x00000000"/>
+      <veto pattern="8" word="6" value="0x00000000"/>
+      <veto pattern="8" word="7" value="0x00000000"/>
+      <veto pattern="8" word="8" value="0x00000000"/>
+      <veto pattern="8" word="9" value="0x00000000"/>
+    </lpd_bunch_pattern-->
+
+    <!-- 511 triggers in each pattern -->  
+    <!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xffffffff"/>
+    <veto word="0" value="0x00000000"/>
+    <veto word="1" value="0x00000000"/>
+    <veto word="2" value="0x00000000"/>
+    <veto word="3" value="0x00000000"/>
+    <veto word="4" value="0x00000000"/>
+    <veto word="5" value="0x00000000"/>
+    <veto word="6" value="0x00000000"/>
+    <veto word="7" value="0x00000000"/>
+    <veto word="8" value="0x00000000"/>
+    <veto word="9" value="0x00000000"/>
+    <veto word="10" value="0x00000000"/>
+    <veto word="11" value="0x00000000"/>
+    <veto word="12" value="0x00000000"/>
+    <veto word="13" value="0x00000000"/>
+    <veto word="14" value="0x00000000"/>
+    <veto word="15" value="0x80000000"/>
+            
+    <veto pattern="2" word="0" value="0xfffffffe"/>
+    <veto pattern="2" word="1" value="0xffffffff"/>
+    <veto pattern="2" word="2" value="0xffffffff"/>
+    <veto pattern="2" word="3" value="0xffffffff"/>
+    <veto pattern="2" word="4" value="0xffffffff"/>
+    <veto pattern="2" word="5" value="0xffffffff"/>
+    <veto pattern="2" word="6" value="0xffffffff"/>
+    <veto pattern="2" word="7" value="0xffffffff"/>
+    <veto pattern="2" word="8" value="0xffffffff"/>
+    <veto pattern="2" word="9" value="0xffffffff"/>
+    <veto pattern="2" word="10" value="0xffffffff"/>
+    <veto pattern="2" word="11" value="0xffffffff"/>
+    <veto pattern="2" word="12" value="0xffffffff"/>
+    <veto pattern="2" word="13" value="0xffffffff"/>    
+    <veto pattern="2" word="14" value="0xffffffff"/>    
+    <veto pattern="2" word="15" value="0xffffffff"/>
+
+    <veto pattern="7" value="0xffffffff"/>
+
+  </lpd_bunch_pattern-->
+
+  <!-- 511 triggers in each pattern -->  
+  <!--lpd_bunch_pattern name="testCCC_xml">
+  <veto   value="0xffffffff"/>
+  <veto word="0" value="0xaaaaaaaa"/>
+  <veto word="1" value="0xaaaaaaaa"/>
+  <veto word="2" value="0xaaaaaaaa"/>
+  <veto word="3" value="0xaaaaaaaa"/>
+  <veto word="4" value="0xaaaaaaaa"/>
+  <veto word="5" value="0xaaaaaaaa"/>
+  <veto word="6" value="0xaaaaaaaa"/>
+  <veto word="7" value="0xaaaaaaaa"/>
+  <veto word="8" value="0xaaaaaaaa"/>
+  <veto word="9" value="0xaaaaaaaa"/>
+  <veto word="10" value="0xaaaaaaaa"/>
+  <veto word="11" value="0xaaaaaaaa"/>
+  <veto word="12" value="0xaaaaaaaa"/>
+  <veto word="13" value="0xaaaaaaaa"/>
+  <veto word="14" value="0xaaaaaaaa"/>
+  <veto word="15" value="0xaaaaaaaa"/>
+  <veto word="16" value="0xaaaaaaaa"/>
+  <veto word="17" value="0xaaaaaaaa"/>
+  <veto word="18" value="0xaaaaaaaa"/>
+  <veto word="19" value="0xaaaaaaaa"/>
+  <veto word="20" value="0xaaaaaaaa"/>
+  <veto word="21" value="0xaaaaaaaa"/>
+  <veto word="22" value="0xaaaaaaaa"/>
+  <veto word="23" value="0xaaaaaaaa"/>
+  <veto word="24" value="0xaaaaaaaa"/>
+  <veto word="25" value="0xaaaaaaaa"/>
+  <veto word="26" value="0xaaaaaaaa"/>
+  <veto word="27" value="0xaaaaaaaa"/>
+  <veto word="28" value="0xaaaaaaaa"/>
+  <veto word="29" value="0xaaaaaaaa"/>
+  <veto word="30" value="0xaaaaaaaa"/>
+  <veto word="31" value="0xeaaaaaaa"/>
+</lpd_bunch_pattern-->
+
+<!-- 511 triggers in each pattern -->  
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xffffffff"/>
+<veto word="0" value="0xaaaaaaaa"/>
+<veto word="2" value="0xaaaaaaaa"/>
+<veto word="4" value="0xaaaaaaaa"/>
+<veto word="6" value="0xaaaaaaaa"/>
+<veto word="8" value="0xaaaaaaaa"/>
+<veto word="10" value="0xaaaaaaaa"/>
+<veto word="12" value="0xaaaaaaaa"/>
+<veto word="14" value="0xaaaaaaaa"/>
+<veto word="16" value="0xaaaaaaaa"/>
+<veto word="18" value="0xaaaaaaaa"/>
+<veto word="20" value="0xaaaaaaaa"/>
+<veto word="21" value="0xaaaaaaaa"/>
+<veto word="22" value="0xaaaaaaaa"/>
+<veto word="23" value="0xaaaaaaaa"/>
+<veto word="24" value="0xaaaaaaaa"/>
+<veto word="25" value="0xaaaaaaaa"/>
+<veto word="26" value="0xaaaaaaaa"/>
+<veto word="27" value="0xaaaaaaaa"/>
+<veto word="28" value="0xaaaaaaaa"/>
+<veto word="29" value="0xaaaaaaaa"/>
+<veto word="30" value="0xaaaaaaaa"/>
+<veto word="32" value="0xaaaaaaaa"/>
+<veto word="34" value="0xaaaaaaaa"/>
+<veto word="36" value="0xaaaaaaaa"/>
+<veto word="37" value="0xaaaaaaaa"/>
+<veto word="38" value="0xaaaaaaaa"/>
+<veto word="39" value="0xaaaaaaaa"/>
+<veto word="40" value="0xaaaaaaaa"/>
+<veto word="41" value="0xaaaaaaaa"/>
+<veto word="42" value="0xaaaaaaaa"/>
+<veto word="43" value="0xaaaaaaaa"/>
+<veto word="44" value="0xeaaaaaaa"/>
+</lpd_bunch_pattern-->
+
+<!-- either 511 triggers in each pattern or some empty -->  
+<!--lpd_bunch_pattern name="testCCC_xml">
+<veto   value="0xffffffff"/>
+<veto word="0" value="0xaaaaaaaa"/>
+<veto word="2" value="0xaaaaaaaa"/>
+<veto word="4" value="0xaaaaaaaa"/>
+<veto word="6" value="0xaaaaaaaa"/>
+<veto word="8" value="0xaaaaaaaa"/>
+<veto word="10" value="0xaaaaaaaa"/>
+<veto word="12" value="0xaaaaaaaa"/>
+<veto word="14" value="0xaaaaaaaa"/>
+<veto word="16" value="0xaaaaaaaa"/>
+<veto word="18" value="0xaaaaaaaa"/>
+<veto word="20" value="0xaaaaaaaa"/>
+<veto word="21" value="0xaaaaaaaa"/>
+<veto word="22" value="0xaaaaaaaa"/>
+<veto word="23" value="0xaaaaaaaa"/>
+<veto word="24" value="0xaaaaaaaa"/>
+<veto word="25" value="0xaaaaaaaa"/>
+<veto word="26" value="0xaaaaaaaa"/>
+<veto word="27" value="0xaaaaaaaa"/>
+<veto word="28" value="0xaaaaaaaa"/>
+<veto word="29" value="0xaaaaaaaa"/>
+<veto word="30" value="0xaaaaaaaa"/>
+<veto word="32" value="0xaaaaaaaa"/>
+<veto word="34" value="0xaaaaaaaa"/>
+<veto word="36" value="0xaaaaaaaa"/>
+<veto word="37" value="0xaaaaaaaa"/>
+<veto word="38" value="0xaaaaaaaa"/>
+<veto word="39" value="0xaaaaaaaa"/>
+<veto word="40" value="0xaaaaaaaa"/>
+<veto word="41" value="0xaaaaaaaa"/>
+<veto word="42" value="0xaaaaaaaa"/>
+<veto word="43" value="0xaaaaaaaa"/>
+<veto word="44" value="0xeaaaaaaa"/>
+
+<veto pattern="4" value="0xffffffff"/>
+
+</lpd_bunch_pattern-->
+
+    <!-- Same triggers in every word of every pattern ;   errors start at first bd boundary -->  
+    <!-- NB Must disable words from #48 as Number pulses are limited to 3072/2 = 1536  requiring only using half of pattern BRAM  -->      
+
+    <!--lpd_bunch_pattern name="testCCC_xml">
+      <veto   value="0x7ffffffe"/>
+      <veto pattern="1" value="0xffffffff"/>
+      <veto pattern="1" word="0" value="0x00000000"/>
+      <veto pattern="1" word="1" value="0x00000000"/>
+      <veto pattern="1" word="2" value="0x00000000"/>
+      <veto pattern="1" word="3" value="0x00000000"/>
+      <veto pattern="1" word="4" value="0x00000000"/>
+      <veto pattern="1" word="5" value="0x00000000"/>
+      <veto pattern="1" word="6" value="0x00000000"/>
+      <veto pattern="1" word="7" value="0x00000000"/>
+      <veto pattern="1" word="8" value="0x00000000"/>
+      <veto pattern="1" word="9" value="0x00000000"/>
+      
+      <word="48" value="0xffffffff"/>
+      <word="49" value="0xffffffff"/>
+      <word="50" value="0xffffffff"/>
+      <word="51" value="0xffffffff"/>
+      <word="52" value="0xffffffff"/>
+      <word="53" value="0xffffffff"/>
+      <word="54" value="0xffffffff"/>
+      <word="55" value="0xffffffff"/>
+      <word="56" value="0xffffffff"/>
+      <word="57" value="0xffffffff"/>
+      <word="58" value="0xffffffff"/>
+      <word="59" value="0xffffffff"/>
+      <word="60" value="0xffffffff"/>
+      <word="61" value="0xffffffff"/>
+      <word="62" value="0xffffffff"/>
+      <word="63" value="0xffffffff"/>
+      <word="64" value="0xffffffff"/>
+      <word="65" value="0xffffffff"/>
+      <word="66" value="0xffffffff"/>
+      <word="67" value="0xffffffff"/>
+      <word="68" value="0xffffffff"/>
+      <word="69" value="0xffffffff"/>
+      <word="70" value="0xffffffff"/>
+      <word="71" value="0xffffffff"/>
+      <word="72" value="0xffffffff"/>
+      <word="73" value="0xffffffff"/>
+      <word="74" value="0xffffffff"/>
+      <word="75" value="0xffffffff"/>
+      <word="76" value="0xffffffff"/>
+      <word="77" value="0xffffffff"/>
+      <word="78" value="0xffffffff"/>
+      <word="79" value="0xffffffff"/>
+      <word="80" value="0xffffffff"/>
+      <word="81" value="0xffffffff"/>
+      <word="82" value="0xffffffff"/>
+      <word="83" value="0xffffffff"/>
+      <word="84" value="0xffffffff"/>
+      <word="85" value="0xffffffff"/>
+      <word="86" value="0xffffffff"/>
+      <word="87" value="0xffffffff"/>
+      <word="88" value="0xffffffff"/>
+      <word="89" value="0xffffffff"/>
+      <word="90" value="0xffffffff"/>
+      <word="91" value="0xffffffff"/>
+      <word="92" value="0xffffffff"/>
+      <word="93" value="0xffffffff"/>
+      <word="94" value="0xffffffff"/>
+      <word="95" value="0xffffffff"/>
+      
+    </lpd_bunch_pattern-->
+
+    <!-- Same triggers in every word of every pattern ; 96 words per pattern -->      
+    <!--lpd_bunch_pattern name="testCCC_xml">
+    <veto   value="0xffffffff"/>
+    <veto pattern="8" value="0xfffffffe"/>
+    <veto pattern="0" word="0" value="0x00000000"/>
+    <veto pattern="0" word="1" value="0x00000000"/>
+    <veto pattern="1" word="0" value="0x00000000"/>
+    <veto pattern="2" word="0" value="0x00000000"/>
+    <veto pattern="3" word="0" value="0x00000000"/>
+    <veto pattern="3" word="1" value="0x00000000"/>
+    <veto pattern="4" word="0" value="0x00000000"/>
+    <veto pattern="5" word="0" value="0x00000000"/>
+    <veto pattern="6" word="0" value="0x00000000"/>
+    <veto pattern="6" word="1" value="0x00000000"/>
+    <veto pattern="7" word="0" value="0x00000000"/>
+    <veto pattern="8" word="0" value="0x00000000"/>
+    <veto pattern="9" word="0" value="0x00000000"/>
+    <veto pattern="9" word="1" value="0x00000000"/>
+  </lpd_bunch_pattern-->
+
+      <!--lpd_bunch_pattern name="testCCC_xml">
+          <veto   value="0xFFFFFFFF"/>
+          <veto pattern="0" word="0" value="0x00000000"/>
+          <veto pattern="0" word="2" value="0x00000000"/>
+          <veto pattern="1"  value="0xAAAAAAAA"/>
+          <veto pattern="2"  value="0x55555555"/>
+      </lpd_bunch_pattern-->
+
+      
+      <!-- Pattern to take 2751 pulses, taking into account first bit in veto pattern is set to 1 -->
+      <!--lpd_bunch_pattern name="testCCC_xml">
+          <veto value="0xFFFFFFFF"/>
+          
+          <veto word="0" value="0x00000000"/>
+          <veto word="1" value="0x00000000"/>
+          <veto word="2" value="0x00000000"/>
+          <veto word="3" value="0x00000000"/>
+          <veto word="4" value="0x00000000"/>
+          <veto word="5" value="0x00000000"/>
+          <veto word="6" value="0x00000000"/>
+          <veto word="7" value="0x00000000"/>
+          <veto word="8" value="0x00000000"/>
+          <veto word="9" value="0x00000000"/>
+          <veto word="10" value="0x00000000"/>
+          <veto word="11" value="0x00000000"/>
+          <veto word="12" value="0x00000000"/>
+          <veto word="13" value="0x00000000"/>
+          <veto word="14" value="0x00000000"/>
+          <veto word="15" value="0x00000000"/> 
+          
+          <veto word="16" value="0x00000000"/>
+          
+      </lpd_bunch_pattern-->
+
+<!-- =================== Alexander's Tests Dec 2015 =======================  -->
+      
+      <!-- Pattern to take 2751 pulses, taking into account first bit in veto pattern is set to 1 -->
+      <!--lpd_bunch_pattern name="testCCC_xml">
+          <veto value="0xFFFFFFFF"/>
+          
+          <veto word="0" value="0x00000000"/>
+          <veto word="1" value="0x00000000"/>
+          <veto word="2" value="0x00000000"/>
+          <veto word="3" value="0x00000000"/>
+          <veto word="4" value="0x00000000"/>
+          <veto word="5" value="0x00000000"/>
+          <veto word="6" value="0x00000000"/>
+          <veto word="7" value="0x00000000"/>
+          <veto word="8" value="0x00000000"/>
+          <veto word="9" value="0x00000000"/>
+          <veto word="10" value="0x00000000"/>
+          <veto word="11" value="0x00000000"/>
+          <veto word="12" value="0x00000000"/>
+          <veto word="13" value="0x00000000"/>
+          <veto word="14" value="0x00000000"/>
+          <veto word="15" value="0x00000000"/> 
+          
+          <veto word="16" value="0x00000000"/>
+          <veto word="17" value="0x00000000"/>
+          <veto word="18" value="0x00000000"/>
+          <veto word="19" value="0x00000000"/>
+          <veto word="20" value="0x00000000"/>
+          <veto word="21" value="0x00000000"/>
+          <veto word="22" value="0x00000000"/>
+          <veto word="23" value="0x00000000"/>
+          <veto word="24" value="0x00000000"/>
+          <veto word="25" value="0x00000000"/>
+          <veto word="26" value="0x00000000"/>
+          <veto word="27" value="0x00000000"/>
+          <veto word="28" value="0x00000000"/>
+          <veto word="29" value="0x00000000"/>
+          <veto word="30" value="0x00000000"/>
+          <veto word="31" value="0x00000000"/>
+          
+          <veto word="32" value="0x00000000"/>
+          <veto word="33" value="0x00000000"/>
+          <veto word="34" value="0x00000000"/>
+          <veto word="35" value="0x00000000"/>
+          <veto word="36" value="0x00000000"/>
+          <veto word="37" value="0x00000000"/>
+          <veto word="38" value="0x00000000"/>
+          <veto word="39" value="0x00000000"/>
+          <veto word="40" value="0x00000000"/>
+          <veto word="41" value="0x00000000"/>
+          <veto word="42" value="0x00000000"/>
+          <veto word="43" value="0x00000000"/>
+          <veto word="44" value="0x00000000"/>
+          <veto word="45" value="0x00000000"/>
+          <veto word="46" value="0x00000000"/>
+          <veto word="47" value="0x00000000"/>
+          
+          <veto word="48" value="0x00000000"/>
+          <veto word="49" value="0x00000000"/>
+          <veto word="50" value="0x00000000"/>
+          <veto word="51" value="0x00000000"/>
+          <veto word="52" value="0x00000000"/>
+          <veto word="53" value="0x00000000"/>
+          <veto word="54" value="0x00000000"/>
+          <veto word="55" value="0x00000000"/>
+          <veto word="56" value="0x00000000"/>
+          <veto word="57" value="0x00000000"/>
+          <veto word="58" value="0x00000000"/>
+          <veto word="59" value="0x00000000"/>
+          <veto word="60" value="0x00000000"/>
+          <veto word="61" value="0x00000000"/>
+          <veto word="62" value="0x00000000"/>
+          <veto word="63" value="0x00000000"/>
+          
+          <veto word="64" value="0x00000000"/>
+          <veto word="65" value="0x00000000"/>
+          <veto word="66" value="0x00000000"/>
+          <veto word="67" value="0x00000000"/>
+          <veto word="68" value="0x00000000"/>
+          <veto word="69" value="0x00000000"/>
+          <veto word="70" value="0x00000000"/>
+          <veto word="71" value="0x00000000"/>
+          <veto word="72" value="0x00000000"/>
+          <veto word="73" value="0x00000000"/>
+          <veto word="74" value="0x00000000"/>
+          <veto word="75" value="0x00000000"/>
+          <veto word="76" value="0x00000000"/>
+          <veto word="77" value="0x00000000"/>
+          <veto word="78" value="0x00000000"/>
+          <veto word="79" value="0x00000000"/>
+          
+          <veto word="80" value="0x00000000"/>
+          <veto word="81" value="0x00000000"/>
+          <veto word="82" value="0x00000000"/>
+          <veto word="83" value="0x00000000"/>
+          <veto word="84" value="0x00000000"/>
+          <veto word="85" value="0x00000000"/>
+          
+      </lpd_bunch_pattern-->

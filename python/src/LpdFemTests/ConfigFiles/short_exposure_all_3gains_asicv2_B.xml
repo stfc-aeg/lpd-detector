@@ -1,0 +1,103 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="short_exposures_all_3gains_asicv2.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+    <!-- Example lpd command sequence  jac 
+
+        File for reading out ALL 3 gains.  Needs f/w vers 0134 or later.
+        One usual cycle of SHORT exposure triggers then readout is repeated 3 times, once for each gain.
+        Uses new dummy Fast commands to switch gain select and controlling asic rx logic.
+        This overrides gain selection from register.
+
+        There MUST be a single <nop/> immediately before <sync_reset/>, <read_out_data/> and <asic_slow_readout_start/> 
+        There MUST be exactly 1 <nop/> between <sync_reset/> and <read_out_data/> 
+
+        For readout add enough nops to ensure all data is clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) plus a few extra
+
+        If reading out V1 ASIC need  <asic_slow_readout_start/> in cmd sequence to slow clock during readout phase
+        Must also set femAsicSlowedClock parameter in LpdReadoutTest.py to TRUE
+
+		for asic v2 so no slow clock for readout
+
+    -->
+<!-- comment -->
+
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<on_chip_reset_enable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<start_write_pointer/>
+	<nop/>
+	<nop/>
+	<start_trigger_pointer/> 
+	<nop/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<trigger_flag_set/>
+	<nop/>
+	<nop/>
+	<on_chip_reset_disable/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<nop/>
+	<nop/>
+
+<!-- 
+     Readout Sequences with differnet Gain Selections
+-->
+
+	<nop/>    
+	<force_gain_x100/>   <!-- need a single nop before this command -->
+	<nop/>  
+	<sync_reset/>   <!-- need a single nop before this command -->
+	<nop/>  
+	<read_out_data/>   <!-- need a single nop before this command -->
+  <nop count="35"/>  <!-- Fixed Latency before start of asic data arriving at FEM -->  
+	<loop count="1">     <!-- 1 loop per image to readout -->
+		<nop count="836"/>
+	</loop>
+<!-- 
+     
+-->
+	<nop/>    
+	<force_gain_x10/>    <!-- need a single nop before this command -->
+	<loop count="1">  <!-- 1 loop per image to readout -->
+		<nop count="836"/>
+	</loop>
+<!-- 
+     
+-->
+	<nop/>    
+	<force_gain_x100/>    <!-- need a single nop before this command -->
+	<loop count="1">  <!-- 1 loop per image to readout -->
+		<nop count="836"/>
+	</loop>
+<!-- 
+     
+-->
+	<nop/>   
+	<force_gain_x10/>   <!-- need a single nop before this command -->
+	<loop count="1">   <!-- 1 loop per image to readout -->
+		<nop/>
+		<nop count="836"/>
+	</loop>
+	<nop/>    
+	<stop_read_out/>   <!-- need a single nop before this command -->
+<!-- 
+      End
+-->
+</lpd_command_sequence>	

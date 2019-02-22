@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Compiled Object files
 *.slo
 *.lo
@@ -136,3 +137,11 @@ tags
 
 # Eclipse project settings directories
 .settings
+*.pyc
+/.metadata/
+**/.project
+**/.pydevproject
+/.sonarlint/
+
+# Visual code settings
+.vscode/

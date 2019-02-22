@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="SuperModuleNormalOperation_PLtest_jac.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+	<!-- template created and tested by P. Lang, only to be used for v2 ASICs -->
+
+	<nop/>
+	<sync_reset/> <!-- Start Config chip -->
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+	<on_chip_reset_enable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<nop/><!--new 10.2.16 PL-->
+	<start_write_pointer/>
+	<nop/>
+	<start_trigger_pointer/> 
+	<nop/>
+    <trigger_flag_set count="32"/><!-- get from Karabo -->  <!-- moved by jac -->
+	
+    <trigger_section>   <!-- ignored from f/w 02b0 -->
+	</trigger_section>
+
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+
+	<on_chip_reset_disable/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<!--<nop count="4"/>--> <!--excluded 10.2.16 PL-->
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/> 
+	<!-- Add additional NOPS to allow sufficient data to be clocked out of the ASICs -->
+	<loop count="32"><!-- get from Karabo -->
+		<nop/>
+		<nop count="850"/>
+	</loop>
+	<nop/>
+	<stop_read_out/>
+	<!--<reset_state_machine/>-->
+    <nop count="33"/>
+    <nop/>                           <!-- added by jac -->
+</lpd_command_sequence>

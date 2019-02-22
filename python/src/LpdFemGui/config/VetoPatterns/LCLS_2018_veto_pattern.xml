@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+
+<!--LCLS -->
+
+<!--ALL VETOS for LEGACY Test using <TRIGGER_FLAG_SETS> and arbitrary commands in Asic command file setup phase -->
+    <!-- Test Legacy operation sending Trigger_Flags for special tests.
+         Sends arbitrary asic commands and trigger flags during the setup phase.
+         In addition:
+         To suppress triggers from nvetos set default for Veto Pattern Mask words = $ffffffff in veto_pattern_mask.xml  
+         Set the number of images in readout by Karabo parameter "numberImages"
+         AND ignore nvetos by setting Karabo parameter  "cccProvideNumberImages" = False 
+         -->
+    <lpd_bunch_pattern name="testCCC_xml">
+        <veto   value="0xFFFFFFFF"/>
+    </lpd_bunch_pattern>
+    
+    

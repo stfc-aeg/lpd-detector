@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="Command_LongExposure.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+    <!-- Rules for lpd command sequence  jac 
+
+        There MUST be a single <nop/> immediately before <sync_reset/>, <read_out_data/> and <asic_slow_readout_start/> 
+        There MUST be exactly 1 <nop/> between <sync_reset/> and <read_out_data/> 
+
+        For readout add enough nops to ensure all data is clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) plus allow extra 1000 nops for offset from readout cmd to start of asic header
+
+        If reading out V1 ASIC need  <asic_slow_readout_start/> in cmd sequence to slow clock during readout phase
+        Must also set femAsicSlowedClock parameter in LpdReadoutTest.py to TRUE
+
+    -->
+
+	<nop/>
+	<sync_reset/> <!-- Start Config chip -->
+	<on_chip_reset_disable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<start_write_pointer/>
+	<start_trigger_pointer/> 
+	<nop/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<remove_reset_pre_amp/>
+	<remove_reset_gain_stage1/>
+	<remove_reset_gain_stage2/>
+	<nop count="10"/>
+	<trigger_section>
+		<trigger_flag_set/>
+		<nop count="10"/>
+		<trigger_flag_set/>
+		<nop count="10"/>
+		<trigger_flag_set/>
+		<nop count="10"/>
+		<trigger_flag_set/>
+	</trigger_section>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>	
+ 	<nop/>          <!-- There must be a <nop/> immediately before <asic_slow_readout_start/> -->
+	<asic_slow_readout_start/>  <!-- This switches to slow clock during asic readout -->
+	<nop/>          <!-- There must be a <nop/> immediately before <sync_reset/> -->
+	<sync_reset/>
+	<nop/>          <!-- There must be exactly 1 nop between <sync_reset/> and <read_out_data/>  -->
+	<read_out_data/>   
+	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits)
+         + allow 1000 NOPs for offset from readout cmd to start of asic header  -->
+	<loop count="4">
+		<nop/>
+		<nop count="838"/>
+	</loop>
+	<nop count="1000"/>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+</lpd_command_sequence>

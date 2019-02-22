@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="Command_LongExposure_Start_and_Stop_with_trigger_section.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+    <!-- Rules for lpd command sequence  jac 
+
+        There MUST be a single <nop/> immediately before <sync_reset/>, <read_out_data/> and <asic_slow_readout_start/> 
+        There MUST be exactly 1 <nop/> between <sync_reset/> and <read_out_data/> 
+
+        For readout add enough nops to ensure all data is clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) plus a few extra
+
+        If reading out V1 ASIC need  <asic_slow_readout_start/> in cmd sequence to slow clock during readout phase
+        Must also set femAsicSlowedClock parameter in LpdReadoutTest.py to TRUE
+
+		for asic v2 so no slow clock for readout
+    
+    New CCC module Fast command Start sequence
+
+    -->
+
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<on_chip_reset_disable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+	<nop/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+    <start_write_pointer/>
+	<remove_reset_pre_amp/>
+	<remove_reset_gain_stage1/>
+	<remove_reset_gain_stage2/>
+    <start_trigger_pointer/> 
+    <!-- Add single NOP after <start_trigger_pointer> before the trigger_section 
+        as Trigger Pointer starts at location -1 which doesn't exist.
+        See LPD ASIC manual. There is some detail on page 48 and 49
+        This is so that 1st veto mask bit will flag 1st memory pipeline location 
+        Needed for correct pipeline emulation.
+        Dec 2015    John C  
+    -->
+    <nop/>
+	<trigger_section>
+    <!-- Trigger section must be present for f/w 02ac and later -->
+    <!-- It marks the position where C&C Veto Information will be inserted into the command sequence -->
+    <!-- NB Any COMMANDS including <trigger_flag_set> found in this section will be IGNORED  -->
+    <trigger_flag_set/>
+    <nop count="5"/>
+    <trigger_flag_set/>
+    <nop count="5"/>
+    <trigger_flag_set/>
+    <nop count="5"/>
+	  <trigger_flag_set/>
+	</trigger_section>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<nop/>
+	<nop/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/>
+	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) -->
+	<loop count="420">  <!-- 511 images -->
+		<nop/>
+		<nop count="1023"/>
+	</loop>
+	<stop_read_out/>
+	<nop count="33"/>
+	<nop/>
+  
+</lpd_command_sequence>
+	
