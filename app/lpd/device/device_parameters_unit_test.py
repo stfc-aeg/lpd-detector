@@ -6,7 +6,7 @@ Created on 25 Sep 2012
 from __future__ import print_function
 
 import unittest
-from LpdDeviceParameters import *
+from lpd.device.device_parameters import *
 
 class Test(unittest.TestCase):
 
@@ -28,5 +28,4 @@ class Test(unittest.TestCase):
             print()
 
 if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

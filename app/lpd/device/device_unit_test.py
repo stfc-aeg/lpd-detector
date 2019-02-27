@@ -6,7 +6,7 @@ Created on 18 Sep 2012
 from __future__ import print_function
 
 import unittest
-from LpdDevice import * 
+from lpd.device.device import * 
 
 class Test(unittest.TestCase):
 
@@ -106,5 +106,4 @@ class Test(unittest.TestCase):
         self.assertEqual(result, value, "Mismatch between set and get of legal non-standard int parameter")
         
 if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
