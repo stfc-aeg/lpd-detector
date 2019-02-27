@@ -8,7 +8,7 @@ from __future__ import print_function
 
 from xml.etree.ElementInclude import ElementTree
 from xml.etree.ElementTree import ParseError
-import os # os.getcwd()
+import os
 
 class LpdAsicBunchPatternError(Exception):
     
@@ -87,8 +87,6 @@ class LpdAsicBunchPattern():
                 
                 if value == -1:
                     raise LpdAsicBunchPatternError('Error XML tag %s missing value attribute' % cmd)
-#                else:
-#                    print("%s, pattern = %d, word = %d, value = %d" % (cmd, pattern, word, value))
                 
                 if pattern != -1:
                     # pattern specified

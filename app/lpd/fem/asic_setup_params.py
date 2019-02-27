@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 
-#from past.builtins import xrange
 import sys
 if sys.version_info > (3,):
     xrange = range

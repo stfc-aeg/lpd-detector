@@ -231,39 +231,34 @@ LINUX
 
 from __future__ import print_function, division, absolute_import
 
-# to get OS info
+# Get OS info
 import platform
 
 # Import Python standard modules
-# log required when calculating temperature
-from math import log#, ceil
+# Log required when calculating temperature
+from math import log
 import pprint, time, sys, os
 from functools import partial
 import importlib
 
 from datetime import datetime
 
-# for keyboard interrupts
+# For keyboard interrupts
 import select
 import tty
 import termios
 
-# python debugger test
-#import pdb
-
-
-from FemClient.FemClient import *
-from FemApi.FemTransaction import FemTransaction
-#from LpdPowerCard import *
+from fem.client import FemClient
+from fem.api.transaction import FemTransaction
 
 # Import library for parsing XML asic files
-from LpdFemClient.LpdAsicCommandSequence import *
-from LpdFemClient.LpdAsicSetupParams import *
+from lpd.fem.asic_command_sequence import *
+from lpd.fem.asic_setup_params import *
 
 # Import library for parsing XML ccc veto patterns
-from LpdFemClient.LpdAsicBunchPattern import *
+from lpd.fem.asic_bunch_pattern import *
 
-# next lines for ESC key interrupt
+# Next lines for ESC key interrupt
 def isData():
     return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
 old_settings = termios.tcgetattr(sys.stdin)
@@ -690,10 +685,10 @@ class LpdFemClient(FemClient):
             
         # Delayed import of power card type, using appropriate module to support new or legacy power card
         if legacyPowerCard:
-            powerCardType = importlib.import_module('LpdFemClient.LpdPowerCardLegacy').LpdPowerCard
+            powerCardType = importlib.import_module('Client.PowerCardLegacy').LpdPowerCard
             #print("Using legacy power card module")
         else:
-            powerCardType = importlib.import_module('LpdFemClient.LpdPowerCard').LpdPowerCard
+            powerCardType = importlib.import_module('Client.PowerCard').LpdPowerCard
             #print("Using new power card module")
         
         self.powerCards = []
