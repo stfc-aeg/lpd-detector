@@ -8,8 +8,9 @@ Created on 18 Sep 2012
 
 from __future__ import print_function, absolute_import
 
-from lpd.fem.client import LpdFemClient, FemClientError
-from lpd.device.device_parameters import *
+from lpd.fem.client import LpdFemClient
+from fem.client import FemClientError
+from lpd.device.parameters import *
 
 import time
 
