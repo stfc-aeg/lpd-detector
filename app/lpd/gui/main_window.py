@@ -1,12 +1,12 @@
 from PyQt4 import QtCore, QtGui
 from main_window_ui import Ui_MainWindow
 from lpd.gui.state import LpdFemState
-from main_daq_tab import *
-from main_power_tab import *
-from main_config_tab import *
-from main_evr_tab import *
-from main_test_tab import *
-from utilities import *
+from main_daq_tab import LpdFemGuiMainDaqTab
+from main_power_tab import LpdFemGuiMainPowerTab
+from main_config_tab import LpdFemGuiMainConfigTab
+from main_evr_tab import LpdFemGuiMainEvrTab
+from main_test_tab import LpdFemGuiMainTestTab
+from utilities import AsyncExecutionThread, validIpAddress, validPort
 import time
 import sys
 from functools import partial

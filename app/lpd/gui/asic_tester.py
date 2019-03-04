@@ -3,7 +3,6 @@ from readout_config import LpdReadoutConfig
 from lpd.device import LpdDevice
 # Needed to restore fem GUI state:
 from lpd.gui.state import LpdFemState
-print("Here!", LpdFemState.DeviceReady)
 
 import traceback        # Improves debugging
 import numpy as np

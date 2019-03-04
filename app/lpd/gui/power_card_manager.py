@@ -4,8 +4,7 @@ Created on Apr 18, 2013
 @author: tcn45
 '''
 
-from gui import *
-from lpd.device import *
+from lpd.device import LpdDevice
 import time, sys
 
 class LpdPowerCardManager(object):

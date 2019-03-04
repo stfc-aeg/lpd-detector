@@ -4,7 +4,6 @@ Created on Apr 19, 2013
 @author: tcn45
 '''
 from PyQt4 import QtCore, QtGui
-from utilities import *
 import time
 import sys
 from functools import partial

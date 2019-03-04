@@ -10,7 +10,7 @@ from __future__ import print_function, absolute_import
 
 from lpd.fem.client import LpdFemClient
 from fem.client import FemClientError
-from lpd.device.parameters import *
+from lpd.device.parameters import LpdDeviceParameters
 
 import time
 

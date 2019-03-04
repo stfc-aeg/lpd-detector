@@ -9,7 +9,6 @@ from data_containers import LpdImageContainer
 from lpd.fem.client import LpdFemClient
 
 from PyQt4 import QtCore, QtGui
-from utilities import *
 import sys
 
 import numpy as np

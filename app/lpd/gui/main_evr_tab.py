@@ -1,6 +1,5 @@
 
 from PyQt4 import QtCore, QtGui
-from utilities import *
 import time
 import sys
 from functools import partial

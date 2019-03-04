@@ -6,7 +6,7 @@ Created on Apr 19, 2013
 
 from PyQt4 import QtCore, QtGui
 from lpd.gui.state import LpdFemState
-from lpd.gui.utilities import *
+from lpd.gui.utilities import checkButtonState
 import time
 import sys
 from functools import partial

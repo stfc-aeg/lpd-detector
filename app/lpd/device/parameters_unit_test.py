@@ -6,7 +6,7 @@ Created on 25 Sep 2012
 from __future__ import print_function
 
 import unittest
-from lpd.device.parameters import *
+from lpd.device.parameters import LpdDeviceParameters
 
 class Test(unittest.TestCase):
 

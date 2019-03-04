@@ -1,24 +1,21 @@
 from __future__ import print_function
-print("Before main window")
-from main_window import *
-print("after main window")
-from live_view_window import *
-from power_card_manager import *
-from data_receiver import *
-from evr_timestamp_recorder import *
-from lpd.device import *
-from fem.client import *
-from fem.api.config import *
-from readout_config import *
-from persistent_dict import *
-from servo_shutter import *
+from main_window import LpdFemGuiMainWindow
+from live_view_window import LpdFemGuiLiveViewWindow
+from lpd.gui.power_card_manager import LpdPowerCardManager
+from data_receiver import LpdFemDataReceiver
+from evr_timestamp_recorder import LpdEvrTimestampRecorder
+from lpd.device import LpdDevice
+from fem.api.config import FemConfig
+from readout_config import LpdReadoutConfig, LpdReadoutConfigError
+from persistent_dict import PersistentDict
+from servo_shutter import ServoShutter
 from lpd.gui.state import LpdFemState
 import os, time
 
 #-----
 from odin_data.ipc_channel import IpcChannel, IpcChannelException
 from odin_data.ipc_message import IpcMessage, IpcMessageException
-from odin_data_receiver import *
+from odin_data_receiver import LpdFemOdinDataReceiver
 #-----
 
 class PrintRedirector():
@@ -531,11 +528,8 @@ class LpdFemGui:
 def main():
     lpd_fem_gui = None
     try:
-        print("app")
         app = QtGui.QApplication(sys.argv)
-        print("gui")
         lpd_fem_gui = LpdFemGui(app)
-        print("exec")
         sys.exit(app.exec_())
     finally:
         if lpd_fem_gui.odin_data_receiver is not None:

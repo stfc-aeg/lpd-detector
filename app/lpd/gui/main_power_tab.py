@@ -8,7 +8,6 @@ from __future__ import print_function
 from PyQt4 import QtCore, QtGui
 from main_window_ui import Ui_MainWindow
 from lpd.gui.state import LpdFemState
-from utilities import *
 import time
 import sys
 from functools import partial
