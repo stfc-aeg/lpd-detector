@@ -4,8 +4,6 @@ Created on Apr 19, 2013
 @author: tcn45
 '''
 from PyQt4 import QtCore, QtGui
-from LpdFemGuiMainWindow_ui import Ui_MainWindow
-from LpdFemGui import *
 from utilities import *
 import time
 import sys

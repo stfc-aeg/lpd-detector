@@ -5,10 +5,9 @@ Created on Apr 19, 2013
 '''
 from __future__ import print_function
 
-from LpdDataContainers import *
-from LpdFemClient.LpdFemClient import LpdFemClient
-from LpdFemGui import *
-from LpdFemMetadataWriter import *
+from data_containers import *
+from lpd.fem.client import LpdFemClient
+from metadata_writer import *
 
 import sys, time, json, h5py, zmq
 import numpy as np

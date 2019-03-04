@@ -8,10 +8,7 @@ from __future__ import print_function
 
 import argparse, sys
 
-from FemClient.FemClient import  *
-from FemApi.FemTransaction import FemTransaction
-
-from LpdDevice.LpdDevice import LpdDevice
+from lpd.device import LpdDevice
 
 
 class LpdPowerControl(object):

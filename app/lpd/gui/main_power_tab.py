@@ -6,8 +6,8 @@ Created on Apr 19, 2013
 
 from __future__ import print_function
 from PyQt4 import QtCore, QtGui
-from LpdFemGuiMainWindow_ui import Ui_MainWindow
-from LpdFemGui import *
+from main_window_ui import Ui_MainWindow
+from lpd.gui.state import LpdFemState
 from utilities import *
 import time
 import sys
@@ -42,7 +42,7 @@ class LpdFemGuiMainPowerTab(object):
 
     def updateEnabledWidgets(self):
         
-        if self.app_main.device_state == LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state == LpdFemState.DeviceDisconnected:
             self.ui.pwrControlGroupBox.setEnabled(False)
             self.ui.pwrMonitorGroupBox.setEnabled(False)
         else:
@@ -242,7 +242,7 @@ class PowerAutoUpdateThread(QtCore.QThread):
         print("Starting power card auto monitoring thread")
         self.updateDone.connect(self.pwrTab.powerStatusUpdateDone)
         
-        while self.pwrTab.autoUpdate == True and self.app_main.device_state != LpdFemGui.DeviceDisconnected:
+        while self.pwrTab.autoUpdate == True and self.app_main.device_state != LpdFemState.DeviceDisconnected:
             
             #TODO inhibit update loop when device locked
             self.app_main.pwr_card.statusUpdate()

@@ -8,9 +8,9 @@ Created on Apr 19, 2013
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import *
 
-from LpdFemGuiMainWindow_ui import Ui_MainWindow
-from LpdFemGui import *
-from LpdAsicTester import *
+print("About to re-import asic_tester")
+from asic_tester import LpdAsicTester
+print("Have completed re-import asic_tester")
 import logging, logging.handlers
 
 from utilities import *

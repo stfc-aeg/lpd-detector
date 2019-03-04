@@ -4,8 +4,8 @@
     Author: ckd27546,    Created: 22/07/2014
 """
 
-from LpdDevice.LpdDevice import LpdDevice
-from LpdFemTests.LpdPowerControl import LpdPowerControl
+from lpd.device.device import LpdDevice
+from lpd.LpdFemTests.LpdPowerControl import LpdPowerControl
 import sys, time
 
 class LpdFemGuiPowerTesting(object):

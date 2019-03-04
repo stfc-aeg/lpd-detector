@@ -5,9 +5,9 @@ Created on Apr 19, 2013
 '''
 from __future__ import print_function
 
-from LpdDataContainers import *
-from LpdFemClient.LpdFemClient import LpdFemClient
-from LpdFemMetadataWriter import *
+from data_containers import *
+from lpd.fem.client import LpdFemClient
+from metadata_writer import MetadataWriter
 
 import os, sys, time, socket
 import numpy as np

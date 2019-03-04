@@ -248,15 +248,15 @@ import select
 import tty
 import termios
 
-from fem.client import FemClient
+from fem.client import FemClient, FemClientError
 from fem.api.transaction import FemTransaction
 
 # Import library for parsing XML asic files
-from lpd.fem.asic_command_sequence import *
-from lpd.fem.asic_setup_params import *
+from lpd.fem.asic_command_sequence import LpdAsicCommandSequence
+from lpd.fem.asic_setup_params import LpdAsicSetupParamsError, LpdAsicSetupParams
 
 # Import library for parsing XML ccc veto patterns
-from lpd.fem.asic_bunch_pattern import *
+from lpd.fem.asic_bunch_pattern import LpdAsicBunchPattern
 
 # Next lines for ESC key interrupt
 def isData():

@@ -1,11 +1,11 @@
 from PyQt4 import QtCore, QtGui
-from LpdFemGuiMainWindow_ui import Ui_MainWindow
-from LpdFemGui import *
-from LpdFemGuiMainDaqTab import *
-from LpdFemGuiMainPowerTab import *
-from LpdFemGuiMainConfigTab import *
-from LpdFemGuiMainEvrTab import *
-from LpdFemGuiMainTestTab import *
+from main_window_ui import Ui_MainWindow
+from lpd.gui.state import LpdFemState
+from main_daq_tab import *
+from main_power_tab import *
+from main_config_tab import *
+from main_evr_tab import *
+from main_test_tab import *
 from utilities import *
 import time
 import sys
@@ -101,12 +101,12 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         
     def updateEnabledWidgets(self):
 
-        if self.app_main.device_state == LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state == LpdFemState.DeviceDisconnected:
 
             self.ui.configGroupBox.setEnabled(False)
             self.ui.operateGroupBox.setEnabled(False)
             
-        elif self.app_main.device_state == LpdFemGui.DeviceIdle:
+        elif self.app_main.device_state == LpdFemState.DeviceIdle:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -114,7 +114,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.runBtn.setEnabled(False)
             self.ui.stopBtn.setEnabled(False)
             
-        elif self.app_main.device_state == LpdFemGui.DeviceConfiguring:
+        elif self.app_main.device_state == LpdFemState.DeviceConfiguring:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -122,7 +122,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.runBtn.setEnabled(False)
             self.ui.stopBtn.setEnabled(False)
             
-        elif self.app_main.device_state == LpdFemGui.DeviceReady:
+        elif self.app_main.device_state == LpdFemState.DeviceReady:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -130,7 +130,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
             self.ui.runBtn.setEnabled(True)
             self.ui.stopBtn.setEnabled(False)
             
-        elif self.app_main.device_state == LpdFemGui.DeviceRunning:
+        elif self.app_main.device_state == LpdFemState.DeviceRunning:
             
             self.ui.configGroupBox.setEnabled(True)
             self.ui.operateGroupBox.setEnabled(True)
@@ -154,7 +154,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
                             
     def deviceConnectToggle(self):
 
-        if self.app_main.device_state == LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state == LpdFemState.DeviceDisconnected:
 
             # Extract address and port from GUI fields and validate
             deviceAddress = str(self.ui.connectAddr.text())
@@ -186,7 +186,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         self.progressBar.hide()
         self.ui.connectButton.setEnabled(True)
         # Toggle button text according to state
-        if self.app_main.device_state != LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state != LpdFemState.DeviceDisconnected:
             
             self.msgPrint("Connected to device OK")
             self.statusBar().showMessage(self.tr("Connected to device"))
@@ -226,7 +226,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
                  
     def quitApplication(self):
             
-        if self.app_main.device_state != LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state != LpdFemState.DeviceDisconnected:
             self.app_main.deviceDisconnect()
 
         self.app_main.cleanup()            
@@ -234,7 +234,7 @@ class LpdFemGuiMainWindow(QtGui.QMainWindow):
         
     def closeEvent(self, theCloseEvent):
         
-        if self.app_main.device_state != LpdFemGui.DeviceDisconnected:
+        if self.app_main.device_state != LpdFemState.DeviceDisconnected:
             self.app_main.deviceDisconnect()
             
         self.app_main.cleanup()    

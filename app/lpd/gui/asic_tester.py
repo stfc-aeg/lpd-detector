@@ -1,11 +1,9 @@
 
-from LpdReadoutConfig import *
-from LpdDataContainers import *
-from LpdDevice.LpdDevice import LpdDevice
-from LpdFemTests.LpdPowerControl import LpdPowerControl
-from LpdFemGuiAsicWindow import *
+from readout_config import LpdReadoutConfig
+from lpd.device import LpdDevice
 # Needed to restore fem GUI state:
-from LpdFemGui import *
+from lpd.gui.state import LpdFemState
+print("Here!", LpdFemState.DeviceReady)
 
 import traceback        # Improves debugging
 import numpy as np
@@ -218,7 +216,7 @@ class LpdAsicTester(object):
                             self.msgPrint("     Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
 
             # Hack DAQ tab to restore it to ready state
-            self.app_main.device_state = LpdFemGui.DeviceReady
+            self.app_main.device_state = LpdFemState.DeviceReady
             self.app_main.runStateUpdate()
 
         except Exception as e:
@@ -412,7 +410,7 @@ class LpdAsicTester(object):
                     self.msgPrint("* %s." % errorLine)
 
             # Hack DAQ tab to restore it to ready state
-            self.app_main.device_state = LpdFemGui.DeviceReady
+            self.app_main.device_state = LpdFemState.DeviceReady
             self.app_main.runStateUpdate()
 
         except Exception as e:

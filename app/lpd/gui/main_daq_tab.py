@@ -5,9 +5,8 @@ Created on Apr 19, 2013
 '''
 
 from PyQt4 import QtCore, QtGui
-from LpdFemGuiMainWindow_ui import Ui_MainWindow
-from LpdFemGui import *
-from utilities import *
+from lpd.gui.state import LpdFemState
+from lpd.gui.utilities import *
 import time
 import sys
 from functools import partial
@@ -201,7 +200,7 @@ class LpdFemGuiMainDaqTab(object):
         
         self.app_main.setCachedParam('arduinoShutterEnable', state)
         # Hack, force user to hit configure before next run:
-        self.app_main.device_state = LpdFemGui.DeviceIdle
+        self.app_main.device_state = LpdFemState.DeviceIdle
         self.mainWindow.updateEnabledWidgets()
 
     def multiRunSelect(self, state):
@@ -251,7 +250,7 @@ class LpdFemGuiMainDaqTab(object):
 
     def configureDone(self):
 
-        if self.app_main.device_state == LpdFemGui.DeviceReady:
+        if self.app_main.device_state == LpdFemState.DeviceReady:
             self.msgPrint("Device configured OK")
             if (self.app_main.asic_testing_enabled):
                 self.app_main.mainWindow.testTab.configDeviceSignal.emit("Device configured OK")
@@ -272,7 +271,7 @@ class LpdFemGuiMainDaqTab(object):
                 
     def runDone(self):
         
-        if self.app_main.device_state == LpdFemGui.DeviceReady:
+        if self.app_main.device_state == LpdFemState.DeviceReady:
             self.msgPrint("Acquisition completed")
         else:
             self.msgPrint("Acquisition failed")
@@ -288,12 +287,12 @@ class LpdFemGuiMainDaqTab(object):
 
         self.ui.run_number.setText(str(self.app_main.getCachedParam('runNumber')))
         
-        deviceStateMapping = {  LpdFemGui.DeviceDisconnected : 'Disconn',
-                                LpdFemGui.DeviceIdle         : 'Idle',
-                                LpdFemGui.DeviceConfiguring  : 'Configuring',
-                                LpdFemGui.DeviceReady        : 'Ready',
-                                LpdFemGui.DeviceRunning      : 'Running'
-                              }
+        deviceStateMapping = {  LpdFemState.DeviceDisconnected : 'Disconn',
+                                LpdFemState.DeviceIdle         : 'Idle',
+                                LpdFemState.DeviceConfiguring  : 'Configuring',
+                                LpdFemState.DeviceReady        : 'Ready',
+                                LpdFemState.DeviceRunning      : 'Running'
+                             }
         
         if deviceState in deviceStateMapping:
             stateStr = deviceStateMapping[deviceState]
