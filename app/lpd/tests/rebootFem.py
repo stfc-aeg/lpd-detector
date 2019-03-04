@@ -30,13 +30,9 @@ Created 2017
 from __future__ import print_function, division
 
 import sys, os.path, time, binascii, argparse
-
-#import ExcaliburFemTests.defaults as defaults
-#from . import defaults
 import defaults
 
-#from .FemNodeList import *
-from FemClient.FemClient import *
+from fem.client import FemClient, FemClientError
 
 
 def rebootFem(femHost, femPort, slot):

@@ -11,8 +11,8 @@ import time
 import argparse
 import sys
 
-from LpdDevice.LpdDevice import LpdDevice
-from LpdFemGui.LpdReadoutConfig import LpdReadoutConfig, LpdReadoutConfigError
+from lpd.device import LpdDevice
+from lpd.gui.readout_config import LpdReadoutConfig, LpdReadoutConfigError
 
 fem_addr_list = [
     '192.168.2.2',

@@ -6,8 +6,8 @@
 
 from __future__ import print_function
 
-from LpdDevice.LpdDevice import LpdDevice
-from EthernetUtility import EthernetUtility 
+from lpd.device import LpdDevice
+from ethernet_utility import EthernetUtility 
 import argparse, sys, time
 from datetime import datetime
 

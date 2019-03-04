@@ -5,7 +5,7 @@
 """
 
 
-from LpdDevice.LpdDevice import LpdDevice
+from lpd.device import LpdDevice
 
 def powerCardTest():
     

@@ -17,11 +17,10 @@ into a PyQt4 GUI application, including:
 @author: ckd27546 (well, mostly pinched from Eli Bendersky of the tinternet-web thingy..)
 '''
 
-from LpdFemGui.LpdDataContainers import LpdImageContainer
+from lpd.gui.data_containers import LpdImageContainer
+from uni_receive import FrameProcessor
 
-from LpdUniReceive import *
-
-import sys, os, LpdFemGui.utilities
+import sys, os
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
@@ -29,7 +28,7 @@ import numpy as np
 
 import matplotlib
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 

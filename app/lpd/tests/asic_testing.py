@@ -1,13 +1,7 @@
 
 ''' If not executed directly, assume it's being called from ../LpdFemGui/LpdFemGuiMainTestTab.py '''
 
-if __name__ != "__main__":
-    # Called from LpdFemGui code base
-    from LpdReadoutConfig import *
-    from LpdFemGui.LpdDataContainers import *#LpdFrameContainers
-else:
-    # Executed directly, e.g. "python AsicTesting.py file.hdf5 -t 1 -i 4 -m 15"
-    from LpdFemGui.LpdReadoutConfig import *
+from lpd.gui.readout_config import LpdReadoutConfig
 
 import numpy as np
 import h5py, time, sys

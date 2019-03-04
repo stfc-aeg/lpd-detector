@@ -108,7 +108,7 @@ class GenerateXML():
         completedXml += generatedString
         completedXml += self.postambleXml
         
-        fileName = 'Config/SetupParams/Setup_Chessboard.xml'
+        fileName = 'app/lpd/tests/Config/SetupParams/Setup_Chessboard.xml'
         try:
             f = open(fileName,'w')
             f.write(completedXml)

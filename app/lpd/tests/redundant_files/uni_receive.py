@@ -6,7 +6,7 @@ Created on Jun 12, 2013
 @author: ckd27546
 '''
 
-from LpdFemGui.LpdDataContainers import *
+from lpd.gui.data_containers import LpdImageContainer, LpdFrameContainer
 
 import os, sys, time, socket
 import numpy as np

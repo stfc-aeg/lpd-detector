@@ -3,8 +3,6 @@
                     
 '''
 
-from LpdDevice.LpdDevice import LpdDevice
-from EthernetUtility import EthernetUtility 
 import argparse, sys
 from datetime import datetime
 

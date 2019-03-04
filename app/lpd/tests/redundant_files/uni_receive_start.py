@@ -6,11 +6,11 @@ Created on Jun 12, 2013
 @author: ckd27546
 '''
 
-from LpdUniReceive import *
-from LpdUniPlotData import *
+from uni_receive import LpdFemDataReceiver
+from uni_plot_data import LpdUniPlotData
 
-import argparse
-from PyQt4 import QtGui
+import argparse, sys
+from PyQt4 import QtGui, QtCore
 
 class LpdUniReceiveStart():
     

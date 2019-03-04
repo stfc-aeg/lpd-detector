@@ -7,7 +7,7 @@ import numpy as np
 import h5py
 import matplotlib
 import sys, time
-from LpdFemGui.LpdReadoutConfig import *
+from lpd.gui.readout_config import LpdReadoutConfig
 
 
 def imagePlot():

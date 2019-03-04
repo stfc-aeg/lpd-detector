@@ -4,8 +4,8 @@
     Author: ckd27546,    Created: 22/05/2014
 """
 
-from LpdDevice.LpdDevice import LpdDevice
-from LpdPowerControl import LpdPowerControl
+from lpd.device import LpdDevice
+from power_control import LpdPowerControl
 import sys, argparse, time, os
 
 class LpdPowerTesting:

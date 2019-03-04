@@ -5,7 +5,7 @@
 '''
 from __future__ import print_function
 
-from LpdDevice.LpdDevice import LpdDevice
+from lpd.device import LpdDevice
 import sys
 
 def LpdPowerStatus():

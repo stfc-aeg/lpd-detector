@@ -59,13 +59,10 @@ from __future__ import print_function, division
 
 import sys, os.path, time, binascii, argparse
 
-#import ExcaliburFemTests.defaults as defaults
-#sys.path.append('defaults')
 import defaults
-#from . import defaults
 
-from FemClient.FemClient import *
-from FemApi.FemSysaceConfig import FemSysaceConfig
+from fem.client import *
+from fem.api.sysace_config import FemSysaceConfig
 import ExcaliburFemTests
 
 

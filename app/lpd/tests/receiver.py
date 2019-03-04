@@ -9,7 +9,7 @@
 
 from __future__ import print_function
 
-from LpdFemClient.LpdFemClient import LpdFemClient
+from lpd.fem.client import LpdFemClient
 
 import sys, time, argparse, socket, os
 from datetime import datetime
