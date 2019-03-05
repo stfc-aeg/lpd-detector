@@ -4,6 +4,7 @@ Created on Apr 18, 2013
 @author: tcn45
 '''
 
+from lpd.fem.client import LpdFemClient
 from lpd.device import LpdDevice
 import time, sys
 

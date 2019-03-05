@@ -10,7 +10,9 @@ from readout_config import LpdReadoutConfig, LpdReadoutConfigError
 from persistent_dict import PersistentDict
 from servo_shutter import ServoShutter
 from lpd.gui.state import LpdFemState
-import os, time
+
+import os, time, sys
+from PyQt4 import QtGui
 
 #-----
 from odin_data.ipc_channel import IpcChannel, IpcChannelException
