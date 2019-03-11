@@ -35,15 +35,17 @@ class PersistentDict(dict):
         try:
             fileobj = open(tempname, 'wb' if self.format=='pickle' else 'w')
             self.dump(fileobj)
-            os.remove(tempname)
-            shutil.move(tempname, self.filename)    # atomic commit
-            if self.mode is not None:
-                os.chmod(self.filename, self.mode)
         except (IOError, OSError) as e:
             print("PersistentDict can't open file: %s" % e)
+        except Exception:
+            os.remove(tempname)
+            raise
         finally:
             if fileobj is not None:
                 fileobj.close()
+        shutil.move(tempname, self.filename)    # atomic commit
+        if self.mode is not None:
+                os.chmod(self.filename, self.mode)
 
     def close(self):
         self.sync()
