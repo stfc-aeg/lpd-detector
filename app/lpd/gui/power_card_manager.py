@@ -6,6 +6,7 @@ Created on Apr 18, 2013
 
 from lpd.fem.client import LpdFemClient
 from lpd.device import LpdDevice
+from lpd.gui.state import LpdFemState
 import time, sys
 
 class LpdPowerCardManager(object):
@@ -124,7 +125,7 @@ class LpdPowerCardManager(object):
 
         try:        
             self.powerState = {}
-            if self.app_main.device_state != self.app_main.DeviceDisconnected:
+            if self.app_main.device_state != LpdFemState.DeviceDisconnected:
             
                 # Loop over card parameters for each card and load into results
                 for powerCard in range(self.numPowerCards):
