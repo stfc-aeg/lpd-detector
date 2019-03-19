@@ -5,6 +5,7 @@ Created on 16 Oct 2018
 '''
 
 import h5py
+from datetime import datetime
 
 
 class MetadataWriter(object):
@@ -20,6 +21,8 @@ class MetadataWriter(object):
         # Build metadata attributes from cached parameters
         for param, val in self.cached_params.items():
             metadata_group.attrs[param] = val
+        # Add additional attribute to record current date
+        metadata_group.attrs['runDate'] = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
         # Write the XML configuration files into the metadata group
         self.xml_ds = {}
         str_type = h5py.special_dtype(vlen=str)
