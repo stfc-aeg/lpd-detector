@@ -2093,7 +2093,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuFile.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.verticalTabWidget.setCurrentIndex(4)
+        self.verticalTabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         MainWindow.setTabOrder(self.macAddress, self.hwVersionMajor)
         MainWindow.setTabOrder(self.hwVersionMajor, self.hwVersionMinor)
