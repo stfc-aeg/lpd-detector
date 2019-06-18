@@ -5,15 +5,19 @@ Created on Apr 19, 2013
 @author: tcn45
 '''
 
+
+import time
+import sys
+import os
+from functools import partial
+import logging, logging.handlers
+import datetime
+
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import *
 
 from asic_tester import LpdAsicTester
-import logging, logging.handlers
 
-import time
-import sys
-from functools import partial
 
 class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     # Inheritance required for super() line within __init__() function
