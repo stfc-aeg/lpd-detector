@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export LPD_FEM_SW_PATH=/u/xfu59478/develop/projects/lpd/lpd-detector/app/lpd
+export LPD_FEM_SW_PATH=/aeg_sw/work/projects/lpd/src/lpd-detector/app/lpd
 export LPD_FEM_GUI_PATH=$LPD_FEM_SW_PATH/gui
 
 #export PYTHONPATH=$LPD_FEM_SW_PATH/gui:$LPD_FEM_SW_PATH:${PYTHONPATH:-}
