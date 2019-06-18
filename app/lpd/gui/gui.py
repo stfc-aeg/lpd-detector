@@ -1,4 +1,9 @@
 from __future__ import print_function
+import os, time, sys
+import argparse
+
+from PyQt4 import QtGui
+
 from main_window import LpdFemGuiMainWindow
 from live_view_window import LpdFemGuiLiveViewWindow
 from lpd.gui.power_card_manager import LpdPowerCardManager
@@ -9,10 +14,9 @@ from fem.api.config import FemConfig
 from readout_config import LpdReadoutConfig, LpdReadoutConfigError
 from persistent_dict import PersistentDict
 from servo_shutter import ServoShutter
-from lpd.gui.state import LpdFemState
-
-import os, time, sys
-from PyQt4 import QtGui
+from state import LpdFemState
+from asic_tester import LpdAsicTester
+from asic_window import LpdFemGuiAsicWindow
 
 #-----
 from odin_data.ipc_channel import IpcChannel, IpcChannelException
@@ -34,13 +38,16 @@ class PrintRedirector():
 
 class LpdFemGui:
 
-    def __init__(self, app):
+    def __init__(self, app, parsed_args):
 
         self.app = app
         
-        # Pick up path to config file from environment, otherwise default to config directory
-        # in current working directory
-        self.default_config_path = os.getenv('LPD_FEM_GUI_CONFIG_PATH', os.getcwd() + '/config')
+        # Pick up path to config file from command-line arguments, or from the environment,
+        # otherwise default to config directory in current working directory
+        if parsed_args.default_config_path is not None:
+            self.default_config_path = parsed_args.default_config_path
+        else:
+            self.default_config_path = os.getenv('LPD_FEM_GUI_CONFIG_PATH', os.getcwd() + '/config')
 
         # Load default parameters from persistent file store
         self.initialiseCachedParams()
@@ -527,16 +534,32 @@ class LpdFemGui:
         ''' 
         self.mainWindow.runStateSignal.emit()
 
+def process_arguments():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--configdir',
+        type=str, action='store', dest='default_config_path',
+        help='set path to GUI configuration files')
+    parsed_args, unparsed_args = parser.parse_known_args()
+
+    return parsed_args, unparsed_args
+
 def main():
+
     lpd_fem_gui = None
+
+    parsed_args, unparsed_args = process_arguments()
+
     try:
-        app = QtGui.QApplication(sys.argv)
-        lpd_fem_gui = LpdFemGui(app)
+        qt_args = sys.argv[:1] + unparsed_args
+        app = QtGui.QApplication(qt_args)
+        lpd_fem_gui = LpdFemGui(app, parsed_args)
         sys.exit(app.exec_())
     finally:
-        if lpd_fem_gui.odin_data_receiver is not None:
-            lpd_fem_gui.odin_data_receiver.shutdown_frame_receiver_processor()
-            time.sleep(1.5)
+        if lpd_fem_gui is not None:
+            if lpd_fem_gui.odin_data_receiver is not None:
+                lpd_fem_gui.odin_data_receiver.shutdown_frame_receiver_processor()
+                time.sleep(1.5)
 
 if __name__ == '__main__':
     main()
