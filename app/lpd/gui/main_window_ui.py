@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'LpdFemGuiMainWindow.ui'
+# Form implementation generated from reading ui file 'main_window.ui'
 #
-# Created by: PyQt4 UI code generator 4.12
+# Created by: PyQt4 UI code generator 4.12.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -222,7 +222,7 @@ class Ui_MainWindow(object):
         self.operateGroupBox.setGeometry(QtCore.QRect(10, 10, 371, 131))
         self.operateGroupBox.setObjectName(_fromUtf8("operateGroupBox"))
         self.verticalLayoutWidget = QtGui.QWidget(self.operateGroupBox)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 20, 382, 71))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 20, 385, 71))
         self.verticalLayoutWidget.setObjectName(_fromUtf8("verticalLayoutWidget"))
         self.verticalLayout_2 = QtGui.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout_2.setMargin(0)
@@ -1651,7 +1651,7 @@ class Ui_MainWindow(object):
         self.configGroupBox.setMinimumSize(QtCore.QSize(0, 240))
         self.configGroupBox.setObjectName(_fromUtf8("configGroupBox"))
         self.gridLayoutWidget = QtGui.QWidget(self.configGroupBox)
-        self.gridLayoutWidget.setGeometry(QtCore.QRect(0, 20, 751, 219))
+        self.gridLayoutWidget.setGeometry(QtCore.QRect(0, 20, 751, 222))
         self.gridLayoutWidget.setObjectName(_fromUtf8("gridLayoutWidget"))
         self.gridLayout_2 = QtGui.QGridLayout(self.gridLayoutWidget)
         self.gridLayout_2.setMargin(0)
@@ -1872,7 +1872,7 @@ class Ui_MainWindow(object):
         self.testMessageBox = QtGui.QPlainTextEdit(self.testMessageGroupBox)
         self.testMessageBox.setGeometry(QtCore.QRect(0, 20, 761, 331))
         font = QtGui.QFont()
-        font.setFamily(_fromUtf8("MiscFixed"))
+        font.setFamily(_fromUtf8("Fixed"))
         font.setPointSize(10)
         self.testMessageBox.setFont(font)
         self.testMessageBox.setLineWrapMode(QtGui.QPlainTextEdit.NoWrap)
@@ -2078,7 +2078,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3.addWidget(self.groupBox_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 795, 23))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 795, 25))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
@@ -2093,7 +2093,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuFile.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.verticalTabWidget.setCurrentIndex(0)
+        self.verticalTabWidget.setCurrentIndex(4)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         MainWindow.setTabOrder(self.macAddress, self.hwVersionMajor)
         MainWindow.setTabOrder(self.hwVersionMajor, self.hwVersionMinor)

@@ -27,7 +27,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>4</number>
     </property>
     <widget class="QWidget" name="daqTab">
      <property name="autoFillBackground">
@@ -475,7 +475,7 @@
         <rect>
          <x>0</x>
          <y>20</y>
-         <width>382</width>
+         <width>385</width>
          <height>71</height>
         </rect>
        </property>
@@ -877,7 +877,7 @@
          <number>0</number>
         </property>
         <item row="0" column="1">
-         <widget class="QLabel" name="runNumber">
+         <widget class="QLabel" name="run_number">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
             <horstretch>0</horstretch>
@@ -4010,7 +4010,7 @@
            <x>0</x>
            <y>20</y>
            <width>751</width>
-           <height>219</height>
+           <height>222</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2">
@@ -4509,7 +4509,7 @@
        </property>
        <property name="font">
         <font>
-         <family>MiscFixed</family>
+         <family>Fixed</family>
          <pointsize>10</pointsize>
         </font>
        </property>
@@ -5058,7 +5058,7 @@
      <x>0</x>
      <y>0</y>
      <width>795</width>
-     <height>23</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
