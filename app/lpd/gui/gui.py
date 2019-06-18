@@ -509,6 +509,7 @@ class LpdFemGui:
                 # Wait for the data receiver threads to complete
                 try:
                     self.odin_data_receiver.awaitCompletion()
+                    self.last_data_file = self.odin_data_receiver.last_data_file()
                 except Exception as e:
                     self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
 #---------------------

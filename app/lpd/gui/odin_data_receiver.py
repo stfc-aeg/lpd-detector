@@ -43,6 +43,7 @@ class LpdFemOdinDataReceiver():
             self.num_frames = num_frames
             self.app_main = app_main
             self.live_view_signal = live_view_signal
+            self.hdf_file_location = None
 
             print("Launching Frame Receiver and Frame Processor")
             # Getting location of FR & FP and paths of their config files
@@ -200,11 +201,11 @@ class LpdFemOdinDataReceiver():
             file_path = self.config_processor['hdf']['file']['path']
             file_name = self.config_processor['hdf']['file']['name']
             # Remove hardcoded file ending when feature disabled
-            hdf_file_location = file_path + "/" + file_name + "_000001.h5"
+            self.hdf_file_location = file_path + "/" + file_name + "_000001.h5"
 
             # Open hdf file for metadata to be written to it      
             try:
-                self.hdf_file = h5py.File(hdf_file_location, 'r+')
+                self.hdf_file = h5py.File(self.hdf_file_location, 'r+')
             except IOError as e:
                 print("Failed to open HDF file with error: %s" % e)
                 raise(e)
@@ -287,6 +288,11 @@ class LpdFemOdinDataReceiver():
 
         self.fp_ctrl_channel.send(config_msg.encode())
         self.await_response(self.fp_ctrl_channel)
+
+    def last_data_file(self):
+        '''Returns the location (path) of the last data file written.
+        '''
+        return self.hdf_file_location
 
 
 class OdinDataMonitor(QtCore.QObject):
