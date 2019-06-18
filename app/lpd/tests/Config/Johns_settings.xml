@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+
+<lpd_readout_config name="readoutConfiguration.xml">
+
+    <!-- 'Expert' Variables: -->
+    <tenGig0SourceMac type="str" val="62-00-00-00-00-01"/>
+    <tenGig0SourceIp type="str" val="10.0.0.2"/>
+    <tenGig0SourcePort type="int" val="0"/>
+    <tenGig0DestMac type="str" val="00-07-43-10-65-A0"/>   <!-- lpdhost@DESY: 00-07-43-13-EB-B0 -->
+    <tenGig0DestIp type="str" val="10.0.0.1"/>
+    <tenGig0DestPort type="int" val="61649"/>
+    <tenGig0DataFormat type="int" val="0"/>         <!-- Data format type, 0=counting data - doesn't affect "normal" data" -->
+    <tenGig0DataGenerator type="int" val="1"/>      <!-- Data generator 1=DataGen 2=PPC DDR2 -->
+    <tenGig0FrameLength type="int" val="0x10000"/>
+    <tenGig0NumberOfFrames type="int" val="1"/>     <!--  Number of frames to send in each cycle -->
+    <tenGigFarmMode type="int" val="1"/>
+    <tenGigInterframeGap type="int" val="0"/>
+    <tenGigUdpPacketLen type="int" val="8000"/>
+
+    <femAsicSetupClockPhase type="int" val="0"/>    <!-- additional phase adjustment of slow clock rsync w.r.t. ASIC reset -->
+    <femAsicVersion type="int" val="2"/>
+    <femDebugLevel type="int" val="0"/>
+    <femEnableTenGig type="bool" val="True"/>       <!-- Enables transmission of image data via 10GigE UDP interface -->
+    <femStartTrainPolarity type="int" val="1"/>     <!-- External signal polarity indicating start of train 0=No inversion, 1=Invert signal -->
+    <femVetoPolarity type="int" val="0"/>           <!-- External veto signal polarity 0=No inversion, 1=Invert signal (used for at Petra for shutter polarity) -->
+
+
+    <!-- 'User' Variables: -->
+    <femAsicClockSource type="int" val="0"/>              <!-- 0=FEM local clock 1=Sync with Xray 2=Petra clock sync 3=Diamond B16-->
+    <femAsicDataType type="int" val="0"/>                 <!-- 0=Normal Data, 1=Counting data, 2=Pseudo random -->
+    <femAsicEnableMask type="int"  val="0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF"/>            <!-- .. -->
+    <femAsicGain type="int" val="100"/>                     <!-- 0=normal, 100, 10, 1 -->
+    <femAsicGainOverride type="bool" val="False"/>        <!-- FEM Gain Selection Mode; False=Register, True=Asic Command Word XML decides -->
+    
+    <femAsicLocalClock type="int" val="0"/>               <!-- ASIC clock scaling 0=100 MHz, 1=scaled down clock [10 MHz] -->
+    <femAsicModuleType type="int" val="2"/>               <!-- 0=supermodule, 1=single ASIC, 2=2-tile module, 3=stand-alone' -->
+    <femAsicPixelFeedbackOverride type="int" val="-1"/>   <!--  Override feedback selection: 0=low[50pF], 1=high[5pF] (-1=Don't Care, Asic Setup XML decides) -->
+    <femAsicPixelSelfTestOverride type="int" val="-1"/>   <!--  Override self-test enable: 1 = enabled -->
+    <femAsicRxCmdWordStart type="bool" val="True"/>       <!-- Enable ASIC readout started by Command Word from XML file -->
+    <femAsicSetupLoadMode type="int" val="0"/>            <!-- ASIC control load mode 0=parallel, 1=daisy chain -->
+    <femStartTrainSource type="int" val="1"/>             <!-- 0 = XFEL clock and controls system, 1 = Software, 2 = LCLS , 3 = PETRA-III , 4= Diamond B16-->
+    <femDataSource type="int" val="1"/>                   <!-- 0=ASIC [via PPC], 1=ASIC [from Rxblock], 2=frame generator, 3=PPC [preprogrammed] -->
+    <femInvertAdcData type="bool" val="False"/>
+    <numberImages type="int" val="4"/>                    <!-- Set the number of images - combine with Asic Command Word(s) <trigger_flag_set/> -->
+    <numberTrains type="int" val="1"/>                    <!-- number of trains [if LL Data Generator / PPC Data Direct selected] -->
+    <femStartTrainDelay type="int" val=" 50"/>            <!--  Fem external trigger strobe delay [in ASIC clock periods] -->
+    <femStartTrainInhibit type="int" val="100000"/>            <!-- Inhibit in ASIC clock cycles.  
+ At PETRA for Trigger Rate = N Hz set ext_trig_strobe_inhibit = N x 10**7 x 22 / 192 -->
+
+    <!-- <femI2cBus type="int" val="0x300"/> Obsolete?--> 
+    <!-- <femPpcMode type="int" val="0"/> To be Implemented-->
+
+    <femModuleId 	type="int"  val="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"/>  <!-- ID for FEM to differentiate from which FEM data is coming from -->
+    <cccSystemMode type="int" val="0"/>                   <!-- 0=Without C&C, 1=C&C without vetoes, 2=With C&C and vetoes -->
+
+    <cccEmulationMode type="bool" val="True"/>          <!-- Enable to emulate Clock & Control commands (for testing in absence of C&C) -->
+    <cccProvideNumberImages type="bool" val="True"/>     <!-- ASICs will send "numberImages" images (BUT only if cccSystemMode=2) False=Use numberImages, True=C&C decides -->
+
+    <cccVetoStartDelay type="int" val="0"/>              <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+    <cccStopDelay type="int" val="0"/>                   <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+    <cccResetDelay type="int" val="0"/>                  <!-- Adjust timing of veto arrival (in steps of clock cycles) -->
+
+    <cccVetoPatternFile type="str" val="Config/VetoPatterns/veto_pattern_test1.xml"/>
+
+</lpd_readout_config>
+
+

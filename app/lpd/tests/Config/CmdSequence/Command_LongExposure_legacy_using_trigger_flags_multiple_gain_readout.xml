@@ -1,0 +1,130 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="Command_LongExposure_legacy_using_trigger_flags_multiple_gain_readout.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+    <!-- Rules for lpd command sequence  jac 
+         
+        See also LPD FEM Firmware Description document.
+
+        There MUST be a single <nop/> immediately before <sync_reset/>, <read_out_data/> and <asic_slow_readout_start/> 
+        There MUST be exactly 1 <nop/> between <sync_reset/> and <read_out_data/> 
+
+        For readout add enough nops to ensure all data is clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) plus a few extra
+
+        If reading out V1 ASIC need  <asic_slow_readout_start/> in cmd sequence to slow clock during readout phase
+        Must also set femAsicSlowedClock parameter in LpdReadoutTest.py to TRUE
+
+		for asic v2 so no slow clock for readout
+    
+    New CCC module Fast command Start sequence
+
+    -->
+
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<on_chip_reset_disable/>
+	<nop/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<clear_skip_register/>
+    <nop/>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+    <reset_gain_back/>
+    <nop/>
+    <start_write_pointer/>
+	<remove_reset_pre_amp/>
+	<remove_reset_gain_stage1/>
+	<remove_reset_gain_stage2/>
+    <!-- add a delay so that image in 1st cell is a long exposure -->
+    <!--loop count="1">  
+        <nop/>
+        <nop count="1024"/>
+    </loop>    
+    <start_write_pointer/>
+    <nop/-->
+    <start_trigger_pointer/> 
+    <!-- Add single NOP after <start_trigger_pointer> before the trigger_section 
+        as Trigger Pointer starts at location -1 which doesn't exist.
+        See LPD ASIC manual. There is some detail on page 48 and 49
+        This is so that 1st veto mask bit will flag 1st memory pipeline location 
+        Needed for correct pipeline emulation.
+        Dec 2015    John C  
+    -->
+    <nop/>
+    <!-- Test Legacy operation sending Trigger_Flags for special tests.
+         Sends arbitrary asic commands and trigger flags during the setup phase.
+         In addition:
+         To suppress triggers from nvetos set default for Veto Pattern Mask words = $ffffffff in veto_pattern_mask.xml  
+         Set the number of images in readout by Karabo parameter "numberImages"
+         AND ignore nvetos by setting Karabo parameter  "cccProvideNumberImages" = FALSE 
+          -->
+    <trigger_flag_set/>
+    <nop count="600"/>
+    <trigger_flag_set/>
+    <trigger_flag_set/>
+
+    <!-- end of setup commands -->    
+    <nop/>
+	<trigger_section>
+    <!-- NB trigger section contents are ignored by f/w 02ac and later -->
+	</trigger_section>
+	<reset_pre_amp/>
+	<reset_gain_front/>
+	<reset_gain_back/>
+	<reset_write_pointer/>
+	<reset_trigger_pointer/>
+	<nop/>
+	<nop/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+    
+    
+    <!-- 
+         1st Readout Gain x100
+         -->
+    <nop/>    
+    <force_gain_x100/>   <!-- need a single nop before this command -->
+    <nop/>  
+    <sync_reset/>   <!-- need a single nop before this command -->
+    <nop/>  
+    <read_out_data/>   <!-- need a single nop before this command -->
+    
+    <nop count="36"/>  <!-- Fixed offset to account for delay between sending of read_out_data command and arrival of serial data from asic ~ 805 clocks -->  
+    
+    <loop count="3">     <!-- 1 loop per image to readout -->
+        <nop count="837"/>
+    </loop>
+    <!-- 
+         2nd Readout Gain x10
+         -->
+    <nop/>    
+    <force_gain_x10/>    <!-- need a single nop before this command -->
+    <loop count="3">  <!-- 1 loop per image to readout -->
+        <nop count="837"/>
+    </loop>
+    <!-- 
+         3rd Readout Gain x1
+         -->
+    <nop/>   
+    <force_gain_x1/>   <!-- need a single nop before this command -->
+    <loop count="3">   <!-- 1 loop per image to readout -->
+        <nop/>
+        <nop count="837"/>
+    </loop>
+    <nop/>    
+    <stop_read_out/>   <!-- need a single nop before this command -->
+    <!-- 
+         End
+         -->
+  
+</lpd_command_sequence>
+	

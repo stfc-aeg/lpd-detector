@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="AutoResets_ShortExposures_AsicControl.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+    <!-- For Pseudo random data from asic  jac 
+         asic simply starts outputting pseudorandom data as soon as test_mode_d received
+         asic ignores read_out_data cmd but it is still needed to trigger fem readout
+         note that read_out_data cmd needs to come before test_mode_d to be ready for start of data
+         as usual need a single nop before sync_reset, read_out_data and asic_slow_readout_start cmds.
+     -->
+
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<reset_state_machine/>
+	<nop/>
+	<asic_slow_readout_start/>
+	<nop/>
+	<sync_reset/>
+	<nop/>
+	<read_out_data/>
+	<nop/>
+	<test_mode_d/>
+	<nop/>
+	<nop/>
+	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) -->
+	<loop count="4">
+		<nop/>
+		<nop count="838"/>
+	</loop>
+	<reset_state_machine/>
+
+</lpd_command_sequence>
+	

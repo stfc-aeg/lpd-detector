@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+   <lpd_setup_params name="Setup_LowPower.xml"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="lpdAsicSetupParams.xsd">
+   <!-- This file is hand edited 
+		bias settings needed for lower power on 2-tile to avoid asic v2 tile current tripping -->
+
+   <mux_decoder_default value="0"/>
+   <feedback_select_default value="0"/>
+   <self_test_decoder_default value="0"/>
+   <self_test_enable value="1"/>
+
+   <!-- Light up a pixel in the middle of each ASIC >
+   <self_test_decoder pixel="232" value="3"/>
+   <feedback_select pixel="232" value="1"/>
+   <self_test_decoder pixel="0" value="3"/>
+   <feedback_select pixel="0" value="1"/-->
+
+   <!-- force 1st pixel to output all '1's to verify timing of 1st data bit in serial data streams /-->
+   <!--1 <mux_decoder pixel="0" value="4"/> -->
+
+   <daq_bias index="0" value="8"/>  <!-- lower power -->
+   <daq_bias index="1" value="13"/> <!-- lower power -->
+   <daq_bias index="2" value="18"/> <!-- lower power -->
+   <daq_bias index="3" value="24"/>
+   <daq_bias index="4" value="18"/>
+   <daq_bias index="5" value="20"/> 
+   <daq_bias index="6" value="23"/>
+   <daq_bias index="7" value="25"/>
+   <daq_bias index="8" value="18"/>
+   <daq_bias index="9" value="16"/>
+   <daq_bias index="10" value="18"/>
+   <daq_bias index="11" value="21"/>
+   <daq_bias index="12" value="18"/> <!-- lower power -->
+   <daq_bias index="13" value="22"/>
+   <daq_bias index="14" value="31"/>
+   <daq_bias index="15" value="29"/>
+   <daq_bias index="16" value="25"/>
+   <daq_bias index="17" value="18"/>
+   <daq_bias index="18" value="16"/>
+   <daq_bias index="19" value="22"/>
+   <daq_bias index="20" value="23"/>
+   <daq_bias index="21" value="20"/> <!-- matt changed for x100 baseline was 15 -->
+   <daq_bias index="22" value="22"/>
+   <daq_bias index="23" value="24"/>
+   <daq_bias index="24" value="23"/>
+   <daq_bias index="25" value="24"/>
+   <daq_bias index="26" value="23"/>
+   <daq_bias index="27" value="22"/>
+   <daq_bias index="28" value="23"/>
+   <daq_bias index="29" value="23"/>
+   <daq_bias index="30" value="15"/>
+   <daq_bias index="31" value="16"/>  <!-- was changing this value -->
+   <daq_bias index="32" value="18"/>
+   <daq_bias index="33" value="23"/>
+   <daq_bias index="34" value="25"/>
+   <daq_bias index="35" value="8"/>
+   <daq_bias index="36" value="0"/>
+   <daq_bias index="37" value="19"/>
+   <daq_bias index="38" value="19"/>
+   <daq_bias index="39" value="19"/>
+   <daq_bias index="40" value="19"/>
+   <daq_bias index="41" value="19"/>
+   <daq_bias index="42" value="23"/>
+   <daq_bias index="43" value="23"/>
+   <daq_bias index="44" value="23"/>
+   <daq_bias index="45" value="19"/>
+   <daq_bias index="46" value="23"/>
+
+   <spare_bits value="0"/>
+   <filter_control value="0"/>
+   <adc_clock_delay value="4"/>
+   <digital_control value="5406687746"/>
+   <!-- Digital control configuration: reserved 0 reset3 9 reset2 7 reset1 7 clockcounteroffset 2 clockselect 2 -->
+   <!-- ADC clock delay configuration: reserved 0 delayadjust 4 -->
+   
+   
+
+</lpd_setup_params> 

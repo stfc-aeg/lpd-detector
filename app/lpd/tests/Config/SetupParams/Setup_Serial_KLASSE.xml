@@ -1,0 +1,607 @@
+<?xml version="1.0"?>
+   <lpd_setup_params name="Setup_Serial_KLASSE.xml"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="lpdAsicSetupParams.xsd">
+   <!-- This file is hand edited 
+		bias settings needed for lower power on 2-tile to avoid asic v2 tile current tripping -->
+
+   <mux_decoder_default value="0"/>
+   <feedback_select_default value="0"/>
+   <self_test_decoder_default value="0"/>
+   <self_test_enable value="1"/>
+
+   <!-- Light up a pixel in the middle of each ASIC >
+   <self_test_decoder pixel="232" value="3"/>
+   <feedback_select pixel="232" value="1"/>
+   <self_test_decoder pixel="0" value="3"/>
+   <feedback_select pixel="0" value="1"/-->
+
+
+
+   <!-- INSERT THE AUTOMATICALLY GENERATED XML TAGS -->
+
+
+
+   <!-- COMMENT: Letter R -->
+   <!-- Draw horizontal line between pixels 466 and 474 in tile:  0 asic: 7 -->
+   <mux_decoder tile="0" asic="7" pixel="466" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="467" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="468" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="469" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="470" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="471" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="472" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="473" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="474" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="459" value="4"/>
+   <!-- Draw vertical line between pixels 300 and 444 in tile:  0 asic: 7 -->
+   <mux_decoder tile="0" asic="7" pixel="300" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="316" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="332" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="348" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="364" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="380" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="396" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="412" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="428" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="444" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="283" value="4"/>
+   <!-- Draw horizontal line between pixels 258 and 266 in tile:  0 asic: 7 -->
+   <mux_decoder tile="0" asic="7" pixel="258" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="259" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="260" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="261" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="262" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="263" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="264" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="265" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="266" value="4"/>
+   <!-- Draw vertical line between pixels  34 and 466 in tile:  0 asic: 7 -->
+   <mux_decoder tile="0" asic="7" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="50" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="66" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="82" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="98" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="114" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="130" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="146" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="162" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="178" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="194" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="210" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="226" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="242" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="258" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="274" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="290" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="306" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="322" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="338" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="354" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="370" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="386" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="402" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="418" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="434" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="450" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="466" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="46" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="62" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="77" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="93" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="109" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="108" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="124" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="140" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="139" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="155" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="171" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="170" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="186" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="202" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="201" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="217" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="233" value="4"/>
+   <mux_decoder tile="0" asic="7" pixel="249" value="4"/>
+
+
+   <!-- COMMENT: Letter K -->
+   <!-- Draw horizontal line between pixels 258 and 264 in tile:  0 asic: 6 -->
+   <mux_decoder tile="0" asic="6" pixel="258" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="259" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="260" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="261" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="262" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="263" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="264" value="4"/>
+   <!-- Draw vertical line between pixels  34 and 466 in tile:  0 asic: 6 -->
+   <mux_decoder tile="0" asic="6" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="50" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="66" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="82" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="98" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="114" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="130" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="146" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="162" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="178" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="194" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="210" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="226" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="242" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="258" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="274" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="290" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="306" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="322" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="338" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="354" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="370" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="386" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="402" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="418" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="434" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="450" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="466" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="46" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="62" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="77" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="93" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="109" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="108" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="124" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="140" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="139" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="155" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="171" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="170" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="186" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="202" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="201" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="217" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="233" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="478" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="462" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="445" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="429" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="413" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="396" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="380" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="363" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="347" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="330" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="314" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="298" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="281" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="265" value="4"/>
+   <mux_decoder tile="0" asic="6" pixel="249" value="4"/>
+
+
+   <!-- COMMENT: Letter L -->
+   <!-- Draw horizontal line between pixels  34 and  45 in tile:  0 asic: 5 -->
+   <mux_decoder tile="0" asic="5" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="35" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="36" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="37" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="38" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="39" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="40" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="41" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="42" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="43" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="44" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="45" value="4"/>
+   <!-- Draw vertical line between pixels  34 and 466 in tile:  0 asic: 5 -->
+   <mux_decoder tile="0" asic="5" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="50" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="66" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="82" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="98" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="114" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="130" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="146" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="162" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="178" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="194" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="210" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="226" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="242" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="258" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="274" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="290" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="306" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="322" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="338" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="354" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="370" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="386" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="402" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="418" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="434" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="450" value="4"/>
+   <mux_decoder tile="0" asic="5" pixel="466" value="4"/>
+
+
+   <!-- COMMENT: Letter A -->
+   <mux_decoder tile="0" asic="4" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="45" value="4"/>
+   <!-- Draw vertical line between pixels  51 and 147 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="51" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="67" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="83" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="99" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="115" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="131" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="147" value="4"/>
+   <!-- Draw vertical line between pixels 164 and 260 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="164" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="180" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="196" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="212" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="228" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="244" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="260" value="4"/>
+   <!-- Draw vertical line between pixels 277 and 373 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="277" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="293" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="309" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="325" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="341" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="357" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="373" value="4"/>
+   <!-- Draw vertical line between pixels 390 and 454 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="390" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="406" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="422" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="438" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="454" value="4"/>
+   <!-- Draw horizontal line between pixels 471 and 472 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="471" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="472" value="4"/>
+   <!-- Draw horizontal line between pixels 262 and 265 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="262" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="263" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="264" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="265" value="4"/>
+   <!-- Draw vertical line between pixels  60 and 156 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="60" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="76" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="92" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="108" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="124" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="140" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="156" value="4"/>
+   <!-- Draw vertical line between pixels 171 and 267 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="171" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="187" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="203" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="219" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="235" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="251" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="267" value="4"/>
+   <!-- Draw vertical line between pixels 282 and 378 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="282" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="298" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="314" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="330" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="346" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="362" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="378" value="4"/>
+   <!-- Draw vertical line between pixels 393 and 457 in tile:  0 asic: 4 -->
+   <mux_decoder tile="0" asic="4" pixel="393" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="409" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="425" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="441" value="4"/>
+   <mux_decoder tile="0" asic="4" pixel="457" value="4"/>
+
+
+   <!-- COMMENT: Letter S -->
+   <!-- Draw horizontal line between pixels  34 and  44 in tile:  0 asic: 3 -->
+   <mux_decoder tile="0" asic="3" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="35" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="36" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="37" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="38" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="39" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="40" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="41" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="42" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="43" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="44" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="61" value="4"/>
+   <!-- Draw vertical line between pixels  77 and 237 in tile:  0 asic: 3 -->
+   <mux_decoder tile="0" asic="3" pixel="77" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="93" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="109" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="125" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="141" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="157" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="173" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="189" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="205" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="221" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="237" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="252" value="4"/>
+   <!-- Draw horizontal line between pixels 260 and 267 in tile:  0 asic: 3 -->
+   <mux_decoder tile="0" asic="3" pixel="260" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="261" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="262" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="263" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="264" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="265" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="266" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="267" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="275" value="4"/>
+   <!-- Draw vertical line between pixels 290 and 434 in tile:  0 asic: 3 -->
+   <mux_decoder tile="0" asic="3" pixel="290" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="306" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="322" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="338" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="354" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="370" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="386" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="402" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="418" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="434" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="451" value="4"/>
+   <!-- Draw horizontal line between pixels 468 and 476 in tile:  0 asic: 3 -->
+   <mux_decoder tile="0" asic="3" pixel="468" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="469" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="470" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="471" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="472" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="473" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="474" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="475" value="4"/>
+   <mux_decoder tile="0" asic="3" pixel="476" value="4"/>
+
+
+   <!-- COMMENT: Letter S -->
+   <!-- Draw horizontal line between pixels  34 and  44 in tile:  0 asic: 2 -->
+   <mux_decoder tile="0" asic="2" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="35" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="36" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="37" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="38" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="39" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="40" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="41" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="42" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="43" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="44" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="61" value="4"/>
+   <!-- Draw vertical line between pixels  77 and 237 in tile:  0 asic: 2 -->
+   <mux_decoder tile="0" asic="2" pixel="77" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="93" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="109" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="125" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="141" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="157" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="173" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="189" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="205" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="221" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="237" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="252" value="4"/>
+   <!-- Draw horizontal line between pixels 260 and 267 in tile:  0 asic: 2 -->
+   <mux_decoder tile="0" asic="2" pixel="260" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="261" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="262" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="263" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="264" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="265" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="266" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="267" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="275" value="4"/>
+   <!-- Draw vertical line between pixels 290 and 434 in tile:  0 asic: 2 -->
+   <mux_decoder tile="0" asic="2" pixel="290" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="306" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="322" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="338" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="354" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="370" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="386" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="402" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="418" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="434" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="451" value="4"/>
+   <!-- Draw horizontal line between pixels 468 and 476 in tile:  0 asic: 2 -->
+   <mux_decoder tile="0" asic="2" pixel="468" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="469" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="470" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="471" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="472" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="473" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="474" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="475" value="4"/>
+   <mux_decoder tile="0" asic="2" pixel="476" value="4"/>
+
+
+   <!-- COMMENT: Letter E -->
+   <!-- Draw horizontal line between pixels  34 and  45 in tile:  0 asic: 1 -->
+   <mux_decoder tile="0" asic="1" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="35" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="36" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="37" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="38" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="39" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="40" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="41" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="42" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="43" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="44" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="45" value="4"/>
+   <!-- Draw horizontal line between pixels 466 and 476 in tile:  0 asic: 1 -->
+   <mux_decoder tile="0" asic="1" pixel="466" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="467" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="468" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="469" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="470" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="471" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="472" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="473" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="474" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="475" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="476" value="4"/>
+   <!-- Draw horizontal line between pixels 258 and 263 in tile:  0 asic: 1 -->
+   <mux_decoder tile="0" asic="1" pixel="258" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="259" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="260" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="261" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="262" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="263" value="4"/>
+   <!-- Draw vertical line between pixels  34 and 466 in tile:  0 asic: 1 -->
+   <mux_decoder tile="0" asic="1" pixel="34" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="50" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="66" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="82" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="98" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="114" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="130" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="146" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="162" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="178" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="194" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="210" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="226" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="242" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="258" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="274" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="290" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="306" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="322" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="338" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="354" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="370" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="386" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="402" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="418" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="434" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="450" value="4"/>
+   <mux_decoder tile="0" asic="1" pixel="466" value="4"/>
+
+
+   <!-- COMMENT: Letter '!' -->
+   <!-- Draw vertical line between pixels 104 and 472 in tile:  0 asic: 0 -->
+   <mux_decoder tile="0" asic="0" pixel="104" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="120" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="136" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="152" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="168" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="184" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="200" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="216" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="232" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="248" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="264" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="280" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="296" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="312" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="328" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="344" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="360" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="376" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="392" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="408" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="424" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="440" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="456" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="472" value="4"/>
+   <!-- Draw vertical line between pixels 105 and 473 in tile:  0 asic: 0 -->
+   <mux_decoder tile="0" asic="0" pixel="105" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="121" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="137" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="153" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="169" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="185" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="201" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="217" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="233" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="249" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="265" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="281" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="297" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="313" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="329" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="345" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="361" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="377" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="393" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="409" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="425" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="441" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="457" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="473" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="40" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="41" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="57" value="4"/>
+   <mux_decoder tile="0" asic="0" pixel="56" value="4"/>
+
+
+
+
+
+
+
+
+
+
+
+   <daq_bias index="0" value="8"/>  <!-- lower power -->
+   <daq_bias index="1" value="13"/> <!-- lower power -->
+   <daq_bias index="2" value="18"/> <!-- lower power -->
+   <daq_bias index="3" value="24"/>
+   <daq_bias index="4" value="18"/>
+   <daq_bias index="5" value="20"/> 
+   <daq_bias index="6" value="23"/>
+   <daq_bias index="7" value="25"/>
+   <daq_bias index="8" value="18"/>
+   <daq_bias index="9" value="16"/>
+   <daq_bias index="10" value="18"/>
+   <daq_bias index="11" value="21"/>
+   <daq_bias index="12" value="18"/> <!-- lower power -->
+   <daq_bias index="13" value="22"/>
+   <daq_bias index="14" value="31"/>
+   <daq_bias index="15" value="29"/>
+   <daq_bias index="16" value="25"/>
+   <daq_bias index="17" value="18"/>
+   <daq_bias index="18" value="16"/>
+   <daq_bias index="19" value="22"/>
+   <daq_bias index="20" value="23"/>
+   <daq_bias index="21" value="15"/> <!-- matt changed for x100 baseline -->
+   <daq_bias index="22" value="22"/>
+   <daq_bias index="23" value="24"/>
+   <daq_bias index="24" value="23"/>
+   <daq_bias index="25" value="24"/>
+   <daq_bias index="26" value="23"/>
+   <daq_bias index="27" value="22"/>
+   <daq_bias index="28" value="23"/>
+   <daq_bias index="29" value="23"/>
+   <daq_bias index="30" value="15"/>
+   <daq_bias index="31" value="16"/>  <!-- was changing this value -->
+   <daq_bias index="32" value="18"/>
+   <daq_bias index="33" value="23"/>
+   <daq_bias index="34" value="25"/>
+   <daq_bias index="35" value="8"/>
+   <daq_bias index="36" value="0"/>
+   <daq_bias index="37" value="19"/>
+   <daq_bias index="38" value="19"/>
+   <daq_bias index="39" value="19"/>
+   <daq_bias index="40" value="19"/>
+   <daq_bias index="41" value="19"/>
+   <daq_bias index="42" value="23"/>
+   <daq_bias index="43" value="23"/>
+   <daq_bias index="44" value="23"/>
+   <daq_bias index="45" value="19"/>
+   <daq_bias index="46" value="23"/>
+
+   <spare_bits value="0"/>
+   <filter_control value="0"/>
+   <adc_clock_delay value="4"/>
+   <digital_control value="5406687746"/>
+   <!-- Digital control configuration: reserved 0 reset3 9 reset2 7 reset1 7 clockcounteroffset 2 clockselect 2 -->
+   <!-- ADC clock delay configuration: reserved 0 delayadjust 4 -->
+   
+   
+
+</lpd_setup_params> 

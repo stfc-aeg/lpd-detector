@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<lpd_command_sequence name="Command_LongExposure_legacy_using_trigger_flags_modified.xml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="lpdCommandSequence.xsd">
+
+    <!-- template created and tested by P. Lang, only to be used for v2 ASICs -->
+
+    <nop/>
+    <sync_reset/> <!-- Start Config chip -->
+    <nop/>
+    <reset_state_machine/>
+    <nop/>
+    <on_chip_reset_enable/>
+    <nop/>
+    <reset_write_pointer/>
+    <reset_trigger_pointer/>
+    <clear_skip_register/>
+    <nop/><!--new 10.2.16 PL-->
+    <start_write_pointer/>
+    <nop/>
+    <start_trigger_pointer/> 
+    <nop/>
+    
+    <trigger_section>    
+    <trigger_flag_set/>
+    <trigger_flag_set/>
+    <nop count="600"/>
+    <trigger_flag_set/>
+    <trigger_flag_set/>
+    <!-- end of setup commands -->    
+    </trigger_section>
+    <reset_write_pointer/>
+    <reset_trigger_pointer/>
+    
+    <on_chip_reset_disable/>
+    <reset_pre_amp/>
+    <reset_gain_front/>
+    <reset_gain_back/>
+    <!--<nop count="4"/>--> <!--excluded 10.2.16 PL-->
+    <nop/>
+    <sync_reset/>
+    <nop/>
+	<read_out_data/>
+	<!-- Add enough nops to allow all data to be clocked out of the ASICs before <reset_state_machine/> 
+        840 NOPs per image (512 pixels x 3 x 12 bits) -->
+	<loop count="32">  <!-- 511 images -->
+		<nop/>
+		<nop count="850"/>
+	</loop>
+    <nop/>
+	<stop_read_out/>
+	<nop count="33"/>
+	<nop/>  
+</lpd_command_sequence>
+	
