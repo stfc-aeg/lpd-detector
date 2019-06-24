@@ -1,0 +1,568 @@
+#!/usr/bin/env python
+"""
+Installation script for LPD detector system GUI software.
+
+Tim Nicholls, STFC Detector Systems Software Group
+"""
+
+from __future__ import print_function
+import argparse
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib2
+
+from collections import OrderedDict
+
+package_repositories = OrderedDict([
+    ('fem-platform', ('git@github.com:stfc-aeg/fem-platform.git', '.')),
+    ('odin-data', ('git@github.com:odin-detector/odin-data.git', 'tools/python')),
+    ('lpd-detector', ('git@github.com:stfc-aeg/lpd-detector.git', 'app')),
+])
+
+sip_version = "4.19.17"
+sip_url = "https://www.riverbankcomputing.com/static/Downloads/sip/{0}/sip-{0}.tar.gz".format(
+    sip_version
+)
+pyqt4_version = "4.12.3"
+pyqt4_url = "http://sourceforge.net/projects/pyqt/files/" \
+        "PyQt4/PyQt-{0}/PyQt4_gpl_x11-{0}.tar.gz".format(pyqt4_version)
+
+
+# Handle input vs raw_input in python 2/3
+if sys.version_info[0] <= 2:
+    input = raw_input
+
+
+class TransientDirectory(object):
+    """
+    Context manager to change directory and restore to current directory on exit.
+
+    This class provides a simple context manager to save the current working directory,
+    change into the new specified directory and restore the original cwd on exit.
+    """
+
+    def __init__(self, new_dir):
+        """
+        Construct a transient directory object, saving the old and new directory paths.
+
+        :param new_dir: path of new directory to change into.
+        """
+        self._old_dir = os.getcwd()
+        self._new_dir = new_dir
+
+    def __enter__(self):
+        """
+        Entry point for the context manager.
+
+        Changes to the specified new working directory.
+        """
+        os.chdir(self._new_dir)
+        return self
+
+    def __exit__(self, *_):
+        """
+        Exit point for the context manager.
+
+        Restores the original working directory.
+
+        :param *_: variable list of unused argumentss
+        """
+        os.chdir(self._old_dir)
+
+
+class TemporaryDirectory(TransientDirectory):
+    """
+    Context manager to create and use a temporary directory.
+
+    This class provides a context manager, dervied from TransientDirectory, which creates
+    a unique, secure temporary directory, chdirs into it on entry and cleans up on exit,
+    restoring the previous working directory.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Construct a temporary directory.
+
+        :param *args, *kwargs: passed directly to underlying mkdtemp, i.e. suffix, prefix, dir
+        """
+        self._tmp_dir = tempfile.mkdtemp(*args, **kwargs)
+        super(TemporaryDirectory, self).__init__(self._tmp_dir)
+
+    def __enter__(self):
+        """Entry point for the context manager."""
+        super(TemporaryDirectory, self).__enter__()
+        return self._tmp_dir
+
+    def __exit__(self, *_):
+        """Exit point for the context manager."""
+        super(TemporaryDirectory, self).__exit__()
+        shutil.rmtree(self._tmp_dir)
+
+
+def walk_up_dir(dir, depth=1):
+    """
+    Walk up directory tree.
+
+    This function walks up a directory tree and returns the correct path
+    at the specified level, e.g for a directory /one/two/three/four and
+    depth 2, the path /one/two would be returned.
+
+    :param dir: string of starting directory path
+    :param depth: integer depth to work upwards
+
+    :returns: string of final directory path
+    """
+    for _ in xrange(depth):
+        dir = os.path.dirname(dir)
+    return dir
+
+
+def confirm_dir(label, dir):
+    """
+    Confirm the existence of the specified directory, modify and/or create it.
+
+    This function confirms the existience of a directory at a specified path,
+    giving the user the option to modify the path and/or subsequently create
+    one if it doesn't exist.
+
+    :param label: string label for use in output
+    :param dir: string path for directory
+
+    :returns: string of directory path
+    """
+    # If no directory name specified, or user wants to modify it, request
+    # the new path
+    if dir is None or confirm_action(
+        "{} directory is {}. Do you want to modify this?" .format(label, dir)
+    ):
+        dir = input("Please specify a new {} directory: ".format(
+            label.lower()))
+
+    # Check if directory exists, otherwise create it if user says so
+    if not os.path.isdir(dir):
+        if confirm_action(
+            "Directory {} does not exist. Do you want to create it now?".format(dir),
+            default_yes=True
+        ):
+            try:
+                os.makedirs(dir)
+                print("OK, {} directory created".format(dir))
+            except OSError as os_err:
+                raise RuntimeError("Failed to create new {} directory {}: {}".format(
+                    label.lower(), dir, os_err))
+        else:
+            raise RuntimeError("{} directory {} does not exist".format(label, dir))
+
+    # Raise an error if there is still no valid directory
+    if dir is None:
+        raise RuntimeError("{} directory not specified".format(label))
+
+    return dir
+
+
+def confirm_action(message, default_yes=False):
+    """
+    Confirm an action with the user.
+
+    The function confirms an action with the user, accepting yes/no input
+    with a variable default answer.
+
+    :param message:     string message to present to user
+    :param default_yes: boolean true if default response is yes
+
+    :returns: boolean true or false confirmation
+    """
+    # Build the appropriate message postfix depending on default answer
+    default_yn_str = '(Y/n)' if default_yes else '(y/N)'
+
+    # Ask user for input with the specified message
+    response = input("{} {} ".format(message, default_yn_str)).lower()
+
+    # Handle input appropriately
+    if response.startswith('y'):
+        confirm = True
+    elif response.startswith('n'):
+        confirm = False
+    elif response == '':
+        confirm = default_yes
+    else:
+        confirm = False
+
+    return confirm
+
+
+def cmd_exists(cmd, *pathargs):
+    """
+    Test if the specified command exists.
+
+    This function checks if the specified command exists, either in the directory specified by
+    the pathargs argument list, or anywhere in the PATH environment variable, returning the
+    full path if available or raising a RuntimeError if missing.
+
+    :param cmd: command to resolve
+    :param pathargs: tuple of path elements to resolve into command
+
+    :returns: resolved path to command in prefix_dir/bin
+    """
+    if not pathargs:
+        path_list = os.environ["PATH"].split(os.pathsep)
+    else:
+        path_list = [os.path.join(*pathargs)]
+
+    for path in path_list:
+        cmd_path = os.path.join(path, cmd)
+        if os.access(cmd_path, os.X_OK):
+            return cmd_path
+
+    raise RuntimeError("Command not found: {}".format(cmd))
+
+
+def execute_command(cmd, cmd_msg):
+    """
+    Execute a command and raise an error if it fails.
+
+    This function executues a command, having printed a status message, checks the return
+    code is zero, otherwise raises an error with the appropriate message.
+
+    :param cmd: command to execute - list or expandable string
+    :param cmd_msg: message to print
+    """
+    # Print command message
+    print(cmd_msg)
+    # Expand command if not a list
+    if not isinstance(cmd, list):
+        cmd = shlex.split(cmd)
+    # Call command, check result and raise an error if failed
+    retcode = subprocess.call(cmd)
+    if retcode != 0:
+        raise RuntimeError("{} failed".format(cmd_msg))
+
+
+def get_src_dir(src_dir=None):
+    """
+    Resolve build source directory.
+
+    This function resolves the source directory for installation using, in order of priority,
+    1) the directory name passed as the argument (if specifed from e.g. argument parsing)
+    2) the value of the SRC_DIR environment variable
+    3) relative to best guess location relative to this script in a source tree.
+
+    :param src_dir: path of source directory (e.g from argparse, could be None)
+
+    :returns: string path of resovled source directory, or none if not found
+    """
+    # If no directory specified, first try environment
+    if src_dir is None:
+        src_dir = os.environ.get('SRC_DIR')
+
+    # If still not set, resolve relative to this script location in source tree
+    if src_dir is None:
+        this_path = os.path.dirname(os.path.realpath(__file__))
+        src_dir = walk_up_dir(this_path, 2)
+
+    # If set, resolve relative path to absolute path
+    if src_dir is not None:
+        src_dir = os.path.abspath(src_dir)
+
+    return src_dir
+
+
+def get_prefix_dir(prefix_dir=None):
+    """
+    Resolve installation prefix directory.
+
+    This function resolves the installation prefix directory using, in order of priority,
+    1) the directory named passed as the argument (if specified from e.g. argument parsing)
+    2_ the value of the PREFIX_DIR ennvironment variable
+
+    :param prefix_dir: path of prefix directory (e.g from argparse, could be None)
+
+    :returns: string path of resovled prefix directory, or none if not found
+    """
+    if prefix_dir is None:
+        prefix_dir = os.environ.get('PREFIX_DIR')
+
+    if prefix_dir is not None:
+        prefix_dir = os.path.abspath(prefix_dir)
+
+    return prefix_dir
+
+
+def create_virtualenv(prefix_dir):
+    """
+    Create virtual environment in prefix directory.
+
+    This function checks if the virtualenv command exists on the path and, if so,
+    creates a virtual environment in the directory specified.
+
+    :param prefix_dir: prefix directory in which to create virtalenv
+
+    :returns: None
+    """
+    # Check virtualenv command exists
+    venv_cmd = cmd_exists("virtualenv")
+
+    # Create the virtualenv, raising an error if it fails
+    execute_command(
+        [venv_cmd, prefix_dir],
+        "Creating virtualenv in install prefix directory {}".format(prefix_dir)
+    )
+
+
+def clone_package_repos(src_dir, package_repositories):
+    """
+    Clone package repositories from git.
+
+    This function clones package repositories with git from the specified URLs
+    into the source directory.
+    :param src_dir: string path of source directory to clone into
+    :param package_repositories: dict of repo names and URLs to clone
+    """
+    # Check that the git command exists
+    git_cmd = cmd_exists("git")
+
+    # Save current working directory and change working working directory to source
+    cwd = os.getcwd()
+    os.chdir(src_dir)
+
+    # Loop over specified repositories, check if already existing in source directory. If not,
+    # clone repo, otherwise ask user if a pull is required.
+    try:
+        for (repo_name, (repo_url, _)) in package_repositories.items():
+
+            repo_src_dir = os.path.join(src_dir, repo_name)
+            if os.path.isdir(repo_src_dir):
+                if confirm_action(
+                    "Repository {} is already present in {}. "
+                    "Do you want to update it?".format(repo_name, repo_src_dir)
+                ):
+                    with TransientDirectory(repo_src_dir):
+                        execute_command(
+                            [git_cmd, "pull"], "Updating {} repository".format(repo_name)
+                        )
+            else:
+                execute_command(
+                    [git_cmd, "clone", repo_url],
+                    "Cloning {} into {} ...".format(repo_name, src_dir)
+                )
+
+    except Exception as err:
+        raise RuntimeError(err)
+
+    finally:
+        # Restore working directory under all circumstances
+        os.chdir(cwd)
+
+
+def install_python_packages(src_dir, prefix_dir, package_repositories):
+    """
+    Install python packages from the relevant package repositories.
+
+    :param src_dir: source directory
+    :param prefix_dir: installation prefix directory
+    :param package_repositories: dict of repo names and URLs to clone
+    """
+    # Check that the pip command exists in the prefix directory virtual enviroment
+    pip_cmd = cmd_exists("pip", prefix_dir, "bin")
+
+    # Iterate over packages, installing in editable mode
+    try:
+        for (repo_name, (repo_url, install_subdir)) in package_repositories.items():
+
+            repo_subdir = os.path.join(src_dir, repo_name, install_subdir)
+            print("Installing package in {}".format(repo_subdir))
+            execute_command(
+                [pip_cmd, "install", "-e", repo_subdir],
+                "Installing package in {}".format(repo_subdir)
+            )
+
+    except Exception as err:
+        raise RuntimeError(err)
+
+
+def download_file(url, target_path):
+    """Download a file from an HTTP server.
+
+    This function downloads a file from the specified URL and saves it at the specified path.
+
+    :param url: URL to download
+    "param target_path: path to save file to
+    """
+    try:
+        print("Downloading {} to {} ... ".format(url, target_path), end='')
+        sys.stdout.flush()
+        f_obj = urllib2.urlopen(url)
+
+        with open(target_path, "w") as target_file:
+            target_file.write(f_obj.read())
+
+        print("done.")
+
+    except urllib2.HTTPError as err:
+        raise RuntimeError("Failed to download {}: {}".format(url, err))
+    except urllib2.URLError as err:
+        raise RuntimeError("Failed to download {}: {}".format(url, err))
+
+
+def install_sip(prefix_dir, sip_version, sip_url):
+    """
+    Install the python sip package requried for PyQt bindings.
+
+    This function downloads and installs the specified version of sip, which is required
+    for the build and installation of the PyQt4 bindings.
+
+    :param prefix_dir: directory to install into, containing python etc
+    :param sip_version: version to install
+    :param sip_url: URL to download package from
+    """
+    # First check if valid python available in virtualenv
+    python_cmd = cmd_exists("python", prefix_dir, "bin")
+
+    # Check if sip is installed and, if so resolve version
+    try:
+        cmd_exists("sip", prefix_dir, "bin")
+    except RuntimeError:
+        pass
+    else:
+        try:
+            installed_version = subprocess.check_output(
+                [python_cmd, "-c", "import sip; print(sip.SIP_VERSION_STR)"]
+            ).strip()
+        except subprocess.CalledProcessError as err:
+            raise RuntimeError("Failed to resolve version of sip module: {}".format(err))
+
+        # If the existing version matches requested, or the user does not wish to update, return
+        if installed_version == sip_version:
+            print("OK, sip version {} is already installed".format(installed_version))
+            return
+        elif not confirm_action(
+            "Installed version of sip {} is different from requested version {}. "
+            "Do you want to update it?".format(installed_version, sip_version),
+        ):
+            return
+
+    # Create a temporary directory for downloading and installing sip
+    with TemporaryDirectory() as tmp_dir:
+        print("Created temporary directory {}".format(tmp_dir))
+
+        sip_file = "sip.tgz"
+        download_file(sip_url, sip_file)
+
+        execute_command(["tar", "xzf", sip_file], "Unpacking sip archive file")
+
+        sip_src_dir = "sip-{}".format(sip_version)
+        with TransientDirectory(sip_src_dir):
+            execute_command(
+                [python_cmd, "configure.py", "--sip-module=PyQt4.sip"], "Configuring sip"
+            )
+            execute_command(["make", "-j4", "install"], "Installing sip")
+
+
+def install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, qmake_cmd="qmake"):
+    """
+    Download and install the PyQT4 package.
+
+    This function downloads and installs the PyQt4 package, ensuring it is configured against
+    a working sip and qmake installation.
+
+    :param prefix_dir: installation prefix to install into
+    :param pyqt4_version: PyQt4 version to install
+    :param pyqt4_url: URL to download PyQt4 from
+    :param qmake_cmd: path to qmake command in QT installation,
+    """
+    # First check if valid python available in virtualenv
+    python_cmd = cmd_exists("python", prefix_dir, "bin")
+
+    # Check if PyQt4 package is already installed
+    try:
+        installed_version = subprocess.check_output(
+            [python_cmd, "-c", "import PyQt4.Qt; print(PyQt4.Qt.PYQT_VERSION_STR)"],
+            stderr=subprocess.STDOUT,
+        ).strip()
+    except subprocess.CalledProcessError:
+        print("No PyQt4 version installed")
+    else:
+        if installed_version == pyqt4_version:
+            print("OK, PyQt4 version {} is already installed".format(installed_version))
+            return
+        elif not confirm_action(
+            "Installed version of PyQt4 {} is different from requested version {}. "
+            "Do you want to update it?".format(installed_version, pyqt4_version)
+        ):
+            return
+
+    print("OK, going to install PyQt4 version {}".format(pyqt4_version))
+
+    # Check if sip command available in installation prefix directory
+    sip_cmd = cmd_exists("sip", prefix_dir, "bin")
+    print("Found sip cmd at {}".format(sip_cmd))
+
+    # Check that qmake is available in the environment
+    qmake_cmd = cmd_exists(qmake_cmd)
+    print("Found qmake command at {}".format(qmake_cmd))
+
+    with TemporaryDirectory() as tmp_dir:
+        print("Created temporary directory {}".format(tmp_dir))
+
+        # Download and unpack PyQT4 archive file
+        pyqt4_file = "pyqt4.tgz"
+        download_file(pyqt4_url, pyqt4_file)
+        execute_command(["tar", "xzf", pyqt4_file], "Unpacking PyQt4 archive file")
+
+        pyqt4_src_dir = "PyQt4_gpl_x11-{}".format(pyqt4_version)
+        with TransientDirectory(pyqt4_src_dir):
+            execute_command(
+                [
+                    python_cmd, "configure-ng.py", "--confirm-license",
+                    "--sip={}".format(sip_cmd), "--qmake={}".format(qmake_cmd)
+                ],
+                "Configuring PyQt4"
+            )
+            execute_command(["make", "-j4", "install"], "Installing PyQt4")
+
+
+def main():
+    """
+    Install LPD GUI software.
+
+    This is the main function handling installation of software. Command line arguments
+    are parsed and passed to the various stages as appropriate. Any failing stage raises
+    a RuntimeError, which is trapped and causes a non-zero exit status
+    """
+    rc = 0
+
+    parser = argparse.ArgumentParser(
+        description='Build and install LPD GUI software')
+    parser.add_argument('--src', dest='src_dir',
+                        help='Specify source directory for build')
+    parser.add_argument('--prefix', dest='prefix_dir',
+                        help='Specify installation prefix directory')
+    parser.add_argument('--qmake', dest='qmake_cmd',
+                        help='Specify location of qmake executable in QT installation',
+                        default="qmake")
+    args = parser.parse_args()
+
+    try:
+
+        src_dir = confirm_dir("Source", get_src_dir(args.src_dir))
+        prefix_dir = confirm_dir("Prefix", get_prefix_dir(args.prefix_dir))
+
+        # create_virtualenv(prefix_dir)
+
+        clone_package_repos(src_dir, package_repositories)
+        # install_python_packages(src_dir, prefix_dir, package_repositories)
+        install_sip(prefix_dir, sip_version, sip_url)
+        install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, args.qmake_cmd)
+
+    except RuntimeError as run_err:
+        print("Installation failed: {}".format(run_err))
+        rc = 1
+    return rc
+
+
+if __name__ == '__main__':
+    sys.exit(main())
