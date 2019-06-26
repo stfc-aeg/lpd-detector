@@ -8,6 +8,7 @@ Tim Nicholls, STFC Detector Systems Software Group
 from __future__ import print_function
 import argparse
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -31,6 +32,19 @@ pyqt4_version = "4.12.3"
 pyqt4_url = "http://sourceforge.net/projects/pyqt/files/" \
         "PyQt4/PyQt-{0}/PyQt4_gpl_x11-{0}.tar.gz".format(pyqt4_version)
 
+
+odin_data_cmake_env = OrderedDict([
+    ("BOOST_ROOT", ("BOOST_ROOT", "boost")),
+    ("LOG4CXX_ROOT_DIR", ("LOG4CXX_ROOT", "log4cxx")),
+    ("HDF5_ROOT", ("HDF5_ROOT", "hdf5")),
+    ("ZEROMQ_ROOTDIR", ("ZEROMQ_ROOT", "zeromq")),
+])
+
+lpd_detector_cmake_env = OrderedDict([
+    ("BOOST_ROOT", ("BOOST_ROOT", "boost")),
+    ("LOG4CXX_ROOT_DIR", ("LOG4CXX_ROOT", "log4cxx")),
+    ("ZEROMQ_ROOTDIR", ("ZEROMQ_ROOT", "zeromq")),
+])
 
 # Handle input vs raw_input in python 2/3
 if sys.version_info[0] <= 2:
@@ -304,6 +318,74 @@ def get_prefix_dir(prefix_dir=None):
         prefix_dir = os.path.abspath(prefix_dir)
 
     return prefix_dir
+
+
+def resolve_cmake_vars(build_name, required_cmake_env):
+    """
+    Resolve the cmake variables required to configure a build.
+
+    This function checks that all the necessary variables necessary as arguments to a cmake
+    configuration step are present in the environment, attempting to resolve them with
+    the module command if not.
+
+    :param build_name: name of cmake build being validated
+    :param required_cmake_env: dict-like object of cmake variables and their
+                               matching environment source and/or module name
+    :returns: ordered dictionary of resolved cmake variables
+    """
+    print("Validating {} cmake build configuration".format(build_name))
+
+    module_cmd = None
+
+    # Create ordered dictionary of validated and resolved cmake variable
+    validated_vars = OrderedDict()
+
+    # Loop over specified variables
+    for (cmake_var, (env_var, module)) in required_cmake_env.items():
+
+        # Attempt to resolve value from specified environment variable
+        value = os.environ.get(env_var)
+
+        # If not set, ask user if they wish to try and load the appropriate environment module
+        if not value and confirm_action(
+            "  {} is not set. Do you want to try and load the {} module?".format(cmake_var, module),
+            default_response=True,
+            default_message="  Loading {} from {} module".format(cmake_var, module)
+        ):
+            # Resolve the module command if not already done
+            if not module_cmd:
+                module_cmd = cmd_exists("modulecmd")
+
+            # Run the module command to retrieve environment variables
+            module_env_output = subprocess.check_output(
+                [module_cmd, "bash", "load", module],
+            )
+
+            # Extract the value of the appopriate environment variable if present
+            matched = re.match(r".*?%s=(.*?)\s?;" % env_var, module_env_output)
+            if matched:
+                value = matched.groups()[0]
+                os.environ[env_var] = value
+            else:
+                print("  Unable to resolve {} by loading module {}".format(env_var, module))
+
+        # Print resolved value if found
+        if value:
+            print("  {} is set to {}".format(cmake_var, value))
+        else:
+            print("  Unable to resolve a value for {}".format(cmake_var))
+
+        # Add resolved value to validated variables
+        validated_vars[cmake_var] = value
+
+    # Raise an error if any variables are missing
+    if None in validated_vars.values():
+        missing_vars = ', '.join(var for (var, val) in validated_vars.items() if val is None)
+        raise RuntimeError("Unable to resolve the following cmake variables for {}: {}".format(
+            build_name, missing_vars
+        ))
+
+    return validated_vars
 
 
 def create_virtualenv(prefix_dir):
@@ -592,10 +674,13 @@ def main():
     are parsed and passed to the various stages as appropriate. Any failing stage raises
     a RuntimeError, which is trapped and causes a non-zero exit status
     """
+    # Use global accept default confirmation variable
     global accept_default_confirm
 
-    rc = 0
+    # Set default return code for success
+    retcode = 0
 
+    # Build an argument parser and parse command line args
     parser = argparse.ArgumentParser(
         description='Build and install LPD GUI software')
     parser.add_argument('--src', dest='src_dir',
@@ -610,6 +695,7 @@ def main():
                         action="store_true")
     args = parser.parse_args()
 
+    # Set global accept default confirmation variable accordingly
     if args.accept_default_confirm:
         accept_default_confirm = args.accept_default_confirm
 
@@ -618,6 +704,12 @@ def main():
         # Resolve source and prefix directories from arugments and/or environment
         src_dir = confirm_dir("Source", get_src_dir(args.src_dir))
         prefix_dir = confirm_dir("Prefix", get_prefix_dir(args.prefix_dir))
+
+        # Resolve required cmake variables for building odin-data
+        odin_data_cmake_vars = resolve_cmake_vars("odin_data", odin_data_cmake_env)
+
+        # Resolve required cmake variables for building odin-data detector plugins
+        lpd_detector_cmake_vars = resolve_cmake_vars("lpd-detector", lpd_detector_cmake_env)
 
         # Create a python virtual environment in the installation directory
         create_virtualenv(prefix_dir)
@@ -634,8 +726,9 @@ def main():
 
     except RuntimeError as run_err:
         print("Installation failed: {}".format(run_err))
-        rc = 1
-    return rc
+        retcode = 1
+
+    return retcode
 
 
 if __name__ == '__main__':
