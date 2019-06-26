@@ -18,9 +18,9 @@ import urllib2
 from collections import OrderedDict
 
 package_repositories = OrderedDict([
-    ('fem-platform', ('git@github.com:stfc-aeg/fem-platform.git', '.')),
-    ('odin-data', ('git@github.com:odin-detector/odin-data.git', 'tools/python')),
-    ('lpd-detector', ('git@github.com:stfc-aeg/lpd-detector.git', 'app')),
+    ('fem', ('git@github.com:stfc-aeg/fem-platform.git', '.')),
+    ('odin_data', ('git@github.com:odin-detector/odin-data.git', 'tools/python')),
+    ('lpd', ('git@github.com:stfc-aeg/lpd-detector.git', 'app')),
 ])
 
 sip_version = "4.19.17"
@@ -35,6 +35,9 @@ pyqt4_url = "http://sourceforge.net/projects/pyqt/files/" \
 # Handle input vs raw_input in python 2/3
 if sys.version_info[0] <= 2:
     input = raw_input
+
+# Set default accept of action confirmations
+accept_default_confirm = False
 
 
 class TransientDirectory(object):
@@ -137,7 +140,8 @@ def confirm_dir(label, dir):
     # If no directory name specified, or user wants to modify it, request
     # the new path
     if dir is None or confirm_action(
-        "{} directory is {}. Do you want to modify this?" .format(label, dir)
+        "{} directory is {}. Do you want to modify this?" .format(label, dir),
+        default_message="{} directory is {}".format(label, dir)
     ):
         dir = input("Please specify a new {} directory: ".format(
             label.lower()))
@@ -145,8 +149,9 @@ def confirm_dir(label, dir):
     # Check if directory exists, otherwise create it if user says so
     if not os.path.isdir(dir):
         if confirm_action(
-            "Directory {} does not exist. Do you want to create it now?".format(dir),
-            default_yes=True
+            "{} directory {} does not exist. Do you want to create it now?".format(label, dir),
+            default_response=True,
+            default_message="Creating {} directory {}".format(label.lower(), dir)
         ):
             try:
                 os.makedirs(dir)
@@ -164,7 +169,7 @@ def confirm_dir(label, dir):
     return dir
 
 
-def confirm_action(message, default_yes=False):
+def confirm_action(message, default_response=False, default_message=None):
     """
     Confirm an action with the user.
 
@@ -172,12 +177,17 @@ def confirm_action(message, default_yes=False):
     with a variable default answer.
 
     :param message:     string message to present to user
-    :param default_yes: boolean true if default response is yes
+    :param default_response: boolean true if default response is yes
 
     :returns: boolean true or false confirmation
     """
+    if accept_default_confirm:
+        if default_message:
+            print(default_message)
+        return default_response
+
     # Build the appropriate message postfix depending on default answer
-    default_yn_str = '(Y/n)' if default_yes else '(y/N)'
+    default_yn_str = '(Y/n)' if default_response else '(y/N)'
 
     # Ask user for input with the specified message
     response = input("{} {} ".format(message, default_yn_str)).lower()
@@ -188,14 +198,14 @@ def confirm_action(message, default_yes=False):
     elif response.startswith('n'):
         confirm = False
     elif response == '':
-        confirm = default_yes
+        confirm = default_response
     else:
         confirm = False
 
     return confirm
 
 
-def cmd_exists(cmd, *pathargs):
+def cmd_exists(cmd, *pathargs, **kwargs):
     """
     Test if the specified command exists.
 
@@ -208,6 +218,7 @@ def cmd_exists(cmd, *pathargs):
 
     :returns: resolved path to command in prefix_dir/bin
     """
+    raise_err = kwargs.pop("raise_err", True)
     if not pathargs:
         path_list = os.environ["PATH"].split(os.pathsep)
     else:
@@ -218,7 +229,10 @@ def cmd_exists(cmd, *pathargs):
         if os.access(cmd_path, os.X_OK):
             return cmd_path
 
-    raise RuntimeError("Command not found: {}".format(cmd))
+    if raise_err:
+        raise RuntimeError("Command not found: {}".format(cmd))
+
+    return None
 
 
 def execute_command(cmd, cmd_msg):
@@ -303,6 +317,17 @@ def create_virtualenv(prefix_dir):
 
     :returns: None
     """
+    # Check if a python interpreter already exists in the specified directory and confim
+    # installation if so
+    if cmd_exists("python", prefix_dir, "bin", raise_err=False):
+        if not confirm_action(
+            "A virtual environment already appears to exist in {}. "
+            "Do you want to replace it?".format(prefix_dir),
+            default_response=False,
+            default_message="Not replacing virtual environment in {}".format(prefix_dir)
+        ):
+            return
+
     # Check virtualenv command exists
     venv_cmd = cmd_exists("virtualenv")
 
@@ -325,37 +350,58 @@ def clone_package_repos(src_dir, package_repositories):
     # Check that the git command exists
     git_cmd = cmd_exists("git")
 
-    # Save current working directory and change working working directory to source
-    cwd = os.getcwd()
-    os.chdir(src_dir)
+    # Temporariliy change into source directory
+    with TransientDirectory(src_dir):
 
-    # Loop over specified repositories, check if already existing in source directory. If not,
-    # clone repo, otherwise ask user if a pull is required.
+        # Loop over specified repositories, check if already existing in source directory. If not,
+        # clone repo, otherwise ask user if a pull is required.
+        try:
+            for (repo_name, (repo_url, _)) in package_repositories.items():
+
+                repo_src_dir = os.path.join(src_dir, repo_name)
+                if os.path.isdir(repo_src_dir):
+                    if confirm_action(
+                        "Repository {} is already present in {}. "
+                        "Do you want to update it?".format(repo_name, repo_src_dir),
+                        default_response=False,
+                        default_message="Not updating repository {} in {}".format(
+                            repo_name, repo_src_dir)
+                    ):
+                        with TransientDirectory(repo_src_dir):
+                            execute_command(
+                                [git_cmd, "pull"], "Updating {} repository".format(repo_name)
+                            )
+                else:
+                    execute_command(
+                        [git_cmd, "clone", repo_url, repo_name],
+                        "Cloning {} into {} ...".format(repo_name, src_dir)
+                    )
+
+        except Exception as err:
+            raise RuntimeError(err)
+
+
+def get_python_package_version(pip_cmd, package):
+    """
+    Get version information for a python package.
+
+    This function uses pip to determine the version of an installed python package,
+    which is parsed from the output and returned.
+
+    :param pip_cmd: path to pip command
+    :param package: package to check version of
+    :returns: version info as string or None if not installed
+    """
     try:
-        for (repo_name, (repo_url, _)) in package_repositories.items():
+        version_line = subprocess.check_output(
+            "{} show {} | grep Version".format(pip_cmd, package), stderr=subprocess.STDOUT,
+            shell=True
+        ).strip()
+        version_info = version_line.split()[-1]
+    except subprocess.CalledProcessError:
+        version_info = None
 
-            repo_src_dir = os.path.join(src_dir, repo_name)
-            if os.path.isdir(repo_src_dir):
-                if confirm_action(
-                    "Repository {} is already present in {}. "
-                    "Do you want to update it?".format(repo_name, repo_src_dir)
-                ):
-                    with TransientDirectory(repo_src_dir):
-                        execute_command(
-                            [git_cmd, "pull"], "Updating {} repository".format(repo_name)
-                        )
-            else:
-                execute_command(
-                    [git_cmd, "clone", repo_url],
-                    "Cloning {} into {} ...".format(repo_name, src_dir)
-                )
-
-    except Exception as err:
-        raise RuntimeError(err)
-
-    finally:
-        # Restore working directory under all circumstances
-        os.chdir(cwd)
+    return version_info
 
 
 def install_python_packages(src_dir, prefix_dir, package_repositories):
@@ -369,15 +415,24 @@ def install_python_packages(src_dir, prefix_dir, package_repositories):
     # Check that the pip command exists in the prefix directory virtual enviroment
     pip_cmd = cmd_exists("pip", prefix_dir, "bin")
 
-    # Iterate over packages, installing in editable mode
+    # Iterate over packages, checking if installed already and asking user to confirm, then
+    # installing in editable mode
     try:
         for (repo_name, (repo_url, install_subdir)) in package_repositories.items():
-
+            version = get_python_package_version(pip_cmd, repo_name)
+            if version and not confirm_action(
+                "Package {} is already installed with version {}. "
+                "Do you want to reinstall?".format(repo_name, version),
+                default_response=False,
+                default_message="Not reinstalling package {} version {}".format(
+                    repo_name, version
+                )
+            ):
+                continue
             repo_subdir = os.path.join(src_dir, repo_name, install_subdir)
-            print("Installing package in {}".format(repo_subdir))
             execute_command(
                 [pip_cmd, "install", "-e", repo_subdir],
-                "Installing package in {}".format(repo_subdir)
+                "Installing {} package from {}".format(repo_name, repo_subdir)
             )
 
     except Exception as err:
@@ -437,11 +492,13 @@ def install_sip(prefix_dir, sip_version, sip_url):
 
         # If the existing version matches requested, or the user does not wish to update, return
         if installed_version == sip_version:
-            print("OK, sip version {} is already installed".format(installed_version))
+            print("sip version {} is already installed".format(installed_version))
             return
         elif not confirm_action(
             "Installed version of sip {} is different from requested version {}. "
             "Do you want to update it?".format(installed_version, sip_version),
+            default_response=False,
+            default_message="Not updating installed sip version {}".format(installed_version)
         ):
             return
 
@@ -487,11 +544,13 @@ def install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, qmake_cmd="qmake"):
         print("No PyQt4 version installed")
     else:
         if installed_version == pyqt4_version:
-            print("OK, PyQt4 version {} is already installed".format(installed_version))
+            print("PyQt4 version {} is already installed".format(installed_version))
             return
         elif not confirm_action(
             "Installed version of PyQt4 {} is different from requested version {}. "
-            "Do you want to update it?".format(installed_version, pyqt4_version)
+            "Do you want to update it?".format(installed_version, pyqt4_version),
+            default_response=False,
+            default_message="Not updating installed PyQt4 version {}".format(installed_version)
         ):
             return
 
@@ -533,6 +592,8 @@ def main():
     are parsed and passed to the various stages as appropriate. Any failing stage raises
     a RuntimeError, which is trapped and causes a non-zero exit status
     """
+    global accept_default_confirm
+
     rc = 0
 
     parser = argparse.ArgumentParser(
@@ -544,17 +605,30 @@ def main():
     parser.add_argument('--qmake', dest='qmake_cmd',
                         help='Specify location of qmake executable in QT installation',
                         default="qmake")
+    parser.add_argument('--accept', dest='accept_default_confirm',
+                        help='Accept default response for all actions',
+                        action="store_true")
     args = parser.parse_args()
+
+    if args.accept_default_confirm:
+        accept_default_confirm = args.accept_default_confirm
 
     try:
 
+        # Resolve source and prefix directories from arugments and/or environment
         src_dir = confirm_dir("Source", get_src_dir(args.src_dir))
         prefix_dir = confirm_dir("Prefix", get_prefix_dir(args.prefix_dir))
 
-        # create_virtualenv(prefix_dir)
+        # Create a python virtual environment in the installation directory
+        create_virtualenv(prefix_dir)
 
+        # Clone package repositories
         clone_package_repos(src_dir, package_repositories)
-        # install_python_packages(src_dir, prefix_dir, package_repositories)
+
+        # Install python packages
+        install_python_packages(src_dir, prefix_dir, package_repositories)
+
+        # Install sip and PyQt4 from downloaded sources
         install_sip(prefix_dir, sip_version, sip_url)
         install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, args.qmake_cmd)
 
