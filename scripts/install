@@ -38,6 +38,7 @@ odin_data_cmake_env = OrderedDict([
     ("LOG4CXX_ROOT_DIR", ("LOG4CXX_ROOT", "log4cxx")),
     ("HDF5_ROOT", ("HDF5_ROOT", "hdf5")),
     ("ZEROMQ_ROOTDIR", ("ZEROMQ_ROOT", "zeromq")),
+    ("BLOSC_ROOT_DIR", ("BLOSC_ROOT", "blosc")),
 ])
 
 lpd_detector_cmake_env = OrderedDict([
@@ -78,7 +79,7 @@ class TransientDirectory(object):
         Changes to the specified new working directory.
         """
         os.chdir(self._new_dir)
-        return self
+        return self._new_dir
 
     def __exit__(self, *_):
         """
@@ -118,6 +119,34 @@ class TemporaryDirectory(TransientDirectory):
         """Exit point for the context manager."""
         super(TemporaryDirectory, self).__exit__()
         shutil.rmtree(self._tmp_dir)
+
+
+class NumProc(object):
+    """
+    Get number of CPU cores for make command.
+
+    This class implements a callable that determines the number of CPU cores avaiable on the system
+    for running make commands, i.e. to be used as an value with the '-j' argument. The value is
+    determined by a call to the nproc command, and cached to allow repeated use without repeated
+    subprocess calls.
+    """
+
+    def __init__(self):
+        """Initialise the NumProc object."""
+        self._nproc = None
+
+    def __call__(self):
+        """Make the object callable. Returns cached number of processor cores."""
+        if not self._nproc:
+            try:
+                self._nproc = int(subprocess.check_output("nproc"))
+            except (OSError, subprocess.CalledProcessError) as err:
+                raise RuntimeError("Unable to check number of processors: {}".format(err))
+        return self._nproc
+
+
+# Define a more function-like callable instance of NumProc
+nproc = NumProc()
 
 
 def walk_up_dir(dir, depth=1):
@@ -598,7 +627,7 @@ def install_sip(prefix_dir, sip_version, sip_url):
             execute_command(
                 [python_cmd, "configure.py", "--sip-module=PyQt4.sip"], "Configuring sip"
             )
-            execute_command(["make", "-j4", "install"], "Installing sip")
+            execute_command(["make", "-j{}".format(nproc()), "install"], "Installing sip")
 
 
 def install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, qmake_cmd="qmake"):
@@ -663,7 +692,100 @@ def install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, qmake_cmd="qmake"):
                 ],
                 "Configuring PyQt4"
             )
-            execute_command(["make", "-j4", "install"], "Installing PyQt4")
+            execute_command(["make", "-j{}".format(nproc()), "install"], "Installing PyQt4")
+
+
+def create_cmake_build_dir(*path_elems):
+    """
+    Create an out-of-source build directory for cmake.
+
+    This function creates a build directory for cmake OoS builds within the specified path.
+
+    :param *path_elems: variable list of one more more path elements to the directory in
+                        which the build directory will be created.
+    :returns: path to build directory
+    """
+    build_dir = os.path.join(os.path.join(*path_elems), "build")
+    if not os.path.isdir(build_dir):
+        print("  Creating build directory {}".format(build_dir))
+        try:
+            os.mkdir(build_dir)
+        except OSError as err:
+            raise RuntimeError("Creation of build directory failed: {}".format(err))
+    else:
+        print("  Build directory {} already exists".format(build_dir))
+
+    return build_dir
+
+
+def run_cmake_install(package_src_dir, prefix_dir, cmake_env):
+    """Run cmake command."""
+    # Resolve the cmake command
+    cmake_cmd = cmd_exists("cmake")
+
+    # Build list of cmake arguments from the environment provided
+    cmake_args = ["-D{}={}".format(key, val) for key, val in cmake_env.items()]
+    cmake_args.insert(0, cmake_cmd)
+    cmake_args.append("..")
+
+    # Create a build directory inside the package source directory
+    build_dir = create_cmake_build_dir(package_src_dir)
+
+    # Execute cmake configure, make and install in the build directory
+    with TransientDirectory(build_dir):
+        execute_command(cmake_args, "  Running cmake")
+        execute_command(["make", "-j{}".format(nproc()), "install"], "  Running make install")
+
+
+def install_odin_data(src_dir, prefix_dir, odin_data_cmake_env):
+    """
+    Install odin-data.
+
+    This function uses cmake to configure, build and install odin-data into the installation
+    prefix directory.
+
+    :param src_dir: source directory
+    :param prefix_dir: installation prefix directory
+    :param odin_data_cmake_env: dictionary of cmake arguments to use
+    """
+    print("Installing odin-data")
+
+    # Add some standard CMAKE arguments to provided envinnment
+    odin_data_cmake_env["Boost_NO_BOOST_CMAKE"] = "on"
+    odin_data_cmake_env["CMAKE_INSTALL_RPATH_USE_LINK_PATH"] = "ON"
+    odin_data_cmake_env["CMAKE_INSTALL_PREFIX"] = prefix_dir
+
+    # Set the package source directory
+    package_src_dir = os.path.join(src_dir, "odin_data")
+
+    # Run the cmake install commands
+    run_cmake_install(package_src_dir, prefix_dir, odin_data_cmake_env)
+
+
+def install_lpd_detector_plugins(src_dir, prefix_dir, lpd_detector_cmake_env):
+    """
+    Install lpd-detector plugins for odin-data.
+
+    This function uses cmake to configure, build and install the lpd-detector plugins for
+    odin-data into the installation prefix directory.
+
+    :param src_dir: source directory
+    :param prefix_dir: installation prefix directory
+    :param lpd_detector_cmake_env: dictionary of cmake arguments to use
+    """
+    print("Installing lpd-detector plugins")
+
+    # Add some standard CMAKE arguments to the provided envinnment
+    lpd_detector_cmake_env["Boost_NO_BOOST_CMAKE"] = "on"
+    lpd_detector_cmake_env["CMAKE_INSTALL_RPATH_USE_LINK_PATH"] = "ON"
+    lpd_detector_cmake_env["CMAKE_INSTALL_PREFIX"] = prefix_dir
+    lpd_detector_cmake_env["ODINDATA_ROOT_DIR"] = prefix_dir
+
+    # Set the package source directory
+    package_src_dir = os.path.join(src_dir, "lpd", "data")
+
+    # Run the cmake install commands
+    run_cmake_install(package_src_dir, prefix_dir, lpd_detector_cmake_env)
 
 
 def main():
@@ -723,6 +845,12 @@ def main():
         # Install sip and PyQt4 from downloaded sources
         install_sip(prefix_dir, sip_version, sip_url)
         install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, args.qmake_cmd)
+
+        # Install odin-data
+        install_odin_data(src_dir, prefix_dir, odin_data_cmake_vars)
+
+        # Install lpd-detector plugins for odin-data
+        install_lpd_detector_plugins(src_dir, prefix_dir, lpd_detector_cmake_vars)
 
     except RuntimeError as run_err:
         print("Installation failed: {}".format(run_err))
