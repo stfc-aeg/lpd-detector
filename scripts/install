@@ -719,7 +719,16 @@ def create_cmake_build_dir(*path_elems):
 
 
 def run_cmake_install(package_src_dir, prefix_dir, cmake_env):
-    """Run cmake command."""
+    """
+    Install a pacakge using cmake.
+
+    This function configures, builds and installs a package using cmake, using the cmake
+    variables specifed in the provide environment argument.
+
+    :param package_src_dir: package source directory
+    :param prefix_dir: installation prefix directory
+    :param cmake_env: dictionary of cmake arguments to use
+    """
     # Resolve the cmake command
     cmake_cmd = cmd_exists("cmake")
 
