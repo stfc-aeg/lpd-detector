@@ -47,6 +47,8 @@ LPD_DETECTOR_VMAKE_ENV = OrderedDict([
     ("ZEROMQ_ROOTDIR", ("ZEROMQ_ROOT", "zeromq")),
 ])
 
+CONFIG_INSTALL_PREFIX = "{{INSTALL_PREFIX}}"
+
 # Handle input vs raw_input in python 2/3
 if sys.version_info[0] <= 2:
     input = raw_input  # pylint: disable=W0622
@@ -189,28 +191,48 @@ def confirm_dir(label, the_dir):
         the_dir = input("Please specify a new {} directory: ".format(
             label.lower()))
 
-    # Check if directory exists, otherwise create it if user says so
-    if not os.path.isdir(the_dir):
-        if confirm_action(
-                "{} directory {} does not exist. Do you want to create it now?".format(
-                    label, the_dir),
-                default_response=True,
-                default_message="Creating {} directory {}".format(label.lower(), the_dir)
-        ):
-            try:
-                os.makedirs(the_dir)
-                print("OK, {} directory created".format(the_dir))
-            except OSError as os_err:
-                raise RuntimeError("Failed to create new {} directory {}: {}".format(
-                    label.lower(), the_dir, os_err))
-        else:
-            raise RuntimeError("{} directory {} does not exist".format(label, the_dir))
+    # Check if directory now defined and create it if user says so
+    if the_dir:
+        create_dir(the_dir, label, default_response=True)
 
     # Raise an error if there is still no valid directory
     if the_dir is None:
         raise RuntimeError("{} directory not specified".format(label))
 
     return the_dir
+
+
+def create_dir(the_dir, label, default_response=True, quiet=False):
+    """
+    Create a new directory at the specified path.
+
+    This method creates a new directory if it does not already exist, asking the user to
+    confirm that action first unless the quiet flag is set.
+
+    :param the_dir: path of directory to create
+    :label: readable label for directory to be used in messages
+    :default_response: default response to confirm dialog if accept flag is set globally
+    :quiet: make directory quietly without asking for confirmation or reporting success
+    """
+    # If the directory already exists, take no action
+    if os.path.isdir(the_dir):
+        return
+
+    if quiet or confirm_action(
+            "{} directory {} does not exist. Do you want to create it now?".format(
+                label, the_dir),
+            default_response=default_response,
+            default_message="Creating {} directory {}".format(label.lower(), the_dir)
+    ):
+        try:
+            os.makedirs(the_dir)
+            if not quiet:
+                print("OK, {} directory {} created".format(label.lower(), the_dir))
+        except OSError as os_err:
+            raise RuntimeError("Failed to create new {} directory {}: {}".format(
+                    label.lower(), the_dir, os_err))
+    else:
+        raise RuntimeError("Config file directory {} does not exist.".format(the_dir))
 
 
 def confirm_action(message, default_response=False, default_message=None):
@@ -363,7 +385,6 @@ def get_config_dir(config_dir=None, src_dir=None):
     :param src_dir: path of source directory
     :returns: string path of resovled prefix directory, or none if not found
     """
-    print(config_dir, src_dir)
     if config_dir is None:
         config_dir = os.environ.get('CONFIG_DIR')
 
@@ -373,7 +394,6 @@ def get_config_dir(config_dir=None, src_dir=None):
     if config_dir is not None:
         config_dir = os.path.abspath(config_dir)
 
-    print(config_dir)
     return config_dir
 
 
@@ -826,6 +846,62 @@ def install_lpd_detector_plugins(src_dir, prefix_dir, lpd_detector_cmake_env):
     run_cmake_install(package_src_dir, lpd_detector_cmake_env)
 
 
+def install_configuration_files(config_src_dir, prefix_dir, config_install_prefix):
+    """
+    Install configuration files.
+
+    This function installs configuration files by recursively copying files from the
+    specified source directory, preserving the directory structure and substituting the
+    install prefix placeholder in each file for the appropriate directory.
+
+    :param config_src_dir: configuration file source directory
+    :param prefix_dir: installation prefix directory
+    :param config_install_prefix: placeholder string to substitute with prefix_dir
+    """
+    # Create the configuration directory in the install prefix
+    config_install_dir = os.path.join(prefix_dir, "config")
+    if not os.path.isdir(config_install_dir):
+        create_dir(config_install_dir, "Config file", default_response=True)
+
+    files_installed = 0
+
+    # Walk recursively through the configuration file directory structure
+    for dir_name, _, file_names in os.walk(config_src_dir):
+
+        # Figure out the relative path and calcuate the path of the target file in the
+        # install prefix to match
+        sub_path = os.path.relpath(dir_name, config_src_dir)
+        target_path = os.path.abspath(os.path.join(config_install_dir, sub_path))
+
+        # Create the target subdirectory
+        create_dir(target_path, "Config subdir", quiet=True)
+
+        # Iterate over files in current subdirectory
+        for file_name in file_names:
+            source_file = os.path.join(config_src_dir, sub_path, file_name)
+            target_file = os.path.join(target_path, file_name)
+
+            # Read in the source file
+            try:
+                with open(source_file, 'r') as file:
+                    contents = file.read()
+            except IOError as err:
+                raise RuntimeError("Failed to read config file {}: {}".format(source_file, err))
+
+            # Replace the target string
+            contents = contents.replace(config_install_prefix, prefix_dir)
+
+            # Write the file out again
+            try:
+                with open(target_file, 'w') as file:
+                    file.write(contents)
+                files_installed += 1
+            except IOError as err:
+                raise RuntimeError("Failed to write config file {}: {}".format(target_file, err))
+
+    print("Installed {} files into config directory {}".format(files_installed, config_install_dir))
+
+
 def main():
     """
     Install LPD GUI software.
@@ -892,6 +968,9 @@ def main():
 
         # Install lpd-detector plugins for odin-data
         install_lpd_detector_plugins(src_dir, prefix_dir, lpd_detector_cmake_vars)
+
+        # Install configuration files
+        install_configuration_files(config_dir, prefix_dir, CONFIG_INSTALL_PREFIX)
 
     except RuntimeError as run_err:
         print("Installation failed: {}".format(run_err))
