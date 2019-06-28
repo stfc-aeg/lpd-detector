@@ -163,7 +163,7 @@ def walk_up_dir(cur_dir, depth=1):
     :returns: string of final directory path
     """
     for _ in xrange(depth):
-        cur_dir = os.path.dirname(dir)
+        cur_dir = os.path.dirname(cur_dir)
     return cur_dir
 
 
@@ -335,7 +335,7 @@ def get_prefix_dir(prefix_dir=None):
 
     This function resolves the installation prefix directory using, in order of priority,
     1) the directory named passed as the argument (if specified from e.g. argument parsing)
-    2_ the value of the PREFIX_DIR ennvironment variable
+    2) the value of the PREFIX_DIR ennvironment variable
 
     :param prefix_dir: path of prefix directory (e.g from argparse, could be None)
 
@@ -348,6 +348,33 @@ def get_prefix_dir(prefix_dir=None):
         prefix_dir = os.path.abspath(prefix_dir)
 
     return prefix_dir
+
+
+def get_config_dir(config_dir=None, src_dir=None):
+    """
+    Resolve configuration source directory.
+
+    This function resolves the configuration source directory using, in order of priority,
+    1) the directory named passed as the argument (if specified from e.g. argument parsing)
+    2) the value of the CONFIG_DIR ennvironment variable
+    3) a path relative to the specified source directory
+
+    :param config_dir: path of configuration directory (e.g from argparse, could be None)
+    :param src_dir: path of source directory
+    :returns: string path of resovled prefix directory, or none if not found
+    """
+    print(config_dir, src_dir)
+    if config_dir is None:
+        config_dir = os.environ.get('CONFIG_DIR')
+
+    if config_dir is None and src_dir is not None:
+        config_dir = os.path.join(src_dir, "config")
+
+    if config_dir is not None:
+        config_dir = os.path.abspath(config_dir)
+
+    print(config_dir)
+    return config_dir
 
 
 def resolve_cmake_vars(build_name, required_cmake_env):
@@ -820,6 +847,8 @@ def main():
                         help='Specify source directory for build')
     parser.add_argument('--prefix', dest='prefix_dir',
                         help='Specify installation prefix directory')
+    parser.add_argument('--configsrc', dest='config_dir',
+                        help='Specify configuration file source directory')
     parser.add_argument('--qmake', dest='qmake_cmd',
                         help='Specify location of qmake executable in QT installation',
                         default="qmake")
@@ -834,9 +863,10 @@ def main():
 
     try:
 
-        # Resolve source prefix directories from arugments and/or environment
+        # Resolve source, prefix and configuration directories from arugments and/or environment
         src_dir = confirm_dir("Source", get_src_dir(args.src_dir))
         prefix_dir = confirm_dir("Prefix", get_prefix_dir(args.prefix_dir))
+        config_dir = confirm_dir("Config source", get_config_dir(args.config_dir, src_dir))
 
         # Resolve required cmake variables for building odin-data
         odin_data_cmake_vars = resolve_cmake_vars("odin_data", ODIN_DATA_CMAKE_ENV)
@@ -865,6 +895,10 @@ def main():
 
     except RuntimeError as run_err:
         print("Installation failed: {}".format(run_err))
+        retcode = 1
+
+    except KeyboardInterrupt:
+        print("\nInstallation terminated by user")
         retcode = 1
 
     return retcode
