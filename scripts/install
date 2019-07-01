@@ -230,7 +230,7 @@ def create_dir(the_dir, label, default_response=True, quiet=False):
                 print("OK, {} directory {} created".format(label.lower(), the_dir))
         except OSError as os_err:
             raise RuntimeError("Failed to create new {} directory {}: {}".format(
-                    label.lower(), the_dir, os_err))
+                label.lower(), the_dir, os_err))
     else:
         raise RuntimeError("Config file directory {} does not exist.".format(the_dir))
 
@@ -878,26 +878,28 @@ def install_configuration_files(config_src_dir, prefix_dir, config_install_prefi
 
         # Iterate over files in current subdirectory
         for file_name in file_names:
-            source_file = os.path.join(config_src_dir, sub_path, file_name)
-            target_file = os.path.join(target_path, file_name)
+            source_file_name = os.path.join(config_src_dir, sub_path, file_name)
+            target_file_name = os.path.join(target_path, file_name)
 
             # Read in the source file
             try:
-                with open(source_file, 'r') as file:
-                    contents = file.read()
+                with open(source_file_name, 'r') as source_file:
+                    contents = source_file.read()
             except IOError as err:
-                raise RuntimeError("Failed to read config file {}: {}".format(source_file, err))
+                raise RuntimeError(
+                    "Failed to read config file {}: {}".format(source_file_name, err))
 
             # Replace the target string
             contents = contents.replace(config_install_prefix, prefix_dir)
 
             # Write the file out again
             try:
-                with open(target_file, 'w') as file:
-                    file.write(contents)
+                with open(target_file_name, 'w') as target_file:
+                    target_file.write(contents)
                 files_installed += 1
             except IOError as err:
-                raise RuntimeError("Failed to write config file {}: {}".format(target_file, err))
+                raise RuntimeError("Failed to write config file {}: {}".format(
+                    target_file_name, err))
 
     print("Installed {} files into config directory {}".format(files_installed, config_install_dir))
 
