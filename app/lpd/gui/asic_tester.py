@@ -145,20 +145,22 @@ class LpdAsicTester(object):
             powerCardResults = self.readPowerCards()
             #print >> sys.stderr, "powerCardResults: ", powerCardResults
             #print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-            measuredBiasLevel = powerCardResults['sensorBias0']+201.0
-            try:
-                if not (199.0 < measuredBiasLevel  < 201.0):
+            measuredBiasLevel = powerCardResults['sensorBias0']
+
+            try: 
+                timeout = time.time() + 30
+                while not (199.0 < measuredBiasLevel  < 201.0):
+                    powerCardResults = self.readPowerCards()
+                    measuredBiasLevel = powerCardResults['sensorBias0']           
                     self.msgPrint("Bias level is %f V, changing it to be 200 V" % measuredBiasLevel)
-                    # Change the HV bias
-                    self.hvSetBias(200.0)
-    
-                    self.msgPrint("Waiting 5 seconds for bias to reached 200V..")
-                    time.sleep(5)
-                    self.msgPrint("Bias now set to 200 V")
-                else:
-                    self.msgPrint("Bias already 200 V")
+                    #change the HV bias 
+                    self.hvSetBias(200.0, do_sleep=False)                    
+                    time.sleep(1)
+                    if timeout < time.time() or (199.0 < measuredBiasLevel  < 201.0) :        
+                        break
             except Exception as e:
-                self.msgPrint(" Exception: %s" % e)
+                self.msgPrint(" Exception: %s" % e)           
+            self.msgPrint("Bias now set to 200 V")
             #powerCardResults = self.readPowerCards()
             #print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
 
@@ -172,7 +174,7 @@ class LpdAsicTester(object):
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
 
-            if self.file_name == None:
+            '''  if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("4. Check/record unconnected pixels - Using leakage current check.")
@@ -216,7 +218,7 @@ class LpdAsicTester(object):
 
             # Hack DAQ tab to restore it to ready state
             self.app_main.device_state = LpdFemState.DeviceReady
-            self.app_main.runStateUpdate()
+            self.app_main.runStateUpdate()'''
 
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
@@ -283,14 +285,14 @@ class LpdAsicTester(object):
             
             # 2. Check and record current (1A < I < 4A)
             self.msgPrint("2. Check and record current (1A < I < 4A)")
-            sensorCurrent = self.readCurrent()
+            '''sensorCurrent = self.readCurrent()
             passFailString = "PASS"
             if not (1 < sensorCurrent < 4):
                 passFailString = "FAIL"
                 errorMessages.append("Failed Test 2. current: %.2f A (not 1A < I < 4A)" % sensorCurrent)
                 numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
+            time.sleep(1)'''
 
             # Ensure short exposure XML file used
             self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
@@ -305,14 +307,14 @@ class LpdAsicTester(object):
 
             # 4. Check and record current (8A < I <= 10A)
             self.msgPrint("4. Check and record current (8A < I <= 10A)")
-            sensorCurrent = self.readCurrent()
+            '''sensorCurrent = self.readCurrent()
             passFailString = "PASS"
             if not (8 < sensorCurrent < 10):
                 passFailString = "FAIL"
                 errorMessages.append("Failed Test 4. current: %.2f A (not 8A < I <= 10A)" % sensorCurrent)
                 numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
+            time.sleep(1)'''
             
             self.app_main.deviceConfigure(self.currentParams)
 
@@ -323,7 +325,7 @@ class LpdAsicTester(object):
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
 
             # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
-            if self.file_name == None:
+            '''if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("6. Check for out of range pixels")
@@ -333,11 +335,10 @@ class LpdAsicTester(object):
                 else:
                     self.msgPrint("6. Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
                     errorMessages.append("Failed Test 6. Module has %d out of range pixel(s)" % numBadPixels)
-                    numFailedSections += 1
+                    numFailedSections += 1'''
             
             # 7. Power off
             self.msgPrint("7. Power Off")
-
             self.toggleLvSupplies()
             time.sleep(3)
             self.toggleHvSupplies()
@@ -353,14 +354,14 @@ class LpdAsicTester(object):
             
             # 9. Check and record current (1A < I < 4A)
             self.msgPrint("9. Check and record current (1A < I < 4A)")
-            sensorCurrent = self.readCurrent()
+            '''sensorCurrent = self.readCurrent()
             passFailString = "PASS"
             if not (1 < sensorCurrent < 4):
                 passFailString = "FAIL"
                 errorMessages.append("Failed Test 9. current: %.2f A (not 1A < I < 4A)" % sensorCurrent)
                 numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
+            time.sleep(1)'''
             
             # 10. Parallel load
             self.msgPrint("10. Parallel Load")
@@ -371,14 +372,14 @@ class LpdAsicTester(object):
 
             # 11. Check and record current (8A <I =< 10A)
             self.msgPrint("11. Check and record current (8A < I <= 10A)")
-            sensorCurrent = self.readCurrent()
+            '''sensorCurrent = self.readCurrent()
             passFailString = "PASS"
             if not (8 < sensorCurrent < 10):
                 passFailString = "FAIL"
                 errorMessages.append("Failed Test 11. current: %.2f A (not 8A < I <= 10A)" % sensorCurrent)
                 numFailedSections += 1
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
+            time.sleep(1)'''
 
             # 12.Readout data
             self.msgPrint("12. Readout Data")
@@ -388,7 +389,7 @@ class LpdAsicTester(object):
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             
             # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
-            if self.file_name == None:
+            '''if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("13. Check for out of range pixels")
@@ -398,7 +399,7 @@ class LpdAsicTester(object):
                 else:
                     self.msgPrint("13. Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
                     errorMessages.append("Failed Test 13. Module has %d out of range pixel(s)" % numBadPixels)
-                    numFailedSections += 1
+                    numFailedSections += 1'''
             
             # Summarise; Report how many failures (if any)
             if numFailedSections == 0:
@@ -482,7 +483,7 @@ class LpdAsicTester(object):
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Error changing %s to %s, rc: %s" % (paramName, str(newValue), rc), bError=True)
 
-    def hvSetBias(self, biasStr):
+    def hvSetBias(self, biasStr, do_sleep=True):
         ''' Change HV bias '''        
         try:
             hvBias = float(biasStr)
@@ -491,9 +492,10 @@ class LpdAsicTester(object):
             
         except ValueError:
             self.msgPrint("Exception setting HV bias: %s" % biasStr, bError=True)
-            
-        self.msgPrint("Waiting %d seconds for new bias to settle.." % (self.hardwareDelay+3))
-        time.sleep(self.hardwareDelay+3)
+        
+        if do_sleep:
+            self.msgPrint("Waiting %d seconds for new bias to settle.." % (self.hardwareDelay+3))
+            time.sleep(self.hardwareDelay+3)
     
     def toggleLvSupplies(self):
 
