@@ -1,0 +1,6 @@
+h5py==2.9.0
+ipywidgets==7.4.2
+jupyter==1.0.0
+matplotlib==3.0.2
+numpy==1.15.4
+jupyter_contrib_nbextensions
