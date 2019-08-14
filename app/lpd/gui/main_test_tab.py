@@ -45,12 +45,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.ui.operatorEdit.setEnabled(False)
         self.ui.moduleNumberEdit.setEnabled(False)
         self.ui.commentEdit.setEnabled(False)
-        self.ui.moduleLhsSel.setEnabled(False)
-        self.ui.moduleRhsSel.setEnabled(False)
 
         self.msgPrint = self.testMsgPrint   # Use MessageBox element within this tab
         
-        self.ui.moduleLhsSel.setChecked(True)
         self.moduleNumber   = LpdAsicTester.LHS_MODULE
         self.moduleString   = ""
         self.setModuleType(self.moduleNumber)
@@ -64,10 +61,20 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Connect signals and slots
 #        QtCore.QObject.connect(self.ui.operatorEdit,          QtCore.SIGNAL("editingFinished()"),   self.operatorUpdate)
         QtCore.QObject.connect(self.ui.moduleNumberEdit,      QtCore.SIGNAL("editingFinished()"),   self.moduleNumberUpdate)
-        QtCore.QObject.connect(self.ui.moduleTypeButtonGroup, QtCore.SIGNAL("buttonClicked(int)"),  self.moduleTypeUpdate)
+        QtCore.QObject.connect(self.ui.connectorButtonGroup,  QtCore.SIGNAL("buttonClicked(int)"),   self.moduleTypeUpdate)
         QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)   # "ASIC Bonding"
         QtCore.QObject.connect(self.ui.sensorBondingBtn,      QtCore.SIGNAL("clicked()"),           self.sensorBondingTest) # "Sensor Bonding"
         
+        #Set the id for the connector radio buttons
+        self.connector_btns = []
+        for btn in range(1, 17):      
+            btn_name = 'connectorBtn' + str(btn)
+            connector_btn = getattr(self.ui, btn_name)
+            self.connector_btns.append(connector_btn)
+
+            self.ui.connectorButtonGroup.setId(connector_btn, btn)
+            connector_btn.setEnabled(False)
+
         # Allow LpdFemGuiMainDaqTab to signal Device configuration ok/fail
         self.configDeviceSignal.connect(self.configDeviceMessage)
         # Allow LpdFemGuiMainDaqTab to signal whether fem [dis]connected
@@ -164,7 +171,17 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         elif moduleNumber == LpdAsicTester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
-        
+
+    def setMiniConnector(self, miniConnectorId):
+        '''Helper function ''' 
+        if miniConnectorId < 9:
+            self.connectorId = miniConnectorId
+        elif miniConnectorId > 8: 
+            self.connectorId = (miniConnectorId - 8)
+        else: 
+            self.msgPrint("Error setting the tile selection: Unrecognised mini connection: %d" % miniConnectorId , bError=True)  
+        self.app_main.asic_tester.setMiniConnector(self.connectorId)
+
     def configDeviceMessage(self, message):
         ''' Receives configuration ok/fail message '''
         self.testMsgPrint(message)
@@ -181,9 +198,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.ui.operatorEdit.setEnabled(bConnected)
         self.ui.moduleNumberEdit.setEnabled(bConnected)
         self.ui.commentEdit.setEnabled(bConnected)
-        self.ui.moduleLhsSel.setEnabled(bConnected)
-        self.ui.moduleRhsSel.setEnabled(bConnected)
- 
+
+        for connector_btn in self.connector_btns:
+            connector_btn.setEnabled(True)
+         
     def createLogger(self):
         ''' Create logger (and its' folder, if it does not exist), return logger and its' path
             Adjusted from example:
@@ -195,7 +213,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         moduleNumber = str(self.ui.moduleNumberEdit.text())
         #fileName = self.pathStem + "%s_%s/testResults.log" % (st, self.moduleString)
         fileName = self.pathStem + "%s/%s/testResults_%s.log" % (moduleNumber, date_stamp, time_stamp)
-
+        
         # Check whether logger already set up
         if self.logger is not None:
             # Logger already exists, remove it
@@ -243,19 +261,18 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         #QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: '" + moduleNumber + "')")
 
 
-    def moduleTypeUpdate(self):
+    def moduleTypeUpdate(self , buttonId):
         ''' Update module selection (right side versus left side) according to GUI choice made '''
+        #Using radion buttons ID to get LHS or RHS 
+        if buttonId <= 8: 
+                self.msgPrint("RHS module selected")
+                self.moduleNumber = LpdAsicTester.RHS_MODULE
+        elif buttonId > 8: 
+                self.msgPrint("LHS module selected") 
+                self.moduleNumber = LpdAsicTester.LHS_MODULE
         
-        if self.ui.moduleLhsSel.isChecked():
-            self.msgPrint("LHS module selected")
-            self.moduleNumber = LpdAsicTester.LHS_MODULE
-            #self.setModuleType(self.moduleNumber)
-
-        elif self.ui.moduleRhsSel.isChecked():
-            self.msgPrint("RHS module selected")
-            self.moduleNumber = LpdAsicTester.RHS_MODULE
-            
         self.setModuleType(self.moduleNumber)
+        self.setMiniConnector(buttonId)
         self.app_main.asic_window.moduleSignal.emit(self.moduleNumber)
             
     def testMsgPrint(self, msg, bError=False):

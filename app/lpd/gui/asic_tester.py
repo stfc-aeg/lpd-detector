@@ -13,6 +13,8 @@ import matplotlib.text as text
 import matplotlib
 import argparse
 import timeit, time, os.path
+from lpd.analysis import analysis_creation
+
 
 # Create decorator method to time code execution
 def timingMethodDecorator(methodToDecorate):
@@ -23,6 +25,7 @@ def timingMethodDecorator(methodToDecorate):
         print >> sys.stderr, "Function", methodToDecorate.__name__ + str("()"), "execution time:", stopTime - startTime, "second(s)."
         return returnValues
     return wrapper
+
 
 class LpdAsicTester(object):
     ''' Perform ASIC modules analysis, creating/display in results analysis window '''
@@ -58,6 +61,8 @@ class LpdAsicTester(object):
 
         self.moduleString = "-1"
         self.moduleDescription = ""
+        self.tilePosition = ""
+        self.miniConnector = 0
         
         self.lvState   = [0, 0]
         self.hvState   = [0, 0]
@@ -84,6 +89,10 @@ class LpdAsicTester(object):
         ''' Enable LpdFemGuiMainTestTab to communicate module description, i.e. "00135"
             Note that RHS/LHS determined by moduleLhsSel/moduleRhsSel in the GUI '''
         self.moduleDescription = moduleDescription
+
+    def setMiniConnector(self, miniConnector):
+        '''Set the mini connector for tile analysis''' 
+        self.miniConnector = miniConnector
     
     def verifyJsonFileNames(self):
         ''' Check that the user-specified filenames in the .json file are valid '''
@@ -173,6 +182,10 @@ class LpdAsicTester(object):
             self.app_main.deviceRun(self.currentParams)
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
+            self.msgPrint("Creating data analysis pdf")
+            pdf_name = analysis_creation.DataAnalyser(self.tilePosition , self.miniConnector , self.file_name)
+            self.msgPrint("PDF created: %s" % pdf_name)
+        
 
             '''  if self.file_name == None:
                 self.msgPrint("Error: No file received")
@@ -387,6 +400,9 @@ class LpdAsicTester(object):
 
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
+            self.msgPrint("Creating data analysis pdf")
+            pdf_name = analysis_creation.DataAnalyser(self.tilePosition , self.miniConnector , self.file_name)
+            self.msgPrint("PDF created: %s" % pdf_name)            
             
             # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
             '''if self.file_name == None:
@@ -841,6 +857,7 @@ class LpdAsicTester(object):
         elif moduleNumber == LpdAsicTester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
+        self.tilePosition = self.moduleString
 
     def readPowerCards(self):
         ''' Read all sensors on both power card '''
