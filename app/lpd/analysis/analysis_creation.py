@@ -51,7 +51,7 @@ class DataAnalyser():
         bad_pixels_stdev = test_data.bad_pixels(stdev_tile, fault_tile, 2)
         test_data.manage_figure(stdev_tile, self.stdev_tile_plot, self.stdev_tile_colorbar, 
                                 self.stdev_histogram, 1)
-        self.stdev_fig.show()
+        self.fig_page2.show()
 
         # Plotting fault image
         fault_tiles.plot_faults(self.fault_tile_plot, fault_tile)
@@ -66,7 +66,7 @@ class DataAnalyser():
         lpd_data_metadata = extract_data.get_file_metadata(self.lpd_file)
         test_results.set_analysis_text(self.analysis_textarea, self.analysis_text_list, self.lpd_file,
                                         self.data_file_path, lpd_data_metadata)
-        self.results_fig.show()
+        self.fig_page1.show()
         
 
         test_results.display_trigger_images(lpd_data, self.tile_position, self.fig_trigger, self.trigger_plots, self.trigger_colorbar, lpd_data_metadata)
@@ -80,14 +80,14 @@ class DataAnalyser():
     def figure_setup(self):
 
         # Setup figures, subplots and results table
-        self.mean_fig, self.mean_tile_plot, self.mean_tile_colorbar, self.mean_histogram = plot.setup_test_plots(1)
-        self.stdev_fig, self.stdev_tile_plot, self.stdev_tile_colorbar, self.stdev_histogram = plot.setup_test_plots(2)
-        self.fault_fig, self.fault_tile_plot, self.fault_legend = plot.setup_fault_plots()
-        self.results_fig, self.results_table, self.analysis_textarea, \
-        self.analysis_text_list = test_results.setup_results_figure(self.file_name , self.tile_position , self.mini_connector)
+        self.fig_page1, self.gs1, self.results_table, self.analysis_textarea, self.analysis_text_list = test_results.setup_results_figure(self.file_name , self.tile_position , self.mini_connector)
+        self.fault_fig, self.fault_tile_plot, self.fault_legend = plot.setup_fault_plots(self.fig_page1, self.gs1)
+        self.mean_fig, self.gs,  self.mean_tile_plot, self.mean_tile_colorbar, self.mean_histogram = plot.setup_test_plots(1, self.gs1, self.fig_page1)
+        
+        self.fig_page2 , self.gs2, self.stdev_tile_plot, self.stdev_tile_colorbar, self.stdev_histogram = plot.setup_test_plots(2, self.gs1, self.fig_page1)
 
-        self.fig_trigger, self.trigger_plots, self.trigger_colorbar = plot.setup_trigger_plots()
-        self.fig_first_image, self.first_image_plot, self.first_image_colorbar = plot.setup_first_image_plot()
+        self.fig_trigger, self.trigger_plots, self.trigger_colorbar = plot.setup_trigger_plots(self.fig_page2 , self.gs2)
+        self.fig_first_image, self.first_image_plot, self.first_image_colorbar = plot.setup_first_image_plot(self.fig_page2,self.gs2)
 
         self.data_file_path = self.lpd_file
         self.date_format = '%d/%m/%Y'
@@ -96,7 +96,7 @@ class DataAnalyser():
         self.bold_text_class = 'bold-label'
 
         # Set titles of all plots - would've been cleared by cla()
-        self.title_fig , self.title_plot = plot.setup_title_plot(self.file_name , self.tile_position , self.mini_connector)
+
         plot.set_plot_titles(self.mean_tile_plot, self.mean_histogram, self.stdev_tile_plot, self.stdev_histogram,
                                 self.fault_tile_plot, self.trigger_plots, self.first_image_plot)
 
@@ -108,7 +108,7 @@ class DataAnalyser():
         file_name = str(self.file_name)
         file_name = os.path.basename(file_name)
         # Generate list of figures to be added to pdf
-        pdf_fig_list = [self.title_fig, self.results_fig, self.mean_fig, self.stdev_fig, self.fault_fig,  self.fig_trigger, self.fig_first_image]
+        pdf_fig_list = [self.fig_page1, self.fig_page2]
         pdf_file_name = generate_report.export(pdf_fig_list, file_name, self.data_file_path ,self.tile_position, self.mini_connector )
         return pdf_file_name
  

@@ -14,7 +14,7 @@ import matplotlib
 import argparse
 import timeit, time, os.path
 from lpd.analysis import analysis_creation
-
+import gui
 
 # Create decorator method to time code execution
 def timingMethodDecorator(methodToDecorate):
@@ -25,7 +25,6 @@ def timingMethodDecorator(methodToDecorate):
         print >> sys.stderr, "Function", methodToDecorate.__name__ + str("()"), "execution time:", stopTime - startTime, "second(s)."
         return returnValues
     return wrapper
-
 
 class LpdAsicTester(object):
     ''' Perform ASIC modules analysis, creating/display in results analysis window '''
@@ -38,6 +37,7 @@ class LpdAsicTester(object):
         super(LpdAsicTester, self).__init__()    # Required for pyqtSignal
         self.app_main = app_main
         self.device = device
+        self.lpdFemGui = gui.LpdFemGui
         
         # Established signals (and slots)
         self.messageSignal = self.app_main.mainWindow.testTab.messageSignal
@@ -57,7 +57,7 @@ class LpdAsicTester(object):
         self.currentParams['arduinoShutterEnable']          = False
         self.currentParams['readoutParamFile']              = self.currentParams['testingReadoutParamFile']
         self.currentParams['setupParamFile']                = self.currentParams['testingSetupParamFile']
-        self.currentParams['run_number']                     = 9000
+        self.currentParams['run_number']                    = self.currentParams['runNumber']
 
         self.moduleString = "-1"
         self.moduleDescription = ""
@@ -79,6 +79,7 @@ class LpdAsicTester(object):
         
         self.moduleStd      = -1.0
         self.moduleAverage  = -1.0
+        self.runNumber      = 0
         
 
     def msgPrint(self, message, bError=False):
@@ -108,7 +109,7 @@ class LpdAsicTester(object):
     def executeSensorBondingTest(self, moduleNumber):
         ''' Execute the sequence of tests defined by Sensor Bonding specifications '''
 
-        try:
+        '''try:
             # Verify XML files specified in json file exist
             if not self.verifyJsonFileNames():
                 self.msgPrint("File missing, exiting test prematurely", bError=True)
@@ -120,7 +121,12 @@ class LpdAsicTester(object):
 
             # Set moduleNumber and moduleString
             self.moduleNumber = moduleNumber
+
             self.setModuleType(moduleNumber)
+
+            #increment run numbers
+            self.runNumber = self.app_main.getCachedParam('runNumber')+1
+            self.app_main.setCachedParam('runNumber', self.runNumber)
             
 #            powerCardResults = self.readPowerCards()
 #            #print >> sys.stderr, "powerCardResult: ", powerCardResults
@@ -183,11 +189,13 @@ class LpdAsicTester(object):
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             self.msgPrint("Creating data analysis pdf")
-            pdf_name = analysis_creation.DataAnalyser(self.tilePosition , self.miniConnector , self.file_name)
-            self.msgPrint("PDF created: %s" % pdf_name)
+            #self.msgPrint("tile: %s mini: %s name: %s" %(self.tilePosition,self.miniConnector,self.file_name))'''
+            #pdf_name = analysis_creation.DataAnalyser(self.tilePosition , self.miniConnector , self.file_name)
+        pdf_name = analysis_creation.DataAnalyser("RHS", 3,"/data/lpd/test/lpdData-04868.hdf5_000001.h5")
+        self.msgPrint("PDF created: %s" % pdf_name)
         
 
-            '''  if self.file_name == None:
+        '''if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("4. Check/record unconnected pixels - Using leakage current check.")
@@ -200,7 +208,6 @@ class LpdAsicTester(object):
     
                 self.msgPrint("5. Check/record shorted pixels")
                 (numShortedPixelsMin, numShortedPixelsMax, adjacentPixelPairs, neighbourStr) = self.locateShortedPixels()
-
                 # Does total number of shorted pixels exceed 0?
                 # Min = pixel stuck at value 0, Max = pixel stuck at value 4095
                 if (numShortedPixelsMin+numShortedPixelsMax) > 0:
@@ -228,14 +235,13 @@ class LpdAsicTester(object):
                         # Any minimum adjacent to a maximum?
                         if neighbourStr.__len__() > 0:
                             self.msgPrint("     Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
-
             # Hack DAQ tab to restore it to ready state
             self.app_main.device_state = LpdFemState.DeviceReady
             self.app_main.runStateUpdate()'''
 
-        except Exception as e:
+        '''except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
-            self.msgPrint("Exception during Sensor Bonding testing: %s" % e, bError=True)
+            self.msgPrint("Exception during Sensor Bonding testing: %s" % e, bError=True)'''
 
     def executeAsicBondingTest(self, moduleNumber):
         ''' Execute the sequence of tests defined by ASIC bond specifications '''
@@ -253,6 +259,10 @@ class LpdAsicTester(object):
             # Set moduleNumber and moduleString
             self.moduleNumber = moduleNumber
             self.setModuleType(moduleNumber)
+            
+            #incriment run numbers 
+            self.runNumber = self.app_main.getCachedParam('runNumber')+1
+            self.app_main.setCachedParam('runNumber', self.runNumber)
 
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
             self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
@@ -930,4 +940,3 @@ class LpdAsicTester(object):
         time.sleep(1)
         #print >> sys.stderr, "Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx])
         return sensorCurrent
-

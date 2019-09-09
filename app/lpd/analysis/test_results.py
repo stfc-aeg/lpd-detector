@@ -9,6 +9,8 @@ import numpy as np
 from datetime import datetime
 import os.path
 import ntpath
+import matplotlib.gridspec as gridspec
+
 
 
 def setup_results_figure(filename , tile_position , mini_connector):
@@ -16,16 +18,28 @@ def setup_results_figure(filename , tile_position , mini_connector):
         Table is created here using an array full of 0's and the values are updated in
         update_table()
     '''
-    results_fig = plt.figure(figsize=(8, 4.5), num='Bad Components')
-    #results_table = results_fig.add_subplot(212)
-    analysis_textarea = results_fig.add_subplot(211)
-    '''title_area = results_fig.add_subplot(212)
-    title_area.set_title("Analysis of: %s, tile from: %s, mini connector number:%i" %(filename, tile_position, mini_connector))'''
+    
+    #Create two pages for the pdf
+    fig_page1 = plt.figure(figsize=(8.27,11.69))
+
+    #Create gridspec for the whole pdf 
+    gs1 = gridspec.GridSpec(3, 1)
+
+    gs1_tile = gridspec.GridSpecFromSubplotSpec(2,1, subplot_spec=gs1[0], height_ratios=[2,1])
+
+    if(tile_position[1] == 128):
+        tile_position = "Left Hand Side"
+    else: 
+        tile_position = "Right Hand Side"
+
+    plt.suptitle("Analysis of file: %s \n  Tile from: %s, mini connector number:%s" %(filename, tile_position, str(mini_connector)))
+
+    #Create subplot for the table
+    analysis_textarea = fig_page1.add_subplot(gs1_tile[0, 0])
 
     # Plot will be displayed with the table if this isn't done
-    #results_table.axis('off')
     analysis_textarea.axis('off')
-    plt.subplots_adjust(left=0.3)
+    #plt.subplots_adjust(left=0.3)
 
     # Column and row labels for table
     columns = ("Bad Chips", "Bad Columns", "Bad Pixels") 
@@ -37,7 +51,7 @@ def setup_results_figure(filename , tile_position , mini_connector):
 
     # Create table ready to be updated upon analysis
     results_table = plt.table(cellText=table_values, rowLabels=rows, colLabels=columns,
-                              loc="upper center", bbox=[0.0, 0.0, 1.1, 1.2])
+                              loc="upper center", bbox=[0.15, 0.0, 0.95, 1.2])
 
     # Setting style and weight of row labels
     italic_label_index = (2, 3, 5, 6)
@@ -54,10 +68,9 @@ def setup_results_figure(filename , tile_position , mini_connector):
     # Create text giving details of the analysis
     analysis_text_list = []
     for line, line_num in zip(analysis_metadata, range(0, len(analysis_metadata))):
-        analysis_text_list.append(analysis_textarea.text(-0.45, (-0.2 + (-0.12 * line_num)), line))
+        analysis_text_list.append(analysis_textarea.text(-0.12, (-0.2 + (-0.12 * line_num)), line))
 
-    return (results_fig, results_table, analysis_textarea, analysis_text_list)
-
+    return (fig_page1, gs1, results_table, analysis_textarea, analysis_text_list)
 
 def update_table(table_values, results_table):
     ''' Update values in results table - values may change between each analysis if file chosen is

@@ -8,51 +8,41 @@ import matplotlib.cm as cm
 import matplotlib.colors as colors
 import test_results
 
-def setup_title_plot(filename , tile_position, mini_connector):
-    ''' Create an area showing the pdf title and test information
-    '''
-    fig_title = plt.figure(figsize=(8,2) , num='Title Plot')
-    gs1 = gridspec.GridSpec(1, 2, width_ratios=[16, 1], wspace=0.5)
 
-    title_plot = fig_title.add_subplot(gs1[0, 0])
-    title_plot.axis('off')
-
-    if(tile_position[1] == 128):
-        tile_location = "LHS"
-    else: 
-        tile_location = "RHS"
-
-    title_plot.set_title("Analysis of: %s, tile from: %s, mini connector number:%i" %(filename, tile_location, mini_connector))
-
-    return(fig_title,title_plot)
-
-
-def setup_test_plots(test_type):
+def setup_test_plots(test_type, gs, fig):
     ''' Creates a figure with plots for either mean data or stdev data - determined by test_type
     '''
-    gs1 = gridspec.GridSpec(2, 1, hspace=0.3)
+    if (test_type == 2):
+        subplot_spec = 0
+        #Create Page 2 layout 
+        fig = plt.figure(figsize=(8.27,11.69))
+        gs = gridspec.GridSpec(3, 1 )
+    else:
+        subplot_spec = 2
+
     # GridSpec inside subplot - used for plot of tile with colorbar
-    gs1_tile = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs1[0], wspace=0.05,
-                                                width_ratios=[16, 1])
+    gs1_tile = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=2, subplot_spec=gs[subplot_spec], width_ratios=[16,1],
+                                                height_ratios=[1,1], hspace=0.3)
 
     # Create figure and all subplots
     fig_titles = ('Mean Data Plots', 'Standard Deviation Plots')
-    fig = plt.figure(figsize=(8, 4), num=fig_titles[test_type - 1])
     tile_plot = fig.add_subplot(gs1_tile[0, 0])
+    tile_plot.set_title("%s"% fig_titles[test_type - 1])
     tile_colorbar = fig.add_subplot(gs1_tile[0, 1])
-    histogram = fig.add_subplot(gs1[1, 0])
+    histogram = fig.add_subplot(gs1_tile[1, 0])
+    histogram.set_title("Histogram of standard deviation tile data")
 
-    return (fig, tile_plot, tile_colorbar, histogram)
+
+    return (fig, gs, tile_plot, tile_colorbar, histogram)
 
 
-def setup_fault_plots():
+def setup_fault_plots(fig, gs):
     ''' Create figure & plot for fault image
     '''
-    fig_fault = plt.figure(figsize=(8, 2), num='Fault Plot')
-    gs1 = gridspec.GridSpec(1, 2, width_ratios=[16, 1], wspace=0.5)
-
-    fault_tile_plot = fig_fault.add_subplot(gs1[0, 0])
-    fault_legend = fig_fault.add_subplot(gs1[0, 1])
+    gs1_tile = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[1],
+                                                width_ratios=[16,1])
+    fault_tile_plot = fig.add_subplot(gs1_tile[0, 0])
+    fault_legend = fig.add_subplot(gs1_tile[0, 1])
 
     # Disabling axes for legend - works permanently so no need to be put into set_plot_titles()
     fault_legend.axis('off')
@@ -66,17 +56,16 @@ def setup_fault_plots():
     no_fault_patch = mpatches.Patch(color=cmap(colorbar_range(0)), label='No Fault')
     mean_patch = mpatches.Patch(color=cmap(colorbar_range(1)), label='Mean Fault')
     stdev_patch = mpatches.Patch(color=cmap(colorbar_range(2)), label='Stdev Fault')
-    fault_legend.legend(handles=[no_fault_patch, mean_patch, stdev_patch], loc='right')
+    fault_legend.legend(handles=[no_fault_patch, mean_patch, stdev_patch],bbox_to_anchor=[2,0.5], loc='right')
 
-    return (fig_fault, fault_tile_plot, fault_legend)
+    return (fig, fault_tile_plot, fault_legend)
 
 
-def setup_trigger_plots():
+def setup_trigger_plots(fig , gs):
     ''' Create figure & plots for first 4 trigger tiles. Currently hardcoded to assume each frame
         contains 10 images
     '''
-    fig_trigger = plt.figure(figsize=(8, 3), num='Trigger Plots')
-    gs_trigger = gridspec.GridSpec(2, 3, width_ratios=[9, 9, 1])
+    gs_trigger = gridspec.GridSpecFromSubplotSpec(ncols =3, nrows=2, subplot_spec=gs[1], width_ratios=[8,8,1])
 
     # List containing each subplot containing each trigger plot
     trigger_plots = []
@@ -87,27 +76,26 @@ def setup_trigger_plots():
 
     # Create each trigger image
     for trigger_pos in range(0, 4):
-        trigger_plots.append(fig_trigger.add_subplot(gs_trigger[plot_pos_x[trigger_pos],
+        trigger_plots.append(fig.add_subplot(gs_trigger[plot_pos_x[trigger_pos],
                                                                 plot_pos_y[trigger_pos]]))
         trigger_plots[trigger_pos].set_title("Trigger {}".format(trigger_pos + 1))
 
-    trigger_colorbar = fig_trigger.add_subplot(gs_trigger[:, 2])
-    fig_trigger.suptitle("First {} Trigger Images".format(len(trigger_plots)), fontsize=16)
+    trigger_colorbar = fig.add_subplot(gs_trigger[:, 2])
+    #gs_trigger.set_title("First {} Trigger Images".format(len(trigger_plots)), fontsize=16)
 
-    return (fig_trigger, trigger_plots, trigger_colorbar)
+    return (fig, trigger_plots, trigger_colorbar)
 
 
-def setup_first_image_plot():
+def setup_first_image_plot(fig , gs):
     ''' Create figure and plot for very first image
     '''
-    fig_first_image = plt.figure(figsize=(8, 6), num='First Full Image Plot')
-    gs_first_image = gridspec.GridSpec(1, 2, width_ratios=[12, 1], wspace=0.05)
+    gs_first_image = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[2], width_ratios=[16,1])
 
     # Create subplots for image and respective colorbar
-    first_image_plot = fig_first_image.add_subplot(gs_first_image[0, 0])
-    first_image_colorbar = fig_first_image.add_subplot(gs_first_image[0, 1])
+    first_image_plot = fig.add_subplot(gs_first_image[0, 0])
+    first_image_colorbar = fig.add_subplot(gs_first_image[0, 1])
 
-    return (fig_first_image, first_image_plot, first_image_colorbar)
+    return (fig, first_image_plot, first_image_colorbar)
 
 
 def disable_ticks(ax):
@@ -135,12 +123,6 @@ def set_plot_titles(mean_tile_plot, mean_histogram, stdev_tile_plot, stdev_histo
 
     fault_tile_plot.set_title("Plot of Tile's Faults", fontsize=16)
     first_image_plot.set_title("First Image of Data", fontsize=16)
-    '''disable_ticks(fault_tile_plot)
-    disable_ticks(first_image_plot)
-
-    for trigger_pos in range(0, 4):
-        trigger_plots[trigger_pos].set_title("Trigger {}".format(trigger_pos + 1))
-        disable_ticks(trigger_plots[trigger_pos])'''
 
 
 def display_data_plot(ax, data, colorbar=None, colorbar_type=0):

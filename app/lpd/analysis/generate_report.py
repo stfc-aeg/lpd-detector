@@ -1,5 +1,8 @@
+from __future__ import print_function
+import sys
 from matplotlib.backends.backend_pdf import PdfPages
 import os
+import webbrowser
 
 
 def export(fig_list, filename, data_path, tile_position, mini_connector):
@@ -19,6 +22,7 @@ def export(fig_list, filename, data_path, tile_position, mini_connector):
     # split() - remove file extension from filename of data
     pdf_name = 'test_results_{}.pdf'.format(filename.split('.')[0]+"-"+str(tile_position) +"-" +str(mini_connector))
     pdf_file = PdfPages('{}/{}'.format(save_path, pdf_name))
+
 
     for figure in fig_list:
         # Insert each figure into PDF created by Matplotlib

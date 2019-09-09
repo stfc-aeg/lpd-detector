@@ -4987,27 +4987,11 @@
          <string>Sensor Bonding</string>
         </property>
        </widget>
-       <widget class="QLabel" name="miniConnectLbl">
-        <property name="geometry">
-         <rect>
-          <x>590</x>
-          <y>30</y>
-          <width>151</width>
-          <height>16</height>
-         </rect>
-        </property>
-        <property name="layoutDirection">
-         <enum>Qt::RightToLeft</enum>
-        </property>
-        <property name="text">
-         <string>Select Mini Connector: </string>
-        </property>
-       </widget>
        <widget class="QWidget" name="layoutWidget">
         <property name="geometry">
          <rect>
-          <x>590</x>
-          <y>50</y>
+          <x>600</x>
+          <y>30</y>
           <width>131</width>
           <height>179</height>
          </rect>
@@ -5306,17 +5290,22 @@
          </item>
         </layout>
        </widget>
-       <zorder>layoutWidget</zorder>
-       <zorder>testMessageGroupBox</zorder>
-       <zorder>operatorLabel</zorder>
-       <zorder>operatorEdit</zorder>
-       <zorder>moduleNumberEdit</zorder>
-       <zorder>moduleNumberLabel</zorder>
-       <zorder>commentLabel</zorder>
-       <zorder>commentEdit</zorder>
-       <zorder>asicBondingBtn</zorder>
-       <zorder>sensorBondingBtn</zorder>
-       <zorder>miniConnectLbl</zorder>
+       <widget class="QLabel" name="miniConnectLbl">
+        <property name="geometry">
+         <rect>
+          <x>600</x>
+          <y>10</y>
+          <width>151</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="layoutDirection">
+         <enum>Qt::RightToLeft</enum>
+        </property>
+        <property name="text">
+         <string>Select Mini Connector: </string>
+        </property>
+       </widget>
       </widget>
      </widget>
     </item>
@@ -5367,7 +5356,6 @@
  <buttongroups>
   <buttongroup name="pixelFbkButtonGroup"/>
   <buttongroup name="connectorButtonGroup"/>
-  <buttongroup name="moduleTypeButtonGroup"/>
   <buttongroup name="gainOverrideButtonGroup"/>
  </buttongroups>
 </ui>
