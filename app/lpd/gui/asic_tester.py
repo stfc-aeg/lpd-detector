@@ -15,6 +15,9 @@ import argparse
 import timeit, time, os.path
 from lpd.analysis import analysis_creation
 import gui
+import main_power_tab
+from main_power_tab import LpdFemGuiMainPowerTab
+
 
 # Create decorator method to time code execution
 def timingMethodDecorator(methodToDecorate):
@@ -95,6 +98,10 @@ class LpdAsicTester(object):
         '''Set the mini connector for tile analysis''' 
         self.miniConnector = miniConnector
     
+    def setHvEditBox(self, hv):
+        '''Set the hv input for the test tab'''
+        self.hv = hv
+    
     def verifyJsonFileNames(self):
         ''' Check that the user-specified filenames in the .json file are valid '''
         xmlFileNames = [self.currentParams['testingSetupParamFile'], self.currentParams['testingReadoutParamFile'],
@@ -106,10 +113,10 @@ class LpdAsicTester(object):
                 bErrorOk = False
         return bErrorOk
 
-    def executeSensorBondingTest(self, moduleNumber):
+    def executeSensorBondingTest(self, originalConnectorId):
         ''' Execute the sequence of tests defined by Sensor Bonding specifications '''
 
-        '''try:
+        try:
             # Verify XML files specified in json file exist
             if not self.verifyJsonFileNames():
                 self.msgPrint("File missing, exiting test prematurely", bError=True)
@@ -120,9 +127,9 @@ class LpdAsicTester(object):
             self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
 
             # Set moduleNumber and moduleString
-            self.moduleNumber = moduleNumber
+            #self.moduleNumber = moduleNumber
 
-            self.setModuleType(moduleNumber)
+            #self.setModuleType(moduleNumber)
 
             #increment run numbers
             self.runNumber = self.app_main.getCachedParam('runNumber')+1
@@ -155,47 +162,55 @@ class LpdAsicTester(object):
 #            powerCardResults = self.readPowerCards()
 #            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
             
-            self.msgPrint("2. Power on sensor bias (HV) - 200V")
+            self.msgPrint("2. Power on sensor bias (HV) %s V" % self.hv)
             # Check HV bias level:
             powerCardResults = self.readPowerCards()
-            #print >> sys.stderr, "powerCardResults: ", powerCardResults
             #print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
             measuredBiasLevel = powerCardResults['sensorBias0']
 
             try: 
                 timeout = time.time() + 30
-                while not (199.0 < measuredBiasLevel  < 201.0):
+                while not (float(self.hv)-2 < measuredBiasLevel  < float(self.hv)+2):
                     powerCardResults = self.readPowerCards()
                     measuredBiasLevel = powerCardResults['sensorBias0']           
-                    self.msgPrint("Bias level is %f V, changing it to be 200 V" % measuredBiasLevel)
+                    self.msgPrint("Bias level is %f V, changing it to be %s v" % measuredBiasLevel, self.hv)
                     #change the HV bias 
-                    self.hvSetBias(200.0, do_sleep=False)                    
+                    self.hvSetBias(float(self.hv), do_sleep=False)                    
                     time.sleep(1)
-                    if timeout < time.time() or (199.0 < measuredBiasLevel  < 201.0) :        
+                    if timeout < time.time() or (float(self.hv)-2 < measuredBiasLevel  < float(self.hv)+2) :        
                         break
             except Exception as e:
-                self.msgPrint(" Exception: %s" % e)           
-            self.msgPrint("Bias now set to 200 V")
-            #powerCardResults = self.readPowerCards()
+                self.msgPrint(" Exception: %s" % e)      
+            self.msgPrint("Bias now set to %s V" % self.hv)
+            print >> sys.stderr, originalConnectorId
+
+            #Get the pre configuration current to print on analysis pdf 
+            powerCardResults = self.readPowerCards()
+            self.preConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
             #print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
 
             self.msgPrint("3. Take data with long exposure command sequence")
             # Set long exposure XML file, configure device
             self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']
             self.app_main.deviceConfigure(self.currentParams)
+
+            #Get the post configuration currents 
+            powerCardResults = self.readPowerCards()
+            self.postConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
+            self.analysisPath = self.app_main.getCachedParam('analysisPdfPath')
             
             # Readout Data
             self.app_main.deviceRun(self.currentParams)
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             self.msgPrint("Creating data analysis pdf")
-            #self.msgPrint("tile: %s mini: %s name: %s" %(self.tilePosition,self.miniConnector,self.file_name))'''
-            #pdf_name = analysis_creation.DataAnalyser(self.tilePosition , self.miniConnector , self.file_name)
-        pdf_name = analysis_creation.DataAnalyser("RHS", 3,"/data/lpd/test/lpdData-04868.hdf5_000001.h5")
-        self.msgPrint("PDF created: %s" % pdf_name)
+            self.msgPrint("tile: %s mini: %s name: %s" %(self.tilePosition,self.miniConnector,self.file_name))
+            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent)
+            #pdf_name = analysis_creation.DataAnalyser("RHS", 3,"/data/lpd/test/lpdData-04868.hdf5_000001.h5")
+            self.msgPrint("PDF created: %s" % pdf_name)
         
 
-        '''if self.file_name == None:
+            '''if self.file_name == None:
                 self.msgPrint("Error: No file received")
             else:
                 self.msgPrint("4. Check/record unconnected pixels - Using leakage current check.")
@@ -205,7 +220,7 @@ class LpdAsicTester(object):
                     numFailedSections += 1
                 else:
                     self.msgPrint("There are no unconnected pixels, that's a PASS")
-    
+        
                 self.msgPrint("5. Check/record shorted pixels")
                 (numShortedPixelsMin, numShortedPixelsMax, adjacentPixelPairs, neighbourStr) = self.locateShortedPixels()
                 # Does total number of shorted pixels exceed 0?
@@ -239,9 +254,9 @@ class LpdAsicTester(object):
             self.app_main.device_state = LpdFemState.DeviceReady
             self.app_main.runStateUpdate()'''
 
-        '''except Exception as e:
+        except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
-            self.msgPrint("Exception during Sensor Bonding testing: %s" % e, bError=True)'''
+            self.msgPrint("Exception during Sensor Bonding testing: %s" % e, bError=True)
 
     def executeAsicBondingTest(self, moduleNumber):
         ''' Execute the sequence of tests defined by ASIC bond specifications '''
@@ -407,11 +422,12 @@ class LpdAsicTester(object):
             # 12.Readout data
             self.msgPrint("12. Readout Data")
             self.app_main.deviceRun(self.currentParams)
+            self.analysisPath = self.app_main.getCachedParam('analysisPdfPath')
 
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             self.msgPrint("Creating data analysis pdf")
-            pdf_name = analysis_creation.DataAnalyser(self.tilePosition , self.miniConnector , self.file_name)
+            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.tilePosition , self.miniConnector , self.file_name)
             self.msgPrint("PDF created: %s" % pdf_name)            
             
             # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?

@@ -131,6 +131,7 @@ class LpdFemGui:
                           'cmdSequenceFile'   : self.default_config_path + '/Command_LongExposure_V2.xml',
                           'setupParamFile'    : self.default_config_path + '/Setup_LowPower.xml',
                           'dataFilePath'      : '/tmp',
+                          'analysisPdfPath'   : '/tmp',
                           'hvBiasVolts'       : 50.0,
                           'numTrains'         : 8,
                           'externalTrigger'   : True,

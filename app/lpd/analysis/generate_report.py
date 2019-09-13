@@ -3,9 +3,10 @@ import sys
 from matplotlib.backends.backend_pdf import PdfPages
 import os
 import webbrowser
+import subprocess
 
 
-def export(fig_list, filename, data_path, tile_position, mini_connector):
+def export(analysis_pdf_path, fig_list, filename, data_path, tile_position, mini_connector):
     ''' Creates PDF file of all the figures displayed in the notebook
     '''
     # Protecting path from trailing '/' from $HOME
@@ -18,12 +19,12 @@ def export(fig_list, filename, data_path, tile_position, mini_connector):
     else: 
         tile_position = "RHS"
 
-    save_path = "{}/develop/projects/lpd/tile_analysis".format(os.environ['HOME'])
+    #save_path = "{}/develop/projects/lpd/tile_analysis".format(os.environ['HOME'])
     # split() - remove file extension from filename of data
     pdf_name = 'test_results_{}.pdf'.format(filename.split('.')[0]+"-"+str(tile_position) +"-" +str(mini_connector))
-    pdf_file = PdfPages('{}/{}'.format(save_path, pdf_name))
-
-
+    pdf_file = PdfPages('{}/{}'.format(analysis_pdf_path, pdf_name))
+    #open(save_path + "/" + pdf_name) nothing happens 
+    
     for figure in fig_list:
         # Insert each figure into PDF created by Matplotlib
         figure.savefig(pdf_file, format='pdf')
@@ -33,5 +34,7 @@ def export(fig_list, filename, data_path, tile_position, mini_connector):
     d['Title'] = "Analysis of {}".format(filename)
 
     pdf_file.close()
+
+    subprocess.Popen(["/usr/bin/evince", analysis_pdf_path + "/" + pdf_name])
     
     return pdf_name

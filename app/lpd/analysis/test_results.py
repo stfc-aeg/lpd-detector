@@ -23,7 +23,7 @@ def setup_results_figure(filename , tile_position , mini_connector):
     fig_page1 = plt.figure(figsize=(8.27,11.69))
 
     #Create gridspec for the whole pdf 
-    gs1 = gridspec.GridSpec(3, 1)
+    gs1 = gridspec.GridSpec(3, 1, hspace=0.4)
 
     gs1_tile = gridspec.GridSpecFromSubplotSpec(2,1, subplot_spec=gs1[0], height_ratios=[2,1])
 
@@ -63,7 +63,7 @@ def setup_results_figure(filename , tile_position , mini_connector):
     analysis_metadata = ("Data File Used", "Date Modified of Data", "Date of Analysis",
                          "Thresholds for Mean Tests", "Thresholds for Standard Deviation Tests",
                          "Number of Images Per Train", "Command Sequence File Name",
-                         "Readout Param File Name", "Setup Param File Name")
+                         "Readout Param File Name", "Setup Param File Name", "Pre-configuration current","Post-configuration current")
 
     # Create text giving details of the analysis
     analysis_text_list = []
@@ -85,7 +85,7 @@ def update_table(table_values, results_table):
             cells_dict[(row + 1, col)].get_text().set_text(table_values[row][col])
 
 
-def set_analysis_text(analysis_textarea, analysis_text_list, filename, data_path, metadata):
+def set_analysis_text(analysis_textarea, analysis_text_list, filename, data_path, metadata, pre_config_current, post_config_current):
     ''' Sets text for each line of text in the results figure
     '''
     new_data = []
@@ -111,11 +111,19 @@ def set_analysis_text(analysis_textarea, analysis_text_list, filename, data_path
     for name in file_names:
         new_data.append(str(metadata.attrs[name]).split('/')[-1])
 
+    #Give current before and after configuartion details 
+    new_data.append(pre_config_current)
+    new_data.append(post_config_current)
+
     # Modify text objects to update details of analysis
     for line, data in zip(analysis_text_list, new_data):
         # Remove old details and update with new ones
         new_text = "{}: {}".format(line.get_text().split(':')[0], data)
         line.set_text(new_text)
+    
+
+
+
 
 
 def collate_results(bad_chips_mean, bad_chips_stdev, bad_cols_mean, bad_cols_stdev,

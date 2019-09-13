@@ -40,7 +40,7 @@ def setup_fault_plots(fig, gs):
     ''' Create figure & plot for fault image
     '''
     gs1_tile = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[1],
-                                                width_ratios=[16,1])
+                                                width_ratios=[16,1], hspace=0.1)
     fault_tile_plot = fig.add_subplot(gs1_tile[0, 0])
     fault_legend = fig.add_subplot(gs1_tile[0, 1])
 

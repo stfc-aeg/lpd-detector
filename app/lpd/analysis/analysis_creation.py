@@ -18,12 +18,14 @@ import os.path
 
 class DataAnalyser():
 
-    def __init__(self, tile_position , mini_connector, file_name):
+    def __init__(self, analysis_pdf, tile_position , mini_connector, file_name, pre_config_current, post_config_current):
 
         #def analyse_data(self, tile_position , mini_connector, file_name):
         ''' Analysis is performed on the specific tile selected, analysing data by taking mean and standard deviation
             measurements
         '''  
+        self.pre_config_current = pre_config_current
+        self.post_config_current = post_config_current
 
         # Creating components needed for analysis
         self.file_name = file_name
@@ -65,7 +67,7 @@ class DataAnalyser():
         # Get metadata to be used in analysis details
         lpd_data_metadata = extract_data.get_file_metadata(self.lpd_file)
         test_results.set_analysis_text(self.analysis_textarea, self.analysis_text_list, self.lpd_file,
-                                        self.data_file_path, lpd_data_metadata)
+                                        self.data_file_path, lpd_data_metadata, self.pre_config_current, self.post_config_current)
         self.fig_page1.show()
         
 
@@ -75,7 +77,7 @@ class DataAnalyser():
         test_results.display_first_image(lpd_data, self.first_image_plot, self.first_image_colorbar) 
         self.fig_first_image.show()
 
-        pdf_name = self.generate_analysis_report()
+        pdf_name = self.generate_analysis_report(analysis_pdf)
 
     def figure_setup(self):
 
@@ -102,13 +104,13 @@ class DataAnalyser():
 
     
 
-    def generate_analysis_report(self):
+    def generate_analysis_report(self, analysis_pdf):
         ''' Event handling for 'Analysis Report' button
         '''
         file_name = str(self.file_name)
         file_name = os.path.basename(file_name)
         # Generate list of figures to be added to pdf
         pdf_fig_list = [self.fig_page1, self.fig_page2]
-        pdf_file_name = generate_report.export(pdf_fig_list, file_name, self.data_file_path ,self.tile_position, self.mini_connector )
+        pdf_file_name = generate_report.export(analysis_pdf, pdf_fig_list, file_name, self.data_file_path ,self.tile_position, self.mini_connector )
         return pdf_file_name
  
