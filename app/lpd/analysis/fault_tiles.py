@@ -50,4 +50,4 @@ def detect(tile_section):
 def plot_faults(fault_tile_plot, fault_tile):
     ''' Plot all the faults found during testing the tile
     '''
-    plot.display_data_plot(fault_tile_plot, fault_tile)
+    plot.display_data_plot(fault_tile_plot, fault_tile, colorbar_type=2)

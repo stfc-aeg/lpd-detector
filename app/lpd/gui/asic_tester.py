@@ -113,8 +113,10 @@ class LpdAsicTester(object):
                 bErrorOk = False
         return bErrorOk
 
-    def executeSensorBondingTest(self, originalConnectorId):
+    def executeSensorBondingTest(self, moduleNumber, originalConnectorId):
         ''' Execute the sequence of tests defined by Sensor Bonding specifications '''
+        #set the test type to be used for the analysis creation
+        self.test_type = "sensor"
 
         try:
             # Verify XML files specified in json file exist
@@ -129,7 +131,7 @@ class LpdAsicTester(object):
             # Set moduleNumber and moduleString
             #self.moduleNumber = moduleNumber
 
-            #self.setModuleType(moduleNumber)
+            self.setModuleType(moduleNumber)
 
             #increment run numbers
             self.runNumber = self.app_main.getCachedParam('runNumber')+1
@@ -173,7 +175,7 @@ class LpdAsicTester(object):
                 while not (float(self.hv)-2 < measuredBiasLevel  < float(self.hv)+2):
                     powerCardResults = self.readPowerCards()
                     measuredBiasLevel = powerCardResults['sensorBias0']           
-                    self.msgPrint("Bias level is %f V, changing it to be %s v" % measuredBiasLevel, self.hv)
+                    self.msgPrint("Bias level is %f V, changing it to be %s v" %(measuredBiasLevel, str(self.hv)))
                     #change the HV bias 
                     self.hvSetBias(float(self.hv), do_sleep=False)                    
                     time.sleep(1)
@@ -182,7 +184,6 @@ class LpdAsicTester(object):
             except Exception as e:
                 self.msgPrint(" Exception: %s" % e)      
             self.msgPrint("Bias now set to %s V" % self.hv)
-            print >> sys.stderr, originalConnectorId
 
             #Get the pre configuration current to print on analysis pdf 
             powerCardResults = self.readPowerCards()
@@ -205,7 +206,7 @@ class LpdAsicTester(object):
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             self.msgPrint("Creating data analysis pdf")
             self.msgPrint("tile: %s mini: %s name: %s" %(self.tilePosition,self.miniConnector,self.file_name))
-            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent)
+            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.moduleDescription, self.runNumber, self.test_type, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent, self.hv)
             #pdf_name = analysis_creation.DataAnalyser("RHS", 3,"/data/lpd/test/lpdData-04868.hdf5_000001.h5")
             self.msgPrint("PDF created: %s" % pdf_name)
         
@@ -258,9 +259,11 @@ class LpdAsicTester(object):
             print >> sys.stderr, "\n", traceback.print_exc()
             self.msgPrint("Exception during Sensor Bonding testing: %s" % e, bError=True)
 
-    def executeAsicBondingTest(self, moduleNumber):
+    def executeAsicBondingTest(self, moduleNumber, originalConnectorId):
         ''' Execute the sequence of tests defined by ASIC bond specifications '''
         
+        self.test_type = "asic"
+
         try:
             # Verify XML files specified in json file exist
             if not self.verifyJsonFileNames():
@@ -334,6 +337,10 @@ class LpdAsicTester(object):
 
             # Ensure short exposure XML file used
             self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
+            
+            #Get the pre configuration current to print on analysis pdf 
+            powerCardResults = self.readPowerCards()
+            self.preConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
 
             # 3. Serial Load
             self.msgPrint("3. Serial Load")
@@ -354,7 +361,12 @@ class LpdAsicTester(object):
             self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
             time.sleep(1)'''
             
+            #should there be two device configures?? 
             self.app_main.deviceConfigure(self.currentParams)
+
+            #Get the post configuration current to print on analysis pdf 
+            powerCardResults = self.readPowerCards()
+            self.postConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
 
             # 5. Readout Data
             self.msgPrint("5. Readout Data")
@@ -427,7 +439,7 @@ class LpdAsicTester(object):
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             self.msgPrint("Creating data analysis pdf")
-            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.tilePosition , self.miniConnector , self.file_name)
+            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.moduleDescription, self.runNumber, self.test_type, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent, self.hv)
             self.msgPrint("PDF created: %s" % pdf_name)            
             
             # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
@@ -528,8 +540,8 @@ class LpdAsicTester(object):
     def hvSetBias(self, biasStr, do_sleep=True):
         ''' Change HV bias '''        
         try:
-            hvBias = float(biasStr)
-            self.app_main.pwr_card.hvBiasSet(hvBias)
+            self.hvBias = float(biasStr)
+            self.app_main.pwr_card.hvBiasSet(self.hvBias)
             self.app_main.mainWindow.pwrTab.powerStatusUpdateDone()
             
         except ValueError:

@@ -18,7 +18,7 @@ import os.path
 
 class DataAnalyser():
 
-    def __init__(self, analysis_pdf, tile_position , mini_connector, file_name, pre_config_current, post_config_current):
+    def __init__(self, analysis_pdf, module_num, run_num, test_type, tile_position , mini_connector, file_name, pre_config_current, post_config_current, hvBias):
 
         #def analyse_data(self, tile_position , mini_connector, file_name):
         ''' Analysis is performed on the specific tile selected, analysing data by taking mean and standard deviation
@@ -26,6 +26,11 @@ class DataAnalyser():
         '''  
         self.pre_config_current = pre_config_current
         self.post_config_current = post_config_current
+        self.analysis_pdf = analysis_pdf
+        self.hvBias = hvBias
+        self.module_num = module_num
+        self.run_num = run_num
+        self.test_type = test_type
 
         # Creating components needed for analysis
         self.file_name = file_name
@@ -54,7 +59,10 @@ class DataAnalyser():
         test_data.manage_figure(stdev_tile, self.stdev_tile_plot, self.stdev_tile_colorbar, 
                                 self.stdev_histogram, 1)
         self.fig_page2.show()
-
+        print(bad_chips_mean, bad_cols_mean, bad_pixels_mean)
+        print(bad_chips_stdev, bad_cols_stdev, bad_pixels_stdev)
+        print(fault_tile)
+        print(np.sum(fault_tile))
         # Plotting fault image
         fault_tiles.plot_faults(self.fault_tile_plot, fault_tile)
         self.fault_fig.show()
@@ -77,12 +85,12 @@ class DataAnalyser():
         test_results.display_first_image(lpd_data, self.first_image_plot, self.first_image_colorbar) 
         self.fig_first_image.show()
 
-        pdf_name = self.generate_analysis_report(analysis_pdf)
+        pdf_name = self.generate_analysis_report()
 
     def figure_setup(self):
 
         # Setup figures, subplots and results table
-        self.fig_page1, self.gs1, self.results_table, self.analysis_textarea, self.analysis_text_list = test_results.setup_results_figure(self.file_name , self.tile_position , self.mini_connector)
+        self.fig_page1, self.gs1, self.results_table, self.analysis_textarea, self.analysis_text_list = test_results.setup_results_figure(self.file_name, self.module_num, self.tile_position , self.mini_connector, self.hvBias)
         self.fault_fig, self.fault_tile_plot, self.fault_legend = plot.setup_fault_plots(self.fig_page1, self.gs1)
         self.mean_fig, self.gs,  self.mean_tile_plot, self.mean_tile_colorbar, self.mean_histogram = plot.setup_test_plots(1, self.gs1, self.fig_page1)
         
@@ -104,13 +112,13 @@ class DataAnalyser():
 
     
 
-    def generate_analysis_report(self, analysis_pdf):
+    def generate_analysis_report(self):
         ''' Event handling for 'Analysis Report' button
         '''
         file_name = str(self.file_name)
         file_name = os.path.basename(file_name)
         # Generate list of figures to be added to pdf
         pdf_fig_list = [self.fig_page1, self.fig_page2]
-        pdf_file_name = generate_report.export(analysis_pdf, pdf_fig_list, file_name, self.data_file_path ,self.tile_position, self.mini_connector )
+        pdf_file_name = generate_report.export(self.analysis_pdf, self.module_num, self.run_num, self.test_type, pdf_fig_list, file_name)
         return pdf_file_name
  

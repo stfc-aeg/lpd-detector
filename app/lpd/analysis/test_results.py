@@ -13,12 +13,11 @@ import matplotlib.gridspec as gridspec
 
 
 
-def setup_results_figure(filename , tile_position , mini_connector):
+def setup_results_figure(filename, module_num, tile_position , mini_connector, hvBias):
     ''' Gives statistics on the bad components of a tile based on all tests completed.
         Table is created here using an array full of 0's and the values are updated in
         update_table()
-    '''
-    
+    '''    
     #Create two pages for the pdf
     fig_page1 = plt.figure(figsize=(8.27,11.69))
 
@@ -28,11 +27,11 @@ def setup_results_figure(filename , tile_position , mini_connector):
     gs1_tile = gridspec.GridSpecFromSubplotSpec(2,1, subplot_spec=gs1[0], height_ratios=[2,1])
 
     if(tile_position[1] == 128):
-        tile_position = "Left Hand Side"
+        tile_position = "left hand side"
     else: 
-        tile_position = "Right Hand Side"
+        tile_position = "right hand side"
 
-    plt.suptitle("Analysis of file: %s \n  Tile from: %s, mini connector number:%s" %(filename, tile_position, str(mini_connector)))
+    plt.suptitle("Analysis of module number: %s Tile from %s mini connector number %s \n HV Bias set to: %s V" %(module_num, tile_position, str(mini_connector), hvBias))
 
     #Create subplot for the table
     analysis_textarea = fig_page1.add_subplot(gs1_tile[0, 0])

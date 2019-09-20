@@ -42,7 +42,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         #elf.lpdTester = LpdAsicTester
         # Disable GUI components from start
         self.ui.asicBondingBtn.setEnabled(False)
-        self.ui.sensorBondingBtn.setEnabled(True)
+        self.ui.sensorBondingBtn.setEnabled(False)
         self.ui.operatorEdit.setEnabled(False)
         self.ui.moduleNumberEdit.setEnabled(False)
         self.ui.commentEdit.setEnabled(False)
@@ -119,7 +119,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
         self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
-                                        partial(self.app_main.asic_tester.executeSensorBondingTest, self.originalConnectorId),
+                                        partial(self.app_main.asic_tester.executeSensorBondingTest,self.moduleNumber, self.originalConnectorId),
                                         self.sensorBondingTestDone)
 
     def sensorBondingTestDone(self):
@@ -158,9 +158,13 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
+        self.msgPrint("Module description is %s" %moduleDescription)
+        self.msgPrint("ModuleNumber is %s" %self.moduleNumber)
+        self.msgPrint("ModuleString is %s" %self.moduleString)
         self.app_main.asic_tester.setModuleDescription(moduleDescription)
+        self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
         self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
-                                        partial(self.app_main.asic_tester.executeAsicBondingTest, self.moduleNumber),
+                                        partial(self.app_main.asic_tester.executeAsicBondingTest, self.moduleNumber, self.originalConnectorId),
                                         self.asicBondingTestDone)
     
     def asicBondingTestDone(self):
@@ -189,7 +193,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def setMiniConnector(self, miniConnectorId):
         '''Helper function ''' 
         if miniConnectorId < 9:
-            self.connectorId = miniConnectorId 
+            self.connectorId = miniConnectorId
         elif miniConnectorId > 8: 
             self.connectorId = (miniConnectorId - 8)
         else: 
@@ -288,11 +292,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
                 self.moduleNumber = LpdAsicTester.LHS_MODULE
                 self.miniConnectorSelect = True
                 self.originalConnectorId = buttonId-9
-
         else:
             self.femConnectionStatus(False)
             self.miniConnectorSelect = False
-        #checkForm(self)
+        checkForm(self)
         self.setModuleType(self.moduleNumber)
         self.setMiniConnector(buttonId)
         self.app_main.asic_window.moduleSignal.emit(self.moduleNumber)
@@ -347,6 +350,9 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         self.powerStatusUpdateDone()        
         self.msgPrint("HV bias set complete")
+
+    def getTestHvBias():
+        return self.ui.testHvBiasEdit.text() 
     
     def powerStatusUpdate(self):
         
