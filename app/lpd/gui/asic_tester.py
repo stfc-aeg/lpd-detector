@@ -128,20 +128,12 @@ class LpdAsicTester(object):
             self.msgPrint("Using readoutParamFile: %s" % self.currentParams['testingReadoutParamFile'])
             self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
 
-            # Set moduleNumber and moduleString
-            #self.moduleNumber = moduleNumber
-
             self.setModuleType(moduleNumber)
 
             #increment run numbers
             self.runNumber = self.app_main.getCachedParam('runNumber')+1
             self.app_main.setCachedParam('runNumber', self.runNumber)
             
-#            powerCardResults = self.readPowerCards()
-#            #print >> sys.stderr, "powerCardResult: ", powerCardResults
-#            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-            
-            # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
             self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
 
             numFailedSections = 0
@@ -159,15 +151,9 @@ class LpdAsicTester(object):
                 self.msgPrint("High voltage is off, switching it on..")
                 self.toggleHvSupplies()
             
-#            self.msgPrint("2. Check as in ASIC bonding - [Skipping for now]")
-            
-#            powerCardResults = self.readPowerCards()
-#            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-            
             self.msgPrint("2. Power on sensor bias (HV) %s V" % self.hv)
             # Check HV bias level:
             powerCardResults = self.readPowerCards()
-            #print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
             measuredBiasLevel = powerCardResults['sensorBias0']
 
             try: 
@@ -188,7 +174,6 @@ class LpdAsicTester(object):
             #Get the pre configuration current to print on analysis pdf 
             powerCardResults = self.readPowerCards()
             self.preConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
-            #print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
 
             self.msgPrint("3. Take data with long exposure command sequence")
             # Set long exposure XML file, configure device
@@ -205,55 +190,9 @@ class LpdAsicTester(object):
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             self.msgPrint("Creating data analysis pdf")
-            self.msgPrint("tile: %s mini: %s name: %s" %(self.tilePosition,self.miniConnector,self.file_name))
+            #Pass data to the analysis pdf creator 
             pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.moduleDescription, self.runNumber, self.test_type, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent, self.hv)
-            #pdf_name = analysis_creation.DataAnalyser("RHS", 3,"/data/lpd/test/lpdData-04868.hdf5_000001.h5")
             self.msgPrint("PDF created: %s" % pdf_name)
-        
-
-            '''if self.file_name == None:
-                self.msgPrint("Error: No file received")
-            else:
-                self.msgPrint("4. Check/record unconnected pixels - Using leakage current check.")
-                numUnconnectedPixels = self.checkLeakageCurrent()
-                if numUnconnectedPixels != 0:
-                    self.msgPrint("There are %d unconnected pixel(s), that's a FAIL" % numUnconnectedPixels)
-                    numFailedSections += 1
-                else:
-                    self.msgPrint("There are no unconnected pixels, that's a PASS")
-        
-                self.msgPrint("5. Check/record shorted pixels")
-                (numShortedPixelsMin, numShortedPixelsMax, adjacentPixelPairs, neighbourStr) = self.locateShortedPixels()
-                # Does total number of shorted pixels exceed 0?
-                # Min = pixel stuck at value 0, Max = pixel stuck at value 4095
-                if (numShortedPixelsMin+numShortedPixelsMax) > 0:
-                    # Any minimum adjacent to a maximum?
-                    if neighbourStr.__len__() > 0:
-                        self.msgPrint("Adjacent shorted pixels detected:%s" % neighbourStr)
-                        self.msgPrint("That's a total of %d adjacent pair(s)." % adjacentPixelPairs)
-                    
-                    self.msgPrint("There are %d (value=0) and %d (value=4095) shorted pixel(s), that's a FAIL" % (numShortedPixelsMin, numShortedPixelsMax))
-                    numFailedSections += 1
-                else:
-                    self.msgPrint("There are no shorted pixels, that's a PASS")
-                    
-                # Summarise; Report how many failures (if any)
-                if numFailedSections == 0:
-                    self.msgPrint("Module %s is fine, failing none of the tests." % self.moduleString)
-                else:
-                    self.msgPrint("Module %s is problematic, it failed %d test(s)." % (self.moduleString, numFailedSections))
-    
-                    # Summarise which test(s) failed
-                    if numUnconnectedPixels > 0:
-                        self.msgPrint("* Failed test 5. There are %d unconnected pixel(s)." % numUnconnectedPixels)
-                    if (numShortedPixelsMin+numShortedPixelsMax) > 0:
-                        self.msgPrint("* Failed test 6. There are %d and %d min and max pixel(s)." % (numShortedPixelsMin, numShortedPixelsMax))
-                        # Any minimum adjacent to a maximum?
-                        if neighbourStr.__len__() > 0:
-                            self.msgPrint("     Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
-            # Hack DAQ tab to restore it to ready state
-            self.app_main.device_state = LpdFemState.DeviceReady
-            self.app_main.runStateUpdate()'''
 
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
@@ -292,7 +231,7 @@ class LpdAsicTester(object):
             
             # ASIC Bonding procedure:
 
-            self.msgPrint("1. Power on")
+            self.msgPrint("Power on")
 
             # Switch off supply/supplies if already on; 0=off, 1=on
             if self.lvState[0] == 1:
@@ -309,7 +248,7 @@ class LpdAsicTester(object):
                     self.msgPrint("HV bias was 200 V, Waiting 8 additional seconds..")
                     time.sleep(8)
 
-            # 1.Power on
+            # Power on
             
             if bSwitchLvOn:
                 self.msgPrint(" ! Low voltage is off, switching it on..")
@@ -324,144 +263,36 @@ class LpdAsicTester(object):
             # Record failed test message(s)
             errorMessages = []
             
-            # 2. Check and record current (1A < I < 4A)
-            self.msgPrint("2. Check and record current (1A < I < 4A)")
-            '''sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (1 < sensorCurrent < 4):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 2. current: %.2f A (not 1A < I < 4A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)'''
 
             # Ensure short exposure XML file used
             self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
             
             #Get the pre configuration current to print on analysis pdf 
             powerCardResults = self.readPowerCards()
-            self.preConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
-
-            # 3. Serial Load
-            self.msgPrint("3. Serial Load")
-            self.app_main.deviceConfigure(self.currentParams)
+            self.preConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]       
             
-            # Ensure XML file loaded in serial
-            paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
-            self.setApiValue(paramName, 1)
-
-            # 4. Check and record current (8A < I <= 10A)
-            self.msgPrint("4. Check and record current (8A < I <= 10A)")
-            '''sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (8 < sensorCurrent < 10):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 4. current: %.2f A (not 8A < I <= 10A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)'''
-            
-            #should there be two device configures?? 
-            self.app_main.deviceConfigure(self.currentParams)
-
-            #Get the post configuration current to print on analysis pdf 
-            powerCardResults = self.readPowerCards()
-            self.postConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
-
-            # 5. Readout Data
-            self.msgPrint("5. Readout Data")
-            self.app_main.deviceRun(self.currentParams)
-            self.file_name = self.app_main.last_data_file
-            self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
-
-            # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
-            '''if self.file_name == None:
-                self.msgPrint("Error: No file received")
-            else:
-                self.msgPrint("6. Check for out of range pixels")
-                numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[6. Pixels out of range]')
-                if numBadPixels == 0:
-                    self.msgPrint("6. Module %s has no bad pixels, that's a %s" % (self.moduleString, "PASS"))
-                else:
-                    self.msgPrint("6. Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
-                    errorMessages.append("Failed Test 6. Module has %d out of range pixel(s)" % numBadPixels)
-                    numFailedSections += 1'''
-            
-            # 7. Power off
-            self.msgPrint("7. Power Off")
-            self.toggleLvSupplies()
-            time.sleep(3)
-            self.toggleHvSupplies()
-            time.sleep(3)
-
-            # 8. Power on
-            self.msgPrint("8. Power On")
-
-            self.toggleLvSupplies()
-            time.sleep(3)
-            self.toggleHvSupplies()
-            time.sleep(3)
-            
-            # 9. Check and record current (1A < I < 4A)
-            self.msgPrint("9. Check and record current (1A < I < 4A)")
-            '''sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (1 < sensorCurrent < 4):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 9. current: %.2f A (not 1A < I < 4A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)'''
-            
-            # 10. Parallel load
-            self.msgPrint("10. Parallel Load")
+            # Parallel load
+            self.msgPrint("Parallel Load")
             self.app_main.deviceConfigure(self.currentParams)
             # Ensure XML file load in parallel:
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
             self.setApiValue(paramName, 0)
 
-            # 11. Check and record current (8A <I =< 10A)
-            self.msgPrint("11. Check and record current (8A < I <= 10A)")
-            '''sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (8 < sensorCurrent < 10):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 11. current: %.2f A (not 8A < I <= 10A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)'''
+            #Get the post configuration current to print on analysis pdf 
+            powerCardResults = self.readPowerCards()
+            self.postConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
 
-            # 12.Readout data
-            self.msgPrint("12. Readout Data")
+            # Readout data
+            self.msgPrint("Readout Data")
             self.app_main.deviceRun(self.currentParams)
             self.analysisPath = self.app_main.getCachedParam('analysisPdfPath')
 
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
             self.msgPrint("Creating data analysis pdf")
+            #pass data to the analysis pdf creator 
             pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.moduleDescription, self.runNumber, self.test_type, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent, self.hv)
             self.msgPrint("PDF created: %s" % pdf_name)            
-            
-            # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
-            '''if self.file_name == None:
-                self.msgPrint("Error: No file received")
-            else:
-                self.msgPrint("13. Check for out of range pixels")
-                numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[13. Pixels out arrange]')
-                if numBadPixels == 0:
-                    self.msgPrint("13. Module %s has no bad pixels, that's a %s" % (self.moduleString, "PASS"))
-                else:
-                    self.msgPrint("13. Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
-                    errorMessages.append("Failed Test 13. Module has %d out of range pixel(s)" % numBadPixels)
-                    numFailedSections += 1'''
-            
-            # Summarise; Report how many failures (if any)
-            if numFailedSections == 0:
-                self.msgPrint("Module %s is fine, failing none of the tests." % self.moduleString)
-            else:
-                self.msgPrint("Module %s is problematic, it failed %d test(s)." % (self.moduleString, numFailedSections))
-                for errorLine in errorMessages:
-                    self.msgPrint("* %s." % errorLine)
 
             # Hack DAQ tab to restore it to ready state
             self.app_main.device_state = LpdFemState.DeviceReady
@@ -480,10 +311,8 @@ class LpdAsicTester(object):
             for column in range(self.numCols):
                 
                 if self.moduleData[row][column] == 0:
-                    #print >> sys.stderr, "A zero at [{0:>2}][{1:>3}]".format(row, column)
                     minimumValues.append( (row, column))
                 elif self.moduleData[row][column] == 4095:
-                    #print >> sys.stderr, "A Max at [{0:>2}][{1:>3}]".format(row, column)
                     maximumValues.append( (row, column))
 
         minCount = minimumValues.__len__()

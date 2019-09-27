@@ -12,6 +12,7 @@ from functools import partial
 import logging, logging.handlers
 import datetime
 import main_power_tab
+import re
 
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import *
@@ -39,7 +40,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.app_main = app_main
         self.mainWindow = mainWindow
         self.ui = mainWindow.ui
-        #elf.lpdTester = LpdAsicTester
         # Disable GUI components from start
         self.ui.asicBondingBtn.setEnabled(False)
         self.ui.sensorBondingBtn.setEnabled(False)
@@ -109,10 +109,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
 
-#        # Set up logger unless already set up
-#        if self.logger is None:
-#            self.createLogger()
-
         self.msgPrint("Executing Sensor Bonding Tests..")
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
@@ -150,17 +146,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
 
-#        # Set up logger unless already set up
-#        if self.logger is None:
-#            self.createLogger()
-            
         self.msgPrint("Executing ASIC Bond tests..")
 
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
-        self.msgPrint("Module description is %s" %moduleDescription)
-        self.msgPrint("ModuleNumber is %s" %self.moduleNumber)
-        self.msgPrint("ModuleString is %s" %self.moduleString)
         self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
         self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
@@ -234,7 +223,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         time_stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%H%M%S')
         date_stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d')
         moduleNumber = str(self.ui.moduleNumberEdit.text())
-        #fileName = self.pathStem + "%s_%s/testResults.log" % (st, self.moduleString)
         fileName = self.pathStem + "%s/%s/testResults_%s.log" % (moduleNumber, date_stamp, time_stamp)
         
         # Check whether logger already set up
@@ -252,7 +240,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             os.makedirs( filePath )
         # Create and set handler, formatter
         self.hdl = logging.handlers.RotatingFileHandler(fileName, maxBytes=2097152, backupCount=5)
-        #formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         formatter = logging.Formatter('%(levelname)s %(message)s')
         self.hdl.setFormatter(formatter)
         self.logger.addHandler(self.hdl)
@@ -262,22 +249,23 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
     def operatorUpdate(self):
 
-        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed operatorEdit (to be: " + self.ui.operatorEdit.text() + ")")
         pass
     
     def moduleNumberUpdate(self):
+        self.msgPrint("module number changed ")
+        self.moduleNumber = re.match('^[a-zA-Z]-[0-9]{4}-[0-9]{3}$', self.ui.moduleNumberEdit.text())
 
-        try:
-            self.moduleNumber = float(self.ui.moduleNumberEdit.text())
-        except ValueError:
+        if self.moduleNumber:
+            self.moduleStringSet = True
+        else:
             self.msgPrint("Illegal value entered for module number: %s" % self.ui.moduleNumberEdit.text())
-            self.msgPrint("Please enter a number")
+            self.msgPrint("Please enter a valid module number format")
+            self.moduleStringSet = False
+
+        checkForm(self)
 
         # Setup logger at this point, regardless
         self.createLogger()
-
-        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: '" + moduleNumber + "')")
-
 
     def moduleTypeUpdate(self , buttonId):
         ''' Update module selection (right side versus left side) according to GUI choice made '''
@@ -365,19 +353,13 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 def checkForm(self):
     ''' Check all areas of the form have been filled out
     '''
-    moduleNumString = self.ui.moduleNumberEdit.text()
-    moduleNumLength = moduleNumString.count("")
     # Fix checking of QLineEdit's contents that both python 2 & 3 compatible
 
-    if moduleNumLength == 1:
-        self.testMsgPrint("The entered moduleNumber is blank, buttons remains locked..")
-        self.ui.asicBondingBtn.setEnabled(False)
-        self.ui.sensorBondingBtn.setEnabled(False)
-    elif  self.miniConnectorSelect != True:
-        self.testMsgPrint("Please select a mini connector")
-        self.ui.asicBondingBtn.setEnabled(False)
-        self.ui.sensorBondingBtn.setEnabled(False)
-    else:
+    if self.moduleStringSet is True and self.miniConnectorSelect == True:
         self.ui.asicBondingBtn.setEnabled(True)
         self.ui.sensorBondingBtn.setEnabled(True)
+    else:
+        self.testMsgPrint("Module number is not formatted correctly or a mini connector has not been selected, buttons remains locked..")
+        self.ui.asicBondingBtn.setEnabled(False)
+        self.ui.sensorBondingBtn.setEnabled(False)
 

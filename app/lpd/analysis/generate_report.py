@@ -14,11 +14,8 @@ def export(analysis_pdf_path, module_num, run_num, test_type, fig_list, filename
     if home_location[-1] == '/':
         home_location = home_location[:-1]
 
-    #save_path = "{}/develop/projects/lpd/tile_analysis".format(os.environ['HOME'])
-    # split() - remove file extension from filename of data
     pdf_name = '{}.pdf'.format(str(module_num)+"_"+str(run_num).zfill(5)+"_"+test_type)
     pdf_file = PdfPages('{}/{}'.format(analysis_pdf_path, pdf_name))
-    #open(save_path + "/" + pdf_name) nothing happens 
     
     for figure in fig_list:
         # Insert each figure into PDF created by Matplotlib

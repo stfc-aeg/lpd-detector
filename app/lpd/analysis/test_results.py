@@ -38,7 +38,6 @@ def setup_results_figure(filename, module_num, tile_position , mini_connector, h
 
     # Plot will be displayed with the table if this isn't done
     analysis_textarea.axis('off')
-    #plt.subplots_adjust(left=0.3)
 
     # Column and row labels for table
     columns = ("Bad Chips", "Bad Columns", "Bad Pixels") 

@@ -39,6 +39,7 @@ def setup_test_plots(test_type, gs, fig):
 def setup_fault_plots(fig, gs):
     ''' Create figure & plot for fault image
     '''
+    #Creating the subplots for the fault 
     gs1_tile = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[1],
                                                 width_ratios=[16,1], hspace=0.1)
     fault_tile_plot = fig.add_subplot(gs1_tile[0, 0])
