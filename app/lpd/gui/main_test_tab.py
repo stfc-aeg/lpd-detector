@@ -123,11 +123,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
         self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
                                         partial(self.app_main.asic_tester.executeBondingTest,self.moduleNumber, self.originalConnectorId, testType),
-                                        partial(self.BondingTestDone, testType)
+                                        partial(self.bondingTestDone, testType))
 
-    def BondingTestDone(self, testType):
+
+    def bondingTestDone(self, testType):
         
-        self.msgPrint("Finished testing %s Sensor Bonding" % testType)
+        self.msgPrint("Finished testing %s Bonding" % testType)
         # Lock run button to prevent DAQ tab running with (contaminated) settings
         self.ui.runBtn.setEnabled(False)
         # Unlock tab's GUI components after test completed
