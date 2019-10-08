@@ -93,11 +93,18 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
 
     def __del__(self):
-
         pass
+
+    def asicBondingTest(self):
+        ''' Execute ASIC Bonding Tests - specified on page 3 of the documentation '''
+        self.bondingTest("ASIC")
 
     def sensorBondingTest(self):
         ''' Execute Sensor Bonding Tests - specified on page 4 of the documentation '''
+        self.bondingTest("Sensor")
+
+    def bondingTest(self, testType):
+        ''' Execute Bonding Tests - specified on page 3-4 of the documentation '''
         # Lock tab's GUI components during test execution
         self.femConnectionStatus(False)
         try:
@@ -115,12 +122,12 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
         self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
-                                        partial(self.app_main.asic_tester.executeSensorBondingTest,self.moduleNumber, self.originalConnectorId),
-                                        self.sensorBondingTestDone)
+                                        partial(self.app_main.asic_tester.executeBondingTest,self.moduleNumber, self.originalConnectorId, testType),
+                                        partial(self.BondingTestDone, testType)
 
-    def sensorBondingTestDone(self):
+    def BondingTestDone(self, testType):
         
-        self.msgPrint("Finished testing ASIC Sensor Bonding")
+        self.msgPrint("Finished testing %s Sensor Bonding" % testType)
         # Lock run button to prevent DAQ tab running with (contaminated) settings
         self.ui.runBtn.setEnabled(False)
         # Unlock tab's GUI components after test completed
@@ -132,44 +139,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         except Exception as e:
             print >> sys.stderr, "sensorBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
-
-    def asicBondingTest(self):
-        ''' Execute ASIC Bonding Tests - specified on page 3 of the documentation '''
-        # Lock tab's GUI components during test execution
-        self.femConnectionStatus(False)
-        try:
-            # Also lock DAQ tab during text execution..
-            self.app_main.mainWindow.ui.runGroupBox.setEnabled(False)
-            self.app_main.mainWindow.ui.daqTab.setEnabled(False)
-
-        except Exception as e:
-            print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
-            return
-
-        self.msgPrint("Executing ASIC Bond tests..")
-
-        self.dumpGuiFieldsToLog()
-        moduleDescription = str(self.ui.moduleNumberEdit.text())
-        self.app_main.asic_tester.setModuleDescription(moduleDescription)
-        self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
-        self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
-                                        partial(self.app_main.asic_tester.executeAsicBondingTest, self.moduleNumber, self.originalConnectorId),
-                                        self.asicBondingTestDone)
-    
-    def asicBondingTestDone(self):
-
-        self.msgPrint("ASIC Bonding Tests Concluded")
-        # Lock run button to prevent DAQ tab running with (contaminated) settings
-        self.ui.runBtn.setEnabled(False)
-        # Unlock tab's GUI components after test completed
-        self.femConnectionStatus(True)
-        try:
-            # Also unlock DAQ tab during text execution..
-            self.app_main.mainWindow.ui.runGroupBox.setEnabled(True)
-            self.app_main.mainWindow.ui.daqTab.setEnabled(True)
-        except Exception as e:
-            print >> sys.stderr, "asicBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
-
+   
     def setModuleType(self, moduleNumber):
         ''' Helper function '''
 
@@ -339,7 +309,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.powerStatusUpdateDone()        
         self.msgPrint("HV bias set complete")
 
-    def getTestHvBias():
+    def getTestHvBias(self):
         return self.ui.testHvBiasEdit.text() 
     
     def powerStatusUpdate(self):

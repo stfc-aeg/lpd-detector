@@ -135,8 +135,6 @@ class LpdAsicTester(object):
             self.app_main.setCachedParam('runNumber', self.runNumber)
             
             self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
-
-            numFailedSections = 0
             
             # ASIC Bonding procedure:
 
@@ -214,7 +212,6 @@ class LpdAsicTester(object):
             self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
 
             # Set moduleNumber and moduleString
-            self.moduleNumber = moduleNumber
             self.setModuleType(moduleNumber)
             
             #incriment run numbers 
@@ -301,6 +298,120 @@ class LpdAsicTester(object):
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
             self.msgPrint("Exception during ASIC bonding test: %s" % e, bError=True)
+
+    def executeBondingTest(self, moduleNumber, originalConnectorId, testType):
+        ''' Execute the sequence of tests defined by Sensor Bonding specifications '''
+        try:
+            # Verify XML files specified in json file exist
+            if not self.verifyJsonFileNames():
+                self.msgPrint("File missing, exiting test prematurely", bError=True)
+                return
+
+            self.msgPrint("Using cmdSequenceFile:  %s" % self.currentParams['testingLongExposureFile'])
+            self.msgPrint("Using readoutParamFile: %s" % self.currentParams['testingReadoutParamFile'])
+            self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
+
+            # Set moduleNumber and moduleString
+            self.setModuleType(moduleNumber)
+
+            #increment run numbers
+            self.runNumber = self.app_main.getCachedParam('runNumber')+1
+            self.app_main.setCachedParam('runNumber', self.runNumber)
+            
+            # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
+            self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
+           
+            # ASIC Bonding procedure:
+            self.msgPrint("11: Power on")
+
+            # Switch off supply/supplies if already on; 0=off, 1=on           
+            if self.hvState[0] == 1:
+                self.msgPrint("High voltage is on, switching it off..")
+                self.toggleHvSupplies()
+                # Set bias to 0
+                self.hvSetBias(0.0)
+                # If bias was 200 V, need a longer delay here to allow the voltage drop
+                if self.biasState[0] > 199.0:
+                    self.msgPrint("HV bias was 200 V, Waiting 8 additional seconds..")
+                    time.sleep(8)
+
+            if self.lvState[0] == 1:
+                self.msgPrint("Low voltage is on, switching it off..")
+                self.toggleLvSupplies()
+
+            # Power on
+            self.msgPrint("Low voltage is off, switching it on..")
+            self.toggleLvSupplies()
+            self.msgPrint("High voltage is off, switching it on..")
+            self.toggleHvSupplies()
+            
+            # Check HV bias level:
+            if testType == "ASIC":
+                self.msgPrint("2: Power on sensor bias (HV) 50V")
+                self.hvSetBias(50.0) 
+            elif testType == "Sensor": 
+                self.msgPrint("2: Power on sensor bias (HV) %s V" % self.hv)
+                powerCardResults = self.readPowerCards()
+                measuredBiasLevel = powerCardResults['sensorBias0']
+
+                try: 
+                    timeout = time.time() + 30
+                    while not (float(self.hv)-2 < measuredBiasLevel  < float(self.hv)+2):
+                        powerCardResults = self.readPowerCards()
+                        measuredBiasLevel = powerCardResults['sensorBias0']           
+                        self.msgPrint("Bias level is %f V, changing it to be %s v" %(measuredBiasLevel, str(self.hv)))
+                        #change the HV bias 
+                        self.hvSetBias(float(self.hv), do_sleep=False)                    
+                        time.sleep(1)
+                        if timeout < time.time() or (float(self.hv)-2 < measuredBiasLevel  < float(self.hv)+2) :        
+                            break
+                except Exception as e:
+                    self.msgPrint(" Exception: %s" % e)      
+                self.msgPrint("Bias now set to %s V" % self.hv)
+
+            #Get the pre configuration current to print on analysis pdf 
+            powerCardResults = self.readPowerCards()
+            self.preConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
+
+            if testType == "ASIC":
+                self.msgPrint("3. Take data with short exposure command sequence")
+                # Ensure short exposure XML file used
+                self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
+            elif testType == "Sensor": 
+                self.msgPrint("3. Take data with long exposure command sequence")
+                # Set long exposure XML file, configure device
+                self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']
+            
+            # Ensure XML file load in parallel:
+            self.msgPrint("Parallel Load")
+            paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
+            self.setApiValue(paramName, 0)
+            self.app_main.deviceConfigure(self.currentParams)
+
+            #Get the post configuration currents 
+            powerCardResults = self.readPowerCards()
+            self.postConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
+            
+            # Readout Data
+            self.msgPrint("Readout Data")
+            self.app_main.deviceRun(self.currentParams)
+            self.file_name = self.app_main.last_data_file
+            self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
+
+            #Pass data to the analysis pdf creator
+            self.msgPrint("Creating data analysis pdf")
+            self.analysisPath = self.app_main.getCachedParam('analysisPdfPath')
+            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.moduleDescription, self.runNumber, testType, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent, self.hv)
+            self.msgPrint("PDF created: %s" % pdf_name)
+
+            # Hack DAQ tab to restore it to ready state
+            self.app_main.device_state = LpdFemState.DeviceReady
+            self.app_main.runStateUpdate()
+
+        except Exception as e:
+            print >> sys.stderr, "\n", traceback.print_exc()
+            self.msgPrint("Exception during %s Bonding testing: %s" % (testType, e), bError=True)
+
 
     def locateShortedPixels(self):
         ''' Locate any pixel(s) have the value 0 or 4095 '''
