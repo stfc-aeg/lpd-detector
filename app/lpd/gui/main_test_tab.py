@@ -54,7 +54,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         self.msgPrint = self.testMsgPrint   # Use MessageBox element within this tab
         
-        self.moduleNumber   = LpdAsicTester.LHS_MODULE
+        self.moduleNumber   = LpdAsicTester.RHS_MODULE
         self.moduleString   = ""
         self.setModuleType(self.moduleNumber)
         self.ui.analysisPathEdit.setText(self.app_main.getCachedParam('analysisPdfPath'))
@@ -116,19 +116,19 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
 
-        self.msgPrint("Executing Sensor Bonding Tests..")
+        self.msgPrint("Executing %s Bonding Tests.." % testType)
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
         self.app_main.asic_tester.setModuleDescription(moduleDescription)
         self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
-        self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
+        self.mainWindow.executeAsyncCmd(("Executing %s Bonding Tests.." % testType), 
                                         partial(self.app_main.asic_tester.executeBondingTest,self.moduleNumber, self.originalConnectorId, testType),
                                         partial(self.bondingTestDone, testType))
 
 
     def bondingTestDone(self, testType):
         
-        self.msgPrint("Finished testing %s Bonding" % testType)
+        self.msgPrint("Finished %s Bonding tests" % testType)
         # Lock run button to prevent DAQ tab running with (contaminated) settings
         self.ui.runBtn.setEnabled(False)
         # Unlock tab's GUI components after test completed
@@ -219,14 +219,13 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.app_main.asic_window.logPathSignal.emit(filePath)
 
     def operatorUpdate(self):
-
         pass
     
     def moduleNumberUpdate(self):
         self.msgPrint("module number changed ")
-        self.moduleNumber = re.match('^[a-zA-Z]-[0-9]{4}-[0-9]{3}$', self.ui.moduleNumberEdit.text())
+        isModuleNumber = re.match('^[a-zA-Z]-[0-9]{4}-[0-9]{3}$', self.ui.moduleNumberEdit.text())
 
-        if self.moduleNumber:
+        if isModuleNumber:
             self.moduleStringSet = True
         else:
             self.msgPrint("Illegal value entered for module number: %s" % self.ui.moduleNumberEdit.text())
@@ -242,15 +241,15 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         ''' Update module selection (right side versus left side) according to GUI choice made '''
         #Using radion buttons ID to get LHS or RHS 
         if buttonId <= 8: 
-                self.msgPrint("RHS module selected")
-                self.moduleNumber = LpdAsicTester.RHS_MODULE
-                self.miniConnectorSelect = True
-                self.originalConnectorId = buttonId+7
+            self.msgPrint("RHS module selected")
+            self.moduleNumber = LpdAsicTester.RHS_MODULE
+            self.miniConnectorSelect = True
+            self.originalConnectorId = buttonId+7
         elif buttonId > 8: 
-                self.msgPrint("LHS module selected") 
-                self.moduleNumber = LpdAsicTester.LHS_MODULE
-                self.miniConnectorSelect = True
-                self.originalConnectorId = buttonId-9
+            self.msgPrint("LHS module selected") 
+            self.moduleNumber = LpdAsicTester.LHS_MODULE
+            self.miniConnectorSelect = True
+            self.originalConnectorId = buttonId-9
         else:
             self.femConnectionStatus(False)
             self.miniConnectorSelect = False
