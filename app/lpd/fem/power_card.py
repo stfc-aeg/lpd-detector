@@ -61,20 +61,19 @@ class LpdPowerCard(object):
     TRIPPED         =  1
     FAULT           =  1
     NORMAL          =  0
-    
+
     # Enumerate fault flag as either cleared (0) or tripped (1) 
     flag_message    = ["No", "Yes"]
-    
+
     # i2c device addresses
     AD7998ADDRESS   = [0x22, 0x21, 0x24, 0x23]
-    
+    AD5321ADDRESS   = 0x0C
+    PCF8575ADDRESS  = 0x38
+
     # Beta is utilised as an argument for calling the calculateTemperature() 
     #    but it's effectively fixed by the hardware design
-    Beta            = 3474
-    
-    # Map powerCard addresses to scale
-    powerCardMapping = {0:600, 1:6.0, 2:3.0, 3:600, 4:10.0, 5:700, 6:3.0}
-    
+    BETA            = 3474
+
     def __init__(self, fem, i2cBus):
         '''
         Constructor for LpdPowerCard
@@ -92,7 +91,7 @@ class LpdPowerCard(object):
         adcVal = self.ad7998Read(self.AD7998ADDRESS[3], self.SENSA_TEMP_CHAN + sensorIdx)
         
         scale = 3.0
-        voltage = (adcVal * scale / 4095.0)
+        voltage = (adcVal * scale / 4096.0)
         # Calculate resistance from voltage
         resistance = self.calculateResistance(voltage)
         # Calculate temperature from resistance and return it
@@ -108,7 +107,7 @@ class LpdPowerCard(object):
             
         adcVal = self.ad7998Read(self.AD7998ADDRESS[1], channel)
         scale = 5.0
-        voltageValue = (adcVal * scale / 4095.0)
+        voltageValue = (adcVal * scale / 4096.0)
         
         return voltageValue 
     
@@ -116,7 +115,7 @@ class LpdPowerCard(object):
 
         adcVal = self.ad7998Read(self.AD7998ADDRESS[2], self.V33A_AMPS_CHAN + sensorIdx)
         scale = 16.6
-        currentValue = (adcVal * scale / 4095.0)
+        currentValue = (adcVal * scale / 4096.0)
         
         return currentValue
 
@@ -126,12 +125,11 @@ class LpdPowerCard(object):
             Reads high voltage bias level and converts
                 from ADC counts into voltage
         '''
-        addr = self.femI2cBus | 0x0C
-        response = self.fem.i2cRead(addr, 2)
-        high = (response[0] & 15) << 8
-        low = response[1]
-        value = high + low
-        return float( value * 500 / 4095.0)
+        dacVal = self.ad5321Read(self.AD5321ADDRESS)
+        scale = 333.0
+        biasValue = (dacVal * scale / 4096.0)
+
+        return biasValue
 
     def powerCardTempGet(self):
         '''
@@ -141,7 +139,7 @@ class LpdPowerCard(object):
         '''
         adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.PSU_TEMP_CHAN)
         scale = 3.0
-        voltage = (adcVal * scale / 4095.0)
+        voltage = (adcVal * scale / 4096.0)
         # Calculate resistance from voltage
         resistance = self.calculateResistance(voltage)
         # Calculate temperature from resistance
@@ -192,12 +190,15 @@ class LpdPowerCard(object):
         '''
             Set Sensor HV Bias Voltage [V]
         '''
-        adcValue = int( ceil( aValue/0.122) )
-        # Construct address and payload (as a tuple)
-        addr = self.femI2cBus | 0x0C
-        payload = ((adcValue & 0xF00) >> 8), (adcValue & 0xFF)
-        # Write new ADC value to device
-        self.fem.i2cWrite(addr, payload)
+
+        # Calculate the necessary DAC value. Full scale is equivalent to 333V due to 1/3 voltage
+        # divider on the 5V input to the HV converter. Scale factor for a 5V 12 bit ADC output is
+        # therefore 333 / 4096 = 0.0813
+        dacScale = 333.0 / 4096.0
+        dacValue = int(aValue / dacScale)
+
+        # Write new DAC value
+        self.ad5321Write(self.AD5321ADDRESS, dacValue)
 
     def sensorBiasEnableGet(self):
         '''
@@ -237,7 +238,7 @@ class LpdPowerCard(object):
         '''
         adcVal = self.ad7998Read(self.AD7998ADDRESS[1], self.V5_VOLTS_CHAN)
         scale = 10.0
-        return (adcVal * scale / 4095.0)
+        return (adcVal * scale / 4096.0)
 
     def femCurrentGet(self):
         '''
@@ -245,7 +246,7 @@ class LpdPowerCard(object):
         '''
         adcVal = self.ad7998Read(self.AD7998ADDRESS[1], self.V5_AMPS_CHAN)
         scale = 16.6
-        return (adcVal * scale / 4095.0)
+        return (adcVal * scale / 4096.0)
 
     def digitalVoltageGet(self):
         '''
@@ -255,7 +256,7 @@ class LpdPowerCard(object):
         '''
         adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V12_VOLTS_CHAN)
         scale = 3.0
-        return (adcVal * scale / 4095.0)
+        return (adcVal * scale / 4096.0)
 
     def digitalCurrentGet(self):
         '''
@@ -265,42 +266,27 @@ class LpdPowerCard(object):
         '''
         adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.V12_AMPS_CHAN)
         scale = 700.0
-        return (adcVal * scale / 4095.0)
+        return (adcVal * scale / 4096.0)
 
     def sensorBiasVoltageGet(self):
         '''
             Get Sensor bias voltage readback [V]
         '''
-        return self.sensorVoltageScaleRead(self.AD7998ADDRESS[0], self.HV_VOLTS_CHAN)
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.HV_VOLTS_CHAN)
+        scale = 600.0
+        return (adcVal * scale / 4096.0)
     
     def sensorBiasCurrentGet(self): 
         '''
             Get Sensor bias current readback [uA]
         '''
-        return self.sensorSixHundredMilliAmpsScaleRead(self.AD7998ADDRESS[0], self.HV_AMPS_CHAN)
-    
+        adcVal = self.ad7998Read(self.AD7998ADDRESS[0], self.HV_AMPS_CHAN)
+        scale = 600.0
+        return (adcVal * scale / 4096.0)
+
     ########################################################
     """     -=-=-=-=-=- Helper Functions -=-=-=-=-=-     """
     ########################################################
-
-    def sensorVoltageScaleRead(self, device, channel):
-        '''
-            Helper function: Reads the sensible at 'channel' in address 'address'
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 895.2
-        convertedValue = (adcVal * scale / 4095.0)
-        #print("sensorVoltageScaleRead: ", adcVal,  convertedValue)
-        return convertedValue
-        
-    def sensorSixHundredMilliAmpsScaleRead(self, device, channel):
-        '''
-            Helper function: Reads sensor voltage at 'channel' in address 'address',
-                and converts adc counts into 600 milliamp scale
-        '''
-        adcVal = self.ad7998Read(device, channel)
-        scale = 600.0
-        return (adcVal * scale / 4095.0)
 
     def ad7998Read(self, device, channel):
         '''
@@ -316,6 +302,32 @@ class LpdPowerCard(object):
         # Extract the received two bytes and return as one integer
         return (int((response[0] & 15) << 8) + int(response[1]))
 
+    def ad5321Write(self, device, dacValue):
+        '''
+        Write a value to a AD5321 DAC device
+        '''
+        # Construct I2C address and payload as a tuple of bytes
+        addr = self.femI2cBus | device
+        payload = ((dacValue & 0xF00) >> 8), (dacValue & 0xFF)
+
+        # Write the DAC value to the device
+        self.fem.i2cWrite(addr, payload)
+
+    def ad5321Read(self, device):
+        '''
+        Read a value from a AD531 DAC device
+        '''
+        # Constuct the I2C address to read from
+        addr = self.femI2cBus | device
+
+        # Read two bytes from the DAC
+        response = self.fem.i2cRead(addr, 2)
+
+        # Calculate DAC value from reponse
+        value = ((response[0] & 0xF) << 8) + response[1]
+
+        return value
+
     def pcf7485ReadOneBit(self, bitId):
         ''' 
             Read one byte from PCF7485 device and determine if set.
@@ -323,7 +335,7 @@ class LpdPowerCard(object):
                       5 = 8, 6 = 16, 7 = 32 8 = 64
             Therefore, bitId must be one of the following: [0, 1, 2, 4, 8, 16, 32, 64]
         '''
-        addr = self.femI2cBus | 0x38 
+        addr = self.femI2cBus | self.PCF8575ADDRESS
         response = self.fem.i2cRead(addr, 1)
         value = response[0]
         return (value & (1 << bitId)) != 0
@@ -341,7 +353,7 @@ class LpdPowerCard(object):
                 Beware      bit 0 = 1, bit 1 = 2, bit 2 = 4, etc !!
                 therefore   131 = 128 + 2 + 1 (bits: 7, 1, 0)
         '''
-        addr = self.femI2cBus | 0x38
+        addr = self.femI2cBus | self.PCF8575ADDRESS
         response = self.fem.i2cRead(addr, 1)
         return response[0]
 
@@ -349,7 +361,7 @@ class LpdPowerCard(object):
         ''' 
             Change bit 'bitId' to 'value' in PCF7485 device
         '''            
-        addr = self.femI2cBus | 0x38
+        addr = self.femI2cBus | self.PCF8575ADDRESS
         # Read PCF7485's current value
         bit_register = self.pcf7485ReadAllBits()
         # Change bit 'bitId' to 'value'
@@ -366,9 +378,9 @@ class LpdPowerCard(object):
         resistanceZero = 10000
         tempZero = 25.0
         if resistanceOne > 0.0:
-            invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / LpdPowerCard.Beta) * log(float(resistanceOne) / float(resistanceZero)) )
+            invertedTemperature = (1.0 / (273.1500 + tempZero)) + ( (1.0 / LpdPowerCard.BETA) * log(float(resistanceOne) / float(resistanceZero)) )
             # Invert the value to obtain temperature (in Kelvin) and subtract 273.15 to obtain Celsius
-            return (1 / invertedTemperature) - 273.15
+            return (1.0 / invertedTemperature) - 273.15
         else:
             #print("WARNING resistanceOne  = 0.0 !")
             return 0
