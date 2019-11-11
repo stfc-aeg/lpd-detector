@@ -62,17 +62,17 @@ class LpdAsicTester(object):
         self.currentParams['setupParamFile']                = self.currentParams['testingSetupParamFile']
         self.currentParams['run_number']                    = self.currentParams['runNumber']
 
-        self.moduleString = "-1"
+        self.moduleString = "RHS"
         self.moduleDescription = ""
         self.tilePosition = ""
-        self.miniConnector = 0
+        self.miniConnector = 1
         
         self.lvState   = [0, 0]
         self.hvState   = [0, 0]
         self.biasState = [0, 0]        
 
         self.hardwareDelay  = 3
-        self.moduleNumber   = 0
+        self.moduleNumber   = 1
         self.file_name       = ""
         self.image          = 0
         self.train          = 0
@@ -163,7 +163,7 @@ class LpdAsicTester(object):
             if testType == "ASIC":
                 self.msgPrint("2: Power on sensor bias (HV) 50V")
                 self.hvSetBias(50.0) 
-            elif testType == "Sensor": 
+            elif testType == "Sensor" or "All": 
                 self.msgPrint("2: Power on sensor bias (HV) %s V" % self.hv)
                 powerCardResults = self.readPowerCards()
                 measuredBiasLevel = powerCardResults['sensorBias0']
@@ -191,7 +191,7 @@ class LpdAsicTester(object):
                 self.msgPrint("3. Take data with short exposure command sequence")
                 # Ensure short exposure XML file used
                 self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
-            elif testType == "Sensor": 
+            elif testType == "Sensor" or "All": 
                 self.msgPrint("3. Take data with long exposure command sequence")
                 # Set long exposure XML file, configure device
                 self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']

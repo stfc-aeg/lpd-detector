@@ -43,10 +43,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Disable GUI components from start
         self.ui.asicBondingBtn.setEnabled(False)
         self.ui.sensorBondingBtn.setEnabled(False)
+        self.ui.allBondingBtn.setEnabled(False)
         self.ui.operatorEdit.setEnabled(False)
         self.ui.moduleNumberEdit.setEnabled(False)
         self.ui.commentEdit.setEnabled(False)
-        self.miniConnectorSelect = False
         self.ui.analysisPathEdit.setEnabled(False)
         self.ui.analysisPathBtn.setEnabled(False)
         self.ui.testHvBiasEdit.setEnabled(False)
@@ -56,9 +56,11 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         
         self.moduleNumber   = LpdAsicTester.RHS_MODULE
         self.moduleString   = ""
+        self.moduleStringSet = False
         self.setModuleType(self.moduleNumber)
         self.ui.analysisPathEdit.setText(self.app_main.getCachedParam('analysisPdfPath'))
         self.ui.testHvBiasEdit.setText(str(self.app_main.getCachedParam('hvBiasVolts')))
+        self.originalConnectorId = 8
 
         self.image          = 0
         self.train          = 0
@@ -74,6 +76,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.testHvBiasSetBtn,      QtCore.SIGNAL("clicked()"),           self.hvBiasSetUpdate)
         QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)   # "ASIC Bonding"
         QtCore.QObject.connect(self.ui.sensorBondingBtn,      QtCore.SIGNAL("clicked()"),           self.sensorBondingTest) # "Sensor Bonding"
+        QtCore.QObject.connect(self.ui.allBondingBtn,         QtCore.SIGNAL("clicked()"),           self.allBondingTest) # "Test All"
         
         #Set the id for the connector radio buttons
         self.connector_btns = []
@@ -102,6 +105,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     def sensorBondingTest(self):
         ''' Execute Sensor Bonding Tests - specified on page 4 of the documentation '''
         self.bondingTest("Sensor")
+
+    def allBondingTest(self):
+        ''' Execute ASIC Bonding Tests - specified on page 3 of the documentation '''
+        self.bondingTest("All")
 
     def bondingTest(self, testType):
         ''' Execute Bonding Tests - specified on page 3-4 of the documentation '''
@@ -173,6 +180,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         if moduleNumLength != 1:
             self.ui.asicBondingBtn.setEnabled(bConnected)
             self.ui.sensorBondingBtn.setEnabled(bConnected)
+            self.ui.allBondingBtn.setEnabled(bConnected)
         self.ui.operatorEdit.setEnabled(bConnected)
         self.ui.moduleNumberEdit.setEnabled(bConnected)
         self.ui.commentEdit.setEnabled(bConnected)
@@ -243,16 +251,13 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         if buttonId <= 8: 
             self.msgPrint("RHS module selected")
             self.moduleNumber = LpdAsicTester.RHS_MODULE
-            self.miniConnectorSelect = True
             self.originalConnectorId = buttonId+7
         elif buttonId > 8: 
             self.msgPrint("LHS module selected") 
             self.moduleNumber = LpdAsicTester.LHS_MODULE
-            self.miniConnectorSelect = True
             self.originalConnectorId = buttonId-9
         else:
             self.femConnectionStatus(False)
-            self.miniConnectorSelect = False
         checkForm(self)
         self.setModuleType(self.moduleNumber)
         self.setMiniConnector(buttonId)
@@ -325,11 +330,13 @@ def checkForm(self):
     '''
     # Fix checking of QLineEdit's contents that both python 2 & 3 compatible
 
-    if self.moduleStringSet is True and self.miniConnectorSelect == True:
+    if self.moduleStringSet is True:
         self.ui.asicBondingBtn.setEnabled(True)
         self.ui.sensorBondingBtn.setEnabled(True)
+        self.ui.allBondingBtn.setEnabled(True)
     else:
-        self.testMsgPrint("Module number is not formatted correctly or a mini connector has not been selected, buttons remains locked..")
+        self.testMsgPrint("Module number is not formatted correctly, buttons remains locked..")
         self.ui.asicBondingBtn.setEnabled(False)
         self.ui.sensorBondingBtn.setEnabled(False)
+        self.ui.allBondingBtn.setEnabled(False)
 

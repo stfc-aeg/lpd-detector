@@ -109,18 +109,20 @@ def disable_ticks(ax):
     ax.axes.get_yaxis().set_ticks([])
 
 
-def set_plot_titles(mean_tile_plot, mean_histogram, stdev_tile_plot, stdev_histogram,
-                    fault_tile_plot, trigger_plots, first_image_plot):
+def set_plot_titles(test_type, fault_tile_plot, first_image_plot, trigger_plots=None,
+                     mean_tile_plot=None, mean_histogram=None,
+                     stdev_tile_plot=None, stdev_histogram=None):
     ''' Set titles of all plots and remove ticks on images
         Titles are removed on each gca() call so must be re-set for every analysis done
     '''
-    mean_tile_plot.set_title("Plot of Tile Using Mean Data", fontsize=16)
-    mean_histogram.set_title("Histogram of Mean Tile Data", fontsize=16)
-    disable_ticks(mean_tile_plot)
+    if (test_type != "All") :
+        mean_tile_plot.set_title("Plot of Tile Using Mean Data", fontsize=16)
+        mean_histogram.set_title("Histogram of Mean Tile Data", fontsize=16)
+        disable_ticks(mean_tile_plot)
 
-    stdev_tile_plot.set_title("Plot of Tile Using Standard Deviation Data", fontsize=16)
-    stdev_histogram.set_title("Histogram of Standard Deviation Tile Data", fontsize=16)
-    disable_ticks(stdev_tile_plot)
+        stdev_tile_plot.set_title("Plot of Tile Using Standard Deviation Data", fontsize=16)
+        stdev_histogram.set_title("Histogram of Standard Deviation Tile Data", fontsize=16)
+        disable_ticks(stdev_tile_plot)
 
     fault_tile_plot.set_title("Plot of Tile's Faults", fontsize=16)
     first_image_plot.set_title("First Image of Data", fontsize=16)
