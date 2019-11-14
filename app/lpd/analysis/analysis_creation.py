@@ -19,8 +19,6 @@ import os.path
 class DataAnalyser():
 
     def __init__(self, analysis_pdf, module_num, run_num, test_type, tile_position , mini_connector, file_name, pre_config_current, post_config_current, hvBias):
-
-        #def analyse_data(self, tile_position , mini_connector, file_name):
         ''' Analysis is performed on the specific tile selected, analysing data by taking mean and standard deviation
             measurements
         '''  
@@ -39,7 +37,7 @@ class DataAnalyser():
         lpd_data = extract_data.get_lpd_data(self.lpd_file)
 
         if (self.test_type != "All"):
-            self.tile_position = extract_data.set_tile_position("tile_position", self.mini_connector)
+            self.tile_position = extract_data.set_tile_position(tile_position, self.mini_connector)
             mean_tile = extract_data.get_mean_tile(lpd_data, self.tile_position)
             stdev_tile = extract_data.get_stdev_tile(lpd_data, self.tile_position)
             fault_tile = np.zeros((32, 128), dtype=np.int32)
@@ -65,42 +63,42 @@ class DataAnalyser():
             
         else:
             self.figure_setup()
-            fault_tile_list = [np.zeros((32, 128), dtype=np.int32)] * 16
-            bad_chips_mean_list = [None] * 16
-            bad_cols_mean_list = [None] * 16
-            bad_pixels_mean_list = [None] * 16
-            bad_chips_stdev_list = [None] * 16
-            bad_cols_stdev_list = [None] * 16
-            bad_pixels_stdev_list = [None] * 16
+            fault_tile = np.zeros(((32*8), (128*2)), dtype=np.int32)
+            bad_chips_mean_list = np.zeros((16,2), dtype=np.int8)
+            bad_cols_mean_list = np.zeros((16,2), dtype=np.int8)
+            bad_pixels_mean_list = np.zeros((16,2), dtype=np.int8)
+            bad_chips_stdev_list = np.zeros((16,2), dtype=np.int8)
+            bad_cols_stdev_list = np.zeros((16,2), dtype=np.int8)
+            bad_pixels_stdev_list = np.zeros((16,2), dtype=np.int8)
             
-
             for x in range(16):
                 if (x < 8):
                     self.tile_position = extract_data.set_tile_position("RHS", x+1)
+                    fault_tile_subset = fault_tile[(32*x):(32*(x+1)), :128]
                 else:
                     self.tile_position = extract_data.set_tile_position("LHS", x-7)
+                    fault_tile_subset = fault_tile[(32*(x-8)):(32*(x-7)), 128:]
+
                 mean_tile = extract_data.get_mean_tile(lpd_data, self.tile_position)
                 stdev_tile = extract_data.get_stdev_tile(lpd_data, self.tile_position)
 
                 # Mean data test with plots of mean tile and histogram
-                bad_chips_mean_list[x] = test_data.bad_chips(mean_tile, fault_tile_list[x], 1)
-                bad_cols_mean_list[x] = test_data.bad_columns(mean_tile, fault_tile_list[x], 1)
-                bad_pixels_mean_list[x] = test_data.bad_pixels(mean_tile, fault_tile_list[x], 1)
+                bad_chips_mean_list[x] = test_data.bad_chips(mean_tile, fault_tile_subset, 1)
+                bad_cols_mean_list[x] = test_data.bad_columns(mean_tile, fault_tile_subset, 1)
+                bad_pixels_mean_list[x] = test_data.bad_pixels(mean_tile, fault_tile_subset, 1)
 
                 # Test using standard deviation data
-                bad_chips_stdev_list[x] = test_data.bad_chips(stdev_tile, fault_tile_list[x], 2)
-                bad_cols_stdev_list[x] = test_data.bad_columns(stdev_tile, fault_tile_list[x], 2)
-                bad_pixels_stdev_list[x] = test_data.bad_pixels(stdev_tile, fault_tile_list[x], 2)   
+                bad_chips_stdev_list[x] = test_data.bad_chips(stdev_tile, fault_tile_subset, 2)
+                bad_cols_stdev_list[x] = test_data.bad_columns(stdev_tile, fault_tile_subset, 2)
+                bad_pixels_stdev_list[x] = test_data.bad_pixels(stdev_tile, fault_tile_subset, 2)   
 
-            fault_tile = self.collate_list(fault_tile_list)
-            bad_chips_mean = self.collate_list(bad_chips_mean_list)
-            bad_cols_mean = self.collate_list(bad_cols_mean_list)
-            bad_pixels_mean = self.collate_list(bad_pixels_mean_list)
-            bad_chips_stdev = self.collate_list(bad_chips_stdev_list)
-            bad_cols_stdev = self.collate_list(bad_cols_stdev_list)
-            bad_pixels_stdev = self.collate_list(bad_pixels_stdev_list)
+            bad_chips_mean = [sum(bad_chips_mean_list[:,0]), sum(bad_chips_mean_list[:, 1])]
+            bad_cols_mean = [sum(bad_cols_mean_list[:,0]), sum(bad_cols_mean_list[:, 1])]
+            bad_pixels_mean = [sum(bad_pixels_mean_list[:,0]), sum(bad_pixels_mean_list[:, 1])]
+            bad_chips_stdev = [sum(bad_chips_stdev_list[:,0]), sum(bad_chips_stdev_list[:, 1])]
+            bad_cols_stdev = [sum(bad_cols_stdev_list[:,0]), sum(bad_cols_stdev_list[:, 1])]
+            bad_pixels_stdev = [sum(bad_pixels_stdev_list[:,0]), sum(bad_pixels_stdev_list[:, 1])]
 
-        print(fault_tile)
         print(np.sum(fault_tile))
         # Plotting fault image
         fault_tiles.plot_faults(self.fault_tile_plot, fault_tile)
@@ -170,11 +168,3 @@ class DataAnalyser():
 
         pdf_file_name = generate_report.export(self.analysis_pdf, self.module_num, self.run_num, self.test_type, pdf_fig_list, file_name)
         return pdf_file_name
-
-
-    def collate_list(self, item_list):
-        item = np.concat((item_list[0], item_list[8]), axis=1)
-        for i in range(7) :
-            newRows = np.concat((item_list[i+1], item_list[i+9]), axis=1)
-            item = np.concat((item, newRows))
-        return item

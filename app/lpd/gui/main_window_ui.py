@@ -1978,7 +1978,7 @@ class Ui_MainWindow(object):
         self.testTab.setAutoFillBackground(True)
         self.testTab.setObjectName(_fromUtf8("testTab"))
         self.testMessageGroupBox = QtGui.QGroupBox(self.testTab)
-        self.testMessageGroupBox.setGeometry(QtCore.QRect(10, 230, 761, 421))
+        self.testMessageGroupBox.setGeometry(QtCore.QRect(10, 220, 761, 431))
         self.testMessageGroupBox.setObjectName(_fromUtf8("testMessageGroupBox"))
         self.testMessageBox = QtGui.QPlainTextEdit(self.testMessageGroupBox)
         self.testMessageBox.setGeometry(QtCore.QRect(0, 20, 761, 391))
