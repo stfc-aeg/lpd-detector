@@ -289,7 +289,7 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.testMsgPrint("Logging Comment: '%s'" % str(self.ui.commentEdit.text()))
     
     def analysisPathSelect(self):
-        dirName = QtGui.QFileDialog.getExistingDirectory(self.mainWindow, "Select  analysis creation directory:", self.app_main.getCachedParam('analysisPdfPath'))
+        dirName = QtGui.QFileDialog.getExistingDirectory(self.mainWindow, "Select analysis creation directory:", self.app_main.getCachedParam('analysisPdfPath'))
         if dirName != "":
             self.app_main.setCachedParam('analysisPdfPath', str(dirName))
             self.ui.analysisPathEdit.setText(dirName)
@@ -313,6 +313,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
 
         self.powerStatusUpdateDone()        
         self.msgPrint("HV bias set complete")
+        self.app_main.mainWindow.ui.runGroupBox.setEnabled(True)
+        self.app_main.mainWindow.ui.daqTab.setEnabled(True)
 
     def getTestHvBias(self):
         return self.ui.testHvBiasEdit.text() 

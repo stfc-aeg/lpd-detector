@@ -1,6 +1,5 @@
 ''' Creates plots based on input data
 '''
-
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
@@ -15,8 +14,7 @@ def setup_test_plots(test_type, gs, fig):
     if (test_type == 2):
         subplot_spec = 0
         #Create Page 2 layout 
-        fig = plt.figure(figsize=(8.27,11.69))
-        gs = gridspec.GridSpec(3, 1 )
+        fig, gs = setup_second_page()
     else:
         subplot_spec = 2
 
@@ -35,12 +33,24 @@ def setup_test_plots(test_type, gs, fig):
 
     return (fig, gs, tile_plot, tile_colorbar, histogram)
 
+def setup_second_page(testAll=False):
+    fig = plt.figure(figsize=(8.27,11.69))
+    if testAll:
+        gs = gridspec.GridSpec(2, 1, hspace=0.4)
+    else:
+        gs = gridspec.GridSpec(3, 1, hspace=0.4)
+    return (fig, gs)
 
-def setup_fault_plots(fig, gs):
+
+def setup_fault_plots(fig, gs, test_type):
     ''' Create figure & plot for fault image
     '''
     #Creating the subplots for the fault 
-    gs1_tile = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[1],
+    if test_type == "All":
+        gs1_tile = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[0],
+                                                width_ratios=[16,1], hspace=0.1)
+    else:
+        gs1_tile = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[1],
                                                 width_ratios=[16,1], hspace=0.1)
     fault_tile_plot = fig.add_subplot(gs1_tile[0, 0])
     fault_legend = fig.add_subplot(gs1_tile[0, 1])
@@ -87,10 +97,13 @@ def setup_trigger_plots(fig , gs):
     return (fig, trigger_plots, trigger_colorbar)
 
 
-def setup_first_image_plot(fig , gs):
+def setup_first_image_plot(fig, gs, test_type):
     ''' Create figure and plot for very first image
     '''
-    gs_first_image = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[2], width_ratios=[16,1])
+    if test_type=="All":
+        gs_first_image = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[1], width_ratios=[16,1])
+    else:
+        gs_first_image = gridspec.GridSpecFromSubplotSpec(ncols =2, nrows=1, subplot_spec=gs[2], width_ratios=[16,1])
 
     # Create subplots for image and respective colorbar
     first_image_plot = fig.add_subplot(gs_first_image[0, 0])

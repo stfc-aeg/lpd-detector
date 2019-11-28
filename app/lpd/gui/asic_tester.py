@@ -7,10 +7,11 @@ from lpd.gui.state import LpdFemState
 import traceback        # Improves debugging
 import numpy as np
 import h5py, time, sys
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import cbook
 import matplotlib.pyplot as plt
 import matplotlib.text as text
-import matplotlib
 import argparse
 import timeit, time, os.path
 from lpd.analysis import analysis_creation
@@ -221,6 +222,18 @@ class LpdAsicTester(object):
             # Hack DAQ tab to restore it to ready state
             self.app_main.device_state = LpdFemState.DeviceReady
             self.app_main.runStateUpdate()
+
+            # Switch off supply/supplies          
+            self.msgPrint("Switching Off High voltage")
+            self.toggleHvSupplies()
+                # Set bias to 0
+            self.hvSetBias(0.0)
+            # If bias was 200 V, need a longer delay here to allow the voltage drop
+            if self.biasState[0] > 199.0:
+                self.msgPrint("HV bias was 200 V, Waiting 8 additional seconds..")
+                time.sleep(8)
+            self.msgPrint("Switching Off Low voltage ")
+            self.toggleLvSupplies()
 
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()

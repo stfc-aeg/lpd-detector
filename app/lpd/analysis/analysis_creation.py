@@ -129,15 +129,16 @@ class DataAnalyser():
         # Setup figures, subplots and results table
         if (self.test_type != "All"):
             self.fig_page1, self.gs1, self.results_table, self.analysis_textarea, self.analysis_text_list = test_results.setup_results_figure(self.file_name, self.module_num, self.hvBias, self.test_type, self.tile_position , self.mini_connector)
-            self.fault_fig, self.fault_tile_plot, self.fault_legend = plot.setup_fault_plots(self.fig_page1, self.gs1)
+            self.fault_fig, self.fault_tile_plot, self.fault_legend = plot.setup_fault_plots(self.fig_page1, self.gs1, self.test_type)
             self.mean_fig, self.gs,  self.mean_tile_plot, self.mean_tile_colorbar, self.mean_histogram = plot.setup_test_plots(1, self.gs1, self.fig_page1)
             self.fig_page2 , self.gs2, self.stdev_tile_plot, self.stdev_tile_colorbar, self.stdev_histogram = plot.setup_test_plots(2, self.gs1, self.fig_page1)
-            self.fig_trigger, self.trigger_plots, self.trigger_colorbar = plot.setup_trigger_plots(self.fig_page2 , self.gs2)
-            self.fig_first_image, self.first_image_plot, self.first_image_colorbar = plot.setup_first_image_plot(self.fig_page2,self.gs2)
+            self.fig_trigger, self.trigger_plots, self.trigger_colorbar = plot.setup_trigger_plots(self.fig_page2, self.gs2)
+            self.fig_first_image, self.first_image_plot, self.first_image_colorbar = plot.setup_first_image_plot(self.fig_page2, self.gs2, self.test_type)
         else:
             self.fig_page1, self.gs1, self.results_table, self.analysis_textarea, self.analysis_text_list = test_results.setup_results_figure(self.file_name, self.module_num, self.hvBias, self.test_type)
-            self.fault_fig, self.fault_tile_plot, self.fault_legend = plot.setup_fault_plots(self.fig_page1, self.gs1)
-            self.fig_first_image, self.first_image_plot, self.first_image_colorbar = plot.setup_first_image_plot(self.fig_page1,self.gs1)
+            self.fig_page2, self.gs2 = plot.setup_second_page(True)
+            self.fault_fig, self.fault_tile_plot, self.fault_legend = plot.setup_fault_plots(self.fig_page2, self.gs2, self.test_type)
+            self.fig_first_image, self.first_image_plot, self.first_image_colorbar = plot.setup_first_image_plot(self.fig_page2, self.gs2, self.test_type)
 
 
         self.data_file_path = self.lpd_file
@@ -161,10 +162,8 @@ class DataAnalyser():
         file_name = str(self.file_name)
         file_name = os.path.basename(file_name)
         # Generate list of figures to be added to pdf
-        if (self.test_type != "All"):
-            pdf_fig_list = [self.fig_page1, self.fig_page2]
-        else:
-            pdf_fig_list = [self.fig_page1]
+        pdf_fig_list = [self.fig_page1, self.fig_page2]
+
 
         pdf_file_name = generate_report.export(self.analysis_pdf, self.module_num, self.run_num, self.test_type, pdf_fig_list, file_name)
         return pdf_file_name

@@ -27,7 +27,7 @@ def setup_results_figure(filename, module_num, hvBias, test_type, tile_position=
     gs1_tile = gridspec.GridSpecFromSubplotSpec(2,1, subplot_spec=gs1[0], height_ratios=[2,1])
 
     if (test_type == "All"):
-        plt.suptitle("Analysis of module number: %s \n HV Bias set to: %s V" %(module_num, hvBias))
+        plt.suptitle("Analysis of all tiles with HV Bias set to: %s V" % hvBias)
     else:
         plt.suptitle("Analysis of module number: %s Tile from %s mini connector number %s \n HV Bias set to: %s V" %(module_num, tile_position, str(mini_connector), hvBias))
         if(tile_position[1] == 128):
