@@ -351,17 +351,17 @@ class LpdAsicTester(object):
         # Loop over LHS and RHS power cards and update display
         for powerCard in range(self.app_main.pwr_card.numPowerCards):
 
-            #paramName = 'asicPowerEnable' + str(powerCard)
-            #self.lvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
-            self.lvState[powerCard] = 1
+            paramName = 'asicPowerEnable' + str(powerCard)
+            self.lvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
+            #self.lvState[powerCard] = 1
 
-            #paramName = 'sensorBiasEnable' + str(powerCard)
-            #self.hvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
-            self.hvState[powerCard] = 1
+            paramName = 'sensorBiasEnable' + str(powerCard)
+            self.hvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
+            #self.hvState[powerCard] = 1
             
-            #paramName = 'sensorBias' + str(powerCard)
-            #self.biasState[powerCard] = powerState[paramName]
-            self.biasState[powerCard] = 1
+            paramName = 'sensorBias' + str(powerCard)
+            self.biasState[powerCard] = powerState[paramName]
+            #self.biasState[powerCard] = 1
 
         if self.lvState[0] != self.lvState[1]:
             self.msgPrint("LpdAsicTester Error: LV status mismatch between power card", bError=True)

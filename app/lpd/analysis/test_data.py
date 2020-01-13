@@ -21,7 +21,12 @@ def bad_chips(tile_data, fault_tile, test_type):
 
         if test_chip:
             # Take mean value of each chip
-            mean_chip_value = np.mean(extract_data.get_single_chip(tile_data, chip))
+            # mean_chip_value = np.mean(extract_data.get_single_chip(tile_data, chip))
+
+            data = np.asarray(extract_data.get_single_chip(tile_data, chip))
+            # Remove all points more than 2 standard deviations from the mean
+            data_without_outliers = data[abs(data - np.mean(data)) < 2 * np.std(data)]
+            mean_chip_value = np.mean(data_without_outliers)
 
             if mean_chip_value < chip_threshold[0]:
                 below_threshold_chips, chip_position = chips_addition(below_threshold_chips,chip)
