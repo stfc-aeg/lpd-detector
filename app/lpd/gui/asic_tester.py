@@ -157,14 +157,15 @@ class LpdAsicTester(object):
             # Power on
             self.msgPrint("Low voltage is off, switching it on..")
             self.toggleLvSupplies()
-            self.msgPrint("High voltage is off, switching it on..")
-            self.toggleHvSupplies()
+            if testType != "ASIC":
+                self.msgPrint("High voltage is off, switching it on..")
+                self.toggleHvSupplies()
             
-            # Check HV bias level:
-            if testType == "ASIC":
-                self.msgPrint("2: Power on sensor bias (HV) 50V")
-                self.hvSetBias(50.0) 
-            elif testType == "Sensor" or "All": 
+                # Check HV bias level:
+#            if testType == "ASIC":
+#                self.msgPrint("2: Power on sensor bias (HV) 50V")
+#                self.hvSetBias(50.0) 
+#            elif testType == "Sensor" or "All": 
                 self.msgPrint("2: Power on sensor bias (HV) %s V" % self.hv)
                 powerCardResults = self.readPowerCards()
                 measuredBiasLevel = powerCardResults['sensorBias0']
