@@ -6,6 +6,7 @@
     "cmdSequenceFile":"/u/xfu59478/develop/projects/lpd/lpd-fem/python/src/LpdFemGui/config/CmdSequence/LCLS_2018_Cmds_upto20images_1MHz.xml",
     "connectionTimeout":5.0,
     "dataFilePath":"/data/lpd/matt",
+    "analysisPdfPath":"/u/bot46565/develop/projects/lpd/tile_analysis",
     "dataVersion":"1",
     "evrMcastGroup":"239.255.16.16",
     "evrMcastInterface":"172.21.25.200",

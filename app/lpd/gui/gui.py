@@ -90,7 +90,7 @@ class LpdFemGui:
                 self.asic_tester = LpdAsicTester(self, self.device)
 
                 self.asic_window = LpdFemGuiAsicWindow(self)
-                self.asic_window.show()    # Hide window for now while testing
+                # self.asic_window.show()    # Hide window for now while testing
 
             except Exception as e:
                 print("LpdFemGui initialisation exception: %s" % e, file=sys.stderr)
@@ -131,6 +131,7 @@ class LpdFemGui:
                           'cmdSequenceFile'   : self.default_config_path + '/Command_LongExposure_V2.xml',
                           'setupParamFile'    : self.default_config_path + '/Setup_LowPower.xml',
                           'dataFilePath'      : '/tmp',
+                          'analysisPdfPath'   : '/tmp',
                           'hvBiasVolts'       : 50.0,
                           'numTrains'         : 8,
                           'externalTrigger'   : True,
@@ -509,6 +510,7 @@ class LpdFemGui:
                 # Wait for the data receiver threads to complete
                 try:
                     self.odin_data_receiver.awaitCompletion()
+                    self.last_data_file = self.odin_data_receiver.last_data_file()
                 except Exception as e:
                     self.msgPrint("ERROR: failed to await completion of data receiver threads: %s" % e)
 #---------------------

@@ -7,12 +7,18 @@ from lpd.gui.state import LpdFemState
 import traceback        # Improves debugging
 import numpy as np
 import h5py, time, sys
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import cbook
 import matplotlib.pyplot as plt
 import matplotlib.text as text
-import matplotlib
 import argparse
 import timeit, time, os.path
+from lpd.analysis import analysis_creation
+import gui
+import main_power_tab
+from main_power_tab import LpdFemGuiMainPowerTab
+
 
 # Create decorator method to time code execution
 def timingMethodDecorator(methodToDecorate):
@@ -35,6 +41,7 @@ class LpdAsicTester(object):
         super(LpdAsicTester, self).__init__()    # Required for pyqtSignal
         self.app_main = app_main
         self.device = device
+        self.lpdFemGui = gui.LpdFemGui
         
         # Established signals (and slots)
         self.messageSignal = self.app_main.mainWindow.testTab.messageSignal
@@ -54,17 +61,19 @@ class LpdAsicTester(object):
         self.currentParams['arduinoShutterEnable']          = False
         self.currentParams['readoutParamFile']              = self.currentParams['testingReadoutParamFile']
         self.currentParams['setupParamFile']                = self.currentParams['testingSetupParamFile']
-        self.currentParams['run_number']                     = 9000
+        self.currentParams['run_number']                    = self.currentParams['runNumber']
 
-        self.moduleString = "-1"
+        self.moduleString = "RHS"
         self.moduleDescription = ""
+        self.tilePosition = ""
+        self.miniConnector = 1
         
         self.lvState   = [0, 0]
         self.hvState   = [0, 0]
         self.biasState = [0, 0]        
 
         self.hardwareDelay  = 3
-        self.moduleNumber   = 0
+        self.moduleNumber   = 1
         self.file_name       = ""
         self.image          = 0
         self.train          = 0
@@ -74,6 +83,7 @@ class LpdAsicTester(object):
         
         self.moduleStd      = -1.0
         self.moduleAverage  = -1.0
+        self.runNumber      = 0
         
 
     def msgPrint(self, message, bError=False):
@@ -84,6 +94,14 @@ class LpdAsicTester(object):
         ''' Enable LpdFemGuiMainTestTab to communicate module description, i.e. "00135"
             Note that RHS/LHS determined by moduleLhsSel/moduleRhsSel in the GUI '''
         self.moduleDescription = moduleDescription
+
+    def setMiniConnector(self, miniConnector):
+        '''Set the mini connector for tile analysis''' 
+        self.miniConnector = miniConnector
+    
+    def setHvEditBox(self, hv):
+        '''Set the hv input for the test tab'''
+        self.hv = hv
     
     def verifyJsonFileNames(self):
         ''' Check that the user-specified filenames in the .json file are valid '''
@@ -96,9 +114,8 @@ class LpdAsicTester(object):
                 bErrorOk = False
         return bErrorOk
 
-    def executeSensorBondingTest(self, moduleNumber):
+    def executeBondingTest(self, moduleNumber, originalConnectorId, testType):
         ''' Execute the sequence of tests defined by Sensor Bonding specifications '''
-
         try:
             # Verify XML files specified in json file exist
             if not self.verifyJsonFileNames():
@@ -110,152 +127,19 @@ class LpdAsicTester(object):
             self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
 
             # Set moduleNumber and moduleString
-            self.moduleNumber = moduleNumber
             self.setModuleType(moduleNumber)
-            
-#            powerCardResults = self.readPowerCards()
-#            #print >> sys.stderr, "powerCardResult: ", powerCardResults
-#            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
+
+            #increment run numbers
+            self.runNumber = self.app_main.getCachedParam('runNumber')+1
+            self.app_main.setCachedParam('runNumber', self.runNumber)
             
             # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
             self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
-
-            numFailedSections = 0
-            
+           
             # ASIC Bonding procedure:
+            self.msgPrint("1: Power on")
 
-            self.msgPrint("1. Power on")
-
-            # Switch off supply/supplies if already on; 0=off, 1=on
-            if self.lvState[0] == 0:
-                self.msgPrint("Low voltage is off, switching it on..")
-                self.toggleLvSupplies()
-            
-            if self.hvState[0] == 0:
-                self.msgPrint("High voltage is off, switching it on..")
-                self.toggleHvSupplies()
-            
-#            self.msgPrint("2. Check as in ASIC bonding - [Skipping for now]")
-            
-#            powerCardResults = self.readPowerCards()
-#            print >> sys.stderr, "sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-            
-            self.msgPrint("2. Power on sensor bias (HV) - 200V")
-            # Check HV bias level:
-            powerCardResults = self.readPowerCards()
-            #print >> sys.stderr, "powerCardResults: ", powerCardResults
-            #print >> sys.stderr, "Before HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-            measuredBiasLevel = powerCardResults['sensorBias0']+201.0
-            try:
-                if not (199.0 < measuredBiasLevel  < 201.0):
-                    self.msgPrint("Bias level is %f V, changing it to be 200 V" % measuredBiasLevel)
-                    # Change the HV bias
-                    self.hvSetBias(200.0)
-    
-                    self.msgPrint("Waiting 5 seconds for bias to reached 200V..")
-                    time.sleep(5)
-                    self.msgPrint("Bias now set to 200 V")
-                else:
-                    self.msgPrint("Bias already 200 V")
-            except Exception as e:
-                self.msgPrint(" Exception: %s" % e)
-            #powerCardResults = self.readPowerCards()
-            #print >> sys.stderr, "After HV changed: sensorBias 0, 1: ", powerCardResults['sensorBias0'], powerCardResults['sensorBias1']
-
-            self.msgPrint("3. Take data with long exposure command sequence")
-            # Set long exposure XML file, configure device
-            self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']
-            self.app_main.deviceConfigure(self.currentParams)
-            
-            # Readout Data
-            self.app_main.deviceRun(self.currentParams)
-            self.file_name = self.app_main.last_data_file
-            self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
-
-            if self.file_name == None:
-                self.msgPrint("Error: No file received")
-            else:
-                self.msgPrint("4. Check/record unconnected pixels - Using leakage current check.")
-                numUnconnectedPixels = self.checkLeakageCurrent()
-                if numUnconnectedPixels != 0:
-                    self.msgPrint("There are %d unconnected pixel(s), that's a FAIL" % numUnconnectedPixels)
-                    numFailedSections += 1
-                else:
-                    self.msgPrint("There are no unconnected pixels, that's a PASS")
-    
-                self.msgPrint("5. Check/record shorted pixels")
-                (numShortedPixelsMin, numShortedPixelsMax, adjacentPixelPairs, neighbourStr) = self.locateShortedPixels()
-
-                # Does total number of shorted pixels exceed 0?
-                # Min = pixel stuck at value 0, Max = pixel stuck at value 4095
-                if (numShortedPixelsMin+numShortedPixelsMax) > 0:
-                    # Any minimum adjacent to a maximum?
-                    if neighbourStr.__len__() > 0:
-                        self.msgPrint("Adjacent shorted pixels detected:%s" % neighbourStr)
-                        self.msgPrint("That's a total of %d adjacent pair(s)." % adjacentPixelPairs)
-                    
-                    self.msgPrint("There are %d (value=0) and %d (value=4095) shorted pixel(s), that's a FAIL" % (numShortedPixelsMin, numShortedPixelsMax))
-                    numFailedSections += 1
-                else:
-                    self.msgPrint("There are no shorted pixels, that's a PASS")
-                    
-                # Summarise; Report how many failures (if any)
-                if numFailedSections == 0:
-                    self.msgPrint("Module %s is fine, failing none of the tests." % self.moduleString)
-                else:
-                    self.msgPrint("Module %s is problematic, it failed %d test(s)." % (self.moduleString, numFailedSections))
-    
-                    # Summarise which test(s) failed
-                    if numUnconnectedPixels > 0:
-                        self.msgPrint("* Failed test 5. There are %d unconnected pixel(s)." % numUnconnectedPixels)
-                    if (numShortedPixelsMin+numShortedPixelsMax) > 0:
-                        self.msgPrint("* Failed test 6. There are %d and %d min and max pixel(s)." % (numShortedPixelsMin, numShortedPixelsMax))
-                        # Any minimum adjacent to a maximum?
-                        if neighbourStr.__len__() > 0:
-                            self.msgPrint("     Forming a total of %d adjacent pair(s)." % adjacentPixelPairs)
-
-            # Hack DAQ tab to restore it to ready state
-            self.app_main.device_state = LpdFemState.DeviceReady
-            self.app_main.runStateUpdate()
-
-        except Exception as e:
-            print >> sys.stderr, "\n", traceback.print_exc()
-            self.msgPrint("Exception during Sensor Bonding testing: %s" % e, bError=True)
-
-    def executeAsicBondingTest(self, moduleNumber):
-        ''' Execute the sequence of tests defined by ASIC bond specifications '''
-        
-        try:
-            # Verify XML files specified in json file exist
-            if not self.verifyJsonFileNames():
-                self.msgPrint("File missing, exiting test prematurely", bError=True)
-                return
-
-            self.msgPrint("Using cmdSequenceFile:  %s" % self.currentParams['testingShortExposureFile'])
-            self.msgPrint("Using readoutParamFile: %s" % self.currentParams['testingReadoutParamFile'])
-            self.msgPrint("Using setupParamFile:   %s" % self.currentParams['testingSetupParamFile'])
-
-            # Set moduleNumber and moduleString
-            self.moduleNumber = moduleNumber
-            self.setModuleType(moduleNumber)
-
-            # Checking current LV, HV status; values saved to self.lvState[], self.hvState[]
-            self.obtainPowerSuppliesState(self.app_main.pwr_card.powerStateGet())
-            
-            # Assume both supplies switched off initially
-            (bSwitchLvOn, bSwitchHvOn) = (True, True)
-
-            numFailedSections = 0
-            
-            # ASIC Bonding procedure:
-
-            self.msgPrint("1. Power on")
-
-            # Switch off supply/supplies if already on; 0=off, 1=on
-            if self.lvState[0] == 1:
-                self.msgPrint("Low voltage is on, switching it off..")
-                self.toggleLvSupplies()
-            
+            # Switch off supply/supplies if already on; 0=off, 1=on           
             if self.hvState[0] == 1:
                 self.msgPrint("High voltage is on, switching it off..")
                 self.toggleHvSupplies()
@@ -266,155 +150,96 @@ class LpdAsicTester(object):
                     self.msgPrint("HV bias was 200 V, Waiting 8 additional seconds..")
                     time.sleep(8)
 
-            # 1.Power on
-            
-            if bSwitchLvOn:
-                self.msgPrint(" ! Low voltage is off, switching it on..")
+            if self.lvState[0] == 1:
+                self.msgPrint("Low voltage is on, switching it off..")
                 self.toggleLvSupplies()
-            
-            if bSwitchHvOn:
-                # Set bias to 50
-                self.hvSetBias(50.0)
+
+            # Power on
+            self.msgPrint("Low voltage is off, switching it on..")
+            self.toggleLvSupplies()
+            if testType != "ASIC":
                 self.msgPrint("High voltage is off, switching it on..")
                 self.toggleHvSupplies()
             
-            # Record failed test message(s)
-            errorMessages = []
+                # Check HV bias level:
+#            if testType == "ASIC":
+#                self.msgPrint("2: Power on sensor bias (HV) 50V")
+#                self.hvSetBias(50.0) 
+#            elif testType == "Sensor" or "All": 
+                self.msgPrint("2: Power on sensor bias (HV) %s V" % self.hv)
+                powerCardResults = self.readPowerCards()
+                measuredBiasLevel = powerCardResults['sensorBias0']
+
+                try: 
+                    timeout = time.time() + 30
+                    while not (float(self.hv)-2 < measuredBiasLevel  < float(self.hv)+2):
+                        powerCardResults = self.readPowerCards()
+                        measuredBiasLevel = powerCardResults['sensorBias0']           
+                        self.msgPrint("Bias level is %f V, changing it to be %s v" %(measuredBiasLevel, str(self.hv)))
+                        #change the HV bias 
+                        self.hvSetBias(float(self.hv), do_sleep=False)                    
+                        time.sleep(1)
+                        if timeout < time.time() or (float(self.hv)-2 < measuredBiasLevel  < float(self.hv)+2) :        
+                            break
+                except Exception as e:
+                    self.msgPrint(" Exception: %s" % e)      
+                self.msgPrint("Bias now set to %s V" % self.hv)
+
+            #Get the pre configuration current to print on analysis pdf 
+            powerCardResults = self.readPowerCards()
+            self.preConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
+
+            if testType == "ASIC":
+                self.msgPrint("3. Take data with short exposure command sequence")
+                # Ensure short exposure XML file used
+                self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
+            elif testType == "Sensor" or "All": 
+                self.msgPrint("3. Take data with long exposure command sequence")
+                # Set long exposure XML file, configure device
+                self.currentParams['cmdSequenceFile'] = self.currentParams['testingLongExposureFile']
             
-            # 2. Check and record current (1A < I < 4A)
-            self.msgPrint("2. Check and record current (1A < I < 4A)")
-            sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (1 < sensorCurrent < 4):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 2. current: %.2f A (not 1A < I < 4A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
-
-            # Ensure short exposure XML file used
-            self.currentParams['cmdSequenceFile'] = self.currentParams['testingShortExposureFile']
-
-            # 3. Serial Load
-            self.msgPrint("3. Serial Load")
-            self.app_main.deviceConfigure(self.currentParams)
-            
-            # Ensure XML file loaded in serial
-            paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
-            self.setApiValue(paramName, 1)
-
-            # 4. Check and record current (8A < I <= 10A)
-            self.msgPrint("4. Check and record current (8A < I <= 10A)")
-            sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (8 < sensorCurrent < 10):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 4. current: %.2f A (not 8A < I <= 10A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
-            
-            self.app_main.deviceConfigure(self.currentParams)
-
-            # 5. Readout Data
-            self.msgPrint("5. Readout Data")
-            self.app_main.deviceRun(self.currentParams)
-            self.file_name = self.app_main.last_data_file
-            self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
-
-            # 6.Check for out of range pixels. Are these full ASICs? Columns or individual pixels.
-            if self.file_name == None:
-                self.msgPrint("Error: No file received")
-            else:
-                self.msgPrint("6. Check for out of range pixels")
-                numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[6. Pixels out of range]')
-                if numBadPixels == 0:
-                    self.msgPrint("6. Module %s has no bad pixels, that's a %s" % (self.moduleString, "PASS"))
-                else:
-                    self.msgPrint("6. Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
-                    errorMessages.append("Failed Test 6. Module has %d out of range pixel(s)" % numBadPixels)
-                    numFailedSections += 1
-            
-            # 7. Power off
-            self.msgPrint("7. Power Off")
-
-            self.toggleLvSupplies()
-            time.sleep(3)
-            self.toggleHvSupplies()
-            time.sleep(3)
-
-            # 8. Power on
-            self.msgPrint("8. Power On")
-
-            self.toggleLvSupplies()
-            time.sleep(3)
-            self.toggleHvSupplies()
-            time.sleep(3)
-            
-            # 9. Check and record current (1A < I < 4A)
-            self.msgPrint("9. Check and record current (1A < I < 4A)")
-            sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (1 < sensorCurrent < 4):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 9. current: %.2f A (not 1A < I < 4A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
-            
-            # 10. Parallel load
-            self.msgPrint("10. Parallel Load")
-            self.app_main.deviceConfigure(self.currentParams)
             # Ensure XML file load in parallel:
+            self.msgPrint("Parallel Load")
             paramName = 'femAsicSetupLoadMode' # 0=Parallel, 1=Serial
             self.setApiValue(paramName, 0)
+            self.app_main.deviceConfigure(self.currentParams)
 
-            # 11. Check and record current (8A <I =< 10A)
-            self.msgPrint("11. Check and record current (8A < I <= 10A)")
-            sensorCurrent = self.readCurrent()
-            passFailString = "PASS"
-            if not (8 < sensorCurrent < 10):
-                passFailString = "FAIL"
-                errorMessages.append("Failed Test 11. current: %.2f A (not 8A < I <= 10A)" % sensorCurrent)
-                numFailedSections += 1
-            self.msgPrint("Module %s current: %.2f A, that's a %s" % (self.moduleString, sensorCurrent, passFailString))
-            time.sleep(1)
-
-            # 12.Readout data
-            self.msgPrint("12. Readout Data")
+            #Get the post configuration currents 
+            powerCardResults = self.readPowerCards()
+            self.postConfigCurrent = powerCardResults['sensor%iCurrent'%originalConnectorId]
+            
+            # Readout Data
+            self.msgPrint("Readout Data")
             self.app_main.deviceRun(self.currentParams)
-
             self.file_name = self.app_main.last_data_file
             self.msgPrint("Produced HDF5 file: '%s'" % self.file_name)
-            
-            # 13. Check for out of range pixels. Are these full ASICs? Columns or individual pixels. Is there are any different compared to test 6?
-            if self.file_name == None:
-                self.msgPrint("Error: No file received")
-            else:
-                self.msgPrint("13. Check for out of range pixels")
-                numBadPixels = self.checkOutOfRangePixels(train=0, image=0, miscDescription='[13. Pixels out arrange]')
-                if numBadPixels == 0:
-                    self.msgPrint("13. Module %s has no bad pixels, that's a %s" % (self.moduleString, "PASS"))
-                else:
-                    self.msgPrint("13. Module %s has %d bad pixel(s), that's a %s" % (self.moduleString, numBadPixels, "FAIL"))
-                    errorMessages.append("Failed Test 13. Module has %d out of range pixel(s)" % numBadPixels)
-                    numFailedSections += 1
-            
-            # Summarise; Report how many failures (if any)
-            if numFailedSections == 0:
-                self.msgPrint("Module %s is fine, failing none of the tests." % self.moduleString)
-            else:
-                self.msgPrint("Module %s is problematic, it failed %d test(s)." % (self.moduleString, numFailedSections))
-                for errorLine in errorMessages:
-                    self.msgPrint("* %s." % errorLine)
+
+            #Pass data to the analysis pdf creator
+            self.msgPrint("Creating data analysis pdf")
+            self.analysisPath = self.app_main.getCachedParam('analysisPdfPath')
+            pdf_name = analysis_creation.DataAnalyser(self.analysisPath, self.moduleDescription, self.runNumber, testType, self.tilePosition , self.miniConnector , self.file_name, self.preConfigCurrent, self.postConfigCurrent, self.hv)
+            self.msgPrint("PDF created: %s" % pdf_name)
 
             # Hack DAQ tab to restore it to ready state
             self.app_main.device_state = LpdFemState.DeviceReady
             self.app_main.runStateUpdate()
 
+            # Switch off supply/supplies          
+            self.msgPrint("Switching Off High voltage")
+            self.toggleHvSupplies()
+                # Set bias to 0
+            self.hvSetBias(0.0)
+            # If bias was 200 V, need a longer delay here to allow the voltage drop
+            if self.biasState[0] > 199.0:
+                self.msgPrint("HV bias was 200 V, Waiting 8 additional seconds..")
+                time.sleep(8)
+            self.msgPrint("Switching Off Low voltage ")
+            self.toggleLvSupplies()
+
         except Exception as e:
             print >> sys.stderr, "\n", traceback.print_exc()
-            self.msgPrint("Exception during ASIC bonding test: %s" % e, bError=True)
+            self.msgPrint("Exception during %s Bonding testing: %s" % (testType, e), bError=True)
+
 
     def locateShortedPixels(self):
         ''' Locate any pixel(s) have the value 0 or 4095 '''
@@ -425,10 +250,8 @@ class LpdAsicTester(object):
             for column in range(self.numCols):
                 
                 if self.moduleData[row][column] == 0:
-                    #print >> sys.stderr, "A zero at [{0:>2}][{1:>3}]".format(row, column)
                     minimumValues.append( (row, column))
                 elif self.moduleData[row][column] == 4095:
-                    #print >> sys.stderr, "A Max at [{0:>2}][{1:>3}]".format(row, column)
                     maximumValues.append( (row, column))
 
         minCount = minimumValues.__len__()
@@ -482,18 +305,19 @@ class LpdAsicTester(object):
         if rc != LpdDevice.ERROR_OK:
             self.msgPrint("Error changing %s to %s, rc: %s" % (paramName, str(newValue), rc), bError=True)
 
-    def hvSetBias(self, biasStr):
+    def hvSetBias(self, biasStr, do_sleep=True):
         ''' Change HV bias '''        
         try:
-            hvBias = float(biasStr)
-            self.app_main.pwr_card.hvBiasSet(hvBias)
+            self.hvBias = float(biasStr)
+            self.app_main.pwr_card.hvBiasSet(self.hvBias)
             self.app_main.mainWindow.pwrTab.powerStatusUpdateDone()
             
         except ValueError:
             self.msgPrint("Exception setting HV bias: %s" % biasStr, bError=True)
-            
-        self.msgPrint("Waiting %d seconds for new bias to settle.." % (self.hardwareDelay+3))
-        time.sleep(self.hardwareDelay+3)
+        
+        if do_sleep:
+            self.msgPrint("Waiting %d seconds for new bias to settle.." % (self.hardwareDelay+3))
+            time.sleep(self.hardwareDelay+3)
     
     def toggleLvSupplies(self):
 
@@ -528,17 +352,17 @@ class LpdAsicTester(object):
         # Loop over LHS and RHS power cards and update display
         for powerCard in range(self.app_main.pwr_card.numPowerCards):
 
-            #paramName = 'asicPowerEnable' + str(powerCard)
-            #self.lvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
-            self.lvState[powerCard] = 1
+            paramName = 'asicPowerEnable' + str(powerCard)
+            self.lvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
+            #self.lvState[powerCard] = 1
 
-            #paramName = 'sensorBiasEnable' + str(powerCard)
-            #self.hvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
-            self.hvState[powerCard] = 1
+            paramName = 'sensorBiasEnable' + str(powerCard)
+            self.hvState[powerCard] = powerState[paramName]    # 0 = Off, 1 = On
+            #self.hvState[powerCard] = 1
             
-            #paramName = 'sensorBias' + str(powerCard)
-            #self.biasState[powerCard] = powerState[paramName]
-            self.biasState[powerCard] = 1
+            paramName = 'sensorBias' + str(powerCard)
+            self.biasState[powerCard] = powerState[paramName]
+            #self.biasState[powerCard] = 1
 
         if self.lvState[0] != self.lvState[1]:
             self.msgPrint("LpdAsicTester Error: LV status mismatch between power card", bError=True)
@@ -839,6 +663,7 @@ class LpdAsicTester(object):
         elif moduleNumber == LpdAsicTester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
+        self.tilePosition = self.moduleString
 
     def readPowerCards(self):
         ''' Read all sensors on both power card '''
@@ -911,4 +736,3 @@ class LpdAsicTester(object):
         time.sleep(1)
         #print >> sys.stderr, "Module %s current: %.2f A" % (self.moduleString, results['sensor%sCurrent' %  sensorIdx])
         return sensorCurrent
-

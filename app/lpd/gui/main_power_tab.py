@@ -89,7 +89,8 @@ class LpdFemGuiMainPowerTab(object):
             hvBias = float(biasStr)
             self.app_main.setCachedParam('hvBiasVolts', hvBias)
             self.mainWindow.executeAsyncCmd('Setting HV bias to {:.1f} V'.format(hvBias), partial(self.app_main.pwr_card.hvBiasSet, hvBias), self.hvBiasSetDone)
-            
+            self.ui.testHvBiasEdit.setText(biasStr)
+            self.app_main.asic_tester.setHvEditBox(biasStr)
         except ValueError:
             self.msgPrint("Illegal value entered for HV bias: %s" % biasStr)
             self.ui.hvBiasEdit.setText(str(self.app_main.getCachedParam('hvBiasVolts')))
@@ -167,12 +168,15 @@ class LpdFemGuiMainPowerTab(object):
                     
             # Update sensor bias
             paramName = 'sensorBias' + str(powerCard)
+            self.msgPrint("Param name: %s"  % paramName)
             uiObjName = powerCardName[powerCard] + 'BiasSetpoint'
             try:
                 uiObj = getattr(self.ui, uiObjName)
                 uiObj.setText("{:.1f}".format(powerState[paramName]))
             except Exception as e:
                 print("Exception during UI object mapping: %s" % e, file=sys.stderr)
+
+            
             
             # Update sensor parameters
             for sensor in range(self.app_main.pwr_card.numSensorsPerCard):

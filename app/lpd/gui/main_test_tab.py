@@ -1,19 +1,24 @@
-
 '''
 Created on Apr 19, 2013
 
 @author: tcn45
 '''
 
+
+import time
+import sys
+import os
+from functools import partial
+import logging, logging.handlers
+import datetime
+import main_power_tab
+import re
+
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import *
 
 from asic_tester import LpdAsicTester
-import logging, logging.handlers
 
-import time
-import sys
-from functools import partial
 
 class LpdFemGuiMainTestTab(QtGui.QMainWindow):
     # Inheritance required for super() line within __init__() function
@@ -38,18 +43,24 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Disable GUI components from start
         self.ui.asicBondingBtn.setEnabled(False)
         self.ui.sensorBondingBtn.setEnabled(False)
+        self.ui.allBondingBtn.setEnabled(False)
         self.ui.operatorEdit.setEnabled(False)
         self.ui.moduleNumberEdit.setEnabled(False)
         self.ui.commentEdit.setEnabled(False)
-        self.ui.moduleLhsSel.setEnabled(False)
-        self.ui.moduleRhsSel.setEnabled(False)
+        self.ui.analysisPathEdit.setEnabled(False)
+        self.ui.analysisPathBtn.setEnabled(False)
+        self.ui.testHvBiasEdit.setEnabled(False)
+        self.ui.testHvBiasSetBtn.setEnabled(False)
 
         self.msgPrint = self.testMsgPrint   # Use MessageBox element within this tab
         
-        self.ui.moduleLhsSel.setChecked(True)
-        self.moduleNumber   = LpdAsicTester.LHS_MODULE
+        self.moduleNumber   = LpdAsicTester.RHS_MODULE
         self.moduleString   = ""
+        self.moduleStringSet = False
         self.setModuleType(self.moduleNumber)
+        self.ui.analysisPathEdit.setText(self.app_main.getCachedParam('analysisPdfPath'))
+        self.ui.testHvBiasEdit.setText(str(self.app_main.getCachedParam('hvBiasVolts')))
+        self.originalConnectorId = 8
 
         self.image          = 0
         self.train          = 0
@@ -60,10 +71,22 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Connect signals and slots
 #        QtCore.QObject.connect(self.ui.operatorEdit,          QtCore.SIGNAL("editingFinished()"),   self.operatorUpdate)
         QtCore.QObject.connect(self.ui.moduleNumberEdit,      QtCore.SIGNAL("editingFinished()"),   self.moduleNumberUpdate)
-        QtCore.QObject.connect(self.ui.moduleTypeButtonGroup, QtCore.SIGNAL("buttonClicked(int)"),  self.moduleTypeUpdate)
+        QtCore.QObject.connect(self.ui.connectorButtonGroup,  QtCore.SIGNAL("buttonClicked(int)"),  self.moduleTypeUpdate)
+        QtCore.QObject.connect(self.ui.analysisPathBtn,       QtCore.SIGNAL("clicked()"),           self.analysisPathSelect)
+        QtCore.QObject.connect(self.ui.testHvBiasSetBtn,      QtCore.SIGNAL("clicked()"),           self.hvBiasSetUpdate)
         QtCore.QObject.connect(self.ui.asicBondingBtn,        QtCore.SIGNAL("clicked()"),           self.asicBondingTest)   # "ASIC Bonding"
         QtCore.QObject.connect(self.ui.sensorBondingBtn,      QtCore.SIGNAL("clicked()"),           self.sensorBondingTest) # "Sensor Bonding"
+        QtCore.QObject.connect(self.ui.allBondingBtn,         QtCore.SIGNAL("clicked()"),           self.allBondingTest) # "Test All"
         
+        #Set the id for the connector radio buttons
+        self.connector_btns = []
+        for btn in range(1, 17):      
+            btn_name = 'connectorBtn' + str(btn)
+            connector_btn = getattr(self.ui, btn_name)
+            self.connector_btns.append(connector_btn)
+            self.ui.connectorButtonGroup.setId(connector_btn, btn)
+            connector_btn.setEnabled(False)
+
         # Allow LpdFemGuiMainDaqTab to signal Device configuration ok/fail
         self.configDeviceSignal.connect(self.configDeviceMessage)
         # Allow LpdFemGuiMainDaqTab to signal whether fem [dis]connected
@@ -71,76 +94,48 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         # Let LpdFemGuiPowerTesting (and others) communicate results:
         self.messageSignal.connect(self.testMsgPrint)
 
+
     def __del__(self):
-
         pass
-
-    def sensorBondingTest(self):
-        ''' Execute Sensor Bonding Tests - specified on page 4 of the documentation '''
-        # Lock tab's GUI components during test execution
-        self.femConnectionStatus(False)
-        try:
-            # Also lock DAQ tab during text execution..
-            self.app_main.mainWindow.ui.runGroupBox.setEnabled(False)
-            self.app_main.mainWindow.ui.daqTab.setEnabled(False)
-        except Exception as e:
-            print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
-            return
-
-#        # Set up logger unless already set up
-#        if self.logger is None:
-#            self.createLogger()
-        
-        self.msgPrint("Executing Sensor Bonding Tests..")
-        self.dumpGuiFieldsToLog()
-        moduleDescription = str(self.ui.moduleNumberEdit.text())
-        self.app_main.asic_tester.setModuleDescription(moduleDescription)
-        self.mainWindow.executeAsyncCmd('Executing Sensor Bonding Tests..', 
-                                        partial(self.app_main.asic_tester.executeSensorBondingTest, self.moduleNumber),
-                                        self.sensorBondingTestDone)
-
-    def sensorBondingTestDone(self):
-        
-        self.msgPrint("Finished testing ASIC Sensor Bonding")
-        # Lock run button to prevent DAQ tab running with (contaminated) settings
-        self.ui.runBtn.setEnabled(False)
-        # Unlock tab's GUI components after test completed
-        self.femConnectionStatus(True)
-        try:
-            # Also unlock DAQ tab during text execution..
-            self.app_main.mainWindow.ui.runGroupBox.setEnabled(True)
-            self.app_main.mainWindow.ui.daqTab.setEnabled(True)
-        except Exception as e:
-            print >> sys.stderr, "sensorBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
     def asicBondingTest(self):
         ''' Execute ASIC Bonding Tests - specified on page 3 of the documentation '''
+        self.bondingTest("ASIC")
+
+    def sensorBondingTest(self):
+        ''' Execute Sensor Bonding Tests - specified on page 4 of the documentation '''
+        self.bondingTest("Sensor")
+
+    def allBondingTest(self):
+        ''' Execute ASIC Bonding Tests - specified on page 3 of the documentation '''
+        self.bondingTest("All")
+
+    def bondingTest(self, testType):
+        ''' Execute Bonding Tests - specified on page 3-4 of the documentation '''
         # Lock tab's GUI components during test execution
         self.femConnectionStatus(False)
         try:
             # Also lock DAQ tab during text execution..
             self.app_main.mainWindow.ui.runGroupBox.setEnabled(False)
             self.app_main.mainWindow.ui.daqTab.setEnabled(False)
+
         except Exception as e:
             print >> sys.stderr, "Exception trying to lock DAQ tab: %s" % e
             return
 
-#        # Set up logger unless already set up
-#        if self.logger is None:
-#            self.createLogger()
-            
-        self.msgPrint("Executing ASIC Bond tests..")
-
+        self.msgPrint("Executing %s Bonding Tests.." % testType)
         self.dumpGuiFieldsToLog()
         moduleDescription = str(self.ui.moduleNumberEdit.text())
         self.app_main.asic_tester.setModuleDescription(moduleDescription)
-        self.mainWindow.executeAsyncCmd('Executing ASIC Bond tests..', 
-                                        partial(self.app_main.asic_tester.executeAsicBondingTest, self.moduleNumber),
-                                        self.asicBondingTestDone)
-    
-    def asicBondingTestDone(self):
+        self.app_main.asic_tester.setHvEditBox(self.ui.hvBiasEdit.text())
+        self.mainWindow.executeAsyncCmd(("Executing %s Bonding Tests.." % testType), 
+                                        partial(self.app_main.asic_tester.executeBondingTest,self.moduleNumber, self.originalConnectorId, testType),
+                                        partial(self.bondingTestDone, testType))
 
-        self.msgPrint("ASIC Bonding Tests Concluded")
+
+    def bondingTestDone(self, testType):
+        
+        self.msgPrint("Finished %s Bonding tests" % testType)
         # Lock run button to prevent DAQ tab running with (contaminated) settings
         self.ui.runBtn.setEnabled(False)
         # Unlock tab's GUI components after test completed
@@ -149,9 +144,10 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             # Also unlock DAQ tab during text execution..
             self.app_main.mainWindow.ui.runGroupBox.setEnabled(True)
             self.app_main.mainWindow.ui.daqTab.setEnabled(True)
-        except Exception as e:
-            print >> sys.stderr, "asicBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
 
+        except Exception as e:
+            print >> sys.stderr, "sensorBondingTestDone() Exception trying to unlock DAQ tab: %s" % e
+   
     def setModuleType(self, moduleNumber):
         ''' Helper function '''
 
@@ -160,7 +156,17 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         elif moduleNumber == LpdAsicTester.RHS_MODULE:  self.moduleString = "RHS"
         else:
             self.msgPrint("Error setting module type: Unrecognised module number: %d" % moduleNumber, bError=True)
-        
+
+    def setMiniConnector(self, miniConnectorId):
+        '''Helper function ''' 
+        if miniConnectorId < 9:
+            self.connectorId = miniConnectorId
+        elif miniConnectorId > 8: 
+            self.connectorId = (miniConnectorId - 8)
+        else: 
+            self.msgPrint("Error setting the tile selection: Unrecognised mini connection: %d" % self.connectorId , bError=True)  
+        self.app_main.asic_tester.setMiniConnector(self.connectorId)
+
     def configDeviceMessage(self, message):
         ''' Receives configuration ok/fail message '''
         self.testMsgPrint(message)
@@ -174,12 +180,19 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         if moduleNumLength != 1:
             self.ui.asicBondingBtn.setEnabled(bConnected)
             self.ui.sensorBondingBtn.setEnabled(bConnected)
+            self.ui.allBondingBtn.setEnabled(bConnected)
         self.ui.operatorEdit.setEnabled(bConnected)
         self.ui.moduleNumberEdit.setEnabled(bConnected)
         self.ui.commentEdit.setEnabled(bConnected)
-        self.ui.moduleLhsSel.setEnabled(bConnected)
-        self.ui.moduleRhsSel.setEnabled(bConnected)
- 
+        self.ui.analysisPathEdit.setEnabled(bConnected)
+        self.ui.analysisPathBtn.setEnabled(bConnected)
+        self.ui.testHvBiasEdit.setEnabled(bConnected)
+        self.ui.testHvBiasSetBtn.setEnabled(bConnected)
+        
+
+        for connector_btn in self.connector_btns:
+            connector_btn.setEnabled(bConnected)
+         
     def createLogger(self):
         ''' Create logger (and its' folder, if it does not exist), return logger and its' path
             Adjusted from example:
@@ -189,9 +202,8 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         time_stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%H%M%S')
         date_stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d')
         moduleNumber = str(self.ui.moduleNumberEdit.text())
-        #fileName = self.pathStem + "%s_%s/testResults.log" % (st, self.moduleString)
         fileName = self.pathStem + "%s/%s/testResults_%s.log" % (moduleNumber, date_stamp, time_stamp)
-
+        
         # Check whether logger already set up
         if self.logger is not None:
             # Logger already exists, remove it
@@ -207,7 +219,6 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
             os.makedirs( filePath )
         # Create and set handler, formatter
         self.hdl = logging.handlers.RotatingFileHandler(fileName, maxBytes=2097152, backupCount=5)
-        #formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         formatter = logging.Formatter('%(levelname)s %(message)s')
         self.hdl.setFormatter(formatter)
         self.logger.addHandler(self.hdl)
@@ -216,42 +227,40 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.app_main.asic_window.logPathSignal.emit(filePath)
 
     def operatorUpdate(self):
-
-        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed operatorEdit (to be: " + self.ui.operatorEdit.text() + ")")
         pass
     
     def moduleNumberUpdate(self):
+        self.msgPrint("module number changed ")
+        isModuleNumber = re.match('^[a-zA-Z]-[0-9]{4}-[0-9]{3}$', self.ui.moduleNumberEdit.text())
 
-        moduleNumString = self.ui.moduleNumberEdit.text()
-        moduleNumLength = moduleNumString.count("")
-        # Fix checking of QLineEdit's contents that both python 2 & 3 compatible
-        if moduleNumLength == 1:
-            self.testMsgPrint("The entered moduleNumber is blank, buttons remains locked..")
-            self.ui.asicBondingBtn.setEnabled(False)
-            self.ui.sensorBondingBtn.setEnabled(False)
+        if isModuleNumber:
+            self.moduleStringSet = True
         else:
-            self.ui.asicBondingBtn.setEnabled(True)
-            self.ui.sensorBondingBtn.setEnabled(True)
+            self.msgPrint("Illegal value entered for module number: %s" % self.ui.moduleNumberEdit.text())
+            self.msgPrint("Please enter a valid module number format")
+            self.moduleStringSet = False
 
-            # Setup logger at this point, regardless
-            self.createLogger()
+        checkForm(self)
 
-        #QtCore.qDebug("LpdFemGuiMainTestTab, You changed moduleNumberEdit (to be: '" + moduleNumber + "')")
+        # Setup logger at this point, regardless
+        self.createLogger()
 
-
-    def moduleTypeUpdate(self):
+    def moduleTypeUpdate(self , buttonId):
         ''' Update module selection (right side versus left side) according to GUI choice made '''
-        
-        if self.ui.moduleLhsSel.isChecked():
-            self.msgPrint("LHS module selected")
-            self.moduleNumber = LpdAsicTester.LHS_MODULE
-            #self.setModuleType(self.moduleNumber)
-
-        elif self.ui.moduleRhsSel.isChecked():
+        #Using radion buttons ID to get LHS or RHS 
+        if buttonId <= 8: 
             self.msgPrint("RHS module selected")
             self.moduleNumber = LpdAsicTester.RHS_MODULE
-            
+            self.originalConnectorId = buttonId+7
+        elif buttonId > 8: 
+            self.msgPrint("LHS module selected") 
+            self.moduleNumber = LpdAsicTester.LHS_MODULE
+            self.originalConnectorId = buttonId-9
+        else:
+            self.femConnectionStatus(False)
+        checkForm(self)
         self.setModuleType(self.moduleNumber)
+        self.setMiniConnector(buttonId)
         self.app_main.asic_window.moduleSignal.emit(self.moduleNumber)
             
     def testMsgPrint(self, msg, bError=False):
@@ -278,4 +287,58 @@ class LpdFemGuiMainTestTab(QtGui.QMainWindow):
         self.testMsgPrint("Logging Operator: '%s'" % str(self.ui.operatorEdit.text()))
         self.testMsgPrint("Logging Module: '%s'" % str((self.ui.moduleNumberEdit.text()) + self.moduleString))
         self.testMsgPrint("Logging Comment: '%s'" % str(self.ui.commentEdit.text()))
+    
+    def analysisPathSelect(self):
+        dirName = QtGui.QFileDialog.getExistingDirectory(self.mainWindow, "Select analysis creation directory:", self.app_main.getCachedParam('analysisPdfPath'))
+        if dirName != "":
+            self.app_main.setCachedParam('analysisPdfPath', str(dirName))
+            self.ui.analysisPathEdit.setText(dirName)
+            self.mainWindow.updateEnabledWidgets()
+    
+    def hvBiasSetUpdate(self):
+        
+        biasStr = self.ui.testHvBiasEdit.text()
+        try:
+            hvBias = float(biasStr)
+            self.app_main.setCachedParam('hvBiasVolts', hvBias)
+            self.mainWindow.executeAsyncCmd('Setting HV bias to {:.1f} V'.format(hvBias), partial(self.app_main.pwr_card.hvBiasSet, hvBias), self.hvBiasSetDone)
+            self.ui.hvBiasEdit.setText(biasStr)
+
+        except ValueError:
+            self.msgPrint("Illegal value entered for HV bias: %s" % biasStr)
+            self.msgPrint("Please enter a number")
+            self.ui.TestHvBiasEdit.setText(str(self.app_main.getCachedParam('hvBiasVolts')))
+            
+    def hvBiasSetDone(self):
+
+        self.powerStatusUpdateDone()        
+        self.msgPrint("HV bias set complete")
+        self.app_main.mainWindow.ui.runGroupBox.setEnabled(True)
+        self.app_main.mainWindow.ui.daqTab.setEnabled(True)
+
+    def getTestHvBias(self):
+        return self.ui.testHvBiasEdit.text() 
+    
+    def powerStatusUpdate(self):
+        
+        self.mainWindow.executeAsyncCmd('Updating power status...', self.app_main.pwr_card.statusUpdate, self.powerStatusUpdateDone)
+        
+    def powerStatusUpdateDone(self):
+        
+        self.mainWindow.powerStatusSignal.emit(self.app_main.pwr_card.powerStateGet())
+
+def checkForm(self):
+    ''' Check all areas of the form have been filled out
+    '''
+    # Fix checking of QLineEdit's contents that both python 2 & 3 compatible
+
+    if self.moduleStringSet is True:
+        self.ui.asicBondingBtn.setEnabled(True)
+        self.ui.sensorBondingBtn.setEnabled(True)
+        self.ui.allBondingBtn.setEnabled(True)
+    else:
+        self.testMsgPrint("Module number is not formatted correctly, buttons remains locked..")
+        self.ui.asicBondingBtn.setEnabled(False)
+        self.ui.sensorBondingBtn.setEnabled(False)
+        self.ui.allBondingBtn.setEnabled(False)
 

@@ -1,6 +1,5 @@
 '''
 Created on July 17, 2014
-
 @author: ckd27546    (Based upon LpdFemGuiLiveViewWindow.py)
 '''
 
