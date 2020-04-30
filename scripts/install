@@ -1,0 +1,989 @@
+#!/usr/bin/env python
+"""
+Installation script for LPD detector system GUI software.
+
+Tim Nicholls, STFC Detector Systems Software Group
+"""
+
+from __future__ import print_function
+import argparse
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib2
+
+from collections import OrderedDict
+
+PACAKGE_REPOSITORIES = OrderedDict([
+    ('fem', ('git@github.com:stfc-aeg/fem-platform.git', '.')),
+    ('odin_data', ('git@github.com:odin-detector/odin-data.git', 'tools/python')),
+    ('lpd', ('git@github.com:stfc-aeg/lpd-detector.git', 'app')),
+])
+
+SIP_VERSION = "4.19.17"
+SIP_URL = "https://www.riverbankcomputing.com/static/Downloads/sip/{0}/sip-{0}.tar.gz".format(
+    SIP_VERSION
+)
+PYQT4_VERSION = "4.12.3"
+PYQT4_URL = "http://sourceforge.net/projects/pyqt/files/" \
+        "PyQt4/PyQt-{0}/PyQt4_gpl_x11-{0}.tar.gz".format(PYQT4_VERSION)
+
+
+ODIN_DATA_CMAKE_ENV = OrderedDict([
+    ("BOOST_ROOT", ("BOOST_ROOT", "boost")),
+    ("LOG4CXX_ROOT_DIR", ("LOG4CXX_ROOT", "log4cxx")),
+    ("HDF5_ROOT", ("HDF5_ROOT", "hdf5")),
+    ("ZEROMQ_ROOTDIR", ("ZEROMQ_ROOT", "zeromq")),
+    ("BLOSC_ROOT_DIR", ("BLOSC_ROOT", "blosc")),
+])
+
+LPD_DETECTOR_VMAKE_ENV = OrderedDict([
+    ("BOOST_ROOT", ("BOOST_ROOT", "boost")),
+    ("LOG4CXX_ROOT_DIR", ("LOG4CXX_ROOT", "log4cxx")),
+    ("ZEROMQ_ROOTDIR", ("ZEROMQ_ROOT", "zeromq")),
+])
+
+CONFIG_INSTALL_PREFIX = "{{INSTALL_PREFIX}}"
+
+# Handle input vs raw_input in python 2/3
+if sys.version_info[0] <= 2:
+    input = raw_input  # pylint: disable=W0622
+
+# Set default accept of action confirmations
+accept_default_confirm = False
+
+
+class TransientDirectory(object):
+    """
+    Context manager to change directory and restore to current directory on exit.
+
+    This class provides a simple context manager to save the current working directory,
+    change into the new specified directory and restore the original cwd on exit.
+    """
+
+    def __init__(self, new_dir):
+        """
+        Construct a transient directory object, saving the old and new directory paths.
+
+        :param new_dir: path of new directory to change into.
+        """
+        self._old_dir = os.getcwd()
+        self._new_dir = new_dir
+
+    def __enter__(self):
+        """
+        Entry point for the context manager.
+
+        Changes to the specified new working directory.
+        """
+        os.chdir(self._new_dir)
+        return self._new_dir
+
+    def __exit__(self, *_):
+        """
+        Exit point for the context manager.
+
+        Restores the original working directory.
+
+        :param *_: variable list of unused argumentss
+        """
+        os.chdir(self._old_dir)
+
+
+class TemporaryDirectory(TransientDirectory):
+    """
+    Context manager to create and use a temporary directory.
+
+    This class provides a context manager, dervied from TransientDirectory, which creates
+    a unique, secure temporary directory, chdirs into it on entry and cleans up on exit,
+    restoring the previous working directory.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Construct a temporary directory.
+
+        :param *args, *kwargs: passed directly to underlying mkdtemp, i.e. suffix, prefix, dir
+        """
+        self._tmp_dir = tempfile.mkdtemp(*args, **kwargs)
+        super(TemporaryDirectory, self).__init__(self._tmp_dir)
+
+    def __enter__(self):
+        """Entry point for the context manager."""
+        super(TemporaryDirectory, self).__enter__()
+        return self._tmp_dir
+
+    def __exit__(self, *_):
+        """Exit point for the context manager."""
+        super(TemporaryDirectory, self).__exit__()
+        shutil.rmtree(self._tmp_dir)
+
+
+class NumProc(object):
+    """
+    Get number of CPU cores for make command.
+
+    This class implements a callable that determines the number of CPU cores avaiable on the system
+    for running make commands, i.e. to be used as an value with the '-j' argument. The value is
+    determined by a call to the nproc command, and cached to allow repeated use without repeated
+    subprocess calls.
+    """
+
+    def __init__(self):
+        """Initialise the NumProc object."""
+        self._nproc = None
+
+    def __call__(self):
+        """Make the object callable. Returns cached number of processor cores."""
+        if not self._nproc:
+            try:
+                self._nproc = int(subprocess.check_output("nproc"))
+            except (OSError, subprocess.CalledProcessError) as err:
+                raise RuntimeError("Unable to check number of processors: {}".format(err))
+        return self._nproc
+
+
+# Define a more function-like callable instance of NumProc
+nproc = NumProc()
+
+
+def walk_up_dir(cur_dir, depth=1):
+    """
+    Walk up directory tree.
+
+    This function walks up a directory tree and returns the correct path
+    at the specified level, e.g for a directory /one/two/three/four and
+    depth 2, the path /one/two would be returned.
+
+    :param cur_dir: string of starting directory path
+    :param depth: integer depth to work upwards
+
+    :returns: string of final directory path
+    """
+    for _ in xrange(depth):
+        cur_dir = os.path.dirname(cur_dir)
+    return cur_dir
+
+
+def confirm_dir(label, the_dir):
+    """
+    Confirm the existence of the specified directory, modify and/or create it.
+
+    This function confirms the existience of a directory at a specified path,
+    giving the user the option to modify the path and/or subsequently create
+    one if it doesn't exist.
+
+    :param label: string label for use in output
+    :param the_dir: string path for directory
+
+    :returns: string of directory path
+    """
+    # If no directory name specified, or user wants to modify it, request
+    # the new path
+    if the_dir is None or confirm_action(
+            "{} directory is {}. Do you want to modify this?" .format(label, the_dir),
+            default_message="{} directory is {}".format(label, the_dir)
+    ):
+        the_dir = input("Please specify a new {} directory: ".format(
+            label.lower()))
+
+    # Check if directory now defined and create it if user says so
+    if the_dir:
+        create_dir(the_dir, label, default_response=True)
+
+    # Raise an error if there is still no valid directory
+    if the_dir is None:
+        raise RuntimeError("{} directory not specified".format(label))
+
+    return the_dir
+
+
+def create_dir(the_dir, label, default_response=True, quiet=False):
+    """
+    Create a new directory at the specified path.
+
+    This method creates a new directory if it does not already exist, asking the user to
+    confirm that action first unless the quiet flag is set.
+
+    :param the_dir: path of directory to create
+    :label: readable label for directory to be used in messages
+    :default_response: default response to confirm dialog if accept flag is set globally
+    :quiet: make directory quietly without asking for confirmation or reporting success
+    """
+    # If the directory already exists, take no action
+    if os.path.isdir(the_dir):
+        return
+
+    if quiet or confirm_action(
+            "{} directory {} does not exist. Do you want to create it now?".format(
+                label, the_dir),
+            default_response=default_response,
+            default_message="Creating {} directory {}".format(label.lower(), the_dir)
+    ):
+        try:
+            os.makedirs(the_dir)
+            if not quiet:
+                print("OK, {} directory {} created".format(label.lower(), the_dir))
+        except OSError as os_err:
+            raise RuntimeError("Failed to create new {} directory {}: {}".format(
+                label.lower(), the_dir, os_err))
+    else:
+        raise RuntimeError("Config file directory {} does not exist.".format(the_dir))
+
+
+def confirm_action(message, default_response=False, default_message=None):
+    """
+    Confirm an action with the user.
+
+    The function confirms an action with the user, accepting yes/no input
+    with a variable default answer.
+
+    :param message:     string message to present to user
+    :param default_response: boolean true if default response is yes
+
+    :returns: boolean true or false confirmation
+    """
+    if accept_default_confirm:
+        if default_message:
+            print(default_message)
+        return default_response
+
+    # Build the appropriate message postfix depending on default answer
+    default_yn_str = '(Y/n)' if default_response else '(y/N)'
+
+    # Ask user for input with the specified message
+    response = input("{} {} ".format(message, default_yn_str)).lower()
+
+    # Handle input appropriately
+    if response.startswith('y'):
+        confirm = True
+    elif response.startswith('n'):
+        confirm = False
+    elif response == '':
+        confirm = default_response
+    else:
+        confirm = False
+
+    return confirm
+
+
+def cmd_exists(cmd, *pathargs, **kwargs):
+    """
+    Test if the specified command exists.
+
+    This function checks if the specified command exists, either in the directory specified by
+    the pathargs argument list, or anywhere in the PATH environment variable, returning the
+    full path if available or raising a RuntimeError if missing.
+
+    :param cmd: command to resolve
+    :param pathargs: tuple of path elements to resolve into command
+
+    :returns: resolved path to command in prefix_dir/bin
+    """
+    raise_err = kwargs.pop("raise_err", True)
+    if not pathargs:
+        path_list = os.environ["PATH"].split(os.pathsep)
+    else:
+        path_list = [os.path.join(*pathargs)]
+
+    for path in path_list:
+        cmd_path = os.path.join(path, cmd)
+        if os.access(cmd_path, os.X_OK):
+            return cmd_path
+
+    if raise_err:
+        raise RuntimeError("Command not found: {}".format(cmd))
+
+    return None
+
+
+def execute_command(cmd, cmd_msg):
+    """
+    Execute a command and raise an error if it fails.
+
+    This function executues a command, having printed a status message, checks the return
+    code is zero, otherwise raises an error with the appropriate message.
+
+    :param cmd: command to execute - list or expandable string
+    :param cmd_msg: message to print
+    """
+    # Print command message
+    print(cmd_msg)
+    # Expand command if not a list
+    if not isinstance(cmd, list):
+        cmd = shlex.split(cmd)
+    # Call command, check result and raise an error if failed
+    retcode = subprocess.call(cmd)
+    if retcode != 0:
+        raise RuntimeError("{} failed".format(cmd_msg))
+
+
+def get_src_dir(src_dir=None):
+    """
+    Resolve build source directory.
+
+    This function resolves the source directory for installation using, in order of priority,
+    1) the directory name passed as the argument (if specifed from e.g. argument parsing)
+    2) the value of the SRC_DIR environment variable
+    3) relative to best guess location relative to this script in a source tree.
+
+    :param src_dir: path of source directory (e.g from argparse, could be None)
+
+    :returns: string path of resovled source directory, or none if not found
+    """
+    # If no directory specified, first try environment
+    if src_dir is None:
+        src_dir = os.environ.get('SRC_DIR')
+
+    # If still not set, resolve relative to this script location in source tree
+    if src_dir is None:
+        this_path = os.path.dirname(os.path.realpath(__file__))
+        src_dir = walk_up_dir(this_path, 2)
+
+    # If set, resolve relative path to absolute path
+    if src_dir is not None:
+        src_dir = os.path.abspath(src_dir)
+
+    return src_dir
+
+
+def get_prefix_dir(prefix_dir=None):
+    """
+    Resolve installation prefix directory.
+
+    This function resolves the installation prefix directory using, in order of priority,
+    1) the directory named passed as the argument (if specified from e.g. argument parsing)
+    2) the value of the PREFIX_DIR ennvironment variable
+
+    :param prefix_dir: path of prefix directory (e.g from argparse, could be None)
+
+    :returns: string path of resovled prefix directory, or none if not found
+    """
+    if prefix_dir is None:
+        prefix_dir = os.environ.get('PREFIX_DIR')
+
+    if prefix_dir is not None:
+        prefix_dir = os.path.abspath(prefix_dir)
+
+    return prefix_dir
+
+
+def get_config_dir(config_dir=None, src_dir=None):
+    """
+    Resolve configuration source directory.
+
+    This function resolves the configuration source directory using, in order of priority,
+    1) the directory named passed as the argument (if specified from e.g. argument parsing)
+    2) the value of the CONFIG_DIR ennvironment variable
+    3) a path relative to the specified source directory
+
+    :param config_dir: path of configuration directory (e.g from argparse, could be None)
+    :param src_dir: path of source directory
+    :returns: string path of resovled prefix directory, or none if not found
+    """
+    if config_dir is None:
+        config_dir = os.environ.get('CONFIG_DIR')
+
+    if config_dir is None and src_dir is not None:
+        config_dir = os.path.join(src_dir, "config")
+
+    if config_dir is not None:
+        config_dir = os.path.abspath(config_dir)
+
+    return config_dir
+
+
+def resolve_cmake_vars(build_name, required_cmake_env):
+    """
+    Resolve the cmake variables required to configure a build.
+
+    This function checks that all the necessary variables necessary as arguments to a cmake
+    configuration step are present in the environment, attempting to resolve them with
+    the module command if not.
+
+    :param build_name: name of cmake build being validated
+    :param required_cmake_env: dict-like object of cmake variables and their
+                               matching environment source and/or module name
+    :returns: ordered dictionary of resolved cmake variables
+    """
+    print("Validating {} cmake build configuration".format(build_name))
+
+    module_cmd = None
+
+    # Create ordered dictionary of validated and resolved cmake variable
+    validated_vars = OrderedDict()
+
+    # Loop over specified variables
+    for (cmake_var, (env_var, module)) in required_cmake_env.items():
+
+        # Attempt to resolve value from specified environment variable
+        value = os.environ.get(env_var)
+
+        # If not set, ask user if they wish to try and load the appropriate environment module
+        if not value and confirm_action(
+                "  {} is not set. Do you want to try and load the {} module?".format(
+                    cmake_var, module),
+                default_response=True,
+                default_message="  Loading {} from {} module".format(cmake_var, module)
+        ):
+            # Resolve the module command if not already done
+            if not module_cmd:
+                module_cmd = cmd_exists("modulecmd")
+
+            # Run the module command to retrieve environment variables
+            module_env_output = subprocess.check_output(
+                [module_cmd, "bash", "load", module],
+            )
+
+            # Extract the value of the appopriate environment variable if present
+            matched = re.match(r".*?%s=(.*?)\s?;" % env_var, module_env_output)
+            if matched:
+                value = matched.groups()[0]
+                os.environ[env_var] = value
+            else:
+                print("  Unable to resolve {} by loading module {}".format(env_var, module))
+
+        # Print resolved value if found
+        if value:
+            print("  {} is set to {}".format(cmake_var, value))
+        else:
+            print("  Unable to resolve a value for {}".format(cmake_var))
+
+        # Add resolved value to validated variables
+        validated_vars[cmake_var] = value
+
+    # Raise an error if any variables are missing
+    if None in validated_vars.values():
+        missing_vars = ', '.join(var for (var, val) in validated_vars.items() if val is None)
+        raise RuntimeError("Unable to resolve the following cmake variables for {}: {}".format(
+            build_name, missing_vars
+        ))
+
+    return validated_vars
+
+
+def create_virtualenv(prefix_dir):
+    """
+    Create virtual environment in prefix directory.
+
+    This function checks if the virtualenv command exists on the path and, if so,
+    creates a virtual environment in the directory specified.
+
+    :param prefix_dir: prefix directory in which to create virtalenv
+
+    :returns: None
+    """
+    # Check if a python interpreter already exists in the specified directory and confim
+    # installation if so
+    if cmd_exists("python", prefix_dir, "bin", raise_err=False):
+        if not confirm_action(
+                "A virtual environment already appears to exist in {}. "
+                "Do you want to replace it?".format(prefix_dir),
+                default_response=False,
+                default_message="Not replacing virtual environment in {}".format(prefix_dir)
+        ):
+            return
+
+    # Check virtualenv command exists
+    venv_cmd = cmd_exists("virtualenv")
+
+    # Create the virtualenv, raising an error if it fails
+    execute_command(
+        [venv_cmd, prefix_dir],
+        "Creating virtualenv in install prefix directory {}".format(prefix_dir)
+    )
+
+
+def clone_package_repos(src_dir, package_repositories):
+    """
+    Clone package repositories from git.
+
+    This function clones package repositories with git from the specified URLs
+    into the source directory.
+    :param src_dir: string path of source directory to clone into
+    :param package_repositories: dict of repo names and URLs to clone
+    """
+    # Check that the git command exists
+    git_cmd = cmd_exists("git")
+
+    # Temporariliy change into source directory
+    with TransientDirectory(src_dir):
+
+        # Loop over specified repositories, check if already existing in source directory. If not,
+        # clone repo, otherwise ask user if a pull is required.
+        try:
+            for (repo_name, (repo_url, _)) in package_repositories.items():
+
+                repo_src_dir = os.path.join(src_dir, repo_name)
+                if os.path.isdir(repo_src_dir):
+                    if confirm_action(
+                            "Repository {} is already present in {}. "
+                            "Do you want to update it?".format(repo_name, repo_src_dir),
+                            default_response=False,
+                            default_message="Not updating repository {} in {}".format(
+                                repo_name, repo_src_dir)
+                    ):
+                        with TransientDirectory(repo_src_dir):
+                            execute_command(
+                                [git_cmd, "pull"], "Updating {} repository".format(repo_name)
+                            )
+                else:
+                    execute_command(
+                        [git_cmd, "clone", repo_url, repo_name],
+                        "Cloning {} into {} ...".format(repo_name, src_dir)
+                    )
+
+        except Exception as err:
+            raise RuntimeError(err)
+
+
+def get_python_package_version(pip_cmd, package):
+    """
+    Get version information for a python package.
+
+    This function uses pip to determine the version of an installed python package,
+    which is parsed from the output and returned.
+
+    :param pip_cmd: path to pip command
+    :param package: package to check version of
+    :returns: version info as string or None if not installed
+    """
+    try:
+        version_line = subprocess.check_output(
+            "{} show {} | grep Version".format(pip_cmd, package), stderr=subprocess.STDOUT,
+            shell=True
+        ).strip()
+        version_info = version_line.split()[-1]
+    except subprocess.CalledProcessError:
+        version_info = None
+
+    return version_info
+
+
+def install_python_packages(src_dir, prefix_dir, package_repositories):
+    """
+    Install python packages from the relevant package repositories.
+
+    :param src_dir: source directory
+    :param prefix_dir: installation prefix directory
+    :param package_repositories: dict of repo names and URLs to clone
+    """
+    # Check that the pip command exists in the prefix directory virtual enviroment
+    pip_cmd = cmd_exists("pip", prefix_dir, "bin")
+
+    # Iterate over packages, checking if installed already and asking user to confirm, then
+    # installing in editable mode
+    try:
+        for (repo_name, (_, install_subdir)) in package_repositories.items():
+            version = get_python_package_version(pip_cmd, repo_name)
+            if version and not confirm_action(
+                    "Package {} is already installed with version {}. "
+                    "Do you want to reinstall?".format(repo_name, version),
+                    default_response=False,
+                    default_message="Not reinstalling package {} version {}".format(
+                        repo_name, version
+                    )
+            ):
+                continue
+            repo_subdir = os.path.join(src_dir, repo_name, install_subdir)
+            execute_command(
+                [pip_cmd, "install", "-e", repo_subdir],
+                "Installing {} package from {}".format(repo_name, repo_subdir)
+            )
+
+    except Exception as err:
+        raise RuntimeError(err)
+
+
+def download_file(url, target_path):
+    """Download a file from an HTTP server.
+
+    This function downloads a file from the specified URL and saves it at the specified path.
+
+    :param url: URL to download
+    "param target_path: path to save file to
+    """
+    try:
+        print("Downloading {} to {} ... ".format(url, target_path), end='')
+        sys.stdout.flush()
+        f_obj = urllib2.urlopen(url)
+
+        with open(target_path, "w") as target_file:
+            target_file.write(f_obj.read())
+
+        print("done.")
+
+    except urllib2.HTTPError as err:
+        raise RuntimeError("Failed to download {}: {}".format(url, err))
+    except urllib2.URLError as err:
+        raise RuntimeError("Failed to download {}: {}".format(url, err))
+
+
+def install_sip(prefix_dir, sip_version, sip_url):
+    """
+    Install the python sip package requried for PyQt bindings.
+
+    This function downloads and installs the specified version of sip, which is required
+    for the build and installation of the PyQt4 bindings.
+
+    :param prefix_dir: directory to install into, containing python etc
+    :param sip_version: version to install
+    :param sip_url: URL to download package from
+    """
+    # First check if valid python available in virtualenv
+    python_cmd = cmd_exists("python", prefix_dir, "bin")
+
+    # Check if sip is installed and, if so resolve version
+    try:
+        cmd_exists("sip", prefix_dir, "bin")
+    except RuntimeError:
+        pass
+    else:
+        try:
+            installed_version = subprocess.check_output(
+                [python_cmd, "-c", "import sip; print(sip.SIP_VERSION_STR)"]
+            ).strip()
+        except subprocess.CalledProcessError as err:
+            raise RuntimeError("Failed to resolve version of sip module: {}".format(err))
+
+        # If the existing version matches requested, or the user does not wish to update, return
+        if installed_version == sip_version:
+            print("sip version {} is already installed".format(installed_version))
+            return
+        elif not confirm_action(
+                "Installed version of sip {} is different from requested version {}. "
+                "Do you want to update it?".format(installed_version, sip_version),
+                default_response=False,
+                default_message="Not updating installed sip version {}".format(installed_version)
+        ):
+            return
+
+    # Create a temporary directory for downloading and installing sip
+    with TemporaryDirectory() as tmp_dir:
+        print("Created temporary directory {}".format(tmp_dir))
+
+        sip_file = "sip.tgz"
+        download_file(sip_url, sip_file)
+
+        execute_command(["tar", "xzf", sip_file], "Unpacking sip archive file")
+
+        sip_src_dir = "sip-{}".format(sip_version)
+        with TransientDirectory(sip_src_dir):
+            execute_command(
+                [python_cmd, "configure.py", "--sip-module=PyQt4.sip"], "Configuring sip"
+            )
+            execute_command(["make", "-j{}".format(nproc()), "install"], "Installing sip")
+
+
+def install_pyqt4(prefix_dir, pyqt4_version, pyqt4_url, qmake_cmd="qmake"):
+    """
+    Download and install the PyQT4 package.
+
+    This function downloads and installs the PyQt4 package, ensuring it is configured against
+    a working sip and qmake installation.
+
+    :param prefix_dir: installation prefix to install into
+    :param pyqt4_version: PyQt4 version to install
+    :param pyqt4_url: URL to download PyQt4 from
+    :param qmake_cmd: path to qmake command in QT installation,
+    """
+    # First check if valid python available in virtualenv
+    python_cmd = cmd_exists("python", prefix_dir, "bin")
+
+    # Check if PyQt4 package is already installed
+    try:
+        installed_version = subprocess.check_output(
+            [python_cmd, "-c", "import PyQt4.Qt; print(PyQt4.Qt.PYQT_VERSION_STR)"],
+            stderr=subprocess.STDOUT,
+        ).strip()
+    except subprocess.CalledProcessError:
+        print("No PyQt4 version installed")
+    else:
+        if installed_version == pyqt4_version:
+            print("PyQt4 version {} is already installed".format(installed_version))
+            return
+        elif not confirm_action(
+                "Installed version of PyQt4 {} is different from requested version {}. "
+                "Do you want to update it?".format(installed_version, pyqt4_version),
+                default_response=False,
+                default_message="Not updating installed PyQt4 version {}".format(installed_version)
+        ):
+            return
+
+    print("OK, going to install PyQt4 version {}".format(pyqt4_version))
+
+    # Check if sip command available in installation prefix directory
+    sip_cmd = cmd_exists("sip", prefix_dir, "bin")
+    print("Found sip cmd at {}".format(sip_cmd))
+
+    # Check that qmake is available in the environment
+    qmake_cmd = cmd_exists(qmake_cmd)
+    print("Found qmake command at {}".format(qmake_cmd))
+
+    with TemporaryDirectory() as tmp_dir:
+        print("Created temporary directory {}".format(tmp_dir))
+
+        # Download and unpack PyQT4 archive file
+        pyqt4_file = "pyqt4.tgz"
+        download_file(pyqt4_url, pyqt4_file)
+        execute_command(["tar", "xzf", pyqt4_file], "Unpacking PyQt4 archive file")
+
+        pyqt4_src_dir = "PyQt4_gpl_x11-{}".format(pyqt4_version)
+        with TransientDirectory(pyqt4_src_dir):
+            execute_command(
+                [
+                    python_cmd, "configure-ng.py", "--confirm-license",
+                    "--sip={}".format(sip_cmd), "--qmake={}".format(qmake_cmd)
+                ],
+                "Configuring PyQt4"
+            )
+            execute_command(["make", "-j{}".format(nproc()), "install"], "Installing PyQt4")
+
+
+def create_cmake_build_dir(*path_elems):
+    """
+    Create an out-of-source build directory for cmake.
+
+    This function creates a build directory for cmake OoS builds within the specified path.
+
+    :param *path_elems: variable list of one more more path elements to the directory in
+                        which the build directory will be created.
+    :returns: path to build directory
+    """
+    build_dir = os.path.join(os.path.join(*path_elems), "build")
+    if not os.path.isdir(build_dir):
+        print("  Creating build directory {}".format(build_dir))
+        try:
+            os.mkdir(build_dir)
+        except OSError as err:
+            raise RuntimeError("Creation of build directory failed: {}".format(err))
+    else:
+        print("  Build directory {} already exists".format(build_dir))
+
+    return build_dir
+
+
+def run_cmake_install(package_src_dir, cmake_env):
+    """
+    Install a pacakge using cmake.
+
+    This function configures, builds and installs a package using cmake, using the cmake
+    variables specifed in the provide environment argument.
+
+    :param package_src_dir: package source directory
+    :param prefix_dir: installation prefix directory
+    :param cmake_env: dictionary of cmake arguments to use
+    """
+    # Resolve the cmake command
+    cmake_cmd = cmd_exists("cmake")
+
+    # Build list of cmake arguments from the environment provided
+    cmake_args = ["-D{}={}".format(key, val) for key, val in cmake_env.items()]
+    cmake_args.insert(0, cmake_cmd)
+    cmake_args.append("..")
+
+    # Create a build directory inside the package source directory
+    build_dir = create_cmake_build_dir(package_src_dir)
+
+    # Execute cmake configure, make and install in the build directory
+    with TransientDirectory(build_dir):
+        execute_command(cmake_args, "  Running cmake")
+        execute_command(["make", "-j{}".format(nproc()), "install"], "  Running make install")
+
+
+def install_odin_data(src_dir, prefix_dir, odin_data_cmake_env):
+    """
+    Install odin-data.
+
+    This function uses cmake to configure, build and install odin-data into the installation
+    prefix directory.
+
+    :param src_dir: source directory
+    :param prefix_dir: installation prefix directory
+    :param odin_data_cmake_env: dictionary of cmake arguments to use
+    """
+    print("Installing odin-data")
+
+    # Add some standard CMAKE arguments to provided envinnment
+    odin_data_cmake_env["Boost_NO_BOOST_CMAKE"] = "on"
+    odin_data_cmake_env["CMAKE_INSTALL_RPATH_USE_LINK_PATH"] = "ON"
+    odin_data_cmake_env["CMAKE_INSTALL_PREFIX"] = prefix_dir
+
+    # Set the package source directory
+    package_src_dir = os.path.join(src_dir, "odin_data")
+
+    # Run the cmake install commands
+    run_cmake_install(package_src_dir, odin_data_cmake_env)
+
+
+def install_lpd_detector_plugins(src_dir, prefix_dir, lpd_detector_cmake_env):
+    """
+    Install lpd-detector plugins for odin-data.
+
+    This function uses cmake to configure, build and install the lpd-detector plugins for
+    odin-data into the installation prefix directory.
+
+    :param src_dir: source directory
+    :param prefix_dir: installation prefix directory
+    :param lpd_detector_cmake_env: dictionary of cmake arguments to use
+    """
+    print("Installing lpd-detector plugins")
+
+    # Add some standard CMAKE arguments to the provided envinnment
+    lpd_detector_cmake_env["Boost_NO_BOOST_CMAKE"] = "on"
+    lpd_detector_cmake_env["CMAKE_INSTALL_RPATH_USE_LINK_PATH"] = "ON"
+    lpd_detector_cmake_env["CMAKE_INSTALL_PREFIX"] = prefix_dir
+    lpd_detector_cmake_env["ODINDATA_ROOT_DIR"] = prefix_dir
+
+    # Set the package source directory
+    package_src_dir = os.path.join(src_dir, "lpd", "data")
+
+    # Run the cmake install commands
+    run_cmake_install(package_src_dir, lpd_detector_cmake_env)
+
+
+def install_configuration_files(config_src_dir, prefix_dir, config_install_prefix):
+    """
+    Install configuration files.
+
+    This function installs configuration files by recursively copying files from the
+    specified source directory, preserving the directory structure and substituting the
+    install prefix placeholder in each file for the appropriate directory.
+
+    :param config_src_dir: configuration file source directory
+    :param prefix_dir: installation prefix directory
+    :param config_install_prefix: placeholder string to substitute with prefix_dir
+    """
+    # Create the configuration directory in the install prefix
+    config_install_dir = os.path.join(prefix_dir, "config")
+    if not os.path.isdir(config_install_dir):
+        create_dir(config_install_dir, "Config file", default_response=True)
+
+    files_installed = 0
+
+    # Walk recursively through the configuration file directory structure
+    for dir_name, _, file_names in os.walk(config_src_dir):
+
+        # Figure out the relative path and calcuate the path of the target file in the
+        # install prefix to match
+        sub_path = os.path.relpath(dir_name, config_src_dir)
+        target_path = os.path.abspath(os.path.join(config_install_dir, sub_path))
+
+        # Create the target subdirectory
+        create_dir(target_path, "Config subdir", quiet=True)
+
+        # Iterate over files in current subdirectory
+        for file_name in file_names:
+            source_file_name = os.path.join(config_src_dir, sub_path, file_name)
+            target_file_name = os.path.join(target_path, file_name)
+
+            # Read in the source file
+            try:
+                with open(source_file_name, 'r') as source_file:
+                    contents = source_file.read()
+            except IOError as err:
+                raise RuntimeError(
+                    "Failed to read config file {}: {}".format(source_file_name, err))
+
+            # Replace the target string
+            contents = contents.replace(config_install_prefix, prefix_dir)
+
+            # Write the file out again
+            try:
+                with open(target_file_name, 'w') as target_file:
+                    target_file.write(contents)
+                files_installed += 1
+            except IOError as err:
+                raise RuntimeError("Failed to write config file {}: {}".format(
+                    target_file_name, err))
+
+    print("Installed {} files into config directory {}".format(files_installed, config_install_dir))
+
+
+def main():
+    """
+    Install LPD GUI software.
+
+    This is the main function handling installation of software. Command line arguments
+    are parsed and passed to the various stages as appropriate. Any failing stage raises
+    a RuntimeError, which is trapped and causes a non-zero exit status
+    """
+    # Use global accept default confirmation variable
+    global accept_default_confirm
+
+    # Set default return code for success
+    retcode = 0
+
+    # Build an argument parser and parse command line args
+    parser = argparse.ArgumentParser(
+        description='Build and install LPD GUI software')
+    parser.add_argument('--src', dest='src_dir',
+                        help='Specify source directory for build')
+    parser.add_argument('--prefix', dest='prefix_dir',
+                        help='Specify installation prefix directory')
+    parser.add_argument('--configsrc', dest='config_dir',
+                        help='Specify configuration file source directory')
+    parser.add_argument('--qmake', dest='qmake_cmd',
+                        help='Specify location of qmake executable in QT installation',
+                        default="qmake")
+    parser.add_argument('--accept', dest='accept_default_confirm',
+                        help='Accept default response for all actions',
+                        action="store_true")
+    args = parser.parse_args()
+
+    # Set global accept default confirmation variable accordingly
+    if args.accept_default_confirm:
+        accept_default_confirm = args.accept_default_confirm
+
+    try:
+
+        # Resolve source, prefix and configuration directories from arugments and/or environment
+        src_dir = confirm_dir("Source", get_src_dir(args.src_dir))
+        prefix_dir = confirm_dir("Prefix", get_prefix_dir(args.prefix_dir))
+        config_dir = confirm_dir("Config source", get_config_dir(args.config_dir, src_dir))
+
+        # Resolve required cmake variables for building odin-data
+        odin_data_cmake_vars = resolve_cmake_vars("odin_data", ODIN_DATA_CMAKE_ENV)
+
+        # Resolve required cmake variables for building odin-data detector plugins
+        lpd_detector_cmake_vars = resolve_cmake_vars("lpd-detector", LPD_DETECTOR_VMAKE_ENV)
+
+        # Create a python virtual environment in the installation directory
+        create_virtualenv(prefix_dir)
+
+        # Clone package repositories
+        clone_package_repos(src_dir, PACAKGE_REPOSITORIES)
+
+        # Install python packages
+        install_python_packages(src_dir, prefix_dir, PACAKGE_REPOSITORIES)
+
+        # Install sip and PyQt4 from downloaded sources
+        install_sip(prefix_dir, SIP_VERSION, SIP_URL)
+        install_pyqt4(prefix_dir, PYQT4_VERSION, PYQT4_URL, args.qmake_cmd)
+
+        # Install odin-data
+        install_odin_data(src_dir, prefix_dir, odin_data_cmake_vars)
+
+        # Install lpd-detector plugins for odin-data
+        install_lpd_detector_plugins(src_dir, prefix_dir, lpd_detector_cmake_vars)
+
+        # Install configuration files
+        install_configuration_files(config_dir, prefix_dir, CONFIG_INSTALL_PREFIX)
+
+    except RuntimeError as run_err:
+        print("Installation failed: {}".format(run_err))
+        retcode = 1
+
+    except KeyboardInterrupt:
+        print("\nInstallation terminated by user")
+        retcode = 1
+
+    return retcode
+
+
+if __name__ == '__main__':
+    sys.exit(main())
