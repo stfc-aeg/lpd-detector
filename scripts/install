@@ -645,7 +645,7 @@ def install_sip(prefix_dir, sip_version, sip_url):
     else:
         try:
             installed_version = subprocess.check_output(
-                [python_cmd, "-c", "import sip; print(sip.SIP_VERSION_STR)"]
+                [python_cmd, "-c", "from PyQt4 import sip; print(sip.SIP_VERSION_STR)"]
             ).strip()
         except subprocess.CalledProcessError as err:
             raise RuntimeError("Failed to resolve version of sip module: {}".format(err))
