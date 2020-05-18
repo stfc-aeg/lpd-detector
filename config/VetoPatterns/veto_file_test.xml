@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+	<!-- Veto Patterns for XFEL C&C
+
+		10 patterns each of 96 x 32bit words
+
+		For each train the Pattern is selected using information decoded from  the C&C start command
+
+		bit = 0 means trigger if ccc sends noveto for that pulse; bit = 1 means veto pulse
+
+		lsb of 1st word in each pattern is xray pulse nr 0
+		msb of 1st word is pulse nr 31
+		lsb of 2nd word is pulse nr 32   etc
+
+		Eg
+		# pattern 0 : all NoVeto (trigger every bunch)
+		# pattern 1 : all Veto  (no triggers in train)
+		# pattern 2 : to be defined
+		# pattern 3 ; to be defined
+		# pattern 9 ; Tests
+
+		-->
+
+	<lpd_bunch_pattern name="testCCC_xml">
+		<veto   value="0xFFFFFFFF"/>
+		<veto pattern="0" word="0" value="0x00000000"/>
+		<veto pattern="0" word="2" value="0x00000000"/>
+		<veto pattern="1"  value="0xAAAAAAAA"/>
+		<veto pattern="2"  value="0x55555555"/>
+</lpd_bunch_pattern>
