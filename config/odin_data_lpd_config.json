@@ -1,0 +1,124 @@
+{
+    "receiver_default_config":
+    {
+      "debug_level": 0,
+      "max_buffer_mem": 840000000,
+      "decoder_type": "Lpd",
+      "decoder_path": "{{INSTALL_PREFIX}}/lib",
+      "rx_ports": "61649",
+      "decoder_config": {
+        "enable_packet_logging": false,
+        "frame_timeout_ms": 1000,
+        "numimages":10
+      }
+    },
+    "processor_default_config":
+    {
+      "debug_level": 0,
+      "fr_setup": {
+        "fr_ready_cnxn": "tcp://127.0.0.1:5001",
+        "fr_release_cnxn": "tcp://127.0.0.1:5002"
+      },
+      "lpd":
+      {
+        "width": 256,
+        "height": 256,
+        "divisor": 100,
+        "offset": 2
+      },
+      "hdf":
+      {
+      	"master": "data",
+        "frames": 0,
+		"write": true,
+		"file":
+		{
+		  "path": "/tmp",
+		  "name": "test.hdf5"
+		},
+        "dataset":
+        {  
+          "frame_num" :
+          {
+            "cmd": "create",
+            "datatype": 2,
+            "dims": [1]
+          },
+          "img_num" :
+          {
+            "cmd": "create",
+            "datatype": 2,
+            "dims": [1]
+          },
+          "data" :
+          {
+            "cmd": "create",
+            "datatype": 1,
+            "dims": [256, 256]       
+          }
+        }
+      },
+      "live_view":
+      {
+        "frame_frequency": 1,
+        "per_second": 0,
+        "live_view_socket_addr": "tcp://127.0.0.1:5020",
+        "dataset_name": "data",
+        "filter_tagged": "live_view_tag"
+      }
+    },
+    "processor_plugins":
+    [
+        {
+            "plugin": {
+                "load": {
+                    "index": "hdf",
+                    "name": "FileWriterPlugin",
+                    "library": "{{INSTALL_PREFIX}}/lib/libHdf5Plugin.so"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "load": {
+                    "index": "lpd",
+                    "name": "LpdProcessPlugin",
+                    "library": "{{INSTALL_PREFIX}}/lib/libLpdProcessPlugin.so"
+                }
+            }
+        },
+        {
+        	"plugin": {
+                "load": {
+                    "index": "live_view",
+                    "name": "LiveViewPlugin",
+                    "library": "{{INSTALL_PREFIX}}/lib/libLiveViewPlugin.so"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "connect": {
+                    "index": "lpd",
+                    "connection": "frame_receiver"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "connect": {
+                    "index": "hdf",
+                    "connection": "lpd"
+                }
+            }
+        },
+        {
+            "plugin": {
+                "connect": {
+                    "index": "live_view",
+                    "connection": "lpd"
+                }
+            }
+        }
+    ]
+}    
